@@ -3,17 +3,11 @@ import { defineNuxtConfig } from "nuxt/config";
 export default defineNuxtConfig({
   srcDir: "src/",
 
-  modules: [
-    "@nuxt/ui",
-    "@pinia/nuxt",
-    "@nuxtjs/i18n",
-    "@nuxt/test-utils/module",
-  ],
+  modules: ["@nuxt/ui", "@pinia/nuxt", "@nuxtjs/i18n", "@nuxt/eslint"],
 
   css: ["~/assets/css/main.css"],
 
   ui: {
-    // @ts-ignore
     colorMode: false,
   },
 
