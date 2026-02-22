@@ -323,6 +323,9 @@ export function useTimelineExport() {
     setExportHostApi({
       getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
       onExportProgress: (progress) => onProgress(progress / 100),
+      onExportPhase: (phase) => {
+        exportPhase.value = phase;
+      },
     });
 
     await client.exportTimeline(fileHandle, options, clips);

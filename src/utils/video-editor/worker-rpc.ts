@@ -30,5 +30,6 @@ export interface VideoCoreWorkerAPI {
 export type WorkerCallbacks = {
   // Functions the worker can call on the main thread
   onExportProgress: (progress: number) => void;
+  onExportPhase?: (phase: 'encoding' | 'saving') => void;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
 };

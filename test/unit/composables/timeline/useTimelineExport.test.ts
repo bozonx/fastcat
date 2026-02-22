@@ -3,15 +3,23 @@ import {
   getExt,
   sanitizeBaseName,
   resolveExportCodecs,
-} from '~/composables/timeline/useTimelineExport';
+} from '../../../../src/composables/timeline/useTimelineExport';
+import type { VideoCoreHostAPI } from '../../../../src/utils/video-editor/worker-client';
 
 describe('useTimelineExport pure functions', () => {
+  it('VideoCoreHostAPI allows omitting onExportPhase (backward compatible)', () => {
+    const api: VideoCoreHostAPI = {
+      getFileHandleByPath: async () => null,
+      onExportProgress: () => {},
+    };
+    expect(typeof api.onExportProgress).toBe('function');
+  });
+
   it('getExt should return correct extension', () => {
     expect(getExt('mp4')).toBe('mp4');
     expect(getExt('webm')).toBe('webm');
     expect(getExt('mkv')).toBe('mkv');
-    // @ts-expect-error test fallback
-    expect(getExt('unknown')).toBe('mp4');
+    expect(getExt('unknown' as any)).toBe('mp4');
   });
 
   it('sanitizeBaseName should sanitize filenames correctly', () => {

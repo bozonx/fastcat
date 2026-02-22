@@ -3,6 +3,7 @@ import type { VideoCoreWorkerAPI } from './worker-rpc';
 export interface VideoCoreHostAPI {
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
   onExportProgress(progress: number): void;
+  onExportPhase?(phase: 'encoding' | 'saving'): void;
 }
 
 type WorkerChannel = 'preview' | 'export';
@@ -86,10 +87,15 @@ function createWorker(channel: WorkerChannel): Worker {
       try {
         if (!state.hostApiInstance) throw new Error('Host API not set');
         const method = data.method as keyof VideoCoreHostAPI;
-        if (typeof state.hostApiInstance[method] !== 'function') {
+        const fn = state.hostApiInstance[method];
+        if (typeof fn !== 'function') {
+          if (data.method === 'onExportPhase') {
+            worker.postMessage({ type: 'rpc-response', id: data.id, result: undefined });
+            return;
+          }
           throw new Error(`Method ${data.method} not found on Host API`);
         }
-        const result = await (state.hostApiInstance[method] as any)(...(data.args || []));
+        const result = await (fn as any)(...(data.args || []));
         worker.postMessage({ type: 'rpc-response', id: data.id, result });
       } catch (err: any) {
         worker.postMessage({

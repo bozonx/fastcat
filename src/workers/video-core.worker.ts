@@ -11,6 +11,16 @@ let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
 let cancelExportRequested = false;
 
+function normalizeRpcError(errData: any): Error {
+  if (!errData) return new Error('Worker RPC error');
+  if (typeof errData === 'string') return new Error(errData);
+  const message = typeof errData?.message === 'string' ? errData.message : 'Worker RPC error';
+  const err = new Error(message);
+  if (typeof errData?.name === 'string') (err as any).name = errData.name;
+  if (typeof errData?.stack === 'string') (err as any).stack = errData.stack;
+  return err;
+}
+
 function getBunnyVideoCodec(codec: string): any {
   if (codec.startsWith('avc1')) return 'avc';
   if (codec.startsWith('hvc1') || codec.startsWith('hev1')) return 'hevc';
@@ -232,11 +242,19 @@ const api: any = {
             ? new MkvOutputFormat()
             : new Mp4OutputFormat();
 
-      const writable = await (targetHandle as any).createWritable();
-
       async function runExportWithHardwareAcceleration(
         preference: 'prefer-hardware' | 'prefer-software',
       ) {
+        if (hostClient) {
+          try {
+            await (hostClient as any).onExportPhase?.('encoding');
+          } catch {
+            // ignore
+          }
+        }
+
+        const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
+
         const target = new StreamTarget(writable, {
           chunked: true,
           chunkSize: 16 * 1024 * 1024,
@@ -267,32 +285,56 @@ const api: any = {
         const dtS = dtUs / 1_000_000;
         let currentTimeUs = 0;
 
-        await output.start();
+        let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
-        for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
-          if (cancelExportRequested) {
-            const abortErr = new Error('Export was cancelled');
-            (abortErr as any).name = 'AbortError';
-            throw abortErr;
-          }
-          const generatedCanvas = await localCompositor.renderFrame(currentTimeUs);
-          if (generatedCanvas) {
-            await (videoSource as any).add(currentTimeUs / 1_000_000, dtS);
-          }
-          currentTimeUs += dtUs;
+        try {
+          await output.start();
 
-          const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
-          if (hostClient) hostClient.onExportProgress(progress);
+          for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
+            if (cancelExportRequested) {
+              const abortErr = new Error('Export was cancelled');
+              (abortErr as any).name = 'AbortError';
+              throw abortErr;
+            }
+            const generatedCanvas = await localCompositor.renderFrame(currentTimeUs);
+            if (generatedCanvas) {
+              await (videoSource as any).add(currentTimeUs / 1_000_000, dtS);
+            }
+            currentTimeUs += dtUs;
 
-          if ((frameNum + 1) % 12 === 0) {
-            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+            const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
+            if (hostClient) await hostClient.onExportProgress(progress);
+
+            const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+            if (nowMs - lastYieldAtMs >= 50) {
+              lastYieldAtMs = nowMs;
+              await new Promise<void>((resolve) => setTimeout(resolve, 0));
+            }
           }
+
+          if ('close' in videoSource) (videoSource as any).close();
+          if (audioSource && 'close' in audioSource) (audioSource as any).close();
+
+          if (hostClient) {
+            try {
+              await (hostClient as any).onExportPhase?.('saving');
+            } catch {
+              // ignore
+            }
+          }
+
+          await output.finalize();
+          await writable.close();
+        } catch (e) {
+          try {
+            if (typeof (writable as any).abort === 'function') {
+              await (writable as any).abort();
+            }
+          } catch {
+            // ignore
+          }
+          throw e;
         }
-
-        if ('close' in videoSource) (videoSource as any).close();
-        if (audioSource && 'close' in audioSource) (audioSource as any).close();
-
-        await output.finalize();
       }
 
       try {
@@ -324,7 +366,7 @@ self.addEventListener('message', async (e: any) => {
   if (data.type === 'rpc-response') {
     const pending = pendingCalls.get(data.id);
     if (pending) {
-      if (data.error) pending.reject(new Error(data.error));
+      if (data.error) pending.reject(normalizeRpcError(data.error));
       else pending.resolve(data.result);
       pendingCalls.delete(data.id);
     }

@@ -30,6 +30,7 @@ export class VideoCompositor {
   private activeClipIndex = 0;
   private activeClipId: string | null = null;
   private lastRenderedTimeUs = 0;
+  private clipPreferBitmapFallback = new Map<string, boolean>();
 
   async init(
     width: number,
@@ -349,7 +350,12 @@ export class VideoCompositor {
       const targetX = (this.width - targetW) / 2;
       const targetY = (this.height - targetH) / 2;
 
+      const preferBitmap = this.clipPreferBitmapFallback.get(clip.itemId) === true;
+
       try {
+        if (preferBitmap) {
+          throw new Error('Prefer createImageBitmap fallback');
+        }
         clip.ctx.drawImage(imageSource, 0, 0, frameW, frameH);
         clip.sprite.x = targetX;
         clip.sprite.y = targetY;
@@ -357,6 +363,7 @@ export class VideoCompositor {
         clip.sprite.height = targetH;
         return;
       } catch (err) {
+        this.clipPreferBitmapFallback.set(clip.itemId, true);
         console.warn('[VideoCompositor] drawImage failed, trying createImageBitmap fallback:', err);
         try {
           const bmp = await createImageBitmap(imageSource);
