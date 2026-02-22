@@ -1,0 +1,15 @@
+# Nuxt
+.nuxt
+.output
+.nitro
+dist
+node_modules
+*.log
+
+# Workspace
+.gran
+workspace.json
+
+# OS files
+.DS_Store
+Thumbs.db
