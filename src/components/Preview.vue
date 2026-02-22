@@ -1,50 +1,53 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed } from 'vue'
-import { useUiStore } from '~/stores/ui.store'
+import { ref, watch, onUnmounted, computed } from 'vue';
+import { useUiStore } from '~/stores/ui.store';
 
-const { t } = useI18n()
-const uiStore = useUiStore()
+const { t } = useI18n();
+const uiStore = useUiStore();
 
-const currentUrl = ref<string | null>(null)
-const mediaType = ref<'image' | 'video' | 'audio' | 'unknown' | null>(null)
+const currentUrl = ref<string | null>(null);
+const mediaType = ref<'image' | 'video' | 'audio' | 'unknown' | null>(null);
 
-watch(() => uiStore.selectedFsEntry, async (entry) => {
-  // Revoke old URL
-  if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value)
-    currentUrl.value = null
-  }
-  mediaType.value = null
-
-  if (!entry || entry.kind !== 'file') return
-
-  try {
-    const file = await (entry.handle as FileSystemFileHandle).getFile()
-    
-    if (file.type.startsWith('image/')) {
-      mediaType.value = 'image'
-    } else if (file.type.startsWith('video/')) {
-      mediaType.value = 'video'
-    } else if (file.type.startsWith('audio/')) {
-      mediaType.value = 'audio'
-    } else {
-      mediaType.value = 'unknown'
-      return
+watch(
+  () => uiStore.selectedFsEntry,
+  async (entry) => {
+    // Revoke old URL
+    if (currentUrl.value) {
+      URL.revokeObjectURL(currentUrl.value);
+      currentUrl.value = null;
     }
+    mediaType.value = null;
 
-    currentUrl.value = URL.createObjectURL(file)
-  } catch (e) {
-    console.error('Failed to preview file:', e)
-  }
-})
+    if (!entry || entry.kind !== 'file') return;
+
+    try {
+      const file = await (entry.handle as FileSystemFileHandle).getFile();
+
+      if (file.type.startsWith('image/')) {
+        mediaType.value = 'image';
+      } else if (file.type.startsWith('video/')) {
+        mediaType.value = 'video';
+      } else if (file.type.startsWith('audio/')) {
+        mediaType.value = 'audio';
+      } else {
+        mediaType.value = 'unknown';
+        return;
+      }
+
+      currentUrl.value = URL.createObjectURL(file);
+    } catch (e) {
+      console.error('Failed to preview file:', e);
+    }
+  },
+);
 
 onUnmounted(() => {
   if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value)
+    URL.revokeObjectURL(currentUrl.value);
   }
-})
+});
 
-const isUnknown = computed(() => mediaType.value === 'unknown')
+const isUnknown = computed(() => mediaType.value === 'unknown');
 </script>
 
 <template>
@@ -76,12 +79,12 @@ const isUnknown = computed(() => mediaType.value === 'unknown')
       </div>
 
       <template v-else-if="currentUrl">
-        <img 
-          v-if="mediaType === 'image'" 
-          :src="currentUrl" 
-          class="max-w-full max-h-full object-contain" 
+        <img
+          v-if="mediaType === 'image'"
+          :src="currentUrl"
+          class="max-w-full max-h-full object-contain"
         />
-        <MediaPlayer 
+        <MediaPlayer
           v-else-if="mediaType === 'video' || mediaType === 'audio'"
           :src="currentUrl"
           :type="mediaType"

@@ -1,86 +1,91 @@
 <script setup lang="ts">
-
 interface FsEntry {
-  name: string
-  kind: 'file' | 'directory'
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle
-  children?: FsEntry[]
-  expanded?: boolean
-  path?: string
+  name: string;
+  kind: 'file' | 'directory';
+  handle: FileSystemFileHandle | FileSystemDirectoryHandle;
+  children?: FsEntry[];
+  expanded?: boolean;
+  path?: string;
 }
 
 interface Props {
-  entries: FsEntry[]
-  depth: number
-  getFileIcon: (entry: FsEntry) => string
+  entries: FsEntry[];
+  depth: number;
+  getFileIcon: (entry: FsEntry) => string;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'toggle', entry: FsEntry): void
-  (e: 'select', entry: FsEntry): void
-  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete', entry: FsEntry): void
-}>()
+  (e: 'toggle', entry: FsEntry): void;
+  (e: 'select', entry: FsEntry): void;
+  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete', entry: FsEntry): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 function onEntryClick(entry: FsEntry) {
   if (entry.kind === 'directory') {
-    emit('toggle', entry)
+    emit('toggle', entry);
   } else {
-    emit('select', entry)
+    emit('select', entry);
   }
 }
 
 function onDragStart(e: DragEvent, entry: FsEntry) {
-  if (entry.kind !== 'file') return
+  if (entry.kind !== 'file') return;
   if (e.dataTransfer) {
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      name: entry.name,
-      kind: 'file',
-      path: entry.path
-    }))
-    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({
+        name: entry.name,
+        kind: 'file',
+        path: entry.path,
+      }),
+    );
+    e.dataTransfer.effectAllowed = 'copy';
   }
 }
 
 function getContextMenuItems(entry: FsEntry) {
-  const items = []
-  
+  const items = [];
+
   if (entry.kind === 'directory') {
-    items.push([{
-      label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-      icon: 'i-heroicons-folder-plus',
-      onSelect: () => emit('action', 'createFolder', entry)
-    }])
+    items.push([
+      {
+        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+        icon: 'i-heroicons-folder-plus',
+        onSelect: () => emit('action', 'createFolder', entry),
+      },
+    ]);
   }
-  
-  items.push([{
-    label: t('common.rename', 'Rename'),
-    icon: 'i-heroicons-pencil',
-    onSelect: () => emit('action', 'rename', entry)
-  }, {
-    label: t('videoEditor.fileManager.info.title', 'Information'),
-    icon: 'i-heroicons-information-circle',
-    onSelect: () => emit('action', 'info', entry)
-  }, {
-    label: t('common.delete', 'Delete'),
-    icon: 'i-heroicons-trash',
-    color: 'error',
-    onSelect: () => emit('action', 'delete', entry)
-  }])
-  
-  return items
+
+  items.push([
+    {
+      label: t('common.rename', 'Rename'),
+      icon: 'i-heroicons-pencil',
+      onSelect: () => emit('action', 'rename', entry),
+    },
+    {
+      label: t('videoEditor.fileManager.info.title', 'Information'),
+      icon: 'i-heroicons-information-circle',
+      onSelect: () => emit('action', 'info', entry),
+    },
+    {
+      label: t('common.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      color: 'error',
+      onSelect: () => emit('action', 'delete', entry),
+    },
+  ]);
+
+  return items;
 }
 </script>
 
 <template>
   <ul class="select-none min-w-full w-max">
-    <li
-      v-for="entry in entries"
-      :key="entry.name"
-    >
+    <li v-for="entry in entries" :key="entry.name">
       <!-- Row -->
       <UContextMenu :items="getContextMenuItems(entry)">
         <div

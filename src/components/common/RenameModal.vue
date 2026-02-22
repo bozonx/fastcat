@@ -1,34 +1,34 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import AppModal from '~/components/ui/AppModal.vue'
+import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import AppModal from '~/components/ui/AppModal.vue';
 
 const props = defineProps<{
-  initialName?: string
-}>()
+  initialName?: string;
+}>();
 
-const isOpen = defineModel<boolean>('open', { required: true })
+const isOpen = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
-  (e: 'rename', newName: string): void
-}>()
+  (e: 'rename', newName: string): void;
+}>();
 
-const { t } = useI18n()
-const name = ref('')
+const { t } = useI18n();
+const name = ref('');
 
 watch(isOpen, (val) => {
   if (val) {
-    name.value = props.initialName ?? ''
+    name.value = props.initialName ?? '';
   }
-})
+});
 
 const handleRename = () => {
-  const trimmed = name.value.trim()
+  const trimmed = name.value.trim();
   if (trimmed && trimmed !== props.initialName) {
-    emit('rename', trimmed)
+    emit('rename', trimmed);
   }
-  isOpen.value = false
-}
+  isOpen.value = false;
+};
 </script>
 
 <template>
@@ -39,21 +39,12 @@ const handleRename = () => {
   >
     <div class="space-y-4">
       <UFormField :label="t('common.name', 'Name')">
-        <UInput
-          v-model="name"
-          autofocus
-          class="w-full"
-          @keyup.enter="handleRename"
-        />
+        <UInput v-model="name" autofocus class="w-full" @keyup.enter="handleRename" />
       </UFormField>
     </div>
 
     <template #footer>
-      <UButton
-        color="neutral"
-        variant="ghost"
-        @click="isOpen = false"
-      >
+      <UButton color="neutral" variant="ghost" @click="isOpen = false">
         {{ t('common.cancel', 'Cancel') }}
       </UButton>
       <UButton

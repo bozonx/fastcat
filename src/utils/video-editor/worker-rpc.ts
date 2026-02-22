@@ -9,7 +9,7 @@ export interface VideoCoreWorkerAPI {
     canvas: OffscreenCanvas,
     width: number,
     height: number,
-    bgColor: string
+    bgColor: string,
   ): Promise<void>;
   loadTimeline(clips: any[]): Promise<number>;
   updateTimelineLayout(clips: any[]): Promise<number>;
@@ -21,7 +21,7 @@ export interface VideoCoreWorkerAPI {
   exportTimeline(
     targetHandle: FileSystemFileHandle,
     options: any,
-    timelineClips: any[]
+    timelineClips: any[],
   ): Promise<void>;
 }
 

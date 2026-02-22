@@ -71,9 +71,12 @@ export const useUiStore = defineStore('ui', () => {
 
     currentFileTreeProjectName.value = projectName;
 
-    const parsed = readLocalStorageJson<PersistedFileTreeState>(getFileTreeStorageKey(projectName), {
-      expandedPaths: [],
-    });
+    const parsed = readLocalStorageJson<PersistedFileTreeState>(
+      getFileTreeStorageKey(projectName),
+      {
+        expandedPaths: [],
+      },
+    );
 
     const next: Record<string, true> = {};
     for (const p of parsed.expandedPaths) {

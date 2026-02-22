@@ -13,7 +13,7 @@ if (typeof document === 'undefined') {
     body: {
       appendChild: () => {},
       removeChild: () => {},
-    }
+    },
   };
   (globalThis as any).window = globalThis;
 }

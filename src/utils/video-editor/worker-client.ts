@@ -55,7 +55,7 @@ function createWorker(channel: WorkerChannel): Worker {
     name: `video-core-${channel}`,
   });
 
-  worker.addEventListener('message', async e => {
+  worker.addEventListener('message', async (e) => {
     const data = e.data;
     if (!data || !data.type) return;
 
@@ -81,14 +81,14 @@ function createWorker(channel: WorkerChannel): Worker {
     }
   });
 
-  worker.addEventListener('error', event => {
+  worker.addEventListener('error', (event) => {
     console.error('[WorkerClient] Worker error', event);
     if (state.workerInstance === worker) {
       terminateChannel(channel, 'Worker crashed. Please retry the operation.');
     }
   });
 
-  worker.addEventListener('messageerror', event => {
+  worker.addEventListener('messageerror', (event) => {
     console.error('[WorkerClient] Worker message error', event);
     if (state.workerInstance === worker) {
       terminateChannel(channel, 'Worker message channel failed. Please retry the operation.');

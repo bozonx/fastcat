@@ -1,11 +1,11 @@
 import './worker-polyfill';
 
 import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
-DOMAdapter.set(WebWorkerAdapter);
 
 import type { VideoCoreHostAPI } from '../utils/video-editor/worker-client';
 import type { VideoCoreWorkerAPI } from '../utils/video-editor/worker-rpc';
 import { VideoCompositor } from '../utils/video-editor/VideoCompositor';
+DOMAdapter.set(WebWorkerAdapter);
 
 let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
@@ -104,7 +104,7 @@ const api: any = {
 
   async loadTimeline(clips: any[]) {
     if (!compositor) throw new Error('Compositor not initialized');
-    return compositor.loadTimeline(clips, async path => {
+    return compositor.loadTimeline(clips, async (path) => {
       if (!hostClient) return null;
       return hostClient.getFileHandleByPath(path);
     });
@@ -147,7 +147,7 @@ const api: any = {
     await localCompositor.init(options.width, options.height, '#000', true);
 
     try {
-      const maxDurationUs = await localCompositor.loadTimeline(timelineClips, async path => {
+      const maxDurationUs = await localCompositor.loadTimeline(timelineClips, async (path) => {
         if (!hostClient) return null;
         return hostClient.getFileHandleByPath(path);
       });
@@ -241,7 +241,7 @@ const api: any = {
         if (hostClient) hostClient.onExportProgress(progress);
 
         if ((frameNum + 1) % 12 === 0) {
-          await new Promise<void>(resolve => setTimeout(resolve, 0));
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
         }
       }
 

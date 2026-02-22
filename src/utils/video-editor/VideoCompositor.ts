@@ -33,7 +33,7 @@ export class VideoCompositor {
     height: number,
     bgColor = '#000',
     offscreen = true,
-    externalCanvas?: OffscreenCanvas | HTMLCanvasElement
+    externalCanvas?: OffscreenCanvas | HTMLCanvasElement,
   ): Promise<void> {
     if (this.app) {
       try {
@@ -212,7 +212,7 @@ export class VideoCompositor {
 
     this.clips = nextClips;
     this.clipById = nextClipById;
-    this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map(c => c.endUs)) : 0;
+    this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
     return this.maxDurationUs;
   }
@@ -250,7 +250,7 @@ export class VideoCompositor {
       clip.sourceDurationUs = sourceDurationUs;
     }
 
-    this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map(c => c.endUs)) : 0;
+    this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
     return this.maxDurationUs;
   }
 

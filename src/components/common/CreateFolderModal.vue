@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue'
+import AppModal from '~/components/ui/AppModal.vue';
 
-const isOpen = defineModel<boolean>('open', { required: true })
-const folderName = ref('')
+const isOpen = defineModel<boolean>('open', { required: true });
+const folderName = ref('');
 const emit = defineEmits<{
-  (e: 'create', name: string): void
-}>()
+  (e: 'create', name: string): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 watch(isOpen, (val) => {
-  if (val) folderName.value = ''
-})
+  if (val) folderName.value = '';
+});
 
 const handleCreate = () => {
-  if (!folderName.value.trim()) return
-  emit('create', folderName.value.trim())
-  isOpen.value = false
-}
+  if (!folderName.value.trim()) return;
+  emit('create', folderName.value.trim());
+  isOpen.value = false;
+};
 </script>
 
 <template>
@@ -39,18 +39,10 @@ const handleCreate = () => {
     </div>
 
     <template #footer>
-      <UButton
-        color="neutral"
-        variant="ghost"
-        @click="isOpen = false"
-      >
+      <UButton color="neutral" variant="ghost" @click="isOpen = false">
         {{ t('common.cancel', 'Cancel') }}
       </UButton>
-      <UButton
-        color="primary"
-        :disabled="!folderName.trim()"
-        @click="handleCreate"
-      >
+      <UButton color="primary" :disabled="!folderName.trim()" @click="handleCreate">
         {{ t('common.create', 'Create') }}
       </UButton>
     </template>

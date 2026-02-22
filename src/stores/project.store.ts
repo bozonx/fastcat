@@ -175,7 +175,9 @@ export const useProjectStore = defineStore('project', () => {
     if (!fileName) return null;
 
     try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(currentProjectName.value);
+      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
+        currentProjectName.value,
+      );
       let currentDir = projectDir;
       for (const dirName of parts) {
         currentDir = await currentDir.getDirectoryHandle(dirName, {
@@ -201,7 +203,9 @@ export const useProjectStore = defineStore('project', () => {
   }): Promise<FileSystemFileHandle | null> {
     if (!workspaceStore.projectsHandle || !currentProjectName.value) return null;
 
-    const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(currentProjectName.value);
+    const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
+      currentProjectName.value,
+    );
     const granDir = await projectDir.getDirectoryHandle('.gran', {
       create: options?.create ?? false,
     });
@@ -229,14 +233,18 @@ export const useProjectStore = defineStore('project', () => {
     try {
       const settingsFileHandle = await ensureProjectSettingsFile({ create: false });
       if (!settingsFileHandle) {
-        projectSettings.value = applyWorkspaceDefaultsToProjectSettings(createDefaultProjectSettings());
+        projectSettings.value = applyWorkspaceDefaultsToProjectSettings(
+          createDefaultProjectSettings(),
+        );
         return;
       }
 
       const settingsFile = await settingsFileHandle.getFile();
       const text = await settingsFile.text();
       if (!text.trim()) {
-        projectSettings.value = applyWorkspaceDefaultsToProjectSettings(createDefaultProjectSettings());
+        projectSettings.value = applyWorkspaceDefaultsToProjectSettings(
+          createDefaultProjectSettings(),
+        );
         return;
       }
 
@@ -244,12 +252,16 @@ export const useProjectStore = defineStore('project', () => {
       projectSettings.value = normalizeProjectSettings(parsed);
     } catch (e: any) {
       if (e?.name === 'NotFoundError') {
-        projectSettings.value = applyWorkspaceDefaultsToProjectSettings(createDefaultProjectSettings());
+        projectSettings.value = applyWorkspaceDefaultsToProjectSettings(
+          createDefaultProjectSettings(),
+        );
         return;
       }
 
       console.warn('Failed to load project settings, fallback to defaults', e);
-      projectSettings.value = applyWorkspaceDefaultsToProjectSettings(createDefaultProjectSettings());
+      projectSettings.value = applyWorkspaceDefaultsToProjectSettings(
+        createDefaultProjectSettings(),
+      );
     } finally {
       isLoadingProjectSettings.value = false;
       projectSettingsRevision = 0;
@@ -258,7 +270,11 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function persistProjectSettingsNow() {
-    if (!workspaceStore.projectsHandle || !currentProjectName.value || isLoadingProjectSettings.value) {
+    if (
+      !workspaceStore.projectsHandle ||
+      !currentProjectName.value ||
+      isLoadingProjectSettings.value
+    ) {
       return;
     }
 
@@ -338,7 +354,9 @@ export const useProjectStore = defineStore('project', () => {
     workspaceStore.isLoading = true;
 
     try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(name, { create: true });
+      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(name, {
+        create: true,
+      });
       const sourcesDir = await projectDir.getDirectoryHandle('sources', { create: true });
       await sourcesDir.getDirectoryHandle('video', { create: true });
       await sourcesDir.getDirectoryHandle('audio', { create: true });
@@ -362,7 +380,9 @@ export const useProjectStore = defineStore('project', () => {
       const otioFileName = `${name}_001.otio`;
       const otioFile = await projectDir.getFileHandle(otioFileName, { create: true });
       const writable = await (otioFile as any).createWritable();
-      await writable.write(`{\n  \"OTIO_SCHEMA\": \"Timeline.1\",\n  \"name\": \"${name}\",\n  \"tracks\": {\n    \"OTIO_SCHEMA\": \"Stack.1\",\n    \"children\": [],\n    \"name\": \"tracks\"\n  }\n}\n`);
+      await writable.write(
+        `{\n  \"OTIO_SCHEMA\": \"Timeline.1\",\n  \"name\": \"${name}\",\n  \"tracks\": {\n    \"OTIO_SCHEMA\": \"Stack.1\",\n    \"children\": [],\n    \"name\": \"tracks\"\n  }\n}\n`,
+      );
       await writable.close();
 
       currentProjectName.value = name;

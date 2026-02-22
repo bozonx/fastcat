@@ -284,7 +284,7 @@ export function createDefaultTimelineDocument(params: {
 }
 
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
-  const tracks: OtioTrack[] = doc.tracks.map(t => {
+  const tracks: OtioTrack[] = doc.tracks.map((t) => {
     const sortedItems = [...t.items].sort(
       (a, b) => a.timelineRange.startUs - b.timelineRange.startUs,
     );

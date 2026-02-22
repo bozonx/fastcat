@@ -1,4 +1,10 @@
-import type { TimelineClipItem, TimelineDocument, TimelineGapItem, TimelineTrack, TimelineTrackItem } from './types';
+import type {
+  TimelineClipItem,
+  TimelineDocument,
+  TimelineGapItem,
+  TimelineTrack,
+  TimelineTrackItem,
+} from './types';
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -69,7 +75,7 @@ function assertNoOverlap(
 }
 
 function getTrackById(doc: TimelineDocument, trackId: string): TimelineTrack {
-  const t = doc.tracks.find(x => x.id === trackId);
+  const t = doc.tracks.find((x) => x.id === trackId);
   if (!t) throw new Error('Track not found');
   return t;
 }
@@ -108,8 +114,11 @@ function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem[] {
         ...current,
         timelineRange: {
           ...current.timelineRange,
-          durationUs: (next.timelineRange.startUs + next.timelineRange.durationUs) - current.timelineRange.startUs
-        }
+          durationUs:
+            next.timelineRange.startUs +
+            next.timelineRange.durationUs -
+            current.timelineRange.startUs,
+        },
       };
     } else {
       if (current) result.push(current);
@@ -146,7 +155,7 @@ export function applyTimelineCommand(
       sourceRange: { startUs: 0, durationUs },
     };
 
-    const nextTracks = doc.tracks.map(t =>
+    const nextTracks = doc.tracks.map((t) =>
       t.id === track.id ? { ...t, items: [...t.items, clip] } : t,
     );
 
@@ -161,12 +170,12 @@ export function applyTimelineCommand(
   if (cmd.type === 'remove_item' || cmd.type === 'delete_items') {
     const track = getTrackById(doc, cmd.trackId);
     const idsToRemove = cmd.type === 'delete_items' ? cmd.itemIds : [cmd.itemId];
-    
+
     let nextItems = [...track.items];
     let itemsRemoved = false;
 
     for (const itemId of idsToRemove) {
-      const idx = nextItems.findIndex(x => x.id === itemId);
+      const idx = nextItems.findIndex((x) => x.id === itemId);
       if (idx === -1) continue;
 
       const item = nextItems[idx];
@@ -174,14 +183,16 @@ export function applyTimelineCommand(
 
       if (item.kind === 'clip') {
         // If it's a clip, check if there's anything after it
-        const hasSomethingAfter = nextItems.some(it => it.timelineRange.startUs > item.timelineRange.startUs);
+        const hasSomethingAfter = nextItems.some(
+          (it) => it.timelineRange.startUs > item.timelineRange.startUs,
+        );
         if (hasSomethingAfter) {
           // Create Gap
           const gap: TimelineGapItem = {
             kind: 'gap',
             id: nextItemId(track.id, 'gap'),
             trackId: track.id,
-            timelineRange: { ...item.timelineRange }
+            timelineRange: { ...item.timelineRange },
           };
           nextItems[idx] = gap;
         } else {
@@ -192,14 +203,14 @@ export function applyTimelineCommand(
         // For gap - ripple delete: remove it and shift everything after it to the left
         const gapDuration = item.timelineRange.durationUs;
         nextItems.splice(idx, 1);
-        nextItems = nextItems.map(it => {
+        nextItems = nextItems.map((it) => {
           if (it.timelineRange.startUs > item.timelineRange.startUs) {
             return {
               ...it,
               timelineRange: {
                 ...it.timelineRange,
-                startUs: it.timelineRange.startUs - gapDuration
-              }
+                startUs: it.timelineRange.startUs - gapDuration,
+              },
             };
           }
           return it;
@@ -212,13 +223,13 @@ export function applyTimelineCommand(
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
     nextItems = mergeAdjacentGaps(nextItems);
 
-    const nextTracks = doc.tracks.map(t => (t.id === track.id ? { ...t, items: nextItems } : t));
+    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
     return { next: { ...doc, tracks: nextTracks } };
   }
 
   if (cmd.type === 'move_item') {
     const track = getTrackById(doc, cmd.trackId);
-    const item = track.items.find(x => x.id === cmd.itemId);
+    const item = track.items.find((x) => x.id === cmd.itemId);
     if (!item || !item.timelineRange) return { next: doc };
 
     const startUs = Math.max(0, Math.round(cmd.startUs));
@@ -226,7 +237,7 @@ export function applyTimelineCommand(
 
     assertNoOverlap(track, item.id, startUs, durationUs);
 
-    const nextItems: TimelineTrackItem[] = track.items.map(x =>
+    const nextItems: TimelineTrackItem[] = track.items.map((x) =>
       x.id === item.id
         ? {
             ...x,
@@ -237,13 +248,13 @@ export function applyTimelineCommand(
 
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const nextTracks = doc.tracks.map(t => (t.id === track.id ? { ...t, items: nextItems } : t));
+    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
     return { next: { ...doc, tracks: nextTracks } };
   }
 
   if (cmd.type === 'trim_item') {
     const track = getTrackById(doc, cmd.trackId);
-    const item = track.items.find(x => x.id === cmd.itemId);
+    const item = track.items.find((x) => x.id === cmd.itemId);
     if (!item || !item.timelineRange) return { next: doc };
     if (item.kind !== 'clip') return { next: doc };
 
@@ -290,7 +301,7 @@ export function applyTimelineCommand(
 
     assertNoOverlap(track, item.id, nextTimelineStartUs, nextTimelineDurationUs);
 
-    const nextItems: TimelineTrackItem[] = track.items.map(x =>
+    const nextItems: TimelineTrackItem[] = track.items.map((x) =>
       x.id === item.id
         ? {
             ...x,
@@ -301,7 +312,7 @@ export function applyTimelineCommand(
     );
 
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextTracks = doc.tracks.map(t => (t.id === track.id ? { ...t, items: nextItems } : t));
+    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
     return { next: { ...doc, tracks: nextTracks } };
   }
 

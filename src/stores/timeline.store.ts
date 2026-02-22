@@ -42,7 +42,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   function toggleSelection(itemId: string, options?: { multi?: boolean }) {
     if (options?.multi) {
       if (selectedItemIds.value.includes(itemId)) {
-        selectedItemIds.value = selectedItemIds.value.filter(id => id !== itemId);
+        selectedItemIds.value = selectedItemIds.value.filter((id) => id !== itemId);
       } else {
         selectedItemIds.value.push(itemId);
       }
@@ -56,7 +56,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({
       type: 'delete_items',
       trackId,
-      itemIds: [...selectedItemIds.value]
+      itemIds: [...selectedItemIds.value],
     });
     selectedItemIds.value = [];
   }
@@ -184,10 +184,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   ): TimelineDocument {
     if (cmd.type !== 'trim_item') return doc;
 
-    const track = doc.tracks.find(t => t.id === cmd.trackId);
+    const track = doc.tracks.find((t) => t.id === cmd.trackId);
     if (!track) return doc;
 
-    const item = track.items.find(it => it.id === cmd.itemId);
+    const item = track.items.find((it) => it.id === cmd.itemId);
     if (!item) return doc;
     if (item.kind !== 'clip') return doc;
     if (!item.source?.path) return doc;
@@ -199,12 +199,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!Number.isFinite(durationUs) || durationUs <= 0) return doc;
     if (item.sourceDurationUs === durationUs) return doc;
 
-    const nextTracks = doc.tracks.map(t =>
+    const nextTracks = doc.tracks.map((t) =>
       t.id !== track.id
         ? t
         : {
             ...t,
-            items: t.items.map(it =>
+            items: t.items.map((it) =>
               it.id === item.id ? { ...it, sourceDurationUs: durationUs } : it,
             ),
           },
@@ -242,7 +242,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const handle = await projectStore.getFileHandleByPath(input.path);
     if (!handle) throw new Error('Failed to access file handle');
 
-    const resolvedTrackKind = timelineDoc.value?.tracks.find(t => t.id === input.trackId)?.kind;
+    const resolvedTrackKind = timelineDoc.value?.tracks.find((t) => t.id === input.trackId)?.kind;
     const trackKind =
       resolvedTrackKind === 'audio' || resolvedTrackKind === 'video' ? resolvedTrackKind : null;
     if (!trackKind) throw new Error('Track not found');
@@ -258,7 +258,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       timelineDoc.value = projectStore.createFallbackTimelineDoc();
     }
 
-    const targetTrack = timelineDoc.value.tracks.find(t => t.id === input.trackId);
+    const targetTrack = timelineDoc.value.tracks.find((t) => t.id === input.trackId);
     if (!targetTrack) throw new Error('Track not found');
 
     applyTimeline({
@@ -283,7 +283,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     }
 
-    await Promise.all(items.map(it => mediaStore.getOrFetchMetadataByPath(it.path)));
+    await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
   }
 
   return {
