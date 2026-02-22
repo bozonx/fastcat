@@ -34,7 +34,7 @@ const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     fps: 30,
     encoding: {
       format: 'mp4',
-      videoCodec: 'avc1.42E032',
+      videoCodec: 'avc1.640032',
       bitrateMbps: 5,
       excludeAudio: false,
       audioCodec: 'aac',

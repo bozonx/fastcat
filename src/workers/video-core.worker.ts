@@ -324,8 +324,17 @@ const api: any = {
           }
 
           await output.finalize();
-          await writable.close();
         } catch (e) {
+          try {
+            // mediabunny automatically closes the stream on finalize/cancel.
+            // Ensure we call cancel() on failure to release any stream locks.
+            if (typeof (output as any).cancel === 'function') {
+              await (output as any).cancel();
+            }
+          } catch {
+            // ignore
+          }
+
           try {
             if (typeof (writable as any).abort === 'function') {
               await (writable as any).abort();

@@ -118,7 +118,7 @@ export function useTimelineExport() {
   const filenameError = ref<string | null>(null);
 
   const outputFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
-  const videoCodec = ref('avc1.42E032');
+  const videoCodec = ref('avc1.640032');
   const bitrateMbps = ref<number>(5);
   const excludeAudio = ref(false);
   const audioCodec = ref<'aac' | 'opus'>('aac');
