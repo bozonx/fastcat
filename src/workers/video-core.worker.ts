@@ -223,61 +223,80 @@ const api: any = {
         audioData = await offlineCtx.startRendering();
       }
 
-      let format;
-      if (options.format === 'webm') format = new WebMOutputFormat();
-      else if (options.format === 'mkv') format = new MkvOutputFormat();
-      else format = new Mp4OutputFormat();
+      const format =
+        options.format === 'webm'
+          ? new WebMOutputFormat()
+          : options.format === 'mkv'
+            ? new MkvOutputFormat()
+            : new Mp4OutputFormat();
 
       const writable = await (targetHandle as any).createWritable();
-      const target = new StreamTarget(writable, {
-        chunked: true,
-        chunkSize: 16 * 1024 * 1024,
-      });
-      const output = new Output({ target, format });
 
-      const videoSource = new CanvasSource(localCompositor.canvas as any, {
-        codec: getBunnyVideoCodec(options.videoCodec),
-        bitrate: options.bitrate,
-        hardwareAcceleration: 'prefer-software',
-      });
-      output.addVideoTrack(videoSource);
-
-      let audioSource: any = null;
-      if (audioData) {
-        audioSource = new (AudioBufferSource as any)(audioData, {
-          codec: options.audioCodec || 'aac',
-          bitrate: options.audioBitrate,
-          numberOfChannels: audioData.numberOfChannels,
-          sampleRate: audioData.sampleRate,
+      async function runExportWithHardwareAcceleration(
+        preference: 'prefer-hardware' | 'prefer-software',
+      ) {
+        const target = new StreamTarget(writable, {
+          chunked: true,
+          chunkSize: 16 * 1024 * 1024,
         });
-        output.addAudioTrack(audioSource);
+        const output = new Output({ target, format });
+
+        const videoSource = new CanvasSource(localCompositor.canvas as any, {
+          codec: getBunnyVideoCodec(options.videoCodec),
+          bitrate: options.bitrate,
+          hardwareAcceleration: preference,
+        });
+        output.addVideoTrack(videoSource);
+
+        let audioSource: any = null;
+        if (audioData) {
+          audioSource = new (AudioBufferSource as any)(audioData, {
+            codec: options.audioCodec || 'aac',
+            bitrate: options.audioBitrate,
+            numberOfChannels: audioData.numberOfChannels,
+            sampleRate: audioData.sampleRate,
+          });
+          output.addAudioTrack(audioSource);
+        }
+
+        const fps = Math.max(1, Math.round(Number(options.fps) || 30));
+        const totalFrames = Math.ceil(durationS * fps);
+        const dtUs = Math.floor(1_000_000 / fps);
+        const dtS = dtUs / 1_000_000;
+        let currentTimeUs = 0;
+
+        await output.start();
+
+        for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
+          const generatedCanvas = await localCompositor.renderFrame(currentTimeUs);
+          if (generatedCanvas) {
+            await (videoSource as any).add(currentTimeUs / 1_000_000, dtS);
+          }
+          currentTimeUs += dtUs;
+
+          const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
+          if (hostClient) hostClient.onExportProgress(progress);
+
+          if ((frameNum + 1) % 12 === 0) {
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          }
+        }
+
+        if ('close' in videoSource) (videoSource as any).close();
+        if (audioSource && 'close' in audioSource) (audioSource as any).close();
+
+        await output.finalize();
       }
 
-      const totalFrames = Math.ceil(durationS * options.fps);
-      const dtUs = Math.floor(1_000_000 / options.fps);
-      let currentTimeUs = 0;
-
-      await output.start();
-
-      for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
-        const generatedCanvas = await localCompositor.renderFrame(currentTimeUs);
-        if (generatedCanvas) {
-          await (videoSource as any).add(currentTimeUs / 1_000_000);
-        }
-        currentTimeUs += dtUs;
-
-        const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
-        if (hostClient) hostClient.onExportProgress(progress);
-
-        if ((frameNum + 1) % 12 === 0) {
-          await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        }
+      try {
+        await runExportWithHardwareAcceleration('prefer-hardware');
+      } catch (e) {
+        console.warn(
+          '[Worker Export] Hardware acceleration export failed, retrying with software',
+          e,
+        );
+        await runExportWithHardwareAcceleration('prefer-software');
       }
-
-      if ('close' in videoSource) (videoSource as any).close();
-      if (audioSource && 'close' in audioSource) (audioSource as any).close();
-
-      await output.finalize();
     } finally {
       localCompositor.destroy();
     }

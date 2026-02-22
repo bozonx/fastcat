@@ -27,6 +27,9 @@ export class VideoCompositor {
   private height = 1080;
   private clipById = new Map<string, CompositorClip>();
   private replacedClipIds = new Set<string>();
+  private activeClipIndex = 0;
+  private activeClipId: string | null = null;
+  private lastRenderedTimeUs = 0;
 
   async init(
     width: number,
@@ -212,7 +215,12 @@ export class VideoCompositor {
 
     this.clips = nextClips;
     this.clipById = nextClipById;
+    this.clips.sort((a, b) => a.startUs - b.startUs);
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
+
+    this.activeClipIndex = 0;
+    this.activeClipId = null;
+    this.lastRenderedTimeUs = 0;
 
     return this.maxDurationUs;
   }
@@ -250,21 +258,45 @@ export class VideoCompositor {
       clip.sourceDurationUs = sourceDurationUs;
     }
 
+    this.clips.sort((a, b) => a.startUs - b.startUs);
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
+
+    this.activeClipIndex = 0;
+    this.activeClipId = null;
+    this.lastRenderedTimeUs = 0;
     return this.maxDurationUs;
   }
 
   async renderFrame(timeUs: number): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas) return null;
 
-    for (const clip of this.clips) {
-      if (timeUs >= clip.startUs && timeUs < clip.endUs) {
-        const localTimeUs = timeUs - clip.startUs;
-        if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
-          clip.sprite.visible = false;
-          continue;
-        }
+    if (timeUs < this.lastRenderedTimeUs) {
+      this.activeClipIndex = 0;
+      this.activeClipId = null;
+    }
+    this.lastRenderedTimeUs = timeUs;
 
+    while (
+      this.activeClipIndex < this.clips.length &&
+      timeUs >= (this.clips[this.activeClipIndex]?.endUs ?? 0)
+    ) {
+      this.activeClipIndex += 1;
+    }
+
+    const current = this.clips[this.activeClipIndex];
+    const clip = current && timeUs >= current.startUs ? current : null;
+
+    if (this.activeClipId && (!clip || clip.itemId !== this.activeClipId)) {
+      const prev = this.clipById.get(this.activeClipId);
+      if (prev) prev.sprite.visible = false;
+      this.activeClipId = null;
+    }
+
+    if (clip) {
+      const localTimeUs = timeUs - clip.startUs;
+      if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
+        clip.sprite.visible = false;
+      } else {
         const sampleTimeS = (clip.sourceStartUs + localTimeUs) / 1_000_000;
         try {
           const sample = await clip.sink.getSample(sampleTimeS);
@@ -273,6 +305,7 @@ export class VideoCompositor {
             await this.drawSampleToCanvas(sample, clip);
             clip.sprite.texture.source.update();
             clip.sprite.visible = true;
+            this.activeClipId = clip.itemId;
 
             if ('close' in sample) (sample as any).close();
           } else {
@@ -280,9 +313,8 @@ export class VideoCompositor {
           }
         } catch (e) {
           console.error('[VideoCompositor] Failed to render sample', e);
+          clip.sprite.visible = false;
         }
-      } else {
-        clip.sprite.visible = false;
       }
     }
 
@@ -361,6 +393,9 @@ export class VideoCompositor {
     this.clips = [];
     this.clipById.clear();
     this.replacedClipIds.clear();
+    this.activeClipIndex = 0;
+    this.activeClipId = null;
+    this.lastRenderedTimeUs = 0;
     this.maxDurationUs = 0;
   }
 

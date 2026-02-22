@@ -134,7 +134,7 @@ const proxyLimitGb = computed({
         </UFormField>
 
         <div class="text-xs text-gray-500">
-          {{ t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/editor.settings.json') }}
+          {{ t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json') }}
         </div>
       </div>
     </div>

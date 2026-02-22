@@ -329,7 +329,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const granDir = await workspaceHandle.value.getDirectoryHandle('.gran', {
         create: options?.create ?? false,
       });
-      return await granDir.getFileHandle('editor.settings.json', {
+      return await granDir.getFileHandle('workspace.settings.json', {
         create: options?.create ?? false,
       });
     } catch (e) {

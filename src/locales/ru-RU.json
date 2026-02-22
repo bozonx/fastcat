@@ -1485,7 +1485,7 @@
       "defaultProjectWidth": "Ширина проекта по умолчанию",
       "defaultProjectHeight": "Высота проекта по умолчанию",
       "defaultProjectFps": "FPS проекта по умолчанию",
-      "workspaceSavedNote": "Сохранено в .gran/editor.settings.json"
+      "workspaceSavedNote": "Сохранено в .gran/workspace.settings.json"
     },
     "projectSettings": {
       "note": "Настройки сохраняются в .gran/project.settings.json",
