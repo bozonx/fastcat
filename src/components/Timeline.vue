@@ -61,7 +61,7 @@ function formatTime(seconds: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-gray-900 border-t border-gray-700">
+  <div class="flex flex-col h-full bg-ui-bg-elevated border-t border-ui-border">
     <!-- Toolbar -->
     <TimelineToolbar />
 
@@ -73,7 +73,7 @@ function formatTime(seconds: number): string {
       <!-- Scrollable track area -->
       <div ref="scrollEl" class="flex-1 overflow-x-auto overflow-y-hidden relative">
         <div
-          class="h-6 border-b border-gray-700 bg-gray-850 sticky top-0 flex items-end px-2 gap-16 text-xxs text-gray-600 font-mono select-none cursor-pointer"
+          class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
           @mousedown="onTimeRulerMouseDown"
         >
           <span v-for="n in 10" :key="n">{{ formatTime((n - 1) * 10) }}</span>

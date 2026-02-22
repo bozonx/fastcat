@@ -4,12 +4,22 @@ export default defineNuxtConfig({
   ssr: false,
   srcDir: 'src/',
 
-  modules: ['@nuxt/ui', '@pinia/nuxt', '@nuxtjs/i18n', '@nuxt/eslint'],
+  modules: [
+    '@nuxt/ui',
+    '@pinia/nuxt',
+    '@nuxtjs/i18n',
+    '@nuxt/eslint',
+    '@nuxtjs/color-mode',
+  ],
 
   css: ['~/assets/css/main.css'],
 
-  ui: {
-    colorMode: false,
+  ui: {},
+
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark',
+    classSuffix: '',
   },
 
   i18n: {

@@ -56,9 +56,9 @@ async function createNewProject() {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen w-screen overflow-hidden bg-gray-950 text-gray-200">
+  <div class="flex flex-col h-screen w-screen overflow-hidden bg-ui-bg text-ui-text">
     <!-- Loading Screen -->
-    <div v-if="isStartingUp" class="flex flex-col items-center justify-center flex-1 bg-gray-950">
+    <div v-if="isStartingUp" class="flex flex-col items-center justify-center flex-1 bg-ui-bg">
       <UIcon
         name="i-heroicons-arrow-path"
         class="w-10 h-10 text-indigo-500 shrink-0 animate-spin"
@@ -71,10 +71,10 @@ async function createNewProject() {
     <!-- Welcome / Select Folder Screen -->
     <div
       v-else-if="!workspaceStore.workspaceHandle"
-      class="flex flex-col items-center justify-center flex-1 bg-linear-to-br from-indigo-900 via-gray-900 to-black p-6"
+      class="flex flex-col items-center justify-center flex-1 bg-linear-to-br from-indigo-900 via-ui-bg-elevated to-black p-6"
     >
       <div
-        class="max-w-md w-full text-center space-y-6 bg-gray-900/50 p-8 rounded-2xl backdrop-blur-sm border border-gray-700/50 shadow-2xl"
+        class="max-w-md w-full text-center space-y-6 bg-ui-bg-elevated/50 p-8 rounded-2xl backdrop-blur-sm border border-ui-border/50 shadow-2xl"
       >
         <div
           class="mx-auto w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-6"
@@ -129,7 +129,7 @@ async function createNewProject() {
     <!-- Projects List Screen -->
     <div
       v-else-if="!projectStore.currentProjectName"
-      class="flex flex-col flex-1 bg-gray-950 p-8 overflow-y-auto"
+      class="flex flex-col flex-1 bg-ui-bg p-8 overflow-y-auto"
     >
       <div class="max-w-5xl w-full mx-auto space-y-8 pb-12">
         <div class="flex items-center justify-between">
@@ -191,7 +191,7 @@ async function createNewProject() {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <!-- Create New Project Card -->
           <div
-            class="bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col gap-4 shadow-xl"
+            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col gap-4 shadow-xl"
           >
             <h3 class="font-medium text-white">
               {{ t('granVideoEditor.projects.newProject', 'New Project') }}
@@ -216,7 +216,7 @@ async function createNewProject() {
           <div
             v-for="project in workspaceStore.projects"
             :key="project"
-            class="bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col hover:border-indigo-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group shadow-lg"
+            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col hover:border-indigo-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg"
             @click="
               () => {
                 projectStore.openProject(project);
@@ -228,7 +228,7 @@ async function createNewProject() {
           >
             <div class="flex items-center gap-3 mb-4">
               <div
-                class="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center group-hover:bg-indigo-500/10 transition-colors"
+                class="w-10 h-10 rounded-lg bg-ui-bg-accent flex items-center justify-center group-hover:bg-indigo-500/10 transition-colors"
               >
                 <UIcon
                   name="i-heroicons-film"
@@ -258,7 +258,7 @@ async function createNewProject() {
 
     <!-- Editor Screen -->
     <template v-else>
-      <div class="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800">
+      <div class="flex items-center justify-between px-4 py-2 bg-ui-bg-elevated border-b border-ui-border">
         <div class="flex items-center gap-4">
           <UButton
             size="xs"
@@ -302,7 +302,7 @@ async function createNewProject() {
 
       <!-- Top half: File Manager + Preview + Monitor -->
       <div
-        class="grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)_minmax(0,4fr)] flex-1 min-h-0 border-b border-gray-800"
+        class="grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)_minmax(0,4fr)] flex-1 min-h-0 border-b border-ui-border"
       >
         <FileManager />
         <Preview />

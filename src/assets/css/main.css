@@ -13,4 +13,33 @@
   --color-primary-800: #166534;
   --color-primary-900: #14532d;
   --color-primary-950: #052e16;
+
+  /* Semantic UI Colors */
+  --color-ui-bg: var(--ui-bg);
+  --color-ui-bg-elevated: var(--ui-bg-elevated);
+  --color-ui-bg-accent: var(--ui-bg-accent);
+  --color-ui-border: var(--ui-border);
+  --color-ui-text: var(--ui-text);
+  --color-ui-text-muted: var(--ui-text-muted);
 }
+
+:root {
+  /* Default Light Theme (Placeholder for future) */
+  --ui-bg: #ffffff;
+  --ui-bg-elevated: #f9fafb;
+  --ui-bg-accent: #f3f4f6;
+  --ui-border: #e5e7eb;
+  --ui-text: #111827;
+  --ui-text-muted: #6b7280;
+}
+
+.dark {
+  /* Default Dark Theme */
+  --ui-bg: #030712; /* gray-950 */
+  --ui-bg-elevated: #111827; /* gray-900 */
+  --ui-bg-accent: #1f2937; /* gray-800 */
+  --ui-border: #1f2937; /* gray-800 */
+  --ui-text: #e5e7eb; /* gray-200 */
+  --ui-text-muted: #9ca3af; /* gray-400 */
+}
+

@@ -143,8 +143,8 @@ function onFileSelect(e: Event) {
 
 <template>
   <div
-    class="flex flex-col h-full bg-gray-900 border-r border-gray-800 transition-colors duration-200 min-w-0 overflow-hidden"
-    :class="{ 'bg-gray-800/50 ring-2 ring-inset ring-primary-500/50': isDragging }"
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden"
+    :class="{ 'bg-ui-bg-accent ring-2 ring-inset ring-primary-500/50': isDragging }"
     @dragover.prevent="isDragging = true"
     @dragleave.prevent="isDragging = false"
     @drop.prevent="onDrop"
@@ -153,7 +153,7 @@ function onFileSelect(e: Event) {
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
 
     <!-- Header / Tabs -->
-    <div class="flex items-center gap-4 px-3 py-2 border-b border-gray-800 shrink-0 select-none">
+    <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
         :class="activeTab === 'project' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'"
@@ -180,7 +180,7 @@ function onFileSelect(e: Event) {
     <!-- Actions Toolbar (only for Files tab) -->
     <div
       v-if="activeTab === 'files' && projectStore.currentProjectName"
-      class="flex items-center gap-1 px-2 py-1 bg-gray-800/30 border-b border-gray-800/50"
+      class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
     >
       <UButton
         icon="i-heroicons-folder-plus"

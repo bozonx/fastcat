@@ -425,9 +425,9 @@ function formatTime(seconds: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-gray-950">
+  <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
-    <div class="flex items-center px-3 py-2 border-b border-gray-700 shrink-0">
+    <div class="flex items-center px-3 py-2 border-b border-ui-border shrink-0 h-10">
       <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
@@ -464,7 +464,7 @@ function formatTime(seconds: number): string {
     </div>
 
     <!-- Playback controls -->
-    <div class="flex items-center justify-center gap-3 px-4 py-3 border-t border-gray-700 shrink-0">
+    <div class="flex items-center justify-center gap-3 px-4 py-3 border-t border-ui-border shrink-0">
       <UButton
         size="sm"
         variant="ghost"
