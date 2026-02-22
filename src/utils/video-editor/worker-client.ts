@@ -62,8 +62,24 @@ function createWorker(channel: WorkerChannel): Worker {
     if (data.type === 'rpc-response') {
       const pending = state.pendingCalls.get(data.id);
       if (pending) {
-        if (data.error) pending.reject(new Error(data.error));
-        else pending.resolve(data.result);
+        if (data.error) {
+          const errData = data.error;
+          const message =
+            typeof errData === 'string'
+              ? errData
+              : typeof errData?.message === 'string'
+                ? errData.message
+                : 'Worker error';
+
+          const err = new Error(message);
+          if (errData && typeof errData === 'object') {
+            if (typeof (errData as any).name === 'string')
+              (err as any).name = (errData as any).name;
+            if (typeof (errData as any).stack === 'string')
+              (err as any).stack = (errData as any).stack;
+          }
+          pending.reject(err);
+        } else pending.resolve(data.result);
         state.pendingCalls.delete(data.id);
       }
     } else if (data.type === 'rpc-call') {
@@ -76,7 +92,15 @@ function createWorker(channel: WorkerChannel): Worker {
         const result = await (state.hostApiInstance[method] as any)(...(data.args || []));
         worker.postMessage({ type: 'rpc-response', id: data.id, result });
       } catch (err: any) {
-        worker.postMessage({ type: 'rpc-response', id: data.id, error: err.message });
+        worker.postMessage({
+          type: 'rpc-response',
+          id: data.id,
+          error: {
+            name: err?.name || 'Error',
+            message: err?.message || String(err),
+            stack: err?.stack,
+          },
+        });
       }
     }
   });

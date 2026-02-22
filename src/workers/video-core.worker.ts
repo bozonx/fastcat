@@ -9,6 +9,7 @@ DOMAdapter.set(WebWorkerAdapter);
 
 let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
+let cancelExportRequested = false;
 
 function getBunnyVideoCodec(codec: string): any {
   if (codec.startsWith('avc1')) return 'avc';
@@ -133,6 +134,7 @@ const api: any = {
   },
 
   async exportTimeline(targetHandle: FileSystemFileHandle, options: any, timelineClips: any[]) {
+    cancelExportRequested = false;
     const {
       Output,
       Mp4OutputFormat,
@@ -268,6 +270,11 @@ const api: any = {
         await output.start();
 
         for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
+          if (cancelExportRequested) {
+            const abortErr = new Error('Export was cancelled');
+            (abortErr as any).name = 'AbortError';
+            throw abortErr;
+          }
           const generatedCanvas = await localCompositor.renderFrame(currentTimeUs);
           if (generatedCanvas) {
             await (videoSource as any).add(currentTimeUs / 1_000_000, dtS);
@@ -301,6 +308,10 @@ const api: any = {
       localCompositor.destroy();
     }
   },
+
+  async cancelExport() {
+    cancelExportRequested = true;
+  },
 };
 
 let callIdCounter = 0;
@@ -327,7 +338,15 @@ self.addEventListener('message', async (e: any) => {
       self.postMessage({ type: 'rpc-response', id: data.id, result });
     } catch (err: any) {
       console.error(`[Worker] Error in method ${data.method}:`, err);
-      self.postMessage({ type: 'rpc-response', id: data.id, error: err.message });
+      self.postMessage({
+        type: 'rpc-response',
+        id: data.id,
+        error: {
+          name: err?.name || 'Error',
+          message: err?.message || String(err),
+          stack: err?.stack,
+        },
+      });
     }
   }
 });

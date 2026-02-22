@@ -366,7 +366,9 @@ async function handleConfirm() {
             color="neutral"
             variant="ghost"
             :label="t('common.cancel', 'Cancel')"
-            @click="isExporting ? cancelExport() : isOpen = false"
+            :loading="cancelRequested"
+            :disabled="cancelRequested"
+            @click="isExporting ? cancelExport() : (isOpen = false)"
           />
           <UButton
             color="primary"

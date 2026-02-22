@@ -112,6 +112,8 @@ export function useTimelineExport() {
   const exportError = ref<string | null>(null);
   const exportPhase = ref<'encoding' | 'saving' | null>(null);
 
+  const cancelRequested = ref(false);
+
   const outputFilename = ref('');
   const filenameError = ref<string | null>(null);
 
@@ -326,17 +328,29 @@ export function useTimelineExport() {
     await client.exportTimeline(fileHandle, options, clips);
   }
 
-  function cancelExport() {
+  async function cancelExport() {
     if (!isExporting.value) return;
-    isExporting.value = false;
-    exportError.value = 'Export was cancelled by user';
-    exportPhase.value = null;
+    if (cancelRequested.value) return;
+    cancelRequested.value = true;
+
     try {
-      terminateExportWorker('Export cancelled by user');
-      restartExportWorker();
+      const { client } = getExportWorkerClient();
+      await client.cancelExport();
     } catch (e) {
-      console.error('Failed to cancel export worker', e);
+      // Ignore and rely on fallback terminate
+      console.warn('Failed to request cooperative export cancel', e);
     }
+
+    // Fallback: if export is still running after a grace period, terminate the worker.
+    setTimeout(() => {
+      if (!isExporting.value) return;
+      try {
+        terminateExportWorker('Export cancelled by user');
+        restartExportWorker();
+      } catch (e) {
+        console.error('Failed to cancel export worker', e);
+      }
+    }, 1500);
   }
 
   return {
@@ -344,6 +358,7 @@ export function useTimelineExport() {
     exportProgress,
     exportError,
     exportPhase,
+    cancelRequested,
     outputFilename,
     filenameError,
     outputFormat,

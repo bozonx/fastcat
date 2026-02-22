@@ -23,6 +23,8 @@ export interface VideoCoreWorkerAPI {
     options: any,
     timelineClips: any[],
   ): Promise<void>;
+
+  cancelExport(): Promise<void>;
 }
 
 export type WorkerCallbacks = {
