@@ -69,24 +69,27 @@ export function sanitizeBaseName(name: string): string {
 export function resolveExportCodecs(
   format: 'mp4' | 'webm' | 'mkv',
   selectedVideoCodec: string,
-  selectedAudioCodec: string,
+  selectedAudioCodec: 'aac' | 'opus',
 ) {
   if (format === 'webm') {
     return {
       videoCodec: 'vp09.00.10.08',
-      audioCodec: 'opus',
+      audioCodec: 'opus' as const,
     };
   }
 
   if (format === 'mkv') {
     return {
       videoCodec: 'av01.0.05M.08',
-      audioCodec: 'opus',
+      audioCodec: 'opus' as const,
     };
   }
 
   return {
-    videoCodec: selectedVideoCodec,
+    videoCodec:
+      selectedVideoCodec.startsWith('vp') || selectedVideoCodec.startsWith('av01')
+        ? 'avc1.42E032'
+        : selectedVideoCodec,
     audioCodec: selectedAudioCodec,
   };
 }
@@ -108,7 +111,7 @@ export function useTimelineExport() {
   const videoCodec = ref('avc1.42E032');
   const bitrateMbps = ref<number>(5);
   const excludeAudio = ref(false);
-  const audioCodec = ref('aac');
+  const audioCodec = ref<'aac' | 'opus'>('aac');
   const audioBitrateKbps = ref<number>(128);
   const exportWidth = ref<number>(1920);
   const exportHeight = ref<number>(1080);

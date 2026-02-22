@@ -197,7 +197,7 @@ async function handleConfirm() {
     const resolvedCodecs = resolveExportCodecs(
       outputFormat.value,
       videoCodec.value,
-      audioCodec.value,
+      audioCodec.value as 'aac' | 'opus',
     );
 
     exportPhase.value = 'encoding';

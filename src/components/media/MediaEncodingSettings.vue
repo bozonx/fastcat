@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
 export interface FormatOption {
@@ -34,6 +34,25 @@ const { t } = useI18n();
 
 const isAudioDisabled = computed(() => props.disabled || !props.hasAudio);
 
+const filteredVideoCodecOptions = computed(() => {
+  return props.videoCodecOptions.filter((opt) => {
+    if (outputFormat.value === 'mp4') {
+      const v = opt.value.toLowerCase();
+      if (
+        v.startsWith('vp08') ||
+        v.startsWith('vp8') ||
+        v.startsWith('vp09') ||
+        v.startsWith('vp9') ||
+        v.startsWith('hev1') ||
+        v.startsWith('hvc1')
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+});
+
 const audioCodecOptions = [
   { value: 'aac', label: 'AAC' },
   { value: 'opus', label: 'Opus' },
@@ -58,9 +77,9 @@ const audioCodecOptions = [
       <div v-if="outputFormat === 'mp4'" class="w-full">
         <USelectMenu
           :model-value="
-            (props.videoCodecOptions.find((o) => o.value === videoCodec) || videoCodec) as any
+            (filteredVideoCodecOptions.find((o) => o.value === videoCodec) || videoCodec) as any
           "
-          :items="props.videoCodecOptions"
+          :items="filteredVideoCodecOptions"
           value-key="value"
           label-key="label"
           :disabled="props.disabled || props.isLoadingCodecSupport"
