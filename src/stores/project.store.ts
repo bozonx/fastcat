@@ -454,5 +454,6 @@ export const useProjectStore = defineStore('project', () => {
     getFileHandleByPath,
     createFallbackTimelineDoc,
     loadProjectSettings,
+    saveProjectSettings,
   };
 });

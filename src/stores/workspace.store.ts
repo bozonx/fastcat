@@ -2,26 +2,6 @@ import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import PQueue from 'p-queue';
 
-function readLocalStorageJson<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeLocalStorageJson(key: string, value: unknown) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore
-  }
-}
-
 export interface GranVideoEditorUserSettings {
   openBehavior: 'open_last_project' | 'show_project_picker';
 }
@@ -52,12 +32,38 @@ const DEFAULT_WORKSPACE_SETTINGS: GranVideoEditorWorkspaceSettings = {
   },
 };
 
+function createDefaultUserSettings(): GranVideoEditorUserSettings {
+  return {
+    openBehavior: DEFAULT_USER_SETTINGS.openBehavior,
+  };
+}
+
+function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings {
+  if (!raw || typeof raw !== 'object') {
+    return createDefaultUserSettings();
+  }
+
+  const input = raw as Record<string, unknown>;
+  const openBehavior = input.openBehavior;
+
+  return {
+    openBehavior:
+      openBehavior === 'show_project_picker'
+        ? 'show_project_picker'
+        : DEFAULT_USER_SETTINGS.openBehavior,
+  };
+}
+
+function createDefaultWorkspaceSettings(): GranVideoEditorWorkspaceSettings {
+  return {
+    ...DEFAULT_WORKSPACE_SETTINGS,
+    defaults: { newProject: { ...DEFAULT_WORKSPACE_SETTINGS.defaults.newProject } },
+  };
+}
+
 function normalizeWorkspaceSettings(raw: unknown): GranVideoEditorWorkspaceSettings {
   if (!raw || typeof raw !== 'object') {
-    return {
-      ...DEFAULT_WORKSPACE_SETTINGS,
-      defaults: { newProject: { ...DEFAULT_WORKSPACE_SETTINGS.defaults.newProject } },
-    };
+    return createDefaultWorkspaceSettings();
   }
 
   const input = raw as Record<string, any>;
@@ -106,20 +112,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     typeof window === 'undefined' ? null : window.localStorage.getItem('gran-editor-last-project'),
   );
 
-  const userSettings = ref<GranVideoEditorUserSettings>(
-    readLocalStorageJson('gran-video-editor:user-settings', {
-      openBehavior: DEFAULT_USER_SETTINGS.openBehavior,
-    }),
-  );
+  const userSettings = ref<GranVideoEditorUserSettings>(createDefaultUserSettings());
 
-  const workspaceSettings = ref<GranVideoEditorWorkspaceSettings>(
-    readLocalStorageJson('gran-video-editor:workspace-settings', {
-      ...DEFAULT_WORKSPACE_SETTINGS,
-      defaults: {
-        newProject: { ...DEFAULT_WORKSPACE_SETTINGS.defaults.newProject },
-      },
-    }),
-  );
+  const workspaceSettings = ref<GranVideoEditorWorkspaceSettings>(createDefaultWorkspaceSettings());
 
   const isSavingUserSettings = ref(false);
   let persistUserSettingsTimeout: number | null = null;
@@ -170,13 +165,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   });
 
   async function persistUserSettingsNow() {
+    if (!workspaceHandle.value) return;
     if (savedUserSettingsRevision >= userSettingsRevision) return;
 
     isSavingUserSettings.value = true;
     const revisionToSave = userSettingsRevision;
 
     try {
-      writeLocalStorageJson('gran-video-editor:user-settings', userSettings.value);
+      const handle = await ensureUserSettingsFile({ create: true });
+      if (!handle) return;
+
+      const writable = await (handle as any).createWritable();
+      await writable.write(`${JSON.stringify(userSettings.value, null, 2)}\n`);
+      await writable.close();
 
       if (savedUserSettingsRevision < revisionToSave) {
         savedUserSettingsRevision = revisionToSave;
@@ -185,6 +186,22 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       console.warn('Failed to save user settings', e);
     } finally {
       isSavingUserSettings.value = false;
+    }
+  }
+
+  async function ensureUserSettingsFile(options?: {
+    create?: boolean;
+  }): Promise<FileSystemFileHandle | null> {
+    if (!workspaceHandle.value) return null;
+    try {
+      const granDir = await workspaceHandle.value.getDirectoryHandle('.gran', {
+        create: options?.create ?? false,
+      });
+      return await granDir.getFileHandle('user.settings.json', {
+        create: options?.create ?? false,
+      });
+    } catch {
+      return null;
     }
   }
 
@@ -223,24 +240,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   );
 
   async function persistWorkspaceSettingsNow() {
+    if (!workspaceHandle.value) return;
     if (savedWorkspaceSettingsRevision >= workspaceSettingsRevision) return;
 
     isSavingWorkspaceSettings.value = true;
     const revisionToSave = workspaceSettingsRevision;
 
     try {
-      // Save to localStorage first (fast)
-      writeLocalStorageJson('gran-video-editor:workspace-settings', workspaceSettings.value);
-
-      // Save to disk if possible
-      if (workspaceHandle.value) {
-        const handle = await ensureWorkspaceSettingsFile({ create: true });
-        if (handle) {
-          const writable = await (handle as any).createWritable();
-          await writable.write(`${JSON.stringify(workspaceSettings.value, null, 2)}\n`);
-          await writable.close();
-        }
-      }
+      const handle = await ensureWorkspaceSettingsFile({ create: true });
+      if (!handle) return;
+      const writable = await (handle as any).createWritable();
+      await writable.write(`${JSON.stringify(workspaceSettings.value, null, 2)}\n`);
+      await writable.close();
 
       if (savedWorkspaceSettingsRevision < revisionToSave) {
         savedWorkspaceSettingsRevision = revisionToSave;
@@ -351,6 +362,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await requestWorkspaceSettingsSave({ immediate: true });
   }
 
+  async function saveUserSettingsToDisk() {
+    await requestUserSettingsSave({ immediate: true });
+  }
+
   async function saveHandleToIndexedDB(handle: FileSystemDirectoryHandle) {
     const request = indexedDB.open('GranVideoEditor', 1);
     request.onupgradeneeded = (e: any) => {
@@ -409,7 +424,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     await loadProjects();
     await loadWorkspaceSettingsFromDisk();
+    await loadUserSettingsFromDisk();
     await saveWorkspaceSettingsToDisk();
+    await saveUserSettingsToDisk();
   }
 
   async function openWorkspace() {

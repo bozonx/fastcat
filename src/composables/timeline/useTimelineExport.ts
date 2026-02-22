@@ -2,7 +2,12 @@ import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import {
+  getExportWorkerClient,
+  setExportHostApi,
+  terminateExportWorker,
+  restartExportWorker,
+} from '~/utils/video-editor/worker-client';
 import type { TimelineTrackItem } from '~/timeline/types';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -315,10 +320,23 @@ export function useTimelineExport() {
 
     setExportHostApi({
       getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-      onExportProgress: (progress) => onProgress(progress),
+      onExportProgress: (progress) => onProgress(progress / 100),
     });
 
     await client.exportTimeline(fileHandle, options, clips);
+  }
+
+  function cancelExport() {
+    if (!isExporting.value) return;
+    isExporting.value = false;
+    exportError.value = 'Export was cancelled by user';
+    exportPhase.value = null;
+    try {
+      terminateExportWorker('Export cancelled by user');
+      restartExportWorker();
+    } catch (e) {
+      console.error('Failed to cancel export worker', e);
+    }
   }
 
   return {
@@ -351,5 +369,6 @@ export function useTimelineExport() {
     rememberExportedFilename,
     loadCodecSupport,
     exportTimelineToFile,
+    cancelExport,
   };
 }

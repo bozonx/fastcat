@@ -19,8 +19,6 @@ interface Props {
   open: boolean;
 }
 
-const EXPORT_FRAME_YIELD_INTERVAL = 12;
-
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
@@ -62,6 +60,7 @@ const {
   rememberExportedFilename,
   loadCodecSupport,
   exportTimelineToFile,
+  cancelExport,
 } = useTimelineExport();
 
 const isOpen = computed({
@@ -103,18 +102,17 @@ watch(
     exportPhase.value = null;
     isExporting.value = false;
 
-    outputFormat.value = 'mp4';
+    await loadCodecSupport();
+
+    outputFormat.value = projectStore.projectSettings.export.encoding.format;
     videoCodec.value = projectStore.projectSettings.export.encoding.videoCodec;
     bitrateMbps.value = projectStore.projectSettings.export.encoding.bitrateMbps;
     excludeAudio.value = projectStore.projectSettings.export.encoding.excludeAudio;
+    audioCodec.value = projectStore.projectSettings.export.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.export.encoding.audioBitrateKbps;
     exportWidth.value = projectStore.projectSettings.export.width;
     exportHeight.value = projectStore.projectSettings.export.height;
     exportFps.value = projectStore.projectSettings.export.fps;
-
-    await loadCodecSupport();
-
-    outputFormat.value = projectStore.projectSettings.export.encoding.format;
 
     await ensureExportDir();
     await preloadExportIndex();
@@ -200,6 +198,18 @@ async function handleConfirm() {
       audioCodec.value as 'aac' | 'opus',
     );
 
+    projectStore.projectSettings.export.encoding.format = outputFormat.value;
+    projectStore.projectSettings.export.encoding.videoCodec = resolvedCodecs.videoCodec;
+    projectStore.projectSettings.export.encoding.bitrateMbps = bitrateMbps.value;
+    projectStore.projectSettings.export.encoding.excludeAudio = excludeAudio.value;
+    projectStore.projectSettings.export.encoding.audioCodec = resolvedCodecs.audioCodec;
+    projectStore.projectSettings.export.encoding.audioBitrateKbps = audioBitrateKbps.value;
+    projectStore.projectSettings.export.width = normalizedExportWidth.value;
+    projectStore.projectSettings.export.height = normalizedExportHeight.value;
+    projectStore.projectSettings.export.fps = normalizedExportFps.value;
+
+    await projectStore.saveProjectSettings();
+    
     exportPhase.value = 'encoding';
     await exportTimelineToFile(
       {
@@ -357,8 +367,7 @@ async function handleConfirm() {
             color="neutral"
             variant="ghost"
             :label="t('common.cancel', 'Cancel')"
-            :disabled="isExporting"
-            @click="isOpen = false"
+            @click="isExporting ? cancelExport() : isOpen = false"
           />
           <UButton
             color="primary"
