@@ -96,6 +96,12 @@ export function useTimelineExport() {
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
 
+  let cachedExportDir: FileSystemDirectoryHandle | null = null;
+  let cachedProjectName: string | null = null;
+  let cachedProjectsHandle: FileSystemDirectoryHandle | null = null;
+  let cachedExportFilenames: Set<string> | null = null;
+  let inflightExportFilenames: Promise<Set<string>> | null = null;
+
   const isExporting = ref(false);
   const exportProgress = ref(0);
   const exportError = ref<string | null>(null);
@@ -144,14 +150,41 @@ export function useTimelineExport() {
     return Math.round(Math.min(240, Math.max(1, value)));
   });
 
+  function resetExportFsCache() {
+    cachedExportDir = null;
+    cachedProjectName = null;
+    cachedProjectsHandle = null;
+    cachedExportFilenames = null;
+    inflightExportFilenames = null;
+  }
+
+  function isExportDirCacheValid() {
+    return (
+      cachedExportDir !== null &&
+      cachedProjectsHandle === workspaceStore.projectsHandle &&
+      cachedProjectName === projectStore.currentProjectName
+    );
+  }
+
   async function ensureExportDir(): Promise<FileSystemDirectoryHandle> {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) {
+      resetExportFsCache();
       throw new Error('Project is not opened');
     }
+
+    if (isExportDirCacheValid() && cachedExportDir) {
+      return cachedExportDir;
+    }
+
     const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
       projectStore.currentProjectName,
     );
-    return await projectDir.getDirectoryHandle('export', { create: true });
+    cachedExportDir = await projectDir.getDirectoryHandle('export', { create: true });
+    cachedProjectName = projectStore.currentProjectName;
+    cachedProjectsHandle = workspaceStore.projectsHandle;
+    cachedExportFilenames = null;
+    inflightExportFilenames = null;
+    return cachedExportDir;
   }
 
   async function listExportFilenames(exportDir: FileSystemDirectoryHandle): Promise<Set<string>> {
@@ -168,12 +201,44 @@ export function useTimelineExport() {
     return names;
   }
 
-  async function getNextAvailableFilename(
-    exportDir: FileSystemDirectoryHandle,
-    base: string,
-    ext: string,
-  ) {
-    const names = await listExportFilenames(exportDir);
+  async function loadExportFilenames(options?: { force?: boolean }): Promise<Set<string>> {
+    if (options?.force) {
+      cachedExportFilenames = null;
+      inflightExportFilenames = null;
+    }
+
+    if (cachedExportFilenames) {
+      return cachedExportFilenames;
+    }
+
+    if (inflightExportFilenames) {
+      return inflightExportFilenames;
+    }
+
+    inflightExportFilenames = (async () => {
+      const exportDir = await ensureExportDir();
+      const names = await listExportFilenames(exportDir);
+      cachedExportFilenames = names;
+      inflightExportFilenames = null;
+      return names;
+    })();
+
+    return inflightExportFilenames;
+  }
+
+  async function preloadExportIndex() {
+    await loadExportFilenames({ force: true });
+  }
+
+  function rememberExportedFilename(filename: string) {
+    if (!cachedExportFilenames) {
+      cachedExportFilenames = new Set<string>();
+    }
+    cachedExportFilenames.add(filename);
+  }
+
+  async function getNextAvailableFilename(base: string, ext: string) {
+    const names = await loadExportFilenames();
     let index = 1;
     while (index < 1000) {
       const candidate = `${base}_${String(index).padStart(3, '0')}.${ext}`;
@@ -183,7 +248,7 @@ export function useTimelineExport() {
     throw new Error('Failed to generate a unique filename');
   }
 
-  async function validateFilename(exportDir: FileSystemDirectoryHandle) {
+  async function validateFilename() {
     const trimmed = outputFilename.value.trim();
     if (!trimmed) {
       filenameError.value = 'Filename is required';
@@ -195,7 +260,7 @@ export function useTimelineExport() {
       return false;
     }
 
-    const names = await listExportFilenames(exportDir);
+    const names = await loadExportFilenames();
     if (names.has(trimmed)) {
       filenameError.value = 'A file with this name already exists';
       return false;
@@ -280,8 +345,10 @@ export function useTimelineExport() {
     normalizedExportHeight,
     normalizedExportFps,
     ensureExportDir,
+    preloadExportIndex,
     validateFilename,
     getNextAvailableFilename,
+    rememberExportedFilename,
     loadCodecSupport,
     exportTimelineToFile,
   };

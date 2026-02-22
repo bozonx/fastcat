@@ -56,8 +56,10 @@ const {
   normalizedExportHeight,
   normalizedExportFps,
   ensureExportDir,
+  preloadExportIndex,
   validateFilename,
   getNextAvailableFilename,
+  rememberExportedFilename,
   loadCodecSupport,
   exportTimelineToFile,
 } = useTimelineExport();
@@ -114,16 +116,16 @@ watch(
 
     outputFormat.value = projectStore.projectSettings.export.encoding.format;
 
-    const exportDir = await ensureExportDir();
+    await ensureExportDir();
+    await preloadExportIndex();
     const timelineBase = sanitizeBaseName(
       projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
     );
     outputFilename.value = await getNextAvailableFilename(
-      exportDir,
       timelineBase,
       getExt(outputFormat.value),
     );
-    await validateFilename(exportDir);
+    await validateFilename();
   },
 );
 
@@ -135,19 +137,18 @@ watch(outputFormat, async (fmt) => {
   if (!props.open) return;
 
   try {
-    const exportDir = await ensureExportDir();
     const base = outputFilename.value.replace(/\.[^.]+$/, '');
     const nextExt = getExt(fmt);
 
     if (!base) return;
 
     if (!/_\d{3}$/.test(base)) {
-      outputFilename.value = await getNextAvailableFilename(exportDir, base, nextExt);
+      outputFilename.value = await getNextAvailableFilename(base, nextExt);
       return;
     }
 
     outputFilename.value = `${base}.${nextExt}`;
-    await validateFilename(exportDir);
+    await validateFilename();
   } catch {
     // ignore
   }
@@ -156,8 +157,7 @@ watch(outputFormat, async (fmt) => {
 watch(outputFilename, async () => {
   if (!props.open) return;
   try {
-    const exportDir = await ensureExportDir();
-    await validateFilename(exportDir);
+    await validateFilename();
   } catch {
     // ignore
   }
@@ -172,7 +172,7 @@ async function handleConfirm() {
 
   try {
     const exportDir = await ensureExportDir();
-    const ok = await validateFilename(exportDir);
+    const ok = await validateFilename();
     if (!ok) return;
 
     try {
@@ -218,6 +218,7 @@ async function handleConfirm() {
         exportProgress.value = progress;
       },
     );
+    rememberExportedFilename(outputFilename.value);
 
     toast.add({
       title: t('videoEditor.export.successTitle', 'Export successful'),
