@@ -1505,6 +1505,10 @@
         "files": "Файлы",
         "effects": "Эффекты"
       },
+      "sort": {
+        "name": "По имени",
+        "modified": "По дате"
+      },
       "actions": {
         "createFolder": "Создать папку",
         "uploadFiles": "Загрузить файлы",

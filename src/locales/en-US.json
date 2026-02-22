@@ -1505,6 +1505,10 @@
         "files": "Files",
         "effects": "Effects"
       },
+      "sort": {
+        "name": "Name",
+        "modified": "Modified"
+      },
       "actions": {
         "createFolder": "Create folder",
         "uploadFiles": "Upload files",

@@ -36,6 +36,12 @@ function formatBytes(bytes: number, decimals = 2) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
+
+function formatMegabytes(bytes: number, decimals = 2): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(decimals)} MB`;
+}
 </script>
 
 <template>
@@ -66,7 +72,7 @@ function formatBytes(bytes: number, decimals = 2) {
         >
           <span class="text-sm text-gray-500">{{ t('common.size', 'Size') }}</span>
           <span class="font-medium text-gray-900 dark:text-gray-100">{{
-            formatBytes(info.size)
+            formatMegabytes(info.size)
           }}</span>
         </div>
         <div v-if="info.lastModified" class="flex flex-col gap-1 pb-2">

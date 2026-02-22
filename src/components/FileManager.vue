@@ -30,6 +30,8 @@ const {
   renameEntry,
   createTimeline,
   getFileIcon,
+  sortMode,
+  setSortMode,
 } = fileManager;
 
 const activeTab = ref('files');
@@ -133,6 +135,11 @@ function triggerFileUpload() {
   fileInput.value?.click();
 }
 
+function onSortModeChange(v: 'name' | 'modified') {
+  setSortMode(v);
+  void loadProjectDirectory();
+}
+
 function onFileSelect(e: Event) {
   const target = e.target as HTMLInputElement;
   if (target.files) {
@@ -206,6 +213,21 @@ function onFileSelect(e: Event) {
         :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
         @click="createTimeline"
       />
+
+      <div class="ml-auto w-40">
+        <USelectMenu
+          :model-value="sortMode"
+          :items="[
+            { value: 'name', label: t('videoEditor.fileManager.sort.name', 'Name') },
+            { value: 'modified', label: t('videoEditor.fileManager.sort.modified', 'Modified') },
+          ]"
+          value-key="value"
+          label-key="label"
+          size="xs"
+          class="w-full"
+          @update:model-value="(v: any) => onSortModeChange(v?.value ?? v)"
+        />
+      </div>
     </div>
 
     <!-- Content -->

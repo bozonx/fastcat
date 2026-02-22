@@ -4,6 +4,15 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 
+interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
+  values?: () => AsyncIterable<FileSystemHandle>;
+  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
+}
+
+type FsFileHandleWithMove = FileSystemFileHandle & {
+  move?: (name: string) => Promise<void>;
+};
+
 export interface FsEntry {
   name: string;
   kind: 'file' | 'directory';
@@ -12,7 +21,10 @@ export interface FsEntry {
   children?: FsEntry[];
   expanded?: boolean;
   path?: string;
+  lastModified?: number;
 }
+
+type FileTreeSortMode = 'name' | 'modified';
 
 export function useFileManager() {
   const workspaceStore = useWorkspaceStore();
@@ -24,7 +36,35 @@ export function useFileManager() {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
+  const sortMode = ref<FileTreeSortMode>('name');
+
   const isApiSupported = workspaceStore.isApiSupported;
+
+  async function attachLastModified(entries: FsEntry[]): Promise<void> {
+    const files = entries.filter((e) => e.kind === 'file') as FsEntry[];
+    await Promise.all(
+      files.map(async (entry) => {
+        try {
+          const file = await (entry.handle as FileSystemFileHandle).getFile();
+          entry.lastModified = file.lastModified;
+        } catch {
+          entry.lastModified = undefined;
+        }
+      }),
+    );
+  }
+
+  function compareEntries(a: FsEntry, b: FsEntry): number {
+    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+
+    if (sortMode.value === 'modified') {
+      const am = a.lastModified ?? 0;
+      const bm = b.lastModified ?? 0;
+      if (am !== bm) return bm - am;
+    }
+
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  }
 
   async function readDirectory(
     dirHandle: FileSystemDirectoryHandle,
@@ -32,11 +72,15 @@ export function useFileManager() {
   ): Promise<FsEntry[]> {
     const entries: FsEntry[] = [];
     try {
-      const iterator = (dirHandle as any).values?.() ?? (dirHandle as any).entries?.();
+      const iterator =
+        (dirHandle as FsDirectoryHandleWithIteration).values?.() ??
+        (dirHandle as FsDirectoryHandleWithIteration).entries?.();
       if (!iterator) return entries;
 
       for await (const value of iterator) {
-        const handle = Array.isArray(value) ? value[1] : value;
+        const handle = (Array.isArray(value) ? value[1] : value) as
+          | FileSystemFileHandle
+          | FileSystemDirectoryHandle;
         entries.push({
           name: handle.name,
           kind: handle.kind,
@@ -45,15 +89,65 @@ export function useFileManager() {
           children: undefined,
           expanded: false,
           path: basePath ? `${basePath}/${handle.name}` : handle.name,
+          lastModified: undefined,
         });
       }
     } catch (e: any) {
       throw new Error(e?.message ?? 'Failed to read directory');
     }
-    return entries.sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+
+    if (sortMode.value === 'modified') {
+      await attachLastModified(entries);
+    }
+
+    return entries.sort(compareEntries);
+  }
+
+  function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
+    if (!prev || prev.length === 0) return next;
+
+    const prevByPath = new Map<string, FsEntry>();
+    for (const p of prev) {
+      if (p.path) prevByPath.set(p.path, p);
+    }
+
+    for (const n of next) {
+      if (!n.path) continue;
+      const p = prevByPath.get(n.path);
+      if (!p) continue;
+
+      n.expanded = p.expanded;
+      if (n.kind === 'directory') {
+        n.children = p.children;
+      }
+      if (n.kind === 'file') {
+        n.lastModified = p.lastModified;
+      }
+    }
+
+    return next;
+  }
+
+  async function refreshExpandedChildren(entries: FsEntry[]): Promise<void> {
+    for (const entry of entries) {
+      if (entry.kind !== 'directory') continue;
+      if (!entry.expanded) continue;
+      if (entry.children === undefined) continue;
+
+      try {
+        const nextChildren = await readDirectory(
+          entry.handle as FileSystemDirectoryHandle,
+          entry.path,
+        );
+        entry.children = mergeEntries(entry.children, nextChildren);
+      } catch {
+        // ignore
+      }
+
+      if (entry.children) {
+        await refreshExpandedChildren(entry.children);
+      }
+    }
   }
 
   async function toggleDirectory(entry: FsEntry) {
@@ -137,7 +231,10 @@ export function useFileManager() {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
         projectStore.currentProjectName,
       );
-      rootEntries.value = await readDirectory(projectDir);
+      const nextRoot = await readDirectory(projectDir);
+      rootEntries.value = mergeEntries(rootEntries.value, nextRoot);
+
+      await refreshExpandedChildren(rootEntries.value);
 
       await expandPersistedDirectories();
 
@@ -176,8 +273,20 @@ export function useFileManager() {
         }
 
         const targetDir = await sourcesDir.getDirectoryHandle(targetDirName, { create: true });
+
+        try {
+          await targetDir.getFileHandle(file.name);
+          throw new Error(`File already exists: ${file.name}`);
+        } catch (e: any) {
+          if (e?.name !== 'NotFoundError') throw e;
+        }
+
         const fileHandle = await targetDir.getFileHandle(file.name, { create: true });
-        const writable = await (fileHandle as any).createWritable();
+        if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
+          throw new Error('Failed to write file: createWritable is not available');
+        }
+
+        const writable = await (fileHandle as FileSystemFileHandle).createWritable();
         await writable.write(file);
         await writable.close();
 
@@ -236,45 +345,39 @@ export function useFileManager() {
     isLoading.value = true;
     try {
       const parent = target.parentHandle;
+
+      try {
+        if (target.kind === 'file') {
+          await parent.getFileHandle(newName);
+        } else {
+          await parent.getDirectoryHandle(newName);
+        }
+        throw new Error(`Target name already exists: ${newName}`);
+      } catch (e: any) {
+        if (e?.name !== 'NotFoundError') throw e;
+      }
+
       if (target.kind === 'file') {
-        const handle = target.handle as any;
+        const handle = target.handle as FsFileHandleWithMove;
         if (typeof handle.move === 'function') {
           await handle.move(newName);
         } else {
           const file = await (handle as FileSystemFileHandle).getFile();
           const newHandle = await parent.getFileHandle(newName, { create: true });
-          const writable = await (newHandle as any).createWritable();
+          if (typeof (newHandle as FileSystemFileHandle).createWritable !== 'function') {
+            throw new Error('Failed to rename file: createWritable is not available');
+          }
+          const writable = await (newHandle as FileSystemFileHandle).createWritable();
           await writable.write(file);
           await writable.close();
           await parent.removeEntry(target.name);
         }
       } else {
-        const oldHandle = target.handle as FileSystemDirectoryHandle;
-        const newHandle = await parent.getDirectoryHandle(newName, { create: true });
-
-        async function copyDirectory(
-          srcDir: FileSystemDirectoryHandle,
-          destDir: FileSystemDirectoryHandle,
-        ) {
-          const iterator = (srcDir as any).values?.() ?? (srcDir as any).entries?.();
-          if (!iterator) return;
-          for await (const value of iterator) {
-            const handle = Array.isArray(value) ? value[1] : value;
-            if (handle.kind === 'file') {
-              const file = await handle.getFile();
-              const newFileHandle = await destDir.getFileHandle(handle.name, { create: true });
-              const writable = await (newFileHandle as any).createWritable();
-              await writable.write(file);
-              await writable.close();
-            } else if (handle.kind === 'directory') {
-              const newSubDir = await destDir.getDirectoryHandle(handle.name, { create: true });
-              await copyDirectory(handle, newSubDir);
-            }
-          }
+        const dirHandle = target.handle as unknown as { move?: (name: string) => Promise<void> };
+        if (typeof dirHandle.move !== 'function') {
+          throw new Error('Rename directory is not supported in this browser');
         }
-
-        await copyDirectory(oldHandle, newHandle);
-        await parent.removeEntry(target.name, { recursive: true });
+        await dirHandle.move(newName);
       }
 
       await loadProjectDirectory();
@@ -312,16 +415,21 @@ export function useFileManager() {
       }
 
       const fileHandle = await timelinesDir.getFileHandle(fileName, { create: true });
-      const writable = await (fileHandle as any).createWritable();
-      await writable.write(`{
-  "OTIO_SCHEMA": "Timeline.1",
-  "name": "${fileName.replace('.otio', '')}",
-  "tracks": {
-    "OTIO_SCHEMA": "Stack.1",
-    "children": [],
-    "name": "tracks"
-  }
-}`);
+      if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
+        throw new Error('Failed to create timeline: createWritable is not available');
+      }
+      const writable = await (fileHandle as FileSystemFileHandle).createWritable();
+
+      const payload = {
+        OTIO_SCHEMA: 'Timeline.1',
+        name: fileName.replace('.otio', ''),
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          children: [],
+          name: 'tracks',
+        },
+      };
+      await writable.write(JSON.stringify(payload, null, 2));
       await writable.close();
 
       await loadProjectDirectory();
@@ -347,6 +455,10 @@ export function useFileManager() {
     isLoading,
     error,
     isApiSupported,
+    sortMode,
+    setSortMode: (v: FileTreeSortMode) => {
+      sortMode.value = v;
+    },
     loadProjectDirectory,
     toggleDirectory,
     handleFiles,
