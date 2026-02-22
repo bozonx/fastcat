@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useProjectStore } from '~/stores/project.store'
 import { useTimelineStore } from '~/stores/timeline.store'
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client'
+import { clampTimeUs, normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time'
 import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types'
 
 interface WorkerTimelineClip {
@@ -78,6 +79,12 @@ const timelineStore = useTimelineStore()
 
 const videoTrack = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find((track: TimelineTrack) => track.kind === 'video') ?? null)
 const videoItems = computed(() => (videoTrack.value?.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'))
+const workerTimelineClips = computed(() => toWorkerTimelineClips(videoItems.value))
+const safeDurationUs = computed(() => normalizeTimeUs(timelineStore.duration))
+const canInteractPlayback = computed(
+  () => videoItems.value.length > 0 && !isLoading.value && !loadError.value,
+)
+
 function hashString(value: string): number {
   let hash = 2166136261
   for (let index = 0; index < value.length; index += 1) {
@@ -239,7 +246,7 @@ const { client } = getPreviewWorkerClient()
 
 function scheduleRender(timeUs: number) {
   if (isUnmounted) return
-  latestRenderTimeUs = timeUs
+  latestRenderTimeUs = normalizeTimeUs(timeUs)
   if (renderLoopInFlight) return
 
   renderLoopInFlight = true
@@ -268,12 +275,17 @@ function scheduleRender(timeUs: number) {
 }
 
 function updateStoreTime(timeUs: number) {
-  if (timelineStore.currentTime === timeUs) {
+  const normalizedTimeUs = clampToTimeline(timeUs)
+  if (timelineStore.currentTime === normalizedTimeUs) {
     return
   }
   suppressStoreSeekWatch = true
-  timelineStore.currentTime = timeUs
+  timelineStore.currentTime = normalizedTimeUs
   suppressStoreSeekWatch = false
+}
+
+function clampToTimeline(timeUs: number): number {
+  return clampTimeUs(timeUs, safeDurationUs.value)
 }
 
 async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
@@ -350,7 +362,7 @@ async function buildTimeline() {
 
   try {
     await ensureCompositorReady()
-    const clips = toWorkerTimelineClips(videoItems.value)
+    const clips = workerTimelineClips.value
     if (clips.length === 0) {
       await client.clearClips()
       timelineStore.duration = 0
@@ -371,7 +383,7 @@ async function buildTimeline() {
     lastBuiltSourceSignature = clipSourceSignature.value
     lastBuiltLayoutSignature = clipLayoutSignature.value
 
-    timelineStore.duration = maxDuration
+    timelineStore.duration = normalizeTimeUs(maxDuration)
 
     localCurrentTimeUs = 0
     uiCurrentTimeUs.value = 0
@@ -406,7 +418,7 @@ watch(clipLayoutSignature, () => {
     return
   }
 
-  const layoutClips = toWorkerTimelineClips(videoItems.value)
+  const layoutClips = workerTimelineClips.value
   scheduleLayoutUpdate(layoutClips)
 })
 
@@ -430,14 +442,15 @@ let storeSyncAccumulatorMs = 0
 function updatePlayback(timestamp: number) {
   if (!timelineStore.isPlaying) return
 
-  const deltaMs = timestamp - lastFrameTimeMs
+  const deltaMsRaw = timestamp - lastFrameTimeMs
+  const deltaMs = Number.isFinite(deltaMsRaw) && deltaMsRaw > 0 ? deltaMsRaw : 0
   lastFrameTimeMs = timestamp
   renderAccumulatorMs += deltaMs
   storeSyncAccumulatorMs += deltaMs
 
-  let newTimeUs = localCurrentTimeUs + deltaMs * 1000
-  if (newTimeUs >= timelineStore.duration) {
-    newTimeUs = timelineStore.duration
+  let newTimeUs = clampToTimeline(localCurrentTimeUs + deltaMs * 1000)
+  if (newTimeUs >= safeDurationUs.value) {
+    newTimeUs = safeDurationUs.value
     timelineStore.isPlaying = false
     localCurrentTimeUs = newTimeUs
     uiCurrentTimeUs.value = newTimeUs
@@ -454,7 +467,7 @@ function updatePlayback(timestamp: number) {
     updateStoreTime(newTimeUs)
   }
 
-  const fps = projectStore.projectSettings?.export?.fps || 30
+  const fps = sanitizeFps(projectStore.projectSettings?.export?.fps)
   const frameIntervalMs = 1000 / fps
 
   if (renderAccumulatorMs >= frameIntervalMs) {
@@ -474,20 +487,20 @@ watch(() => timelineStore.isPlaying, (playing) => {
   }
 
   if (playing) {
-    if (localCurrentTimeUs >= timelineStore.duration) {
+    if (localCurrentTimeUs >= safeDurationUs.value) {
       localCurrentTimeUs = 0
       uiCurrentTimeUs.value = 0
       updateStoreTime(0)
     }
-    localCurrentTimeUs = timelineStore.currentTime
-    uiCurrentTimeUs.value = timelineStore.currentTime
+    localCurrentTimeUs = clampToTimeline(timelineStore.currentTime)
+    uiCurrentTimeUs.value = localCurrentTimeUs
     lastFrameTimeMs = performance.now()
     renderAccumulatorMs = 0
     storeSyncAccumulatorMs = 0
     playbackLoopId = requestAnimationFrame(updatePlayback)
   } else {
     cancelAnimationFrame(playbackLoopId)
-    updateStoreTime(localCurrentTimeUs)
+    updateStoreTime(clampToTimeline(localCurrentTimeUs))
   }
 })
 
@@ -496,17 +509,22 @@ watch(() => timelineStore.currentTime, (val) => {
   if (suppressStoreSeekWatch) {
     return
   }
+  const normalizedTimeUs = clampToTimeline(val)
+  if (normalizedTimeUs !== val) {
+    updateStoreTime(normalizedTimeUs)
+    return
+  }
   if (!timelineStore.isPlaying) {
-    localCurrentTimeUs = val
-    uiCurrentTimeUs.value = val
-    scheduleRender(val)
+    localCurrentTimeUs = normalizedTimeUs
+    uiCurrentTimeUs.value = normalizedTimeUs
+    scheduleRender(normalizedTimeUs)
   }
 })
 
 onMounted(() => {
   isUnmounted = false
-  localCurrentTimeUs = timelineStore.currentTime
-  uiCurrentTimeUs.value = timelineStore.currentTime
+  localCurrentTimeUs = clampToTimeline(timelineStore.currentTime)
+  uiCurrentTimeUs.value = localCurrentTimeUs
   updateCanvasDisplaySize()
   if (typeof ResizeObserver !== 'undefined' && viewportEl.value) {
     viewportResizeObserver = new ResizeObserver(() => {
@@ -519,6 +537,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   isUnmounted = true
+  timelineStore.isPlaying = false
   latestRenderTimeUs = null
   if (buildDebounceTimer !== null) {
     clearTimeout(buildDebounceTimer)
@@ -532,7 +551,9 @@ onBeforeUnmount(() => {
   viewportResizeObserver = null
   cancelAnimationFrame(playbackLoopId)
   pendingLayoutClips = null
-  client.destroyCompositor()
+  void client.destroyCompositor().catch(error => {
+    console.error('[Monitor] Failed to destroy compositor on unmount', error)
+  })
 })
 
 function formatTime(seconds: number): string {
@@ -584,7 +605,7 @@ function formatTime(seconds: number): string {
         color="neutral"
         icon="i-heroicons-backward"
         :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
-        :disabled="videoItems.length === 0 || isLoading"
+        :disabled="!canInteractPlayback"
         @click="timelineStore.currentTime = 0"
       />
       <UButton
@@ -593,7 +614,7 @@ function formatTime(seconds: number): string {
         color="primary"
         :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
         :aria-label="t('granVideoEditor.monitor.play', 'Play')"
-        :disabled="videoItems.length === 0 || isLoading"
+        :disabled="!canInteractPlayback"
         @click="timelineStore.isPlaying = !timelineStore.isPlaying"
       />
       <span class="text-xs text-gray-600 ml-2 font-mono">
