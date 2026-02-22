@@ -39,10 +39,6 @@ const filteredVideoCodecOptions = computed(() => {
     if (outputFormat.value === 'mp4') {
       const v = opt.value.toLowerCase();
       if (
-        v.startsWith('vp08') ||
-        v.startsWith('vp8') ||
-        v.startsWith('vp09') ||
-        v.startsWith('vp9') ||
         v.startsWith('hev1') ||
         v.startsWith('hvc1')
       ) {
@@ -51,6 +47,12 @@ const filteredVideoCodecOptions = computed(() => {
     }
     return true;
   });
+});
+
+watch(outputFormat, (fmt) => {
+  if (fmt === 'mp4') {
+    audioCodec.value = 'aac';
+  }
 });
 
 const audioCodecOptions = [
@@ -87,7 +89,7 @@ const audioCodecOptions = [
           @update:model-value="(v: any) => (videoCodec = v?.value ?? v)"
         />
       </div>
-      <div v-else class="py-1.5 px-3 text-sm text-gray-400 bg-gray-800/50 rounded-md border border-gray-700">
+      <div v-else class="text-sm text-gray-700 dark:text-gray-300 font-medium">
         {{ outputFormat === 'mkv' ? 'AV1' : 'VP9' }}
       </div>
     </UFormField>
@@ -127,7 +129,7 @@ const audioCodecOptions = [
           :disabled="props.disabled"
         />
       </div>
-      <div v-else class="py-1.5 px-3 text-sm text-gray-400 bg-gray-800/50 rounded-md border border-gray-700">
+      <div v-else class="text-sm text-gray-700 dark:text-gray-300 font-medium">
         Opus
       </div>
     </UFormField>

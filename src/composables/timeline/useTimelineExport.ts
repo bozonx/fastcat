@@ -86,10 +86,7 @@ export function resolveExportCodecs(
   }
 
   return {
-    videoCodec:
-      selectedVideoCodec.startsWith('vp') || selectedVideoCodec.startsWith('av01')
-        ? 'avc1.42E032'
-        : selectedVideoCodec,
+    videoCodec: selectedVideoCodec,
     audioCodec: selectedAudioCodec,
   };
 }
