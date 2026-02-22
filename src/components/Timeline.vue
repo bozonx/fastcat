@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, onMounted } from 'vue'
 import { useTimelineStore } from '~/stores/timeline.store'
 import type { TimelineTrack } from '~/timeline/types'
 
@@ -36,6 +36,32 @@ function pxToDeltaUs(px: number) {
   return Math.round((px / PX_PER_SECOND) * 1e6)
 }
 
+function onTimelineKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (timelineStore.selectedItemIds.length > 0) {
+      const items = tracks.value.flatMap(t => t.items.map(it => ({ trackId: t.id, itemId: it.id })))
+      const firstSelection = items.find(it => timelineStore.selectedItemIds.includes(it.itemId))
+      if (firstSelection) {
+        timelineStore.deleteSelectedItems(firstSelection.trackId)
+      }
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onTimelineKeyDown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onTimelineKeyDown)
+  if (dragRafId !== null) {
+    cancelAnimationFrame(dragRafId)
+    dragRafId = null
+  }
+  window.removeEventListener('mousemove', onGlobalMouseMove)
+  window.removeEventListener('mouseup', onGlobalMouseUp)
+})
+
 function getLocalX(e: MouseEvent): number {
   const target = e.currentTarget as HTMLElement | null
   const rect = target?.getBoundingClientRect()
@@ -62,10 +88,19 @@ function startPlayheadDrag(e: MouseEvent) {
   window.addEventListener('mouseup', onGlobalMouseUp)
 }
 
+function selectItem(e: MouseEvent, itemId: string) {
+  e.stopPropagation()
+  timelineStore.toggleSelection(itemId, { multi: e.shiftKey || e.metaKey || e.ctrlKey })
+}
+
 function startMoveItem(e: MouseEvent, trackId: string, itemId: string, startUs: number) {
   if (e.button !== 0) return
   e.preventDefault()
   e.stopPropagation()
+
+  if (!timelineStore.selectedItemIds.includes(itemId)) {
+    timelineStore.toggleSelection(itemId)
+  }
 
   draggingMode.value = 'move'
   draggingTrackId.value = trackId
@@ -313,7 +348,6 @@ function stop() {
 
       <!-- Scrollable track area -->
       <div ref="scrollEl" class="flex-1 overflow-x-auto overflow-y-hidden relative">
-        <!-- Time ruler -->
         <div
           class="h-6 border-b border-gray-700 bg-gray-850 sticky top-0 flex items-end px-2 gap-16 text-xxs text-gray-600 font-mono select-none cursor-pointer"
           @mousedown="onTimeRulerMouseDown"
@@ -322,7 +356,7 @@ function stop() {
         </div>
 
         <!-- Tracks -->
-        <div class="flex flex-col divide-y divide-gray-700">
+        <div class="flex flex-col divide-y divide-gray-700" @mousedown="timelineStore.clearSelection()">
           <div
             v-for="track in tracks"
             :key="track.id"
@@ -339,10 +373,16 @@ function stop() {
             <div
               v-for="item in track.items"
               :key="item.id"
-              class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer"
-              :class="track.kind === 'audio' ? 'bg-teal-600 border border-teal-400 hover:bg-teal-500' : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500'"
+              class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
+              :class="[
+                item.kind === 'gap' 
+                  ? 'bg-gray-800/40 border border-dashed border-gray-600 text-gray-400 opacity-60' 
+                  : (track.kind === 'audio' ? 'bg-teal-600 border border-teal-400 hover:bg-teal-500' : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500'),
+                timelineStore.selectedItemIds.includes(item.id) ? 'ring-2 ring-white z-20 shadow-lg' : ''
+              ]"
               :style="{ left: `${2 + timeUsToPx(item.timelineRange.startUs)}px`, width: `${Math.max(30, timeUsToPx(item.timelineRange.durationUs))}px` }"
               @mousedown="startMoveItem($event, item.trackId, item.id, item.timelineRange.startUs)"
+              @click.stop="selectItem($event, item.id)"
             >
               <div
                 v-if="item.kind === 'clip'"

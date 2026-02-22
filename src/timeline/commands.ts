@@ -1,4 +1,4 @@
-import type { TimelineClipItem, TimelineDocument, TimelineTrack, TimelineTrackItem } from './types';
+import type { TimelineClipItem, TimelineDocument, TimelineGapItem, TimelineTrack, TimelineTrackItem } from './types';
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -34,11 +34,18 @@ export interface TrimItemCommand {
   deltaUs: number;
 }
 
+export interface DeleteItemsCommand {
+  type: 'delete_items';
+  trackId: string;
+  itemIds: string[];
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | RemoveItemCommand
   | MoveItemCommand
-  | TrimItemCommand;
+  | TrimItemCommand
+  | DeleteItemsCommand;
 
 function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
@@ -72,7 +79,7 @@ function nextItemId(trackId: string, prefix: string): string {
   if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
     return `${prefix}_${trackId}_${cryptoObj.randomUUID()}`;
   }
-  return `${prefix}_${trackId}_${Date.now().toString(36)}`;
+  return `${prefix}_${trackId}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 5)}`;
 }
 
 function computeTrackEndUs(track: TimelineTrack): number {
@@ -87,6 +94,30 @@ function clampInt(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   if (max < min) return min;
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem[] {
+  if (items.length < 2) return items;
+  const result: TimelineTrackItem[] = [];
+  let current: TimelineTrackItem | undefined = items[0];
+
+  for (let i = 1; i < items.length; i++) {
+    const next = items[i];
+    if (current && next && current.kind === 'gap' && next.kind === 'gap') {
+      current = {
+        ...current,
+        timelineRange: {
+          ...current.timelineRange,
+          durationUs: (next.timelineRange.startUs + next.timelineRange.durationUs) - current.timelineRange.startUs
+        }
+      };
+    } else {
+      if (current) result.push(current);
+      current = next;
+    }
+  }
+  if (current) result.push(current);
+  return result;
 }
 
 export function applyTimelineCommand(
@@ -127,10 +158,59 @@ export function applyTimelineCommand(
     };
   }
 
-  if (cmd.type === 'remove_item') {
+  if (cmd.type === 'remove_item' || cmd.type === 'delete_items') {
     const track = getTrackById(doc, cmd.trackId);
-    const nextItems = track.items.filter(x => x.id !== cmd.itemId);
-    if (nextItems.length === track.items.length) return { next: doc };
+    const idsToRemove = cmd.type === 'delete_items' ? cmd.itemIds : [cmd.itemId];
+    
+    let nextItems = [...track.items];
+    let itemsRemoved = false;
+
+    for (const itemId of idsToRemove) {
+      const idx = nextItems.findIndex(x => x.id === itemId);
+      if (idx === -1) continue;
+
+      const item = nextItems[idx];
+      itemsRemoved = true;
+
+      if (item.kind === 'clip') {
+        // If it's a clip, check if there's anything after it
+        const hasSomethingAfter = nextItems.some(it => it.timelineRange.startUs > item.timelineRange.startUs);
+        if (hasSomethingAfter) {
+          // Create Gap
+          const gap: TimelineGapItem = {
+            kind: 'gap',
+            id: nextItemId(track.id, 'gap'),
+            trackId: track.id,
+            timelineRange: { ...item.timelineRange }
+          };
+          nextItems[idx] = gap;
+        } else {
+          // Last item, just remove
+          nextItems.splice(idx, 1);
+        }
+      } else if (item.kind === 'gap') {
+        // For gap - ripple delete: remove it and shift everything after it to the left
+        const gapDuration = item.timelineRange.durationUs;
+        nextItems.splice(idx, 1);
+        nextItems = nextItems.map(it => {
+          if (it.timelineRange.startUs > item.timelineRange.startUs) {
+            return {
+              ...it,
+              timelineRange: {
+                ...it.timelineRange,
+                startUs: it.timelineRange.startUs - gapDuration
+              }
+            };
+          }
+          return it;
+        });
+      }
+    }
+
+    if (!itemsRemoved) return { next: doc };
+
+    nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItems = mergeAdjacentGaps(nextItems);
 
     const nextTracks = doc.tracks.map(t => (t.id === track.id ? { ...t, items: nextItems } : t));
     return { next: { ...doc, tracks: nextTracks } };
@@ -139,7 +219,7 @@ export function applyTimelineCommand(
   if (cmd.type === 'move_item') {
     const track = getTrackById(doc, cmd.trackId);
     const item = track.items.find(x => x.id === cmd.itemId);
-    if (!item) return { next: doc };
+    if (!item || !item.timelineRange) return { next: doc };
 
     const startUs = Math.max(0, Math.round(cmd.startUs));
     const durationUs = Math.max(0, item.timelineRange.durationUs);
@@ -164,7 +244,7 @@ export function applyTimelineCommand(
   if (cmd.type === 'trim_item') {
     const track = getTrackById(doc, cmd.trackId);
     const item = track.items.find(x => x.id === cmd.itemId);
-    if (!item) return { next: doc };
+    if (!item || !item.timelineRange) return { next: doc };
     if (item.kind !== 'clip') return { next: doc };
 
     const deltaUs = Math.round(Number(cmd.deltaUs));

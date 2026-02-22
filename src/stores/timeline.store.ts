@@ -27,11 +27,39 @@ export const useTimelineStore = defineStore('timeline', () => {
   const currentTime = ref(0);
   const duration = ref(0);
 
+  const selectedItemIds = ref<string[]>([]);
+
   let persistTimelineTimeout: number | null = null;
   let timelineRevision = 0;
   let savedTimelineRevision = 0;
 
   const timelineSaveQueue = new PQueue({ concurrency: 1 });
+
+  function clearSelection() {
+    selectedItemIds.value = [];
+  }
+
+  function toggleSelection(itemId: string, options?: { multi?: boolean }) {
+    if (options?.multi) {
+      if (selectedItemIds.value.includes(itemId)) {
+        selectedItemIds.value = selectedItemIds.value.filter(id => id !== itemId);
+      } else {
+        selectedItemIds.value.push(itemId);
+      }
+    } else {
+      selectedItemIds.value = [itemId];
+    }
+  }
+
+  function deleteSelectedItems(trackId: string) {
+    if (selectedItemIds.value.length === 0) return;
+    applyTimeline({
+      type: 'delete_items',
+      trackId,
+      itemIds: [...selectedItemIds.value]
+    });
+    selectedItemIds.value = [];
+  }
 
   function clearPersistTimelineTimeout() {
     if (typeof window === 'undefined') return;
@@ -266,11 +294,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying,
     currentTime,
     duration,
+    selectedItemIds,
     loadTimeline,
     saveTimeline,
     requestTimelineSave,
     applyTimeline,
     addClipToTimelineFromPath,
     loadTimelineMetadata,
+    clearSelection,
+    toggleSelection,
+    deleteSelectedItems,
   };
 });
