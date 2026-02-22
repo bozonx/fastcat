@@ -64,6 +64,10 @@ const proxyLimitGb = computed({
             @update:model-value="(val: any) => (workspaceStore.userSettings.openBehavior = val)"
           />
         </UFormField>
+
+        <div class="text-xs text-gray-500">
+          {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+        </div>
       </div>
 
       <div class="flex flex-col gap-4">

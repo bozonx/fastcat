@@ -358,6 +358,27 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function loadUserSettingsFromDisk() {
+    if (!workspaceHandle.value) return;
+
+    try {
+      const handle = await ensureUserSettingsFile({ create: false });
+      if (!handle) {
+        userSettings.value = normalizeUserSettings(null);
+        return;
+      }
+
+      const file = await handle.getFile();
+      const text = await file.text();
+      userSettings.value = normalizeUserSettings(text.trim() ? JSON.parse(text) : null);
+    } catch {
+      userSettings.value = normalizeUserSettings(null);
+    } finally {
+      userSettingsRevision = 0;
+      markUserSettingsAsCleanForCurrentRevision();
+    }
+  }
+
   async function saveWorkspaceSettingsToDisk() {
     await requestWorkspaceSettingsSave({ immediate: true });
   }

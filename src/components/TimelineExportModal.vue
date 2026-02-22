@@ -198,18 +198,17 @@ async function handleConfirm() {
       audioCodec.value as 'aac' | 'opus',
     );
 
+    projectStore.projectSettings.export.width = normalizedExportWidth.value;
+    projectStore.projectSettings.export.height = normalizedExportHeight.value;
+    projectStore.projectSettings.export.fps = normalizedExportFps.value;
     projectStore.projectSettings.export.encoding.format = outputFormat.value;
     projectStore.projectSettings.export.encoding.videoCodec = resolvedCodecs.videoCodec;
     projectStore.projectSettings.export.encoding.bitrateMbps = bitrateMbps.value;
     projectStore.projectSettings.export.encoding.excludeAudio = excludeAudio.value;
     projectStore.projectSettings.export.encoding.audioCodec = resolvedCodecs.audioCodec;
     projectStore.projectSettings.export.encoding.audioBitrateKbps = audioBitrateKbps.value;
-    projectStore.projectSettings.export.width = normalizedExportWidth.value;
-    projectStore.projectSettings.export.height = normalizedExportHeight.value;
-    projectStore.projectSettings.export.fps = normalizedExportFps.value;
-
     await projectStore.saveProjectSettings();
-    
+
     exportPhase.value = 'encoding';
     await exportTimelineToFile(
       {
