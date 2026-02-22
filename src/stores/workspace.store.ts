@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import PQueue from 'p-queue';
 
@@ -163,7 +163,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     savedWorkspaceSettingsRevision = workspaceSettingsRevision;
   }
 
-  watch(lastProjectName, v => {
+  watch(lastProjectName, (v) => {
     if (typeof window === 'undefined') return;
     if (v === null) window.localStorage.removeItem('gran-editor-last-project');
     else window.localStorage.setItem('gran-editor-last-project', v);
@@ -382,7 +382,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
     };
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       request.onsuccess = (e: any) => {
         const db = e.target.result;
         const tx = db.transaction('handles', 'readonly');
@@ -475,9 +475,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isLoading,
     error,
     isApiSupported,
-    lastProjectName,
-    userSettings,
-    workspaceSettings,
+    lastProjectName: skipHydrate(lastProjectName),
+    userSettings: skipHydrate(userSettings),
+    workspaceSettings: skipHydrate(workspaceSettings),
     init,
     openWorkspace,
     resetWorkspace,
