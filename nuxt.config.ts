@@ -1,50 +1,57 @@
-import { defineNuxtConfig } from 'nuxt/config'
+import { defineNuxtConfig } from "nuxt/config";
 
 export default defineNuxtConfig({
-  srcDir: 'src/',
+  srcDir: "src/",
 
   modules: [
-    '@nuxt/ui',
-    '@pinia/nuxt',
-    '@nuxtjs/i18n',
+    "@nuxt/ui",
+    "@pinia/nuxt",
+    "@nuxtjs/i18n",
+    "@nuxt/test-utils/module",
   ],
 
-  css: ['~/assets/css/main.css'],
+  css: ["~/assets/css/main.css"],
 
   ui: {
     // @ts-ignore
-    colorMode: false
+    colorMode: false,
   },
 
   i18n: {
-    strategy: 'no_prefix',
-    defaultLocale: 'en',
+    strategy: "no_prefix",
+    defaultLocale: "en",
     locales: [
-      { code: 'en', file: 'en-US.json' },
-      { code: 'ru', file: 'ru-RU.json' },
+      { code: "en", file: "en-US.json" },
+      { code: "ru", file: "ru-RU.json" },
     ],
-    langDir: '/mnt/disk2/workspace/gran-video-editor/src/locales',
-    vueI18n: '~/i18n.config.ts',
+    langDir: "locales",
+    vueI18n: "~/i18n.config.ts",
   },
 
   devtools: { enabled: true },
 
-  compatibilityDate: '2024-11-01',
+  compatibilityDate: "2024-11-01",
 
   typescript: {
     strict: true,
   },
 
+  vite: {
+    worker: {
+      format: "es",
+    },
+  },
+
   nitro: {
-    preset: 'static',
+    preset: "static",
   },
 
   app: {
     head: {
-      title: 'Gran Video Editor',
+      title: "Gran Video Editor",
       meta: [
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
       ],
     },
   },
-})
+});
