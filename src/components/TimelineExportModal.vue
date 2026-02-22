@@ -61,6 +61,7 @@ const {
   loadCodecSupport,
   exportTimelineToFile,
   cancelExport,
+  cancelRequested,
 } = useTimelineExport();
 
 const isOpen = computed({
@@ -79,6 +80,8 @@ function getFormatOptions(): readonly FormatOption[] {
 function getVideoCodecOptions() {
   return resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value);
 }
+
+
 
 function getAudioCodecLabel() {
   if (outputFormat.value === 'webm' || outputFormat.value === 'mkv') return 'Opus';
