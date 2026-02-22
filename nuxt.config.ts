@@ -9,7 +9,7 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxtjs/i18n',
     '@nuxt/eslint',
-    '@nuxtjs/color-mode',
+    ...(process.env.NODE_ENV === 'test' ? [] : ['@nuxtjs/color-mode']),
   ],
 
   css: ['~/assets/css/main.css'],
