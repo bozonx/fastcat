@@ -4,6 +4,7 @@ import { useProjectStore } from '~/stores/project.store';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
+import AppModal from '~/components/ui/AppModal.vue';
 import { BASE_VIDEO_CODEC_OPTIONS, resolveVideoCodecOptions } from '~/utils/webcodecs';
 import {
   useTimelineExport,
@@ -245,82 +246,39 @@ async function handleConfirm() {
 </script>
 
 <template>
-  <UModal v-model:open="isOpen" :prevent-close="isExporting">
-    <UCard
-      :ui="{
-        root: 'sm:max-w-lg',
-        header: 'p-4 sm:px-6',
-        body: 'p-4 sm:px-6',
-        footer: 'p-4 sm:px-6',
-      }"
-    >
-      <template #header>
-        <div class="flex items-center justify-between">
-          <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-            {{ t('videoEditor.export.title', 'Export Timeline') }}
-          </h3>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-x-mark-20-solid"
-            class="-my-1"
-            :disabled="isExporting"
-            @click="isOpen = false"
-          />
-        </div>
-      </template>
-
-      <div class="flex flex-col gap-6">
-        <div class="flex flex-col gap-1.5">
-          <UFormField :label="t('videoEditor.export.filename', 'Filename')" :error="filenameError ?? undefined">
-            <UInput
-              v-model="outputFilename"
-              class="w-full"
-              :disabled="isExporting"
-              :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
-            />
-          </UFormField>
-          <div class="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
-            <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
-            <span class="leading-relaxed">
-              {{
-                t(
-                  'videoEditor.export.saveLocationNote',
-                  'File will be saved to the export/ folder in your project directory',
-                )
-              }}
-            </span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField :label="t('videoEditor.export.width', 'Width')">
-            <UInput
-              v-model.number="exportWidth"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-              :disabled="isExporting"
-            />
-          </UFormField>
-          <UFormField :label="t('videoEditor.export.height', 'Height')">
-            <UInput
-              v-model.number="exportHeight"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-              :disabled="isExporting"
-            />
-          </UFormField>
-        </div>
-
-        <UFormField :label="t('videoEditor.export.fps', 'FPS')">
+  <AppModal
+    v-model:open="isOpen"
+    :prevent-close="isExporting"
+    :title="t('videoEditor.export.title', 'Export Timeline')"
+    :ui="{ content: 'sm:max-w-lg' }"
+  >
+    <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-1.5">
+        <UFormField :label="t('videoEditor.export.filename', 'Filename')" :error="filenameError ?? undefined">
           <UInput
-            v-model.number="exportFps"
+            v-model="outputFilename"
+            class="w-full"
+            :disabled="isExporting"
+            :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
+          />
+        </UFormField>
+        <div class="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
+          <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
+          <span class="leading-relaxed">
+            {{
+              t(
+                'videoEditor.export.saveLocationNote',
+                'File will be saved to the export/ folder in your project directory',
+              )
+            }}
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField :label="t('videoEditor.export.width', 'Width')">
+          <UInput
+            v-model.number="exportWidth"
             type="number"
             inputmode="numeric"
             min="1"
@@ -329,69 +287,92 @@ async function handleConfirm() {
             :disabled="isExporting"
           />
         </UFormField>
-
-        <MediaEncodingSettings
-          v-model:output-format="outputFormat"
-          v-model:video-codec="videoCodec"
-          v-model:bitrate-mbps="bitrateMbps"
-          v-model:exclude-audio="excludeAudio"
-          v-model:audio-bitrate-kbps="audioBitrateKbps"
-          :disabled="isExporting"
-          :has-audio="true"
-          :is-loading-codec-support="isLoadingCodecSupport"
-          :format-options="getFormatOptions()"
-          :video-codec-options="getVideoCodecOptions()"
-          :audio-codec-label="getAudioCodecLabel()"
-        />
-
-        <div
-          v-if="exportError"
-          class="p-3 text-sm text-red-400 bg-red-400/10 rounded-md border border-red-400/20"
-        >
-          {{ exportError }}
-        </div>
+        <UFormField :label="t('videoEditor.export.height', 'Height')">
+          <UInput
+            v-model.number="exportHeight"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            step="1"
+            class="w-full"
+            :disabled="isExporting"
+          />
+        </UFormField>
       </div>
 
-      <template #footer>
-        <div class="flex flex-col gap-3">
-          <div v-if="isExporting" class="flex flex-col gap-2">
-            <div class="flex justify-between text-xs text-gray-400">
-              <span class="font-medium">{{ getPhaseLabel() }}</span>
-              <span class="font-mono">{{ Math.round(exportProgress * 100) }}%</span>
-            </div>
-            <UProgress :value="exportProgress * 100" />
-            <p class="text-xs text-gray-500 text-center mt-1">
-              {{
-                t(
-                  'videoEditor.export.doNotClose',
-                  'Please do not close this window or navigate away during export.',
-                )
-              }}
-            </p>
+      <UFormField :label="t('videoEditor.export.fps', 'FPS')">
+        <UInput
+          v-model.number="exportFps"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          step="1"
+          class="w-full"
+          :disabled="isExporting"
+        />
+      </UFormField>
+
+      <MediaEncodingSettings
+        v-model:output-format="outputFormat"
+        v-model:video-codec="videoCodec"
+        v-model:bitrate-mbps="bitrateMbps"
+        v-model:exclude-audio="excludeAudio"
+        v-model:audio-bitrate-kbps="audioBitrateKbps"
+        :disabled="isExporting"
+        :has-audio="true"
+        :is-loading-codec-support="isLoadingCodecSupport"
+        :format-options="getFormatOptions()"
+        :video-codec-options="getVideoCodecOptions()"
+        :audio-codec-label="getAudioCodecLabel()"
+      />
+
+      <div
+        v-if="exportError"
+        class="p-3 text-sm text-red-400 bg-red-400/10 rounded-md border border-red-400/20"
+      >
+        {{ exportError }}
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="flex flex-col gap-3 w-full">
+        <div v-if="isExporting" class="flex flex-col gap-2">
+          <div class="flex justify-between text-xs text-gray-400">
+            <span class="font-medium">{{ getPhaseLabel() }}</span>
+            <span class="font-mono">{{ Math.round(exportProgress * 100) }}%</span>
           </div>
-          <div class="flex justify-end gap-2" :class="{ 'mt-2': isExporting }">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              :label="t('common.cancel', 'Cancel')"
-              :disabled="isExporting"
-              @click="isOpen = false"
-            />
-            <UButton
-              color="primary"
-              variant="solid"
-              :label="
-                isExporting
-                  ? t('videoEditor.export.exporting', 'Exporting...')
-                  : t('videoEditor.export.startExport', 'Export')
-              "
-              :loading="isExporting"
-              :disabled="isExporting || !!filenameError || !outputFilename.trim()"
-              @click="handleConfirm"
-            />
-          </div>
+          <UProgress :value="exportProgress * 100" />
+          <p class="text-xs text-gray-500 text-center mt-1">
+            {{
+              t(
+                'videoEditor.export.doNotClose',
+                'Please do not close this window or navigate away during export.',
+              )
+            }}
+          </p>
         </div>
-      </template>
-    </UCard>
-  </UModal>
+        <div class="flex justify-end gap-2" :class="{ 'mt-2': isExporting }">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :label="t('common.cancel', 'Cancel')"
+            :disabled="isExporting"
+            @click="isOpen = false"
+          />
+          <UButton
+            color="primary"
+            variant="solid"
+            :label="
+              isExporting
+                ? t('videoEditor.export.exporting', 'Exporting...')
+                : t('videoEditor.export.startExport', 'Export')
+            "
+            :loading="isExporting"
+            :disabled="isExporting || !!filenameError || !outputFilename.trim()"
+            @click="handleConfirm"
+          />
+        </div>
+      </div>
+    </template>
+  </AppModal>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import AppModal from '~/components/ui/AppModal.vue';
 
 interface Props {
   open: boolean;
@@ -32,7 +33,7 @@ const proxyLimitGb = computed({
 </script>
 
 <template>
-  <UiAppModal v-model:open="isOpen" :title="t('videoEditor.settings.title', 'Editor settings')">
+  <AppModal v-model:open="isOpen" :title="t('videoEditor.settings.title', 'Editor settings')">
     <div class="flex flex-col gap-8">
       <div class="flex flex-col gap-4">
         <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
@@ -133,5 +134,5 @@ const proxyLimitGb = computed({
         </div>
       </div>
     </div>
-  </UiAppModal>
+  </AppModal>
 </template>
