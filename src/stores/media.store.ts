@@ -3,7 +3,7 @@ import { ref } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';
-import { getExportWorkerClient } from '../../utils/video-editor/worker-client';
+import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
 
 export interface MediaMetadata {
   source: {

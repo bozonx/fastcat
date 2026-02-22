@@ -23,12 +23,8 @@ export default defineNuxtConfig({
       { code: 'en', file: 'en-US.json' },
       { code: 'ru', file: 'ru-RU.json' },
     ],
-    langDir: 'locales/',
-    vueI18n: {
-      legacy: false,
-      locale: 'en',
-      fallbackLocale: 'en',
-    },
+    langDir: '/mnt/disk2/workspace/gran-video-editor/src/locales',
+    vueI18n: '~/i18n.config.ts',
   },
 
   devtools: { enabled: true },

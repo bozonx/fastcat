@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
 
 interface FsEntry {
   name: string
@@ -115,7 +114,7 @@ function getContextMenuItems(entry: FsEntry) {
       </UContextMenu>
 
       <!-- Children (recursive) -->
-      <GranVideoEditorFileManagerTree
+      <FileManagerTree
         v-if="entry.kind === 'directory' && entry.expanded && entry.children"
         :entries="entry.children"
         :depth="depth + 1"

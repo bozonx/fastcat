@@ -81,7 +81,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown')
           :src="currentUrl" 
           class="max-w-full max-h-full object-contain" 
         />
-        <GranVideoEditorMediaPlayer 
+        <MediaPlayer 
           v-else-if="mediaType === 'video' || mediaType === 'audio'"
           :src="currentUrl"
           :type="mediaType"

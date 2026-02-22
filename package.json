@@ -29,11 +29,13 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.3",
+    "@iconify-json/lucide": "^1.2.93",
     "@nuxt/icon": "^2.2.1",
     "@tailwindcss/vite": "^4.2.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.13.5",
+    "@types/node": "^25.3.0",
     "tailwindcss": "^4.2.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.9.3"
   }
 }

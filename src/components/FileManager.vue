@@ -678,7 +678,7 @@ async function createTimeline() {
           </div>
 
           <!-- File tree -->
-          <GranVideoEditorFileManagerTree
+          <FileManagerTree
             v-else
             :entries="rootEntries"
             :depth="0"
