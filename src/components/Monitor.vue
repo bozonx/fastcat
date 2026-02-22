@@ -284,6 +284,7 @@ watch(
 // Playback loop state
 let playbackLoopId = 0
 let lastFrameTimeMs = 0
+let lastRenderTimeMs = 0
 let renderQueue: Promise<any> = Promise.resolve()
 
 function updatePlayback(timestamp: number) {
@@ -302,7 +303,14 @@ function updatePlayback(timestamp: number) {
   }
 
   timelineStore.currentTime = newTimeUs
-  scheduleRender(newTimeUs)
+
+  const fps = projectStore.projectSettings?.export?.fps || 30
+  const frameIntervalMs = 1000 / fps
+
+  if (timestamp - lastRenderTimeMs >= frameIntervalMs) {
+    lastRenderTimeMs = timestamp - ((timestamp - lastRenderTimeMs) % frameIntervalMs)
+    scheduleRender(newTimeUs)
+  }
 
   if (timelineStore.isPlaying) {
     playbackLoopId = requestAnimationFrame(updatePlayback)
@@ -320,6 +328,7 @@ watch(() => timelineStore.isPlaying, (playing) => {
       timelineStore.currentTime = 0
     }
     lastFrameTimeMs = performance.now()
+    lastRenderTimeMs = lastFrameTimeMs
     playbackLoopId = requestAnimationFrame(updatePlayback)
   } else {
     cancelAnimationFrame(playbackLoopId)
