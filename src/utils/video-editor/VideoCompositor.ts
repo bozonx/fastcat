@@ -1,4 +1,12 @@
-import { Application, Sprite, Texture, CanvasSource, DOMAdapter, WebWorkerAdapter } from 'pixi.js';
+import {
+  Application,
+  Sprite,
+  Texture,
+  CanvasSource,
+  ImageSource,
+  DOMAdapter,
+  WebWorkerAdapter,
+} from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 
 export interface CompositorClip {
@@ -13,8 +21,11 @@ export interface CompositorClip {
   sourceStartUs: number;
   sourceDurationUs: number;
   sprite: Sprite;
-  canvas: OffscreenCanvas;
-  ctx: OffscreenCanvasRenderingContext2D;
+  sourceKind: 'videoFrame' | 'canvas';
+  imageSource: ImageSource;
+  lastVideoFrame: VideoFrame | null;
+  canvas: OffscreenCanvas | null;
+  ctx: OffscreenCanvasRenderingContext2D | null;
 }
 
 export class VideoCompositor {
@@ -31,6 +42,7 @@ export class VideoCompositor {
   private activeClipId: string | null = null;
   private lastRenderedTimeUs = 0;
   private clipPreferBitmapFallback = new Map<string, boolean>();
+  private clipPreferCanvasFallback = new Map<string, boolean>();
 
   async init(
     width: number,
@@ -170,12 +182,10 @@ export class VideoCompositor {
 
       sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
 
-      // Keep small per-clip backing canvas. It will be resized lazily to source frame size.
-      const clipCanvas = new OffscreenCanvas(2, 2);
-      const clipCtx = clipCanvas.getContext('2d')!;
-
-      const canvasSource = new CanvasSource({ resource: clipCanvas as any });
-      const texture = new Texture({ source: canvasSource });
+      // Start with a VideoFrame-powered texture source when available.
+      // Fallback to a per-clip OffscreenCanvas if VideoFrame upload fails at runtime.
+      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+      const texture = new Texture({ source: imageSource });
       const sprite = new Sprite(texture);
 
       sprite.width = 1;
@@ -196,8 +206,11 @@ export class VideoCompositor {
         sourceStartUs,
         sourceDurationUs,
         sprite,
-        canvas: clipCanvas,
-        ctx: clipCtx,
+        sourceKind: 'videoFrame',
+        imageSource,
+        lastVideoFrame: null,
+        canvas: null,
+        ctx: null,
       };
 
       nextClips.push(compositorClip);
@@ -303,12 +316,9 @@ export class VideoCompositor {
           const sample = await clip.sink.getSample(sampleTimeS);
 
           if (sample) {
-            await this.drawSampleToCanvas(sample, clip);
-            clip.sprite.texture.source.update();
+            await this.updateClipTextureFromSample(sample, clip);
             clip.sprite.visible = true;
             this.activeClipId = clip.itemId;
-
-            if ('close' in sample) (sample as any).close();
           } else {
             clip.sprite.visible = false;
           }
@@ -320,10 +330,105 @@ export class VideoCompositor {
     }
 
     this.app.render();
+
+    // After rendering, it's safe to close the previous frame resources.
+    for (const c of this.clips) {
+      if (c.lastVideoFrame) {
+        try {
+          c.lastVideoFrame.close();
+        } catch {
+          // ignore
+        }
+        c.lastVideoFrame = null;
+      }
+    }
     return this.canvas;
   }
 
+  private ensureCanvasFallback(clip: CompositorClip) {
+    if (clip.canvas && clip.ctx) return;
+    const clipCanvas = new OffscreenCanvas(2, 2);
+    const clipCtx = clipCanvas.getContext('2d');
+    if (!clipCtx) {
+      throw new Error('Failed to create 2D rendering context for clip canvas');
+    }
+    clip.canvas = clipCanvas;
+    clip.ctx = clipCtx;
+    const canvasSource = new CanvasSource({ resource: clipCanvas as any });
+    clip.sprite.texture.source = canvasSource as any;
+    clip.sourceKind = 'canvas';
+  }
+
+  private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
+    const preferCanvas = this.clipPreferCanvasFallback.get(clip.itemId) === true;
+
+    try {
+      if (preferCanvas) {
+        throw new Error('Prefer canvas fallback');
+      }
+
+      // Prefer WebCodecs VideoFrame path (GPU-friendly upload).
+      if (typeof sample?.toVideoFrame === 'function') {
+        const frame = sample.toVideoFrame() as VideoFrame;
+        const frameW = Math.max(
+          1,
+          Math.round((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1),
+        );
+        const frameH = Math.max(
+          1,
+          Math.round((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1),
+        );
+
+        if (clip.sourceKind !== 'videoFrame') {
+          // Restore ImageSource-based texture
+          clip.sprite.texture.source = clip.imageSource as any;
+          clip.sourceKind = 'videoFrame';
+        }
+
+        if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {
+          clip.imageSource.resize(frameW, frameH);
+        }
+
+        // Assign the new frame as the resource and mark for upload.
+        (clip.imageSource as any).resource = frame as any;
+        clip.imageSource.update();
+
+        // Layout on stage
+        this.applySpriteLayout(frameW, frameH, clip);
+
+        // Close the VideoSample immediately, but keep the VideoFrame alive until after render.
+        if ('close' in sample) (sample as any).close();
+        clip.lastVideoFrame = frame;
+        return;
+      }
+    } catch (err) {
+      this.clipPreferCanvasFallback.set(clip.itemId, true);
+      console.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
+    }
+
+    // Fallback: draw into 2D canvas and upload.
+    await this.drawSampleToCanvas(sample, clip);
+    if ('close' in sample) (sample as any).close();
+  }
+
+  private applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip) {
+    const viewportScale = Math.min(this.width / frameW, this.height / frameH);
+    const targetW = frameW * viewportScale;
+    const targetH = frameH * viewportScale;
+    const targetX = (this.width - targetW) / 2;
+    const targetY = (this.height - targetH) / 2;
+    clip.sprite.x = targetX;
+    clip.sprite.y = targetY;
+    clip.sprite.width = targetW;
+    clip.sprite.height = targetH;
+  }
+
   private async drawSampleToCanvas(sample: any, clip: CompositorClip) {
+    this.ensureCanvasFallback(clip);
+    const ctx = clip.ctx;
+    const canvas = clip.canvas;
+    if (!ctx || !canvas) return;
+
     let imageSource: any;
     try {
       imageSource =
@@ -334,21 +439,15 @@ export class VideoCompositor {
         Math.round(imageSource?.displayHeight ?? imageSource?.height ?? 1),
       );
 
-      if (clip.canvas.width !== frameW || clip.canvas.height !== frameH) {
-        clip.canvas.width = frameW;
-        clip.canvas.height = frameH;
+      if (canvas.width !== frameW || canvas.height !== frameH) {
+        canvas.width = frameW;
+        canvas.height = frameH;
         if (typeof clip.sprite.texture.source.resize === 'function') {
           clip.sprite.texture.source.resize(frameW, frameH);
         }
       }
 
-      clip.ctx.clearRect(0, 0, clip.canvas.width, clip.canvas.height);
-
-      const viewportScale = Math.min(this.width / frameW, this.height / frameH);
-      const targetW = frameW * viewportScale;
-      const targetH = frameH * viewportScale;
-      const targetX = (this.width - targetW) / 2;
-      const targetY = (this.height - targetH) / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const preferBitmap = this.clipPreferBitmapFallback.get(clip.itemId) === true;
 
@@ -356,22 +455,18 @@ export class VideoCompositor {
         if (preferBitmap) {
           throw new Error('Prefer createImageBitmap fallback');
         }
-        clip.ctx.drawImage(imageSource, 0, 0, frameW, frameH);
-        clip.sprite.x = targetX;
-        clip.sprite.y = targetY;
-        clip.sprite.width = targetW;
-        clip.sprite.height = targetH;
+        ctx.drawImage(imageSource, 0, 0, frameW, frameH);
+        this.applySpriteLayout(frameW, frameH, clip);
+        clip.sprite.texture.source.update();
         return;
       } catch (err) {
         this.clipPreferBitmapFallback.set(clip.itemId, true);
         console.warn('[VideoCompositor] drawImage failed, trying createImageBitmap fallback:', err);
         try {
           const bmp = await createImageBitmap(imageSource);
-          clip.ctx.drawImage(bmp, 0, 0, frameW, frameH);
-          clip.sprite.x = targetX;
-          clip.sprite.y = targetY;
-          clip.sprite.width = targetW;
-          clip.sprite.height = targetH;
+          ctx.drawImage(bmp, 0, 0, frameW, frameH);
+          this.applySpriteLayout(frameW, frameH, clip);
+          clip.sprite.texture.source.update();
           bmp.close();
           return;
         } catch (innerErr) {
@@ -385,7 +480,8 @@ export class VideoCompositor {
 
     if (typeof sample.draw === 'function') {
       try {
-        sample.draw(clip.ctx, 0, 0, clip.canvas.width, clip.canvas.height);
+        sample.draw(ctx, 0, 0, canvas.width, canvas.height);
+        clip.sprite.texture.source.update();
       } catch (err) {
         console.error('[VideoCompositor] sample.draw failed:', err);
       }
@@ -454,6 +550,14 @@ export class VideoCompositor {
   private destroyClip(clip: CompositorClip) {
     this.disposeResource(clip.sink);
     this.disposeResource(clip.input);
+    if (clip.lastVideoFrame) {
+      try {
+        clip.lastVideoFrame.close();
+      } catch {
+        // ignore
+      }
+      clip.lastVideoFrame = null;
+    }
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
     }
