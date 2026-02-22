@@ -21,26 +21,109 @@ interface WorkerTimelineClip {
   }
 }
 
+async function flushBuildQueue() {
+  if (buildInFlight) {
+    return
+  }
+
+  buildInFlight = true
+  try {
+    while (buildRequested && !isUnmounted) {
+      buildRequested = false
+      await buildTimeline()
+    }
+  } finally {
+    buildInFlight = false
+  }
+}
+
+function scheduleLayoutUpdate(layoutClips: WorkerTimelineClip[]) {
+  pendingLayoutClips = layoutClips
+  if (layoutDebounceTimer !== null) {
+    clearTimeout(layoutDebounceTimer)
+  }
+  layoutDebounceTimer = window.setTimeout(() => {
+    layoutDebounceTimer = null
+    void flushLayoutUpdateQueue()
+  }, LAYOUT_DEBOUNCE_MS)
+}
+
+async function flushLayoutUpdateQueue() {
+  if (layoutUpdateInFlight || isUnmounted) {
+    return
+  }
+
+  layoutUpdateInFlight = true
+  try {
+    while (pendingLayoutClips) {
+      const layoutClips = pendingLayoutClips
+      pendingLayoutClips = null
+      try {
+        const maxDuration = await client.updateTimelineLayout(layoutClips)
+        timelineStore.duration = maxDuration
+        lastBuiltLayoutSignature = clipLayoutSignature.value
+        scheduleRender(localCurrentTimeUs)
+      } catch (error) {
+        console.error('[Monitor] Failed to update timeline layout', error)
+      }
+    }
+  } finally {
+    layoutUpdateInFlight = false
+  }
+}
+
 const { t } = useI18n()
 const projectStore = useProjectStore()
 const timelineStore = useTimelineStore()
 
 const videoTrack = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find((track: TimelineTrack) => track.kind === 'video') ?? null)
 const videoItems = computed(() => (videoTrack.value?.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'))
-const clipSourceSignature = computed(() =>
-  videoItems.value
-    .map(item => `${item.id}|${item.kind === 'clip' ? item.source.path : ''}`)
-    .join(';'),
-)
-const clipLayoutSignature = computed(() =>
-  videoItems.value
-    .map(item =>
-      item.kind === 'clip'
-        ? `${item.id}|${item.timelineRange.startUs}|${item.timelineRange.durationUs}|${item.sourceRange.startUs}|${item.sourceRange.durationUs}`
-        : `${item.id}|${item.timelineRange.startUs}|${item.timelineRange.durationUs}`,
-    )
-    .join(';'),
-)
+function hashString(value: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function mixHash(hash: number, value: number): number {
+  hash ^= value
+  hash = Math.imul(hash, 16777619)
+  return hash >>> 0
+}
+
+function mixTime(hash: number, value: number): number {
+  const safeValue = Number.isFinite(value) ? Math.round(value) : 0
+  const low = safeValue >>> 0
+  const high = Math.floor(safeValue / 0x1_0000_0000) >>> 0
+  return mixHash(mixHash(hash, low), high)
+}
+
+const clipSourceSignature = computed(() => {
+  let hash = mixHash(2166136261, videoItems.value.length)
+  for (const item of videoItems.value) {
+    hash = mixHash(hash, hashString(item.id))
+    if (item.kind === 'clip') {
+      hash = mixHash(hash, hashString(item.source.path))
+    }
+  }
+  return hash
+})
+
+const clipLayoutSignature = computed(() => {
+  let hash = mixHash(2166136261, videoItems.value.length)
+  for (const item of videoItems.value) {
+    hash = mixHash(hash, hashString(item.id))
+    hash = mixTime(hash, item.timelineRange.startUs)
+    hash = mixTime(hash, item.timelineRange.durationUs)
+    if (item.kind === 'clip') {
+      hash = mixTime(hash, item.sourceRange.startUs)
+      hash = mixTime(hash, item.sourceRange.durationUs)
+    }
+  }
+  return hash
+})
 
 const containerEl = ref<HTMLDivElement | null>(null)
 const viewportEl = ref<HTMLDivElement | null>(null)
@@ -109,12 +192,19 @@ function toWorkerTimelineClips(items: TimelineTrackItem[]): WorkerTimelineClip[]
   return clips
 }
 
+const BUILD_DEBOUNCE_MS = 120
+const LAYOUT_DEBOUNCE_MS = 50
+const STORE_TIME_SYNC_MS = 100
+
 function scheduleBuild() {
-  buildQueue = buildQueue
-    .then(() => buildTimeline())
-    .catch((err) => {
-      console.error('[Monitor] Failed to build timeline queue', err)
-    })
+  if (buildDebounceTimer !== null) {
+    clearTimeout(buildDebounceTimer)
+  }
+  buildDebounceTimer = window.setTimeout(() => {
+    buildDebounceTimer = null
+    buildRequested = true
+    void flushBuildQueue()
+  }, BUILD_DEBOUNCE_MS)
 }
 
 function getCanvasInnerStyle() {
@@ -128,11 +218,22 @@ function getCanvasInnerStyle() {
 
 let viewportResizeObserver: ResizeObserver | null = null
 let buildRequestId = 0
-let lastBuiltSourceSignature = ''
-let buildQueue: Promise<void> = Promise.resolve()
+let lastBuiltSourceSignature = 0
+let lastBuiltLayoutSignature = 0
+let canvasEl: HTMLCanvasElement | null = null
+let compositorReady = false
+let compositorWidth = 0
+let compositorHeight = 0
+let buildInFlight = false
+let buildRequested = false
+let buildDebounceTimer: number | null = null
+let layoutDebounceTimer: number | null = null
+let layoutUpdateInFlight = false
+let pendingLayoutClips: WorkerTimelineClip[] | null = null
 let renderLoopInFlight = false
 let latestRenderTimeUs: number | null = null
 let isUnmounted = false
+let suppressStoreSeekWatch = false
 
 const { client } = getPreviewWorkerClient()
 
@@ -166,6 +267,57 @@ function scheduleRender(timeUs: number) {
   void run()
 }
 
+function updateStoreTime(timeUs: number) {
+  if (timelineStore.currentTime === timeUs) {
+    return
+  }
+  suppressStoreSeekWatch = true
+  timelineStore.currentTime = timeUs
+  suppressStoreSeekWatch = false
+}
+
+async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
+  if (!containerEl.value) {
+    return
+  }
+
+  const shouldRecreate = options?.forceRecreate ?? false
+  const targetWidth = exportWidth.value
+  const targetHeight = exportHeight.value
+  const needReinit =
+    !compositorReady ||
+    compositorWidth !== targetWidth ||
+    compositorHeight !== targetHeight ||
+    shouldRecreate
+
+  if (!needReinit) {
+    return
+  }
+
+  if (shouldRecreate || !canvasEl || needReinit) {
+    containerEl.value.innerHTML = ''
+    canvasEl = document.createElement('canvas')
+    canvasEl.style.width = '100%'
+    canvasEl.style.height = '100%'
+    canvasEl.style.display = 'block'
+    containerEl.value.appendChild(canvasEl)
+    compositorReady = false
+  }
+
+  if (!canvasEl) {
+    return
+  }
+
+  canvasEl.width = targetWidth
+  canvasEl.height = targetHeight
+  const offscreen = canvasEl.transferControlToOffscreen()
+  await client.destroyCompositor()
+  await client.initCompositor(offscreen, targetWidth, targetHeight, '#000')
+  compositorReady = true
+  compositorWidth = targetWidth
+  compositorHeight = targetHeight
+}
+
 function updateCanvasDisplaySize() {
   const viewport = viewportEl.value
   if (!viewport) return
@@ -197,29 +349,17 @@ async function buildTimeline() {
   loadError.value = null
 
   try {
+    await ensureCompositorReady()
     const clips = toWorkerTimelineClips(videoItems.value)
-    console.log('[Monitor] Timeline clips count:', clips.length)
     if (clips.length === 0) {
       await client.clearClips()
+      timelineStore.duration = 0
+      localCurrentTimeUs = 0
+      uiCurrentTimeUs.value = 0
+      updateStoreTime(0)
       isLoading.value = false
       return
     }
-
-    if (containerEl.value) {
-      containerEl.value.innerHTML = ''
-      const canvas = document.createElement('canvas')
-      canvas.width = exportWidth.value
-      canvas.height = exportHeight.value
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
-      canvas.style.display = 'block'
-      containerEl.value.appendChild(canvas)
-      const offscreen = canvas.transferControlToOffscreen()
-      await client.destroyCompositor()
-      await client.initCompositor(offscreen, exportWidth.value, exportHeight.value, '#000')
-    }
-
-    console.log('[Monitor] VideoCompositor initialized canvas via worker', exportWidth.value, exportHeight.value)
 
     setPreviewHostApi({
       getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
@@ -229,17 +369,15 @@ async function buildTimeline() {
     const maxDuration = await client.loadTimeline(clips)
 
     lastBuiltSourceSignature = clipSourceSignature.value
+    lastBuiltLayoutSignature = clipLayoutSignature.value
 
     timelineStore.duration = maxDuration
-    console.log('[Monitor] Timeline duration:', maxDuration)
 
-    // Show first frame
-    console.log('[Monitor] Previewing first frame...')
-    scheduleRender(0)
-    console.log('[Monitor] First frame previewed')
-
-    timelineStore.currentTime = 0
+    localCurrentTimeUs = 0
+    uiCurrentTimeUs.value = 0
+    updateStoreTime(0)
     timelineStore.isPlaying = false
+    scheduleRender(0)
 
   } catch (e: any) {
     console.error('Failed to build timeline components', e)
@@ -258,25 +396,25 @@ watch(clipSourceSignature, () => {
 })
 
 watch(clipLayoutSignature, () => {
-  if (isLoading.value) {
+  if (isLoading.value || !compositorReady) {
     return
   }
   if (clipSourceSignature.value !== lastBuiltSourceSignature) {
     return
   }
+  if (clipLayoutSignature.value === lastBuiltLayoutSignature) {
+    return
+  }
 
   const layoutClips = toWorkerTimelineClips(videoItems.value)
-  renderQueue = renderQueue.then(async () => {
-    const maxDuration = await client.updateTimelineLayout(layoutClips)
-    timelineStore.duration = maxDuration
-    scheduleRender(timelineStore.currentTime)
-  })
+  scheduleLayoutUpdate(layoutClips)
 })
 
 watch(
   () => [projectStore.projectSettings.export.width, projectStore.projectSettings.export.height],
   () => {
     updateCanvasDisplaySize()
+    compositorReady = false
     scheduleBuild()
   },
 )
@@ -284,31 +422,43 @@ watch(
 // Playback loop state
 let playbackLoopId = 0
 let lastFrameTimeMs = 0
-let lastRenderTimeMs = 0
-let renderQueue: Promise<any> = Promise.resolve()
+let localCurrentTimeUs = 0
+const uiCurrentTimeUs = ref(0)
+let renderAccumulatorMs = 0
+let storeSyncAccumulatorMs = 0
 
 function updatePlayback(timestamp: number) {
   if (!timelineStore.isPlaying) return
 
   const deltaMs = timestamp - lastFrameTimeMs
   lastFrameTimeMs = timestamp
+  renderAccumulatorMs += deltaMs
+  storeSyncAccumulatorMs += deltaMs
 
-  let newTimeUs = timelineStore.currentTime + deltaMs * 1000
+  let newTimeUs = localCurrentTimeUs + deltaMs * 1000
   if (newTimeUs >= timelineStore.duration) {
     newTimeUs = timelineStore.duration
     timelineStore.isPlaying = false
-    timelineStore.currentTime = newTimeUs
+    localCurrentTimeUs = newTimeUs
+    uiCurrentTimeUs.value = newTimeUs
+    updateStoreTime(newTimeUs)
     scheduleRender(newTimeUs)
     return
   }
 
-  timelineStore.currentTime = newTimeUs
+  localCurrentTimeUs = newTimeUs
+  uiCurrentTimeUs.value = newTimeUs
+
+  if (storeSyncAccumulatorMs >= STORE_TIME_SYNC_MS) {
+    storeSyncAccumulatorMs = 0
+    updateStoreTime(newTimeUs)
+  }
 
   const fps = projectStore.projectSettings?.export?.fps || 30
   const frameIntervalMs = 1000 / fps
 
-  if (timestamp - lastRenderTimeMs >= frameIntervalMs) {
-    lastRenderTimeMs = timestamp - ((timestamp - lastRenderTimeMs) % frameIntervalMs)
+  if (renderAccumulatorMs >= frameIntervalMs) {
+    renderAccumulatorMs %= frameIntervalMs
     scheduleRender(newTimeUs)
   }
 
@@ -324,26 +474,39 @@ watch(() => timelineStore.isPlaying, (playing) => {
   }
 
   if (playing) {
-    if (timelineStore.currentTime >= timelineStore.duration) {
-      timelineStore.currentTime = 0
+    if (localCurrentTimeUs >= timelineStore.duration) {
+      localCurrentTimeUs = 0
+      uiCurrentTimeUs.value = 0
+      updateStoreTime(0)
     }
+    localCurrentTimeUs = timelineStore.currentTime
+    uiCurrentTimeUs.value = timelineStore.currentTime
     lastFrameTimeMs = performance.now()
-    lastRenderTimeMs = lastFrameTimeMs
+    renderAccumulatorMs = 0
+    storeSyncAccumulatorMs = 0
     playbackLoopId = requestAnimationFrame(updatePlayback)
   } else {
     cancelAnimationFrame(playbackLoopId)
+    updateStoreTime(localCurrentTimeUs)
   }
 })
 
 // Sync time to store (initial seek or external seek)
 watch(() => timelineStore.currentTime, (val) => {
+  if (suppressStoreSeekWatch) {
+    return
+  }
   if (!timelineStore.isPlaying) {
+    localCurrentTimeUs = val
+    uiCurrentTimeUs.value = val
     scheduleRender(val)
   }
 })
 
 onMounted(() => {
   isUnmounted = false
+  localCurrentTimeUs = timelineStore.currentTime
+  uiCurrentTimeUs.value = timelineStore.currentTime
   updateCanvasDisplaySize()
   if (typeof ResizeObserver !== 'undefined' && viewportEl.value) {
     viewportResizeObserver = new ResizeObserver(() => {
@@ -357,9 +520,18 @@ onMounted(() => {
 onBeforeUnmount(() => {
   isUnmounted = true
   latestRenderTimeUs = null
+  if (buildDebounceTimer !== null) {
+    clearTimeout(buildDebounceTimer)
+    buildDebounceTimer = null
+  }
+  if (layoutDebounceTimer !== null) {
+    clearTimeout(layoutDebounceTimer)
+    layoutDebounceTimer = null
+  }
   viewportResizeObserver?.disconnect()
   viewportResizeObserver = null
   cancelAnimationFrame(playbackLoopId)
+  pendingLayoutClips = null
   client.destroyCompositor()
 })
 
@@ -425,7 +597,7 @@ function formatTime(seconds: number): string {
         @click="timelineStore.isPlaying = !timelineStore.isPlaying"
       />
       <span class="text-xs text-gray-600 ml-2 font-mono">
-        {{ formatTime(timelineStore.currentTime / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
+        {{ formatTime(uiCurrentTimeUs / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
       </span>
     </div>
   </div>
