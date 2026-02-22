@@ -325,22 +325,31 @@ export class VideoCompositor {
         clip.sprite.height = targetH;
         return;
       } catch (err) {
-        // Fallback for some browsers where drawImage fails on VideoFrame
-        const bmp = await createImageBitmap(imageSource);
-        clip.ctx.drawImage(bmp, 0, 0, frameW, frameH);
-        clip.sprite.x = targetX;
-        clip.sprite.y = targetY;
-        clip.sprite.width = targetW;
-        clip.sprite.height = targetH;
-        bmp.close();
-        return;
+        console.warn('[VideoCompositor] drawImage failed, trying createImageBitmap fallback:', err);
+        try {
+          const bmp = await createImageBitmap(imageSource);
+          clip.ctx.drawImage(bmp, 0, 0, frameW, frameH);
+          clip.sprite.x = targetX;
+          clip.sprite.y = targetY;
+          clip.sprite.width = targetW;
+          clip.sprite.height = targetH;
+          bmp.close();
+          return;
+        } catch (innerErr) {
+          console.error('[VideoCompositor] Fallback createImageBitmap failed:', innerErr);
+          throw innerErr;
+        }
       }
     } catch (err) {
-      // ignore
+      console.error('[VideoCompositor] drawSampleToCanvas failed to draw image:', err);
     }
 
     if (typeof sample.draw === 'function') {
-      sample.draw(clip.ctx, 0, 0, clip.canvas.width, clip.canvas.height);
+      try {
+        sample.draw(clip.ctx, 0, 0, clip.canvas.width, clip.canvas.height);
+      } catch (err) {
+        console.error('[VideoCompositor] sample.draw failed:', err);
+      }
       return;
     }
   }
