@@ -304,6 +304,9 @@ export class VideoCompositor {
       if (clip.canvas.width !== frameW || clip.canvas.height !== frameH) {
         clip.canvas.width = frameW;
         clip.canvas.height = frameH;
+        if (typeof clip.sprite.texture.source.resize === 'function') {
+          clip.sprite.texture.source.resize(frameW, frameH);
+        }
       }
 
       clip.ctx.clearRect(0, 0, clip.canvas.width, clip.canvas.height);
