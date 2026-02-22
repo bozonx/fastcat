@@ -15,8 +15,8 @@ const projectStore = useProjectStore();
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
-  { value: 'webm', label: 'WebM (VP9 + Opus)' },
-  { value: 'mkv', label: 'MKV (AV1 + Opus)' },
+  { value: 'webm', label: 'WebM' },
+  { value: 'mkv', label: 'MKV' },
 ];
 
 const videoCodecSupport = ref<Record<string, boolean>>({});
@@ -101,13 +101,13 @@ loadCodecSupport();
           v-model:video-codec="projectStore.projectSettings.export.encoding.videoCodec"
           v-model:bitrate-mbps="projectStore.projectSettings.export.encoding.bitrateMbps"
           v-model:exclude-audio="projectStore.projectSettings.export.encoding.excludeAudio"
+          v-model:audio-codec="projectStore.projectSettings.export.encoding.audioCodec"
           v-model:audio-bitrate-kbps="projectStore.projectSettings.export.encoding.audioBitrateKbps"
           :disabled="false"
           :has-audio="true"
           :is-loading-codec-support="isLoadingCodecSupport"
           :format-options="formatOptions"
           :video-codec-options="videoCodecOptions"
-          audio-codec-label="AAC"
         />
       </div>
 

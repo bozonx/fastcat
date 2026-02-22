@@ -15,10 +15,8 @@ export const BASE_VIDEO_CODEC_OPTIONS: readonly VideoCodecOption[] = [
   { value: 'avc1.42E032', label: 'H.264 (Baseline)' },
   { value: 'avc1.4D0032', label: 'H.264 (Main)' },
   { value: 'avc1.640032', label: 'H.264 (High)' },
-  { value: 'vp8', label: 'VP8' },
   { value: 'vp09.00.10.08', label: 'VP9' },
   { value: 'av01.0.05M.08', label: 'AV1' },
-  { value: 'hvc1.1.6.L93.B0', label: 'HEVC (H.265)' },
 ];
 
 export interface CheckVideoCodecSupportOptions {

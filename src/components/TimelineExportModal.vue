@@ -70,8 +70,8 @@ const isOpen = computed({
 function getFormatOptions(): readonly FormatOption[] {
   return [
     { value: 'mp4', label: 'MP4' },
-    { value: 'webm', label: 'WebM (VP9 + Opus)' },
-    { value: 'mkv', label: 'MKV (AV1 + Opus)' },
+    { value: 'webm', label: 'WebM' },
+    { value: 'mkv', label: 'MKV' },
   ];
 }
 
@@ -317,13 +317,13 @@ async function handleConfirm() {
         v-model:video-codec="videoCodec"
         v-model:bitrate-mbps="bitrateMbps"
         v-model:exclude-audio="excludeAudio"
+        v-model:audio-codec="audioCodec"
         v-model:audio-bitrate-kbps="audioBitrateKbps"
         :disabled="isExporting"
         :has-audio="true"
         :is-loading-codec-support="isLoadingCodecSupport"
         :format-options="getFormatOptions()"
         :video-codec-options="getVideoCodecOptions()"
-        :audio-codec-label="getAudioCodecLabel()"
       />
 
       <div

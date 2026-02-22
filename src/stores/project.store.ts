@@ -18,6 +18,7 @@ export interface GranVideoEditorProjectSettings {
       videoCodec: string;
       bitrateMbps: number;
       excludeAudio: boolean;
+      audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
     };
   };
@@ -36,6 +37,7 @@ const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
       videoCodec: 'avc1.42E032',
       bitrateMbps: 5,
       excludeAudio: false,
+      audioCodec: 'aac',
       audioBitrateKbps: 128,
     },
   },
@@ -55,6 +57,7 @@ function createDefaultProjectSettings(): GranVideoEditorProjectSettings {
         videoCodec: DEFAULT_PROJECT_SETTINGS.export.encoding.videoCodec,
         bitrateMbps: DEFAULT_PROJECT_SETTINGS.export.encoding.bitrateMbps,
         excludeAudio: DEFAULT_PROJECT_SETTINGS.export.encoding.excludeAudio,
+        audioCodec: DEFAULT_PROJECT_SETTINGS.export.encoding.audioCodec,
         audioBitrateKbps: DEFAULT_PROJECT_SETTINGS.export.encoding.audioBitrateKbps,
       },
     },
@@ -107,6 +110,7 @@ function normalizeProjectSettings(raw: unknown): GranVideoEditorProjectSettings 
             ? Math.min(200, Math.max(0.2, bitrateMbps))
             : DEFAULT_PROJECT_SETTINGS.export.encoding.bitrateMbps,
         excludeAudio: Boolean(encodingInput.excludeAudio),
+        audioCodec: encodingInput.audioCodec === 'opus' ? 'opus' : 'aac',
         audioBitrateKbps:
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))

@@ -27,11 +27,17 @@ const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { requi
 const videoCodec = defineModel<string>('videoCodec', { required: true });
 const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
+const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 
 const { t } = useI18n();
 
 const isAudioDisabled = computed(() => props.disabled || !props.hasAudio);
+
+const audioCodecOptions = [
+  { value: 'aac', label: 'AAC' },
+  { value: 'opus', label: 'Opus' },
+];
 </script>
 
 <template>
@@ -48,24 +54,23 @@ const isAudioDisabled = computed(() => props.disabled || !props.hasAudio);
       />
     </UFormField>
 
-    <UFormField
-      v-if="outputFormat === 'mp4'"
-      :label="t('videoEditor.export.videoCodec', 'Video codec')"
-    >
-      <USelectMenu
-        :model-value="
-          (props.videoCodecOptions.find((o) => o.value === videoCodec) || videoCodec) as any
-        "
-        :items="props.videoCodecOptions"
-        value-key="value"
-        label-key="label"
-        :disabled="props.disabled || props.isLoadingCodecSupport"
-        class="w-full"
-        @update:model-value="(v: any) => (videoCodec = v?.value ?? v)"
-      />
-    </UFormField>
-    <UFormField v-else :label="t('videoEditor.export.videoCodec', 'Video codec')">
-      <UInput disabled :model-value="outputFormat === 'mkv' ? 'AV1' : 'VP9'" class="w-full" />
+    <UFormField :label="t('videoEditor.export.videoCodec', 'Video codec')">
+      <div v-if="outputFormat === 'mp4'" class="w-full">
+        <USelectMenu
+          :model-value="
+            (props.videoCodecOptions.find((o) => o.value === videoCodec) || videoCodec) as any
+          "
+          :items="props.videoCodecOptions"
+          value-key="value"
+          label-key="label"
+          :disabled="props.disabled || props.isLoadingCodecSupport"
+          class="w-full"
+          @update:model-value="(v: any) => (videoCodec = v?.value ?? v)"
+        />
+      </div>
+      <div v-else class="py-1.5 px-3 text-sm text-gray-400 bg-gray-800/50 rounded-md border border-gray-700">
+        {{ outputFormat === 'mkv' ? 'AV1' : 'VP9' }}
+      </div>
     </UFormField>
 
     <UFormField
@@ -94,21 +99,18 @@ const isAudioDisabled = computed(() => props.disabled || !props.hasAudio);
 
     <UFormField
       v-if="!excludeAudio"
-      :label="t('videoEditor.export.audioCodecStatic', 'Audio codec')"
-      :help="
-        t(
-          'videoEditor.export.audioCodecStaticHelp',
-          'Codec is selected automatically based on container format',
-        )
-      "
+      :label="t('videoEditor.export.audioCodec', 'Audio codec')"
     >
-      <UInput
-        disabled
-        :model-value="
-          outputFormat === 'webm' || outputFormat === 'mkv' ? 'Opus' : props.audioCodecLabel
-        "
-        class="w-full"
-      />
+      <div v-if="outputFormat === 'mp4'" class="w-full">
+        <UiAppButtonGroup
+          v-model="audioCodec"
+          :options="audioCodecOptions"
+          :disabled="props.disabled"
+        />
+      </div>
+      <div v-else class="py-1.5 px-3 text-sm text-gray-400 bg-gray-800/50 rounded-md border border-gray-700">
+        Opus
+      </div>
     </UFormField>
 
     <UFormField
