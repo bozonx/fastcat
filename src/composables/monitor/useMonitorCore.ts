@@ -112,19 +112,24 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return maxEnd;
   }
 
+  function getAudioSourceKey(path: string) {
+    return `${useProxyInMonitor.value ? 'proxy' : 'source'}:${path}`;
+  }
+
   async function getFileHandleForAudio(path: string) {
-    const cached = audioHandleCache.get(path);
+    const cacheKey = getAudioSourceKey(path);
+    const cached = audioHandleCache.get(cacheKey);
     if (cached) return cached;
     if (useProxyInMonitor.value) {
       const proxyHandle = await proxyStore.getProxyFileHandle(path);
       if (proxyHandle) {
-        audioHandleCache.set(path, proxyHandle);
+        audioHandleCache.set(cacheKey, proxyHandle);
         return proxyHandle;
       }
     }
     const handle = await projectStore.getFileHandleByPath(path);
     if (!handle) return null;
-    audioHandleCache.set(path, handle);
+    audioHandleCache.set(cacheKey, handle);
     return handle;
   }
 
@@ -186,7 +191,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               if (!handle) return null;
               return {
                 id: clip.id,
-                sourcePath: clip.source.path,
+                sourcePath: getAudioSourceKey(clip.source.path),
                 fileHandle: handle,
                 startUs: clip.timelineRange.startUs,
                 durationUs: clip.timelineRange.durationUs,
@@ -351,7 +356,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               if (!handle) return null;
               return {
                 id: clip.id,
-                sourcePath: clip.source.path,
+                sourcePath: getAudioSourceKey(clip.source.path),
                 fileHandle: handle,
                 startUs: clip.timelineRange.startUs,
                 durationUs: clip.timelineRange.durationUs,
@@ -400,6 +405,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       if (isUnmounted) return;
 
       timelineStore.isPlaying = false;
+      audioHandleCache.clear();
       forceRecreateCompositorNextBuild = true;
       compositorReady = false;
       scheduleBuild();
