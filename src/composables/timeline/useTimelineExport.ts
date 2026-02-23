@@ -126,6 +126,10 @@ export function useTimelineExport() {
   const exportWidth = ref<number>(1920);
   const exportHeight = ref<number>(1080);
   const exportFps = ref<number>(30);
+  const resolutionFormat = ref<string>('1080p');
+  const orientation = ref<'landscape' | 'portrait'>('landscape');
+  const aspectRatio = ref<string>('16:9');
+  const isCustomResolution = ref<boolean>(false);
 
   const videoCodecSupport = ref<Record<string, boolean>>({});
   const isLoadingCodecSupport = ref(false);
@@ -378,6 +382,10 @@ export function useTimelineExport() {
     exportWidth,
     exportHeight,
     exportFps,
+    resolutionFormat,
+    orientation,
+    aspectRatio,
+    isCustomResolution,
     videoCodecSupport,
     isLoadingCodecSupport,
     ext,

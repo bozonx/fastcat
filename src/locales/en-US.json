@@ -1496,6 +1496,15 @@
       "proxy": "Proxy",
       "proxyHeight": "Height"
     },
+    "resolution": {
+      "customResolution": "Custom Resolution",
+      "format": "Format",
+      "orientation": "Orientation",
+      "aspectRatio": "Aspect Ratio",
+      "landscape": "Landscape",
+      "portrait": "Portrait",
+      "finalResolution": "Final Resolution:"
+    },
     "fileManager": {
       "title": "Files",
       "empty": "No files in this project",

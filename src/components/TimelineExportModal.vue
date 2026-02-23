@@ -4,6 +4,7 @@ import { useProjectStore } from '~/stores/project.store';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import { BASE_VIDEO_CODEC_OPTIONS, resolveVideoCodecOptions } from '~/utils/webcodecs';
 import {
@@ -46,9 +47,12 @@ const {
   exportWidth,
   exportHeight,
   exportFps,
+  resolutionFormat,
+  orientation,
+  aspectRatio,
+  isCustomResolution,
   videoCodecSupport,
   isLoadingCodecSupport,
-  ext,
   bitrateBps,
   normalizedExportWidth,
   normalizedExportHeight,
@@ -81,13 +85,6 @@ function getVideoCodecOptions() {
   return resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value);
 }
 
-
-
-function getAudioCodecLabel() {
-  if (outputFormat.value === 'webm' || outputFormat.value === 'mkv') return 'Opus';
-  return audioCodec.value === 'opus' ? 'Opus' : 'AAC';
-}
-
 function getPhaseLabel() {
   if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding', 'Encoding');
   if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
@@ -116,16 +113,17 @@ watch(
     exportWidth.value = projectStore.projectSettings.export.width;
     exportHeight.value = projectStore.projectSettings.export.height;
     exportFps.value = projectStore.projectSettings.export.fps;
+    resolutionFormat.value = projectStore.projectSettings.export.resolutionFormat;
+    orientation.value = projectStore.projectSettings.export.orientation;
+    aspectRatio.value = projectStore.projectSettings.export.aspectRatio;
+    isCustomResolution.value = projectStore.projectSettings.export.isCustomResolution;
 
     await ensureExportDir();
     await preloadExportIndex();
     const timelineBase = sanitizeBaseName(
       projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
     );
-    outputFilename.value = await getNextAvailableFilename(
-      timelineBase,
-      getExt(outputFormat.value),
-    );
+    outputFilename.value = await getNextAvailableFilename(timelineBase, getExt(outputFormat.value));
     await validateFilename();
   },
 );
@@ -204,6 +202,10 @@ async function handleConfirm() {
     projectStore.projectSettings.export.width = normalizedExportWidth.value;
     projectStore.projectSettings.export.height = normalizedExportHeight.value;
     projectStore.projectSettings.export.fps = normalizedExportFps.value;
+    projectStore.projectSettings.export.resolutionFormat = resolutionFormat.value;
+    projectStore.projectSettings.export.orientation = orientation.value;
+    projectStore.projectSettings.export.aspectRatio = aspectRatio.value;
+    projectStore.projectSettings.export.isCustomResolution = isCustomResolution.value;
     projectStore.projectSettings.export.encoding.format = outputFormat.value;
     projectStore.projectSettings.export.encoding.videoCodec = resolvedCodecs.videoCodec;
     projectStore.projectSettings.export.encoding.bitrateMbps = bitrateMbps.value;
@@ -267,7 +269,10 @@ async function handleConfirm() {
   >
     <div class="flex flex-col gap-6">
       <div class="flex flex-col gap-1.5">
-        <UFormField :label="t('videoEditor.export.filename', 'Filename')" :error="filenameError ?? undefined">
+        <UFormField
+          :label="t('videoEditor.export.filename', 'Filename')"
+          :error="filenameError ?? undefined"
+        >
           <UInput
             v-model="outputFilename"
             class="w-full"
@@ -288,42 +293,16 @@ async function handleConfirm() {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <UFormField :label="t('videoEditor.export.width', 'Width')">
-          <UInput
-            v-model.number="exportWidth"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            step="1"
-            class="w-full"
-            :disabled="isExporting"
-          />
-        </UFormField>
-        <UFormField :label="t('videoEditor.export.height', 'Height')">
-          <UInput
-            v-model.number="exportHeight"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            step="1"
-            class="w-full"
-            :disabled="isExporting"
-          />
-        </UFormField>
-      </div>
-
-      <UFormField :label="t('videoEditor.export.fps', 'FPS')">
-        <UInput
-          v-model.number="exportFps"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          step="1"
-          class="w-full"
-          :disabled="isExporting"
-        />
-      </UFormField>
+      <MediaResolutionSettings
+        v-model:width="exportWidth"
+        v-model:height="exportHeight"
+        v-model:fps="exportFps"
+        v-model:resolution-format="resolutionFormat"
+        v-model:orientation="orientation"
+        v-model:aspect-ratio="aspectRatio"
+        v-model:is-custom-resolution="isCustomResolution"
+        :disabled="isExporting"
+      />
 
       <MediaEncodingSettings
         v-model:output-format="outputFormat"

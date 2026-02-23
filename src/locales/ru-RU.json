@@ -1496,6 +1496,15 @@
       "proxy": "Прокси",
       "proxyHeight": "Высота"
     },
+    "resolution": {
+      "customResolution": "Точное разрешение",
+      "format": "Формат",
+      "orientation": "Ориентация",
+      "aspectRatio": "Пропорции",
+      "landscape": "Пейзаж",
+      "portrait": "Портрет",
+      "finalResolution": "Итоговое разрешение:"
+    },
     "fileManager": {
       "title": "Файлы",
       "empty": "В этом проекте нет файлов",

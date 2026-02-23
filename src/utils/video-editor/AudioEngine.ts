@@ -73,7 +73,7 @@ export class AudioEngine {
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume();
     }
-    
+
     this.isPlaying = true;
     const timeS = timeUs / 1_000_000;
     this.baseTimeS = timeS;
@@ -109,7 +109,7 @@ export class AudioEngine {
 
   private async scheduleClip(clip: AudioEngineClip, currentTimeS: number) {
     if (!this.ctx || !this.masterGain) return;
-    
+
     const sourceKey = await this.getCacheKey(clip.fileHandle);
     const buffer = this.decodedCache.get(sourceKey);
     if (!buffer) return;
@@ -117,12 +117,12 @@ export class AudioEngine {
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;
     const clipEndS = clipStartS + clipDurationS;
-    
+
     // If the clip is already completely in the past relative to current time, skip
     if (clipEndS <= currentTimeS) return;
 
     const sourceStartS = clip.sourceStartUs / 1_000_000;
-    
+
     let playStartS = 0; // When to start playing in AudioContext time
     let bufferOffsetS = 0; // Where to start in the audio buffer
 
@@ -142,13 +142,13 @@ export class AudioEngine {
     const sourceNode = this.ctx.createBufferSource();
     sourceNode.buffer = buffer;
     sourceNode.connect(this.masterGain);
-    
+
     sourceNode.start(playStartS, bufferOffsetS, durationToPlayS);
-    
+
     // Keep track to stop if needed
     // Using a composite key since a clip might be split or repeated (id should be unique though)
     this.activeNodes.set(clip.id, sourceNode);
-    
+
     sourceNode.onended = () => {
       if (this.activeNodes.get(clip.id) === sourceNode) {
         this.activeNodes.delete(clip.id);

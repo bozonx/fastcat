@@ -13,6 +13,10 @@ export interface GranVideoEditorProjectSettings {
     width: number;
     height: number;
     fps: number;
+    resolutionFormat: string;
+    orientation: 'landscape' | 'portrait';
+    aspectRatio: string;
+    isCustomResolution: boolean;
     encoding: {
       format: 'mp4' | 'webm' | 'mkv';
       videoCodec: string;
@@ -35,6 +39,10 @@ const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     width: 1920,
     height: 1080,
     fps: 30,
+    resolutionFormat: '1080p',
+    orientation: 'landscape',
+    aspectRatio: '16:9',
+    isCustomResolution: false,
     encoding: {
       format: 'mp4',
       videoCodec: 'avc1.640032',
@@ -58,6 +66,10 @@ function createDefaultProjectSettings(): GranVideoEditorProjectSettings {
       width: DEFAULT_PROJECT_SETTINGS.export.width,
       height: DEFAULT_PROJECT_SETTINGS.export.height,
       fps: DEFAULT_PROJECT_SETTINGS.export.fps,
+      resolutionFormat: DEFAULT_PROJECT_SETTINGS.export.resolutionFormat,
+      orientation: DEFAULT_PROJECT_SETTINGS.export.orientation,
+      aspectRatio: DEFAULT_PROJECT_SETTINGS.export.aspectRatio,
+      isCustomResolution: DEFAULT_PROJECT_SETTINGS.export.isCustomResolution,
       encoding: {
         format: DEFAULT_PROJECT_SETTINGS.export.encoding.format,
         videoCodec: DEFAULT_PROJECT_SETTINGS.export.encoding.videoCodec,
@@ -110,6 +122,16 @@ function normalizeProjectSettings(raw: unknown): GranVideoEditorProjectSettings 
         Number.isFinite(fps) && fps > 0
           ? Math.round(Math.min(240, Math.max(1, fps)))
           : DEFAULT_PROJECT_SETTINGS.export.fps,
+      resolutionFormat:
+        typeof exportInput.resolutionFormat === 'string' && exportInput.resolutionFormat
+          ? exportInput.resolutionFormat
+          : DEFAULT_PROJECT_SETTINGS.export.resolutionFormat,
+      orientation: exportInput.orientation === 'portrait' ? 'portrait' : 'landscape',
+      aspectRatio:
+        typeof exportInput.aspectRatio === 'string' && exportInput.aspectRatio
+          ? exportInput.aspectRatio
+          : DEFAULT_PROJECT_SETTINGS.export.aspectRatio,
+      isCustomResolution: Boolean(exportInput.isCustomResolution),
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:

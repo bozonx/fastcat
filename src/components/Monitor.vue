@@ -9,7 +9,6 @@ import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
-import type { UseMonitorPlaybackOptions } from '~/composables/monitor/useMonitorPlayback';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 const { t } = useI18n();
@@ -75,7 +74,6 @@ let pendingLayoutClips: WorkerTimelineClip[] | null = null;
 let renderLoopInFlight = false;
 let latestRenderTimeUs: number | null = null;
 let isUnmounted = false;
-let suppressStoreSeekWatch = false;
 
 const audioEngine = new AudioEngine();
 
@@ -131,22 +129,23 @@ async function flushLayoutUpdateQueue() {
         console.error('[Monitor] Failed to update timeline layout', error);
       }
     }
-    
+
     // Also update audio clips
     const audioClips = workerAudioClips.value;
-    const audioEngineClips = await Promise.all(audioClips.map(async (clip) => {
-      const handle = await getFileHandleForAudio(clip.source.path);
-      return {
-        id: clip.id,
-        fileHandle: handle,
-        startUs: clip.timelineRange.startUs,
-        durationUs: clip.timelineRange.durationUs,
-        sourceStartUs: clip.sourceRange.startUs,
-        sourceDurationUs: clip.sourceRange.durationUs,
-      };
-    }));
+    const audioEngineClips = await Promise.all(
+      audioClips.map(async (clip) => {
+        const handle = await getFileHandleForAudio(clip.source.path);
+        return {
+          id: clip.id,
+          fileHandle: handle,
+          startUs: clip.timelineRange.startUs,
+          durationUs: clip.timelineRange.durationUs,
+          sourceStartUs: clip.sourceRange.startUs,
+          sourceDurationUs: clip.sourceRange.durationUs,
+        };
+      }),
+    );
     audioEngine.updateTimelineLayout(audioEngineClips);
-
   } finally {
     layoutUpdateInFlight = false;
   }
@@ -198,9 +197,7 @@ function updateStoreTime(timeUs: number) {
   if (timelineStore.currentTime === normalizedTimeUs) {
     return;
   }
-  suppressStoreSeekWatch = true;
   timelineStore.currentTime = normalizedTimeUs;
-  suppressStoreSeekWatch = false;
 }
 
 function clampToTimeline(timeUs: number): number {
@@ -278,18 +275,20 @@ async function buildTimeline() {
     const maxDuration = await client.loadTimeline(clips);
 
     await audioEngine.init();
-    
-    const audioEngineClips = await Promise.all(audioClips.map(async (clip) => {
-      const handle = await getFileHandleForAudio(clip.source.path);
-      return {
-        id: clip.id,
-        fileHandle: handle,
-        startUs: clip.timelineRange.startUs,
-        durationUs: clip.timelineRange.durationUs,
-        sourceStartUs: clip.sourceRange.startUs,
-        sourceDurationUs: clip.sourceRange.durationUs,
-      };
-    }));
+
+    const audioEngineClips = await Promise.all(
+      audioClips.map(async (clip) => {
+        const handle = await getFileHandleForAudio(clip.source.path);
+        return {
+          id: clip.id,
+          fileHandle: handle,
+          startUs: clip.timelineRange.startUs,
+          durationUs: clip.timelineRange.durationUs,
+          sourceStartUs: clip.sourceRange.startUs,
+          sourceDurationUs: clip.sourceRange.durationUs,
+        };
+      }),
+    );
     await audioEngine.loadClips(audioEngineClips);
 
     lastBuiltSourceSignature = clipSourceSignature.value;
@@ -423,20 +422,30 @@ function formatTime(seconds: number): string {
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10">
+    <div
+      class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10"
+    >
       <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
       <div class="w-24 shrink-0">
         <USelectMenu
           v-if="projectStore.projectSettings.monitor"
-          :model-value="(previewResolutions.find(r => r.value === projectStore.projectSettings.monitor.previewResolution) || previewResolutions[2]) as any"
+          :model-value="
+            (previewResolutions.find(
+              (r) => r.value === projectStore.projectSettings.monitor.previewResolution,
+            ) || previewResolutions[2]) as any
+          "
           :items="previewResolutions"
           value-key="value"
           label-key="label"
           size="xs"
           class="w-full"
-          @update:model-value="(v: any) => { if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v }"
+          @update:model-value="
+            (v: any) => {
+              if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
+            }
+          "
         />
       </div>
     </div>
@@ -472,7 +481,9 @@ function formatTime(seconds: number): string {
     </div>
 
     <!-- Playback controls -->
-    <div class="flex items-center justify-center gap-3 px-4 py-3 border-t border-ui-border shrink-0">
+    <div
+      class="flex items-center justify-center gap-3 px-4 py-3 border-t border-ui-border shrink-0"
+    >
       <UButton
         size="sm"
         variant="ghost"

@@ -4,11 +4,13 @@ import { useProjectStore } from '~/stores/project.store';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
+import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -62,39 +64,15 @@ loadCodecSupport();
           {{ t('videoEditor.projectSettings.export', 'Export') }}
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <UFormField :label="t('videoEditor.projectSettings.exportWidth', 'Width')">
-            <UInput
-              v-model.number="projectStore.projectSettings.export.width"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField :label="t('videoEditor.projectSettings.exportHeight', 'Height')">
-            <UInput
-              v-model.number="projectStore.projectSettings.export.height"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-            />
-          </UFormField>
-        </div>
-
-        <UFormField :label="t('videoEditor.projectSettings.exportFps', 'FPS')">
-          <UInput
-            v-model.number="projectStore.projectSettings.export.fps"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            step="1"
-            class="w-full"
-          />
-        </UFormField>
+        <MediaResolutionSettings
+          v-model:width="projectStore.projectSettings.export.width"
+          v-model:height="projectStore.projectSettings.export.height"
+          v-model:fps="projectStore.projectSettings.export.fps"
+          v-model:resolution-format="projectStore.projectSettings.export.resolutionFormat"
+          v-model:orientation="projectStore.projectSettings.export.orientation"
+          v-model:aspect-ratio="projectStore.projectSettings.export.aspectRatio"
+          v-model:is-custom-resolution="projectStore.projectSettings.export.isCustomResolution"
+        />
 
         <MediaEncodingSettings
           v-model:output-format="projectStore.projectSettings.export.encoding.format"
