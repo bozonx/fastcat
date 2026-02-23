@@ -519,9 +519,11 @@ export function applyTimelineCommand(
       sourceRange: { startUs: 0, durationUs },
     };
 
-    const nextTracks = doc.tracks.map((t) =>
-      t.id === track.id ? { ...t, items: [...t.items, clip] } : t,
-    );
+    const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(track.id, nextItemsRaw);
+
+    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
     return {
       next: {
@@ -602,7 +604,7 @@ export function applyTimelineCommand(
             : x,
         );
         nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-        return { ...t, items: nextItems };
+        return { ...t, items: normalizeGaps(t.id, nextItems) };
       });
 
       nextTracks = updateLinkedLockedAudio(

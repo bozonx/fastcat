@@ -131,7 +131,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           "
           :class="[
             item.kind === 'gap'
-              ? 'bg-gray-800/40 border border-dashed border-gray-600 text-gray-400 opacity-60'
+              ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70 cursor-default'
               : track.kind === 'audio'
                 ? 'bg-teal-600 border border-teal-400 hover:bg-teal-500'
                 : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500',
@@ -142,7 +142,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             width: `${Math.max(30, timeUsToPx(item.timelineRange.durationUs))}px`,
           }"
           @mousedown="
-            emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
+            item.kind === 'clip' &&
+              emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
           "
           @click.stop="emit('selectItem', $event, item.id)"
         >
@@ -158,8 +159,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             })
           "
         />
-        <span class="truncate" :title="item.kind === 'clip' ? item.name : 'gap'">{{
-          item.kind === 'clip' ? item.name : 'gap'
+        <span class="truncate" :title="item.kind === 'clip' ? item.name : ''">{{
+          item.kind === 'clip' ? item.name : ''
         }}</span>
         <div
           v-if="item.kind === 'clip'"
