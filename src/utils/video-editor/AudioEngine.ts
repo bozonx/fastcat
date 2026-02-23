@@ -1,3 +1,7 @@
+import { createDevLogger } from '~/utils/dev-logger';
+
+const logger = createDevLogger('AudioEngine');
+
 export interface AudioEngineClip {
   id: string;
   sourcePath: string;
@@ -109,8 +113,8 @@ export class AudioEngine {
   }
 
   async loadClips(clips: AudioEngineClip[]) {
-    console.log(
-      '[AudioEngine] loadClips',
+    logger.info(
+      'loadClips',
       clips.map((c) => ({
         id: c.id,
         startUs: c.startUs,
@@ -189,8 +193,8 @@ export class AudioEngine {
           audioBuffer.copyToChannel(data, ch, 0);
         }
 
-        console.log(
-          `[AudioEngine] Successfully decoded ${sourceKey}: ${numChannels}ch, ${sampleRate}Hz, ${frames} frames`,
+        logger.info(
+          `Successfully decoded ${sourceKey}: ${numChannels}ch, ${sampleRate}Hz, ${frames} frames`,
         );
         this.decodedCache.set(sourceKey, audioBuffer);
         return audioBuffer;
@@ -267,10 +271,10 @@ export class AudioEngine {
     if (!buffer) {
       const inFlight = this.decodeInFlight.get(sourceKey);
       if (inFlight) {
-        console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
+        logger.debug(`Buffer not in cache for ${clip.id}, awaiting decode...`);
         buffer = await inFlight;
       } else {
-        console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
+        logger.debug(`Buffer not in cache for ${clip.id}, awaiting decode...`);
         buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
       }
       // Re-evaluate current time since decoding takes time
@@ -322,7 +326,7 @@ export class AudioEngine {
       return;
     }
 
-    console.log(`[AudioEngine] scheduleClip ${clip.id}`, {
+    logger.debug(`scheduleClip ${clip.id}`, {
       clipStartS,
       clipDurationS,
       currentTimeS,

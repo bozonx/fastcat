@@ -36,7 +36,9 @@ pnpm build
 - `src/components`: UI components of the editor.
 - `src/stores`: Application state management (Pinia).
 - `src/timeline`: Core timeline logic and OTIO serialization.
+- `src/composables/monitor`: Monitor composables (timeline, playback, core orchestration).
 - `src/utils/video-editor`: Video composition and worker client logic.
+- `src/utils/dev-logger.ts`: Dev-only logger for verbose diagnostics (disabled in production).
 - `src/workers`: Web Workers for heavy lifting (video decoding/encoding).
 
 ## License

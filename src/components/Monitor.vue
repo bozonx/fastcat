@@ -1,25 +1,19 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProxyStore } from '~/stores/proxy.store';
-import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
-import { AudioEngine } from '~/utils/video-editor/AudioEngine';
-import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
-import type { WorkerTimelineClip } from '~/composables/monitor/types';
+import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
 const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
-
-const loadError = ref<string | null>(null);
-const isLoading = ref(false);
 
 const {
   videoItems,
@@ -42,6 +36,39 @@ const {
   updateCanvasDisplaySize,
 } = useMonitorDisplay();
 
+const {
+  isLoading,
+  loadError,
+  scheduleRender,
+  scheduleBuild,
+  clampToTimeline,
+  updateStoreTime,
+  audioEngine,
+  useProxyInMonitor,
+  setCurrentTimeProvider,
+} = useMonitorCore({
+    projectStore,
+    timelineStore,
+    proxyStore,
+    monitorTimeline: {
+      videoItems,
+      workerTimelineClips,
+      workerAudioClips,
+      safeDurationUs,
+      clipSourceSignature,
+      clipLayoutSignature,
+      audioClipSourceSignature,
+      audioClipLayoutSignature,
+    },
+    monitorDisplay: {
+      containerEl,
+      viewportEl,
+      renderWidth,
+      renderHeight,
+      updateCanvasDisplaySize,
+    },
+  });
+
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );
@@ -55,413 +82,25 @@ const previewResolutions = [
   { label: '144p', value: 144 },
 ];
 
-// Internal state for timeline build and layout
-const BUILD_DEBOUNCE_MS = 120;
-const LAYOUT_DEBOUNCE_MS = 50;
-
-let viewportResizeObserver: ResizeObserver | null = null;
-let buildRequestId = 0;
-let lastBuiltSourceSignature = 0;
-let lastBuiltLayoutSignature = 0;
-let canvasEl: HTMLCanvasElement | null = null;
-let compositorReady = false;
-let compositorWidth = 0;
-let compositorHeight = 0;
-let buildInFlight = false;
-let buildRequested = false;
-let buildDebounceTimer: number | null = null;
-let layoutDebounceTimer: number | null = null;
-let layoutUpdateInFlight = false;
-let pendingLayoutClips: WorkerTimelineClip[] | null = null;
-let renderLoopInFlight = false;
-let latestRenderTimeUs: number | null = null;
-let isUnmounted = false;
-let forceRecreateCompositorNextBuild = false;
-
-const audioEngine = new AudioEngine();
-
 const timecodeEl = ref<HTMLElement | null>(null);
-
-const { client } = getPreviewWorkerClient();
-
-const useProxyInMonitor = computed(() => {
-  return projectStore.projectSettings.monitor?.useProxy !== false;
+const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl } = useMonitorPlayback({
+  isLoading,
+  loadError,
+  isPlaying,
+  currentTime,
+  duration,
+  safeDurationUs,
+  getFps: () => projectStore.projectSettings?.export?.fps,
+  clampToTimeline,
+  updateStoreTime,
+  scheduleRender,
+  audioEngine,
 });
 
-async function getFileHandleForAudio(path: string) {
-  const handle = await projectStore.getFileHandleByPath(path);
-  if (!handle) return null;
-  return handle;
-}
-
-async function flushBuildQueue() {
-  if (buildInFlight) return;
-
-  buildInFlight = true;
-  try {
-    while (buildRequested && !isUnmounted) {
-      buildRequested = false;
-      await buildTimeline();
-    }
-  } finally {
-    buildInFlight = false;
-  }
-}
-
-function scheduleLayoutUpdate(layoutClips: WorkerTimelineClip[]) {
-  pendingLayoutClips = layoutClips;
-  if (layoutDebounceTimer !== null) {
-    clearTimeout(layoutDebounceTimer);
-  }
-  layoutDebounceTimer = window.setTimeout(() => {
-    layoutDebounceTimer = null;
-    void flushLayoutUpdateQueue();
-  }, LAYOUT_DEBOUNCE_MS);
-}
-
-async function flushLayoutUpdateQueue() {
-  if (layoutUpdateInFlight || isUnmounted) return;
-
-  layoutUpdateInFlight = true;
-  try {
-    while (pendingLayoutClips) {
-      const layoutClips = pendingLayoutClips;
-      pendingLayoutClips = null;
-      try {
-        const maxDuration = await client.updateTimelineLayout(layoutClips);
-        timelineStore.duration = maxDuration;
-        lastBuiltLayoutSignature = clipLayoutSignature.value;
-        scheduleRender(getLocalCurrentTimeUs());
-      } catch (error) {
-        console.error('[Monitor] Failed to update timeline layout', error);
-      }
-    }
-
-    // Also update audio clips (both dedicated audio tracks and audio from video clips)
-    const audioClips = workerAudioClips.value;
-    const audioEngineClips = (
-      await Promise.all(
-        audioClips.map(async (clip) => {
-          try {
-            const handle = await getFileHandleForAudio(clip.source.path);
-            if (!handle) return null;
-            return {
-              id: clip.id,
-              sourcePath: clip.source.path,
-              fileHandle: handle,
-              startUs: clip.timelineRange.startUs,
-              durationUs: clip.timelineRange.durationUs,
-              sourceStartUs: clip.sourceRange.startUs,
-              sourceDurationUs: clip.sourceRange.durationUs,
-            };
-          } catch {
-            return null;
-          }
-        }),
-      )
-    ).filter((it): it is NonNullable<typeof it> => Boolean(it));
-
-    audioEngine.updateTimelineLayout(audioEngineClips);
-  } finally {
-    layoutUpdateInFlight = false;
-  }
-}
-
-function scheduleBuild() {
-  if (buildDebounceTimer !== null) {
-    clearTimeout(buildDebounceTimer);
-  }
-  buildDebounceTimer = window.setTimeout(() => {
-    buildDebounceTimer = null;
-    buildRequested = true;
-    void flushBuildQueue();
-  }, BUILD_DEBOUNCE_MS);
-}
-
-function scheduleRender(timeUs: number) {
-  if (isUnmounted) return;
-  latestRenderTimeUs = normalizeTimeUs(timeUs);
-  if (renderLoopInFlight) return;
-
-  renderLoopInFlight = true;
-  const run = async () => {
-    try {
-      while (latestRenderTimeUs !== null) {
-        if (isUnmounted) {
-          latestRenderTimeUs = null;
-          break;
-        }
-        const nextTimeUs = latestRenderTimeUs;
-        latestRenderTimeUs = null;
-        await client.renderFrame(nextTimeUs);
-      }
-    } catch (err) {
-      console.error('[Monitor] Render failed', err);
-    } finally {
-      renderLoopInFlight = false;
-      if (latestRenderTimeUs !== null) {
-        scheduleRender(latestRenderTimeUs);
-      }
-    }
-  };
-
-  void run();
-}
-
-function updateStoreTime(timeUs: number) {
-  const normalizedTimeUs = clampToTimeline(timeUs);
-  if (timelineStore.currentTime === normalizedTimeUs) {
-    return;
-  }
-  timelineStore.currentTime = normalizedTimeUs;
-}
-
-function clampToTimeline(timeUs: number): number {
-  return clampTimeUs(timeUs, safeDurationUs.value);
-}
-
-async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
-  if (!containerEl.value) {
-    return;
-  }
-
-  const shouldRecreate = options?.forceRecreate ?? false;
-  const targetWidth = renderWidth.value;
-  const targetHeight = renderHeight.value;
-  const needReinit =
-    !compositorReady ||
-    compositorWidth !== targetWidth ||
-    compositorHeight !== targetHeight ||
-    shouldRecreate;
-
-  if (!needReinit) {
-    return;
-  }
-
-  if (shouldRecreate || !canvasEl || needReinit) {
-    containerEl.value.innerHTML = '';
-    canvasEl = document.createElement('canvas');
-    canvasEl.style.width = `${targetWidth}px`;
-    canvasEl.style.height = `${targetHeight}px`;
-    canvasEl.style.display = 'block';
-    containerEl.value.appendChild(canvasEl);
-    compositorReady = false;
-  }
-
-  if (!canvasEl) {
-    return;
-  }
-
-  canvasEl.width = targetWidth;
-  canvasEl.height = targetHeight;
-  canvasEl.style.width = `${targetWidth}px`;
-  canvasEl.style.height = `${targetHeight}px`;
-  const offscreen = canvasEl.transferControlToOffscreen();
-  await client.destroyCompositor();
-  await client.initCompositor(offscreen, targetWidth, targetHeight, '#000');
-  compositorReady = true;
-  compositorWidth = targetWidth;
-  compositorHeight = targetHeight;
-}
-
-async function buildTimeline() {
-  if (!containerEl.value) return;
-  const requestId = ++buildRequestId;
-  isLoading.value = true;
-  loadError.value = null;
-
-  try {
-    await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
-    forceRecreateCompositorNextBuild = false;
-    const clips = workerTimelineClips.value;
-    const audioClips = workerAudioClips.value;
-
-    if (clips.length === 0 && audioClips.length === 0) {
-      await client.clearClips();
-      await audioEngine.loadClips([]);
-      timelineStore.duration = 0;
-      updateStoreTime(0);
-      setLocalTimeFromStore();
-      isLoading.value = false;
-      return;
-    }
-
-    setPreviewHostApi({
-      getFileHandleByPath: async (path) => {
-        if (useProxyInMonitor.value) {
-          const proxyHandle = await proxyStore.getProxyFileHandle(path);
-          if (proxyHandle) return proxyHandle;
-        }
-        return await projectStore.getFileHandleByPath(path);
-      },
-      onExportProgress: () => {},
-    });
-
-    const maxDuration = await client.loadTimeline(clips);
-
-    await audioEngine.init();
-
-    const audioEngineClips = (
-      await Promise.all(
-        audioClips.map(async (clip) => {
-          try {
-            const handle = await getFileHandleForAudio(clip.source.path);
-            if (!handle) return null;
-            return {
-              id: clip.id,
-              sourcePath: clip.source.path,
-              fileHandle: handle,
-              startUs: clip.timelineRange.startUs,
-              durationUs: clip.timelineRange.durationUs,
-              sourceStartUs: clip.sourceRange.startUs,
-              sourceDurationUs: clip.sourceRange.durationUs,
-            };
-          } catch {
-            return null;
-          }
-        }),
-      )
-    ).filter((it): it is NonNullable<typeof it> => Boolean(it));
-    await audioEngine.loadClips(audioEngineClips);
-
-    lastBuiltSourceSignature = clipSourceSignature.value;
-    lastBuiltLayoutSignature = clipLayoutSignature.value;
-
-    timelineStore.duration = normalizeTimeUs(maxDuration);
-    updateStoreTime(0);
-    setLocalTimeFromStore();
-    isPlaying.value = false;
-    scheduleRender(0);
-  } catch (e: any) {
-    console.error('Failed to build timeline components', e);
-    if (requestId === buildRequestId) {
-      loadError.value =
-        e.message || t('granVideoEditor.monitor.loadError', 'Error loading timeline');
-    }
-  } finally {
-    if (requestId === buildRequestId) {
-      isLoading.value = false;
-    }
-  }
-}
-
-watch(clipSourceSignature, () => {
-  scheduleBuild();
-});
-
-watch(audioClipSourceSignature, () => {
-  scheduleBuild();
-});
-
-watch(
-  () => useProxyInMonitor.value,
-  () => {
-    if (isUnmounted) return;
-
-    // Playback needs to stop, and we force a compositor re-init to avoid worker-side resource reuse.
-    isPlaying.value = false;
-    forceRecreateCompositorNextBuild = true;
-    compositorReady = false;
-    scheduleBuild();
-  },
-);
-
-watch(clipLayoutSignature, () => {
-  if (isLoading.value || !compositorReady) {
-    return;
-  }
-  if (clipSourceSignature.value !== lastBuiltSourceSignature) {
-    return;
-  }
-  if (clipLayoutSignature.value === lastBuiltLayoutSignature) {
-    return;
-  }
-
-  const layoutClips = workerTimelineClips.value;
-  scheduleLayoutUpdate(layoutClips);
-});
-
-watch(audioClipLayoutSignature, () => {
-  if (isLoading.value || !compositorReady) {
-    return;
-  }
-
-  const layoutClips = workerTimelineClips.value;
-  scheduleLayoutUpdate(layoutClips);
-});
-
-watch(
-  () => [
-    projectStore.projectSettings.export.width,
-    projectStore.projectSettings.export.height,
-    projectStore.projectSettings.monitor?.previewResolution,
-  ],
-  () => {
-    updateCanvasDisplaySize();
-    compositorReady = false;
-    scheduleBuild();
-  },
-);
-
-const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl, setLocalTimeFromStore } =
-  useMonitorPlayback({
-    isLoading,
-    loadError,
-    isPlaying,
-    currentTime,
-    duration,
-    safeDurationUs,
-    getFps: () => projectStore.projectSettings?.export?.fps,
-    clampToTimeline,
-    updateStoreTime,
-    scheduleRender,
-    audioEngine,
-  });
+setCurrentTimeProvider(getLocalCurrentTimeUs);
 
 onMounted(() => {
-  isUnmounted = false;
   setTimecodeEl(timecodeEl.value);
-  updateCanvasDisplaySize();
-  if (typeof ResizeObserver !== 'undefined' && viewportEl.value) {
-    let scheduled = false;
-    viewportResizeObserver = new ResizeObserver(() => {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        updateCanvasDisplaySize();
-      });
-    });
-    viewportResizeObserver.observe(viewportEl.value);
-  }
-  scheduleBuild();
-});
-
-onBeforeUnmount(() => {
-  isUnmounted = true;
-  timelineStore.isPlaying = false;
-  latestRenderTimeUs = null;
-  if (buildDebounceTimer !== null) {
-    clearTimeout(buildDebounceTimer);
-    buildDebounceTimer = null;
-  }
-  if (layoutDebounceTimer !== null) {
-    clearTimeout(layoutDebounceTimer);
-  }
-
-  // Cleanup AudioEngine to prevent AudioContext and WebWorker leaks across HMR / unmounts
-  try {
-    audioEngine.destroy();
-  } catch (err) {
-    console.error('[Monitor] Failed to destroy AudioEngine', err);
-  }
-
-  viewportResizeObserver?.disconnect();
-  viewportResizeObserver = null;
-  pendingLayoutClips = null;
-  void client.destroyCompositor().catch((error) => {
-    console.error('[Monitor] Failed to destroy compositor on unmount', error);
-  });
 });
 
 function formatTime(seconds: number): string {
