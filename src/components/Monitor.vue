@@ -418,8 +418,15 @@ onBeforeUnmount(() => {
   }
   if (layoutDebounceTimer !== null) {
     clearTimeout(layoutDebounceTimer);
-    layoutDebounceTimer = null;
   }
+
+  // Cleanup AudioEngine to prevent AudioContext and WebWorker leaks across HMR / unmounts
+  try {
+    audioEngine.destroy();
+  } catch (err) {
+    console.error('[Monitor] Failed to destroy AudioEngine', err);
+  }
+
   viewportResizeObserver?.disconnect();
   viewportResizeObserver = null;
   pendingLayoutClips = null;

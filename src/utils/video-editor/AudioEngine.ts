@@ -98,11 +98,6 @@ export class AudioEngine {
       this.masterGain = this.ctx.createGain();
       this.masterGain.connect(this.ctx.destination);
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] init: Autoplay policy prevented AudioContext resume', err);
-      });
-    }
   }
 
   resumeContext() {
@@ -138,12 +133,12 @@ export class AudioEngine {
   }
 
   private async ensureDecoded(sourceKey: string, fileHandle: FileSystemFileHandle) {
+    const existing = this.decodeInFlight.get(sourceKey);
+    if (existing) return existing;
+
     if (this.decodedCache.has(sourceKey)) {
       return this.decodedCache.get(sourceKey) ?? null;
     }
-
-    const existing = this.decodeInFlight.get(sourceKey);
-    if (existing) return existing;
 
     const task = (async () => {
       this.decodedCache.set(sourceKey, null);
@@ -257,6 +252,8 @@ export class AudioEngine {
     if (!buffer) {
       console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
       buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
+      // Re-evaluate current time since decoding takes time
+      currentTimeS = this.getCurrentTimeS();
     }
     if (!buffer) {
       console.warn(`[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`);
