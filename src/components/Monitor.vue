@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
-import { clampTimeUs, normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
+import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
+import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
 
 const loadError = ref<string | null>(null);
 const isLoading = ref(false);
@@ -40,7 +43,6 @@ const canInteractPlayback = computed(
 // Internal state for timeline build and layout
 const BUILD_DEBOUNCE_MS = 120;
 const LAYOUT_DEBOUNCE_MS = 50;
-const STORE_TIME_SYNC_MS = 100;
 
 let viewportResizeObserver: ResizeObserver | null = null;
 let buildRequestId = 0;
@@ -60,6 +62,8 @@ let renderLoopInFlight = false;
 let latestRenderTimeUs: number | null = null;
 let isUnmounted = false;
 let suppressStoreSeekWatch = false;
+
+const timecodeEl = ref<HTMLElement | null>(null);
 
 const { client } = getPreviewWorkerClient();
 
@@ -100,7 +104,7 @@ async function flushLayoutUpdateQueue() {
         const maxDuration = await client.updateTimelineLayout(layoutClips);
         timelineStore.duration = maxDuration;
         lastBuiltLayoutSignature = clipLayoutSignature.value;
-        scheduleRender(localCurrentTimeUs);
+        scheduleRender(getLocalCurrentTimeUs());
       } catch (error) {
         console.error('[Monitor] Failed to update timeline layout', error);
       }
@@ -219,9 +223,8 @@ async function buildTimeline() {
     if (clips.length === 0) {
       await client.clearClips();
       timelineStore.duration = 0;
-      localCurrentTimeUs = 0;
-      uiCurrentTimeUs.value = 0;
       updateStoreTime(0);
+      setLocalTimeFromStore();
       isLoading.value = false;
       return;
     }
@@ -237,11 +240,9 @@ async function buildTimeline() {
     lastBuiltLayoutSignature = clipLayoutSignature.value;
 
     timelineStore.duration = normalizeTimeUs(maxDuration);
-
-    localCurrentTimeUs = 0;
-    uiCurrentTimeUs.value = 0;
     updateStoreTime(0);
-    timelineStore.isPlaying = false;
+    setLocalTimeFromStore();
+    isPlaying.value = false;
     scheduleRender(0);
   } catch (e: any) {
     console.error('Failed to build timeline components', e);
@@ -284,111 +285,33 @@ watch(
   },
 );
 
-// Playback loop state
-let playbackLoopId = 0;
-let lastFrameTimeMs = 0;
-let localCurrentTimeUs = 0;
-const uiCurrentTimeUs = ref(0);
-let renderAccumulatorMs = 0;
-let storeSyncAccumulatorMs = 0;
-
-function updatePlayback(timestamp: number) {
-  if (!timelineStore.isPlaying) return;
-
-  const deltaMsRaw = timestamp - lastFrameTimeMs;
-  const deltaMs = Number.isFinite(deltaMsRaw) && deltaMsRaw > 0 ? deltaMsRaw : 0;
-  lastFrameTimeMs = timestamp;
-  renderAccumulatorMs += deltaMs;
-  storeSyncAccumulatorMs += deltaMs;
-
-  let newTimeUs = clampToTimeline(localCurrentTimeUs + deltaMs * 1000);
-
-  if (newTimeUs >= safeDurationUs.value) {
-    newTimeUs = safeDurationUs.value;
-    timelineStore.isPlaying = false;
-    localCurrentTimeUs = newTimeUs;
-    uiCurrentTimeUs.value = newTimeUs;
-    updateStoreTime(newTimeUs);
-    scheduleRender(newTimeUs);
-    return;
-  }
-
-  localCurrentTimeUs = newTimeUs;
-  uiCurrentTimeUs.value = newTimeUs;
-
-  if (storeSyncAccumulatorMs >= STORE_TIME_SYNC_MS) {
-    storeSyncAccumulatorMs = 0;
-    updateStoreTime(newTimeUs);
-  }
-
-  const fps = sanitizeFps(projectStore.projectSettings?.export?.fps);
-  const frameIntervalMs = 1000 / fps;
-
-  if (renderAccumulatorMs >= frameIntervalMs) {
-    renderAccumulatorMs %= frameIntervalMs;
-    scheduleRender(newTimeUs);
-  }
-
-  if (timelineStore.isPlaying) {
-    playbackLoopId = requestAnimationFrame(updatePlayback);
-  }
-}
-
-watch(
-  () => timelineStore.isPlaying,
-  (playing) => {
-    if (isLoading.value || loadError.value) {
-      if (playing) timelineStore.isPlaying = false;
-      return;
-    }
-
-    if (playing) {
-      if (localCurrentTimeUs >= safeDurationUs.value) {
-        localCurrentTimeUs = 0;
-        uiCurrentTimeUs.value = 0;
-        updateStoreTime(0);
-      }
-      localCurrentTimeUs = clampToTimeline(timelineStore.currentTime);
-      uiCurrentTimeUs.value = localCurrentTimeUs;
-      lastFrameTimeMs = performance.now();
-      renderAccumulatorMs = 0;
-      storeSyncAccumulatorMs = 0;
-      playbackLoopId = requestAnimationFrame(updatePlayback);
-    } else {
-      cancelAnimationFrame(playbackLoopId);
-      updateStoreTime(clampToTimeline(localCurrentTimeUs));
-    }
-  },
-);
-
-// Sync time to store (initial seek or external seek)
-watch(
-  () => timelineStore.currentTime,
-  (val) => {
-    if (suppressStoreSeekWatch) {
-      return;
-    }
-    const normalizedTimeUs = clampToTimeline(val);
-    if (normalizedTimeUs !== val) {
-      updateStoreTime(normalizedTimeUs);
-      return;
-    }
-    if (!timelineStore.isPlaying) {
-      localCurrentTimeUs = normalizedTimeUs;
-      uiCurrentTimeUs.value = normalizedTimeUs;
-      scheduleRender(normalizedTimeUs);
-    }
-  },
-);
+const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl, setLocalTimeFromStore } =
+  useMonitorPlayback({
+  isLoading,
+  loadError,
+  isPlaying,
+  currentTime,
+  duration,
+  safeDurationUs,
+  getFps: () => projectStore.projectSettings?.export?.fps,
+  clampToTimeline,
+  updateStoreTime,
+  scheduleRender,
+  });
 
 onMounted(() => {
   isUnmounted = false;
-  localCurrentTimeUs = clampToTimeline(timelineStore.currentTime);
-  uiCurrentTimeUs.value = localCurrentTimeUs;
+  setTimecodeEl(timecodeEl.value);
   updateCanvasDisplaySize();
   if (typeof ResizeObserver !== 'undefined' && viewportEl.value) {
+    let scheduled = false;
     viewportResizeObserver = new ResizeObserver(() => {
-      updateCanvasDisplaySize();
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        updateCanvasDisplaySize();
+      });
     });
     viewportResizeObserver.observe(viewportEl.value);
   }
@@ -409,7 +332,6 @@ onBeforeUnmount(() => {
   }
   viewportResizeObserver?.disconnect();
   viewportResizeObserver = null;
-  cancelAnimationFrame(playbackLoopId);
   pendingLayoutClips = null;
   void client.destroyCompositor().catch((error) => {
     console.error('[Monitor] Failed to destroy compositor on unmount', error);
@@ -483,7 +405,7 @@ function formatTime(seconds: number): string {
         :disabled="!canInteractPlayback"
         @click="timelineStore.isPlaying = !timelineStore.isPlaying"
       />
-      <span class="text-xs text-gray-600 ml-2 font-mono">
+      <span ref="timecodeEl" class="text-xs text-gray-600 ml-2 font-mono">
         {{ formatTime(uiCurrentTimeUs / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
       </span>
     </div>
