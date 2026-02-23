@@ -217,7 +217,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
       <!-- File Preview & Properties -->
       <div v-else-if="displayMode === 'file'" class="w-full flex flex-col gap-4">
         <!-- Preview Box -->
-        <div class="w-full bg-black rounded border border-gray-800 flex items-center justify-center min-h-[200px] overflow-hidden">
+        <div class="w-full bg-black rounded border border-gray-800 flex items-center justify-center min-h-50 overflow-hidden">
           <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-gray-700 p-8">
             <UIcon name="i-heroicons-document" class="w-16 h-16" />
             <p class="text-sm text-center">
