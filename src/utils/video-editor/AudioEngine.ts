@@ -109,6 +109,16 @@ export class AudioEngine {
   }
 
   async loadClips(clips: AudioEngineClip[]) {
+    console.log(
+      '[AudioEngine] loadClips',
+      clips.map((c) => ({
+        id: c.id,
+        startUs: c.startUs,
+        durationUs: c.durationUs,
+        sourceStartUs: c.sourceStartUs,
+        sourceDurationUs: c.sourceDurationUs,
+      })),
+    );
     this.currentClips = clips;
 
     // Best-effort prefetch: decode lazily and yield between tasks to avoid blocking UI.
@@ -137,11 +147,12 @@ export class AudioEngine {
     if (existing) return existing;
 
     if (this.decodedCache.has(sourceKey)) {
-      return this.decodedCache.get(sourceKey) ?? null;
+      const cached = this.decodedCache.get(sourceKey);
+      // null means decode failed previously, not in-progress
+      return cached ?? null;
     }
 
     const task = (async () => {
-      this.decodedCache.set(sourceKey, null);
       try {
         const file = await fileHandle.getFile();
         const arrayBuffer = await file.arrayBuffer();
@@ -254,11 +265,18 @@ export class AudioEngine {
 
     let buffer = this.decodedCache.get(sourceKey) ?? null;
     if (!buffer) {
-      console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
-      buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
+      const inFlight = this.decodeInFlight.get(sourceKey);
+      if (inFlight) {
+        console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
+        buffer = await inFlight;
+      } else {
+        console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
+        buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
+      }
       // Re-evaluate current time since decoding takes time
       currentTimeS = this.getCurrentTimeS();
     }
+    if (!this.isPlaying) return;
     if (!buffer) {
       console.warn(`[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`);
       return;
@@ -303,6 +321,17 @@ export class AudioEngine {
       console.warn(`[AudioEngine] Invalid durationToPlayS: ${durationToPlayS} for clip ${clip.id}`);
       return;
     }
+
+    console.log(`[AudioEngine] scheduleClip ${clip.id}`, {
+      clipStartS,
+      clipDurationS,
+      currentTimeS,
+      bufferOffsetS,
+      durationToPlayS,
+      playStartS,
+      ctxCurrentTime: this.ctx.currentTime,
+      bufferDuration: buffer.duration,
+    });
 
     const sourceNode = this.ctx.createBufferSource();
     sourceNode.buffer = buffer;

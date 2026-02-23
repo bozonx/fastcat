@@ -92,16 +92,18 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       >
         <div
           class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
-          :draggable="item.kind === 'clip' && !(item as any).lockToLinkedVideo"
+          :draggable="item.kind === 'clip'"
           @dragstart="
             (e) => {
               if (!e.dataTransfer) return;
               if (item.kind !== 'clip') return;
-              if ((item as any).lockToLinkedVideo) return;
-              e.dataTransfer.setData(
-                'application/json',
-                JSON.stringify({ kind: 'timeline-clip', itemId: item.id, fromTrackId: track.id }),
-              );
+              const payload = JSON.stringify({
+                kind: 'timeline-clip',
+                itemId: item.id,
+                fromTrackId: track.id,
+              });
+              e.dataTransfer.setData('application/json', payload);
+              e.dataTransfer.setData('text/plain', payload);
               e.dataTransfer.effectAllowed = 'move';
             }
           "

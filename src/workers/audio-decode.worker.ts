@@ -58,8 +58,10 @@ async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
               const prev = channels[ch] ?? new Float32Array();
               const next = new Float32Array(nextTotal);
               next.set(prev, 0);
-              const chunk = sample.copyChannel?.(ch) as Float32Array | undefined;
-              if (chunk && chunk.length > 0) {
+              const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
+              const chunk = new Float32Array(bytesNeeded / 4);
+              sample.copyTo(chunk, { format: 'f32-planar', planeIndex: ch });
+              if (chunk.length > 0) {
                 next.set(chunk, totalFrames);
               }
               channels[ch] = next;

@@ -398,9 +398,8 @@ export function applyTimelineCommand(
     const item = fromTrack.items[itemIdx];
     if (!item) return { next: doc };
     if (!item.timelineRange) return { next: doc };
-    if (item.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo) {
-      throw new Error('Locked audio clip');
-    }
+    const isLockedLinkedAudio =
+      item.kind === 'clip' && Boolean(item.linkedVideoClipId) && Boolean(item.lockToLinkedVideo);
 
     const startUs = Math.max(0, Math.round(cmd.startUs));
     const durationUs = Math.max(0, item.timelineRange.durationUs);
@@ -417,11 +416,42 @@ export function applyTimelineCommand(
     const nextToItems = [...toTrack.items, movedItem];
     nextToItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const nextTracks = doc.tracks.map((t) => {
+    let nextTracks = doc.tracks.map((t) => {
       if (t.id === fromTrack.id) return { ...t, items: nextFromItems };
       if (t.id === toTrack.id) return { ...t, items: nextToItems };
       return t;
     });
+
+    if (isLockedLinkedAudio && item.kind === 'clip' && item.linkedVideoClipId) {
+      const linked = findClipById({ ...doc, tracks: nextTracks }, item.linkedVideoClipId);
+      if (linked && linked.track.kind === 'video') {
+        const linkedDurationUs = Math.max(0, linked.item.timelineRange.durationUs);
+        assertNoOverlap(linked.track, linked.item.id, startUs, linkedDurationUs);
+
+        nextTracks = nextTracks.map((t) => {
+          if (t.id !== linked.track.id) return t;
+          const nextItems: TimelineTrackItem[] = t.items.map((x) =>
+            x.id === linked.item.id
+              ? {
+                  ...x,
+                  timelineRange: { ...x.timelineRange, startUs },
+                }
+              : x,
+          );
+          nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+          return { ...t, items: nextItems };
+        });
+
+        nextTracks = updateLinkedLockedAudio(
+          { ...doc, tracks: nextTracks },
+          linked.item.id,
+          (audio) => ({
+            ...audio,
+            timelineRange: { ...audio.timelineRange, startUs },
+          }),
+        );
+      }
+    }
 
     return { next: { ...doc, tracks: nextTracks } };
   }
@@ -525,8 +555,41 @@ export function applyTimelineCommand(
     const track = getTrackById(doc, cmd.trackId);
     const item = track.items.find((x) => x.id === cmd.itemId);
     if (!item || !item.timelineRange) return { next: doc };
+
     if (item.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo) {
-      throw new Error('Locked audio clip');
+      const linked = findClipById(doc, item.linkedVideoClipId);
+      if (!linked) return { next: doc };
+      if (linked.track.kind !== 'video') return { next: doc };
+
+      const startUs = Math.max(0, Math.round(cmd.startUs));
+      const durationUs = Math.max(0, linked.item.timelineRange.durationUs);
+
+      assertNoOverlap(linked.track, linked.item.id, startUs, durationUs);
+
+      let nextTracks = doc.tracks.map((t) => {
+        if (t.id !== linked.track.id) return t;
+        const nextItems: TimelineTrackItem[] = t.items.map((x) =>
+          x.id === linked.item.id
+            ? {
+                ...x,
+                timelineRange: { ...x.timelineRange, startUs },
+              }
+            : x,
+        );
+        nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+        return { ...t, items: nextItems };
+      });
+
+      nextTracks = updateLinkedLockedAudio(
+        { ...doc, tracks: nextTracks },
+        linked.item.id,
+        (audio) => ({
+          ...audio,
+          timelineRange: { ...audio.timelineRange, startUs },
+        }),
+      );
+
+      return { next: { ...doc, tracks: nextTracks } };
     }
 
     const startUs = Math.max(0, Math.round(cmd.startUs));
