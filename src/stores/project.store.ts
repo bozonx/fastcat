@@ -31,6 +31,7 @@ export interface GranVideoEditorProjectSettings {
   };
   monitor: {
     previewResolution: number;
+    useProxy: boolean;
   };
 }
 
@@ -50,6 +51,7 @@ const DEFAULT_PROJECT_SETTINGS = {
   },
   monitor: {
     previewResolution: 480,
+    useProxy: true,
   },
 };
 
@@ -138,6 +140,7 @@ function createDefaultProjectSettings(userExportDefaults: {
     },
     monitor: {
       previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
+      useProxy: DEFAULT_PROJECT_SETTINGS.monitor.useProxy,
     },
   };
 }
@@ -182,6 +185,7 @@ function normalizeProjectSettings(
   const fps = Number(exportInput.fps);
   const format = encodingInput.format;
   const previewResolution = Number(monitorInput.previewResolution);
+  const useProxy = monitorInput.useProxy;
 
   const finalWidth =
     Number.isFinite(width) && width > 0 ? Math.round(width) : defaultSettings.export.width;
@@ -257,6 +261,8 @@ function normalizeProjectSettings(
         Number.isFinite(previewResolution) && previewResolution > 0
           ? Math.round(previewResolution)
           : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
+      useProxy:
+        useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
     },
   };
 }

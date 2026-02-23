@@ -150,6 +150,20 @@ export const useProxyStore = defineStore('proxy', () => {
     }
   }
 
+  async function getProxyFileHandle(
+    projectRelativePath: string,
+  ): Promise<FileSystemFileHandle | null> {
+    if (!projectRelativePath.startsWith('sources/video/')) return null;
+    const dir = await ensureProjectProxiesDir();
+    if (!dir) return null;
+
+    try {
+      return await dir.getFileHandle(getProxyFileName(projectRelativePath));
+    } catch {
+      return null;
+    }
+  }
+
   async function getProxyFile(projectRelativePath: string): Promise<File | null> {
     if (!projectRelativePath.startsWith('sources/video/')) return null;
     const dir = await ensureProjectProxiesDir();
@@ -170,6 +184,7 @@ export const useProxyStore = defineStore('proxy', () => {
     checkExistingProxies,
     generateProxy,
     deleteProxy,
+    getProxyFileHandle,
     getProxyFile,
   };
 });

@@ -1610,9 +1610,10 @@
     "monitor": {
       "title": "Monitor",
       "empty": "No clip selected",
-      "loadError": "Error loading timeline",
+      "useProxy": "Use proxy",
       "rewind": "Rewind",
-      "play": "Play"
+      "play": "Play",
+      "loadError": "Error loading timeline"
     },
     "timeline": {
       "rewind": "Rewind to start",

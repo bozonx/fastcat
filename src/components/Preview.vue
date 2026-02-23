@@ -234,7 +234,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
         />
       </div>
       <div v-else-if="displayMode === 'file' && hasProxy" class="flex gap-1 shrink-0 ml-2">
-        <UButtonGroup size="xs">
+        <UFieldGroup size="xs">
           <UButton
             :color="previewMode === 'original' ? 'primary' : 'neutral'"
             :variant="previewMode === 'original' ? 'soft' : 'ghost'"
@@ -247,7 +247,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
             :label="t('videoEditor.fileManager.preview.proxy', 'Proxy')"
             @click="previewMode = 'proxy'"
           />
-        </UButtonGroup>
+        </UFieldGroup>
       </div>
     </div>
 

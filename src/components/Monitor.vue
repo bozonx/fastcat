@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProxyStore } from '~/stores/proxy.store';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
@@ -14,6 +15,7 @@ import type { WorkerTimelineClip } from '~/composables/monitor/types';
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const proxyStore = useProxyStore();
 const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
 
 const loadError = ref<string | null>(null);
@@ -80,6 +82,10 @@ const audioEngine = new AudioEngine();
 const timecodeEl = ref<HTMLElement | null>(null);
 
 const { client } = getPreviewWorkerClient();
+
+const useProxyInMonitor = computed(() => {
+  return projectStore.projectSettings.monitor?.useProxy !== false;
+});
 
 async function getFileHandleForAudio(path: string) {
   const handle = await projectStore.getFileHandleByPath(path);
@@ -279,7 +285,13 @@ async function buildTimeline() {
     }
 
     setPreviewHostApi({
-      getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+      getFileHandleByPath: async (path) => {
+        if (useProxyInMonitor.value) {
+          const proxyHandle = await proxyStore.getProxyFileHandle(path);
+          if (proxyHandle) return proxyHandle;
+        }
+        return await projectStore.getFileHandleByPath(path);
+      },
       onExportProgress: () => {},
     });
 
@@ -470,25 +482,38 @@ function togglePlayback() {
       <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
-      <div class="w-24 shrink-0">
-        <USelectMenu
-          v-if="projectStore.projectSettings.monitor"
-          :model-value="
-            (previewResolutions.find(
-              (r) => r.value === projectStore.projectSettings.monitor.previewResolution,
-            ) || previewResolutions[2]) as any
-          "
-          :items="previewResolutions"
-          value-key="value"
-          label-key="label"
-          size="xs"
-          class="w-full"
-          @update:model-value="
-            (v: any) => {
-              if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
-            }
-          "
-        />
+      <div class="flex items-center gap-2 shrink-0">
+        <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
+          <UButton
+            v-if="projectStore.projectSettings.monitor"
+            size="xs"
+            :color="useProxyInMonitor ? 'primary' : 'neutral'"
+            :variant="useProxyInMonitor ? 'soft' : 'ghost'"
+            icon="i-heroicons-bolt"
+            @click="projectStore.projectSettings.monitor.useProxy = !useProxyInMonitor"
+          />
+        </UTooltip>
+
+        <div class="w-24">
+          <USelectMenu
+            v-if="projectStore.projectSettings.monitor"
+            :model-value="
+              (previewResolutions.find(
+                (r) => r.value === projectStore.projectSettings.monitor.previewResolution,
+              ) || previewResolutions[2]) as any
+            "
+            :items="previewResolutions"
+            value-key="value"
+            label-key="label"
+            size="xs"
+            class="w-full"
+            @update:model-value="
+              (v: any) => {
+                if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
+              }
+            "
+          />
+        </div>
       </div>
     </div>
 
