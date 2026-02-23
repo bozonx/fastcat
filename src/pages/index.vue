@@ -6,12 +6,14 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useMediaStore } from '~/stores/media.store';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
+const mediaStore = useMediaStore();
 
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
@@ -52,6 +54,12 @@ async function createNewProject() {
     void timelineStore.loadTimelineMetadata();
   }
   newProjectName.value = '';
+}
+
+function leaveProject() {
+  timelineStore.resetTimelineState();
+  mediaStore.resetMediaState();
+  projectStore.closeProject();
 }
 </script>
 
@@ -176,12 +184,13 @@ async function createNewProject() {
             icon="i-heroicons-play"
             :label="t('granVideoEditor.projects.openLast', 'Open Project')"
             @click="
-              () => {
+              async () => {
                 if (workspaceStore.lastProjectName) {
-                  projectStore.openProject(workspaceStore.lastProjectName);
+                  leaveProject();
+                  await projectStore.openProject(workspaceStore.lastProjectName);
                   uiStore.restoreFileTreeStateOnce(workspaceStore.lastProjectName);
-                  timelineStore.loadTimeline();
-                  timelineStore.loadTimelineMetadata();
+                  await timelineStore.loadTimeline();
+                  void timelineStore.loadTimelineMetadata();
                 }
               }
             "
@@ -218,11 +227,12 @@ async function createNewProject() {
             :key="project"
             class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col hover:border-indigo-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg"
             @click="
-              () => {
-                projectStore.openProject(project);
+              async () => {
+                leaveProject();
+                await projectStore.openProject(project);
                 uiStore.restoreFileTreeStateOnce(project);
-                timelineStore.loadTimeline();
-                timelineStore.loadTimelineMetadata();
+                await timelineStore.loadTimeline();
+                void timelineStore.loadTimelineMetadata();
               }
             "
           >
@@ -265,7 +275,7 @@ async function createNewProject() {
             variant="ghost"
             color="neutral"
             icon="i-heroicons-arrow-left"
-            @click="projectStore.currentProjectName = null"
+            @click="leaveProject"
           />
           <div class="flex items-center gap-2">
             <span class="text-gray-400 font-medium text-sm">{{

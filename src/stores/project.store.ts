@@ -287,6 +287,14 @@ export const useProjectStore = defineStore('project', () => {
     persistProjectSettingsTimeout = null;
   }
 
+  function closeProject() {
+    clearPersistProjectSettingsTimeout();
+    currentProjectName.value = null;
+    currentTimelinePath.value = null;
+    currentFileName.value = null;
+    isLoadingProjectSettings.value = false;
+  }
+
   function markProjectSettingsAsDirty() {
     projectSettingsRevision += 1;
   }
@@ -586,6 +594,7 @@ export const useProjectStore = defineStore('project', () => {
     createProject,
     openProject,
     openTimelineFile,
+    closeProject,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,
     createFallbackTimelineDoc,

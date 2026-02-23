@@ -184,6 +184,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     persistTimelineTimeout = null;
   }
 
+  function resetTimelineState() {
+    clearPersistTimelineTimeout();
+    loadTimelineRequestId += 1;
+    timelineDoc.value = null;
+    isTimelineDirty.value = false;
+    isSavingTimeline.value = false;
+    timelineSaveError.value = null;
+    isPlaying.value = false;
+    currentTime.value = 0;
+    duration.value = 0;
+    timelineZoom.value = 100;
+    clearSelection();
+    selectTrack(null);
+    timelineRevision = 0;
+    savedTimelineRevision = 0;
+  }
+
   function markTimelineAsCleanForCurrentRevision() {
     savedTimelineRevision = timelineRevision;
     isTimelineDirty.value = false;
@@ -463,5 +480,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     moveItemToTrack,
     extractAudioToTrack,
     returnAudioToVideo,
+    resetTimelineState,
   };
 });

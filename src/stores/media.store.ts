@@ -36,6 +36,10 @@ export const useMediaStore = defineStore('media', () => {
 
   const mediaMetadata = ref<Record<string, MediaMetadata>>({});
 
+  function resetMediaState() {
+    mediaMetadata.value = {};
+  }
+
   function getCacheFileName(projectRelativePath: string): string {
     return `${encodeURIComponent(projectRelativePath)}.json`;
   }
@@ -120,5 +124,6 @@ export const useMediaStore = defineStore('media', () => {
     mediaMetadata,
     getOrFetchMetadataByPath,
     getOrFetchMetadata,
+    resetMediaState,
   };
 });
