@@ -6,6 +6,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
 import { useTimelineInteraction, timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/composables/timeline/useTimelineInteraction';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -14,6 +15,7 @@ const { t } = useI18n();
 const toast = useToast();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const { draggedFile } = useDraggedFile();
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -59,48 +61,35 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
   const startUs = getDropStartUs(e);
   if (startUs === null) return;
 
-  const data =
-    e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain') || '';
-
-  if (!data) {
+  const file = draggedFile.value;
+  if (!file) {
     clearDragPreview();
     return;
   }
 
-  try {
-    const parsed = JSON.parse(data);
-
-    if (parsed?.kind === 'file' && parsed?.name && parsed?.path) {
-      let durationUs = 2_000_000;
-      const metadata = mediaStore.mediaMetadata[parsed.path];
-      if (metadata) {
-        const hasVideo = Boolean(metadata.video);
-        const hasAudio = Boolean(metadata.audio);
-        const isImageLike = !hasVideo && !hasAudio;
-        if (isImageLike) {
-          durationUs = 5_000_000;
-        } else {
-          const durationS = Number(metadata.duration);
-          if (Number.isFinite(durationS) && durationS > 0) {
-            durationUs = Math.floor(durationS * 1_000_000);
-          }
-        }
+  let durationUs = 2_000_000;
+  const metadata = mediaStore.mediaMetadata[file.path];
+  if (metadata) {
+    const hasVideo = Boolean(metadata.video);
+    const hasAudio = Boolean(metadata.audio);
+    const isImageLike = !hasVideo && !hasAudio;
+    if (isImageLike) {
+      durationUs = 5_000_000;
+    } else {
+      const durationS = Number(metadata.duration);
+      if (Number.isFinite(durationS) && durationS > 0) {
+        durationUs = Math.floor(durationS * 1_000_000);
       }
-
-      dragPreview.value = {
-        trackId,
-        startUs,
-        label: String(parsed.name),
-        durationUs,
-        kind: 'file',
-      };
-      return;
     }
-
-    clearDragPreview();
-  } catch {
-    clearDragPreview();
   }
+
+  dragPreview.value = {
+    trackId,
+    startUs,
+    label: file.name,
+    durationUs,
+    kind: 'file',
+  };
 }
 
 function onTrackDragLeave() {

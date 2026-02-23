@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProxyStore } from '~/stores/proxy.store';
 import { computed } from 'vue';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 
 interface FsEntry {
   name: string;
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const proxyStore = useProxyStore();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 function isVideo(entry: FsEntry) {
   return entry.kind === 'file' && entry.path?.startsWith('sources/video/');
@@ -54,17 +56,16 @@ function onEntryClick(entry: FsEntry) {
 
 function onDragStart(e: DragEvent, entry: FsEntry) {
   if (entry.kind !== 'file') return;
+  const data = { name: entry.name, kind: 'file' as const, path: entry.path ?? '' };
   if (e.dataTransfer) {
-    e.dataTransfer.setData(
-      'application/json',
-      JSON.stringify({
-        name: entry.name,
-        kind: 'file',
-        path: entry.path,
-      }),
-    );
+    e.dataTransfer.setData('application/json', JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'copy';
   }
+  setDraggedFile(data);
+}
+
+function onDragEnd() {
+  clearDraggedFile();
 }
 
 function getContextMenuItems(entry: FsEntry) {
@@ -134,6 +135,7 @@ function getContextMenuItems(entry: FsEntry) {
           :style="{ paddingLeft: `${8 + depth * 14}px` }"
           :draggable="entry.kind === 'file'"
           @dragstart="onDragStart($event, entry)"
+          @dragend="onDragEnd()"
           @click="onEntryClick(entry)"
         >
           <!-- Chevron for directories -->
