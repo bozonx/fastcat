@@ -118,7 +118,10 @@ async function handleRename(newName: string) {
   renameTarget.value = null;
 }
 
-function onFileAction(action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy', entry: FsEntry) {
+function onFileAction(
+  action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy',
+  entry: FsEntry,
+) {
   if (action === 'createFolder') {
     openCreateFolderModal(entry);
   } else if (action === 'rename') {
@@ -132,6 +135,11 @@ function onFileAction(action: 'createFolder' | 'rename' | 'info' | 'delete' | 'c
     const proxyStore = useProxyStore();
     if (entry.kind === 'file' && entry.path) {
       void proxyStore.generateProxy(entry.handle as FileSystemFileHandle, entry.path);
+    }
+  } else if (action === 'deleteProxy') {
+    const proxyStore = useProxyStore();
+    if (entry.kind === 'file' && entry.path) {
+      void proxyStore.deleteProxy(entry.path);
     }
   }
 }

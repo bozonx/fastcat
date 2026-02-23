@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
-  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy', entry: FsEntry): void;
+  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy', entry: FsEntry): void;
   (e: 'createFolder', entry: FsEntry | null): void;
 }>();
 

@@ -1534,6 +1534,7 @@
         "dropFilesHere": "Drop files here",
         "createProxy": "Create proxy",
         "regenerateProxy": "Regenerate proxy",
+        "deleteProxy": "Delete proxy",
         "generatingProxy": "Generating proxy..."
       },
       "proxyReady": "Proxy available",

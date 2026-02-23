@@ -23,7 +23,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
   (e: 'select', entry: FsEntry): void;
-  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy', entry: FsEntry): void;
+  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy', entry: FsEntry): void;
 }>();
 
 const { t } = useI18n();
@@ -110,6 +110,17 @@ function getContextMenuItems(entry: FsEntry) {
         onSelect: () => emit('action', 'createProxy', entry),
       }
     ]);
+
+    if (hasP) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+          icon: 'i-heroicons-trash',
+          color: 'error',
+          onSelect: () => emit('action', 'deleteProxy', entry),
+        }
+      ]);
+    }
   }
 
   items.push([

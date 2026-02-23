@@ -1534,6 +1534,7 @@
         "dropFilesHere": "Отпустите файлы здесь",
         "createProxy": "Создать прокси",
         "regenerateProxy": "Перегенерировать прокси",
+        "deleteProxy": "Удалить прокси",
         "generatingProxy": "Генерация прокси..."
       },
       "proxyReady": "Прокси готово",
