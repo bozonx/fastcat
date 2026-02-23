@@ -83,7 +83,7 @@ const { client } = getPreviewWorkerClient();
 
 async function getFileHandleForAudio(path: string) {
   const handle = await projectStore.getFileHandleByPath(path);
-  if (!handle) throw new Error(`File handle not found for ${path}`);
+  if (!handle) return null;
   return handle;
 }
 
@@ -132,20 +132,28 @@ async function flushLayoutUpdateQueue() {
 
     // Also update audio clips (both dedicated audio tracks and audio from video clips)
     const audioClips = [...workerTimelineClips.value, ...workerAudioClips.value];
-    const audioEngineClips = await Promise.all(
-      audioClips.map(async (clip) => {
-        const handle = await getFileHandleForAudio(clip.source.path);
-        return {
-          id: clip.id,
-          sourcePath: clip.source.path,
-          fileHandle: handle,
-          startUs: clip.timelineRange.startUs,
-          durationUs: clip.timelineRange.durationUs,
-          sourceStartUs: clip.sourceRange.startUs,
-          sourceDurationUs: clip.sourceRange.durationUs,
-        };
-      }),
-    );
+    const audioEngineClips = (
+      await Promise.all(
+        audioClips.map(async (clip) => {
+          try {
+            const handle = await getFileHandleForAudio(clip.source.path);
+            if (!handle) return null;
+            return {
+              id: clip.id,
+              sourcePath: clip.source.path,
+              fileHandle: handle,
+              startUs: clip.timelineRange.startUs,
+              durationUs: clip.timelineRange.durationUs,
+              sourceStartUs: clip.sourceRange.startUs,
+              sourceDurationUs: clip.sourceRange.durationUs,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      )
+    ).filter((it): it is NonNullable<typeof it> => Boolean(it));
+
     audioEngine.updateTimelineLayout(audioEngineClips);
   } finally {
     layoutUpdateInFlight = false;
@@ -277,20 +285,27 @@ async function buildTimeline() {
 
     await audioEngine.init();
 
-    const audioEngineClips = await Promise.all(
-      [...clips, ...audioClips].map(async (clip) => {
-        const handle = await getFileHandleForAudio(clip.source.path);
-        return {
-          id: clip.id,
-          sourcePath: clip.source.path,
-          fileHandle: handle,
-          startUs: clip.timelineRange.startUs,
-          durationUs: clip.timelineRange.durationUs,
-          sourceStartUs: clip.sourceRange.startUs,
-          sourceDurationUs: clip.sourceRange.durationUs,
-        };
-      }),
-    );
+    const audioEngineClips = (
+      await Promise.all(
+        [...clips, ...audioClips].map(async (clip) => {
+          try {
+            const handle = await getFileHandleForAudio(clip.source.path);
+            if (!handle) return null;
+            return {
+              id: clip.id,
+              sourcePath: clip.source.path,
+              fileHandle: handle,
+              startUs: clip.timelineRange.startUs,
+              durationUs: clip.timelineRange.durationUs,
+              sourceStartUs: clip.sourceRange.startUs,
+              sourceDurationUs: clip.sourceRange.durationUs,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      )
+    ).filter((it): it is NonNullable<typeof it> => Boolean(it));
     await audioEngine.loadClips(audioEngineClips);
 
     lastBuiltSourceSignature = clipSourceSignature.value;
