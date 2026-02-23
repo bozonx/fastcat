@@ -12,9 +12,18 @@ import type { Input, VideoSampleSink } from 'mediabunny';
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
   timeS: number,
+  firstTimestampS?: number,
 ): Promise<any | null> {
   const primary = await sink.getSample(timeS);
   if (primary) return primary;
+
+  if (Number.isFinite(firstTimestampS) && typeof firstTimestampS === 'number') {
+    const safeFirst = Math.max(0, firstTimestampS);
+    if (timeS <= safeFirst) {
+      const first = await sink.getSample(safeFirst);
+      if (first) return first;
+    }
+  }
 
   if (timeS !== 0) {
     return null;
@@ -31,6 +40,7 @@ export interface CompositorClip {
   fileHandle: FileSystemFileHandle;
   input?: Input;
   sink?: VideoSampleSink;
+  firstTimestampS?: number;
   startUs: number;
   endUs: number;
   durationUs: number;
@@ -153,6 +163,22 @@ export class VideoCompositor {
         const safeTimelineDurationUs =
           requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : safeSourceDurationUs;
 
+        if (reusable.clipKind === 'video') {
+          const hasFirstTimestamp =
+            typeof reusable.firstTimestampS === 'number' &&
+            Number.isFinite(reusable.firstTimestampS);
+          if (!hasFirstTimestamp && reusable.input) {
+            try {
+              const track = await reusable.input.getPrimaryVideoTrack();
+              if (track) {
+                reusable.firstTimestampS = await track.getFirstTimestamp();
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
         reusable.startUs = startUs;
         reusable.durationUs = safeTimelineDurationUs;
         reusable.endUs = startUs + safeTimelineDurationUs;
@@ -249,6 +275,7 @@ export class VideoCompositor {
       }
 
       const sink = new VideoSampleSink(track);
+      const firstTimestampS = await track.getFirstTimestamp();
       const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
       const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
       const sourceDurationUs =
@@ -282,6 +309,7 @@ export class VideoCompositor {
         fileHandle,
         input,
         sink,
+        firstTimestampS,
         startUs,
         endUs,
         durationUs,
@@ -398,7 +426,11 @@ export class VideoCompositor {
           continue;
         }
 
-        const sample = await getVideoSampleWithZeroFallback(clip.sink, sampleTimeS);
+        const sample = await getVideoSampleWithZeroFallback(
+          clip.sink,
+          sampleTimeS,
+          clip.firstTimestampS,
+        );
         if (sample) {
           await this.updateClipTextureFromSample(sample, clip);
           clip.sprite.visible = true;
