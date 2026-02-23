@@ -187,71 +187,77 @@ const api: any = {
       const hasAnyAudio = allAudioClips.length > 0;
 
       if (options.audio && hasAnyAudio) {
-        offlineCtx = new OfflineAudioContext({
-          numberOfChannels: 2,
-          sampleRate: 48000,
-          length: Math.ceil(48000 * durationS),
-        });
+        if (typeof OfflineAudioContext !== 'undefined') {
+          offlineCtx = new OfflineAudioContext({
+            numberOfChannels: 2,
+            sampleRate: 48000,
+            length: Math.ceil(48000 * durationS),
+          });
 
-        const decodedAudioCache = new Map<string, AudioBuffer | null>();
+          const decodedAudioCache = new Map<string, AudioBuffer | null>();
 
-        // Process audio from both video clips and dedicated audio clips
-        for (const clipData of allAudioClips) {
-          const sourcePath = clipData.sourcePath || clipData.source?.path;
-          if (!sourcePath) continue;
+          // Process audio from both video clips and dedicated audio clips
+          for (const clipData of allAudioClips) {
+            const sourcePath = clipData.sourcePath || clipData.source?.path;
+            if (!sourcePath) continue;
 
-          let fileHandle: FileSystemFileHandle | null = clipData.fileHandle || null;
-          if (!fileHandle && hostClient) {
-            fileHandle = await hostClient.getFileHandleByPath(sourcePath);
-          }
-
-          if (!fileHandle) continue;
-
-          let decoded = decodedAudioCache.get(sourcePath);
-
-          if (typeof decoded === 'undefined') {
-            try {
-              const arrayBuffer = await fileHandle.getFile().then((f: File) => f.arrayBuffer());
-              decoded = await offlineCtx.decodeAudioData(arrayBuffer);
-            } catch (err) {
-              console.warn('[Worker Export] Failed to decode audio for clip', err);
-              decoded = null;
+            let fileHandle: FileSystemFileHandle | null = clipData.fileHandle || null;
+            if (!fileHandle && hostClient) {
+              fileHandle = await hostClient.getFileHandleByPath(sourcePath);
             }
-            decodedAudioCache.set(sourcePath, decoded);
+
+            if (!fileHandle) continue;
+
+            let decoded = decodedAudioCache.get(sourcePath);
+
+            if (typeof decoded === 'undefined') {
+              try {
+                const arrayBuffer = await fileHandle.getFile().then((f: File) => f.arrayBuffer());
+                decoded = await offlineCtx.decodeAudioData(arrayBuffer);
+              } catch (err) {
+                console.warn('[Worker Export] Failed to decode audio for clip', err);
+                decoded = null;
+              }
+              decodedAudioCache.set(sourcePath, decoded);
+            }
+
+            if (!decoded) continue;
+
+            const startUs = clipData.startUs ?? clipData.timelineRange?.startUs ?? 0;
+            const sourceStartUs = clipData.sourceStartUs ?? clipData.sourceRange?.startUs ?? 0;
+            const sourceDurationUs =
+              clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
+            const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
+
+            const startAtS = Math.max(0, startUs / 1_000_000);
+            const rawOffsetS = Math.max(0, sourceStartUs / 1_000_000);
+            const offsetS = Math.min(rawOffsetS, decoded.duration);
+            const sourceDurationS = Math.max(0, sourceDurationUs / 1_000_000);
+            const timelineDurationS = Math.max(0, durationUs / 1_000_000);
+            const clipDurationS = Math.max(
+              0,
+              Math.min(
+                sourceDurationS || Number.POSITIVE_INFINITY,
+                timelineDurationS || sourceDurationS,
+              ),
+            );
+            const maxPlayableS = Math.max(0, decoded.duration - offsetS);
+            const playDurationS = Math.min(clipDurationS || maxPlayableS, maxPlayableS);
+
+            if (playDurationS <= 0) continue;
+
+            const sourceNode = offlineCtx.createBufferSource();
+            sourceNode.buffer = decoded;
+            sourceNode.connect(offlineCtx.destination);
+            sourceNode.start(startAtS, offsetS, playDurationS);
           }
 
-          if (!decoded) continue;
-
-          const startUs = clipData.startUs ?? clipData.timelineRange?.startUs ?? 0;
-          const sourceStartUs = clipData.sourceStartUs ?? clipData.sourceRange?.startUs ?? 0;
-          const sourceDurationUs =
-            clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
-          const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
-
-          const startAtS = Math.max(0, startUs / 1_000_000);
-          const rawOffsetS = Math.max(0, sourceStartUs / 1_000_000);
-          const offsetS = Math.min(rawOffsetS, decoded.duration);
-          const sourceDurationS = Math.max(0, sourceDurationUs / 1_000_000);
-          const timelineDurationS = Math.max(0, durationUs / 1_000_000);
-          const clipDurationS = Math.max(
-            0,
-            Math.min(
-              sourceDurationS || Number.POSITIVE_INFINITY,
-              timelineDurationS || sourceDurationS,
-            ),
+          audioData = await offlineCtx.startRendering();
+        } else {
+          console.warn(
+            '[Worker Export] OfflineAudioContext is not available in this environment. Audio export might be disabled or fallback is required.',
           );
-          const maxPlayableS = Math.max(0, decoded.duration - offsetS);
-          const playDurationS = Math.min(clipDurationS || maxPlayableS, maxPlayableS);
-
-          if (playDurationS <= 0) continue;
-
-          const sourceNode = offlineCtx.createBufferSource();
-          sourceNode.buffer = decoded;
-          sourceNode.connect(offlineCtx.destination);
-          sourceNode.start(startAtS, offsetS, playDurationS);
         }
-
-        audioData = await offlineCtx.startRendering();
       }
 
       const format =

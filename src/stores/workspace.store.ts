@@ -4,6 +4,12 @@ import PQueue from 'p-queue';
 
 export interface GranVideoEditorUserSettings {
   openLastProjectOnStart: boolean;
+  optimization: {
+    proxyResolution: '360p' | '480p' | '720p' | '1080p';
+    proxyVideoBitrateMbps: number;
+    proxyAudioBitrateKbps: number;
+    proxyCopyOpusAudio: boolean;
+  };
   exportDefaults: {
     width: number;
     height: number;
@@ -31,6 +37,12 @@ export interface GranVideoEditorWorkspaceSettings {
 
 const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   openLastProjectOnStart: true,
+  optimization: {
+    proxyResolution: '720p',
+    proxyVideoBitrateMbps: 2,
+    proxyAudioBitrateKbps: 128,
+    proxyCopyOpusAudio: true,
+  },
   exportDefaults: {
     width: 1920,
     height: 1080,
@@ -102,6 +114,7 @@ function createDefaultExportDefaults(): GranVideoEditorUserSettings['exportDefau
 function createDefaultUserSettings(): GranVideoEditorUserSettings {
   return {
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
+    optimization: { ...DEFAULT_USER_SETTINGS.optimization },
     exportDefaults: createDefaultExportDefaults(),
   };
 }
@@ -165,8 +178,31 @@ function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings {
         ? false
         : DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
+  const optimizationInput = input.optimization ?? {};
+  const proxyResolution = optimizationInput.proxyResolution;
+  const proxyVideoBitrateMbps = Number(optimizationInput.proxyVideoBitrateMbps);
+  const proxyAudioBitrateKbps = Number(optimizationInput.proxyAudioBitrateKbps);
+  const proxyCopyOpusAudio = optimizationInput.proxyCopyOpusAudio;
+
   return {
     openLastProjectOnStart,
+    optimization: {
+      proxyResolution: ['360p', '480p', '720p', '1080p'].includes(proxyResolution)
+        ? proxyResolution
+        : DEFAULT_USER_SETTINGS.optimization.proxyResolution,
+      proxyVideoBitrateMbps:
+        Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
+          ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
+          : DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps,
+      proxyAudioBitrateKbps:
+        Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
+          ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
+          : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
+      proxyCopyOpusAudio:
+        typeof proxyCopyOpusAudio === 'boolean'
+          ? proxyCopyOpusAudio
+          : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
+    },
     exportDefaults: {
       width: normalizedWidth,
       height: normalizedHeight,
@@ -568,7 +604,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
 
-    const folders = ['proxies', 'thumbs', 'cache', 'projects'];
+    const folders = ['proxy', 'thumbs', 'cache', 'projects'];
     for (const folder of folders) {
       if (folder === 'projects') {
         projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });

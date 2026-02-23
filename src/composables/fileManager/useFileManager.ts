@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useProxyStore } from '~/stores/proxy.store';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -31,6 +32,7 @@ export function useFileManager() {
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const mediaStore = useMediaStore();
+  const proxyStore = useProxyStore();
 
   const rootEntries = ref<FsEntry[]>([]);
   const isLoading = ref(false);
@@ -98,6 +100,13 @@ export function useFileManager() {
 
     if (sortMode.value === 'modified') {
       await attachLastModified(entries);
+    }
+
+    const videoPaths = entries
+      .filter((e) => e.kind === 'file' && e.path?.startsWith('sources/video/'))
+      .map((e) => e.path!);
+    if (videoPaths.length > 0) {
+      await proxyStore.checkExistingProxies(videoPaths);
     }
 
     return entries.sort(compareEntries);
@@ -293,6 +302,10 @@ export function useFileManager() {
         if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
           const projectRelativePath = `sources/${targetDirName}/${file.name}`;
           void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
+
+          if (file.type.startsWith('video/')) {
+            void proxyStore.generateProxy(fileHandle as FileSystemFileHandle, projectRelativePath);
+          }
         }
       }
 
@@ -329,6 +342,9 @@ export function useFileManager() {
       const parent = target.parentHandle;
       if (parent) {
         await parent.removeEntry(target.name, { recursive: true });
+      }
+      if (target.path && target.kind === 'file') {
+        await proxyStore.deleteProxy(target.path);
       }
       await loadProjectDirectory();
     } catch (e: any) {

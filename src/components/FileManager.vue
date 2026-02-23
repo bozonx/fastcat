@@ -10,7 +10,7 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerProject from '~/components/file-manager/FileManagerProject.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
-import { useI18n } from 'vue-i18n';
+import { useProxyStore } from '~/stores/proxy.store';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -118,7 +118,7 @@ async function handleRename(newName: string) {
   renameTarget.value = null;
 }
 
-function onFileAction(action: 'createFolder' | 'rename' | 'info' | 'delete', entry: FsEntry) {
+function onFileAction(action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy', entry: FsEntry) {
   if (action === 'createFolder') {
     openCreateFolderModal(entry);
   } else if (action === 'rename') {
@@ -128,6 +128,11 @@ function onFileAction(action: 'createFolder' | 'rename' | 'info' | 'delete', ent
     openFileInfoModal(entry);
   } else if (action === 'delete') {
     openDeleteConfirmModal(entry);
+  } else if (action === 'createProxy') {
+    const proxyStore = useProxyStore();
+    if (entry.kind === 'file' && entry.path) {
+      void proxyStore.generateProxy(entry.handle as FileSystemFileHandle, entry.path);
+    }
   }
 }
 

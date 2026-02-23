@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-type SettingsSection = 'user.general' | 'user.export' | 'workspace.storage';
+type SettingsSection = 'user.general' | 'user.optimization' | 'user.export' | 'workspace.storage';
 
 const activeSection = ref<SettingsSection>('user.general');
 
@@ -125,6 +125,14 @@ const thumbnailsLimitGb = computed({
               variant="ghost"
               color="neutral"
               class="justify-start"
+              :label="t('videoEditor.settings.userOptimization', 'Optimization')"
+              :disabled="activeSection === 'user.optimization'"
+              @click="activeSection = 'user.optimization'"
+            />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
               :label="t('videoEditor.settings.userExport', 'Export')"
               :disabled="activeSection === 'user.export'"
               @click="activeSection = 'user.export'"
@@ -157,6 +165,72 @@ const thumbnailsLimitGb = computed({
             <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
             <span class="text-sm text-gray-700 dark:text-gray-200">
               {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
+            </span>
+          </label>
+
+          <div class="text-xs text-gray-500">
+            {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+          </div>
+        </div>
+
+        <div v-else-if="activeSection === 'user.optimization'" class="flex flex-col gap-6">
+          <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+            {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
+          </div>
+
+          <div class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded text-sm">
+            {{ t('videoEditor.settings.proxyInfo', 'Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.') }}
+          </div>
+
+          <UFormField :label="t('videoEditor.settings.proxyResolution', 'Proxy resolution')">
+            <USelectMenu
+              v-model="workspaceStore.userSettings.optimization.proxyResolution"
+              :items="[
+                { label: '360p', value: '360p' },
+                { label: '480p', value: '480p' },
+                { label: '720p', value: '720p' },
+                { label: '1080p', value: '1080p' }
+              ]"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+              @update:model-value="(v: any) => workspaceStore.userSettings.optimization.proxyResolution = v?.value ?? v"
+            />
+          </UFormField>
+
+          <UFormField
+            :label="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
+            :help="t('videoEditor.settings.proxyVideoBitrateHelp', 'Higher bitrate means better quality but larger file size')"
+          >
+            <UInput
+              v-model.number="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
+              type="number"
+              inputmode="numeric"
+              min="0.1"
+              max="50"
+              step="0.1"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField
+            :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')"
+          >
+            <UInput
+              v-model.number="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
+              type="number"
+              inputmode="numeric"
+              min="32"
+              max="512"
+              step="32"
+              class="w-full"
+            />
+          </UFormField>
+
+          <label class="flex items-center gap-3 cursor-pointer">
+            <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
+            <span class="text-sm text-gray-700 dark:text-gray-200">
+              {{ t('videoEditor.settings.proxyCopyOpusAudio', 'Copy Opus audio directly without re-encoding') }}
             </span>
           </label>
 

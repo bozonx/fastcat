@@ -1531,8 +1531,12 @@
         "createFolder": "Create folder",
         "uploadFiles": "Upload files",
         "createTimeline": "Create Timeline",
-        "dropFilesHere": "Drop files here"
+        "dropFilesHere": "Drop files here",
+        "createProxy": "Create proxy",
+        "regenerateProxy": "Regenerate proxy",
+        "generatingProxy": "Generating proxy..."
       },
+      "proxyReady": "Proxy available",
       "info": {
         "title": "File Information",
         "metadata": "Metadata"

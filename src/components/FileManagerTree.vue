@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useProxyStore } from '~/stores/proxy.store';
+import { computed } from 'vue';
+
 interface FsEntry {
   name: string;
   kind: 'file' | 'directory';
@@ -19,10 +22,27 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
   (e: 'select', entry: FsEntry): void;
-  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete', entry: FsEntry): void;
+  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy', entry: FsEntry): void;
 }>();
 
 const { t } = useI18n();
+const proxyStore = useProxyStore();
+
+function isVideo(entry: FsEntry) {
+  return entry.kind === 'file' && entry.path?.startsWith('sources/video/');
+}
+
+function hasProxy(entry: FsEntry) {
+  return isVideo(entry) && entry.path ? proxyStore.existingProxies.has(entry.path) : false;
+}
+
+function isGeneratingProxy(entry: FsEntry) {
+  return isVideo(entry) && entry.path ? proxyStore.generatingProxies.has(entry.path) : false;
+}
+
+function proxyProgress(entry: FsEntry) {
+  return isVideo(entry) && entry.path ? proxyStore.proxyProgress[entry.path] : undefined;
+}
 
 function onEntryClick(entry: FsEntry) {
   if (entry.kind === 'directory') {
@@ -71,6 +91,27 @@ function getContextMenuItems(entry: FsEntry) {
       icon: 'i-heroicons-information-circle',
       onSelect: () => emit('action', 'info', entry),
     },
+  ]);
+
+  if (isVideo(entry)) {
+    const hasP = hasProxy(entry);
+    const generating = isGeneratingProxy(entry);
+    
+    items.push([
+      {
+        label: generating 
+          ? t('videoEditor.fileManager.actions.generatingProxy', 'Generating Proxy...')
+          : hasP 
+            ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy') 
+            : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+        icon: generating ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
+        disabled: generating,
+        onSelect: () => emit('action', 'createProxy', entry),
+      }
+    ]);
+  }
+
+  items.push([
     {
       label: t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
@@ -112,22 +153,39 @@ function getContextMenuItems(entry: FsEntry) {
           />
 
           <!-- Name -->
-          <span class="text-sm text-gray-300 whitespace-nowrap flex-1 group-hover:text-white">
+          <span
+            class="text-sm truncate text-gray-200 group-hover:text-white transition-colors"
+            :class="{ 'font-medium': entry.kind === 'directory' }"
+          >
             {{ entry.name }}
           </span>
+
+          <!-- Proxy indicators -->
+          <template v-if="isVideo(entry)">
+            <div v-if="isGeneratingProxy(entry)" class="flex items-center gap-1 ml-2">
+              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 text-blue-400 animate-spin" />
+              <span v-if="proxyProgress(entry) !== undefined" class="text-xs text-blue-400 font-mono">
+                {{ proxyProgress(entry) }}%
+              </span>
+            </div>
+            <UTooltip v-else-if="hasProxy(entry)" :text="t('videoEditor.fileManager.proxyReady', 'Proxy available')">
+              <UIcon name="i-heroicons-check-badge" class="w-3.5 h-3.5 text-green-500 ml-2" />
+            </UTooltip>
+          </template>
         </div>
       </UContextMenu>
 
-      <!-- Children (recursive) -->
-      <FileManagerTree
-        v-if="entry.kind === 'directory' && entry.expanded && entry.children"
-        :entries="entry.children"
-        :depth="depth + 1"
-        :get-file-icon="getFileIcon"
-        @toggle="$emit('toggle', $event)"
-        @select="$emit('select', $event)"
-        @action="(action, e) => $emit('action', action, e)"
-      />
+      <!-- Children -->
+      <div v-if="entry.kind === 'directory' && entry.expanded && entry.children">
+        <FileManagerTree
+          :entries="entry.children"
+          :depth="depth + 1"
+          :get-file-icon="getFileIcon"
+          @toggle="emit('toggle', $event)"
+          @select="emit('select', $event)"
+          @action="(a, e) => emit('action', a, e)"
+        />
+      </div>
     </li>
   </ul>
 </template>

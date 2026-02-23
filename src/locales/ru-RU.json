@@ -1531,8 +1531,12 @@
         "createFolder": "Создать папку",
         "uploadFiles": "Загрузить файлы",
         "createTimeline": "Создать таймлайн",
-        "dropFilesHere": "Отпустите файлы здесь"
+        "dropFilesHere": "Отпустите файлы здесь",
+        "createProxy": "Создать прокси",
+        "regenerateProxy": "Перегенерировать прокси",
+        "generatingProxy": "Генерация прокси..."
       },
+      "proxyReady": "Прокси готово",
       "info": {
         "title": "Информация о файле",
         "metadata": "Метаданные"
