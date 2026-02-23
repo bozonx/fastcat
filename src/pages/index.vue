@@ -29,7 +29,7 @@ onMounted(async () => {
 
     if (
       workspaceStore.workspaceHandle &&
-      workspaceStore.userSettings.openBehavior === 'open_last_project' &&
+      workspaceStore.userSettings.openLastProjectOnStart &&
       workspaceStore.lastProjectName &&
       workspaceStore.projects.includes(workspaceStore.lastProjectName)
     ) {
@@ -46,7 +46,7 @@ onMounted(async () => {
 async function createNewProject() {
   if (!newProjectName.value.trim()) return;
   await projectStore.createProject(newProjectName.value.trim());
-  if (workspaceStore.userSettings.openBehavior === 'open_last_project') {
+  if (workspaceStore.userSettings.openLastProjectOnStart) {
     await projectStore.openProject(newProjectName.value.trim());
     await timelineStore.loadTimeline();
     void timelineStore.loadTimelineMetadata();

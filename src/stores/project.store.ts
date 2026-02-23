@@ -53,6 +53,42 @@ const DEFAULT_PROJECT_SETTINGS = {
   },
 };
 
+function getDefaultExportFromUserDefaults(userDefaults: {
+  width: number;
+  height: number;
+  fps: number;
+  resolutionFormat: string;
+  orientation: 'landscape' | 'portrait';
+  aspectRatio: string;
+  isCustomResolution: boolean;
+  encoding: {
+    format: 'mp4' | 'webm' | 'mkv';
+    videoCodec: string;
+    bitrateMbps: number;
+    excludeAudio: boolean;
+    audioCodec: 'aac' | 'opus';
+    audioBitrateKbps: number;
+  };
+}): GranVideoEditorProjectSettings['export'] {
+  return {
+    width: userDefaults.width,
+    height: userDefaults.height,
+    fps: userDefaults.fps,
+    resolutionFormat: userDefaults.resolutionFormat,
+    orientation: userDefaults.orientation,
+    aspectRatio: userDefaults.aspectRatio,
+    isCustomResolution: userDefaults.isCustomResolution,
+    encoding: {
+      format: userDefaults.encoding.format,
+      videoCodec: userDefaults.encoding.videoCodec,
+      bitrateMbps: userDefaults.encoding.bitrateMbps,
+      excludeAudio: userDefaults.encoding.excludeAudio,
+      audioCodec: userDefaults.encoding.audioCodec,
+      audioBitrateKbps: userDefaults.encoding.audioBitrateKbps,
+    },
+  };
+}
+
 function getResolutionPreset(width: number, height: number) {
   const isPortrait = height > width;
   const w = isPortrait ? height : width;
@@ -78,31 +114,25 @@ function getResolutionPreset(width: number, height: number) {
   };
 }
 
-function createDefaultProjectSettings(workspaceDefaults: {
+function createDefaultProjectSettings(userExportDefaults: {
   width: number;
   height: number;
   fps: number;
+  resolutionFormat: string;
+  orientation: 'landscape' | 'portrait';
+  aspectRatio: string;
+  isCustomResolution: boolean;
+  encoding: {
+    format: 'mp4' | 'webm' | 'mkv';
+    videoCodec: string;
+    bitrateMbps: number;
+    excludeAudio: boolean;
+    audioCodec: 'aac' | 'opus';
+    audioBitrateKbps: number;
+  };
 }): GranVideoEditorProjectSettings {
-  const preset = getResolutionPreset(workspaceDefaults.width, workspaceDefaults.height);
-
   return {
-    export: {
-      width: workspaceDefaults.width,
-      height: workspaceDefaults.height,
-      fps: workspaceDefaults.fps,
-      resolutionFormat: preset.resolutionFormat,
-      orientation: preset.orientation as 'landscape' | 'portrait',
-      aspectRatio: preset.aspectRatio,
-      isCustomResolution: preset.isCustomResolution,
-      encoding: {
-        format: DEFAULT_PROJECT_SETTINGS.export.encoding.format,
-        videoCodec: DEFAULT_PROJECT_SETTINGS.export.encoding.videoCodec,
-        bitrateMbps: DEFAULT_PROJECT_SETTINGS.export.encoding.bitrateMbps,
-        excludeAudio: DEFAULT_PROJECT_SETTINGS.export.encoding.excludeAudio,
-        audioCodec: DEFAULT_PROJECT_SETTINGS.export.encoding.audioCodec,
-        audioBitrateKbps: DEFAULT_PROJECT_SETTINGS.export.encoding.audioBitrateKbps,
-      },
-    },
+    export: getDefaultExportFromUserDefaults(userExportDefaults),
     proxy: {
       height: DEFAULT_PROJECT_SETTINGS.proxy.height,
     },
@@ -114,10 +144,26 @@ function createDefaultProjectSettings(workspaceDefaults: {
 
 function normalizeProjectSettings(
   raw: unknown,
-  workspaceDefaults: { width: number; height: number; fps: number },
+  userExportDefaults: {
+    width: number;
+    height: number;
+    fps: number;
+    resolutionFormat: string;
+    orientation: 'landscape' | 'portrait';
+    aspectRatio: string;
+    isCustomResolution: boolean;
+    encoding: {
+      format: 'mp4' | 'webm' | 'mkv';
+      videoCodec: string;
+      bitrateMbps: number;
+      excludeAudio: boolean;
+      audioCodec: 'aac' | 'opus';
+      audioBitrateKbps: number;
+    };
+  },
 ): GranVideoEditorProjectSettings {
   if (!raw || typeof raw !== 'object') {
-    return createDefaultProjectSettings(workspaceDefaults);
+    return createDefaultProjectSettings(userExportDefaults);
   }
 
   const input = raw as Record<string, any>;
@@ -126,7 +172,7 @@ function normalizeProjectSettings(
   const proxyInput = input.proxy ?? {};
   const monitorInput = input.monitor ?? {};
 
-  const defaultSettings = createDefaultProjectSettings(workspaceDefaults);
+  const defaultSettings = createDefaultProjectSettings(userExportDefaults);
 
   const width = Number(exportInput.width);
   const height = Number(exportInput.height);
@@ -223,7 +269,7 @@ export const useProjectStore = defineStore('project', () => {
   const currentFileName = ref<string | null>(null);
 
   const projectSettings = ref<GranVideoEditorProjectSettings>(
-    createDefaultProjectSettings({ width: 1920, height: 1080, fps: 25 }),
+    createDefaultProjectSettings(workspaceStore.userSettings.exportDefaults),
   );
   const isLoadingProjectSettings = ref(false);
   const isSavingProjectSettings = ref(false);
@@ -319,32 +365,41 @@ export const useProjectStore = defineStore('project', () => {
   async function loadProjectSettings() {
     isLoadingProjectSettings.value = true;
 
-    const workspaceDefaults = workspaceStore.workspaceSettings.defaults.newProject;
-
     try {
       const settingsFileHandle = await ensureProjectSettingsFile({ create: false });
       if (!settingsFileHandle) {
-        projectSettings.value = createDefaultProjectSettings(workspaceDefaults);
+        projectSettings.value = createDefaultProjectSettings(
+          workspaceStore.userSettings.exportDefaults,
+        );
         return;
       }
 
       const settingsFile = await settingsFileHandle.getFile();
       const text = await settingsFile.text();
       if (!text.trim()) {
-        projectSettings.value = createDefaultProjectSettings(workspaceDefaults);
+        projectSettings.value = createDefaultProjectSettings(
+          workspaceStore.userSettings.exportDefaults,
+        );
         return;
       }
 
       const parsed = JSON.parse(text);
-      projectSettings.value = normalizeProjectSettings(parsed, workspaceDefaults);
+      projectSettings.value = normalizeProjectSettings(
+        parsed,
+        workspaceStore.userSettings.exportDefaults,
+      );
     } catch (e: any) {
       if (e?.name === 'NotFoundError') {
-        projectSettings.value = createDefaultProjectSettings(workspaceDefaults);
+        projectSettings.value = createDefaultProjectSettings(
+          workspaceStore.userSettings.exportDefaults,
+        );
         return;
       }
 
       console.warn('Failed to load project settings, fallback to defaults', e);
-      projectSettings.value = createDefaultProjectSettings(workspaceDefaults);
+      projectSettings.value = createDefaultProjectSettings(
+        workspaceStore.userSettings.exportDefaults,
+      );
     } finally {
       isLoadingProjectSettings.value = false;
       projectSettingsRevision = 0;
@@ -452,8 +507,7 @@ export const useProjectStore = defineStore('project', () => {
           create: true,
         });
 
-        const workspaceDefaults = workspaceStore.workspaceSettings.defaults.newProject;
-        const initial = createDefaultProjectSettings(workspaceDefaults);
+        const initial = createDefaultProjectSettings(workspaceStore.userSettings.exportDefaults);
         // seeded is essentially redundant now but kept for backwards compatibility in structure
         const seeded = applyWorkspaceDefaultsToProjectSettings(initial);
         const writableSettings = await (settingsHandle as any).createWritable();
@@ -519,7 +573,7 @@ export const useProjectStore = defineStore('project', () => {
     return createDefaultTimelineDocument({
       id: createTimelineDocId(currentProjectName.value),
       name: currentProjectName.value,
-      fps: workspaceStore.workspaceSettings.defaults.newProject.fps,
+      fps: projectSettings.value.export.fps,
     });
   }
 
