@@ -4,7 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
-import { useTimelineInteraction, timeUsToPx, pxToTimeUs } from '~/composables/timeline/useTimelineInteraction';
+import { useTimelineInteraction, timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/composables/timeline/useTimelineInteraction';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -27,6 +27,8 @@ const {
   startMoveItem,
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
+
+const pxPerSecond = computed(() => zoomToPxPerSecond(timelineStore.timelineZoom));
 
 async function onClipAction(payload: {
   action: 'extractAudio' | 'returnAudio';
@@ -125,7 +127,13 @@ function formatTime(seconds: number): string {
           class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
           @mousedown="onTimeRulerMouseDown"
         >
-          <span v-for="n in 10" :key="n">{{ formatTime((n - 1) * 10) }}</span>
+          <span
+            v-for="n in 10"
+            :key="n"
+            :style="{ marginLeft: n === 1 ? '0px' : `${Math.max(0, pxPerSecond * 10 - 64)}px` }"
+          >
+            {{ formatTime((n - 1) * 10) }}
+          </span>
         </div>
 
         <!-- Tracks -->
@@ -141,7 +149,7 @@ function formatTime(seconds: number): string {
         <!-- Playhead -->
         <div
           class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
-          :style="{ left: `${timeUsToPx(timelineStore.currentTime)}px` }"
+          :style="{ left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px` }"
         >
           <div
             class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"

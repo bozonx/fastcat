@@ -138,8 +138,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             timelineStore.selectedItemIds.includes(item.id) ? 'ring-2 ring-white z-20 shadow-lg' : '',
           ]"
           :style="{
-            left: `${2 + timeUsToPx(item.timelineRange.startUs)}px`,
-            width: `${Math.max(30, timeUsToPx(item.timelineRange.durationUs))}px`,
+            left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(30, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
           }"
           @mousedown="
             item.kind === 'clip' &&

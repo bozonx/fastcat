@@ -27,6 +27,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const currentTime = ref(0);
   const duration = ref(0);
 
+  const timelineZoom = ref(100);
+
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
 
@@ -64,6 +66,12 @@ export const useTimelineStore = defineStore('timeline', () => {
       itemIds: [...selectedItemIds.value],
     });
     selectedItemIds.value = [];
+  }
+
+  function setTimelineZoom(next: number) {
+    const parsed = Math.round(Number(next));
+    if (!Number.isFinite(parsed)) return;
+    timelineZoom.value = Math.min(200, Math.max(10, parsed));
   }
 
   function addTrack(kind: 'video' | 'audio', name: string) {
@@ -410,6 +418,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying,
     currentTime,
     duration,
+    timelineZoom,
     selectedItemIds,
     selectedTrackId,
     loadTimeline,
@@ -422,6 +431,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleSelection,
     selectTrack,
     deleteSelectedItems,
+    setTimelineZoom,
     addTrack,
     renameTrack,
     deleteTrack,

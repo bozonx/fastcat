@@ -36,6 +36,11 @@ function stop() {
   timelineStore.isPlaying = false;
   timelineStore.currentTime = 0;
 }
+
+function onZoomInput(e: Event) {
+  const target = e.target as HTMLInputElement | null;
+  timelineStore.setTimelineZoom(Number(target?.value ?? 100));
+}
 </script>
 
 <template>
@@ -99,9 +104,10 @@ function stop() {
         type="range"
         min="10"
         max="200"
-        value="100"
+        :value="timelineStore.timelineZoom"
         class="w-20 accent-primary-500"
         :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
+        @input="onZoomInput"
       />
       <UIcon name="i-heroicons-magnifying-glass-plus" class="w-3.5 h-3.5" />
     </div>

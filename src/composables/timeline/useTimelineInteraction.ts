@@ -3,18 +3,27 @@ import type { ComputedRef, Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 
-export const PX_PER_SECOND = 10;
+export const BASE_PX_PER_SECOND = 10;
 
-export function timeUsToPx(timeUs: number) {
-  return (timeUs / 1e6) * PX_PER_SECOND;
+export function zoomToPxPerSecond(zoom: number) {
+  const parsed = Number(zoom);
+  const safeZoom = Number.isFinite(parsed) ? parsed : 100;
+  return (BASE_PX_PER_SECOND * safeZoom) / 100;
 }
 
-export function pxToTimeUs(px: number) {
-  return Math.max(0, Math.round((px / PX_PER_SECOND) * 1e6));
+export function timeUsToPx(timeUs: number, zoom = 100) {
+  const pxPerSecond = zoomToPxPerSecond(zoom);
+  return (timeUs / 1e6) * pxPerSecond;
 }
 
-export function pxToDeltaUs(px: number) {
-  return Math.round((px / PX_PER_SECOND) * 1e6);
+export function pxToTimeUs(px: number, zoom = 100) {
+  const pxPerSecond = zoomToPxPerSecond(zoom);
+  return Math.max(0, Math.round((px / pxPerSecond) * 1e6));
+}
+
+export function pxToDeltaUs(px: number, zoom = 100) {
+  const pxPerSecond = zoomToPxPerSecond(zoom);
+  return Math.round((px / pxPerSecond) * 1e6);
 }
 
 function sanitizeFps(value: unknown): number {
@@ -79,7 +88,7 @@ export function useTimelineInteraction(
 
   function seekByMouseEvent(e: MouseEvent) {
     const x = getLocalX(e);
-    timelineStore.currentTime = pxToTimeUs(x);
+    timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
   }
 
   function onTimeRulerMouseDown(e: MouseEvent) {
@@ -154,7 +163,7 @@ export function useTimelineInteraction(
 
     if (mode === 'move') {
       const dxPx = clientX - dragAnchorClientX.value;
-      const deltaUs = pxToDeltaUs(dxPx);
+      const deltaUs = pxToDeltaUs(dxPx, timelineStore.timelineZoom);
       const startUs = Math.max(0, dragAnchorStartUs.value + deltaUs);
       try {
         timelineStore.applyTimeline(
@@ -168,7 +177,7 @@ export function useTimelineInteraction(
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const dxPx = clientX - dragAnchorClientX.value;
-    const rawDeltaUs = pxToDeltaUs(dxPx);
+    const rawDeltaUs = pxToDeltaUs(dxPx, timelineStore.timelineZoom);
     const quantizedDeltaUs = quantizeDeltaUsToFrames(rawDeltaUs, fps);
     const nextStepDeltaUs = quantizedDeltaUs - dragLastAppliedQuantizedDeltaUs.value;
 
@@ -212,7 +221,7 @@ export function useTimelineInteraction(
       if (!scrollerRect) return;
       const scrollX = scrollEl.value?.scrollLeft ?? 0;
       const x = e.clientX - scrollerRect.left + scrollX;
-      timelineStore.currentTime = pxToTimeUs(x);
+      timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
       return;
     }
 
