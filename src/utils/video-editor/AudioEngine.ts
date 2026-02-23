@@ -126,9 +126,9 @@ export class AudioEngine {
     this.currentClips = clips;
     if (this.isPlaying) {
       // Re-evaluate playing nodes
-      const currentTimeS = this.getCurrentTimeS();
+      const currentTimeUs = this.getCurrentTimeUs();
       this.stopAllNodes();
-      this.play(currentTimeS);
+      this.play(currentTimeUs);
     }
   }
 
@@ -198,19 +198,23 @@ export class AudioEngine {
 
   async play(timeUs: number) {
     if (!this.ctx) return;
-    if (this.ctx.state === 'suspended') {
-      await this.ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
-      });
-    }
 
     this.isPlaying = true;
     const timeS = timeUs / 1_000_000;
     this.baseTimeS = timeS;
     this.playbackContextTimeS = this.ctx.currentTime;
 
+    if (this.ctx.state === 'suspended') {
+      await this.ctx.resume().catch((err) => {
+        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
+      });
+      // Update context time after resume since it might have been delayed
+      this.playbackContextTimeS = this.ctx.currentTime;
+    }
+
     for (const clip of this.currentClips) {
-      this.scheduleClip(clip, timeS);
+      // Fire and forget
+      void this.scheduleClip(clip, timeS);
     }
   }
 
