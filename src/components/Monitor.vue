@@ -86,15 +86,10 @@ const previewResolutions = computed(() => {
     { label: '144p', value: 144 },
   ];
 
-  return baseResolutions.map((res) => {
-    if (res.value === projectHeight) {
-      return {
-        ...res,
-        label: `${t('granVideoEditor.monitor.projectLabel', 'Project')} (${res.label})`,
-      };
-    }
-    return res;
-  });
+  return baseResolutions.map((res) => ({
+    ...res,
+    isProject: res.value === projectHeight,
+  }));
 });
 
 const timecodeEl = ref<HTMLElement | null>(null);
@@ -192,7 +187,29 @@ function toggleMute() {
                 if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
               }
             "
-          />
+          >
+            <template #leading="{ modelValue }">
+              <UIcon
+                v-if="(modelValue as any)?.isProject"
+                name="i-heroicons-star-20-solid"
+                class="w-3 h-3 text-primary-500 shrink-0"
+                :title="t('granVideoEditor.monitor.projectResolutionHint')"
+              />
+            </template>
+            <template #item-label="{ item }">
+              <span :class="{ 'text-primary-500 font-medium': item.isProject }">
+                {{ item.label }}
+              </span>
+            </template>
+            <template #item-trailing="{ item }">
+              <UIcon
+                v-if="item.isProject"
+                name="i-heroicons-star-20-solid"
+                class="w-3.5 h-3.5 text-primary-500 shrink-0"
+                :title="t('granVideoEditor.monitor.projectResolutionHint')"
+              />
+            </template>
+          </USelectMenu>
         </div>
       </div>
     </div>

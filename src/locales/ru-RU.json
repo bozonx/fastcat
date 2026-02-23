@@ -1615,7 +1615,11 @@
       "rewind": "В начало",
       "play": "Воспроизвести",
       "loadError": "Ошибка загрузки таймлайна",
-      "projectLabel": "Проект"
+      "projectLabel": "Проект",
+      "projectResolutionHint": "Разрешение проекта",
+      "audioMute": "Выключить звук",
+      "audioUnmute": "Включить звук",
+      "audioVolume": "Громкость аудио"
     },
     "timeline": {
       "rewind": "В начало",
