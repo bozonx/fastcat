@@ -76,6 +76,7 @@ let pendingLayoutClips: WorkerTimelineClip[] | null = null;
 let renderLoopInFlight = false;
 let latestRenderTimeUs: number | null = null;
 let isUnmounted = false;
+let forceRecreateCompositorNextBuild = false;
 
 const audioEngine = new AudioEngine();
 
@@ -270,7 +271,8 @@ async function buildTimeline() {
   loadError.value = null;
 
   try {
-    await ensureCompositorReady();
+    await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
+    forceRecreateCompositorNextBuild = false;
     const clips = workerTimelineClips.value;
     const audioClips = workerAudioClips.value;
 
@@ -350,6 +352,19 @@ watch(clipSourceSignature, () => {
 watch(audioClipSourceSignature, () => {
   scheduleBuild();
 });
+
+watch(
+  () => useProxyInMonitor.value,
+  () => {
+    if (isUnmounted) return;
+
+    // Playback needs to stop, and we force a compositor re-init to avoid worker-side resource reuse.
+    isPlaying.value = false;
+    forceRecreateCompositorNextBuild = true;
+    compositorReady = false;
+    scheduleBuild();
+  },
+);
 
 watch(clipLayoutSignature, () => {
   if (isLoading.value || !compositorReady) {
