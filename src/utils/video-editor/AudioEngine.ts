@@ -240,22 +240,33 @@ export class AudioEngine {
     if (clipEndS <= currentTimeS) return;
 
     const sourceStartS = clip.sourceStartUs / 1_000_000;
+    const sourceDurationS = Math.max(0, clip.sourceDurationUs / 1_000_000);
 
-    let playStartS = 0; // When to start playing in AudioContext time
-    let bufferOffsetS = 0; // Where to start in the audio buffer
+    const localOffsetInClipS = Math.max(0, currentTimeS - clipStartS);
 
-    if (currentTimeS < clipStartS) {
-      // Clip is in the future
-      playStartS = this.ctx.currentTime + (clipStartS - currentTimeS);
-      bufferOffsetS = sourceStartS;
-    } else {
-      // Clip is currently playing
-      playStartS = this.ctx.currentTime;
-      bufferOffsetS = sourceStartS + (currentTimeS - clipStartS);
+    // When to start playing in AudioContext time.
+    const playStartS =
+      currentTimeS < clipStartS
+        ? this.ctx.currentTime + (clipStartS - currentTimeS)
+        : this.ctx.currentTime;
+
+    // Where to start in the audio buffer.
+    const bufferOffsetS = sourceStartS + localOffsetInClipS;
+
+    const maxPlayableFromBufferS = Math.max(0, buffer.duration - sourceStartS);
+    const maxPlayableFromSourceS = sourceDurationS > 0 ? sourceDurationS : Number.POSITIVE_INFINITY;
+    const maxPlayableS = Math.min(maxPlayableFromBufferS, maxPlayableFromSourceS);
+    const remainingPlayableS = maxPlayableS - localOffsetInClipS;
+
+    const remainingInClipS = Math.max(0, clipDurationS - localOffsetInClipS);
+    const durationToPlayS = Math.min(remainingInClipS, remainingPlayableS);
+
+    if (!Number.isFinite(bufferOffsetS) || bufferOffsetS < 0 || bufferOffsetS >= buffer.duration) {
+      return;
     }
-
-    const durationToPlayS = clipDurationS - (bufferOffsetS - sourceStartS);
-    if (durationToPlayS <= 0) return;
+    if (!Number.isFinite(durationToPlayS) || durationToPlayS <= 0) {
+      return;
+    }
 
     const sourceNode = this.ctx.createBufferSource();
     sourceNode.buffer = buffer;

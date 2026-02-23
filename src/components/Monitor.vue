@@ -41,7 +41,7 @@ const {
 } = useMonitorDisplay();
 
 const canInteractPlayback = computed(
-  () => videoItems.value.length > 0 && !isLoading.value && !loadError.value,
+  () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );
 
 const previewResolutions = [
@@ -434,6 +434,19 @@ function formatTime(seconds: number): string {
   const s = Math.floor(seconds % 60);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
+
+function togglePlayback() {
+  if (isLoading.value) return;
+
+  // If preview build failed, attempt a rebuild instead of permanently blocking playback controls.
+  if (loadError.value) {
+    loadError.value = null;
+    scheduleBuild();
+    return;
+  }
+
+  timelineStore.isPlaying = !timelineStore.isPlaying;
+}
 </script>
 
 <template>
@@ -517,7 +530,7 @@ function formatTime(seconds: number): string {
         :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
         :aria-label="t('granVideoEditor.monitor.play', 'Play')"
         :disabled="!canInteractPlayback"
-        @click="timelineStore.isPlaying = !timelineStore.isPlaying"
+        @click="togglePlayback"
       />
       <span ref="timecodeEl" class="text-xs text-gray-600 ml-2 font-mono">
         {{ formatTime(uiCurrentTimeUs / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
