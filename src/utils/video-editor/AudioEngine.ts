@@ -45,6 +45,9 @@ export class AudioEngine {
   private decodeWorker: Worker | null = null;
   private decodeCallId = 0;
   private decodePending = new Map<number, { resolve: Function; reject: Function }>();
+  private decodeQueue: Array<() => void> = [];
+  private decodeInFlightCount = 0;
+  private readonly maxDecodeConcurrency = 2;
 
   constructor() {}
 
@@ -94,6 +97,20 @@ export class AudioEngine {
       const req: DecodeRequest = { type: 'decode', id, sourceKey, arrayBuffer };
       worker.postMessage(req, [arrayBuffer]);
     });
+  }
+
+  private async withDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
+    if (this.decodeInFlightCount >= this.maxDecodeConcurrency) {
+      await new Promise<void>((resolve) => this.decodeQueue.push(resolve));
+    }
+    this.decodeInFlightCount += 1;
+    try {
+      return await task();
+    } finally {
+      this.decodeInFlightCount = Math.max(0, this.decodeInFlightCount - 1);
+      const next = this.decodeQueue.shift();
+      if (next) next();
+    }
   }
 
   async init() {
@@ -156,7 +173,7 @@ export class AudioEngine {
       return cached ?? null;
     }
 
-    const task = (async () => {
+    const task = this.withDecodeSlot(async () => {
       try {
         const file = await fileHandle.getFile();
         const arrayBuffer = await file.arrayBuffer();
@@ -205,7 +222,7 @@ export class AudioEngine {
       } finally {
         this.decodeInFlight.delete(sourceKey);
       }
-    })();
+    });
 
     this.decodeInFlight.set(sourceKey, task);
     return task;

@@ -322,6 +322,7 @@ const api: any = {
         let currentTimeUs = 0;
 
         let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        const yieldIntervalMs = 16;
 
         try {
           await output.start();
@@ -342,7 +343,7 @@ const api: any = {
             if (hostClient) await hostClient.onExportProgress(progress);
 
             const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-            if (nowMs - lastYieldAtMs >= 50) {
+            if (nowMs - lastYieldAtMs >= yieldIntervalMs) {
               lastYieldAtMs = nowMs;
               await new Promise<void>((resolve) => setTimeout(resolve, 0));
             }
