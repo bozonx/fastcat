@@ -132,6 +132,7 @@ async function onClipAction(payload: {
 
 async function onDrop(e: DragEvent, trackId: string) {
   clearDragPreview();
+  const startUs = getDropStartUs(e);
   const data =
     e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain');
   if (data) {
@@ -142,6 +143,7 @@ async function onDrop(e: DragEvent, trackId: string) {
           trackId,
           name: parsed.name,
           path: parsed.path,
+          startUs: startUs ?? undefined,
         });
 
         toast.add({

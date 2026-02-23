@@ -112,6 +112,7 @@ export interface AddClipToTrackCommand {
   path: string;
   durationUs?: number;
   sourceDurationUs?: number;
+  startUs?: number;
 }
 
 export interface RemoveItemCommand {
@@ -611,7 +612,9 @@ export function applyTimelineCommand(
       0,
       Math.round(Number(cmd.sourceDurationUs ?? cmd.durationUs ?? 0)),
     );
-    const startUs = quantizeTimeUsToFrames(computeTrackEndUs(track), fps, 'round');
+    const startCandidate =
+      cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
+    const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
 
     assertNoOverlap(track, '', startUs, durationUs);
 

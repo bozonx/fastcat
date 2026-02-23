@@ -385,7 +385,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
-  async function addClipToTimelineFromPath(input: { trackId: string; name: string; path: string }) {
+  async function addClipToTimelineFromPath(input: {
+    trackId: string;
+    name: string;
+    path: string;
+    startUs?: number;
+  }) {
     const handle = await projectStore.getFileHandleByPath(input.path);
     if (!handle) throw new Error('Failed to access file handle');
 
@@ -433,6 +438,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       path: input.path,
       durationUs,
       sourceDurationUs: durationUs,
+      startUs: input.startUs,
     });
   }
 
