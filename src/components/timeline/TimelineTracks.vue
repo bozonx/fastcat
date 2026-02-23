@@ -8,6 +8,13 @@ const timelineStore = useTimelineStore();
 
 defineProps<{
   tracks: TimelineTrack[];
+  dragPreview?: {
+    trackId: string;
+    startUs: number;
+    label: string;
+    durationUs: number;
+    kind: 'timeline-clip' | 'file';
+  } | null;
 }>();
 
 const emit = defineEmits<{
@@ -103,6 +110,18 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"
     >
+      <div
+        v-if="dragPreview && dragPreview.trackId === track.id"
+        class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-30 pointer-events-none opacity-80"
+        :class="dragPreview.kind === 'file' ? 'bg-primary-600 border border-primary-400' : 'bg-gray-600 border border-gray-400'"
+        :style="{
+          left: `${2 + timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
+          width: `${Math.max(30, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
+        }"
+      >
+        <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
+      </div>
+
       <div
         class="absolute inset-y-1 left-2 right-2 rounded bg-gray-800 border border-dashed border-gray-700 flex items-center justify-center"
       >

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useMediaStore } from '~/stores/media.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
@@ -12,6 +13,7 @@ import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 const { t } = useI18n();
 const toast = useToast();
 const timelineStore = useTimelineStore();
+const mediaStore = useMediaStore();
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -41,18 +43,6 @@ const {
 
 const pxPerSecond = computed(() => zoomToPxPerSecond(timelineStore.timelineZoom));
 
-const dragPreviewStyle = computed(() => {
-  const preview = dragPreview.value;
-  if (!preview) return null;
-
-  const trackIndex = Math.max(0, tracks.value.findIndex((t) => t.id === preview.trackId));
-  return {
-    left: `${2 + timeUsToPx(preview.startUs, timelineStore.timelineZoom)}px`,
-    width: `${Math.max(30, timeUsToPx(preview.durationUs, timelineStore.timelineZoom))}px`,
-    transform: `translateY(${trackIndex * 40}px)`,
-  };
-});
-
 function clearDragPreview() {
   dragPreview.value = null;
 }
@@ -81,11 +71,27 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
     const parsed = JSON.parse(data);
 
     if (parsed?.kind === 'file' && parsed?.name && parsed?.path) {
+      let durationUs = 2_000_000;
+      const metadata = mediaStore.mediaMetadata[parsed.path];
+      if (metadata) {
+        const hasVideo = Boolean(metadata.video);
+        const hasAudio = Boolean(metadata.audio);
+        const isImageLike = !hasVideo && !hasAudio;
+        if (isImageLike) {
+          durationUs = 5_000_000;
+        } else {
+          const durationS = Number(metadata.duration);
+          if (Number.isFinite(durationS) && durationS > 0) {
+            durationUs = Math.floor(durationS * 1_000_000);
+          }
+        }
+      }
+
       dragPreview.value = {
         trackId,
         startUs,
         label: String(parsed.name),
-        durationUs: 2_000_000,
+        durationUs,
         kind: 'file',
       };
       return;
@@ -186,6 +192,7 @@ function formatTime(seconds: number): string {
         <!-- Tracks -->
         <TimelineTracks
           :tracks="tracks"
+          :drag-preview="dragPreview"
           @drop="onDrop"
           @dragover="onTrackDragOver"
           @dragleave="onTrackDragLeave"
@@ -194,15 +201,6 @@ function formatTime(seconds: number): string {
           @start-trim-item="startTrimItem"
           @clip-action="onClipAction"
         />
-
-        <div
-          v-if="dragPreview"
-          class="absolute h-8 top-8 rounded px-2 flex items-center text-xs text-white z-30 pointer-events-none opacity-80"
-          :class="dragPreview.kind === 'file' ? 'bg-primary-600 border border-primary-400' : 'bg-gray-600 border border-gray-400'"
-          :style="dragPreviewStyle || undefined"
-        >
-          <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
-        </div>
 
         <!-- Playhead -->
         <div
