@@ -300,13 +300,13 @@ async function createNewProject() {
         </div>
       </div>
 
-      <!-- Top half: File Manager + Preview + Monitor -->
+      <!-- Top half: File Manager + Monitor + Preview -->
       <div
-        class="grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)_minmax(0,4fr)] flex-1 min-h-0 border-b border-ui-border"
+        class="grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,4fr)_minmax(0,3fr)] flex-1 min-h-0 border-b border-ui-border"
       >
         <FileManager />
-        <Preview />
         <Monitor />
+        <Preview />
       </div>
 
       <!-- Bottom half: Timeline -->

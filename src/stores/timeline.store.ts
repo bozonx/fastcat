@@ -82,6 +82,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({ type: 'rename_track', trackId, name });
   }
 
+  function renameItem(trackId: string, itemId: string, name: string) {
+    applyTimeline({ type: 'rename_item', trackId, itemId, name });
+  }
+
   function deleteTrack(trackId: string, options?: { allowNonEmpty?: boolean }) {
     applyTimeline({ type: 'delete_track', trackId, allowNonEmpty: options?.allowNonEmpty });
     if (selectedTrackId.value === trackId) {
@@ -434,6 +438,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     setTimelineZoom,
     addTrack,
     renameTrack,
+    renameItem,
     deleteTrack,
     reorderTracks,
     moveItemToTrack,

@@ -185,6 +185,13 @@ export interface ReturnAudioToVideoCommand {
   videoItemId: string;
 }
 
+export interface RenameItemCommand {
+  type: 'rename_item';
+  trackId: string;
+  itemId: string;
+  name: string;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | RemoveItemCommand
@@ -197,7 +204,8 @@ export type TimelineCommand =
   | ReorderTracksCommand
   | MoveItemToTrackCommand
   | ExtractAudioToTrackCommand
-  | ReturnAudioToVideoCommand;
+  | ReturnAudioToVideoCommand
+  | RenameItemCommand;
 
 function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
@@ -479,6 +487,26 @@ export function applyTimelineCommand(
     const track = getTrackById(doc, cmd.trackId);
     if (track.name === cmd.name) return { next: doc };
     const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, name: cmd.name } : t));
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
+  if (cmd.type === 'rename_item') {
+    const track = getTrackById(doc, cmd.trackId);
+    const item = track.items.find((x) => x.id === cmd.itemId);
+    if (!item || item.kind !== 'clip') throw new Error('Item not found or not a clip');
+    if (item.name === cmd.name) return { next: doc };
+
+    const nextTracks = doc.tracks.map((t) => {
+      if (t.id === track.id) {
+        return {
+          ...t,
+          items: t.items.map((it) =>
+            it.id === cmd.itemId && it.kind === 'clip' ? { ...it, name: cmd.name } : it,
+          ),
+        };
+      }
+      return t;
+    });
     return { next: { ...doc, tracks: nextTracks } };
   }
 

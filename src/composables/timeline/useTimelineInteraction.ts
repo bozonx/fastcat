@@ -111,7 +111,6 @@ export function useTimelineInteraction(
 
   function startMoveItem(e: MouseEvent, trackId: string, itemId: string, startUs: number) {
     if (e.button !== 0) return;
-    e.preventDefault();
     e.stopPropagation();
 
     if (!timelineStore.selectedItemIds.includes(itemId)) {

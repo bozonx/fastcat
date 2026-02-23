@@ -1,12 +1,48 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useMediaStore } from '~/stores/media.store';
+import type { TimelineClipItem } from '~/timeline/types';
+import yaml from 'js-yaml';
+import RenameModal from '~/components/common/RenameModal.vue';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
+const timelineStore = useTimelineStore();
+const mediaStore = useMediaStore();
 
 const currentUrl = ref<string | null>(null);
-const mediaType = ref<'image' | 'video' | 'audio' | 'unknown' | null>(null);
+const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
+const textContent = ref<string>('');
+
+const fileInfo = ref<{
+  name: string;
+  kind: string;
+  size?: number;
+  lastModified?: number;
+  metadata?: any;
+} | null>(null);
+
+const selectedClip = computed<TimelineClipItem | null>(() => {
+  if (timelineStore.selectedItemIds.length !== 1) return null;
+  const id = timelineStore.selectedItemIds[0];
+  for (const track of timelineStore.timelineDoc?.tracks ?? []) {
+    const item = track.items.find((it) => it.id === id);
+    if (item && item.kind === 'clip') {
+      return item as TimelineClipItem;
+    }
+  }
+  return null;
+});
+
+const isRenameModalOpen = ref(false);
+
+const displayMode = computed<'clip' | 'file' | 'empty'>(() => {
+  if (selectedClip.value) return 'clip';
+  if (uiStore.selectedFsEntry && uiStore.selectedFsEntry.kind === 'file') return 'file';
+  return 'empty';
+});
 
 watch(
   () => uiStore.selectedFsEntry,
@@ -17,24 +53,46 @@ watch(
       currentUrl.value = null;
     }
     mediaType.value = null;
+    textContent.value = '';
+    fileInfo.value = null;
 
     if (!entry || entry.kind !== 'file') return;
 
     try {
       const file = await (entry.handle as FileSystemFileHandle).getFile();
+      
+      fileInfo.value = {
+        name: file.name,
+        kind: 'file',
+        size: file.size,
+        lastModified: file.lastModified,
+        metadata: entry.path ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, { forceRefresh: true }) : undefined,
+      };
+
+      const ext = entry.name.split('.').pop()?.toLowerCase();
+      const textExtensions = ['txt', 'md', 'json', 'yaml', 'yml'];
 
       if (file.type.startsWith('image/')) {
         mediaType.value = 'image';
+        currentUrl.value = URL.createObjectURL(file);
       } else if (file.type.startsWith('video/')) {
         mediaType.value = 'video';
+        currentUrl.value = URL.createObjectURL(file);
       } else if (file.type.startsWith('audio/')) {
         mediaType.value = 'audio';
+        currentUrl.value = URL.createObjectURL(file);
+      } else if (textExtensions.includes(ext || '') || file.type.startsWith('text/')) {
+        mediaType.value = 'text';
+        // limit text read to first 1MB
+        const textSlice = file.slice(0, 1024 * 1024);
+        textContent.value = await textSlice.text();
+        if (file.size > 1024 * 1024) {
+          textContent.value += '\n... (truncated)';
+        }
       } else {
         mediaType.value = 'unknown';
-        return;
       }
 
-      currentUrl.value = URL.createObjectURL(file);
     } catch (e) {
       console.error('Failed to preview file:', e);
     }
@@ -47,50 +105,172 @@ onUnmounted(() => {
   }
 });
 
+function formatMegabytes(bytes: number, decimals = 2): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(decimals)} MB`;
+}
+
+function formatTime(us: number): string {
+  if (!us) return '0.00s';
+  return (us / 1_000_000).toFixed(2) + 's';
+}
+
+const metadataYaml = computed(() => {
+  if (!fileInfo.value?.metadata) return null;
+  try {
+    return yaml.dump(fileInfo.value.metadata, { indent: 2 });
+  } catch (e) {
+    return String(fileInfo.value.metadata);
+  }
+});
+
+function handleDeleteClip() {
+  if (selectedClip.value) {
+    timelineStore.deleteSelectedItems(selectedClip.value.trackId);
+  }
+}
+
+function handleRenameClip(newName: string) {
+  if (selectedClip.value && newName.trim()) {
+    timelineStore.renameItem(selectedClip.value.trackId, selectedClip.value.id, newName.trim());
+  }
+}
+
 const isUnknown = computed(() => mediaType.value === 'unknown');
 </script>
 
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
-    <div class="flex items-center px-3 py-2 border-b border-ui-border shrink-0 h-10">
-      <span class="text-xs font-semibold text-ui-text-muted uppercase tracking-wider">
-        {{ t('granVideoEditor.preview.title', 'Preview') }}
-      </span>
-      <span v-if="uiStore.selectedFsEntry" class="ml-2 text-xs text-gray-500 font-mono truncate">
-        {{ uiStore.selectedFsEntry.name }}
-      </span>
+    <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10">
+      <div class="flex items-center overflow-hidden min-w-0">
+        <span class="text-xs font-semibold text-ui-text-muted uppercase tracking-wider shrink-0">
+          {{ t('granVideoEditor.preview.title', 'Properties') }}
+        </span>
+        <span v-if="displayMode === 'clip'" class="ml-2 text-xs text-gray-500 font-mono truncate">
+          {{ selectedClip?.name }}
+        </span>
+        <span v-else-if="displayMode === 'file' && uiStore.selectedFsEntry" class="ml-2 text-xs text-gray-500 font-mono truncate">
+          {{ uiStore.selectedFsEntry.name }}
+        </span>
+      </div>
+      <div v-if="displayMode === 'clip'" class="flex gap-1 shrink-0 ml-2">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-pencil"
+          @click="isRenameModalOpen = true"
+        />
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="red"
+          icon="i-heroicons-trash"
+          @click="handleDeleteClip"
+        />
+      </div>
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 min-h-0 flex items-center justify-center bg-black relative">
-      <div v-if="!uiStore.selectedFsEntry" class="flex flex-col items-center gap-3 text-gray-700">
+    <div class="flex-1 min-h-0 flex flex-col overflow-auto bg-black relative p-4 items-start">
+      <div v-if="displayMode === 'empty'" class="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-700">
         <UIcon name="i-heroicons-eye" class="w-16 h-16" />
         <p class="text-sm">
-          {{ t('granVideoEditor.preview.noFile', 'No file selected') }}
+          {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
         </p>
       </div>
 
-      <div v-else-if="isUnknown" class="flex flex-col items-center gap-3 text-gray-700">
-        <UIcon name="i-heroicons-document" class="w-16 h-16" />
-        <p class="text-sm">
-          {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format') }}
-        </p>
+      <!-- Clip Properties -->
+      <div v-else-if="displayMode === 'clip' && selectedClip" class="w-full flex flex-col gap-4 text-white">
+        <div class="flex items-center gap-3">
+          <UIcon 
+            :name="selectedClip.trackId.startsWith('v') ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note'" 
+            class="w-10 h-10" 
+            :class="selectedClip.trackId.startsWith('v') ? 'text-indigo-400' : 'text-teal-400'"
+          />
+          <div>
+            <h3 class="font-medium text-lg">{{ selectedClip.name }}</h3>
+            <span class="text-xs text-gray-400 uppercase">
+              {{ selectedClip.trackId.startsWith('v') ? t('common.video', 'Video Clip') : t('common.audio', 'Audio Clip') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-2 mt-4 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+          <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+            <span class="text-gray-500">{{ t('common.source', 'Source File') }}</span>
+            <span class="font-medium break-all">{{ selectedClip.source.path }}</span>
+          </div>
+          <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+            <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
+            <span class="font-mono">{{ formatTime(selectedClip.timelineRange.startUs) }}</span>
+          </div>
+          <div class="flex flex-col gap-1 pb-2">
+            <span class="text-gray-500">{{ t('common.duration', 'Duration') }}</span>
+            <span class="font-mono">{{ formatTime(selectedClip.timelineRange.durationUs) }}</span>
+          </div>
+        </div>
       </div>
 
-      <template v-else-if="currentUrl">
-        <img
-          v-if="mediaType === 'image'"
-          :src="currentUrl"
-          class="max-w-full max-h-full object-contain"
-        />
-        <MediaPlayer
-          v-else-if="mediaType === 'video' || mediaType === 'audio'"
-          :src="currentUrl"
-          :type="mediaType"
-          class="w-full h-full"
-        />
-      </template>
+      <!-- File Preview & Properties -->
+      <div v-else-if="displayMode === 'file'" class="w-full flex flex-col gap-4">
+        <!-- Preview Box -->
+        <div class="w-full bg-black rounded border border-gray-800 flex items-center justify-center min-h-[200px] overflow-hidden">
+          <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-gray-700 p-8">
+            <UIcon name="i-heroicons-document" class="w-16 h-16" />
+            <p class="text-sm text-center">
+              {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview') }}
+            </p>
+          </div>
+
+          <template v-else-if="currentUrl">
+            <img
+              v-if="mediaType === 'image'"
+              :src="currentUrl"
+              class="max-w-full max-h-64 object-contain"
+            />
+            <MediaPlayer
+              v-else-if="mediaType === 'video' || mediaType === 'audio'"
+              :src="currentUrl"
+              :type="mediaType"
+              class="w-full h-64"
+            />
+          </template>
+          
+          <pre
+            v-else-if="mediaType === 'text'"
+            class="w-full max-h-64 overflow-auto p-4 text-xs font-mono text-gray-300 whitespace-pre-wrap"
+          >{{ textContent }}</pre>
+        </div>
+
+        <!-- File Info -->
+        <div v-if="fileInfo" class="space-y-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm w-full">
+          <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+            <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
+            <span class="font-medium text-white break-all">{{ fileInfo.name }}</span>
+          </div>
+          <div v-if="fileInfo.size !== undefined" class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+            <span class="text-gray-500">{{ t('common.size', 'Size') }}</span>
+            <span class="font-medium text-white">{{ formatMegabytes(fileInfo.size) }}</span>
+          </div>
+          <div v-if="fileInfo.lastModified" class="flex flex-col gap-1 pb-2" :class="{'border-b border-gray-800': metadataYaml}">
+            <span class="text-gray-500">{{ t('common.modified', 'Modified') }}</span>
+            <span class="font-medium text-white">{{ new Date(fileInfo.lastModified).toLocaleString() }}</span>
+          </div>
+          <div v-if="metadataYaml" class="flex flex-col gap-1 pt-2">
+            <span class="text-gray-500">{{ t('videoEditor.fileManager.info.metadata', 'Metadata') }}</span>
+            <pre class="bg-gray-950 p-2 rounded text-[10px] font-mono overflow-auto max-h-40 whitespace-pre text-gray-400">{{ metadataYaml }}</pre>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <RenameModal
+      v-model:open="isRenameModalOpen"
+      :initial-name="selectedClip?.name"
+      @rename="handleRenameClip"
+    />
   </div>
 </template>
