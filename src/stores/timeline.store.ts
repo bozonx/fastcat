@@ -33,6 +33,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const selectedTrackId = ref<string | null>(null);
 
   let persistTimelineTimeout: number | null = null;
+  let loadTimelineRequestId = 0;
   let timelineRevision = 0;
   let savedTimelineRevision = 0;
 
@@ -262,26 +263,38 @@ export const useTimelineStore = defineStore('timeline', () => {
   async function loadTimeline() {
     if (!currentProjectName.value || !currentTimelinePath.value) return;
 
+    const requestId = ++loadTimelineRequestId;
+    clearPersistTimelineTimeout();
+    clearSelection();
+    selectTrack(null);
+    isPlaying.value = false;
+    currentTime.value = 0;
+
     const fallback = projectStore.createFallbackTimelineDoc();
 
     try {
       const handle = await ensureTimelineFileHandle({ create: false });
       if (!handle) {
+        if (requestId !== loadTimelineRequestId) return;
         timelineDoc.value = fallback;
         return;
       }
 
       const file = await handle.getFile();
       const text = await file.text();
-      timelineDoc.value = parseTimelineFromOtio(text, {
+      const parsed = parseTimelineFromOtio(text, {
         id: fallback.id,
         name: fallback.name,
         fps: fallback.timebase.fps,
       });
+      if (requestId !== loadTimelineRequestId) return;
+      timelineDoc.value = parsed;
     } catch (e: any) {
       console.warn('Failed to load timeline file, fallback to default', e);
+      if (requestId !== loadTimelineRequestId) return;
       timelineDoc.value = fallback;
     } finally {
+      if (requestId !== loadTimelineRequestId) return;
       duration.value = timelineDoc.value ? selectTimelineDurationUs(timelineDoc.value) : 0;
       timelineRevision = 0;
       markTimelineAsCleanForCurrentRevision();
@@ -402,6 +415,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   async function loadTimelineMetadata() {
     if (!timelineDoc.value) return;
 
+    const requestId = loadTimelineRequestId;
+    const timelinePathSnapshot = currentTimelinePath.value;
+
     const items: { path: string }[] = [];
     for (const track of timelineDoc.value.tracks) {
       for (const item of track.items) {
@@ -410,6 +426,9 @@ export const useTimelineStore = defineStore('timeline', () => {
         }
       }
     }
+
+    if (requestId !== loadTimelineRequestId) return;
+    if (timelinePathSnapshot !== currentTimelinePath.value) return;
 
     await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
   }

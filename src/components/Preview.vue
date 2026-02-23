@@ -6,6 +6,9 @@ import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
+defineOptions({
+  name: 'PreviewPanel',
+});
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -21,7 +24,7 @@ const fileInfo = ref<{
   kind: string;
   size?: number;
   lastModified?: number;
-  metadata?: any;
+  metadata?: unknown;
 } | null>(null);
 
 const selectedClip = computed<TimelineClipItem | null>(() => {
@@ -60,13 +63,17 @@ watch(
 
     try {
       const file = await (entry.handle as FileSystemFileHandle).getFile();
-      
+
       fileInfo.value = {
         name: file.name,
         kind: 'file',
         size: file.size,
         lastModified: file.lastModified,
-        metadata: entry.path ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, { forceRefresh: true }) : undefined,
+        metadata: entry.path
+          ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
+              forceRefresh: true,
+            })
+          : undefined,
       };
 
       const ext = entry.name.split('.').pop()?.toLowerCase();
@@ -92,7 +99,6 @@ watch(
       } else {
         mediaType.value = 'unknown';
       }
-
     } catch (e) {
       console.error('Failed to preview file:', e);
     }
@@ -120,7 +126,7 @@ const metadataYaml = computed(() => {
   if (!fileInfo.value?.metadata) return null;
   try {
     return yaml.dump(fileInfo.value.metadata, { indent: 2 });
-  } catch (e) {
+  } catch {
     return String(fileInfo.value.metadata);
   }
 });
@@ -143,7 +149,9 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10">
+    <div
+      class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10"
+    >
       <div class="flex items-center overflow-hidden min-w-0">
         <span class="text-xs font-semibold text-ui-text-muted uppercase tracking-wider shrink-0">
           {{ t('granVideoEditor.preview.title', 'Properties') }}
@@ -151,7 +159,10 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
         <span v-if="displayMode === 'clip'" class="ml-2 text-xs text-gray-500 font-mono truncate">
           {{ selectedClip?.name }}
         </span>
-        <span v-else-if="displayMode === 'file' && uiStore.selectedFsEntry" class="ml-2 text-xs text-gray-500 font-mono truncate">
+        <span
+          v-else-if="displayMode === 'file' && uiStore.selectedFsEntry"
+          class="ml-2 text-xs text-gray-500 font-mono truncate"
+        >
           {{ uiStore.selectedFsEntry.name }}
         </span>
       </div>
@@ -174,94 +185,139 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 min-h-0 flex flex-col overflow-auto bg-black relative p-4 items-start">
-      <div v-if="displayMode === 'empty'" class="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-700">
-        <UIcon name="i-heroicons-eye" class="w-16 h-16" />
-        <p class="text-sm">
-          {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
-        </p>
-      </div>
-
-      <!-- Clip Properties -->
-      <div v-else-if="displayMode === 'clip' && selectedClip" class="w-full flex flex-col gap-4 text-white">
-        <div class="flex items-center gap-3">
-          <UIcon 
-            :name="selectedClip.trackId.startsWith('v') ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note'" 
-            class="w-10 h-10" 
-            :class="selectedClip.trackId.startsWith('v') ? 'text-indigo-400' : 'text-teal-400'"
-          />
-          <div>
-            <h3 class="font-medium text-lg">{{ selectedClip.name }}</h3>
-            <span class="text-xs text-gray-400 uppercase">
-              {{ selectedClip.trackId.startsWith('v') ? t('common.video', 'Video Clip') : t('common.audio', 'Audio Clip') }}
-            </span>
-          </div>
-        </div>
-
-        <div class="space-y-2 mt-4 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
-          <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
-            <span class="text-gray-500">{{ t('common.source', 'Source File') }}</span>
-            <span class="font-medium break-all">{{ selectedClip.source.path }}</span>
-          </div>
-          <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
-            <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
-            <span class="font-mono">{{ formatTime(selectedClip.timelineRange.startUs) }}</span>
-          </div>
-          <div class="flex flex-col gap-1 pb-2">
-            <span class="text-gray-500">{{ t('common.duration', 'Duration') }}</span>
-            <span class="font-mono">{{ formatTime(selectedClip.timelineRange.durationUs) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- File Preview & Properties -->
-      <div v-else-if="displayMode === 'file'" class="w-full flex flex-col gap-4">
-        <!-- Preview Box -->
-        <div class="w-full bg-black rounded border border-gray-800 flex items-center justify-center min-h-50 overflow-hidden">
-          <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-gray-700 p-8">
-            <UIcon name="i-heroicons-document" class="w-16 h-16" />
-            <p class="text-sm text-center">
-              {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview') }}
+    <div class="flex-1 min-h-0 bg-black relative">
+      <div class="absolute inset-0 overflow-auto">
+        <div class="flex flex-col min-w-62.5 p-4 items-start w-full">
+          <div
+            v-if="displayMode === 'empty'"
+            class="w-full flex flex-col items-center justify-center gap-3 text-gray-700 min-h-50"
+          >
+            <UIcon name="i-heroicons-eye" class="w-16 h-16" />
+            <p class="text-sm">
+              {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
             </p>
           </div>
 
-          <template v-else-if="currentUrl">
-            <img
-              v-if="mediaType === 'image'"
-              :src="currentUrl"
-              class="max-w-full max-h-64 object-contain"
-            />
-            <MediaPlayer
-              v-else-if="mediaType === 'video' || mediaType === 'audio'"
-              :src="currentUrl"
-              :type="mediaType"
-              class="w-full h-64"
-            />
-          </template>
-          
-          <pre
-            v-else-if="mediaType === 'text'"
-            class="w-full max-h-64 overflow-auto p-4 text-xs font-mono text-gray-300 whitespace-pre-wrap"
-          >{{ textContent }}</pre>
-        </div>
+          <!-- Clip Properties -->
+          <div
+            v-else-if="displayMode === 'clip' && selectedClip"
+            class="w-full flex flex-col gap-4 text-white"
+          >
+            <div class="flex items-center gap-3">
+              <UIcon
+                :name="
+                  selectedClip.trackId.startsWith('v')
+                    ? 'i-heroicons-video-camera'
+                    : 'i-heroicons-musical-note'
+                "
+                class="w-10 h-10 shrink-0"
+                :class="selectedClip.trackId.startsWith('v') ? 'text-indigo-400' : 'text-teal-400'"
+              />
+              <div class="min-w-0">
+                <h3 class="font-medium text-lg truncate">{{ selectedClip.name }}</h3>
+                <span class="text-xs text-gray-400 uppercase">
+                  {{
+                    selectedClip.trackId.startsWith('v')
+                      ? t('common.video', 'Video Clip')
+                      : t('common.audio', 'Audio Clip')
+                  }}
+                </span>
+              </div>
+            </div>
 
-        <!-- File Info -->
-        <div v-if="fileInfo" class="space-y-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm w-full">
-          <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
-            <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
-            <span class="font-medium text-white break-all">{{ fileInfo.name }}</span>
+            <div class="space-y-2 mt-4 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+              <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+                <span class="text-gray-500">{{ t('common.source', 'Source File') }}</span>
+                <span class="font-medium break-all">{{ selectedClip.source.path }}</span>
+              </div>
+              <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+                <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
+                <span class="font-mono">{{ formatTime(selectedClip.timelineRange.startUs) }}</span>
+              </div>
+              <div class="flex flex-col gap-1 pb-2">
+                <span class="text-gray-500">{{ t('common.duration', 'Duration') }}</span>
+                <span class="font-mono">{{
+                  formatTime(selectedClip.timelineRange.durationUs)
+                }}</span>
+              </div>
+            </div>
           </div>
-          <div v-if="fileInfo.size !== undefined" class="flex flex-col gap-1 border-b border-gray-800 pb-2">
-            <span class="text-gray-500">{{ t('common.size', 'Size') }}</span>
-            <span class="font-medium text-white">{{ formatMegabytes(fileInfo.size) }}</span>
-          </div>
-          <div v-if="fileInfo.lastModified" class="flex flex-col gap-1 pb-2" :class="{'border-b border-gray-800': metadataYaml}">
-            <span class="text-gray-500">{{ t('common.modified', 'Modified') }}</span>
-            <span class="font-medium text-white">{{ new Date(fileInfo.lastModified).toLocaleString() }}</span>
-          </div>
-          <div v-if="metadataYaml" class="flex flex-col gap-1 pt-2">
-            <span class="text-gray-500">{{ t('videoEditor.fileManager.info.metadata', 'Metadata') }}</span>
-            <pre class="bg-gray-950 p-2 rounded text-[10px] font-mono overflow-auto max-h-40 whitespace-pre text-gray-400">{{ metadataYaml }}</pre>
+
+          <!-- File Preview & Properties -->
+          <div v-else-if="displayMode === 'file'" class="w-full flex flex-col gap-4">
+            <!-- Preview Box -->
+            <div
+              class="w-full bg-black rounded border border-gray-800 flex items-center justify-center min-h-50 overflow-hidden shrink-0"
+            >
+              <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-gray-700 p-8">
+                <UIcon name="i-heroicons-document" class="w-16 h-16" />
+                <p class="text-sm text-center">
+                  {{
+                    t(
+                      'granVideoEditor.preview.unsupported',
+                      'Unsupported file format for visual preview',
+                    )
+                  }}
+                </p>
+              </div>
+
+              <template v-else-if="currentUrl">
+                <img
+                  v-if="mediaType === 'image'"
+                  :src="currentUrl"
+                  class="max-w-full max-h-64 object-contain"
+                />
+                <MediaPlayer
+                  v-else-if="mediaType === 'video' || mediaType === 'audio'"
+                  :src="currentUrl"
+                  :type="mediaType"
+                  class="w-full h-64"
+                />
+              </template>
+
+              <pre
+                v-else-if="mediaType === 'text'"
+                class="w-full max-h-64 overflow-auto p-4 text-xs font-mono text-gray-300 whitespace-pre-wrap"
+                >{{ textContent }}</pre
+              >
+            </div>
+
+            <!-- File Info -->
+            <div
+              v-if="fileInfo"
+              class="space-y-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm w-full"
+            >
+              <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+                <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
+                <span class="font-medium text-white break-all">{{ fileInfo.name }}</span>
+              </div>
+              <div
+                v-if="fileInfo.size !== undefined"
+                class="flex flex-col gap-1 border-b border-gray-800 pb-2"
+              >
+                <span class="text-gray-500">{{ t('common.size', 'Size') }}</span>
+                <span class="font-medium text-white">{{ formatMegabytes(fileInfo.size) }}</span>
+              </div>
+              <div
+                v-if="fileInfo.lastModified"
+                class="flex flex-col gap-1 pb-2"
+                :class="{ 'border-b border-gray-800': metadataYaml }"
+              >
+                <span class="text-gray-500">{{ t('common.modified', 'Modified') }}</span>
+                <span class="font-medium text-white">{{
+                  new Date(fileInfo.lastModified).toLocaleString()
+                }}</span>
+              </div>
+              <div v-if="metadataYaml" class="flex flex-col gap-1 pt-2">
+                <span class="text-gray-500">{{
+                  t('videoEditor.fileManager.info.metadata', 'Metadata')
+                }}</span>
+                <pre
+                  class="bg-gray-950 p-2 rounded text-[10px] font-mono overflow-auto max-h-40 whitespace-pre text-gray-400"
+                  >{{ metadataYaml }}</pre
+                >
+              </div>
+            </div>
           </div>
         </div>
       </div>
