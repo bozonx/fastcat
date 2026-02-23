@@ -1,6 +1,7 @@
 import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import PQueue from 'p-queue';
+import { PROXY_DIR_NAME } from '~/utils/constants';
 
 export interface GranVideoEditorUserSettings {
   openLastProjectOnStart: boolean;
@@ -604,7 +605,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
 
-    const folders = ['proxy', 'thumbs', 'cache', 'projects'];
+    const folders = [PROXY_DIR_NAME, 'thumbs', 'cache', 'projects'];
     for (const folder of folders) {
       if (folder === 'projects') {
         projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });

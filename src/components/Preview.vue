@@ -3,6 +3,7 @@ import { ref, watch, onUnmounted, computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
@@ -14,10 +15,12 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const proxyStore = useProxyStore();
 
 const currentUrl = ref<string | null>(null);
 const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
 const textContent = ref<string>('');
+const previewMode = ref<'original' | 'proxy'>('original');
 
 const fileInfo = ref<{
   name: string;
@@ -47,6 +50,52 @@ const displayMode = computed<'clip' | 'file' | 'empty'>(() => {
   return 'empty';
 });
 
+const hasProxy = computed(() => {
+  if (displayMode.value !== 'file' || !uiStore.selectedFsEntry || !uiStore.selectedFsEntry.path) return false;
+  return proxyStore.existingProxies.has(uiStore.selectedFsEntry.path);
+});
+
+watch(hasProxy, (val) => {
+  if (!val && previewMode.value === 'proxy') {
+    previewMode.value = 'original';
+  }
+});
+
+async function loadPreviewMedia() {
+  if (currentUrl.value) {
+    URL.revokeObjectURL(currentUrl.value);
+    currentUrl.value = null;
+  }
+  
+  const entry = uiStore.selectedFsEntry;
+  if (!entry || entry.kind !== 'file') return;
+
+  try {
+    let fileToPlay: File;
+    
+    if (previewMode.value === 'proxy' && hasProxy.value && entry.path) {
+      const proxyFile = await proxyStore.getProxyFile(entry.path);
+      if (proxyFile) {
+        fileToPlay = proxyFile;
+      } else {
+        fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
+      }
+    } else {
+      fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
+    }
+    
+    if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+      currentUrl.value = URL.createObjectURL(fileToPlay);
+    }
+  } catch (e) {
+    console.error('Failed to load preview media:', e);
+  }
+}
+
+watch(previewMode, () => {
+  void loadPreviewMedia();
+});
+
 watch(
   () => uiStore.selectedFsEntry,
   async (entry) => {
@@ -58,6 +107,7 @@ watch(
     mediaType.value = null;
     textContent.value = '';
     fileInfo.value = null;
+    previewMode.value = 'original';
 
     if (!entry || entry.kind !== 'file') return;
 
@@ -81,13 +131,10 @@ watch(
 
       if (file.type.startsWith('image/')) {
         mediaType.value = 'image';
-        currentUrl.value = URL.createObjectURL(file);
       } else if (file.type.startsWith('video/')) {
         mediaType.value = 'video';
-        currentUrl.value = URL.createObjectURL(file);
       } else if (file.type.startsWith('audio/')) {
         mediaType.value = 'audio';
-        currentUrl.value = URL.createObjectURL(file);
       } else if (textExtensions.includes(ext || '') || file.type.startsWith('text/')) {
         mediaType.value = 'text';
         // limit text read to first 1MB
@@ -98,6 +145,10 @@ watch(
         }
       } else {
         mediaType.value = 'unknown';
+      }
+      
+      if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+        await loadPreviewMedia();
       }
     } catch (e) {
       console.error('Failed to preview file:', e);
@@ -181,6 +232,22 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
           icon="i-heroicons-trash"
           @click="handleDeleteClip"
         />
+      </div>
+      <div v-else-if="displayMode === 'file' && hasProxy" class="flex gap-1 shrink-0 ml-2">
+        <UButtonGroup size="xs">
+          <UButton
+            :color="previewMode === 'original' ? 'primary' : 'neutral'"
+            :variant="previewMode === 'original' ? 'soft' : 'ghost'"
+            :label="t('videoEditor.fileManager.preview.original', 'Original')"
+            @click="previewMode = 'original'"
+          />
+          <UButton
+            :color="previewMode === 'proxy' ? 'primary' : 'neutral'"
+            :variant="previewMode === 'proxy' ? 'soft' : 'ghost'"
+            :label="t('videoEditor.fileManager.preview.proxy', 'Proxy')"
+            @click="previewMode = 'proxy'"
+          />
+        </UButtonGroup>
       </div>
     </div>
 

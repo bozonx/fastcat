@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { PROXY_DIR_NAME } from '~/utils/constants';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -19,7 +20,7 @@ export const useProxyStore = defineStore('proxy', () => {
   async function ensureProjectProxiesDir(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.workspaceHandle || !projectStore.currentProjectName) return null;
     try {
-      const proxiesDir = await workspaceStore.workspaceHandle.getDirectoryHandle('proxy', {
+      const proxiesDir = await workspaceStore.workspaceHandle.getDirectoryHandle(PROXY_DIR_NAME, {
         create: true,
       });
       return await proxiesDir.getDirectoryHandle(projectStore.currentProjectName, { create: true });
@@ -149,6 +150,19 @@ export const useProxyStore = defineStore('proxy', () => {
     }
   }
 
+  async function getProxyFile(projectRelativePath: string): Promise<File | null> {
+    if (!projectRelativePath.startsWith('sources/video/')) return null;
+    const dir = await ensureProjectProxiesDir();
+    if (!dir) return null;
+
+    try {
+      const handle = await dir.getFileHandle(getProxyFileName(projectRelativePath));
+      return await handle.getFile();
+    } catch {
+      return null;
+    }
+  }
+
   return {
     generatingProxies,
     existingProxies,
@@ -156,5 +170,6 @@ export const useProxyStore = defineStore('proxy', () => {
     checkExistingProxies,
     generateProxy,
     deleteProxy,
+    getProxyFile,
   };
 });

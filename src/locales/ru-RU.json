@@ -1537,6 +1537,10 @@
         "generatingProxy": "Генерация прокси..."
       },
       "proxyReady": "Прокси готово",
+      "preview": {
+        "original": "Оригинал",
+        "proxy": "Прокси"
+      },
       "info": {
         "title": "Информация о файле",
         "metadata": "Метаданные"

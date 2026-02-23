@@ -148,14 +148,20 @@ function getContextMenuItems(entry: FsEntry) {
           <!-- File / folder icon -->
           <UIcon
             :name="getFileIcon(entry)"
-            class="w-4 h-4 shrink-0"
-            :class="entry.kind === 'directory' ? 'text-yellow-500' : 'text-gray-400'"
+            class="w-4 h-4 shrink-0 transition-colors"
+            :class="[
+              entry.kind === 'directory' ? 'text-yellow-500' : 'text-gray-400',
+              hasProxy(entry) ? 'text-green-500!' : ''
+            ]"
           />
 
           <!-- Name -->
           <span
-            class="text-sm truncate text-gray-200 group-hover:text-white transition-colors"
-            :class="{ 'font-medium': entry.kind === 'directory' }"
+            class="text-sm truncate transition-colors"
+            :class="[
+              entry.kind === 'directory' ? 'font-medium text-gray-200 group-hover:text-white' : 'text-gray-200 group-hover:text-white',
+              hasProxy(entry) ? 'text-green-400! group-hover:text-green-300!' : ''
+            ]"
           >
             {{ entry.name }}
           </span>
@@ -168,9 +174,6 @@ function getContextMenuItems(entry: FsEntry) {
                 {{ proxyProgress(entry) }}%
               </span>
             </div>
-            <UTooltip v-else-if="hasProxy(entry)" :text="t('videoEditor.fileManager.proxyReady', 'Proxy available')">
-              <UIcon name="i-heroicons-check-badge" class="w-3.5 h-3.5 text-green-500 ml-2" />
-            </UTooltip>
           </template>
         </div>
       </UContextMenu>

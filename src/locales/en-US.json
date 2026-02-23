@@ -1537,6 +1537,10 @@
         "generatingProxy": "Generating proxy..."
       },
       "proxyReady": "Proxy available",
+      "preview": {
+        "original": "Original",
+        "proxy": "Proxy"
+      },
       "info": {
         "title": "File Information",
         "metadata": "Metadata"
