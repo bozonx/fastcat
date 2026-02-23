@@ -130,13 +130,14 @@ async function flushLayoutUpdateQueue() {
       }
     }
 
-    // Also update audio clips
-    const audioClips = workerAudioClips.value;
+    // Also update audio clips (both dedicated audio tracks and audio from video clips)
+    const audioClips = [...workerTimelineClips.value, ...workerAudioClips.value];
     const audioEngineClips = await Promise.all(
       audioClips.map(async (clip) => {
         const handle = await getFileHandleForAudio(clip.source.path);
         return {
           id: clip.id,
+          sourcePath: clip.source.path,
           fileHandle: handle,
           startUs: clip.timelineRange.startUs,
           durationUs: clip.timelineRange.durationUs,
@@ -277,10 +278,11 @@ async function buildTimeline() {
     await audioEngine.init();
 
     const audioEngineClips = await Promise.all(
-      audioClips.map(async (clip) => {
+      [...clips, ...audioClips].map(async (clip) => {
         const handle = await getFileHandleForAudio(clip.source.path);
         return {
           id: clip.id,
+          sourcePath: clip.source.path,
           fileHandle: handle,
           startUs: clip.timelineRange.startUs,
           durationUs: clip.timelineRange.durationUs,

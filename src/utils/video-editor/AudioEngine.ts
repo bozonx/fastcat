@@ -1,5 +1,6 @@
 export interface AudioEngineClip {
   id: string;
+  sourcePath: string;
   fileHandle: FileSystemFileHandle;
   startUs: number;
   durationUs: number;
@@ -7,9 +8,29 @@ export interface AudioEngineClip {
   sourceDurationUs: number;
 }
 
+interface DecodeRequest {
+  type: 'decode';
+  id: number;
+  sourceKey: string;
+  arrayBuffer: ArrayBuffer;
+}
+
+interface DecodeResponse {
+  type: 'decode-result';
+  id: number;
+  ok: boolean;
+  error?: { name?: string; message: string; stack?: string };
+  result?: {
+    sampleRate: number;
+    numberOfChannels: number;
+    channelBuffers: ArrayBuffer[];
+  };
+}
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private decodedCache = new Map<string, AudioBuffer | null>();
+  private decodeInFlight = new Map<string, Promise<AudioBuffer | null>>();
   private activeNodes = new Map<string, AudioBufferSourceNode>();
   private masterGain: GainNode | null = null;
   private isPlaying = false;
@@ -17,7 +38,59 @@ export class AudioEngine {
   private playbackContextTimeS = 0;
   private currentClips: AudioEngineClip[] = [];
 
+  private decodeWorker: Worker | null = null;
+  private decodeCallId = 0;
+  private decodePending = new Map<number, { resolve: Function; reject: Function }>();
+
   constructor() {}
+
+  private ensureDecodeWorker() {
+    if (this.decodeWorker) return this.decodeWorker;
+
+    const worker = new Worker(new URL('../../workers/audio-decode.worker.ts', import.meta.url), {
+      type: 'module',
+      name: 'audio-decode',
+    });
+
+    worker.addEventListener('message', (event: MessageEvent<DecodeResponse>) => {
+      const data = event.data;
+      if (!data || data.type !== 'decode-result') return;
+      const pending = this.decodePending.get(data.id);
+      if (!pending) return;
+      this.decodePending.delete(data.id);
+
+      if (!data.ok) {
+        const err = new Error(data.error?.message || 'Audio decode failed');
+        if (data.error?.name) (err as any).name = data.error.name;
+        if (data.error?.stack) (err as any).stack = data.error.stack;
+        pending.reject(err);
+        return;
+      }
+
+      pending.resolve(data.result);
+    });
+
+    worker.addEventListener('error', (event) => {
+      console.error('[AudioEngine] Decode worker error', event);
+      for (const [, pending] of this.decodePending.entries()) {
+        pending.reject(new Error('Audio decode worker crashed'));
+      }
+      this.decodePending.clear();
+    });
+
+    this.decodeWorker = worker;
+    return worker;
+  }
+
+  private decodeInWorker(arrayBuffer: ArrayBuffer, sourceKey: string) {
+    const worker = this.ensureDecodeWorker();
+    return new Promise<DecodeResponse['result']>((resolve, reject) => {
+      const id = ++this.decodeCallId;
+      this.decodePending.set(id, { resolve, reject });
+      const req: DecodeRequest = { type: 'decode', id, sourceKey, arrayBuffer };
+      worker.postMessage(req, [arrayBuffer]);
+    });
+  }
 
   async init() {
     if (!this.ctx) {
@@ -33,22 +106,14 @@ export class AudioEngine {
   async loadClips(clips: AudioEngineClip[]) {
     this.currentClips = clips;
 
-    // Prefetch and decode audio data
+    // Best-effort prefetch: decode lazily and yield between tasks to avoid blocking UI.
+    // Decoding is still async and browser-implemented; we just avoid a tight loop.
     for (const clip of clips) {
-      const sourceKey = await this.getCacheKey(clip.fileHandle);
-      if (!this.decodedCache.has(sourceKey)) {
-        this.decodedCache.set(sourceKey, null); // mark as loading
-        try {
-          const file = await clip.fileHandle.getFile();
-          const arrayBuffer = await file.arrayBuffer();
-          if (this.ctx) {
-            const decoded = await this.ctx.decodeAudioData(arrayBuffer);
-            this.decodedCache.set(sourceKey, decoded);
-          }
-        } catch (err) {
-          console.warn('[AudioEngine] Failed to decode audio', err);
-        }
-      }
+      const sourceKey = clip.sourcePath;
+      if (!sourceKey) continue;
+      if (this.decodedCache.has(sourceKey)) continue;
+      void this.ensureDecoded(sourceKey, clip.fileHandle);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
 
@@ -62,10 +127,53 @@ export class AudioEngine {
     }
   }
 
-  private async getCacheKey(fileHandle: FileSystemFileHandle) {
-    const file = await fileHandle.getFile();
-    // Use path or a combination of name and lastModified as key
-    return `${file.name}_${file.lastModified}`;
+  private async ensureDecoded(sourceKey: string, fileHandle: FileSystemFileHandle) {
+    if (this.decodedCache.has(sourceKey)) {
+      return this.decodedCache.get(sourceKey) ?? null;
+    }
+
+    const existing = this.decodeInFlight.get(sourceKey);
+    if (existing) return existing;
+
+    const task = (async () => {
+      this.decodedCache.set(sourceKey, null);
+      try {
+        const file = await fileHandle.getFile();
+        const arrayBuffer = await file.arrayBuffer();
+        if (!this.ctx) return null;
+
+        const decoded = await this.decodeInWorker(arrayBuffer, sourceKey);
+        if (!decoded) return null;
+        if (!decoded.channelBuffers?.length) return null;
+
+        const numChannels = Math.max(1, Math.round(Number(decoded.numberOfChannels) || 1));
+        const sampleRate = Math.max(8000, Math.round(Number(decoded.sampleRate) || 48000));
+        const first = decoded.channelBuffers[0];
+        if (!first) return null;
+        const frames = Math.floor(first.byteLength / Float32Array.BYTES_PER_ELEMENT);
+        if (frames <= 0) return null;
+
+        const audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
+        for (let ch = 0; ch < numChannels; ch += 1) {
+          const buf = decoded.channelBuffers[ch];
+          if (!buf) continue;
+          const data = new Float32Array(buf);
+          audioBuffer.copyToChannel(data, ch, 0);
+        }
+
+        this.decodedCache.set(sourceKey, audioBuffer);
+        return audioBuffer;
+      } catch (err) {
+        console.warn('[AudioEngine] Failed to decode audio', err);
+        this.decodedCache.set(sourceKey, null);
+        return null;
+      } finally {
+        this.decodeInFlight.delete(sourceKey);
+      }
+    })();
+
+    this.decodeInFlight.set(sourceKey, task);
+    return task;
   }
 
   async play(timeUs: number) {
@@ -107,11 +215,21 @@ export class AudioEngine {
     return this.baseTimeS + (this.ctx.currentTime - this.playbackContextTimeS);
   }
 
+  getCurrentTimeUs(): number {
+    const s = this.getCurrentTimeS();
+    return Math.round(s * 1_000_000);
+  }
+
   private async scheduleClip(clip: AudioEngineClip, currentTimeS: number) {
     if (!this.ctx || !this.masterGain) return;
 
-    const sourceKey = await this.getCacheKey(clip.fileHandle);
-    const buffer = this.decodedCache.get(sourceKey);
+    const sourceKey = clip.sourcePath;
+    if (!sourceKey) return;
+
+    let buffer = this.decodedCache.get(sourceKey) ?? null;
+    if (!buffer) {
+      buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
+    }
     if (!buffer) return;
 
     const clipStartS = clip.startUs / 1_000_000;
@@ -175,5 +293,12 @@ export class AudioEngine {
       this.ctx = null;
     }
     this.decodedCache.clear();
+    this.decodeInFlight.clear();
+
+    if (this.decodeWorker) {
+      this.decodeWorker.terminate();
+      this.decodeWorker = null;
+    }
+    this.decodePending.clear();
   }
 }

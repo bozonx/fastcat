@@ -44,6 +44,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   let isUnmounted = false;
   let suppressStoreSeekWatch = false;
   let timecodeEl: HTMLElement | null = null;
+  let visibilityHandler: (() => void) | null = null;
 
   function getLocalCurrentTimeUs() {
     return localCurrentTimeUs;
@@ -94,7 +95,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     renderAccumulatorMs += deltaMs;
     storeSyncAccumulatorMs += deltaMs;
 
-    let newTimeUs = clampToTimeline(localCurrentTimeUs + deltaMs * 1000);
+    let newTimeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
 
     if (newTimeUs >= safeDurationUs.value) {
       newTimeUs = safeDurationUs.value;
@@ -194,12 +195,36 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   onMounted(() => {
     isUnmounted = false;
     setLocalTimeFromStore();
+
+    visibilityHandler = () => {
+      if (document.hidden) {
+        if (isPlaying.value) {
+          isPlaying.value = false;
+        }
+        return;
+      }
+
+      // On visibility restore, re-sync UI time and render current frame.
+      if (isPlaying.value) {
+        const timeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
+        localCurrentTimeUs = timeUs;
+        uiCurrentTimeUs.value = timeUs;
+        updateTimecodeUi(timeUs);
+        scheduleRender(timeUs);
+      }
+    };
+    document.addEventListener('visibilitychange', visibilityHandler);
   });
 
   onBeforeUnmount(() => {
     isUnmounted = true;
     cancelAnimationFrame(playbackLoopId);
     timecodeEl = null;
+
+    if (visibilityHandler) {
+      document.removeEventListener('visibilitychange', visibilityHandler);
+      visibilityHandler = null;
+    }
   });
 
   return {

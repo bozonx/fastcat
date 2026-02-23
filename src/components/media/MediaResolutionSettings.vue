@@ -158,46 +158,35 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     <template v-if="!localIsCustom">
       <div class="grid grid-cols-3 gap-4">
         <UFormField :label="t('videoEditor.resolution.format', 'Format')">
-          <USelectMenu
-            :model-value="
-              formatOptions.find((o) => o.value === localFormat) || (localFormat as any)
-            "
+          <USelect
+            v-model="localFormat"
             :items="formatOptions"
             :disabled="disabled"
             class="w-full"
             value-key="value"
             label-key="label"
-            @update:model-value="(v: any) => (localFormat = v?.value ?? v)"
           />
         </UFormField>
 
         <UFormField :label="t('videoEditor.resolution.orientation', 'Orientation')">
-          <USelectMenu
-            :model-value="
-              orientationOptions.find((o) => o.value === localOrientation) ||
-              (localOrientation as any)
-            "
+          <USelect
+            v-model="localOrientation"
             :items="orientationOptions"
             :disabled="disabled"
             class="w-full"
             value-key="value"
             label-key="label"
-            @update:model-value="(v: any) => (localOrientation = v?.value ?? v)"
           />
         </UFormField>
 
         <UFormField :label="t('videoEditor.resolution.aspectRatio', 'Aspect Ratio')">
-          <USelectMenu
-            :model-value="
-              aspectRatioOptions.find((o) => o.value === localAspectRatio) ||
-              (localAspectRatio as any)
-            "
+          <USelect
+            v-model="localAspectRatio"
             :items="aspectRatioOptions"
             :disabled="disabled"
             class="w-full"
             value-key="value"
             label-key="label"
-            @update:model-value="(v: any) => (localAspectRatio = v?.value ?? v)"
           />
         </UFormField>
       </div>
