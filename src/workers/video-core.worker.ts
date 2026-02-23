@@ -197,8 +197,14 @@ const api: any = {
       const allAudioClips = audioClips;
       const hasAnyAudio = allAudioClips.length > 0;
 
+      const MAX_OFFLINE_AUDIO_DURATION_S = 10 * 60;
+
       if (options.audio && hasAnyAudio) {
-        if (typeof OfflineAudioContext !== 'undefined') {
+        if (durationS > MAX_OFFLINE_AUDIO_DURATION_S) {
+          console.warn(
+            '[Worker Export] Audio duration is too large for offline rendering; skipping audio track.',
+          );
+        } else if (typeof OfflineAudioContext !== 'undefined') {
           offlineCtx = new OfflineAudioContext({
             numberOfChannels: 2,
             sampleRate: 48000,
@@ -208,6 +214,8 @@ const api: any = {
           const decodedAudioCache = new Map<string, AudioBuffer | null>();
 
           // Process audio from both video clips and dedicated audio clips
+          const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024;
+
           for (const clipData of allAudioClips) {
             const sourcePath = clipData.sourcePath || clipData.source?.path;
             if (!sourcePath) continue;
@@ -223,8 +231,16 @@ const api: any = {
 
             if (typeof decoded === 'undefined') {
               try {
-                const arrayBuffer = await fileHandle.getFile().then((f: File) => f.arrayBuffer());
-                decoded = await offlineCtx.decodeAudioData(arrayBuffer);
+                const file = await fileHandle.getFile();
+                if (file.size > MAX_AUDIO_FILE_BYTES) {
+                  console.warn(
+                    '[Worker Export] Audio file is too large to decode in memory; skipping audio clip.',
+                  );
+                  decoded = null;
+                } else {
+                  const arrayBuffer = await file.arrayBuffer();
+                  decoded = await offlineCtx.decodeAudioData(arrayBuffer);
+                }
               } catch (err) {
                 console.warn('[Worker Export] Failed to decode audio for clip', err);
                 decoded = null;
@@ -322,7 +338,9 @@ const api: any = {
         let currentTimeUs = 0;
 
         let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        let lastProgressAtMs = lastYieldAtMs;
         const yieldIntervalMs = 16;
+        const progressIntervalMs = 250;
 
         try {
           await output.start();
@@ -340,7 +358,15 @@ const api: any = {
             currentTimeUs += dtUs;
 
             const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
-            if (hostClient) await hostClient.onExportProgress(progress);
+            const nowProgressMs =
+              typeof performance !== 'undefined' ? performance.now() : Date.now();
+            const shouldReport =
+              frameNum + 1 === totalFrames ||
+              nowProgressMs - lastProgressAtMs >= progressIntervalMs;
+            if (hostClient && shouldReport) {
+              lastProgressAtMs = nowProgressMs;
+              await hostClient.onExportProgress(progress);
+            }
 
             const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
             if (nowMs - lastYieldAtMs >= yieldIntervalMs) {

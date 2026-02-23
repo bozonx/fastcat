@@ -88,6 +88,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let isUnmounted = false;
   let forceRecreateCompositorNextBuild = false;
   let currentTimeProvider: (() => number) | null = null;
+  const audioHandleCache = new Map<string, FileSystemFileHandle>();
 
   const audioEngine = new AudioEngine();
   const { client } = getPreviewWorkerClient();
@@ -101,8 +102,11 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   }
 
   async function getFileHandleForAudio(path: string) {
+    const cached = audioHandleCache.get(path);
+    if (cached) return cached;
     const handle = await projectStore.getFileHandleByPath(path);
     if (!handle) return null;
+    audioHandleCache.set(path, handle);
     return handle;
   }
 

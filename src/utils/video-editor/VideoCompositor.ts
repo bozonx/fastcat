@@ -419,6 +419,8 @@ export class VideoCompositor {
       this.activeSortDirty = false;
     }
 
+    const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
+
     for (const clip of active) {
       if (clip.clipKind === 'image') {
         clip.sprite.visible = true;
@@ -432,30 +434,37 @@ export class VideoCompositor {
       }
 
       const sampleTimeS = (clip.sourceStartUs + localTimeUs) / 1_000_000;
-      try {
-        if (!clip.sink) {
+      if (!clip.sink) {
+        clip.sprite.visible = false;
+        continue;
+      }
+
+      const request = getVideoSampleWithZeroFallback(clip.sink, sampleTimeS, clip.firstTimestampS)
+        .then((sample) => ({ clip, sample }))
+        .catch((error) => {
+          console.error('[VideoCompositor] Failed to render sample', error);
+          return { clip, sample: null };
+        });
+
+      sampleRequests.push(request);
+    }
+
+    const updatedClips: CompositorClip[] = [];
+    if (sampleRequests.length > 0) {
+      const samples = await Promise.all(sampleRequests);
+      for (const { clip, sample } of samples) {
+        if (!sample) {
           clip.sprite.visible = false;
           continue;
         }
-
-        const sample = await getVideoSampleWithZeroFallback(
-          clip.sink,
-          sampleTimeS,
-          clip.firstTimestampS,
-        );
-        if (sample) {
+        try {
           await this.updateClipTextureFromSample(sample, clip);
           clip.sprite.visible = true;
-
-          if (typeof (clip.sprite as any).setChildIndex === 'function') {
-            // noop: setChildIndex exists on containers, not on sprites
-          }
-        } else {
+          updatedClips.push(clip);
+        } catch (error) {
+          console.error('[VideoCompositor] Failed to update clip texture', error);
           clip.sprite.visible = false;
         }
-      } catch (e) {
-        console.error('[VideoCompositor] Failed to render sample', e);
-        clip.sprite.visible = false;
       }
     }
 
@@ -476,14 +485,14 @@ export class VideoCompositor {
     this.app.render();
 
     // After rendering, it's safe to close the previous frame resources.
-    for (const c of this.clips) {
-      if (c.lastVideoFrame) {
+    for (const clip of updatedClips) {
+      if (clip.lastVideoFrame) {
         try {
-          c.lastVideoFrame.close();
+          clip.lastVideoFrame.close();
         } catch {
           // ignore
         }
-        c.lastVideoFrame = null;
+        clip.lastVideoFrame = null;
       }
     }
     return this.canvas;

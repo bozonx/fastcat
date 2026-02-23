@@ -36,7 +36,7 @@ async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
       let sampleRate = 48000;
       let numberOfChannels = 2;
 
-      const channels: Float32Array[] = [];
+      const channelChunks: Float32Array[][] = [];
       let totalFrames = 0;
 
       for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
@@ -45,28 +45,23 @@ async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
           sampleRate = sample.sampleRate;
           numberOfChannels = sample.numberOfChannels;
 
-          if (channels.length !== numberOfChannels) {
-            channels.length = 0;
-            for (let ch = 0; ch < numberOfChannels; ch += 1) channels.push(new Float32Array());
+          if (channelChunks.length !== numberOfChannels) {
+            channelChunks.length = 0;
+            for (let ch = 0; ch < numberOfChannels; ch += 1) channelChunks.push([]);
             totalFrames = 0;
           }
 
           const frames = Number(sample.numberOfFrames) || 0;
           if (frames > 0) {
-            const nextTotal = totalFrames + frames;
             for (let ch = 0; ch < numberOfChannels; ch += 1) {
-              const prev = channels[ch] ?? new Float32Array();
-              const next = new Float32Array(nextTotal);
-              next.set(prev, 0);
               const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
               const chunk = new Float32Array(bytesNeeded / 4);
               sample.copyTo(chunk, { format: 'f32-planar', planeIndex: ch });
               if (chunk.length > 0) {
-                next.set(chunk, totalFrames);
+                channelChunks[ch]?.push(chunk);
               }
-              channels[ch] = next;
             }
-            totalFrames = nextTotal;
+            totalFrames += frames;
           }
         } finally {
           if (typeof sample.close === 'function') sample.close();
@@ -75,10 +70,21 @@ async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
 
       if (totalFrames <= 0) throw new Error('Decoded audio is empty');
 
+      const channelBuffers = channelChunks.map((chunks) => {
+        const combined = new Float32Array(totalFrames);
+        let offset = 0;
+        for (const chunk of chunks) {
+          if (!chunk.length) continue;
+          combined.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return combined.buffer as ArrayBuffer;
+      });
+
       return {
         sampleRate,
         numberOfChannels,
-        channelBuffers: channels.map((ch) => ch.buffer as ArrayBuffer),
+        channelBuffers,
       };
     } finally {
       if (typeof (sink as any).close === 'function') (sink as any).close();
