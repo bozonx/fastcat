@@ -131,7 +131,7 @@ async function flushLayoutUpdateQueue() {
     }
 
     // Also update audio clips (both dedicated audio tracks and audio from video clips)
-    const audioClips = [...workerTimelineClips.value, ...workerAudioClips.value];
+    const audioClips = workerAudioClips.value;
     const audioEngineClips = (
       await Promise.all(
         audioClips.map(async (clip) => {
@@ -287,7 +287,7 @@ async function buildTimeline() {
 
     const audioEngineClips = (
       await Promise.all(
-        [...clips, ...audioClips].map(async (clip) => {
+        audioClips.map(async (clip) => {
           try {
             const handle = await getFileHandleForAudio(clip.source.path);
             if (!handle) return null;

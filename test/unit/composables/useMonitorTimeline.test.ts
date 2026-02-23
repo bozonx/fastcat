@@ -96,6 +96,8 @@ describe('useMonitorTimeline', () => {
     expect(workerTimelineClips.value[0].id).toBe('item1');
     expect(workerTimelineClips.value[0].source.path).toBe('test1.mp4');
     expect(workerTimelineClips.value[0].timelineRange.startUs).toBe(0);
+    // Single video track: layer should be 0 (trackCount - 1 - 0 = 0)
+    expect(workerTimelineClips.value[0].layer).toBe(0);
 
     expect(workerAudioClips.value.length).toBe(2);
     expect(workerAudioClips.value.find((x: any) => x.id === 'audio1')?.source.path).toBe(
@@ -104,6 +106,102 @@ describe('useMonitorTimeline', () => {
     expect(workerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source.path).toBe(
       'test1.mp4',
     );
+  });
+
+  it('assigns inverted layers so first track (top in UI) renders on top', () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          items: [
+            {
+              id: 'clip1',
+              kind: 'clip',
+              source: { path: 'a.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+        {
+          id: 'v2',
+          kind: 'video',
+          items: [
+            {
+              id: 'clip2',
+              kind: 'clip',
+              source: { path: 'b.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { workerTimelineClips } = useMonitorTimeline();
+
+    const clip1 = workerTimelineClips.value.find((c: any) => c.id === 'clip1');
+    const clip2 = workerTimelineClips.value.find((c: any) => c.id === 'clip2');
+
+    // v1 is track[0] (top in UI) → layer = 2-1-0 = 1 (renders on top)
+    expect(clip1?.layer).toBe(1);
+    // v2 is track[1] (bottom in UI) → layer = 2-1-1 = 0 (renders below)
+    expect(clip2?.layer).toBe(0);
+    expect(clip1!.layer).toBeGreaterThan(clip2!.layer);
+  });
+
+  it('workerAudioClips does not duplicate audio from video clips', () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          items: [
+            {
+              id: 'vclip1',
+              kind: 'clip',
+              source: { path: 'video.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+            {
+              id: 'vclip2',
+              kind: 'clip',
+              source: { path: 'video2.mp4' },
+              audioFromVideoDisabled: true,
+              timelineRange: { startUs: 1000, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+        {
+          id: 'a1',
+          kind: 'audio',
+          items: [
+            {
+              id: 'aclip1',
+              kind: 'clip',
+              source: { path: 'audio.mp3' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { workerAudioClips } = useMonitorTimeline();
+
+    // Should have: aclip1 + vclip1__audio (vclip2 is disabled)
+    expect(workerAudioClips.value.length).toBe(2);
+    expect(workerAudioClips.value.find((c: any) => c.id === 'aclip1')).toBeDefined();
+    expect(workerAudioClips.value.find((c: any) => c.id === 'vclip1__audio')).toBeDefined();
+    // Disabled audio must NOT appear
+    expect(workerAudioClips.value.find((c: any) => c.id === 'vclip2__audio')).toBeUndefined();
   });
 
   it('computes signatures correctly', () => {

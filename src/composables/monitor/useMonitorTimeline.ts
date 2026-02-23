@@ -36,13 +36,14 @@ export function useMonitorTimeline() {
     const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
     const clips: WorkerTimelineClip[] = [];
     const videoTracks = docTracks.filter((track) => track.kind === 'video');
+    const trackCount = videoTracks.length;
     for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
         clips.push({
           kind: 'clip',
           id: item.id,
-          layer: trackIndex,
+          layer: trackCount - 1 - trackIndex,
           source: {
             path: item.source.path,
           },

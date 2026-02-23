@@ -183,7 +183,7 @@ const api: any = {
       let offlineCtx: OfflineAudioContext | null = null;
       let audioData: AudioBuffer | null = null;
 
-      const allAudioClips = [...localCompositor.clips, ...audioClips];
+      const allAudioClips = audioClips;
       const hasAnyAudio = allAudioClips.length > 0;
 
       if (options.audio && hasAnyAudio) {

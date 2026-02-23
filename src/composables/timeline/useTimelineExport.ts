@@ -327,10 +327,34 @@ export function useTimelineExport() {
     const audioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
     const videoClips = videoTracks.flatMap((track, index) =>
-      toWorkerTimelineClips(track.items ?? [], { layer: index }),
+      toWorkerTimelineClips(track.items ?? [], { layer: videoTracks.length - 1 - index }),
     );
     const audioItems = audioTracks.flatMap((t) => t.items);
-    const audioClips = toWorkerTimelineClips(audioItems);
+    const audioClipsFromTracks = toWorkerTimelineClips(audioItems);
+
+    const audioClipsFromVideo = videoTracks.flatMap((track) =>
+      (track.items ?? [])
+        .filter(
+          (item): item is Extract<typeof item, { kind: 'clip' }> =>
+            item.kind === 'clip' && !item.audioFromVideoDisabled,
+        )
+        .map((item) => ({
+          kind: 'clip' as const,
+          id: `${item.id}__audio`,
+          layer: 0,
+          source: { path: item.source.path },
+          timelineRange: {
+            startUs: item.timelineRange.startUs,
+            durationUs: item.timelineRange.durationUs,
+          },
+          sourceRange: {
+            startUs: item.sourceRange.startUs,
+            durationUs: item.sourceRange.durationUs,
+          },
+        })),
+    );
+
+    const audioClips = [...audioClipsFromTracks, ...audioClipsFromVideo];
 
     if (!videoClips.length && !audioClips.length) throw new Error('Timeline is empty');
 
