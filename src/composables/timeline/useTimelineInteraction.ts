@@ -17,6 +17,23 @@ export function pxToDeltaUs(px: number) {
   return Math.round((px / PX_PER_SECOND) * 1e6);
 }
 
+function sanitizeFps(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 30;
+  const rounded = Math.round(parsed);
+  if (rounded < 1) return 1;
+  if (rounded > 240) return 240;
+  return rounded;
+}
+
+function quantizeDeltaUsToFrames(deltaUs: number, fps: number): number {
+  const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
+  const safeFps = sanitizeFps(fps);
+  const framesFloat = (safeDeltaUs * safeFps) / 1e6;
+  const frames = Math.round(framesFloat);
+  return Math.round((frames * 1e6) / safeFps);
+}
+
 export function useTimelineInteraction(
   scrollEl: Ref<HTMLElement | null>,
   tracks: ComputedRef<TimelineTrack[]>,
@@ -29,6 +46,7 @@ export function useTimelineInteraction(
   const draggingMode = ref<'move' | 'trim_start' | 'trim_end' | null>(null);
   const dragAnchorClientX = ref(0);
   const dragAnchorStartUs = ref(0);
+  const dragLastAppliedQuantizedDeltaUs = ref(0);
   const hasPendingTimelinePersist = ref(false);
   const lastDragClientX = ref(0);
   const pendingDragClientX = ref<number | null>(null);
@@ -97,6 +115,7 @@ export function useTimelineInteraction(
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
     dragAnchorStartUs.value = startUs;
+    dragLastAppliedQuantizedDeltaUs.value = 0;
 
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
@@ -116,6 +135,7 @@ export function useTimelineInteraction(
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
     dragAnchorStartUs.value = input.startUs;
+    dragLastAppliedQuantizedDeltaUs.value = 0;
 
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
@@ -146,16 +166,21 @@ export function useTimelineInteraction(
       return;
     }
 
-    const stepDxPx = clientX - lastDragClientX.value;
-    const stepDeltaUs = pxToDeltaUs(stepDxPx);
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const dxPx = clientX - dragAnchorClientX.value;
+    const rawDeltaUs = pxToDeltaUs(dxPx);
+    const quantizedDeltaUs = quantizeDeltaUsToFrames(rawDeltaUs, fps);
+    const nextStepDeltaUs = quantizedDeltaUs - dragLastAppliedQuantizedDeltaUs.value;
+
     lastDragClientX.value = clientX;
 
-    if (stepDeltaUs === 0) return;
+    if (nextStepDeltaUs === 0) return;
+    dragLastAppliedQuantizedDeltaUs.value = quantizedDeltaUs;
 
     if (mode === 'trim_start') {
       try {
         timelineStore.applyTimeline(
-          { type: 'trim_item', trackId, itemId, edge: 'start', deltaUs: stepDeltaUs },
+          { type: 'trim_item', trackId, itemId, edge: 'start', deltaUs: nextStepDeltaUs },
           { saveMode: 'none' },
         );
         hasPendingTimelinePersist.value = true;
@@ -166,7 +191,7 @@ export function useTimelineInteraction(
     if (mode === 'trim_end') {
       try {
         timelineStore.applyTimeline(
-          { type: 'trim_item', trackId, itemId, edge: 'end', deltaUs: stepDeltaUs },
+          { type: 'trim_item', trackId, itemId, edge: 'end', deltaUs: nextStepDeltaUs },
           { saveMode: 'none' },
         );
         hasPendingTimelinePersist.value = true;

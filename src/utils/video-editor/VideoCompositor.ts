@@ -171,7 +171,7 @@ export class VideoCompositor {
       }
 
       const sink = new VideoSampleSink(track);
-      const mediaDurationUs = Math.max(0, Math.floor((await track.computeDuration()) * 1_000_000));
+      const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
       const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
       const sourceDurationUs =
         requestedSourceDurationUs > 0

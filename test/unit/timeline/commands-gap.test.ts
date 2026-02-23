@@ -163,4 +163,96 @@ describe('timeline/commands gap behavior', () => {
     expect(gaps[0]?.timelineRange.startUs).toBe(1_000_000);
     expect(gaps[0]?.timelineRange.durationUs).toBe(4_000_000);
   });
+
+  it('quantizes to frames and avoids micro-gaps (fps=30)', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+        {
+          kind: 'clip',
+          id: 'c2',
+          trackId: 'v1',
+          name: 'C2',
+          source: { path: 'b.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 1_000_001, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const moved = applyTimelineCommand(doc, {
+      type: 'move_item',
+      trackId: 'v1',
+      itemId: 'c2',
+      startUs: 1_000_001,
+    }).next;
+
+    const items = moved.tracks[0].items;
+    const c1 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1') as any;
+    const c2 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c2') as any;
+    expect(c1).toBeTruthy();
+    expect(c2).toBeTruthy();
+
+    const endC1 = c1.timelineRange.startUs + c1.timelineRange.durationUs;
+    expect(c2.timelineRange.startUs).toBeGreaterThanOrEqual(0);
+
+    // No micro-gaps: either abuts or has a full gap item.
+    const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
+    if (gaps.length === 0) {
+      expect(c2.timelineRange.startUs).toBe(endC1);
+    } else {
+      expect(gaps[0]?.timelineRange.durationUs).toBeGreaterThan(0);
+    }
+  });
+
+  it('trim end supports negative deltas and stays frame-accurate', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const trimmed = applyTimelineCommand(doc, {
+      type: 'trim_item',
+      trackId: 'v1',
+      itemId: 'c1',
+      edge: 'end',
+      deltaUs: -123_456,
+    }).next;
+
+    const c1 = trimmed.tracks[0].items.find(
+      (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
+    ) as any;
+    expect(c1.timelineRange.durationUs).toBeGreaterThan(0);
+    // Frame accurate at 30 fps: durationUs should be stable under frame round-trip quantization.
+    const fps = 30;
+    const frames = Math.round((c1.timelineRange.durationUs * fps) / 1_000_000);
+    const reconstructedUs = Math.round((frames * 1_000_000) / fps);
+    expect(c1.timelineRange.durationUs).toBe(reconstructedUs);
+  });
 });

@@ -6,6 +6,69 @@ import type {
   TimelineTrackItem,
 } from './types';
 
+const FALLBACK_FPS = 30;
+const MIN_FPS = 1;
+const MAX_FPS = 240;
+
+function sanitizeFps(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return FALLBACK_FPS;
+  const rounded = Math.round(parsed);
+  if (rounded < MIN_FPS) return MIN_FPS;
+  if (rounded > MAX_FPS) return MAX_FPS;
+  return rounded;
+}
+
+function getDocFps(doc: TimelineDocument): number {
+  return sanitizeFps((doc as any)?.timebase?.fps);
+}
+
+type QuantizeMode = 'round' | 'floor' | 'ceil';
+
+function usToFrame(timeUs: number, fps: number, mode: QuantizeMode): number {
+  const safeTimeUs = Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0;
+  const safeFps = sanitizeFps(fps);
+  const framesFloat = (safeTimeUs * safeFps) / 1e6;
+  if (mode === 'floor') return Math.max(0, Math.floor(framesFloat));
+  if (mode === 'ceil') return Math.max(0, Math.ceil(framesFloat));
+  return Math.max(0, Math.round(framesFloat));
+}
+
+function deltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
+  const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
+  const safeFps = sanitizeFps(fps);
+  const framesFloat = (safeDeltaUs * safeFps) / 1e6;
+  if (mode === 'floor') return Math.floor(framesFloat);
+  if (mode === 'ceil') return Math.ceil(framesFloat);
+  return Math.round(framesFloat);
+}
+
+function frameToUs(frameIndex: number, fps: number): number {
+  const safeFrameIndex = Number.isFinite(frameIndex) ? Math.max(0, Math.round(frameIndex)) : 0;
+  const safeFps = sanitizeFps(fps);
+  return Math.max(0, Math.round((safeFrameIndex * 1e6) / safeFps));
+}
+
+function quantizeTimeUsToFrames(timeUs: number, fps: number, mode: QuantizeMode): number {
+  return frameToUs(usToFrame(timeUs, fps, mode), fps);
+}
+
+function quantizeDeltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
+  const frames = deltaUsToFrames(deltaUs, fps, mode);
+  return Math.round((frames * 1e6) / sanitizeFps(fps));
+}
+
+function quantizeRangeToFrames(
+  range: { startUs: number; durationUs: number },
+  fps: number,
+): { startUs: number; durationUs: number } {
+  const startFrame = usToFrame(range.startUs, fps, 'round');
+  const durationFrames = usToFrame(range.durationUs, fps, 'round');
+  const startUs = frameToUs(startFrame, fps);
+  const endUs = frameToUs(startFrame + durationFrames, fps);
+  return { startUs, durationUs: Math.max(0, endUs - startUs) };
+}
+
 export interface TimelineCommandResult {
   next: TimelineDocument;
 }
@@ -158,7 +221,12 @@ function assertNoOverlap(
   }
 }
 
-function normalizeGaps(trackId: string, items: TimelineTrackItem[]): TimelineTrackItem[] {
+function normalizeGaps(
+  doc: TimelineDocument,
+  trackId: string,
+  items: TimelineTrackItem[],
+): TimelineTrackItem[] {
+  const fps = getDocFps(doc);
   const clips = items
     .filter((it): it is TimelineClipItem => it.kind === 'clip')
     .map((it) => ({ ...it, timelineRange: { ...it.timelineRange } }));
@@ -169,8 +237,9 @@ function normalizeGaps(trackId: string, items: TimelineTrackItem[]): TimelineTra
   let cursorUs = 0;
 
   for (const clip of clips) {
-    const startUs = Math.max(0, Math.round(clip.timelineRange.startUs));
-    const durationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
+    const qTimeline = quantizeRangeToFrames(clip.timelineRange, fps);
+    const startUs = qTimeline.startUs;
+    const durationUs = qTimeline.durationUs;
     const endUs = startUs + durationUs;
 
     if (startUs > cursorUs) {
@@ -439,7 +508,7 @@ export function applyTimelineCommand(
     const isLockedLinkedAudio =
       item.kind === 'clip' && Boolean(item.linkedVideoClipId) && Boolean(item.lockToLinkedVideo);
 
-    const startUs = Math.max(0, Math.round(cmd.startUs));
+    const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
     const durationUs = Math.max(0, item.timelineRange.durationUs);
 
     assertNoOverlap(toTrack, item.id, startUs, durationUs);
@@ -454,8 +523,8 @@ export function applyTimelineCommand(
     const nextToItemsRaw = [...toTrack.items, movedItem];
     nextToItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const nextFromItems = normalizeGaps(fromTrack.id, nextFromItemsRaw);
-    const nextToItems = normalizeGaps(toTrack.id, nextToItemsRaw);
+    const nextFromItems = normalizeGaps(doc, fromTrack.id, nextFromItemsRaw);
+    const nextToItems = normalizeGaps(doc, toTrack.id, nextToItemsRaw);
 
     let nextTracks = doc.tracks.map((t) => {
       if (t.id === fromTrack.id) return { ...t, items: nextFromItems };
@@ -480,7 +549,7 @@ export function applyTimelineCommand(
               : x,
           );
           nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-          return { ...t, items: normalizeGaps(t.id, nextItems) };
+          return { ...t, items: normalizeGaps(doc, t.id, nextItems) };
         });
 
         nextTracks = updateLinkedLockedAudio(
@@ -499,12 +568,13 @@ export function applyTimelineCommand(
 
   if (cmd.type === 'add_clip_to_track') {
     const track = getTrackById(doc, cmd.trackId);
-    const durationUs = Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
+    const fps = getDocFps(doc);
+    const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 0), fps, 'round');
     const sourceDurationUs = Math.max(
       0,
       Math.round(Number(cmd.sourceDurationUs ?? cmd.durationUs ?? 0)),
     );
-    const startUs = computeTrackEndUs(track);
+    const startUs = quantizeTimeUsToFrames(computeTrackEndUs(track), fps, 'round');
 
     assertNoOverlap(track, '', startUs, durationUs);
 
@@ -521,7 +591,7 @@ export function applyTimelineCommand(
 
     const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextItems = normalizeGaps(track.id, nextItemsRaw);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
 
     const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
@@ -553,9 +623,10 @@ export function applyTimelineCommand(
       } else if (item.kind === 'gap') {
         // For gap - ripple delete: remove it and shift everything after it to the left
         const gapDuration = item.timelineRange.durationUs;
+        const gapEndUs = item.timelineRange.startUs + gapDuration;
         nextItems.splice(idx, 1);
         nextItems = nextItems.map((it) => {
-          if (it.timelineRange.startUs > item.timelineRange.startUs) {
+          if (it.timelineRange.startUs >= gapEndUs) {
             return {
               ...it,
               timelineRange: {
@@ -572,7 +643,7 @@ export function applyTimelineCommand(
     if (!itemsRemoved) return { next: doc };
 
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    nextItems = normalizeGaps(track.id, nextItems);
+    nextItems = normalizeGaps(doc, track.id, nextItems);
 
     const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
     return { next: { ...doc, tracks: nextTracks } };
@@ -588,7 +659,7 @@ export function applyTimelineCommand(
       if (!linked) return { next: doc };
       if (linked.track.kind !== 'video') return { next: doc };
 
-      const startUs = Math.max(0, Math.round(cmd.startUs));
+      const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
       const durationUs = Math.max(0, linked.item.timelineRange.durationUs);
 
       assertNoOverlap(linked.track, linked.item.id, startUs, durationUs);
@@ -604,7 +675,7 @@ export function applyTimelineCommand(
             : x,
         );
         nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-        return { ...t, items: normalizeGaps(t.id, nextItems) };
+        return { ...t, items: normalizeGaps(doc, t.id, nextItems) };
       });
 
       nextTracks = updateLinkedLockedAudio(
@@ -619,7 +690,7 @@ export function applyTimelineCommand(
       return { next: { ...doc, tracks: nextTracks } };
     }
 
-    const startUs = Math.max(0, Math.round(cmd.startUs));
+    const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
     const durationUs = Math.max(0, item.timelineRange.durationUs);
 
     assertNoOverlap(track, item.id, startUs, durationUs);
@@ -634,7 +705,7 @@ export function applyTimelineCommand(
     );
 
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextItems = normalizeGaps(track.id, nextItemsRaw);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
 
     let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
@@ -657,7 +728,8 @@ export function applyTimelineCommand(
       throw new Error('Locked audio clip');
     }
 
-    const deltaUs = Math.round(Number(cmd.deltaUs));
+    const fps = getDocFps(doc);
+    const deltaUs = quantizeDeltaUsToFrames(Number(cmd.deltaUs), fps, 'round');
 
     const prevTimelineStartUs = Math.max(0, Math.round(item.timelineRange.startUs));
     const prevTimelineDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
@@ -698,6 +770,14 @@ export function applyTimelineCommand(
 
     const nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
 
+    const qTimeline = quantizeRangeToFrames(
+      { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+      fps,
+    );
+
+    nextTimelineStartUs = qTimeline.startUs;
+    nextTimelineDurationUs = qTimeline.durationUs;
+
     assertNoOverlap(track, item.id, nextTimelineStartUs, nextTimelineDurationUs);
 
     const nextItemsRaw: TimelineTrackItem[] = track.items.map((x) =>
@@ -711,7 +791,7 @@ export function applyTimelineCommand(
     );
 
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextItems = normalizeGaps(track.id, nextItemsRaw);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
 
     let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
