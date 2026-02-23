@@ -409,6 +409,10 @@ export class VideoCompositor {
   async renderFrame(timeUs: number): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas) return null;
 
+    if (timeUs === this.lastRenderedTimeUs && !this.stageSortDirty && !this.activeSortDirty) {
+      return this.canvas;
+    }
+
     const active = this.updateActiveClips(timeUs);
     if (this.activeSortDirty) {
       active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
