@@ -99,7 +99,17 @@ export class AudioEngine {
       this.masterGain.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+      this.ctx.resume().catch((err) => {
+        console.warn('[AudioEngine] init: Autoplay policy prevented AudioContext resume', err);
+      });
+    }
+  }
+
+  resumeContext() {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch((err) => {
+        console.warn('[AudioEngine] resumeContext: Failed to resume', err);
+      });
     }
   }
 
@@ -143,15 +153,27 @@ export class AudioEngine {
         if (!this.ctx) return null;
 
         const decoded = await this.decodeInWorker(arrayBuffer, sourceKey);
-        if (!decoded) return null;
-        if (!decoded.channelBuffers?.length) return null;
+        if (!decoded) {
+          console.warn(`[AudioEngine] Worker returned null for ${sourceKey}`);
+          return null;
+        }
+        if (!decoded.channelBuffers?.length) {
+          console.warn(`[AudioEngine] Worker returned empty channels for ${sourceKey}`);
+          return null;
+        }
 
         const numChannels = Math.max(1, Math.round(Number(decoded.numberOfChannels) || 1));
         const sampleRate = Math.max(8000, Math.round(Number(decoded.sampleRate) || 48000));
         const first = decoded.channelBuffers[0];
-        if (!first) return null;
+        if (!first) {
+          console.warn(`[AudioEngine] First channel buffer is undefined for ${sourceKey}`);
+          return null;
+        }
         const frames = Math.floor(first.byteLength / Float32Array.BYTES_PER_ELEMENT);
-        if (frames <= 0) return null;
+        if (frames <= 0) {
+          console.warn(`[AudioEngine] Decoded audio has 0 frames for ${sourceKey}`);
+          return null;
+        }
 
         const audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
         for (let ch = 0; ch < numChannels; ch += 1) {
@@ -161,6 +183,9 @@ export class AudioEngine {
           audioBuffer.copyToChannel(data, ch, 0);
         }
 
+        console.log(
+          `[AudioEngine] Successfully decoded ${sourceKey}: ${numChannels}ch, ${sampleRate}Hz, ${frames} frames`,
+        );
         this.decodedCache.set(sourceKey, audioBuffer);
         return audioBuffer;
       } catch (err) {
@@ -179,7 +204,9 @@ export class AudioEngine {
   async play(timeUs: number) {
     if (!this.ctx) return;
     if (this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+      await this.ctx.resume().catch((err) => {
+        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
+      });
     }
 
     this.isPlaying = true;
@@ -228,9 +255,13 @@ export class AudioEngine {
 
     let buffer = this.decodedCache.get(sourceKey) ?? null;
     if (!buffer) {
+      console.log(`[AudioEngine] Buffer not in cache for ${clip.id}, awaiting decode...`);
       buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
     }
-    if (!buffer) return;
+    if (!buffer) {
+      console.warn(`[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`);
+      return;
+    }
 
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;
@@ -262,9 +293,13 @@ export class AudioEngine {
     const durationToPlayS = Math.min(remainingInClipS, remainingPlayableS);
 
     if (!Number.isFinite(bufferOffsetS) || bufferOffsetS < 0 || bufferOffsetS >= buffer.duration) {
+      console.warn(
+        `[AudioEngine] Invalid bufferOffsetS: ${bufferOffsetS} (buffer.duration: ${buffer.duration}) for clip ${clip.id}`,
+      );
       return;
     }
     if (!Number.isFinite(durationToPlayS) || durationToPlayS <= 0) {
+      console.warn(`[AudioEngine] Invalid durationToPlayS: ${durationToPlayS} for clip ${clip.id}`);
       return;
     }
 

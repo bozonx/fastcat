@@ -438,6 +438,9 @@ function formatTime(seconds: number): string {
 function togglePlayback() {
   if (isLoading.value) return;
 
+  // Unblock Web Audio strictly inside the synchronous user gesture handler
+  audioEngine.resumeContext();
+
   // If preview build failed, attempt a rebuild instead of permanently blocking playback controls.
   if (loadError.value) {
     loadError.value = null;
