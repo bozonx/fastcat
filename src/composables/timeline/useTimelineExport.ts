@@ -31,18 +31,23 @@ export interface ExportOptions {
 export interface WorkerTimelineClip {
   kind: 'clip';
   id: string;
+  layer: number;
   source: { path: string };
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
 }
 
-export function toWorkerTimelineClips(items: TimelineTrackItem[]): WorkerTimelineClip[] {
+export function toWorkerTimelineClips(
+  items: TimelineTrackItem[],
+  options?: { layer?: number },
+): WorkerTimelineClip[] {
   const clips: WorkerTimelineClip[] = [];
   for (const item of items) {
     if (item.kind !== 'clip') continue;
     clips.push({
       kind: 'clip',
       id: item.id,
+      layer: options?.layer ?? 0,
       source: { path: item.source.path },
       timelineRange: {
         startUs: item.timelineRange.startUs,
@@ -318,10 +323,12 @@ export function useTimelineExport() {
     onProgress: (progress: number) => void,
   ): Promise<void> {
     const doc = timelineStore.timelineDoc;
-    const videoTrack = doc?.tracks?.find((track) => track.kind === 'video');
+    const videoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
     const audioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
-    const videoClips = toWorkerTimelineClips(videoTrack?.items ?? []);
+    const videoClips = videoTracks.flatMap((track, index) =>
+      toWorkerTimelineClips(track.items ?? [], { layer: index }),
+    );
     const audioItems = audioTracks.flatMap((t) => t.items);
     const audioClips = toWorkerTimelineClips(audioItems);
 

@@ -11,6 +11,7 @@ import type { Input, VideoSampleSink } from 'mediabunny';
 
 export interface CompositorClip {
   itemId: string;
+  layer: number;
   sourcePath: string;
   fileHandle: FileSystemFileHandle;
   input: Input;
@@ -38,8 +39,6 @@ export class VideoCompositor {
   private height = 1080;
   private clipById = new Map<string, CompositorClip>();
   private replacedClipIds = new Set<string>();
-  private activeClipIndex = 0;
-  private activeClipId: string | null = null;
   private lastRenderedTimeUs = 0;
   private clipPreferBitmapFallback = new Map<string, boolean>();
   private clipPreferCanvasFallback = new Map<string, boolean>();
@@ -115,6 +114,7 @@ export class VideoCompositor {
           : '';
 
       const sourceStartUs = Math.max(0, Math.round(Number(clipData.sourceRange?.startUs ?? 0)));
+      const layer = Math.round(Number(clipData.layer ?? 0));
       const requestedTimelineDurationUs = Math.max(
         0,
         Math.round(Number(clipData.timelineRange?.durationUs ?? 0)),
@@ -141,6 +141,7 @@ export class VideoCompositor {
         reusable.endUs = startUs + safeTimelineDurationUs;
         reusable.sourceStartUs = sourceStartUs;
         reusable.sourceDurationUs = safeSourceDurationUs;
+        reusable.layer = layer;
         reusable.sprite.visible = false;
 
         nextClips.push(reusable);
@@ -192,10 +193,13 @@ export class VideoCompositor {
       sprite.height = 1;
       sprite.visible = false;
 
+      (sprite as any).__clipId = itemId;
+
       this.app.stage.addChild(sprite);
 
       const compositorClip: CompositorClip = {
         itemId,
+        layer,
         sourcePath,
         fileHandle,
         input,
@@ -229,11 +233,9 @@ export class VideoCompositor {
 
     this.clips = nextClips;
     this.clipById = nextClipById;
-    this.clips.sort((a, b) => a.startUs - b.startUs);
+    this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
-    this.activeClipIndex = 0;
-    this.activeClipId = null;
     this.lastRenderedTimeUs = 0;
 
     return this.maxDurationUs;
@@ -264,19 +266,19 @@ export class VideoCompositor {
         0,
         Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceDurationUs)),
       );
+      const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
 
       clip.startUs = startUs;
       clip.durationUs = timelineDurationUs;
       clip.endUs = startUs + timelineDurationUs;
       clip.sourceStartUs = sourceStartUs;
       clip.sourceDurationUs = sourceDurationUs;
+      clip.layer = layer;
     }
 
-    this.clips.sort((a, b) => a.startUs - b.startUs);
+    this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
-    this.activeClipIndex = 0;
-    this.activeClipId = null;
     this.lastRenderedTimeUs = 0;
     return this.maxDurationUs;
   }
@@ -284,50 +286,53 @@ export class VideoCompositor {
   async renderFrame(timeUs: number): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas) return null;
 
-    if (timeUs < this.lastRenderedTimeUs) {
-      this.activeClipIndex = 0;
-      this.activeClipId = null;
-    }
     this.lastRenderedTimeUs = timeUs;
 
-    while (
-      this.activeClipIndex < this.clips.length &&
-      timeUs >= (this.clips[this.activeClipIndex]?.endUs ?? 0)
-    ) {
-      this.activeClipIndex += 1;
+    const active: CompositorClip[] = [];
+    for (const clip of this.clips) {
+      if (timeUs < clip.startUs || timeUs >= clip.endUs) {
+        clip.sprite.visible = false;
+        continue;
+      }
+      active.push(clip);
     }
 
-    const current = this.clips[this.activeClipIndex];
-    const clip = current && timeUs >= current.startUs ? current : null;
+    active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
 
-    if (this.activeClipId && (!clip || clip.itemId !== this.activeClipId)) {
-      const prev = this.clipById.get(this.activeClipId);
-      if (prev) prev.sprite.visible = false;
-      this.activeClipId = null;
-    }
-
-    if (clip) {
+    for (const clip of active) {
       const localTimeUs = timeUs - clip.startUs;
       if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
         clip.sprite.visible = false;
-      } else {
-        const sampleTimeS = (clip.sourceStartUs + localTimeUs) / 1_000_000;
-        try {
-          const sample = await clip.sink.getSample(sampleTimeS);
+        continue;
+      }
 
-          if (sample) {
-            await this.updateClipTextureFromSample(sample, clip);
-            clip.sprite.visible = true;
-            this.activeClipId = clip.itemId;
-          } else {
-            clip.sprite.visible = false;
+      const sampleTimeS = (clip.sourceStartUs + localTimeUs) / 1_000_000;
+      try {
+        const sample = await clip.sink.getSample(sampleTimeS);
+        if (sample) {
+          await this.updateClipTextureFromSample(sample, clip);
+          clip.sprite.visible = true;
+
+          if (typeof (clip.sprite as any).setChildIndex === 'function') {
+            // noop: setChildIndex exists on containers, not on sprites
           }
-        } catch (e) {
-          console.error('[VideoCompositor] Failed to render sample', e);
+        } else {
           clip.sprite.visible = false;
         }
+      } catch (e) {
+        console.error('[VideoCompositor] Failed to render sample', e);
+        clip.sprite.visible = false;
       }
     }
+
+    // Ensure stage ordering matches layer ordering for correct blending
+    this.app.stage.children.sort((a: any, b: any) => {
+      const aClip = this.clipById.get((a as any).__clipId ?? '') as any;
+      const bClip = this.clipById.get((b as any).__clipId ?? '') as any;
+      const aLayer = typeof aClip?.layer === 'number' ? aClip.layer : 0;
+      const bLayer = typeof bClip?.layer === 'number' ? bClip.layer : 0;
+      return aLayer - bLayer;
+    });
 
     this.app.render();
 
@@ -496,8 +501,6 @@ export class VideoCompositor {
     this.clips = [];
     this.clipById.clear();
     this.replacedClipIds.clear();
-    this.activeClipIndex = 0;
-    this.activeClipId = null;
     this.lastRenderedTimeUs = 0;
     this.maxDurationUs = 0;
   }

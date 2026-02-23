@@ -1,6 +1,7 @@
 export interface WorkerTimelineClip {
   kind: 'clip';
   id: string;
+  layer: number;
   source: {
     path: string;
   };

@@ -149,12 +149,50 @@ function assertNoOverlap(
   const endUs = startUs + durationUs;
   for (const it of track.items) {
     if (it.id === movedItemId) continue;
+    if (it.kind !== 'clip') continue;
     const itStart = it.timelineRange.startUs;
     const itEnd = itStart + it.timelineRange.durationUs;
     if (rangesOverlap(startUs, endUs, itStart, itEnd)) {
       throw new Error('Item overlaps with another item');
     }
   }
+}
+
+function normalizeGaps(trackId: string, items: TimelineTrackItem[]): TimelineTrackItem[] {
+  const clips = items
+    .filter((it): it is TimelineClipItem => it.kind === 'clip')
+    .map((it) => ({ ...it, timelineRange: { ...it.timelineRange } }));
+
+  clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+  const result: TimelineTrackItem[] = [];
+  let cursorUs = 0;
+
+  for (const clip of clips) {
+    const startUs = Math.max(0, Math.round(clip.timelineRange.startUs));
+    const durationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
+    const endUs = startUs + durationUs;
+
+    if (startUs > cursorUs) {
+      const gapStartUs = cursorUs;
+      const gapDurationUs = startUs - cursorUs;
+      const gap: TimelineGapItem = {
+        kind: 'gap',
+        id: `gap_${trackId}_${gapStartUs}`,
+        trackId,
+        timelineRange: { startUs: gapStartUs, durationUs: gapDurationUs },
+      };
+      result.push(gap);
+    }
+
+    result.push({
+      ...clip,
+      timelineRange: { startUs, durationUs },
+    });
+    cursorUs = Math.max(cursorUs, endUs);
+  }
+
+  return mergeAdjacentGaps(result);
 }
 
 function getTrackById(doc: TimelineDocument, trackId: string): TimelineTrack {
@@ -406,15 +444,18 @@ export function applyTimelineCommand(
 
     assertNoOverlap(toTrack, item.id, startUs, durationUs);
 
-    const nextFromItems = [...fromTrack.items];
-    nextFromItems.splice(itemIdx, 1);
+    const nextFromItemsRaw = [...fromTrack.items];
+    nextFromItemsRaw.splice(itemIdx, 1);
     const movedItem: TimelineTrackItem = {
       ...item,
       trackId: toTrack.id,
       timelineRange: { ...item.timelineRange, startUs },
     };
-    const nextToItems = [...toTrack.items, movedItem];
-    nextToItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextToItemsRaw = [...toTrack.items, movedItem];
+    nextToItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+    const nextFromItems = normalizeGaps(fromTrack.id, nextFromItemsRaw);
+    const nextToItems = normalizeGaps(toTrack.id, nextToItemsRaw);
 
     let nextTracks = doc.tracks.map((t) => {
       if (t.id === fromTrack.id) return { ...t, items: nextFromItems };
@@ -439,7 +480,7 @@ export function applyTimelineCommand(
               : x,
           );
           nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-          return { ...t, items: nextItems };
+          return { ...t, items: normalizeGaps(t.id, nextItems) };
         });
 
         nextTracks = updateLinkedLockedAudio(
@@ -506,23 +547,7 @@ export function applyTimelineCommand(
       itemsRemoved = true;
 
       if (item.kind === 'clip') {
-        // If it's a clip, check if there's anything after it
-        const hasSomethingAfter = nextItems.some(
-          (it) => it.timelineRange.startUs > item.timelineRange.startUs,
-        );
-        if (hasSomethingAfter) {
-          // Create Gap
-          const gap: TimelineGapItem = {
-            kind: 'gap',
-            id: nextItemId(track.id, 'gap'),
-            trackId: track.id,
-            timelineRange: { ...item.timelineRange },
-          };
-          nextItems[idx] = gap;
-        } else {
-          // Last item, just remove
-          nextItems.splice(idx, 1);
-        }
+        nextItems.splice(idx, 1);
       } else if (item.kind === 'gap') {
         // For gap - ripple delete: remove it and shift everything after it to the left
         const gapDuration = item.timelineRange.durationUs;
@@ -545,7 +570,7 @@ export function applyTimelineCommand(
     if (!itemsRemoved) return { next: doc };
 
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    nextItems = mergeAdjacentGaps(nextItems);
+    nextItems = normalizeGaps(track.id, nextItems);
 
     const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
     return { next: { ...doc, tracks: nextTracks } };
@@ -597,7 +622,7 @@ export function applyTimelineCommand(
 
     assertNoOverlap(track, item.id, startUs, durationUs);
 
-    const nextItems: TimelineTrackItem[] = track.items.map((x) =>
+    const nextItemsRaw: TimelineTrackItem[] = track.items.map((x) =>
       x.id === item.id
         ? {
             ...x,
@@ -606,7 +631,8 @@ export function applyTimelineCommand(
         : x,
     );
 
-    nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(track.id, nextItemsRaw);
 
     let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
@@ -672,7 +698,7 @@ export function applyTimelineCommand(
 
     assertNoOverlap(track, item.id, nextTimelineStartUs, nextTimelineDurationUs);
 
-    const nextItems: TimelineTrackItem[] = track.items.map((x) =>
+    const nextItemsRaw: TimelineTrackItem[] = track.items.map((x) =>
       x.id === item.id
         ? {
             ...x,
@@ -682,7 +708,8 @@ export function applyTimelineCommand(
         : x,
     );
 
-    nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(track.id, nextItemsRaw);
 
     let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 

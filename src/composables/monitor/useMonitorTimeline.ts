@@ -35,13 +35,14 @@ export function useMonitorTimeline() {
   const workerTimelineClips = computed(() => {
     const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
     const clips: WorkerTimelineClip[] = [];
-    for (const track of docTracks) {
-      if (track.kind !== 'video') continue;
+    const videoTracks = docTracks.filter((track) => track.kind === 'video');
+    for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
         clips.push({
           kind: 'clip',
           id: item.id,
+          layer: trackIndex,
           source: {
             path: item.source.path,
           },
@@ -67,6 +68,7 @@ export function useMonitorTimeline() {
       clips.push({
         kind: 'clip',
         id: item.id,
+        layer: 0,
         source: {
           path: item.source.path,
         },
@@ -87,6 +89,7 @@ export function useMonitorTimeline() {
       clips.push({
         kind: 'clip',
         id: `${item.id}__audio`,
+        layer: 0,
         source: {
           path: item.source.path,
         },

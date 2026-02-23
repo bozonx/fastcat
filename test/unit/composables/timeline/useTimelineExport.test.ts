@@ -3,8 +3,10 @@ import {
   getExt,
   sanitizeBaseName,
   resolveExportCodecs,
+  toWorkerTimelineClips,
 } from '../../../../src/composables/timeline/useTimelineExport';
 import type { VideoCoreHostAPI } from '../../../../src/utils/video-editor/worker-client';
+import type { TimelineTrackItem } from '../../../../src/timeline/types';
 
 describe('useTimelineExport pure functions', () => {
   it('VideoCoreHostAPI allows omitting onExportPhase (backward compatible)', () => {
@@ -44,5 +46,33 @@ describe('useTimelineExport pure functions', () => {
       videoCodec: 'avc1.42E032',
       audioCodec: 'aac',
     });
+  });
+
+  it('toWorkerTimelineClips should attach layer (default 0)', () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      },
+    ];
+
+    expect(toWorkerTimelineClips(items)).toEqual([
+      {
+        kind: 'clip',
+        id: 'c1',
+        layer: 0,
+        source: { path: '/video.mp4' },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      },
+    ]);
+
+    expect(toWorkerTimelineClips(items, { layer: 3 })[0]?.layer).toBe(3);
   });
 });
