@@ -19,6 +19,17 @@ const tracks = computed(
 
 const scrollEl = ref<HTMLElement | null>(null);
 
+const dragPreview = ref<
+  | {
+      trackId: string;
+      startUs: number;
+      label: string;
+      durationUs: number;
+      kind: 'timeline-clip' | 'file';
+    }
+  | null
+>(null);
+
 const {
   isDraggingPlayhead,
   onTimeRulerMouseDown,
@@ -29,6 +40,86 @@ const {
 } = useTimelineInteraction(scrollEl, tracks);
 
 const pxPerSecond = computed(() => zoomToPxPerSecond(timelineStore.timelineZoom));
+
+const dragPreviewStyle = computed(() => {
+  const preview = dragPreview.value;
+  if (!preview) return null;
+
+  const trackIndex = Math.max(0, tracks.value.findIndex((t) => t.id === preview.trackId));
+  return {
+    left: `${2 + timeUsToPx(preview.startUs, timelineStore.timelineZoom)}px`,
+    width: `${Math.max(30, timeUsToPx(preview.durationUs, timelineStore.timelineZoom))}px`,
+    transform: `translateY(${trackIndex * 40}px)`,
+  };
+});
+
+function clearDragPreview() {
+  dragPreview.value = null;
+}
+
+function getDropStartUs(e: DragEvent): number | null {
+  const scrollerRect = scrollEl.value?.getBoundingClientRect();
+  const scrollX = scrollEl.value?.scrollLeft ?? 0;
+  if (!scrollerRect) return null;
+  const x = e.clientX - scrollerRect.left + scrollX;
+  return pxToTimeUs(x, timelineStore.timelineZoom);
+}
+
+function onTrackDragOver(e: DragEvent, trackId: string) {
+  const startUs = getDropStartUs(e);
+  if (startUs === null) return;
+
+  const data =
+    e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain') || '';
+
+  if (!data) {
+    clearDragPreview();
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(data);
+
+    if (parsed?.kind === 'timeline-clip' && parsed.itemId) {
+      const itemId = String(parsed.itemId);
+      const fromTrackId = String(parsed.fromTrackId ?? '');
+      const fromTrack = tracks.value.find((t) => t.id === fromTrackId) ?? null;
+      const item: any = fromTrack?.items.find((it: any) => it.id === itemId) ?? null;
+      if (!item || item.kind !== 'clip' || !item.timelineRange) {
+        clearDragPreview();
+        return;
+      }
+
+      dragPreview.value = {
+        trackId,
+        startUs,
+        label: String(item.name ?? ''),
+        durationUs: Math.max(0, Number(item.timelineRange.durationUs ?? 0)),
+        kind: 'timeline-clip',
+      };
+      return;
+    }
+
+    if (parsed?.kind === 'file' && parsed?.name && parsed?.path) {
+      dragPreview.value = {
+        trackId,
+        startUs,
+        label: String(parsed.name),
+        durationUs: 2_000_000,
+        kind: 'file',
+      };
+      return;
+    }
+
+    clearDragPreview();
+  } catch {
+    clearDragPreview();
+  }
+}
+
+function onTrackDragLeave() {
+  clearDragPreview();
+}
 
 async function onClipAction(payload: {
   action: 'extractAudio' | 'returnAudio';
@@ -54,17 +145,15 @@ async function onClipAction(payload: {
 }
 
 async function onDrop(e: DragEvent, trackId: string) {
+  clearDragPreview();
   const data =
     e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain');
   if (data) {
     try {
       const parsed = JSON.parse(data);
       if (parsed?.kind === 'timeline-clip' && parsed.itemId && parsed.fromTrackId) {
-        const scrollerRect = scrollEl.value?.getBoundingClientRect();
-        const scrollX = scrollEl.value?.scrollLeft ?? 0;
-        if (!scrollerRect) return;
-        const x = e.clientX - scrollerRect.left + scrollX;
-        const startUs = pxToTimeUs(x);
+        const startUs = getDropStartUs(e);
+        if (startUs === null) return;
         try {
           await timelineStore.moveItemToTrack({
             fromTrackId: String(parsed.fromTrackId),
@@ -140,11 +229,22 @@ function formatTime(seconds: number): string {
         <TimelineTracks
           :tracks="tracks"
           @drop="onDrop"
+          @dragover="onTrackDragOver"
+          @dragleave="onTrackDragLeave"
           @start-move-item="startMoveItem"
           @select-item="selectItem"
           @start-trim-item="startTrimItem"
           @clip-action="onClipAction"
         />
+
+        <div
+          v-if="dragPreview"
+          class="absolute h-8 top-8 rounded px-2 flex items-center text-xs text-white z-30 pointer-events-none opacity-80"
+          :class="dragPreview.kind === 'file' ? 'bg-primary-600 border border-primary-400' : 'bg-gray-600 border border-gray-400'"
+          :style="dragPreviewStyle || undefined"
+        >
+          <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
+        </div>
 
         <!-- Playhead -->
         <div

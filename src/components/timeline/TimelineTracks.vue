@@ -12,6 +12,8 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
+  (e: 'dragover', event: DragEvent, trackId: string): void;
+  (e: 'dragleave', event: DragEvent, trackId: string): void;
   (e: 'startMoveItem', event: MouseEvent, trackId: string, itemId: string, startUs: number): void;
   (e: 'selectItem', event: MouseEvent, itemId: string): void;
   (
@@ -96,7 +98,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       :key="track.id"
       class="h-10 flex items-center px-2 relative"
       :class="timelineStore.selectedTrackId === track.id ? 'bg-gray-850/60' : ''"
-      @dragover.prevent
+      @dragover.prevent="emit('dragover', $event, track.id)"
+      @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"
     >
       <div

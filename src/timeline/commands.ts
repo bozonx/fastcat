@@ -528,6 +528,15 @@ export function applyTimelineCommand(
     const fromTrack = getTrackById(doc, cmd.fromTrackId);
     const toTrack = getTrackById(doc, cmd.toTrackId);
 
+    if (fromTrack.id === toTrack.id) {
+      return applyTimelineCommand(doc, {
+        type: 'move_item',
+        trackId: fromTrack.id,
+        itemId: cmd.itemId,
+        startUs: cmd.startUs,
+      });
+    }
+
     const itemIdx = fromTrack.items.findIndex((x) => x.id === cmd.itemId);
     if (itemIdx === -1) return { next: doc };
     const item = fromTrack.items[itemIdx];

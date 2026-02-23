@@ -13,6 +13,40 @@ function makeDoc(track: TimelineTrack): TimelineDocument {
 }
 
 describe('timeline/commands gap behavior', () => {
+  it('move_item_to_track on same track behaves like move_item (does not remove clip)', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'move_item_to_track',
+      fromTrackId: 'v1',
+      toTrackId: 'v1',
+      itemId: 'c1',
+      startUs: 2_000_000,
+    });
+
+    const track = next.tracks[0] as TimelineTrack;
+    const clip = track.items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1');
+
+    expect(clip).toBeTruthy();
+    expect(clip.timelineRange.startUs).toBe(2_000_000);
+  });
+
   it('normalizes gaps after move_item (single gap between clips)', () => {
     const doc = makeDoc({
       id: 'v1',
