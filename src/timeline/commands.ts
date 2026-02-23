@@ -473,13 +473,20 @@ export function applyTimelineCommand(
       items: [],
     };
 
-    const nextTracksRaw = [...doc.tracks, track];
-    const video = nextTracksRaw.filter((t) => t.kind === 'video');
-    const audio = nextTracksRaw.filter((t) => t.kind === 'audio');
+    const existingVideo = doc.tracks.filter((t) => t.kind === 'video');
+    const existingAudio = doc.tracks.filter((t) => t.kind === 'audio');
+
+    let nextTracks: TimelineTrack[];
+    if (cmd.kind === 'video') {
+      nextTracks = [track, ...existingVideo, ...existingAudio];
+    } else {
+      nextTracks = [...existingVideo, ...existingAudio, track];
+    }
+
     return {
       next: {
         ...doc,
-        tracks: [...video, ...audio],
+        tracks: nextTracks,
       },
     };
   }
