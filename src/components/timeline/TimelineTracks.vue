@@ -40,55 +40,75 @@ const emit = defineEmits<{
 }>();
 
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
-  if (!item || item.kind !== 'clip') return [];
+  if (!item) return [];
 
-  const menuItems: any[] = [];
+  const mainGroup: any[] = [];
 
-  const canExtract = track.kind === 'video' && !item.audioFromVideoDisabled;
-  if (canExtract) {
-    menuItems.push({
-      label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
-      icon: 'i-heroicons-musical-note',
-      onSelect: () => emit('clipAction', { action: 'extractAudio', trackId: track.id, itemId: item.id }),
-    });
+  if (item.kind === 'clip') {
+    const canExtract = track.kind === 'video' && !item.audioFromVideoDisabled;
+    if (canExtract) {
+      mainGroup.push({
+        label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
+        icon: 'i-heroicons-musical-note',
+        onSelect: () => emit('clipAction', { action: 'extractAudio', trackId: track.id, itemId: item.id }),
+      });
+    }
+
+    const hasReturnFromVideoClip =
+      track.kind === 'video' &&
+      Boolean(item.audioFromVideoDisabled) &&
+      (timelineStore.timelineDoc?.tracks ?? []).some((t: any) =>
+        t.kind !== 'audio'
+          ? false
+          : (t.items ?? []).some(
+              (it: any) =>
+                it.kind === 'clip' && it.linkedVideoClipId === item.id && Boolean(it.lockToLinkedVideo),
+            ),
+      );
+
+    const hasReturnFromLockedAudioClip =
+      track.kind === 'audio' && Boolean(item.linkedVideoClipId) && Boolean(item.lockToLinkedVideo);
+
+    if (hasReturnFromVideoClip) {
+      mainGroup.push({
+        label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
+        icon: 'i-heroicons-arrow-uturn-left',
+        onSelect: () => emit('clipAction', { action: 'returnAudio', trackId: track.id, itemId: item.id }),
+      });
+    } else if (hasReturnFromLockedAudioClip) {
+      mainGroup.push({
+        label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
+        icon: 'i-heroicons-arrow-uturn-left',
+        onSelect: () =>
+          emit('clipAction', {
+            action: 'returnAudio',
+            trackId: track.id,
+            itemId: item.id,
+            videoItemId: String(item.linkedVideoClipId),
+          }),
+      });
+    }
   }
 
-  const hasReturnFromVideoClip =
-    track.kind === 'video' &&
-    Boolean(item.audioFromVideoDisabled) &&
-    (timelineStore.timelineDoc?.tracks ?? []).some((t: any) =>
-      t.kind !== 'audio'
-        ? false
-        : (t.items ?? []).some(
-            (it: any) =>
-              it.kind === 'clip' && it.linkedVideoClipId === item.id && Boolean(it.lockToLinkedVideo),
-          ),
-    );
-
-  const hasReturnFromLockedAudioClip =
-    track.kind === 'audio' && Boolean(item.linkedVideoClipId) && Boolean(item.lockToLinkedVideo);
-
-  if (hasReturnFromVideoClip) {
-    menuItems.push({
-      label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
-      icon: 'i-heroicons-arrow-uturn-left',
-      onSelect: () => emit('clipAction', { action: 'returnAudio', trackId: track.id, itemId: item.id }),
-    });
-  } else if (hasReturnFromLockedAudioClip) {
-    menuItems.push({
-      label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
-      icon: 'i-heroicons-arrow-uturn-left',
-      onSelect: () =>
-        emit('clipAction', {
-          action: 'returnAudio',
+  const actionGroup: any[] = [
+    {
+      label: t('granVideoEditor.timeline.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      onSelect: () => {
+        timelineStore.applyTimeline({
+          type: 'delete_items',
           trackId: track.id,
-          itemId: item.id,
-          videoItemId: String(item.linkedVideoClipId),
-        }),
-    });
-  }
+          itemIds: [item.id],
+        });
+      },
+    },
+  ];
 
-  return menuItems.length > 0 ? [menuItems] : [];
+  const result = [];
+  if (mainGroup.length > 0) result.push(mainGroup);
+  result.push(actionGroup);
+
+  return result;
 }
 </script>
 

@@ -1634,7 +1634,8 @@
       "trackName": "Track name",
       "clipMoveFailed": "Failed to move clip",
       "extractAudio": "Extract audio to audio track",
-      "returnAudio": "Return audio to video clip"
+      "returnAudio": "Return audio to video clip",
+      "delete": "Delete"
     }
   }
 }
