@@ -14,7 +14,15 @@ const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
   (e: 'startMoveItem', event: MouseEvent, trackId: string, itemId: string, startUs: number): void;
   (e: 'selectItem', event: MouseEvent, itemId: string): void;
-  (e: 'clipAction', payload: { action: 'extractAudio' | 'returnAudio'; trackId: string; itemId: string }): void;
+  (
+    e: 'clipAction',
+    payload: {
+      action: 'extractAudio' | 'returnAudio';
+      trackId: string;
+      itemId: string;
+      videoItemId?: string;
+    },
+  ): void;
   (
     e: 'startTrimItem',
     event: MouseEvent,
@@ -25,39 +33,53 @@ const emit = defineEmits<{
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
   if (!item || item.kind !== 'clip') return [];
 
-  const hasLinkedLockedAudio = Boolean(
-    item.audioFromVideoDisabled &&
-      (timelineStore.timelineDoc?.tracks ?? []).some((t: any) =>
-        t.kind !== 'audio'
-          ? false
-          : (t.items ?? []).some(
-              (it: any) =>
-                it.kind === 'clip' && it.linkedVideoClipId === item.id && Boolean(it.lockToLinkedVideo),
-            ),
-      ),
-  );
+  const menuItems: any[] = [];
 
   const canExtract = track.kind === 'video' && !item.audioFromVideoDisabled;
-  const canReturn = track.kind === 'video' && hasLinkedLockedAudio;
+  if (canExtract) {
+    menuItems.push({
+      label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
+      icon: 'i-heroicons-musical-note',
+      onSelect: () => emit('clipAction', { action: 'extractAudio', trackId: track.id, itemId: item.id }),
+    });
+  }
 
-  return [
-    [
-      {
-        label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
-        icon: 'i-heroicons-musical-note',
-        disabled: !canExtract,
-        onSelect: () =>
-          emit('clipAction', { action: 'extractAudio', trackId: track.id, itemId: item.id }),
-      },
-      {
-        label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
-        icon: 'i-heroicons-arrow-uturn-left',
-        disabled: !canReturn,
-        onSelect: () =>
-          emit('clipAction', { action: 'returnAudio', trackId: track.id, itemId: item.id }),
-      },
-    ],
-  ];
+  const hasReturnFromVideoClip =
+    track.kind === 'video' &&
+    Boolean(item.audioFromVideoDisabled) &&
+    (timelineStore.timelineDoc?.tracks ?? []).some((t: any) =>
+      t.kind !== 'audio'
+        ? false
+        : (t.items ?? []).some(
+            (it: any) =>
+              it.kind === 'clip' && it.linkedVideoClipId === item.id && Boolean(it.lockToLinkedVideo),
+          ),
+    );
+
+  const hasReturnFromLockedAudioClip =
+    track.kind === 'audio' && Boolean(item.linkedVideoClipId) && Boolean(item.lockToLinkedVideo);
+
+  if (hasReturnFromVideoClip) {
+    menuItems.push({
+      label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
+      icon: 'i-heroicons-arrow-uturn-left',
+      onSelect: () => emit('clipAction', { action: 'returnAudio', trackId: track.id, itemId: item.id }),
+    });
+  } else if (hasReturnFromLockedAudioClip) {
+    menuItems.push({
+      label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
+      icon: 'i-heroicons-arrow-uturn-left',
+      onSelect: () =>
+        emit('clipAction', {
+          action: 'returnAudio',
+          trackId: track.id,
+          itemId: item.id,
+          videoItemId: String(item.linkedVideoClipId),
+        }),
+    });
+  }
+
+  return menuItems.length > 0 ? [menuItems] : [];
 }
 </script>
 

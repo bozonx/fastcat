@@ -28,12 +28,17 @@ const {
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
 
-async function onClipAction(payload: { action: 'extractAudio' | 'returnAudio'; trackId: string; itemId: string }) {
+async function onClipAction(payload: {
+  action: 'extractAudio' | 'returnAudio';
+  trackId: string;
+  itemId: string;
+  videoItemId?: string;
+}) {
   try {
     if (payload.action === 'extractAudio') {
       await timelineStore.extractAudioToTrack({ videoTrackId: payload.trackId, videoItemId: payload.itemId });
     } else {
-      timelineStore.returnAudioToVideo({ videoItemId: payload.itemId });
+      timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
     }
     await timelineStore.requestTimelineSave({ immediate: true });
   } catch (err: any) {
@@ -47,7 +52,8 @@ async function onClipAction(payload: { action: 'extractAudio' | 'returnAudio'; t
 }
 
 async function onDrop(e: DragEvent, trackId: string) {
-  const data = e.dataTransfer?.getData('application/json');
+  const data =
+    e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain');
   if (data) {
     try {
       const parsed = JSON.parse(data);

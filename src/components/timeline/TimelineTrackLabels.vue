@@ -152,7 +152,7 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
           @dragover.prevent
           @drop.prevent="onDrop($event, track)"
           @click="onSelectTrack(track.id)"
-          @contextmenu.prevent="onSelectTrack(track.id)"
+          @contextmenu="onSelectTrack(track.id)"
         >
           {{ track.name }}
         </div>
