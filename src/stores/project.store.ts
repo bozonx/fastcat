@@ -25,6 +25,9 @@ export interface GranVideoEditorProjectSettings {
   proxy: {
     height: number;
   };
+  monitor: {
+    previewResolution: number;
+  };
 }
 
 const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
@@ -43,6 +46,9 @@ const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
   },
   proxy: {
     height: 720,
+  },
+  monitor: {
+    previewResolution: 480,
   },
 };
 
@@ -64,6 +70,9 @@ function createDefaultProjectSettings(): GranVideoEditorProjectSettings {
     proxy: {
       height: DEFAULT_PROJECT_SETTINGS.proxy.height,
     },
+    monitor: {
+      previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
+    },
   };
 }
 
@@ -76,6 +85,7 @@ function normalizeProjectSettings(raw: unknown): GranVideoEditorProjectSettings 
   const exportInput = input.export ?? {};
   const encodingInput = exportInput.encoding ?? {};
   const proxyInput = input.proxy ?? {};
+  const monitorInput = input.monitor ?? {};
 
   const width = Number(exportInput.width);
   const height = Number(exportInput.height);
@@ -84,6 +94,7 @@ function normalizeProjectSettings(raw: unknown): GranVideoEditorProjectSettings 
   const proxyHeight = Number(proxyInput.height);
   const fps = Number(exportInput.fps);
   const format = encodingInput.format;
+  const previewResolution = Number(monitorInput.previewResolution);
 
   return {
     export: {
@@ -122,6 +133,12 @@ function normalizeProjectSettings(raw: unknown): GranVideoEditorProjectSettings 
         Number.isFinite(proxyHeight) && proxyHeight > 0
           ? Math.round(proxyHeight)
           : DEFAULT_PROJECT_SETTINGS.proxy.height,
+    },
+    monitor: {
+      previewResolution:
+        Number.isFinite(previewResolution) && previewResolution > 0
+          ? Math.round(previewResolution)
+          : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
     },
   };
 }

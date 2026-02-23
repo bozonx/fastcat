@@ -30,11 +30,20 @@ export function useMonitorDisplay() {
     return width / height;
   });
 
+  const renderHeight = computed(() => {
+    const value = Number(projectStore.projectSettings.monitor?.previewResolution);
+    return Number.isFinite(value) && value > 0 ? value : 480;
+  });
+
+  const renderWidth = computed(() => {
+    return Math.round(renderHeight.value * aspectRatio.value);
+  });
+
   const canvasScale = computed(() => {
     const dw = canvasDisplaySize.value.width;
     const dh = canvasDisplaySize.value.height;
-    if (!dw || !dh || !exportWidth.value || !exportHeight.value) return 1;
-    return Math.min(dw / exportWidth.value, dh / exportHeight.value);
+    if (!dw || !dh || !renderWidth.value || !renderHeight.value) return 1;
+    return Math.min(dw / renderWidth.value, dh / renderHeight.value);
   });
 
   function getCanvasWrapperStyle() {
@@ -47,8 +56,8 @@ export function useMonitorDisplay() {
 
   function getCanvasInnerStyle() {
     return {
-      width: `${exportWidth.value}px`,
-      height: `${exportHeight.value}px`,
+      width: `${renderWidth.value}px`,
+      height: `${renderHeight.value}px`,
       transform: `scale(${canvasScale.value})`,
       transformOrigin: 'top left',
     };
@@ -83,6 +92,8 @@ export function useMonitorDisplay() {
     canvasDisplaySize,
     exportWidth,
     exportHeight,
+    renderWidth,
+    renderHeight,
     aspectRatio,
     canvasScale,
     getCanvasWrapperStyle,

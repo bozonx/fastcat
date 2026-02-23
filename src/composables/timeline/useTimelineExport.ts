@@ -76,7 +76,6 @@ export function resolveExportCodecs(
   selectedVideoCodec: string,
   selectedAudioCodec: 'aac' | 'opus',
 ) {
-
   if (format === 'webm') {
     return {
       videoCodec: 'vp09.00.10.08',
@@ -315,9 +314,14 @@ export function useTimelineExport() {
     onProgress: (progress: number) => void,
   ): Promise<void> {
     const doc = timelineStore.timelineDoc;
-    const track = doc?.tracks?.find((track) => track.kind === 'video');
-    const clips = toWorkerTimelineClips(track?.items ?? []);
-    if (!clips.length) throw new Error('Timeline is empty');
+    const videoTrack = doc?.tracks?.find((track) => track.kind === 'video');
+    const audioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
+
+    const videoClips = toWorkerTimelineClips(videoTrack?.items ?? []);
+    const audioItems = audioTracks.flatMap((t) => t.items);
+    const audioClips = toWorkerTimelineClips(audioItems);
+
+    if (!videoClips.length && !audioClips.length) throw new Error('Timeline is empty');
 
     const { client } = getExportWorkerClient();
 
@@ -329,7 +333,7 @@ export function useTimelineExport() {
       },
     });
 
-    await client.exportTimeline(fileHandle, options, clips);
+    await (client as any).exportTimeline(fileHandle, options, videoClips, audioClips);
   }
 
   async function cancelExport() {

@@ -13,13 +13,49 @@ export function useMonitorTimeline() {
         (track: TimelineTrack) => track.kind === 'video',
       ) ?? null,
   );
+  const audioTracks = computed(
+    () =>
+      (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.filter(
+        (track: TimelineTrack) => track.kind === 'audio',
+      ) ?? [],
+  );
+
   const videoItems = computed(() =>
     (videoTrack.value?.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'),
+  );
+
+  const audioItems = computed(() =>
+    audioTracks.value
+      .flatMap((track) => track.items)
+      .filter((it: TimelineTrackItem) => it.kind === 'clip'),
   );
 
   const workerTimelineClips = computed(() => {
     const clips: WorkerTimelineClip[] = [];
     for (const item of videoItems.value) {
+      if (item.kind !== 'clip') continue;
+      clips.push({
+        kind: 'clip',
+        id: item.id,
+        source: {
+          path: item.source.path,
+        },
+        timelineRange: {
+          startUs: item.timelineRange.startUs,
+          durationUs: item.timelineRange.durationUs,
+        },
+        sourceRange: {
+          startUs: item.sourceRange.startUs,
+          durationUs: item.sourceRange.durationUs,
+        },
+      });
+    }
+    return clips;
+  });
+
+  const workerAudioClips = computed(() => {
+    const clips: WorkerTimelineClip[] = [];
+    for (const item of audioItems.value) {
       if (item.kind !== 'clip') continue;
       clips.push({
         kind: 'clip',
@@ -89,12 +125,42 @@ export function useMonitorTimeline() {
     return hash;
   });
 
+  const audioClipLayoutSignature = computed(() => {
+    let hash = mixHash(2166136261, audioItems.value.length);
+    for (const item of audioItems.value) {
+      hash = mixHash(hash, hashString(item.id));
+      hash = mixTime(hash, item.timelineRange.startUs);
+      hash = mixTime(hash, item.timelineRange.durationUs);
+      if (item.kind === 'clip') {
+        hash = mixTime(hash, item.sourceRange.startUs);
+        hash = mixTime(hash, item.sourceRange.durationUs);
+      }
+    }
+    return hash;
+  });
+
+  const audioClipSourceSignature = computed(() => {
+    let hash = mixHash(2166136261, audioItems.value.length);
+    for (const item of audioItems.value) {
+      hash = mixHash(hash, hashString(item.id));
+      if (item.kind === 'clip') {
+        hash = mixHash(hash, hashString(item.source.path));
+      }
+    }
+    return hash;
+  });
+
   return {
     videoTrack,
     videoItems,
+    audioTracks,
+    audioItems,
     workerTimelineClips,
+    workerAudioClips,
     safeDurationUs,
     clipSourceSignature,
     clipLayoutSignature,
+    audioClipSourceSignature,
+    audioClipLayoutSignature,
   };
 }

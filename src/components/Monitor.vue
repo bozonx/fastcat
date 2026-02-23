@@ -4,10 +4,12 @@ import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
+import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
+import type { UseMonitorPlaybackOptions } from '~/composables/monitor/useMonitorPlayback';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 const { t } = useI18n();
@@ -21,16 +23,19 @@ const isLoading = ref(false);
 const {
   videoItems,
   workerTimelineClips,
+  workerAudioClips,
   safeDurationUs,
   clipSourceSignature,
   clipLayoutSignature,
+  audioClipSourceSignature,
+  audioClipLayoutSignature,
 } = useMonitorTimeline();
 
 const {
   containerEl,
   viewportEl,
-  exportWidth,
-  exportHeight,
+  renderWidth,
+  renderHeight,
   getCanvasWrapperStyle,
   getCanvasInnerStyle,
   updateCanvasDisplaySize,
@@ -39,6 +44,15 @@ const {
 const canInteractPlayback = computed(
   () => videoItems.value.length > 0 && !isLoading.value && !loadError.value,
 );
+
+const previewResolutions = [
+  { label: '1080p', value: 1080 },
+  { label: '720p', value: 720 },
+  { label: '480p', value: 480 },
+  { label: '360p', value: 360 },
+  { label: '240p', value: 240 },
+  { label: '144p', value: 144 },
+];
 
 // Internal state for timeline build and layout
 const BUILD_DEBOUNCE_MS = 120;
@@ -63,9 +77,17 @@ let latestRenderTimeUs: number | null = null;
 let isUnmounted = false;
 let suppressStoreSeekWatch = false;
 
+const audioEngine = new AudioEngine();
+
 const timecodeEl = ref<HTMLElement | null>(null);
 
 const { client } = getPreviewWorkerClient();
+
+async function getFileHandleForAudio(path: string) {
+  const handle = await projectStore.getFileHandleByPath(path);
+  if (!handle) throw new Error(`File handle not found for ${path}`);
+  return handle;
+}
 
 async function flushBuildQueue() {
   if (buildInFlight) return;
@@ -109,6 +131,22 @@ async function flushLayoutUpdateQueue() {
         console.error('[Monitor] Failed to update timeline layout', error);
       }
     }
+    
+    // Also update audio clips
+    const audioClips = workerAudioClips.value;
+    const audioEngineClips = await Promise.all(audioClips.map(async (clip) => {
+      const handle = await getFileHandleForAudio(clip.source.path);
+      return {
+        id: clip.id,
+        fileHandle: handle,
+        startUs: clip.timelineRange.startUs,
+        durationUs: clip.timelineRange.durationUs,
+        sourceStartUs: clip.sourceRange.startUs,
+        sourceDurationUs: clip.sourceRange.durationUs,
+      };
+    }));
+    audioEngine.updateTimelineLayout(audioEngineClips);
+
   } finally {
     layoutUpdateInFlight = false;
   }
@@ -175,8 +213,8 @@ async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
   }
 
   const shouldRecreate = options?.forceRecreate ?? false;
-  const targetWidth = exportWidth.value;
-  const targetHeight = exportHeight.value;
+  const targetWidth = renderWidth.value;
+  const targetHeight = renderHeight.value;
   const needReinit =
     !compositorReady ||
     compositorWidth !== targetWidth ||
@@ -220,8 +258,11 @@ async function buildTimeline() {
   try {
     await ensureCompositorReady();
     const clips = workerTimelineClips.value;
-    if (clips.length === 0) {
+    const audioClips = workerAudioClips.value;
+
+    if (clips.length === 0 && audioClips.length === 0) {
       await client.clearClips();
+      await audioEngine.loadClips([]);
       timelineStore.duration = 0;
       updateStoreTime(0);
       setLocalTimeFromStore();
@@ -235,6 +276,21 @@ async function buildTimeline() {
     });
 
     const maxDuration = await client.loadTimeline(clips);
+
+    await audioEngine.init();
+    
+    const audioEngineClips = await Promise.all(audioClips.map(async (clip) => {
+      const handle = await getFileHandleForAudio(clip.source.path);
+      return {
+        id: clip.id,
+        fileHandle: handle,
+        startUs: clip.timelineRange.startUs,
+        durationUs: clip.timelineRange.durationUs,
+        sourceStartUs: clip.sourceRange.startUs,
+        sourceDurationUs: clip.sourceRange.durationUs,
+      };
+    }));
+    await audioEngine.loadClips(audioEngineClips);
 
     lastBuiltSourceSignature = clipSourceSignature.value;
     lastBuiltLayoutSignature = clipLayoutSignature.value;
@@ -261,6 +317,10 @@ watch(clipSourceSignature, () => {
   scheduleBuild();
 });
 
+watch(audioClipSourceSignature, () => {
+  scheduleBuild();
+});
+
 watch(clipLayoutSignature, () => {
   if (isLoading.value || !compositorReady) {
     return;
@@ -276,8 +336,21 @@ watch(clipLayoutSignature, () => {
   scheduleLayoutUpdate(layoutClips);
 });
 
+watch(audioClipLayoutSignature, () => {
+  if (isLoading.value || !compositorReady) {
+    return;
+  }
+
+  const layoutClips = workerTimelineClips.value;
+  scheduleLayoutUpdate(layoutClips);
+});
+
 watch(
-  () => [projectStore.projectSettings.export.width, projectStore.projectSettings.export.height],
+  () => [
+    projectStore.projectSettings.export.width,
+    projectStore.projectSettings.export.height,
+    projectStore.projectSettings.monitor?.previewResolution,
+  ],
   () => {
     updateCanvasDisplaySize();
     compositorReady = false;
@@ -287,16 +360,17 @@ watch(
 
 const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl, setLocalTimeFromStore } =
   useMonitorPlayback({
-  isLoading,
-  loadError,
-  isPlaying,
-  currentTime,
-  duration,
-  safeDurationUs,
-  getFps: () => projectStore.projectSettings?.export?.fps,
-  clampToTimeline,
-  updateStoreTime,
-  scheduleRender,
+    isLoading,
+    loadError,
+    isPlaying,
+    currentTime,
+    duration,
+    safeDurationUs,
+    getFps: () => projectStore.projectSettings?.export?.fps,
+    clampToTimeline,
+    updateStoreTime,
+    scheduleRender,
+    audioEngine,
   });
 
 onMounted(() => {
@@ -349,10 +423,22 @@ function formatTime(seconds: number): string {
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
-    <div class="flex items-center px-3 py-2 border-b border-ui-border shrink-0 h-10">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10">
       <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
+      <div class="w-24 shrink-0">
+        <USelectMenu
+          v-if="projectStore.projectSettings.monitor"
+          :model-value="(previewResolutions.find(r => r.value === projectStore.projectSettings.monitor.previewResolution) || previewResolutions[2]) as any"
+          :items="previewResolutions"
+          value-key="value"
+          label-key="label"
+          size="xs"
+          class="w-full"
+          @update:model-value="(v: any) => { if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v }"
+        />
+      </div>
     </div>
 
     <!-- Video area -->

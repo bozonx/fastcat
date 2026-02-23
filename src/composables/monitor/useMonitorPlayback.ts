@@ -2,6 +2,8 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
 
+import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
+
 export interface UseMonitorPlaybackOptions {
   isLoading: { value: boolean };
   loadError: { value: string | null };
@@ -13,6 +15,7 @@ export interface UseMonitorPlaybackOptions {
   clampToTimeline: (timeUs: number) => number;
   updateStoreTime: (timeUs: number) => void;
   scheduleRender: (timeUs: number) => void;
+  audioEngine: AudioEngine;
 }
 
 export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
@@ -27,6 +30,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     clampToTimeline,
     updateStoreTime,
     scheduleRender,
+    audioEngine,
   } = options;
 
   const STORE_TIME_SYNC_MS = 100;
@@ -147,11 +151,14 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         renderAccumulatorMs = 0;
         storeSyncAccumulatorMs = 0;
 
+        audioEngine.play(localCurrentTimeUs);
+
         playbackLoopId = requestAnimationFrame((ts) => {
           lastFrameTimeMs = ts;
           updatePlayback(ts);
         });
       } else {
+        audioEngine.stop();
         cancelAnimationFrame(playbackLoopId);
         uiCurrentTimeUs.value = clampToTimeline(localCurrentTimeUs);
         updateTimecodeUi(uiCurrentTimeUs.value);
@@ -177,6 +184,9 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         uiCurrentTimeUs.value = normalizedTimeUs;
         updateTimecodeUi(normalizedTimeUs);
         scheduleRender(normalizedTimeUs);
+      } else {
+        localCurrentTimeUs = normalizedTimeUs;
+        audioEngine.seek(normalizedTimeUs);
       }
     },
   );

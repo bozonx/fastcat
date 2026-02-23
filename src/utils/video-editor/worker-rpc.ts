@@ -22,6 +22,7 @@ export interface VideoCoreWorkerAPI {
     targetHandle: FileSystemFileHandle,
     options: any,
     timelineClips: any[],
+    audioClips?: any[],
   ): Promise<void>;
 
   cancelExport(): Promise<void>;

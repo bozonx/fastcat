@@ -143,7 +143,12 @@ const api: any = {
     }
   },
 
-  async exportTimeline(targetHandle: FileSystemFileHandle, options: any, timelineClips: any[]) {
+  async exportTimeline(
+    targetHandle: FileSystemFileHandle,
+    options: any,
+    timelineClips: any[],
+    audioClips: any[] = [],
+  ) {
     cancelExportRequested = false;
     const {
       Output,
@@ -159,27 +164,27 @@ const api: any = {
     await localCompositor.init(options.width, options.height, '#000', true);
 
     try {
-      const maxDurationUs = await localCompositor.loadTimeline(timelineClips, async (path) => {
+      const maxVideoDurationUs = await localCompositor.loadTimeline(timelineClips, async (path) => {
         if (!hostClient) return null;
         return hostClient.getFileHandleByPath(path);
       });
 
-      if (maxDurationUs <= 0) throw new Error('No video clips to export');
+      const maxAudioDurationUs = audioClips.reduce((max, clip) => {
+        const endUs =
+          Number(clip.timelineRange?.startUs || 0) + Number(clip.timelineRange?.durationUs || 0);
+        return Math.max(max, endUs);
+      }, 0);
+
+      const maxDurationUs = Math.max(maxVideoDurationUs, maxAudioDurationUs);
+
+      if (maxDurationUs <= 0) throw new Error('No clips to export');
 
       const durationS = maxDurationUs / 1_000_000;
       let offlineCtx: OfflineAudioContext | null = null;
       let audioData: AudioBuffer | null = null;
-      let hasAnyAudio = false;
 
-      for (const c of localCompositor.clips) {
-        if (c.input) {
-          const audioTrack = await c.input.getPrimaryAudioTrack();
-          if (audioTrack) {
-            hasAnyAudio = true;
-            break;
-          }
-        }
-      }
+      const allAudioClips = [...localCompositor.clips, ...audioClips];
+      const hasAnyAudio = allAudioClips.length > 0;
 
       if (options.audio && hasAnyAudio) {
         offlineCtx = new OfflineAudioContext({
@@ -190,30 +195,44 @@ const api: any = {
 
         const decodedAudioCache = new Map<string, AudioBuffer | null>();
 
-        for (const clipData of localCompositor.clips) {
-          const sourceKey = clipData.sourcePath;
-          let decoded = decodedAudioCache.get(sourceKey);
+        // Process audio from both video clips and dedicated audio clips
+        for (const clipData of allAudioClips) {
+          const sourcePath = clipData.sourcePath || clipData.source?.path;
+          if (!sourcePath) continue;
+
+          let fileHandle: FileSystemFileHandle | null = clipData.fileHandle || null;
+          if (!fileHandle && hostClient) {
+            fileHandle = await hostClient.getFileHandleByPath(sourcePath);
+          }
+
+          if (!fileHandle) continue;
+
+          let decoded = decodedAudioCache.get(sourcePath);
 
           if (typeof decoded === 'undefined') {
             try {
-              const arrayBuffer = await clipData.fileHandle
-                .getFile()
-                .then((f: File) => f.arrayBuffer());
+              const arrayBuffer = await fileHandle.getFile().then((f: File) => f.arrayBuffer());
               decoded = await offlineCtx.decodeAudioData(arrayBuffer);
             } catch (err) {
               console.warn('[Worker Export] Failed to decode audio for clip', err);
               decoded = null;
             }
-            decodedAudioCache.set(sourceKey, decoded);
+            decodedAudioCache.set(sourcePath, decoded);
           }
 
           if (!decoded) continue;
 
-          const startAtS = Math.max(0, clipData.startUs / 1_000_000);
-          const rawOffsetS = Math.max(0, clipData.sourceStartUs / 1_000_000);
+          const startUs = clipData.startUs ?? clipData.timelineRange?.startUs ?? 0;
+          const sourceStartUs = clipData.sourceStartUs ?? clipData.sourceRange?.startUs ?? 0;
+          const sourceDurationUs =
+            clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
+          const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
+
+          const startAtS = Math.max(0, startUs / 1_000_000);
+          const rawOffsetS = Math.max(0, sourceStartUs / 1_000_000);
           const offsetS = Math.min(rawOffsetS, decoded.duration);
-          const sourceDurationS = Math.max(0, clipData.sourceDurationUs / 1_000_000);
-          const timelineDurationS = Math.max(0, clipData.durationUs / 1_000_000);
+          const sourceDurationS = Math.max(0, sourceDurationUs / 1_000_000);
+          const timelineDurationS = Math.max(0, durationUs / 1_000_000);
           const clipDurationS = Math.max(
             0,
             Math.min(
