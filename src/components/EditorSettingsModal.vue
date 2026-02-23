@@ -96,9 +96,18 @@ const thumbnailsLimitGb = computed({
 </script>
 
 <template>
-  <AppModal v-model:open="isOpen" :title="t('videoEditor.settings.title', 'Editor settings')">
-    <div class="flex gap-6">
-      <div class="w-56 shrink-0">
+  <AppModal
+    v-model:open="isOpen"
+    :title="t('videoEditor.settings.title', 'Editor settings')"
+    :ui="{
+      content: 'sm:max-w-4xl h-[90vh]',
+      body: '!p-0 !overflow-hidden flex flex-col',
+    }"
+  >
+    <div class="flex flex-1 min-h-0 w-full h-full">
+      <div
+        class="w-56 shrink-0 p-6 bg-gray-50/50 dark:bg-gray-800/20 border-r border-gray-100 dark:border-gray-800 overflow-y-auto"
+      >
         <div class="flex flex-col gap-6">
           <div class="flex flex-col gap-2">
             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -138,7 +147,7 @@ const thumbnailsLimitGb = computed({
         </div>
       </div>
 
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 p-6 overflow-y-auto">
         <div v-if="activeSection === 'user.general'" class="flex flex-col gap-4">
           <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
             {{ t('videoEditor.settings.userGeneral', 'General') }}
