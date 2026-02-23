@@ -29,12 +29,11 @@ function formatTime(seconds: number): string {
 }
 
 function togglePlay() {
-  timelineStore.isPlaying = !timelineStore.isPlaying;
+  timelineStore.togglePlayback();
 }
 
 function stop() {
-  timelineStore.isPlaying = false;
-  timelineStore.currentTime = 0;
+  timelineStore.stopPlayback();
 }
 
 function onZoomInput(e: Event) {

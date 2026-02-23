@@ -1614,7 +1614,8 @@
       "useProxy": "Use proxy",
       "rewind": "Rewind",
       "play": "Play",
-      "loadError": "Error loading timeline"
+      "loadError": "Error loading timeline",
+      "projectLabel": "Project"
     },
     "timeline": {
       "rewind": "Rewind to start",

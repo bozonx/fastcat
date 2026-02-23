@@ -13,7 +13,7 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
-const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
+const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
 
 const {
   videoItems,
@@ -73,14 +73,29 @@ const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );
 
-const previewResolutions = [
-  { label: '1080p', value: 1080 },
-  { label: '720p', value: 720 },
-  { label: '480p', value: 480 },
-  { label: '360p', value: 360 },
-  { label: '240p', value: 240 },
-  { label: '144p', value: 144 },
-];
+const previewResolutions = computed(() => {
+  const projectHeight = projectStore.projectSettings.export.height;
+  const baseResolutions = [
+    { label: '2160p', value: 2160 },
+    { label: '1440p', value: 1440 },
+    { label: '1080p', value: 1080 },
+    { label: '720p', value: 720 },
+    { label: '480p', value: 480 },
+    { label: '360p', value: 360 },
+    { label: '240p', value: 240 },
+    { label: '144p', value: 144 },
+  ];
+
+  return baseResolutions.map((res) => {
+    if (res.value === projectHeight) {
+      return {
+        ...res,
+        label: `${t('granVideoEditor.monitor.projectLabel', 'Project')} (${res.label})`,
+      };
+    }
+    return res;
+  });
+});
 
 const timecodeEl = ref<HTMLElement | null>(null);
 const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl } = useMonitorPlayback({
@@ -101,6 +116,11 @@ setCurrentTimeProvider(getLocalCurrentTimeUs);
 
 onMounted(() => {
   setTimecodeEl(timecodeEl.value);
+  timelineStore.setPlaybackGestureHandler((nextPlaying) => {
+    if (nextPlaying) {
+      audioEngine.resumeContext();
+    }
+  });
 });
 
 function formatTime(seconds: number): string {
@@ -113,9 +133,6 @@ function formatTime(seconds: number): string {
 function togglePlayback() {
   if (isLoading.value) return;
 
-  // Unblock Web Audio strictly inside the synchronous user gesture handler
-  audioEngine.resumeContext();
-
   // If preview build failed, attempt a rebuild instead of permanently blocking playback controls.
   if (loadError.value) {
     loadError.value = null;
@@ -123,7 +140,16 @@ function togglePlayback() {
     return;
   }
 
-  timelineStore.isPlaying = !timelineStore.isPlaying;
+  timelineStore.togglePlayback();
+}
+
+function onVolumeInput(event: Event) {
+  const target = event.target as HTMLInputElement | null;
+  timelineStore.setAudioVolume(Number(target?.value ?? 1));
+}
+
+function toggleMute() {
+  timelineStore.toggleAudioMuted();
 }
 </script>
 
@@ -209,7 +235,7 @@ function togglePlayback() {
 
     <!-- Playback controls -->
     <div
-      class="flex items-center justify-center gap-3 px-4 py-3 border-t border-ui-border shrink-0"
+      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3 border-t border-ui-border shrink-0"
     >
       <UButton
         size="sm"
@@ -229,6 +255,33 @@ function togglePlayback() {
         :disabled="!canInteractPlayback"
         @click="togglePlayback"
       />
+      <div class="flex items-center gap-2">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          :icon="audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+          :aria-label="
+            audioMuted
+              ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
+              : t('granVideoEditor.monitor.audioMute', 'Mute')
+          "
+          @click="toggleMute"
+        />
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          :value="audioMuted ? 0 : audioVolume"
+          class="w-24 accent-primary-500"
+          :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
+          @input="onVolumeInput"
+        />
+        <span class="text-[11px] text-gray-500 tabular-nums">
+          {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%
+        </span>
+      </div>
       <span ref="timecodeEl" class="text-xs text-gray-600 ml-2 font-mono">
         {{ formatTime(uiCurrentTimeUs / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
       </span>

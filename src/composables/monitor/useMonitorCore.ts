@@ -35,6 +35,8 @@ interface MonitorStoreState {
     duration: number;
     currentTime: number;
     isPlaying: boolean;
+    audioVolume: number;
+    audioMuted: boolean;
   };
   proxyStore: {
     getProxyFileHandle: (path: string) => Promise<FileSystemFileHandle | null>;
@@ -101,9 +103,25 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     currentTimeProvider = provider;
   }
 
+  function computeAudioDurationUs(clips: WorkerTimelineClip[]): number {
+    let maxEnd = 0;
+    for (const clip of clips) {
+      const end = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+      if (end > maxEnd) maxEnd = end;
+    }
+    return maxEnd;
+  }
+
   async function getFileHandleForAudio(path: string) {
     const cached = audioHandleCache.get(path);
     if (cached) return cached;
+    if (useProxyInMonitor.value) {
+      const proxyHandle = await proxyStore.getProxyFileHandle(path);
+      if (proxyHandle) {
+        audioHandleCache.set(path, proxyHandle);
+        return proxyHandle;
+      }
+    }
     const handle = await projectStore.getFileHandleByPath(path);
     if (!handle) return null;
     audioHandleCache.set(path, handle);
@@ -150,7 +168,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         pendingLayoutClips = null;
         try {
           const maxDuration = await client.updateTimelineLayout(layoutClips);
-          timelineStore.duration = maxDuration;
+          const audioDuration = computeAudioDurationUs(workerAudioClips.value);
+          timelineStore.duration = Math.max(maxDuration, audioDuration);
           lastBuiltLayoutSignature = clipLayoutSignature.value;
           scheduleRender(getRenderTimeForLayoutUpdate());
         } catch (error) {
@@ -295,6 +314,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       forceRecreateCompositorNextBuild = false;
       const clips = workerTimelineClips.value;
       const audioClips = workerAudioClips.value;
+      const audioDuration = computeAudioDurationUs(audioClips);
 
       if (clips.length === 0 && audioClips.length === 0) {
         await client.clearClips();
@@ -316,7 +336,10 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         onExportProgress: () => {},
       });
 
-      const maxDuration = await client.loadTimeline(clips);
+      const maxDuration = clips.length > 0 ? await client.loadTimeline(clips) : 0;
+      if (clips.length === 0) {
+        await client.clearClips();
+      }
 
       await audioEngine.init();
 
@@ -346,7 +369,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       lastBuiltSourceSignature = clipSourceSignature.value;
       lastBuiltLayoutSignature = clipLayoutSignature.value;
 
-      timelineStore.duration = normalizeTimeUs(maxDuration);
+      timelineStore.duration = normalizeTimeUs(Math.max(maxDuration, audioDuration));
       updateStoreTime(0);
       timelineStore.isPlaying = false;
       scheduleRender(0);
@@ -406,6 +429,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     const layoutClips = workerTimelineClips.value;
     scheduleLayoutUpdate(layoutClips);
   });
+
+  watch(
+    () => [timelineStore.audioVolume, timelineStore.audioMuted],
+    () => {
+      const effectiveVolume = timelineStore.audioMuted ? 0 : timelineStore.audioVolume;
+      audioEngine.setVolume(effectiveVolume);
+    },
+    { immediate: true },
+  );
 
   watch(
     () => [

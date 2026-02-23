@@ -28,6 +28,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   const isPlaying = ref(false);
   const currentTime = ref(0);
   const duration = ref(0);
+  const audioVolume = ref(1);
+  const audioMuted = ref(false);
+  const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(100);
 
@@ -75,6 +78,39 @@ export const useTimelineStore = defineStore('timeline', () => {
     const parsed = Math.round(Number(next));
     if (!Number.isFinite(parsed)) return;
     timelineZoom.value = Math.min(200, Math.max(10, parsed));
+  }
+
+  function setAudioVolume(next: number) {
+    const parsed = Number(next);
+    if (!Number.isFinite(parsed)) return;
+    audioVolume.value = Math.min(1, Math.max(0, parsed));
+    if (audioVolume.value > 0 && audioMuted.value) {
+      audioMuted.value = false;
+    }
+  }
+
+  function setAudioMuted(next: boolean) {
+    audioMuted.value = Boolean(next);
+  }
+
+  function toggleAudioMuted() {
+    audioMuted.value = !audioMuted.value;
+  }
+
+  function setPlaybackGestureHandler(handler: ((nextPlaying: boolean) => void) | null) {
+    playbackGestureHandler.value = handler;
+  }
+
+  function togglePlayback() {
+    const nextPlaying = !isPlaying.value;
+    playbackGestureHandler.value?.(nextPlaying);
+    isPlaying.value = nextPlaying;
+  }
+
+  function stopPlayback() {
+    playbackGestureHandler.value?.(false);
+    isPlaying.value = false;
+    currentTime.value = 0;
   }
 
   function addTrack(kind: 'video' | 'audio', name: string) {
@@ -196,6 +232,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying.value = false;
     currentTime.value = 0;
     duration.value = 0;
+    audioVolume.value = 1;
+    audioMuted.value = false;
     timelineZoom.value = 100;
     clearSelection();
     selectTrack(null);
@@ -471,6 +509,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying,
     currentTime,
     duration,
+    audioVolume,
+    audioMuted,
     timelineZoom,
     selectedItemIds,
     selectedTrackId,
@@ -485,6 +525,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTrack,
     deleteSelectedItems,
     setTimelineZoom,
+    setAudioVolume,
+    setAudioMuted,
+    toggleAudioMuted,
+    setPlaybackGestureHandler,
+    togglePlayback,
+    stopPlayback,
     addTrack,
     renameTrack,
     renameItem,
