@@ -34,6 +34,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   } = options;
 
   const STORE_TIME_SYNC_MS = 100;
+  const PLAYBACK_SEEK_EPSILON_US = 25_000;
 
   let playbackLoopId = 0;
   let lastFrameTimeMs = 0;
@@ -186,6 +187,11 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         updateTimecodeUi(normalizedTimeUs);
         scheduleRender(normalizedTimeUs);
       } else {
+        // Ignore tiny store updates produced by the local playback loop itself.
+        // Only external timeline jumps should trigger an actual seek.
+        if (Math.abs(normalizedTimeUs - localCurrentTimeUs) <= PLAYBACK_SEEK_EPSILON_US) {
+          return;
+        }
         localCurrentTimeUs = normalizedTimeUs;
         audioEngine.seek(normalizedTimeUs);
       }
