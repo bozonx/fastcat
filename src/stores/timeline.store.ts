@@ -17,6 +17,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const { currentProjectName, currentTimelinePath } = storeToRefs(projectStore);
   const { mediaMetadata } = storeToRefs(mediaStore);
 
+  const DEFAULT_IMAGE_DURATION_US = 5_000_000;
+
   const timelineDoc = ref<TimelineDocument | null>(null);
 
   const isTimelineDirty = ref(false);
@@ -125,7 +127,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const hasAudio = Boolean(metadata.audio);
     const isImageLike = !hasVideo && !hasAudio;
 
-    if (toTrack.kind === 'video' && !hasVideo) {
+    if (toTrack.kind === 'video' && !hasVideo && !isImageLike) {
       throw new Error('Only video sources can be moved to video tracks');
     }
     if (toTrack.kind === 'audio' && isImageLike) {
@@ -399,15 +401,20 @@ export const useTimelineStore = defineStore('timeline', () => {
     const hasAudio = Boolean(metadata.audio);
     const isImageLike = !hasVideo && !hasAudio;
 
-    if (trackKind === 'video' && !hasVideo) {
+    if (trackKind === 'video' && !hasVideo && !isImageLike) {
       throw new Error('Only video sources can be added to video tracks');
     }
     if (trackKind === 'audio' && isImageLike) {
       throw new Error('Images cannot be added to audio tracks');
     }
 
-    const durationS = Number(metadata?.duration);
-    const durationUs = Math.floor(durationS * 1_000_000);
+    let durationUs = 0;
+    if (isImageLike) {
+      durationUs = DEFAULT_IMAGE_DURATION_US;
+    } else {
+      const durationS = Number(metadata?.duration);
+      durationUs = Math.floor(durationS * 1_000_000);
+    }
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
       throw new Error('Failed to resolve media duration');
     }

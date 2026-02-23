@@ -14,19 +14,21 @@ export interface CompositorClip {
   layer: number;
   sourcePath: string;
   fileHandle: FileSystemFileHandle;
-  input: Input;
-  sink: VideoSampleSink;
+  input?: Input;
+  sink?: VideoSampleSink;
   startUs: number;
   endUs: number;
   durationUs: number;
   sourceStartUs: number;
   sourceDurationUs: number;
   sprite: Sprite;
-  sourceKind: 'videoFrame' | 'canvas';
+  clipKind: 'video' | 'image';
+  sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | null;
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
+  bitmap: ImageBitmap | null;
 }
 
 export class VideoCompositor {
@@ -161,6 +163,67 @@ export class VideoCompositor {
       if (!fileHandle) continue;
 
       const file = await fileHandle.getFile();
+
+      if (typeof file?.type === 'string' && file.type.startsWith('image/')) {
+        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+
+        const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+        const texture = new Texture({ source: imageSource });
+        const sprite = new Sprite(texture);
+        sprite.width = 1;
+        sprite.height = 1;
+        sprite.visible = false;
+        (sprite as any).__clipId = itemId;
+        this.app.stage.addChild(sprite);
+
+        let bmp: ImageBitmap | null = null;
+        try {
+          bmp = await createImageBitmap(file);
+          const frameW = Math.max(1, Math.round((bmp as any).width ?? 1));
+          const frameH = Math.max(1, Math.round((bmp as any).height ?? 1));
+          imageSource.resize(frameW, frameH);
+          (imageSource as any).resource = bmp as any;
+          imageSource.update();
+          this.applySpriteLayout(frameW, frameH, {
+            sprite,
+          } as any);
+        } catch (e) {
+          if (bmp) {
+            try {
+              bmp.close();
+            } catch {
+              // ignore
+            }
+          }
+          sprite.visible = false;
+        }
+
+        const compositorClip: CompositorClip = {
+          itemId,
+          layer,
+          sourcePath,
+          fileHandle,
+          startUs,
+          endUs,
+          durationUs: Math.max(0, requestedTimelineDurationUs),
+          sourceStartUs: 0,
+          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          sprite,
+          clipKind: 'image',
+          sourceKind: 'bitmap',
+          imageSource,
+          lastVideoFrame: null,
+          canvas: null,
+          ctx: null,
+          bitmap: bmp,
+        };
+
+        nextClips.push(compositorClip);
+        nextClipById.set(itemId, compositorClip);
+        continue;
+      }
+
       const source = new BlobSource(file);
       const input = new Input({ source, formats: ALL_FORMATS } as any);
       const track = await input.getPrimaryVideoTrack();
@@ -210,11 +273,13 @@ export class VideoCompositor {
         sourceStartUs,
         sourceDurationUs,
         sprite,
+        clipKind: 'video',
         sourceKind: 'videoFrame',
         imageSource,
         lastVideoFrame: null,
         canvas: null,
         ctx: null,
+        bitmap: null,
       };
 
       nextClips.push(compositorClip);
@@ -300,6 +365,11 @@ export class VideoCompositor {
     active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
 
     for (const clip of active) {
+      if (clip.clipKind === 'image') {
+        clip.sprite.visible = true;
+        continue;
+      }
+
       const localTimeUs = timeUs - clip.startUs;
       if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
         clip.sprite.visible = false;
@@ -308,6 +378,11 @@ export class VideoCompositor {
 
       const sampleTimeS = (clip.sourceStartUs + localTimeUs) / 1_000_000;
       try {
+        if (!clip.sink) {
+          clip.sprite.visible = false;
+          continue;
+        }
+
         const sample = await clip.sink.getSample(sampleTimeS);
         if (sample) {
           await this.updateClipTextureFromSample(sample, clip);
@@ -561,6 +636,16 @@ export class VideoCompositor {
       }
       clip.lastVideoFrame = null;
     }
+
+    if (clip.bitmap) {
+      try {
+        clip.bitmap.close();
+      } catch {
+        // ignore
+      }
+      clip.bitmap = null;
+    }
+
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
     }

@@ -48,6 +48,17 @@ function parseAudioCodec(codec: string): string {
 const api: any = {
   async extractMetadata(fileHandle: FileSystemFileHandle) {
     const file = await fileHandle.getFile();
+
+    if (typeof file?.type === 'string' && file.type.startsWith('image/')) {
+      return {
+        source: {
+          size: file.size,
+          lastModified: file.lastModified,
+        },
+        duration: 0,
+      };
+    }
+
     const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
     const source = new BlobSource(file);
     const input = new Input({ source, formats: ALL_FORMATS } as any);
