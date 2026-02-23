@@ -22,6 +22,9 @@ export interface TimelineClipItem {
   sourceDurationUs: number;
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
+  audioFromVideoDisabled?: boolean;
+  linkedVideoClipId?: string;
+  lockToLinkedVideo?: boolean;
 }
 
 export interface TimelineGapItem {

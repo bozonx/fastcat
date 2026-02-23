@@ -28,6 +28,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const duration = ref(0);
 
   const selectedItemIds = ref<string[]>([]);
+  const selectedTrackId = ref<string | null>(null);
 
   let persistTimelineTimeout: number | null = null;
   let timelineRevision = 0;
@@ -37,6 +38,10 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function clearSelection() {
     selectedItemIds.value = [];
+  }
+
+  function selectTrack(trackId: string | null) {
+    selectedTrackId.value = trackId;
   }
 
   function toggleSelection(itemId: string, options?: { multi?: boolean }) {
@@ -59,6 +64,104 @@ export const useTimelineStore = defineStore('timeline', () => {
       itemIds: [...selectedItemIds.value],
     });
     selectedItemIds.value = [];
+  }
+
+  function addTrack(kind: 'video' | 'audio', name: string) {
+    applyTimeline({ type: 'add_track', kind, name });
+  }
+
+  function renameTrack(trackId: string, name: string) {
+    applyTimeline({ type: 'rename_track', trackId, name });
+  }
+
+  function deleteTrack(trackId: string, options?: { allowNonEmpty?: boolean }) {
+    applyTimeline({ type: 'delete_track', trackId, allowNonEmpty: options?.allowNonEmpty });
+    if (selectedTrackId.value === trackId) {
+      selectedTrackId.value = null;
+    }
+  }
+
+  function reorderTracks(trackIds: string[]) {
+    applyTimeline({ type: 'reorder_tracks', trackIds });
+  }
+
+  async function moveItemToTrack(input: {
+    fromTrackId: string;
+    toTrackId: string;
+    itemId: string;
+    startUs: number;
+  }) {
+    const doc = timelineDoc.value;
+    const fromTrack = doc?.tracks.find((t) => t.id === input.fromTrackId) ?? null;
+    const toTrack = doc?.tracks.find((t) => t.id === input.toTrackId) ?? null;
+    if (!fromTrack || !toTrack) throw new Error('Track not found');
+
+    const item = fromTrack.items.find((it) => it.id === input.itemId);
+    if (!item || item.kind !== 'clip') throw new Error('Item not found');
+
+    const path = item.source?.path;
+    if (!path) throw new Error('Invalid source');
+
+    let metadata = mediaMetadata.value[path] ?? null;
+    if (!metadata) {
+      metadata = await mediaStore.getOrFetchMetadataByPath(path);
+    }
+    if (!metadata) throw new Error('Failed to resolve media metadata');
+
+    const hasVideo = Boolean(metadata.video);
+    const hasAudio = Boolean(metadata.audio);
+    const isImageLike = !hasVideo && !hasAudio;
+
+    if (toTrack.kind === 'video' && !hasVideo) {
+      throw new Error('Only video sources can be moved to video tracks');
+    }
+    if (toTrack.kind === 'audio' && isImageLike) {
+      throw new Error('Images cannot be moved to audio tracks');
+    }
+
+    applyTimeline({
+      type: 'move_item_to_track',
+      fromTrackId: input.fromTrackId,
+      toTrackId: input.toTrackId,
+      itemId: input.itemId,
+      startUs: input.startUs,
+    });
+  }
+
+  async function extractAudioToTrack(input: { videoTrackId: string; videoItemId: string }) {
+    const doc = timelineDoc.value;
+    if (!doc) throw new Error('Timeline not loaded');
+    const videoTrack = doc.tracks.find((t) => t.id === input.videoTrackId) ?? null;
+    if (!videoTrack || videoTrack.kind !== 'video') throw new Error('Invalid video track');
+    const videoItem = videoTrack.items.find((it) => it.id === input.videoItemId) ?? null;
+    if (!videoItem || videoItem.kind !== 'clip') throw new Error('Clip not found');
+
+    const audioTracks = doc.tracks.filter((t) => t.kind === 'audio');
+    if (audioTracks.length === 0) throw new Error('No audio tracks');
+
+    const selected = doc.tracks.find((t) => t.id === selectedTrackId.value) ?? null;
+    const targetAudioTrackId = selected?.kind === 'audio' ? selected.id : audioTracks[0]!.id;
+
+    const path = videoItem.source?.path;
+    if (!path) throw new Error('Invalid source');
+
+    let metadata = mediaMetadata.value[path] ?? null;
+    if (!metadata) {
+      metadata = await mediaStore.getOrFetchMetadataByPath(path);
+    }
+    if (!metadata) throw new Error('Failed to resolve media metadata');
+    if (!metadata.audio) throw new Error('Source has no audio');
+
+    applyTimeline({
+      type: 'extract_audio_to_track',
+      videoTrackId: videoTrack.id,
+      videoItemId: videoItem.id,
+      audioTrackId: targetAudioTrackId,
+    });
+  }
+
+  function returnAudioToVideo(input: { videoItemId: string }) {
+    applyTimeline({ type: 'return_audio_to_video', videoItemId: input.videoItemId });
   }
 
   function clearPersistTimelineTimeout() {
@@ -248,6 +351,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!trackKind) throw new Error('Track not found');
 
     const metadata = await mediaStore.getOrFetchMetadata(handle, input.path);
+    if (!metadata) throw new Error('Failed to resolve media metadata');
+
+    const hasVideo = Boolean(metadata.video);
+    const hasAudio = Boolean(metadata.audio);
+    const isImageLike = !hasVideo && !hasAudio;
+
+    if (trackKind === 'video' && !hasVideo) {
+      throw new Error('Only video sources can be added to video tracks');
+    }
+    if (trackKind === 'audio' && isImageLike) {
+      throw new Error('Images cannot be added to audio tracks');
+    }
+
     const durationS = Number(metadata?.duration);
     const durationUs = Math.floor(durationS * 1_000_000);
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
@@ -295,6 +411,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTime,
     duration,
     selectedItemIds,
+    selectedTrackId,
     loadTimeline,
     saveTimeline,
     requestTimelineSave,
@@ -303,6 +420,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     loadTimelineMetadata,
     clearSelection,
     toggleSelection,
+    selectTrack,
     deleteSelectedItems,
+    addTrack,
+    renameTrack,
+    deleteTrack,
+    reorderTracks,
+    moveItemToTrack,
+    extractAudioToTrack,
+    returnAudioToVideo,
   };
 });

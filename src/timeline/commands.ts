@@ -10,6 +10,38 @@ export interface TimelineCommandResult {
   next: TimelineDocument;
 }
 
+function findClipById(
+  doc: TimelineDocument,
+  itemId: string,
+): { track: TimelineTrack; item: TimelineClipItem } | null {
+  for (const t of doc.tracks) {
+    const it = t.items.find((x) => x.id === itemId);
+    if (it && it.kind === 'clip') {
+      return { track: t, item: it };
+    }
+  }
+  return null;
+}
+
+function updateLinkedLockedAudio(
+  doc: TimelineDocument,
+  videoItemId: string,
+  patch: (audio: TimelineClipItem) => TimelineClipItem,
+): TimelineTrack[] {
+  return doc.tracks.map((t) => {
+    if (t.kind !== 'audio') return t;
+    let changed = false;
+    const nextItems = t.items.map((it) => {
+      if (it.kind !== 'clip') return it;
+      if (it.linkedVideoClipId !== videoItemId) return it;
+      if (!it.lockToLinkedVideo) return it;
+      changed = true;
+      return patch(it);
+    });
+    return changed ? { ...t, items: nextItems } : t;
+  });
+}
+
 export interface AddClipToTrackCommand {
   type: 'add_clip_to_track';
   trackId: string;
@@ -46,12 +78,63 @@ export interface DeleteItemsCommand {
   itemIds: string[];
 }
 
+export interface AddTrackCommand {
+  type: 'add_track';
+  kind: 'video' | 'audio';
+  name: string;
+  trackId?: string;
+}
+
+export interface RenameTrackCommand {
+  type: 'rename_track';
+  trackId: string;
+  name: string;
+}
+
+export interface DeleteTrackCommand {
+  type: 'delete_track';
+  trackId: string;
+  allowNonEmpty?: boolean;
+}
+
+export interface ReorderTracksCommand {
+  type: 'reorder_tracks';
+  trackIds: string[];
+}
+
+export interface MoveItemToTrackCommand {
+  type: 'move_item_to_track';
+  fromTrackId: string;
+  toTrackId: string;
+  itemId: string;
+  startUs: number;
+}
+
+export interface ExtractAudioToTrackCommand {
+  type: 'extract_audio_to_track';
+  videoTrackId: string;
+  videoItemId: string;
+  audioTrackId: string;
+}
+
+export interface ReturnAudioToVideoCommand {
+  type: 'return_audio_to_video';
+  videoItemId: string;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | RemoveItemCommand
   | MoveItemCommand
   | TrimItemCommand
-  | DeleteItemsCommand;
+  | DeleteItemsCommand
+  | AddTrackCommand
+  | RenameTrackCommand
+  | DeleteTrackCommand
+  | ReorderTracksCommand
+  | MoveItemToTrackCommand
+  | ExtractAudioToTrackCommand
+  | ReturnAudioToVideoCommand;
 
 function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
@@ -78,6 +161,40 @@ function getTrackById(doc: TimelineDocument, trackId: string): TimelineTrack {
   const t = doc.tracks.find((x) => x.id === trackId);
   if (!t) throw new Error('Track not found');
   return t;
+}
+
+function nextTrackId(doc: TimelineDocument, prefix: 'v' | 'a'): string {
+  const ids = new Set(doc.tracks.map((t) => t.id));
+  let n = 1;
+  while (n < 10_000) {
+    const id = `${prefix}${n}`;
+    if (!ids.has(id)) return id;
+    n += 1;
+  }
+  return `${prefix}${Date.now().toString(36)}`;
+}
+
+function normalizeTrackOrder(doc: TimelineDocument, trackIds: string[]): TimelineTrack[] {
+  const byId = new Map(doc.tracks.map((t) => [t.id, t] as const));
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of trackIds) {
+    if (!byId.has(id)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+  }
+
+  for (const t of doc.tracks) {
+    if (!seen.has(t.id)) {
+      unique.push(t.id);
+    }
+  }
+
+  const ordered = unique.map((id) => byId.get(id)!).filter(Boolean);
+  const video = ordered.filter((t) => t.kind === 'video');
+  const audio = ordered.filter((t) => t.kind === 'audio');
+  return [...video, ...audio];
 }
 
 function nextItemId(trackId: string, prefix: string): string {
@@ -133,6 +250,182 @@ export function applyTimelineCommand(
   doc: TimelineDocument,
   cmd: TimelineCommand,
 ): TimelineCommandResult {
+  if (cmd.type === 'extract_audio_to_track') {
+    const videoTrack = getTrackById(doc, cmd.videoTrackId);
+    if (videoTrack.kind !== 'video') throw new Error('Invalid video track');
+    const audioTrack = getTrackById(doc, cmd.audioTrackId);
+    if (audioTrack.kind !== 'audio') throw new Error('Invalid audio track');
+
+    const item = videoTrack.items.find((x) => x.id === cmd.videoItemId);
+    if (!item || item.kind !== 'clip') throw new Error('Video clip not found');
+
+    const existingLinked = doc.tracks.some((t) =>
+      t.kind !== 'audio'
+        ? false
+        : t.items.some(
+            (it) =>
+              it.kind === 'clip' &&
+              it.linkedVideoClipId === item.id &&
+              Boolean(it.lockToLinkedVideo),
+          ),
+    );
+    if (existingLinked) return { next: doc };
+
+    const audioClip: TimelineClipItem = {
+      kind: 'clip',
+      id: nextItemId(audioTrack.id, 'clip'),
+      trackId: audioTrack.id,
+      name: item.name,
+      source: { ...item.source },
+      sourceDurationUs: item.sourceDurationUs,
+      timelineRange: { ...item.timelineRange },
+      sourceRange: { ...item.sourceRange },
+      linkedVideoClipId: item.id,
+      lockToLinkedVideo: true,
+    };
+
+    const nextTracks = doc.tracks.map((t) => {
+      if (t.id === videoTrack.id) {
+        return {
+          ...t,
+          items: t.items.map((it) =>
+            it.id === item.id && it.kind === 'clip' ? { ...it, audioFromVideoDisabled: true } : it,
+          ),
+        };
+      }
+      if (t.id === audioTrack.id) {
+        return { ...t, items: [...t.items, audioClip] };
+      }
+      return t;
+    });
+
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
+  if (cmd.type === 'return_audio_to_video') {
+    const videoLoc = findClipById(doc, cmd.videoItemId);
+    if (!videoLoc) throw new Error('Video clip not found');
+    if (videoLoc.track.kind !== 'video') throw new Error('Video clip must be on a video track');
+
+    const linkedAudio = doc.tracks
+      .filter((t) => t.kind === 'audio')
+      .flatMap((t) => t.items)
+      .find(
+        (it) =>
+          it.kind === 'clip' &&
+          it.linkedVideoClipId === cmd.videoItemId &&
+          Boolean(it.lockToLinkedVideo),
+      );
+    if (!linkedAudio || linkedAudio.kind !== 'clip') return { next: doc };
+
+    const nextTracks = doc.tracks.map((t) => {
+      if (t.kind === 'audio') {
+        const nextItems = t.items.filter((it) => it.id !== linkedAudio.id);
+        return nextItems.length === t.items.length ? t : { ...t, items: nextItems };
+      }
+      if (t.kind === 'video') {
+        return {
+          ...t,
+          items: t.items.map((it) =>
+            it.kind === 'clip' && it.id === cmd.videoItemId
+              ? { ...it, audioFromVideoDisabled: false }
+              : it,
+          ),
+        };
+      }
+      return t;
+    });
+
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
+  if (cmd.type === 'add_track') {
+    const idPrefix = cmd.kind === 'audio' ? 'a' : 'v';
+    const id =
+      typeof cmd.trackId === 'string' && cmd.trackId.trim().length > 0
+        ? cmd.trackId.trim()
+        : nextTrackId(doc, idPrefix);
+
+    if (doc.tracks.some((t) => t.id === id)) {
+      throw new Error('Track already exists');
+    }
+
+    const track: TimelineTrack = {
+      id,
+      kind: cmd.kind,
+      name: cmd.name,
+      items: [],
+    };
+
+    const nextTracksRaw = [...doc.tracks, track];
+    const video = nextTracksRaw.filter((t) => t.kind === 'video');
+    const audio = nextTracksRaw.filter((t) => t.kind === 'audio');
+    return {
+      next: {
+        ...doc,
+        tracks: [...video, ...audio],
+      },
+    };
+  }
+
+  if (cmd.type === 'rename_track') {
+    const track = getTrackById(doc, cmd.trackId);
+    if (track.name === cmd.name) return { next: doc };
+    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, name: cmd.name } : t));
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
+  if (cmd.type === 'delete_track') {
+    const track = getTrackById(doc, cmd.trackId);
+    if (track.items.length > 0 && !cmd.allowNonEmpty) {
+      throw new Error('Track is not empty');
+    }
+    const nextTracks = doc.tracks.filter((t) => t.id !== track.id);
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
+  if (cmd.type === 'reorder_tracks') {
+    const nextTracks = normalizeTrackOrder(doc, cmd.trackIds);
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
+  if (cmd.type === 'move_item_to_track') {
+    const fromTrack = getTrackById(doc, cmd.fromTrackId);
+    const toTrack = getTrackById(doc, cmd.toTrackId);
+
+    const itemIdx = fromTrack.items.findIndex((x) => x.id === cmd.itemId);
+    if (itemIdx === -1) return { next: doc };
+    const item = fromTrack.items[itemIdx];
+    if (!item) return { next: doc };
+    if (!item.timelineRange) return { next: doc };
+    if (item.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo) {
+      throw new Error('Locked audio clip');
+    }
+
+    const startUs = Math.max(0, Math.round(cmd.startUs));
+    const durationUs = Math.max(0, item.timelineRange.durationUs);
+
+    assertNoOverlap(toTrack, item.id, startUs, durationUs);
+
+    const nextFromItems = [...fromTrack.items];
+    nextFromItems.splice(itemIdx, 1);
+    const movedItem: TimelineTrackItem = {
+      ...item,
+      trackId: toTrack.id,
+      timelineRange: { ...item.timelineRange, startUs },
+    };
+    const nextToItems = [...toTrack.items, movedItem];
+    nextToItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+    const nextTracks = doc.tracks.map((t) => {
+      if (t.id === fromTrack.id) return { ...t, items: nextFromItems };
+      if (t.id === toTrack.id) return { ...t, items: nextToItems };
+      return t;
+    });
+
+    return { next: { ...doc, tracks: nextTracks } };
+  }
+
   if (cmd.type === 'add_clip_to_track') {
     const track = getTrackById(doc, cmd.trackId);
     const durationUs = Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
@@ -179,6 +472,7 @@ export function applyTimelineCommand(
       if (idx === -1) continue;
 
       const item = nextItems[idx];
+      if (!item) continue;
       itemsRemoved = true;
 
       if (item.kind === 'clip') {
@@ -231,6 +525,9 @@ export function applyTimelineCommand(
     const track = getTrackById(doc, cmd.trackId);
     const item = track.items.find((x) => x.id === cmd.itemId);
     if (!item || !item.timelineRange) return { next: doc };
+    if (item.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo) {
+      throw new Error('Locked audio clip');
+    }
 
     const startUs = Math.max(0, Math.round(cmd.startUs));
     const durationUs = Math.max(0, item.timelineRange.durationUs);
@@ -248,7 +545,15 @@ export function applyTimelineCommand(
 
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+    let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+
+    if (item.kind === 'clip' && track.kind === 'video') {
+      nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
+        ...audio,
+        timelineRange: { ...audio.timelineRange, startUs },
+      }));
+    }
+
     return { next: { ...doc, tracks: nextTracks } };
   }
 
@@ -257,6 +562,9 @@ export function applyTimelineCommand(
     const item = track.items.find((x) => x.id === cmd.itemId);
     if (!item || !item.timelineRange) return { next: doc };
     if (item.kind !== 'clip') return { next: doc };
+    if (item.linkedVideoClipId && item.lockToLinkedVideo) {
+      throw new Error('Locked audio clip');
+    }
 
     const deltaUs = Math.round(Number(cmd.deltaUs));
 
@@ -312,7 +620,18 @@ export function applyTimelineCommand(
     );
 
     nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+
+    let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+
+    if (track.kind === 'video') {
+      nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
+        ...audio,
+        timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+        sourceRange: { startUs: nextSourceStartUs, durationUs: nextSourceDurationUs },
+        sourceDurationUs: item.sourceDurationUs,
+      }));
+    }
+
     return { next: { ...doc, tracks: nextTracks } };
   }
 

@@ -1613,7 +1613,18 @@
       "stop": "Стоп",
       "zoom": "Масштаб",
       "dropClip": "Перетащите клип сюда",
-      "clipAdded": "Клип добавлен"
+      "clipAdded": "Клип добавлен",
+      "addVideoTrack": "Добавить видео дорожку",
+      "addAudioTrack": "Добавить аудио дорожку",
+      "renameTrack": "Переименовать дорожку",
+      "deleteTrack": "Удалить дорожку",
+      "deleteTrackTitle": "Удалить дорожку?",
+      "deleteTrackDescription": "Дорожка не пустая. Это действие нельзя отменить.",
+      "renameTrackTitle": "Переименовать дорожку",
+      "trackName": "Название дорожки",
+      "clipMoveFailed": "Не удалось переместить клип",
+      "extractAudio": "Вынести аудио на аудио дорожку",
+      "returnAudio": "Вернуть аудио в видео клип"
     }
   }
 }

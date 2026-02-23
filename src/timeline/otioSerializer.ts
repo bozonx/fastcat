@@ -232,6 +232,14 @@ function parseClipItem(input: {
     sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
+    audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
+    linkedVideoClipId:
+      typeof granMeta?.linkedVideoClipId === 'string' &&
+      granMeta.linkedVideoClipId.trim().length > 0
+        ? granMeta.linkedVideoClipId
+        : undefined,
+    lockToLinkedVideo:
+      granMeta?.lockToLinkedVideo !== undefined ? Boolean(granMeta.lockToLinkedVideo) : undefined,
   };
 }
 
@@ -278,7 +286,9 @@ export function createDefaultTimelineDocument(params: {
     timebase: { fps: params.fps },
     tracks: [
       { id: 'v1', kind: 'video', name: 'Video 1', items: [] },
+      { id: 'v2', kind: 'video', name: 'Video 2', items: [] },
       { id: 'a1', kind: 'audio', name: 'Audio 1', items: [] },
+      { id: 'a2', kind: 'audio', name: 'Audio 2', items: [] },
     ],
   };
 }
@@ -336,6 +346,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           gran: {
             id: item.id,
             sourceDurationUs: item.sourceDurationUs,
+            audioFromVideoDisabled: Boolean(item.audioFromVideoDisabled),
+            linkedVideoClipId: item.linkedVideoClipId,
+            lockToLinkedVideo: item.lockToLinkedVideo,
           },
         },
       });

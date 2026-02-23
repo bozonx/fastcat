@@ -41,9 +41,10 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { videoTrack, videoItems, audioTracks, audioItems } = useMonitorTimeline();
+    const { videoTracks, videoItems, audioTracks, audioItems } = useMonitorTimeline();
 
-    expect(videoTrack.value?.id).toBe('2');
+    expect(videoTracks.value.length).toBe(1);
+    expect(videoTracks.value[0].id).toBe('2');
     expect(videoItems.value.length).toBe(1);
     expect(videoItems.value[0].id).toBe('item1');
 
@@ -96,9 +97,13 @@ describe('useMonitorTimeline', () => {
     expect(workerTimelineClips.value[0].source.path).toBe('test1.mp4');
     expect(workerTimelineClips.value[0].timelineRange.startUs).toBe(0);
 
-    expect(workerAudioClips.value.length).toBe(1);
-    expect(workerAudioClips.value[0].id).toBe('audio1');
-    expect(workerAudioClips.value[0].source.path).toBe('test1.mp3');
+    expect(workerAudioClips.value.length).toBe(2);
+    expect(workerAudioClips.value.find((x: any) => x.id === 'audio1')?.source.path).toBe(
+      'test1.mp3',
+    );
+    expect(workerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source.path).toBe(
+      'test1.mp4',
+    );
   });
 
   it('computes signatures correctly', () => {

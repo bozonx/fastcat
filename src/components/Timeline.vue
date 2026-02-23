@@ -4,7 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
-import { useTimelineInteraction, timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { useTimelineInteraction, timeUsToPx, pxToTimeUs } from '~/composables/timeline/useTimelineInteraction';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -28,11 +28,54 @@ const {
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
 
+async function onClipAction(payload: { action: 'extractAudio' | 'returnAudio'; trackId: string; itemId: string }) {
+  try {
+    if (payload.action === 'extractAudio') {
+      await timelineStore.extractAudioToTrack({ videoTrackId: payload.trackId, videoItemId: payload.itemId });
+    } else {
+      timelineStore.returnAudioToVideo({ videoItemId: payload.itemId });
+    }
+    await timelineStore.requestTimelineSave({ immediate: true });
+  } catch (err: any) {
+    toast.add({
+      title: t('common.error', 'Error'),
+      description: String(err?.message ?? err ?? ''),
+      icon: 'i-heroicons-exclamation-triangle',
+      color: 'error',
+    });
+  }
+}
+
 async function onDrop(e: DragEvent, trackId: string) {
   const data = e.dataTransfer?.getData('application/json');
   if (data) {
     try {
       const parsed = JSON.parse(data);
+      if (parsed?.kind === 'timeline-clip' && parsed.itemId && parsed.fromTrackId) {
+        const scrollerRect = scrollEl.value?.getBoundingClientRect();
+        const scrollX = scrollEl.value?.scrollLeft ?? 0;
+        if (!scrollerRect) return;
+        const x = e.clientX - scrollerRect.left + scrollX;
+        const startUs = pxToTimeUs(x);
+        try {
+          await timelineStore.moveItemToTrack({
+            fromTrackId: String(parsed.fromTrackId),
+            toTrackId: trackId,
+            itemId: String(parsed.itemId),
+            startUs,
+          });
+          await timelineStore.requestTimelineSave({ immediate: true });
+          return;
+        } catch (err: any) {
+          toast.add({
+            title: t('granVideoEditor.timeline.clipMoveFailed', 'Failed to move clip'),
+            description: String(err?.message ?? err ?? ''),
+            icon: 'i-heroicons-exclamation-triangle',
+            color: 'error',
+          });
+          return;
+        }
+      }
       if (parsed.name && parsed.path) {
         await timelineStore.addClipToTimelineFromPath({
           trackId,
@@ -86,6 +129,7 @@ function formatTime(seconds: number): string {
           @start-move-item="startMoveItem"
           @select-item="selectItem"
           @start-trim-item="startTrimItem"
+          @clip-action="onClipAction"
         />
 
         <!-- Playhead -->

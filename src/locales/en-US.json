@@ -1613,7 +1613,18 @@
       "stop": "Stop",
       "zoom": "Zoom",
       "dropClip": "Drop clip here",
-      "clipAdded": "Clip Added"
+      "clipAdded": "Clip Added",
+      "addVideoTrack": "Add video track",
+      "addAudioTrack": "Add audio track",
+      "renameTrack": "Rename track",
+      "deleteTrack": "Delete track",
+      "deleteTrackTitle": "Delete track?",
+      "deleteTrackDescription": "Track is not empty. This action cannot be undone.",
+      "renameTrackTitle": "Rename track",
+      "trackName": "Track name",
+      "clipMoveFailed": "Failed to move clip",
+      "extractAudio": "Extract audio to audio track",
+      "returnAudio": "Return audio to video clip"
     }
   }
 }
