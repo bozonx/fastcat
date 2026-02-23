@@ -6,7 +6,6 @@ export function useMonitorDisplay() {
 
   const containerEl = ref<HTMLDivElement | null>(null);
   const viewportEl = ref<HTMLDivElement | null>(null);
-  const canvasDisplaySize = ref({ width: 0, height: 0 });
 
   const MIN_CANVAS_DIMENSION = 16;
   const MAX_CANVAS_DIMENSION = 7680;
@@ -39,17 +38,10 @@ export function useMonitorDisplay() {
     return Math.round(renderHeight.value * aspectRatio.value);
   });
 
-  const canvasScale = computed(() => {
-    const dw = canvasDisplaySize.value.width;
-    const dh = canvasDisplaySize.value.height;
-    if (!dw || !dh || !renderWidth.value || !renderHeight.value) return 1;
-    return Math.min(dw / renderWidth.value, dh / renderHeight.value);
-  });
-
   function getCanvasWrapperStyle() {
     return {
-      width: `${canvasDisplaySize.value.width}px`,
-      height: `${canvasDisplaySize.value.height}px`,
+      width: `${renderWidth.value}px`,
+      height: `${renderHeight.value}px`,
       overflow: 'hidden',
     };
   }
@@ -58,44 +50,22 @@ export function useMonitorDisplay() {
     return {
       width: `${renderWidth.value}px`,
       height: `${renderHeight.value}px`,
-      transform: `scale(${canvasScale.value})`,
-      transformOrigin: 'top left',
     };
   }
 
   function updateCanvasDisplaySize() {
-    const viewport = viewportEl.value;
-    if (!viewport) return;
-
-    const availableWidth = viewport.clientWidth;
-    const availableHeight = viewport.clientHeight;
-
-    if (availableWidth <= 0 || availableHeight <= 0) {
-      canvasDisplaySize.value = { width: 0, height: 0 };
-      return;
-    }
-
-    let width = availableWidth;
-    let height = Math.round(width / aspectRatio.value);
-
-    if (height > availableHeight) {
-      height = availableHeight;
-      width = Math.round(height * aspectRatio.value);
-    }
-
-    canvasDisplaySize.value = { width, height };
+    // Canvas display size is fixed to the selected preview resolution.
+    // Viewport clipping is handled by CSS overflow on the viewport container.
   }
 
   return {
     containerEl,
     viewportEl,
-    canvasDisplaySize,
     exportWidth,
     exportHeight,
     renderWidth,
     renderHeight,
     aspectRatio,
-    canvasScale,
     getCanvasWrapperStyle,
     getCanvasInnerStyle,
     updateCanvasDisplaySize,

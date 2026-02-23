@@ -234,8 +234,8 @@ async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
   if (shouldRecreate || !canvasEl || needReinit) {
     containerEl.value.innerHTML = '';
     canvasEl = document.createElement('canvas');
-    canvasEl.style.width = '100%';
-    canvasEl.style.height = '100%';
+    canvasEl.style.width = `${targetWidth}px`;
+    canvasEl.style.height = `${targetHeight}px`;
     canvasEl.style.display = 'block';
     containerEl.value.appendChild(canvasEl);
     compositorReady = false;
@@ -247,6 +247,8 @@ async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
 
   canvasEl.width = targetWidth;
   canvasEl.height = targetHeight;
+  canvasEl.style.width = `${targetWidth}px`;
+  canvasEl.style.height = `${targetHeight}px`;
   const offscreen = canvasEl.transferControlToOffscreen();
   await client.destroyCompositor();
   await client.initCompositor(offscreen, targetWidth, targetHeight, '#000');

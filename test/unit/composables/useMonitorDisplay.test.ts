@@ -45,43 +45,29 @@ describe('useMonitorDisplay', () => {
     expect(exportHeight.value).toBe(7680); // MAX_CANVAS_DIMENSION
   });
 
-  it('calculates correct scale based on container size', () => {
+  it('generates correct wrapper styles', () => {
     const projectStore = useProjectStore();
     projectStore.projectSettings.export.width = 1920;
     projectStore.projectSettings.export.height = 1080;
     projectStore.projectSettings.monitor.previewResolution = 480;
 
-    const { canvasScale, canvasDisplaySize } = useMonitorDisplay();
-
-    // Simulate a 960x540 container (exactly half size of export, but render is 853x480)
-    // 540 / 480 = 1.125
-    canvasDisplaySize.value = { width: 960, height: 540 };
-    expect(canvasScale.value).toBe(1.125);
-
-    // Simulate a very wide container 3840x540 (scale should be limited by height)
-    canvasDisplaySize.value = { width: 3840, height: 540 };
-    expect(canvasScale.value).toBe(1.125);
-  });
-
-  it('generates correct wrapper styles', () => {
-    const { getCanvasWrapperStyle, canvasDisplaySize } = useMonitorDisplay();
-
-    canvasDisplaySize.value = { width: 800, height: 600 };
+    const { getCanvasWrapperStyle, renderWidth, renderHeight } = useMonitorDisplay();
 
     const style = getCanvasWrapperStyle();
     expect(style).toEqual({
-      width: '800px',
-      height: '600px',
+      width: `${renderWidth.value}px`,
+      height: `${renderHeight.value}px`,
       overflow: 'hidden',
     });
   });
 
   it('generates correct inner styles', () => {
-    const { getCanvasInnerStyle, canvasDisplaySize, renderWidth, renderHeight } =
-      useMonitorDisplay();
+    const projectStore = useProjectStore();
+    projectStore.projectSettings.export.width = 1920;
+    projectStore.projectSettings.export.height = 1080;
+    projectStore.projectSettings.monitor.previewResolution = 480;
 
-    // Set a known state for display size
-    canvasDisplaySize.value = { width: 960, height: 540 };
+    const { getCanvasInnerStyle, renderWidth, renderHeight } = useMonitorDisplay();
 
     // Get the current render dimensions from computed refs
     const currentRenderWidth = renderWidth.value;
@@ -91,44 +77,24 @@ describe('useMonitorDisplay', () => {
     const style = getCanvasInnerStyle();
     expect(style.width).toBe(`${currentRenderWidth}px`);
     expect(style.height).toBe(`${currentRenderHeight}px`);
-    expect(style.transformOrigin).toBe('top left');
-    // transform scale is calculated dynamically based on canvasDisplaySize and render dimensions
-    // checking it's present rather than exact value to make the test less brittle
-    expect(style.transform).toContain('scale(');
   });
 
-  it('updates canvas display size based on viewport', () => {
-    const { updateCanvasDisplaySize, canvasDisplaySize, viewportEl } = useMonitorDisplay();
+  it('updateCanvasDisplaySize is a no-op for fixed preview resolution sizing', () => {
+    const projectStore = useProjectStore();
+    projectStore.projectSettings.export.width = 1920;
+    projectStore.projectSettings.export.height = 1080;
+    projectStore.projectSettings.monitor.previewResolution = 480;
 
-    // Create a mock DOM element
+    const { updateCanvasDisplaySize, viewportEl, renderWidth, renderHeight } = useMonitorDisplay();
+
     const mockViewport = document.createElement('div');
-    Object.defineProperty(mockViewport, 'clientWidth', { value: 1280, writable: true });
-    Object.defineProperty(mockViewport, 'clientHeight', { value: 720, writable: true });
-
+    Object.defineProperty(mockViewport, 'clientWidth', { value: 1, writable: true });
+    Object.defineProperty(mockViewport, 'clientHeight', { value: 1, writable: true });
     viewportEl.value = mockViewport as unknown as HTMLDivElement;
 
     updateCanvasDisplaySize();
 
-    // Should maintain 16:9 ratio
-    expect(canvasDisplaySize.value.width).toBe(1280);
-    expect(canvasDisplaySize.value.height).toBe(720);
-
-    // Change viewport to be taller (constrained by width)
-    Object.defineProperty(mockViewport, 'clientWidth', { value: 1280, writable: true });
-    Object.defineProperty(mockViewport, 'clientHeight', { value: 1000, writable: true });
-
-    updateCanvasDisplaySize();
-
-    expect(canvasDisplaySize.value.width).toBe(1280);
-    expect(canvasDisplaySize.value.height).toBe(720); // 1280 / (16/9)
-
-    // Change viewport to be wider (constrained by height)
-    Object.defineProperty(mockViewport, 'clientWidth', { value: 1600, writable: true });
-    Object.defineProperty(mockViewport, 'clientHeight', { value: 720, writable: true });
-
-    updateCanvasDisplaySize();
-
-    expect(canvasDisplaySize.value.height).toBe(720);
-    expect(canvasDisplaySize.value.width).toBe(1280); // 720 * (16/9)
+    expect(renderHeight.value).toBe(480);
+    expect(renderWidth.value).toBe(Math.round(480 * (1920 / 1080)));
   });
 });
