@@ -462,7 +462,7 @@ function togglePlayback() {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
+  <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0">
     <!-- Header -->
     <div
       class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10"
@@ -493,32 +493,38 @@ function togglePlayback() {
     </div>
 
     <!-- Video area -->
-    <div ref="viewportEl" class="flex-1 flex items-center justify-center overflow-hidden relative">
-      <div v-if="videoItems.length === 0" class="flex flex-col items-center gap-3 text-gray-700">
-        <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
-        <p class="text-sm">
-          {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
-        </p>
-      </div>
-      <div
-        v-else-if="isLoading"
-        class="absolute inset-0 flex items-center justify-center text-gray-400"
-      >
-        <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
-      </div>
-      <div
-        v-else-if="loadError"
-        class="absolute inset-0 flex items-center justify-center text-red-500"
-      >
-        {{ loadError }}
-      </div>
+    <div
+      ref="viewportEl"
+      class="flex-1 min-h-0 min-w-0 overflow-hidden relative"
+    >
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class="shrink-0" :style="getCanvasWrapperStyle()">
+          <div ref="containerEl" :style="getCanvasInnerStyle()" />
+        </div>
 
-      <div
-        class="shrink-0"
-        :style="getCanvasWrapperStyle()"
-        :class="{ invisible: loadError || videoItems.length === 0 }"
-      >
-        <div ref="containerEl" :style="getCanvasInnerStyle()" />
+        <div
+          v-if="videoItems.length === 0"
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-700"
+        >
+          <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
+          <p class="text-sm">
+            {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
+          </p>
+        </div>
+
+        <div
+          v-else-if="isLoading"
+          class="absolute inset-0 flex items-center justify-center text-gray-400"
+        >
+          <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
+        </div>
+
+        <div
+          v-else-if="loadError"
+          class="absolute inset-0 flex items-center justify-center text-red-500"
+        >
+          {{ loadError }}
+        </div>
       </div>
     </div>
 
