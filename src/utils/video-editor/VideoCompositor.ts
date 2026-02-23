@@ -9,6 +9,21 @@ import {
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 
+export async function getVideoSampleWithZeroFallback(
+  sink: Pick<VideoSampleSink, 'getSample'>,
+  timeS: number,
+): Promise<any | null> {
+  const primary = await sink.getSample(timeS);
+  if (primary) return primary;
+
+  if (timeS !== 0) {
+    return null;
+  }
+
+  // Some decoders return null for exact 0.0 but can provide the first frame for a tiny epsilon.
+  return sink.getSample(1e-6);
+}
+
 export interface CompositorClip {
   itemId: string;
   layer: number;
@@ -383,7 +398,7 @@ export class VideoCompositor {
           continue;
         }
 
-        const sample = await clip.sink.getSample(sampleTimeS);
+        const sample = await getVideoSampleWithZeroFallback(clip.sink, sampleTimeS);
         if (sample) {
           await this.updateClipTextureFromSample(sample, clip);
           clip.sprite.visible = true;
