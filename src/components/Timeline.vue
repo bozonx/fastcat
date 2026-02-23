@@ -80,26 +80,6 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
   try {
     const parsed = JSON.parse(data);
 
-    if (parsed?.kind === 'timeline-clip' && parsed.itemId) {
-      const itemId = String(parsed.itemId);
-      const fromTrackId = String(parsed.fromTrackId ?? '');
-      const fromTrack = tracks.value.find((t) => t.id === fromTrackId) ?? null;
-      const item: any = fromTrack?.items.find((it: any) => it.id === itemId) ?? null;
-      if (!item || item.kind !== 'clip' || !item.timelineRange) {
-        clearDragPreview();
-        return;
-      }
-
-      dragPreview.value = {
-        trackId,
-        startUs,
-        label: String(item.name ?? ''),
-        durationUs: Math.max(0, Number(item.timelineRange.durationUs ?? 0)),
-        kind: 'timeline-clip',
-      };
-      return;
-    }
-
     if (parsed?.kind === 'file' && parsed?.name && parsed?.path) {
       dragPreview.value = {
         trackId,
@@ -151,28 +131,6 @@ async function onDrop(e: DragEvent, trackId: string) {
   if (data) {
     try {
       const parsed = JSON.parse(data);
-      if (parsed?.kind === 'timeline-clip' && parsed.itemId && parsed.fromTrackId) {
-        const startUs = getDropStartUs(e);
-        if (startUs === null) return;
-        try {
-          await timelineStore.moveItemToTrack({
-            fromTrackId: String(parsed.fromTrackId),
-            toTrackId: trackId,
-            itemId: String(parsed.itemId),
-            startUs,
-          });
-          await timelineStore.requestTimelineSave({ immediate: true });
-          return;
-        } catch (err: any) {
-          toast.add({
-            title: t('granVideoEditor.timeline.clipMoveFailed', 'Failed to move clip'),
-            description: String(err?.message ?? err ?? ''),
-            icon: 'i-heroicons-exclamation-triangle',
-            color: 'error',
-          });
-          return;
-        }
-      }
       if (parsed.name && parsed.path) {
         await timelineStore.addClipToTimelineFromPath({
           trackId,

@@ -59,6 +59,7 @@ export function useTimelineInteraction(
   const hasPendingTimelinePersist = ref(false);
   const lastDragClientX = ref(0);
   const pendingDragClientX = ref<number | null>(null);
+  const pendingDragClientY = ref<number | null>(null);
 
   let dragRafId: number | null = null;
 
@@ -154,21 +155,43 @@ export function useTimelineInteraction(
     const trackId = draggingTrackId.value;
     const itemId = draggingItemId.value;
     const clientX = pendingDragClientX.value;
+    const clientY = pendingDragClientY.value;
 
     pendingDragClientX.value = null;
+    pendingDragClientY.value = null;
     dragRafId = null;
 
-    if (!mode || !trackId || !itemId || clientX === null) return;
+    if (!mode || !trackId || !itemId || clientX === null || clientY === null) return;
 
     if (mode === 'move') {
       const dxPx = clientX - dragAnchorClientX.value;
       const deltaUs = pxToDeltaUs(dxPx, timelineStore.timelineZoom);
       const startUs = Math.max(0, dragAnchorStartUs.value + deltaUs);
+
+      const trackEl = document.elementFromPoint(clientX, clientY)?.closest('[data-track-id]');
+      const hoverTrackId = trackEl?.getAttribute('data-track-id');
+      let targetTrackId = trackId;
+
+      if (hoverTrackId && hoverTrackId !== trackId) {
+        const fromTrack = tracks.value.find((t) => t.id === trackId);
+        const toTrack = tracks.value.find((t) => t.id === hoverTrackId);
+        if (fromTrack && toTrack && fromTrack.kind === toTrack.kind) {
+          targetTrackId = hoverTrackId;
+        }
+      }
+
       try {
         timelineStore.applyTimeline(
-          { type: 'move_item', trackId, itemId, startUs },
+          {
+            type: 'move_item_to_track',
+            fromTrackId: trackId,
+            toTrackId: targetTrackId,
+            itemId,
+            startUs,
+          },
           { saveMode: 'none' },
         );
+        draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
       } catch {}
       return;
@@ -230,6 +253,7 @@ export function useTimelineInteraction(
     if (!mode || !trackId || !itemId) return;
 
     pendingDragClientX.value = e.clientX;
+    pendingDragClientY.value = e.clientY;
     scheduleDragApply();
   }
 
@@ -250,6 +274,7 @@ export function useTimelineInteraction(
     draggingItemId.value = null;
     draggingTrackId.value = null;
     pendingDragClientX.value = null;
+    pendingDragClientY.value = null;
 
     window.removeEventListener('mousemove', onGlobalMouseMove);
     window.removeEventListener('mouseup', onGlobalMouseUp);

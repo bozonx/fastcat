@@ -96,6 +96,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
     <div
       v-for="track in tracks"
       :key="track.id"
+      :data-track-id="track.id"
       class="h-10 flex items-center px-2 relative"
       :class="timelineStore.selectedTrackId === track.id ? 'bg-gray-850/60' : ''"
       @dragover.prevent="emit('dragover', $event, track.id)"
@@ -117,21 +118,6 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       >
         <div
           class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
-          :draggable="item.kind === 'clip'"
-          @dragstart="
-            (e) => {
-              if (!e.dataTransfer) return;
-              if (item.kind !== 'clip') return;
-              const payload = JSON.stringify({
-                kind: 'timeline-clip',
-                itemId: item.id,
-                fromTrackId: track.id,
-              });
-              e.dataTransfer.setData('application/json', payload);
-              e.dataTransfer.setData('text/plain', payload);
-              e.dataTransfer.effectAllowed = 'move';
-            }
-          "
           :class="[
             item.kind === 'gap'
               ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70 cursor-default'
