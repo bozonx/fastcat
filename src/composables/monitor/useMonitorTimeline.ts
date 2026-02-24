@@ -48,7 +48,7 @@ export function useMonitorTimeline() {
             path: item.source.path,
           },
           opacity: item.opacity,
-          effects: item.effects,
+          effects: item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined,
           timelineRange: {
             startUs: item.timelineRange.startUs,
             durationUs: item.timelineRange.durationUs,
@@ -134,6 +134,11 @@ export function useMonitorTimeline() {
     return mixHash(mixHash(hash, low), high);
   }
 
+  function mixFloat(hash: number, value: unknown, scale = 1000): number {
+    const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    return mixTime(hash, Math.round(n * scale));
+  }
+
   const clipSourceSignature = computed(() => {
     let hash = mixHash(2166136261, videoItems.value.length);
     for (const item of videoItems.value) {
@@ -154,6 +159,13 @@ export function useMonitorTimeline() {
       if (item.kind === 'clip') {
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
+
+        hash = mixFloat(hash, item.opacity ?? 1, 1000);
+
+        if (Array.isArray((item as any).effects)) {
+          const effectsJson = JSON.stringify((item as any).effects);
+          hash = mixHash(hash, hashString(effectsJson));
+        }
       }
     }
     return hash;

@@ -384,7 +384,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
                 <div v-for="effect in selectedClip.effects || []" :key="effect.id" class="bg-black border border-gray-800 rounded p-3">
                   <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
-                      <UToggle
+                      <USwitch
                         :model-value="effect.enabled"
                         size="sm"
                         @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"

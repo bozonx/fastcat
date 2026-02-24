@@ -52,7 +52,7 @@ export function toWorkerTimelineClips(
       layer: options?.layer ?? 0,
       source: { path: item.source.path },
       opacity: item.opacity,
-      effects: item.effects,
+      effects: item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined,
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
