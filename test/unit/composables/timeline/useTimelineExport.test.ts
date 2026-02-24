@@ -17,6 +17,14 @@ describe('useTimelineExport pure functions', () => {
     expect(typeof api.onExportProgress).toBe('function');
   });
 
+  it('VideoCoreHostAPI allows omitting onExportWarning (backward compatible)', () => {
+    const api: VideoCoreHostAPI = {
+      getFileHandleByPath: async () => null,
+      onExportProgress: () => {},
+    };
+    expect(typeof api.onExportProgress).toBe('function');
+  });
+
   it('getExt should return correct extension', () => {
     expect(getExt('mp4')).toBe('mp4');
     expect(getExt('webm')).toBe('webm');

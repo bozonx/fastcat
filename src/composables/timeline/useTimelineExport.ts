@@ -116,6 +116,7 @@ export function useTimelineExport() {
   const exportProgress = ref(0);
   const exportError = ref<string | null>(null);
   const exportPhase = ref<'encoding' | 'saving' | null>(null);
+  const exportWarnings = ref<string[]>([]);
 
   const cancelRequested = ref(false);
 
@@ -292,10 +293,33 @@ export function useTimelineExport() {
     try {
       const [videoSupport, audioSupport] = await Promise.all([
         checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS),
-        checkAudioCodecSupport([
-          { value: 'mp4a.40.2', label: 'AAC' },
-          { value: 'opus', label: 'Opus' },
-        ]),
+        (async () => {
+          try {
+            const { canEncodeAudio } = await import('mediabunny');
+            const [aac, opus] = await Promise.all([
+              canEncodeAudio('aac', {
+                numberOfChannels: 2,
+                sampleRate: 48000,
+                bitrate: 128_000,
+              }),
+              canEncodeAudio('opus', {
+                numberOfChannels: 2,
+                sampleRate: 48000,
+                bitrate: 128_000,
+              }),
+            ]);
+            return { aac: !!aac, opus: !!opus } as const;
+          } catch {
+            const support = await checkAudioCodecSupport([
+              { value: 'mp4a.40.2', label: 'AAC' },
+              { value: 'opus', label: 'Opus' },
+            ]);
+            return {
+              aac: support['mp4a.40.2'] !== false,
+              opus: support['opus'] !== false,
+            } as const;
+          }
+        })(),
       ]);
 
       videoCodecSupport.value = videoSupport;
@@ -307,7 +331,7 @@ export function useTimelineExport() {
         if (firstSupported) videoCodec.value = firstSupported.value;
       }
 
-      if (audioSupport['mp4a.40.2'] === false && audioSupport['opus'] !== false) {
+      if (audioSupport.aac === false && audioSupport.opus !== false) {
         audioCodec.value = 'opus';
       } else {
         audioCodec.value = 'aac';
@@ -366,6 +390,9 @@ export function useTimelineExport() {
       onExportPhase: (phase) => {
         exportPhase.value = phase;
       },
+      onExportWarning: (message) => {
+        exportWarnings.value.push(message);
+      },
     });
 
     await (client as any).exportTimeline(fileHandle, options, videoClips, audioClips);
@@ -401,6 +428,7 @@ export function useTimelineExport() {
     exportProgress,
     exportError,
     exportPhase,
+    exportWarnings,
     cancelRequested,
     outputFilename,
     filenameError,

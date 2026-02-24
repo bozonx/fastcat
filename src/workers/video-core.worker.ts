@@ -11,6 +11,16 @@ let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
 let cancelExportRequested = false;
 
+async function reportExportWarning(message: string) {
+  console.warn(message);
+  if (!hostClient) return;
+  try {
+    await (hostClient as any).onExportWarning?.(message);
+  } catch {
+    // ignore
+  }
+}
+
 function normalizeRpcError(errData: any): Error {
   if (!errData) return new Error('Worker RPC error');
   if (typeof errData === 'string') return new Error(errData);
@@ -42,6 +52,14 @@ function parseAudioCodec(codec: string): string {
   if (codec.startsWith('mp4a')) return 'AAC';
   if (codec.startsWith('opus')) return 'Opus';
   if (codec.startsWith('vorbis')) return 'Vorbis';
+  return codec;
+}
+
+function getBunnyAudioCodec(codec: string | undefined): any {
+  if (!codec) return 'aac';
+  const v = String(codec).toLowerCase();
+  if (v === 'aac' || v.startsWith('mp4a')) return 'aac';
+  if (v === 'opus') return 'opus';
   return codec;
 }
 
@@ -201,7 +219,7 @@ const api: any = {
 
       if (options.audio && hasAnyAudio) {
         if (durationS > MAX_OFFLINE_AUDIO_DURATION_S) {
-          console.warn(
+          await reportExportWarning(
             '[Worker Export] Audio duration is too large for offline rendering; skipping audio track.',
           );
         } else if (typeof OfflineAudioContext !== 'undefined') {
@@ -233,7 +251,7 @@ const api: any = {
               try {
                 const file = await fileHandle.getFile();
                 if (file.size > MAX_AUDIO_FILE_BYTES) {
-                  console.warn(
+                  await reportExportWarning(
                     '[Worker Export] Audio file is too large to decode in memory; skipping audio clip.',
                   );
                   decoded = null;
@@ -242,7 +260,7 @@ const api: any = {
                   decoded = await offlineCtx.decodeAudioData(arrayBuffer);
                 }
               } catch (err) {
-                console.warn('[Worker Export] Failed to decode audio for clip', err);
+                await reportExportWarning('[Worker Export] Failed to decode audio for clip');
                 decoded = null;
               }
               decodedAudioCache.set(sourcePath, decoded);
@@ -281,7 +299,7 @@ const api: any = {
 
           audioData = await offlineCtx.startRendering();
         } else {
-          console.warn(
+          await reportExportWarning(
             '[Worker Export] OfflineAudioContext is not available in this environment. Audio export might be disabled or fallback is required.',
           );
         }
@@ -323,7 +341,7 @@ const api: any = {
         let audioSource: any = null;
         if (audioData) {
           audioSource = new (AudioBufferSource as any)(audioData, {
-            codec: options.audioCodec || 'aac',
+            codec: getBunnyAudioCodec(options.audioCodec),
             bitrate: options.audioBitrate,
             numberOfChannels: audioData.numberOfChannels,
             sampleRate: audioData.sampleRate,

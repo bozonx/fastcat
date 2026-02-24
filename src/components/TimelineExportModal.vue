@@ -36,6 +36,7 @@ const {
   exportProgress,
   exportError,
   exportPhase,
+  exportWarnings,
   outputFilename,
   filenameError,
   outputFormat,
@@ -97,6 +98,7 @@ watch(
     if (!val) return;
 
     exportError.value = null;
+    exportWarnings.value = [];
     filenameError.value = null;
     exportProgress.value = 0;
     exportPhase.value = null;
@@ -168,6 +170,7 @@ async function handleConfirm() {
   isExporting.value = true;
   exportProgress.value = 0;
   exportError.value = null;
+  exportWarnings.value = [];
 
   try {
     const exportDir = await ensureExportDir();
@@ -233,6 +236,15 @@ async function handleConfirm() {
       },
     );
     rememberExportedFilename(outputFilename.value);
+
+    if (exportWarnings.value.length > 0) {
+      toast.add({
+        title: t('videoEditor.export.warningTitle', 'Export warnings'),
+        description: exportWarnings.value[0]!,
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
 
     toast.add({
       title: t('videoEditor.export.successTitle', 'Export successful'),

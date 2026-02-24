@@ -4,6 +4,7 @@ export interface VideoCoreHostAPI {
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
   onExportProgress(progress: number): void;
   onExportPhase?(phase: 'encoding' | 'saving'): void;
+  onExportWarning?(message: string): void;
 }
 
 type WorkerChannel = 'preview' | 'export';
@@ -89,7 +90,7 @@ function createWorker(channel: WorkerChannel): Worker {
         const method = data.method as keyof VideoCoreHostAPI;
         const fn = state.hostApiInstance[method];
         if (typeof fn !== 'function') {
-          if (data.method === 'onExportPhase') {
+          if (data.method === 'onExportPhase' || data.method === 'onExportWarning') {
             worker.postMessage({ type: 'rpc-response', id: data.id, result: undefined });
             return;
           }
