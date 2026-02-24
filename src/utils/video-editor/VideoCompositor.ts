@@ -9,6 +9,8 @@ import {
   DOMAdapter,
   WebWorkerAdapter,
   Filter,
+  RenderTexture,
+  Container,
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
@@ -53,7 +55,7 @@ export interface CompositorClip {
   sourceDurationUs: number;
   freezeFrameSourceUs?: number;
   sprite: Sprite;
-  clipKind: 'video' | 'image' | 'solid';
+  clipKind: 'video' | 'image' | 'solid' | 'adjustment';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | null;
@@ -84,6 +86,7 @@ export class VideoCompositor {
   private stageSortDirty = true;
   private activeSortDirty = true;
   private contextLost = false;
+  private adjustmentTexture: RenderTexture | null = null;
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
     getStartUs: (clip) => clip.startUs,
@@ -142,6 +145,11 @@ export class VideoCompositor {
 
     // Stop the automatic ticker, we will render manually
     this.app.ticker.stop();
+
+    this.adjustmentTexture = RenderTexture.create({
+      width: this.width,
+      height: this.height,
+    });
   }
 
   private onContextLost = (event: Event) => {
@@ -309,6 +317,47 @@ export class VideoCompositor {
         };
 
         this.applySolidLayout(compositorClip);
+
+        nextClips.push(compositorClip);
+        nextClipById.set(itemId, compositorClip);
+        continue;
+      }
+
+      if (clipType === 'adjustment') {
+        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+
+        if (reusable) {
+          this.destroyClip(reusable);
+          this.replacedClipIds.add(itemId);
+        }
+
+        const sprite = new Sprite(Texture.EMPTY);
+        sprite.width = this.width;
+        sprite.height = this.height;
+        sprite.visible = false;
+        (sprite as any).__clipId = itemId;
+        this.app.stage.addChild(sprite);
+
+        const compositorClip: CompositorClip = {
+          itemId,
+          layer,
+          startUs,
+          endUs,
+          durationUs: Math.max(0, requestedTimelineDurationUs),
+          sourceStartUs: 0,
+          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          sprite,
+          clipKind: 'adjustment',
+          sourceKind: 'bitmap',
+          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+          lastVideoFrame: null,
+          canvas: null,
+          ctx: null,
+          bitmap: null,
+          opacity: clipData.opacity,
+          effects: clipData.effects,
+        };
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -609,6 +658,11 @@ export class VideoCompositor {
         continue;
       }
 
+      if (clip.clipKind === 'adjustment') {
+        clip.sprite.visible = true;
+        continue;
+      }
+
       const localTimeUs = timeUs - clip.startUs;
       if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
         clip.sprite.visible = false;
@@ -675,6 +729,49 @@ export class VideoCompositor {
     }
 
     this.lastRenderedTimeUs = timeUs;
+
+    if (
+      this.adjustmentTexture &&
+      active.some((c) => c.clipKind === 'adjustment' && c.sprite.visible)
+    ) {
+      const children = this.app.stage.children;
+      const visibilityState = children.map((c) => c.visible);
+
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        const clipId = (child as any).__clipId;
+        if (!clipId) continue;
+        const clip = this.clipById.get(clipId);
+
+        if (clip?.clipKind === 'adjustment' && clip.sprite.visible) {
+          // Скрываем сам adjustment слой и всё, что выше него
+          for (let j = i; j < children.length; j++) {
+            const childObj = children[j];
+            if (childObj) {
+              childObj.visible = false;
+            }
+          }
+
+          // Рендерим слои под adjustment слоем в текстуру
+          this.app.renderer.render({
+            container: this.app.stage,
+            target: this.adjustmentTexture,
+            clear: true,
+          });
+
+          // Восстанавливаем видимость
+          for (let j = 0; j < children.length; j++) {
+            const childObj = children[j];
+            if (childObj && visibilityState[j] !== undefined) {
+              childObj.visible = visibilityState[j] as boolean;
+            }
+          }
+
+          // Назначаем текстуру adjustment спрайту
+          clip.sprite.texture = this.adjustmentTexture;
+        }
+      }
+    }
 
     this.app.render();
 
