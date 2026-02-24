@@ -69,12 +69,7 @@ function clampFloat32(v: number) {
   return v;
 }
 
-async function buildMixedAudioTrack(
-  options: any,
-  audioClips: any[],
-  durationS: number,
-  connectToOutput: (audioSource: any) => void,
-) {
+async function buildMixedAudioTrack(options: any, audioClips: any[], durationS: number) {
   const { AudioSample, AudioSampleSink, AudioSampleSource, Input, BlobSource, ALL_FORMATS } =
     await import('mediabunny');
 
@@ -232,8 +227,7 @@ async function buildMixedAudioTrack(
     bitrate: options.audioBitrate,
   });
 
-  connectToOutput(audioSource);
-
+  const samples: Array<{ data: Float32Array; timestamp: number }> = [];
   const maxChunkIndex = Math.max(...chunks.keys());
   for (let chunkIndex = 0; chunkIndex <= maxChunkIndex; chunkIndex += 1) {
     const chunk = chunks.get(chunkIndex);
@@ -251,24 +245,15 @@ async function buildMixedAudioTrack(
     planar.set(plane1, chunkFrames);
 
     const timestamp = chunkIndex * chunkDurationS;
-    const sample = new AudioSample({
-      data: planar,
-      format: 'f32-planar',
-      numberOfChannels,
-      sampleRate,
-      timestamp,
-    });
-
-    try {
-      await audioSource.add(sample);
-    } catch (e) {
-      console.error('Error adding audio sample:', e);
-    } finally {
-      if (typeof sample.close === 'function') sample.close();
-    }
+    samples.push({ data: planar, timestamp });
   }
 
-  return audioSource;
+  return {
+    audioSource,
+    samples,
+    numberOfChannels,
+    sampleRate,
+  };
 }
 
 const api: any = {
@@ -452,11 +437,18 @@ const api: any = {
         output.addVideoTrack(videoSource);
 
         let audioSource: any = null;
+        let audioSamples: Array<{ data: Float32Array; timestamp: number }> | null = null;
+        let audioSampleRate = 48000;
+        let audioNumberOfChannels = 2;
         if (options.audio && hasAnyAudio) {
-          audioSource = await buildMixedAudioTrack(options, audioClips, durationS, (src) => {
-            output.addAudioTrack(src);
-          });
-          if (!audioSource) {
+          const audioTrack = await buildMixedAudioTrack(options, audioClips, durationS);
+          if (audioTrack) {
+            audioSource = audioTrack.audioSource;
+            audioSamples = audioTrack.samples;
+            audioSampleRate = audioTrack.sampleRate;
+            audioNumberOfChannels = audioTrack.numberOfChannels;
+            output.addAudioTrack(audioSource);
+          } else {
             await reportExportWarning(
               '[Worker Export] No decodable audio track found; exporting without audio.',
             );
@@ -476,6 +468,24 @@ const api: any = {
 
         try {
           await output.start();
+
+          if (audioSource && audioSamples) {
+            const { AudioSample } = await import('mediabunny');
+            for (const sampleInfo of audioSamples) {
+              const sample = new AudioSample({
+                data: sampleInfo.data,
+                format: 'f32-planar',
+                numberOfChannels: audioNumberOfChannels,
+                sampleRate: audioSampleRate,
+                timestamp: sampleInfo.timestamp,
+              });
+              try {
+                await audioSource.add(sample);
+              } finally {
+                if (typeof sample.close === 'function') sample.close();
+              }
+            }
+          }
 
           for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
             if (cancelExportRequested) {
