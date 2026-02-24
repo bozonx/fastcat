@@ -3,6 +3,11 @@ export interface SvgDimensions {
   height: number;
 }
 
+export interface SvgRasterizeOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+}
+
 export function parseSvgDimensions(svgText: string): SvgDimensions {
   const fallback: SvgDimensions = { width: 800, height: 600 };
   if (typeof svgText !== 'string' || svgText.length === 0) return fallback;
@@ -37,6 +42,43 @@ export function parseSvgDimensions(svgText: string): SvgDimensions {
 
   const viewBoxAttr = /\bviewBox\s*=\s*['\"]([^'\"]+)['\"]/i.exec(svgText)?.[1];
   return parseViewBox(viewBoxAttr) ?? fallback;
+}
+
+export function computeSvgRasterSize(params: {
+  intrinsic: SvgDimensions;
+  maxWidth?: number;
+  maxHeight?: number;
+}): SvgDimensions {
+  const { intrinsic, maxWidth, maxHeight } = params;
+
+  const MAX_DIMENSION = 8192;
+
+  const w0 = Math.max(1, Number(intrinsic.width) || 1);
+  const h0 = Math.max(1, Number(intrinsic.height) || 1);
+
+  const mw =
+    Number.isFinite(Number(maxWidth)) && Number(maxWidth) > 0
+      ? Math.min(MAX_DIMENSION, Math.max(1, Math.round(Number(maxWidth))))
+      : undefined;
+  const mh =
+    Number.isFinite(Number(maxHeight)) && Number(maxHeight) > 0
+      ? Math.min(MAX_DIMENSION, Math.max(1, Math.round(Number(maxHeight))))
+      : undefined;
+
+  if (!mw && !mh) {
+    return {
+      width: Math.min(MAX_DIMENSION, Math.round(w0)),
+      height: Math.min(MAX_DIMENSION, Math.round(h0)),
+    };
+  }
+
+  const scaleW = mw ? mw / w0 : Number.POSITIVE_INFINITY;
+  const scaleH = mh ? mh / h0 : Number.POSITIVE_INFINITY;
+  const scale = Math.max(1e-6, Math.min(scaleW, scaleH));
+
+  const width = Math.min(MAX_DIMENSION, Math.max(1, Math.round(w0 * scale)));
+  const height = Math.min(MAX_DIMENSION, Math.max(1, Math.round(h0 * scale)));
+  return { width, height };
 }
 
 function parseSvgLengthPx(value: string | null | undefined): number | null {
@@ -83,7 +125,10 @@ function parseViewBox(viewBox: string | null | undefined): SvgDimensions | null 
   return { width, height };
 }
 
-export async function convertSvgToPng(file: File): Promise<File> {
+export async function convertSvgToPng(
+  file: File,
+  options: SvgRasterizeOptions = {},
+): Promise<File> {
   if (
     typeof document === 'undefined' ||
     typeof Image === 'undefined' ||
@@ -93,7 +138,12 @@ export async function convertSvgToPng(file: File): Promise<File> {
   }
 
   const svgText = await file.text();
-  const { width, height } = parseSvgDimensions(svgText);
+  const intrinsic = parseSvgDimensions(svgText);
+  const { width, height } = computeSvgRasterSize({
+    intrinsic,
+    maxWidth: options.maxWidth,
+    maxHeight: options.maxHeight,
+  });
 
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);

@@ -277,7 +277,10 @@ export function useFileManager() {
       for (let file of Array.from(files)) {
         if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
           try {
-            file = await convertSvgToPng(file);
+            file = await convertSvgToPng(file, {
+              maxWidth: projectStore.projectSettings.export.width,
+              maxHeight: projectStore.projectSettings.export.height,
+            });
           } catch (e) {
             console.warn('Failed to convert SVG to PNG', e);
             error.value = `Failed to import SVG: ${file.name}`;
