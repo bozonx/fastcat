@@ -1,5 +1,6 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
+import { safeDispose } from '../../utils/video-editor/utils';
 import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
 
@@ -65,10 +66,7 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
 
       return meta;
     } finally {
-      if ('dispose' in input && typeof (input as any).dispose === 'function')
-        (input as any).dispose();
-      else if ('close' in input && typeof (input as any).close === 'function')
-        (input as any).close();
+      safeDispose(input);
     }
   } catch (err) {
     console.error('[Worker Export] Failed to extract metadata:', err);
@@ -320,11 +318,7 @@ export async function runExport(
             if ('close' in packetSink && typeof (packetSink as any).close === 'function') {
               (packetSink as any).close();
             }
-            if ('dispose' in input && typeof (input as any).dispose === 'function') {
-              (input as any).dispose();
-            } else if ('close' in input && typeof (input as any).close === 'function') {
-              (input as any).close();
-            }
+            safeDispose(input);
           }
         }
 

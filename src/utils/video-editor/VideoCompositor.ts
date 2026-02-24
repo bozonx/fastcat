@@ -1,3 +1,4 @@
+import { safeDispose } from './utils';
 import {
   Application,
   Sprite,
@@ -307,7 +308,7 @@ export class VideoCompositor {
         const track = await input.getPrimaryVideoTrack();
 
         if (!track || !(await track.canDecode())) {
-          this.disposeResource(input);
+          safeDispose(input);
           continue;
         }
 
@@ -529,14 +530,9 @@ export class VideoCompositor {
 
     // After rendering, it's safe to close the previous frame resources.
     for (const clip of updatedClips) {
-      if (clip.lastVideoFrame) {
-        try {
-          clip.lastVideoFrame.close();
-        } catch {
-          // ignore
-        }
-        clip.lastVideoFrame = null;
-      }
+      if (!clip.lastVideoFrame) continue;
+      safeDispose(clip.lastVideoFrame);
+      clip.lastVideoFrame = null;
     }
     return this.canvas;
   }
@@ -742,38 +738,16 @@ export class VideoCompositor {
     this.canvas = null;
   }
 
-  private disposeResource(resource: unknown) {
-    if (!resource || typeof resource !== 'object') return;
-    if (
-      'dispose' in resource &&
-      typeof (resource as { dispose?: unknown }).dispose === 'function'
-    ) {
-      (resource as { dispose: () => void }).dispose();
-      return;
-    }
-    if ('close' in resource && typeof (resource as { close?: unknown }).close === 'function') {
-      (resource as { close: () => void }).close();
-    }
-  }
-
   private destroyClip(clip: CompositorClip) {
-    this.disposeResource(clip.sink);
-    this.disposeResource(clip.input);
+    safeDispose(clip.sink);
+    safeDispose(clip.input);
     if (clip.lastVideoFrame) {
-      try {
-        clip.lastVideoFrame.close();
-      } catch {
-        // ignore
-      }
+      safeDispose(clip.lastVideoFrame);
       clip.lastVideoFrame = null;
     }
 
     if (clip.bitmap) {
-      try {
-        clip.bitmap.close();
-      } catch {
-        // ignore
-      }
+      safeDispose(clip.bitmap);
       clip.bitmap = null;
     }
 

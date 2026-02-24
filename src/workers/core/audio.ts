@@ -1,5 +1,6 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { MAX_AUDIO_FILE_BYTES } from '../../utils/constants';
+import { safeDispose } from '../../utils/video-editor/utils';
 import { clampFloat32, getBunnyAudioCodec } from './utils';
 
 export async function buildMixedAudioTrack(
@@ -82,17 +83,11 @@ export async function buildMixedAudioTrack(
     try {
       const aTrack = await input.getPrimaryAudioTrack();
       if (!aTrack) {
-        if ('dispose' in input && typeof (input as any).dispose === 'function')
-          (input as any).dispose();
-        else if ('close' in input && typeof (input as any).close === 'function')
-          (input as any).close();
+        safeDispose(input);
         continue;
       }
       if (!(await aTrack.canDecode())) {
-        if ('dispose' in input && typeof (input as any).dispose === 'function')
-          (input as any).dispose();
-        else if ('close' in input && typeof (input as any).close === 'function')
-          (input as any).close();
+        safeDispose(input);
         continue;
       }
 
@@ -109,10 +104,7 @@ export async function buildMixedAudioTrack(
       if (playDurationS <= 0) {
         if (typeof (sink as any).close === 'function') (sink as any).close();
         if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
-        if ('dispose' in input && typeof (input as any).dispose === 'function')
-          (input as any).dispose();
-        else if ('close' in input && typeof (input as any).close === 'function')
-          (input as any).close();
+        safeDispose(input);
         continue;
       }
 
@@ -120,10 +112,7 @@ export async function buildMixedAudioTrack(
     } catch (err) {
       console.warn('[Worker Export] Failed to decode audio clip', err);
       await reportExportWarning('[Worker Export] Failed to decode audio clip');
-      if ('dispose' in input && typeof (input as any).dispose === 'function')
-        (input as any).dispose();
-      else if ('close' in input && typeof (input as any).close === 'function')
-        (input as any).close();
+      safeDispose(input);
     }
   }
 
@@ -137,13 +126,107 @@ export async function buildMixedAudioTrack(
   async function writeMixedToSource() {
     const { AudioSample } = await import('mediabunny');
 
+    function ensureNotCancelled() {
+      if (!checkCancel?.()) return;
+      const abortErr = new Error('Export was cancelled');
+      (abortErr as any).name = 'AbortError';
+      throw abortErr;
+    }
+
+    function interleavedToPlanar(params: {
+      mixedInterleaved: Float32Array;
+      framesInChunk: number;
+    }): Float32Array {
+      const { mixedInterleaved, framesInChunk } = params;
+      const planar = new Float32Array(framesInChunk * numberOfChannels);
+      for (let i = 0; i < framesInChunk; i += 1) {
+        planar[i] = mixedInterleaved[i * 2] ?? 0;
+        planar[i + framesInChunk] = mixedInterleaved[i * 2 + 1] ?? 0;
+      }
+      return planar;
+    }
+
+    async function mixClipIntoChunk(params: {
+      clip: PreparedClip;
+      chunkStartS: number;
+      chunkEndS: number;
+      framesInChunk: number;
+      mixedInterleaved: Float32Array;
+    }) {
+      const { clip, chunkStartS, chunkEndS, framesInChunk, mixedInterleaved } = params;
+
+      const clipGlobalStartS = clip.clipStartS;
+      const clipGlobalEndS = clip.clipStartS + clip.playDurationS;
+      const overlapStartS = Math.max(chunkStartS, clipGlobalStartS);
+      const overlapEndS = Math.min(chunkEndS, clipGlobalEndS);
+      if (overlapEndS <= overlapStartS) return;
+
+      const clipLocalStartS = overlapStartS - clipGlobalStartS;
+      const clipLocalEndS = overlapEndS - clipGlobalStartS;
+      const sinkStartS = clip.offsetS + clipLocalStartS;
+      const sinkEndS = clip.offsetS + clipLocalEndS;
+
+      try {
+        for await (const sampleRaw of (clip.sink as any).samples(sinkStartS, sinkEndS)) {
+          ensureNotCancelled();
+
+          const sample = sampleRaw as any;
+          try {
+            const frames = Number(sample.numberOfFrames) || 0;
+            const sr = Number(sample.sampleRate) || 0;
+            const ch = Number(sample.numberOfChannels) || 0;
+
+            if (frames <= 0) continue;
+            if (sr !== sampleRate || ch !== numberOfChannels) {
+              await reportExportWarning(
+                '[Worker Export] Audio clip sample format mismatch; skipping some audio.',
+              );
+              continue;
+            }
+
+            const timelineTimeS = clip.clipStartS + (Number(sample.timestamp) - clip.offsetS);
+            if (!Number.isFinite(timelineTimeS)) continue;
+
+            const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
+            const startFrameInChunkGlobal = Math.floor(chunkStartS * sampleRate);
+            const writeOffsetFrames = startFrameGlobal - startFrameInChunkGlobal;
+            if (writeOffsetFrames >= framesInChunk) continue;
+
+            const tmpPlanes: Float32Array[] = [];
+            for (let planeIndex = 0; planeIndex < numberOfChannels; planeIndex += 1) {
+              const bytesNeeded = sample.allocationSize({
+                format: 'f32-planar',
+                planeIndex,
+              });
+              const plane = new Float32Array(bytesNeeded / 4);
+              sample.copyTo(plane, { format: 'f32-planar', planeIndex });
+              tmpPlanes.push(plane);
+            }
+
+            for (let i = 0; i < frames; i += 1) {
+              const dstFrame = writeOffsetFrames + i;
+              if (dstFrame < 0) continue;
+              if (dstFrame >= framesInChunk) break;
+              for (let c = 0; c < numberOfChannels; c += 1) {
+                const plane = tmpPlanes[c];
+                const v = plane ? (plane[i] ?? 0) : 0;
+                const idx = dstFrame * numberOfChannels + c;
+                mixedInterleaved[idx] = clampFloat32(mixedInterleaved[idx]! + v);
+              }
+            }
+          } finally {
+            if (typeof sample.close === 'function') sample.close();
+          }
+        }
+      } catch (err) {
+        console.warn('[Worker Export] Failed to decode audio clip chunk', err);
+        await reportExportWarning('[Worker Export] Failed to decode audio clip');
+      }
+    }
+
     try {
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-        if (checkCancel?.()) {
-          const abortErr = new Error('Export was cancelled');
-          (abortErr as any).name = 'AbortError';
-          throw abortErr;
-        }
+        ensureNotCancelled();
 
         const chunkStartS = chunkIndex * chunkDurationS;
         const chunkEndS = Math.min(durationS, chunkStartS + chunkDurationS);
@@ -153,84 +236,17 @@ export async function buildMixedAudioTrack(
         const mixedInterleaved = new Float32Array(framesInChunk * numberOfChannels);
 
         for (const clip of prepared) {
-          if (checkCancel?.()) {
-            const abortErr = new Error('Export was cancelled');
-            (abortErr as any).name = 'AbortError';
-            throw abortErr;
-          }
-
-          const clipGlobalStartS = clip.clipStartS;
-          const clipGlobalEndS = clip.clipStartS + clip.playDurationS;
-          const overlapStartS = Math.max(chunkStartS, clipGlobalStartS);
-          const overlapEndS = Math.min(chunkEndS, clipGlobalEndS);
-          if (overlapEndS <= overlapStartS) continue;
-
-          const clipLocalStartS = overlapStartS - clipGlobalStartS;
-          const clipLocalEndS = overlapEndS - clipGlobalStartS;
-          const sinkStartS = clip.offsetS + clipLocalStartS;
-          const sinkEndS = clip.offsetS + clipLocalEndS;
-
-          try {
-            for await (const sampleRaw of (clip.sink as any).samples(sinkStartS, sinkEndS)) {
-              const sample = sampleRaw as any;
-              try {
-                const frames = Number(sample.numberOfFrames) || 0;
-                const sr = Number(sample.sampleRate) || 0;
-                const ch = Number(sample.numberOfChannels) || 0;
-
-                if (frames <= 0) continue;
-                if (sr !== sampleRate || ch !== numberOfChannels) {
-                  await reportExportWarning(
-                    '[Worker Export] Audio clip sample format mismatch; skipping some audio.',
-                  );
-                  continue;
-                }
-
-                const timelineTimeS = clip.clipStartS + (Number(sample.timestamp) - clip.offsetS);
-                if (!Number.isFinite(timelineTimeS)) continue;
-
-                const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
-                const startFrameInChunkGlobal = Math.floor(chunkStartS * sampleRate);
-                const writeOffsetFrames = startFrameGlobal - startFrameInChunkGlobal;
-                if (writeOffsetFrames >= framesInChunk) continue;
-
-                const tmpPlanes: Float32Array[] = [];
-                for (let planeIndex = 0; planeIndex < numberOfChannels; planeIndex += 1) {
-                  const bytesNeeded = sample.allocationSize({
-                    format: 'f32-planar',
-                    planeIndex,
-                  });
-                  const plane = new Float32Array(bytesNeeded / 4);
-                  sample.copyTo(plane, { format: 'f32-planar', planeIndex });
-                  tmpPlanes.push(plane);
-                }
-
-                for (let i = 0; i < frames; i += 1) {
-                  const dstFrame = writeOffsetFrames + i;
-                  if (dstFrame < 0) continue;
-                  if (dstFrame >= framesInChunk) break;
-                  for (let c = 0; c < numberOfChannels; c += 1) {
-                    const plane = tmpPlanes[c];
-                    const v = plane ? (plane[i] ?? 0) : 0;
-                    const idx = dstFrame * numberOfChannels + c;
-                    mixedInterleaved[idx] = clampFloat32(mixedInterleaved[idx]! + v);
-                  }
-                }
-              } finally {
-                if (typeof sample.close === 'function') sample.close();
-              }
-            }
-          } catch (err) {
-            console.warn('[Worker Export] Failed to decode audio clip chunk', err);
-            await reportExportWarning('[Worker Export] Failed to decode audio clip');
-          }
+          ensureNotCancelled();
+          await mixClipIntoChunk({
+            clip,
+            chunkStartS,
+            chunkEndS,
+            framesInChunk,
+            mixedInterleaved,
+          });
         }
 
-        const planar = new Float32Array(framesInChunk * numberOfChannels);
-        for (let i = 0; i < framesInChunk; i += 1) {
-          planar[i] = mixedInterleaved[i * 2] ?? 0;
-          planar[i + framesInChunk] = mixedInterleaved[i * 2 + 1] ?? 0;
-        }
+        const planar = interleavedToPlanar({ mixedInterleaved, framesInChunk });
 
         const audioSample = new AudioSample({
           data: planar,
@@ -248,20 +264,8 @@ export async function buildMixedAudioTrack(
       }
     } finally {
       for (const clip of prepared) {
-        try {
-          if (typeof (clip.sink as any).close === 'function') (clip.sink as any).close();
-          if (typeof (clip.sink as any).dispose === 'function') (clip.sink as any).dispose();
-        } catch {
-          // ignore
-        }
-        try {
-          if ('dispose' in clip.input && typeof (clip.input as any).dispose === 'function')
-            (clip.input as any).dispose();
-          else if ('close' in clip.input && typeof (clip.input as any).close === 'function')
-            (clip.input as any).close();
-        } catch {
-          // ignore
-        }
+        safeDispose(clip.sink);
+        safeDispose(clip.input);
       }
     }
   }
