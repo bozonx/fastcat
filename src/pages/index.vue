@@ -25,8 +25,8 @@ useHead({
   title: t('navigation.granVideoEditor'),
 });
 
-const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split-v2', [40, 60]); // 40% top, 60% timeline (approx 800px on 1440px screen)
-const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split-v2', [20, 60, 20]); // 20% is ~280px on 1440px screen
+const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split-v4', [40, 60]);
+const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split-v4', [20, 60, 20]);
 
 function onMainSplitResize(event: any) {
   if (Array.isArray(event)) {
@@ -42,10 +42,8 @@ function onTopSplitResize(event: any) {
 
 const newProjectName = ref('');
 const isStartingUp = ref(true);
-const isMounted = ref(false);
 
 onMounted(async () => {
-  isMounted.value = true;
   try {
     await workspaceStore.init();
 
@@ -332,24 +330,26 @@ function leaveProject() {
         </div>
       </div>
 
-      <Splitpanes v-if="isMounted" class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
-        <Pane :size="mainSplitSizes[0]" min-size="10">
-          <Splitpanes class="editor-splitpanes" @resized="onTopSplitResize">
-            <Pane :size="topSplitSizes[0]" min-size="5">
-              <FileManager class="h-full" />
-            </Pane>
-            <Pane :size="topSplitSizes[1]" min-size="10">
-              <Monitor class="h-full" />
-            </Pane>
-            <Pane :size="topSplitSizes[2]" min-size="5">
-              <Preview class="h-full" />
-            </Pane>
-          </Splitpanes>
-        </Pane>
-        <Pane :size="mainSplitSizes[1]" min-size="10">
-          <Timeline class="h-full" />
-        </Pane>
-      </Splitpanes>
+      <ClientOnly>
+        <Splitpanes class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
+          <Pane :size="mainSplitSizes[0]" min-size="10">
+            <Splitpanes class="editor-splitpanes" @resized="onTopSplitResize">
+              <Pane :size="topSplitSizes[0]" min-size="5">
+                <FileManager class="h-full" />
+              </Pane>
+              <Pane :size="topSplitSizes[1]" min-size="10">
+                <Monitor class="h-full" />
+              </Pane>
+              <Pane :size="topSplitSizes[2]" min-size="5">
+                <Preview class="h-full" />
+              </Pane>
+            </Splitpanes>
+          </Pane>
+          <Pane :size="mainSplitSizes[1]" min-size="10">
+            <Timeline class="h-full" />
+          </Pane>
+        </Splitpanes>
+      </ClientOnly>
 
       <TimelineExportModal v-model:open="isExportModalOpen" @exported="() => {}" />
 

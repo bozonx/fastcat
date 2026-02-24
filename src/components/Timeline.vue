@@ -25,7 +25,7 @@ const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const { draggedFile } = useDraggedFile();
 
-const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v2', [10, 90]); // 10% is ~150px on 1440px screen
+const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v4', [10, 90]);
 
 function onTimelineSplitResize(event: any) {
   if (Array.isArray(event)) {
@@ -38,11 +38,6 @@ const tracks = computed(
 );
 
 const scrollEl = ref<HTMLElement | null>(null);
-const isMounted = ref(false);
-
-onMounted(() => {
-  isMounted.value = true;
-});
 
 const dragPreview = ref<{
   trackId: string;
@@ -180,52 +175,54 @@ function formatTime(seconds: number): string {
     <!-- Toolbar -->
     <TimelineToolbar />
 
-    <Splitpanes v-if="isMounted" class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
-      <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
-        <TimelineTrackLabels :tracks="tracks" class="h-full border-r border-ui-border" />
-      </Pane>
-      <Pane :size="timelineSplitSizes[1]" min-size="50">
-        <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
-          <div
-            class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
-            @mousedown="onTimeRulerMouseDown"
-          >
-            <span
-              v-for="n in 10"
-              :key="n"
-              :style="{ marginLeft: n === 1 ? '0px' : `${Math.max(0, pxPerSecond * 10 - 64)}px` }"
-            >
-              {{ formatTime((n - 1) * 10) }}
-            </span>
-          </div>
-
-          <!-- Tracks -->
-          <TimelineTracks
-            :tracks="tracks"
-            :drag-preview="dragPreview"
-            @drop="onDrop"
-            @dragover="onTrackDragOver"
-            @dragleave="onTrackDragLeave"
-            @start-move-item="startMoveItem"
-            @select-item="selectItem"
-            @start-trim-item="startTrimItem"
-            @clip-action="onClipAction"
-          />
-
-          <!-- Playhead -->
-          <div
-            class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
-            :style="{
-              left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
-            }"
-          >
+    <ClientOnly>
+      <Splitpanes class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
+        <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
+          <TimelineTrackLabels :tracks="tracks" class="h-full border-r border-ui-border" />
+        </Pane>
+        <Pane :size="timelineSplitSizes[1]" min-size="50">
+          <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
             <div
-              class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"
-              @mousedown="startPlayheadDrag"
+              class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
+              @mousedown="onTimeRulerMouseDown"
+            >
+              <span
+                v-for="n in 10"
+                :key="n"
+                :style="{ marginLeft: n === 1 ? '0px' : `${Math.max(0, pxPerSecond * 10 - 64)}px` }"
+              >
+                {{ formatTime((n - 1) * 10) }}
+              </span>
+            </div>
+
+            <!-- Tracks -->
+            <TimelineTracks
+              :tracks="tracks"
+              :drag-preview="dragPreview"
+              @drop="onDrop"
+              @dragover="onTrackDragOver"
+              @dragleave="onTrackDragLeave"
+              @start-move-item="startMoveItem"
+              @select-item="selectItem"
+              @start-trim-item="startTrimItem"
+              @clip-action="onClipAction"
             />
+
+            <!-- Playhead -->
+            <div
+              class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
+              :style="{
+                left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
+              }"
+            >
+              <div
+                class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"
+                @mousedown="startPlayheadDrag"
+              />
+            </div>
           </div>
-        </div>
-      </Pane>
-    </Splitpanes>
+        </Pane>
+      </Splitpanes>
+    </ClientOnly>
   </div>
 </template>

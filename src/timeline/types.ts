@@ -17,6 +17,8 @@ export interface TimelineSourceRef {
   path: string;
 }
 
+export type TimelineClipType = 'media' | 'adjustment' | 'background';
+
 export type ColorAdjustmentEffect = BaseClipEffect<ColorAdjustmentParams> & {
   type: 'color-adjustment';
 };
@@ -24,21 +26,40 @@ export type BlurEffect = BaseClipEffect<BlurParams> & { type: 'blur' };
 
 export type ClipEffect = ColorAdjustmentEffect | BlurEffect;
 
-export interface TimelineClipItem {
+interface TimelineClipBase {
   kind: 'clip';
+  clipType: TimelineClipType;
   id: string;
   trackId: string;
   name: string;
-  source: TimelineSourceRef;
-  sourceDurationUs: number;
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
-  audioFromVideoDisabled?: boolean;
-  linkedVideoClipId?: string;
-  lockToLinkedVideo?: boolean;
   opacity?: number;
   effects?: ClipEffect[];
 }
+
+export interface TimelineMediaClipItem extends TimelineClipBase {
+  clipType: 'media';
+  source: TimelineSourceRef;
+  sourceDurationUs: number;
+  audioFromVideoDisabled?: boolean;
+  linkedVideoClipId?: string;
+  lockToLinkedVideo?: boolean;
+}
+
+export interface TimelineAdjustmentClipItem extends TimelineClipBase {
+  clipType: 'adjustment';
+}
+
+export interface TimelineBackgroundClipItem extends TimelineClipBase {
+  clipType: 'background';
+  backgroundColor: string;
+}
+
+export type TimelineClipItem =
+  | TimelineMediaClipItem
+  | TimelineAdjustmentClipItem
+  | TimelineBackgroundClipItem;
 
 export interface TimelineGapItem {
   kind: 'gap';
