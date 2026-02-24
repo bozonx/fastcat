@@ -54,7 +54,10 @@ describe('TimelineActiveTracker', () => {
       getEndUs: (c) => c.endUs,
     });
 
-    const clips = [clip({ id: 'a', startUs: 0, endUs: 10 }), clip({ id: 'b', startUs: 10, endUs: 20 })];
+    const clips = [
+      clip({ id: 'a', startUs: 0, endUs: 10 }),
+      clip({ id: 'b', startUs: 10, endUs: 20 }),
+    ];
 
     const onDeactivate = vi.fn();
 
@@ -62,5 +65,26 @@ describe('TimelineActiveTracker', () => {
     const rBack = tracker.update({ clips, timeUs: 5, lastTimeUs: 15, onDeactivate });
 
     expect(rBack.activeClips.map((c) => c.id)).toEqual(['a']);
+  });
+
+  it('deactivates previously active clips when seeking backward before their start', () => {
+    const tracker = new TimelineActiveTracker<Clip>({
+      getId: (c) => c.id,
+      getStartUs: (c) => c.startUs,
+      getEndUs: (c) => c.endUs,
+    });
+
+    const clips = [
+      clip({ id: 'a', startUs: 10, endUs: 20 }),
+      clip({ id: 'b', startUs: 30, endUs: 40 }),
+    ];
+
+    const deactivated: string[] = [];
+    const onDeactivate = (c: Clip) => deactivated.push(c.id);
+
+    tracker.update({ clips, timeUs: 15, lastTimeUs: 0, onDeactivate });
+    tracker.update({ clips, timeUs: 0, lastTimeUs: 15, onDeactivate });
+
+    expect(deactivated).toContain('a');
   });
 });

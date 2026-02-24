@@ -38,11 +38,13 @@ export class TimelineActiveTracker<TClip> {
     }
 
     const { getStartUs, getEndUs } = this.accessors;
+    const { getId } = this.accessors;
 
     const movingForward = timeUs >= lastTimeUs;
     let activeChanged = false;
 
     if (!movingForward) {
+      const prevActive = this.activeClips;
       const nextStartIndex = this.findNextStartIndex(clips, timeUs);
       const nextActive: TClip[] = [];
 
@@ -55,6 +57,15 @@ export class TimelineActiveTracker<TClip> {
           nextActive.push(clip);
         } else {
           onDeactivate?.(clip);
+        }
+      }
+
+      if (prevActive.length > 0) {
+        const nextActiveIds = new Set(nextActive.map((c) => getId(c)));
+        for (const clip of prevActive) {
+          if (!nextActiveIds.has(getId(clip))) {
+            onDeactivate?.(clip);
+          }
         }
       }
 

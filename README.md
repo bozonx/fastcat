@@ -6,6 +6,7 @@ Standalone video editor project extracted from Gran Publicador.
 
 - Browser-based video editing using WebCodecs and PixiJS
 - Timeline with multiple tracks (video/audio)
+- SVG images are rasterized to PNG on import for reliable worker rendering
 - Monitor playback with volume/mute controls for audio
 - File system access API integration for local file editing
 - OTIO (OpenTimelineIO) support for timeline serialization

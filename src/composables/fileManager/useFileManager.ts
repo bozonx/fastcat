@@ -4,6 +4,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { convertSvgToPng } from '~/utils/svg';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -273,7 +274,17 @@ export function useFileManager() {
       );
       const sourcesDir = await projectDir.getDirectoryHandle('sources', { create: true });
 
-      for (const file of Array.from(files)) {
+      for (let file of Array.from(files)) {
+        if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+          try {
+            file = await convertSvgToPng(file);
+          } catch (e) {
+            console.warn('Failed to convert SVG to PNG', e);
+            error.value = `Failed to import SVG: ${file.name}`;
+            continue;
+          }
+        }
+
         let targetDirName = 'video';
         if (file.type.startsWith('audio/')) targetDirName = 'audio';
         else if (file.type.startsWith('image/')) targetDirName = 'images';
