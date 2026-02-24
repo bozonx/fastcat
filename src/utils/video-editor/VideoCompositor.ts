@@ -270,68 +270,76 @@ export class VideoCompositor {
         continue;
       }
 
-      const source = new BlobSource(file);
-      const input = new Input({ source, formats: ALL_FORMATS } as any);
-      const track = await input.getPrimaryVideoTrack();
+      try {
+        const source = new BlobSource(file);
+        const input = new Input({ source, formats: ALL_FORMATS } as any);
+        const track = await input.getPrimaryVideoTrack();
 
-      if (!track || !(await track.canDecode())) {
-        this.disposeResource(input);
+        if (!track || !(await track.canDecode())) {
+          this.disposeResource(input);
+          continue;
+        }
+
+        const sink = new VideoSampleSink(track);
+        const firstTimestampS = await track.getFirstTimestamp();
+        const mediaDurationUs = Math.max(
+          0,
+          Math.round((await track.computeDuration()) * 1_000_000),
+        );
+        const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
+        const sourceDurationUs =
+          requestedSourceDurationUs > 0
+            ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
+            : maxSourceTailUs;
+        const durationUs =
+          requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
+        const endUs = startUs + durationUs;
+
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+
+        // Start with a VideoFrame-powered texture source when available.
+        // Fallback to a per-clip OffscreenCanvas if VideoFrame upload fails at runtime.
+        const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+        const texture = new Texture({ source: imageSource });
+        const sprite = new Sprite(texture);
+
+        sprite.width = 1;
+        sprite.height = 1;
+        sprite.visible = false;
+
+        (sprite as any).__clipId = itemId;
+
+        this.app.stage.addChild(sprite);
+
+        const compositorClip: CompositorClip = {
+          itemId,
+          layer,
+          sourcePath,
+          fileHandle,
+          input,
+          sink,
+          firstTimestampS,
+          startUs,
+          endUs,
+          durationUs,
+          sourceStartUs,
+          sourceDurationUs,
+          sprite,
+          clipKind: 'video',
+          sourceKind: 'videoFrame',
+          imageSource,
+          lastVideoFrame: null,
+          canvas: null,
+          ctx: null,
+          bitmap: null,
+        };
+
+        nextClips.push(compositorClip);
+        nextClipById.set(itemId, compositorClip);
+      } catch (err) {
+        console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
         continue;
       }
-
-      const sink = new VideoSampleSink(track);
-      const firstTimestampS = await track.getFirstTimestamp();
-      const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
-      const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
-      const sourceDurationUs =
-        requestedSourceDurationUs > 0
-          ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
-          : maxSourceTailUs;
-      const durationUs =
-        requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
-      const endUs = startUs + durationUs;
-
-      sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-      // Start with a VideoFrame-powered texture source when available.
-      // Fallback to a per-clip OffscreenCanvas if VideoFrame upload fails at runtime.
-      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
-      const texture = new Texture({ source: imageSource });
-      const sprite = new Sprite(texture);
-
-      sprite.width = 1;
-      sprite.height = 1;
-      sprite.visible = false;
-
-      (sprite as any).__clipId = itemId;
-
-      this.app.stage.addChild(sprite);
-
-      const compositorClip: CompositorClip = {
-        itemId,
-        layer,
-        sourcePath,
-        fileHandle,
-        input,
-        sink,
-        firstTimestampS,
-        startUs,
-        endUs,
-        durationUs,
-        sourceStartUs,
-        sourceDurationUs,
-        sprite,
-        clipKind: 'video',
-        sourceKind: 'videoFrame',
-        imageSource,
-        lastVideoFrame: null,
-        canvas: null,
-        ctx: null,
-        bitmap: null,
-      };
-
-      nextClips.push(compositorClip);
-      nextClipById.set(itemId, compositorClip);
     }
 
     for (const [prevId, prevClip] of this.clipById.entries()) {

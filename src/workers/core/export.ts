@@ -16,57 +16,63 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
     };
   }
 
-  const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
-  const source = new BlobSource(file);
-  const input = new Input({ source, formats: ALL_FORMATS } as any);
-
   try {
-    const durationS = await input.computeDuration();
-    const vTrack = await input.getPrimaryVideoTrack();
-    const aTrack = await input.getPrimaryAudioTrack();
+    const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
+    const source = new BlobSource(file);
+    const input = new Input({ source, formats: ALL_FORMATS } as any);
 
-    const meta: any = {
-      source: {
-        size: file.size,
-        lastModified: file.lastModified,
-      },
-      duration: durationS,
-    };
+    try {
+      const durationS = await input.computeDuration();
+      const vTrack = await input.getPrimaryVideoTrack();
+      const aTrack = await input.getPrimaryAudioTrack();
 
-    if (vTrack) {
-      const stats = await vTrack.computePacketStats(100);
-      const codecParam = await vTrack.getCodecParameterString();
-      const colorSpace =
-        typeof vTrack.getColorSpace === 'function' ? await vTrack.getColorSpace() : undefined;
-
-      meta.video = {
-        width: vTrack.codedWidth,
-        height: vTrack.codedHeight,
-        displayWidth: vTrack.displayWidth,
-        displayHeight: vTrack.displayHeight,
-        rotation: vTrack.rotation,
-        codec: codecParam || vTrack.codec || '',
-        parsedCodec: parseVideoCodec(codecParam || vTrack.codec || ''),
-        fps: stats.averagePacketRate,
-        colorSpace,
+      const meta: any = {
+        source: {
+          size: file.size,
+          lastModified: file.lastModified,
+        },
+        duration: durationS,
       };
-    }
 
-    if (aTrack) {
-      const codecParam = await aTrack.getCodecParameterString();
-      meta.audio = {
-        codec: codecParam || aTrack.codec || '',
-        parsedCodec: parseAudioCodec(codecParam || aTrack.codec || ''),
-        sampleRate: aTrack.sampleRate,
-        channels: aTrack.numberOfChannels,
-      };
-    }
+      if (vTrack) {
+        const stats = await vTrack.computePacketStats(100);
+        const codecParam = await vTrack.getCodecParameterString();
+        const colorSpace =
+          typeof vTrack.getColorSpace === 'function' ? await vTrack.getColorSpace() : undefined;
 
-    return meta;
-  } finally {
-    if ('dispose' in input && typeof (input as any).dispose === 'function')
-      (input as any).dispose();
-    else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+        meta.video = {
+          width: vTrack.codedWidth,
+          height: vTrack.codedHeight,
+          displayWidth: vTrack.displayWidth,
+          displayHeight: vTrack.displayHeight,
+          rotation: vTrack.rotation,
+          codec: codecParam || vTrack.codec || '',
+          parsedCodec: parseVideoCodec(codecParam || vTrack.codec || ''),
+          fps: stats.averagePacketRate,
+          colorSpace,
+        };
+      }
+
+      if (aTrack) {
+        const codecParam = await aTrack.getCodecParameterString();
+        meta.audio = {
+          codec: codecParam || aTrack.codec || '',
+          parsedCodec: parseAudioCodec(codecParam || aTrack.codec || ''),
+          sampleRate: aTrack.sampleRate,
+          channels: aTrack.numberOfChannels,
+        };
+      }
+
+      return meta;
+    } finally {
+      if ('dispose' in input && typeof (input as any).dispose === 'function')
+        (input as any).dispose();
+      else if ('close' in input && typeof (input as any).close === 'function')
+        (input as any).close();
+    }
+  } catch (err) {
+    console.error('[Worker Export] Failed to extract metadata:', err);
+    throw err;
   }
 }
 
