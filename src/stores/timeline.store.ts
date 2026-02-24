@@ -7,6 +7,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { quantizeTimeUsToFrames, getDocFps } from '~/timeline/commands/utils';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -46,6 +47,35 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function clearSelection() {
     selectedItemIds.value = [];
+  }
+
+  function setClipFreezeFrameFromPlayhead(input: { trackId: string; itemId: string }) {
+    const doc = timelineDoc.value;
+    if (!doc) throw new Error('Timeline not loaded');
+
+    const track = doc.tracks.find((t) => t.id === input.trackId) ?? null;
+    if (!track) throw new Error('Track not found');
+
+    const item = track.items.find((it) => it.id === input.itemId);
+    if (!item || item.kind !== 'clip') throw new Error('Clip not found');
+    if (item.clipType !== 'media') throw new Error('Only media clips can freeze frame');
+
+    const fps = getDocFps(doc);
+
+    const clipStartUs = item.timelineRange.startUs;
+    const clipEndUs = clipStartUs + item.timelineRange.durationUs;
+    const playheadUs = currentTime.value;
+
+    const usePlayhead = playheadUs >= clipStartUs && playheadUs < clipEndUs;
+    const localUs = usePlayhead ? playheadUs - clipStartUs : 0;
+    const sourceUsRaw = item.sourceRange.startUs + localUs;
+    const sourceUs = quantizeTimeUsToFrames(sourceUsRaw, fps, 'round');
+
+    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: sourceUs });
+  }
+
+  function resetClipFreezeFrame(input: { trackId: string; itemId: string }) {
+    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: undefined });
   }
 
   function selectTrack(trackId: string | null) {
@@ -607,6 +637,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleTrackAudioSolo,
     renameItem,
     updateClipProperties,
+    setClipFreezeFrameFromPlayhead,
+    resetClipFreezeFrame,
     deleteTrack,
     reorderTracks,
     moveItemToTrack,

@@ -35,6 +35,7 @@ export interface WorkerTimelineClip {
   layer: number;
   source?: { path: string };
   backgroundColor?: string;
+  freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: unknown[];
   timelineRange: { startUs: number; durationUs: number };
@@ -48,9 +49,11 @@ export function toWorkerTimelineClips(
   const clips: WorkerTimelineClip[] = [];
   for (const item of items) {
     if (item.kind !== 'clip') continue;
+
+    const clipType = (item as any).clipType ?? 'media';
     const base: WorkerTimelineClip = {
       kind: 'clip',
-      clipType: item.clipType,
+      clipType,
       id: item.id,
       layer: options?.layer ?? 0,
       opacity: item.opacity,
@@ -65,15 +68,18 @@ export function toWorkerTimelineClips(
       },
     };
 
-    if (item.clipType === 'media') {
+    if (clipType === 'media') {
+      const path = (item as any).source?.path;
+      if (!path) continue;
       clips.push({
         ...base,
-        source: { path: item.source.path },
+        source: { path },
+        freezeFrameSourceUs: item.freezeFrameSourceUs,
       });
-    } else if (item.clipType === 'background') {
+    } else if (clipType === 'background') {
       clips.push({
         ...base,
-        backgroundColor: item.backgroundColor,
+        backgroundColor: String((item as any).backgroundColor ?? '#000000'),
       });
     } else {
       clips.push(base);
@@ -404,10 +410,10 @@ export function useTimelineExport() {
         )
         .map((item) => ({
           kind: 'clip' as const,
-          clipType: 'media' as const,
           id: `${item.id}__audio`,
           layer: 0,
           source: { path: item.source.path },
+          freezeFrameSourceUs: item.freezeFrameSourceUs,
           timelineRange: {
             startUs: item.timelineRange.startUs,
             durationUs: item.timelineRange.durationUs,

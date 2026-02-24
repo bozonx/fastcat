@@ -6,8 +6,9 @@ import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
-defineProps<{
+const props = defineProps<{
   tracks: TimelineTrack[];
+  trackHeights: Record<string, number>;
   dragPreview?: {
     trackId: string;
     startUs: number;
@@ -16,6 +17,8 @@ defineProps<{
     kind: 'timeline-clip' | 'file';
   } | null;
 }>();
+
+const DEFAULT_TRACK_HEIGHT = 40;
 
 const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
@@ -26,7 +29,7 @@ const emit = defineEmits<{
   (
     e: 'clipAction',
     payload: {
-      action: 'extractAudio' | 'returnAudio';
+      action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
       trackId: string;
       itemId: string;
       videoItemId?: string;
@@ -92,6 +95,25 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           }),
       });
     }
+
+    const canFreezeFrame = track.kind === 'video' && item.clipType === 'media';
+    if (canFreezeFrame) {
+      mainGroup.push({
+        label: t('granVideoEditor.timeline.freezeFrame', 'Freeze frame'),
+        icon: 'i-heroicons-pause-circle',
+        onSelect: () =>
+          emit('clipAction', { action: 'freezeFrame', trackId: track.id, itemId: item.id }),
+      });
+
+      if (typeof item.freezeFrameSourceUs === 'number') {
+        mainGroup.push({
+          label: t('granVideoEditor.timeline.resetFreezeFrame', 'Reset freeze frame'),
+          icon: 'i-heroicons-play-circle',
+          onSelect: () =>
+            emit('clipAction', { action: 'resetFreezeFrame', trackId: track.id, itemId: item.id }),
+        });
+      }
+    }
   }
 
   const actionGroup: any[] = [
@@ -128,8 +150,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       v-for="track in tracks"
       :key="track.id"
       :data-track-id="track.id"
-      class="h-10 flex items-center px-2 relative"
+      class="flex items-center px-2 relative"
       :class="timelineStore.selectedTrackId === track.id ? 'bg-gray-850/60' : ''"
+      :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
       @dragover.prevent="emit('dragover', $event, track.id)"
       @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"
@@ -173,6 +196,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
                 : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500',
             timelineStore.selectedItemIds.includes(item.id)
               ? 'ring-2 ring-white z-20 shadow-lg'
+              : '',
+            item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
+              ? 'outline outline-2 outline-yellow-400/80'
               : '',
           ]"
           :style="{

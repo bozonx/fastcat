@@ -33,6 +33,12 @@ function onTimelineSplitResize(event: { panes: { size: number }[] }) {
   }
 }
 
+const trackHeights = useLocalStorage<Record<string, number>>('gran-editor-track-heights-v1', {});
+
+function updateTrackHeight(trackId: string, height: number) {
+  trackHeights.value[trackId] = height;
+}
+
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
@@ -110,7 +116,7 @@ function onTrackDragLeave() {
 }
 
 async function onClipAction(payload: {
-  action: 'extractAudio' | 'returnAudio';
+  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
   trackId: string;
   itemId: string;
   videoItemId?: string;
@@ -120,6 +126,16 @@ async function onClipAction(payload: {
       await timelineStore.extractAudioToTrack({
         videoTrackId: payload.trackId,
         videoItemId: payload.itemId,
+      });
+    } else if (payload.action === 'freezeFrame') {
+      timelineStore.setClipFreezeFrameFromPlayhead({
+        trackId: payload.trackId,
+        itemId: payload.itemId,
+      });
+    } else if (payload.action === 'resetFreezeFrame') {
+      timelineStore.resetClipFreezeFrame({
+        trackId: payload.trackId,
+        itemId: payload.itemId,
       });
     } else {
       timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
@@ -178,7 +194,12 @@ function formatTime(seconds: number): string {
     <ClientOnly>
       <Splitpanes class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
         <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
-          <TimelineTrackLabels :tracks="tracks" class="h-full border-r border-ui-border" />
+          <TimelineTrackLabels
+            :tracks="tracks"
+            :track-heights="trackHeights"
+            class="h-full border-r border-ui-border"
+            @update:track-height="updateTrackHeight"
+          />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
@@ -198,6 +219,7 @@ function formatTime(seconds: number): string {
             <!-- Tracks -->
             <TimelineTracks
               :tracks="tracks"
+              :track-heights="trackHeights"
               :drag-preview="dragPreview"
               @drop="onDrop"
               @dragover="onTrackDragOver"

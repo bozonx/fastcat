@@ -7,10 +7,45 @@ import AppModal from '~/components/ui/AppModal.vue';
 
 const props = defineProps<{
   tracks: TimelineTrack[];
+  trackHeights: Record<string, number>;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:trackHeight', trackId: string, height: number): void;
 }>();
 
 const timelineStore = useTimelineStore();
 const { t } = useI18n();
+
+const DEFAULT_TRACK_HEIGHT = 40;
+const MIN_TRACK_HEIGHT = 32;
+const MAX_TRACK_HEIGHT = 300;
+
+const resizingTrackId = ref<string | null>(null);
+const startY = ref(0);
+const startHeight = ref(0);
+
+function onResizeStart(trackId: string, e: MouseEvent) {
+  resizingTrackId.value = trackId;
+  startY.value = e.clientY;
+  startHeight.value = props.trackHeights[trackId] ?? DEFAULT_TRACK_HEIGHT;
+
+  window.addEventListener('mousemove', onGlobalMouseMove);
+  window.addEventListener('mouseup', onGlobalMouseUp);
+}
+
+function onGlobalMouseMove(e: MouseEvent) {
+  if (!resizingTrackId.value) return;
+  const dy = e.clientY - startY.value;
+  const nextHeight = Math.max(MIN_TRACK_HEIGHT, Math.min(MAX_TRACK_HEIGHT, startHeight.value + dy));
+  emit('update:trackHeight', resizingTrackId.value, nextHeight);
+}
+
+function onGlobalMouseUp() {
+  resizingTrackId.value = null;
+  window.removeEventListener('mousemove', onGlobalMouseMove);
+  window.removeEventListener('mouseup', onGlobalMouseUp);
+}
 
 const isConfirmDeleteOpen = ref(false);
 const isRenameOpen = ref(false);
@@ -159,12 +194,13 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
         :items="getTrackContextMenuItems(track)"
       >
         <div
-          class="flex items-center px-2 h-10 text-xs font-medium cursor-pointer select-none"
+          class="flex items-center px-2 text-xs font-medium cursor-pointer select-none relative group"
           :class="
             selectedTrackId === track.id
               ? 'text-white bg-gray-800'
               : 'text-gray-500 hover:text-gray-300 hover:bg-gray-850'
           "
+          :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
           draggable="true"
           @dragstart="onDragStart($event, track)"
           @dragover.prevent
@@ -209,6 +245,12 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
               @click="toggleAudioSolo(track, $event)"
             />
           </div>
+
+          <!-- Bottom resize handle -->
+          <div
+            class="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-20 hover:bg-primary-500/50 transition-colors"
+            @mousedown.stop.prevent="onResizeStart(track.id, $event)"
+          />
         </div>
       </UContextMenu>
     </div>

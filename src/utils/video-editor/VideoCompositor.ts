@@ -50,6 +50,7 @@ export interface CompositorClip {
   durationUs: number;
   sourceStartUs: number;
   sourceDurationUs: number;
+  freezeFrameSourceUs?: number;
   sprite: Sprite;
   clipKind: 'video' | 'image';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
@@ -186,6 +187,11 @@ export class VideoCompositor {
           : '';
 
       const sourceStartUs = Math.max(0, Math.round(Number(clipData.sourceRange?.startUs ?? 0)));
+      const freezeFrameSourceUsRaw = clipData.freezeFrameSourceUs;
+      const freezeFrameSourceUs =
+        typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
+          ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
+          : undefined;
       const layer = Math.round(Number(clipData.layer ?? 0));
       const requestedTimelineDurationUs = Math.max(
         0,
@@ -229,6 +235,7 @@ export class VideoCompositor {
         reusable.endUs = startUs + safeTimelineDurationUs;
         reusable.sourceStartUs = sourceStartUs;
         reusable.sourceDurationUs = safeSourceDurationUs;
+        reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
         reusable.sprite.visible = false;
 
@@ -348,11 +355,6 @@ export class VideoCompositor {
         sprite.width = 1;
         sprite.height = 1;
         sprite.visible = false;
-
-        (sprite as any).__clipId = itemId;
-
-        this.app.stage.addChild(sprite);
-
         const compositorClip: CompositorClip = {
           itemId,
           layer,
@@ -366,14 +368,13 @@ export class VideoCompositor {
           durationUs,
           sourceStartUs,
           sourceDurationUs,
+          freezeFrameSourceUs,
           sprite,
           clipKind: 'video',
           sourceKind: 'videoFrame',
           imageSource,
           lastVideoFrame: null,
           canvas: null,
-          opacity: clipData.opacity,
-          effects: clipData.effects,
           ctx: null,
           bitmap: null,
         };
@@ -435,12 +436,18 @@ export class VideoCompositor {
         Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceDurationUs)),
       );
       const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
+      const freezeFrameSourceUsRaw = (next as any).freezeFrameSourceUs;
+      const freezeFrameSourceUs =
+        typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
+          ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
+          : undefined;
 
       clip.startUs = startUs;
       clip.durationUs = timelineDurationUs;
       clip.endUs = startUs + timelineDurationUs;
       clip.sourceStartUs = sourceStartUs;
       clip.sourceDurationUs = sourceDurationUs;
+      clip.freezeFrameSourceUs = freezeFrameSourceUs;
       clip.layer = layer;
       clip.opacity = next.opacity;
       clip.effects = next.effects;
@@ -504,7 +511,11 @@ export class VideoCompositor {
         continue;
       }
 
-      const sampleTimeS = (clip.sourceStartUs + localTimeUs) / 1_000_000;
+      const freezeUs = clip.freezeFrameSourceUs;
+      const sampleTimeS =
+        typeof freezeUs === 'number'
+          ? Math.max(0, freezeUs) / 1_000_000
+          : (clip.sourceStartUs + localTimeUs) / 1_000_000;
       if (!clip.sink) {
         clip.sprite.visible = false;
         continue;

@@ -329,9 +329,19 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
             </div>
 
             <div class="space-y-2 mt-4 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
-              <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
+              <div
+                v-if="selectedClip.clipType === 'media'"
+                class="flex flex-col gap-1 border-b border-gray-800 pb-2"
+              >
                 <span class="text-gray-500">{{ t('common.source', 'Source File') }}</span>
-                <span class="font-medium break-all">{{ selectedClip.source?.path ?? '' }}</span>
+                <span class="font-medium break-all">{{ selectedClip.source.path }}</span>
+              </div>
+              <div
+                v-else-if="selectedClip.clipType === 'background'"
+                class="flex flex-col gap-1 border-b border-gray-800 pb-2"
+              >
+                <span class="text-gray-500">{{ t('common.color', 'Color') }}</span>
+                <span class="font-medium break-all">{{ selectedClip.backgroundColor }}</span>
               </div>
               <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
                 <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
@@ -346,7 +356,10 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
             </div>
 
             <!-- Transparency (Opacity) -->
-            <div class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+            <div
+              v-if="selectedClip.clipType !== 'adjustment'"
+              class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+            >
               <div class="flex items-center justify-between">
                 <span class="font-medium text-gray-300">Прозрачность</span>
                 <span class="text-xs font-mono text-gray-500">{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span>

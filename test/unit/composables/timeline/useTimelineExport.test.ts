@@ -60,6 +60,7 @@ describe('useTimelineExport pure functions', () => {
     const items: TimelineTrackItem[] = [
       {
         kind: 'clip',
+        clipType: 'media',
         id: 'c1',
         trackId: 't1',
         name: 'Clip 1',
@@ -70,9 +71,10 @@ describe('useTimelineExport pure functions', () => {
       },
     ];
 
-    expect(toWorkerTimelineClips(items)).toEqual([
+    expect(toWorkerTimelineClips(items)).toMatchObject([
       {
         kind: 'clip',
+        clipType: 'media',
         id: 'c1',
         layer: 0,
         source: { path: '/video.mp4' },

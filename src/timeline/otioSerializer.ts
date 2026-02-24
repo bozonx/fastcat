@@ -207,6 +207,11 @@ function parseClipItem(input: {
   const path =
     typeof otio.media_reference?.target_url === 'string' ? otio.media_reference.target_url : '';
   const granMeta = safeGranMetadata(otio.metadata);
+  const clipTypeRaw = granMeta?.clipType;
+  const clipType =
+    clipTypeRaw === 'background' || clipTypeRaw === 'adjustment' || clipTypeRaw === 'media'
+      ? clipTypeRaw
+      : 'media';
   const timelineStartUs = fallbackStartUs;
   const sourceDurationUs = Math.max(0, Math.round(Number(granMeta?.sourceDurationUs ?? 0)));
   const id = resolveStableItemId({
@@ -223,18 +228,18 @@ function parseClipItem(input: {
     occupiedIds,
   });
 
-  return {
-    kind: 'clip',
-    clipType: 'media',
+  const base = {
+    kind: 'clip' as const,
+    clipType,
     id,
     trackId,
     name,
-    source: { path },
     sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
     audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
     freezeFrameSourceUs:
+      clipType === 'media' &&
       typeof granMeta?.freezeFrameSourceUs === 'number' &&
       Number.isFinite(granMeta.freezeFrameSourceUs)
         ? Math.max(0, Math.round(granMeta.freezeFrameSourceUs))
@@ -251,6 +256,28 @@ function parseClipItem(input: {
         : undefined,
     lockToLinkedVideo:
       granMeta?.lockToLinkedVideo !== undefined ? Boolean(granMeta.lockToLinkedVideo) : undefined,
+  };
+
+  if (clipType === 'background') {
+    return {
+      ...base,
+      clipType: 'background',
+      source: { path: path || '' },
+      backgroundColor:
+        typeof granMeta?.backgroundColor === 'string' && granMeta.backgroundColor.trim().length > 0
+          ? granMeta.backgroundColor
+          : '#000000',
+    };
+  }
+
+  if (clipType === 'adjustment') {
+    return { ...base, clipType: 'adjustment', source: { path: path || '' } };
+  }
+
+  return {
+    ...base,
+    clipType: 'media',
+    source: { path },
   };
 }
 
@@ -350,12 +377,13 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         name: item.name,
         media_reference: {
           OTIO_SCHEMA: 'ExternalReference.1',
-          target_url: item.source.path,
+          target_url: item.source?.path ?? '',
         },
         source_range: toTimeRange(item.sourceRange),
         metadata: {
           gran: {
             id: item.id,
+            clipType: item.clipType,
             sourceDurationUs: item.sourceDurationUs,
             audioFromVideoDisabled: Boolean(item.audioFromVideoDisabled),
             freezeFrameSourceUs: item.freezeFrameSourceUs,
@@ -363,6 +391,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             effects: item.effects,
             linkedVideoClipId: item.linkedVideoClipId,
             lockToLinkedVideo: item.lockToLinkedVideo,
+            backgroundColor:
+              item.clipType === 'background' ? (item as any).backgroundColor : undefined,
           },
         },
       });

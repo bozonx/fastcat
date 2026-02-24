@@ -43,6 +43,8 @@ export function useMonitorTimeline() {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
 
+        const clipType = (item as any).clipType ?? 'media';
+
         const clipEffects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined;
         const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : undefined;
         const effects =
@@ -52,7 +54,7 @@ export function useMonitorTimeline() {
 
         const base: WorkerTimelineClip = {
           kind: 'clip',
-          clipType: item.clipType,
+          clipType,
           id: item.id,
           layer: trackCount - 1 - trackIndex,
           opacity: item.opacity,
@@ -67,15 +69,14 @@ export function useMonitorTimeline() {
           },
         };
 
-        if (item.clipType === 'media') {
+        if (clipType === 'media') {
+          const path = (item as any).source?.path;
+          if (!path) continue;
+          clips.push({ ...base, source: { path } });
+        } else if (clipType === 'background') {
           clips.push({
             ...base,
-            source: { path: item.source.path },
-          });
-        } else if (item.clipType === 'background') {
-          clips.push({
-            ...base,
-            backgroundColor: item.backgroundColor,
+            backgroundColor: String((item as any).backgroundColor ?? '#000000'),
           });
         } else {
           clips.push(base);
@@ -103,15 +104,17 @@ export function useMonitorTimeline() {
 
     for (const item of effectiveAudioTracks.flatMap((t) => t.items)) {
       if (item.kind !== 'clip') continue;
-      if (item.clipType !== 'media') continue;
-      if (!item.source) continue;
+      const clipType = (item as any).clipType ?? 'media';
+      if (clipType !== 'media') continue;
+      const path = (item as any).source?.path;
+      if (!path) continue;
       clips.push({
         kind: 'clip',
         clipType: 'media',
         id: item.id,
         layer: 0,
         source: {
-          path: item.source.path,
+          path,
         },
         timelineRange: {
           startUs: item.timelineRange.startUs,
@@ -129,16 +132,19 @@ export function useMonitorTimeline() {
       if (!videoTrackIdsForAudio.has(track.id)) continue;
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (item.clipType !== 'media') continue;
-        if (item.audioFromVideoDisabled) continue;
-        if (!item.source) continue;
+        const clipType = (item as any).clipType ?? 'media';
+        if (clipType !== 'media') continue;
+        if ((item as any).audioFromVideoDisabled) continue;
+        const path = (item as any).source?.path;
+        if (!path) continue;
+
         clips.push({
           kind: 'clip',
           clipType: 'media',
           id: `${item.id}__audio`,
           layer: 0,
           source: {
-            path: item.source.path,
+            path,
           },
           timelineRange: {
             startUs: item.timelineRange.startUs,
@@ -188,7 +194,7 @@ export function useMonitorTimeline() {
     let hash = mixHash(2166136261, videoItems.value.length);
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
-      if (item.kind === 'clip') {
+      if (item.kind === 'clip' && item.clipType === 'media' && item.source?.path) {
         hash = mixHash(hash, hashString(item.source.path));
       }
     }
@@ -208,6 +214,10 @@ export function useMonitorTimeline() {
       if (item.kind === 'clip') {
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
+
+        if (item.clipType === 'media') {
+          hash = mixTime(hash, item.freezeFrameSourceUs ?? 0);
+        }
 
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
 
@@ -313,12 +323,16 @@ export function useMonitorTimeline() {
     for (const item of effectiveAudioItems) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
-        hash = mixHash(hash, hashString(item.source.path));
+        if (item.clipType === 'media' && item.source?.path) {
+          hash = mixHash(hash, hashString(item.source.path));
+        }
       }
     }
     for (const item of enabledVideoAudioItems) {
       hash = mixHash(hash, hashString(`${item.id}__audio`));
-      hash = mixHash(hash, hashString(item.source.path));
+      if (item.clipType === 'media' && item.source?.path) {
+        hash = mixHash(hash, hashString(item.source.path));
+      }
     }
     return hash;
   });

@@ -1,6 +1,6 @@
 export interface WorkerTimelineClip {
   kind: 'clip';
-  clipType: 'media' | 'adjustment' | 'background';
+  clipType?: 'media' | 'adjustment' | 'background';
   id: string;
   layer: number;
   source?: {
