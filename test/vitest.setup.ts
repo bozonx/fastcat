@@ -17,3 +17,38 @@ if (w.window) {
   helper.addColorScheme ??= () => {};
   helper.removeColorScheme ??= () => {};
 }
+
+import { vi } from 'vitest';
+
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string, fallback?: string) => fallback ?? key,
+    locale: { value: 'en' },
+  }),
+  createI18n: () => ({
+    global: {
+      t: (key: string) => key,
+      locale: 'en',
+    },
+    install: () => {},
+  }),
+}));
+
+vi.mock('#i18n', () => ({
+  useI18n: () => ({
+    t: (key: string, fallback?: string) => fallback ?? key,
+    locale: { value: 'en' },
+  }),
+  useLocalePath: () => (path: string) => path,
+  useSwitchLocalePath: () => (locale: string) => locale,
+}));
+
+vi.stubGlobal('useColorMode', () => ({
+  preference: 'dark',
+  value: 'dark',
+}));
+
+vi.stubGlobal('useHead', () => {});
+vi.stubGlobal('useRuntimeConfig', () => ({
+  public: {},
+}));

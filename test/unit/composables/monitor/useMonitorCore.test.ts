@@ -37,12 +37,6 @@ vi.mock('~/utils/video-editor/AudioEngine', () => {
   return { AudioEngine: AudioEngineMock };
 });
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-  }),
-}));
-
 function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTimelineClip {
   return {
     kind: 'clip',

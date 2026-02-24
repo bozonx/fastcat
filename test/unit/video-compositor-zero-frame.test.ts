@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 
 import { getVideoSampleWithZeroFallback } from '../../src/utils/video-editor/VideoCompositor';

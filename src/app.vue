@@ -2,7 +2,9 @@
 const colorMode = useColorMode();
 
 // TODO: Hardcoded to dark mode for now. Remove this when adding support for other themes.
-colorMode.preference = 'dark';
+if (colorMode) {
+  colorMode.preference = 'dark';
+}
 
 useHead({
   htmlAttrs: {
