@@ -358,7 +358,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
                 <span class="font-medium text-gray-300">Прозрачность</span>
                 <span class="text-xs font-mono text-gray-500">{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span>
               </div>
-              <URange
+              <USlider
                 :model-value="selectedClip.opacity ?? 1"
                 :min="0"
                 :max="1"
@@ -400,21 +400,39 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
                         <span>Яркость</span>
                         <span>{{ Math.round((effect.brightness - 1) * 100) }}%</span>
                       </div>
-                      <URange :model-value="effect.brightness" :min="0" :max="2" :step="0.05" @update:model-value="handleUpdateEffect(effect.id, { brightness: $event })" />
+                      <USlider
+                        :model-value="effect.brightness"
+                        :min="0"
+                        :max="2"
+                        :step="0.05"
+                        @update:model-value="handleUpdateEffect(effect.id, { brightness: $event })"
+                      />
                     </div>
                     <div class="flex flex-col gap-1">
                       <div class="flex justify-between text-xs text-gray-400">
                         <span>Контрастность</span>
                         <span>{{ Math.round((effect.contrast - 1) * 100) }}%</span>
                       </div>
-                      <URange :model-value="effect.contrast" :min="0" :max="2" :step="0.05" @update:model-value="handleUpdateEffect(effect.id, { contrast: $event })" />
+                      <USlider
+                        :model-value="effect.contrast"
+                        :min="0"
+                        :max="2"
+                        :step="0.05"
+                        @update:model-value="handleUpdateEffect(effect.id, { contrast: $event })"
+                      />
                     </div>
                     <div class="flex flex-col gap-1">
                       <div class="flex justify-between text-xs text-gray-400">
                         <span>Насыщенность</span>
                         <span>{{ Math.round((effect.saturation - 1) * 100) }}%</span>
                       </div>
-                      <URange :model-value="effect.saturation" :min="0" :max="2" :step="0.05" @update:model-value="handleUpdateEffect(effect.id, { saturation: $event })" />
+                      <USlider
+                        :model-value="effect.saturation"
+                        :min="0"
+                        :max="2"
+                        :step="0.05"
+                        @update:model-value="handleUpdateEffect(effect.id, { saturation: $event })"
+                      />
                     </div>
                   </div>
                 </div>
