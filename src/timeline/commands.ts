@@ -122,7 +122,9 @@ export interface UpdateClipPropertiesCommand {
   itemId: string;
   properties: Partial<
     Pick<import('./types').TimelineClipItem, 'opacity' | 'effects' | 'freezeFrameSourceUs'>
-  >;
+  > & {
+    backgroundColor?: string;
+  };
 }
 
 export interface UpdateTrackPropertiesCommand {

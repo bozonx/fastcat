@@ -96,23 +96,24 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       });
     }
 
-    const canFreezeFrame = track.kind === 'video' && item.clipType === 'media';
-    if (canFreezeFrame) {
+    const isMediaVideoClip = track.kind === 'video' && item.clipType === 'media';
+    const hasFreezeFrame = typeof item.freezeFrameSourceUs === 'number';
+    if (isMediaVideoClip && !hasFreezeFrame) {
       mainGroup.push({
         label: t('granVideoEditor.timeline.freezeFrame', 'Freeze frame'),
         icon: 'i-heroicons-pause-circle',
         onSelect: () =>
           emit('clipAction', { action: 'freezeFrame', trackId: track.id, itemId: item.id }),
       });
+    }
 
-      if (typeof item.freezeFrameSourceUs === 'number') {
-        mainGroup.push({
-          label: t('granVideoEditor.timeline.resetFreezeFrame', 'Reset freeze frame'),
-          icon: 'i-heroicons-play-circle',
-          onSelect: () =>
-            emit('clipAction', { action: 'resetFreezeFrame', trackId: track.id, itemId: item.id }),
-        });
-      }
+    if (isMediaVideoClip && hasFreezeFrame) {
+      mainGroup.push({
+        label: t('granVideoEditor.timeline.resetFreezeFrame', 'Reset freeze frame'),
+        icon: 'i-heroicons-play-circle',
+        onSelect: () =>
+          emit('clipAction', { action: 'resetFreezeFrame', trackId: track.id, itemId: item.id }),
+      });
     }
   }
 

@@ -155,12 +155,23 @@ export function updateClipProperties(
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || item.kind !== 'clip') return { next: doc };
 
+  const nextProps: Record<string, unknown> = { ...cmd.properties };
+  if ('backgroundColor' in nextProps) {
+    if (item.clipType !== 'background') {
+      delete nextProps.backgroundColor;
+    } else {
+      const raw = nextProps.backgroundColor;
+      const value = typeof raw === 'string' ? raw.trim() : '';
+      nextProps.backgroundColor = value.length > 0 ? value : '#000000';
+    }
+  }
+
   const nextTracks = doc.tracks.map((t) => {
     if (t.id === track.id) {
       return {
         ...t,
         items: t.items.map((it) =>
-          it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...cmd.properties } : it,
+          it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...(nextProps as any) } : it,
         ),
       };
     }

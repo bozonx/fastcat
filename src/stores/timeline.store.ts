@@ -261,7 +261,9 @@ export const useTimelineStore = defineStore('timeline', () => {
         import('~/timeline/types').TimelineClipItem,
         'opacity' | 'effects' | 'freezeFrameSourceUs'
       >
-    >,
+    > & {
+      backgroundColor?: string;
+    },
   ) {
     applyTimeline({
       type: 'update_clip_properties',

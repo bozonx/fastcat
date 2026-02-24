@@ -57,6 +57,7 @@ export function useMonitorTimeline() {
           clipType,
           id: item.id,
           layer: trackCount - 1 - trackIndex,
+          freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
           effects,
           timelineRange: {

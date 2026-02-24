@@ -69,6 +69,15 @@ function handleUpdateClipEffects(effects: any[]) {
   });
 }
 
+function handleUpdateBackgroundColor(val: string | undefined) {
+  if (!selectedClip.value) return;
+  if (selectedClip.value.clipType !== 'background') return;
+  const safe = typeof val === 'string' && val.trim().length > 0 ? val.trim() : '#000000';
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    backgroundColor: safe,
+  });
+}
+
 function handleUpdateTrackEffects(effects: any[]) {
   if (!selectedTrack.value) return;
   timelineStore.updateTrackProperties(selectedTrack.value.id, { effects: effects as any });
@@ -341,7 +350,15 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
                 class="flex flex-col gap-1 border-b border-gray-800 pb-2"
               >
                 <span class="text-gray-500">{{ t('common.color', 'Color') }}</span>
-                <span class="font-medium break-all">{{ selectedClip.backgroundColor }}</span>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="font-mono text-xs text-gray-300">{{ selectedClip.backgroundColor }}</span>
+                  <UColorPicker
+                    :model-value="selectedClip.backgroundColor"
+                    format="hex"
+                    size="sm"
+                    @update:model-value="handleUpdateBackgroundColor"
+                  />
+                </div>
               </div>
               <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
                 <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
