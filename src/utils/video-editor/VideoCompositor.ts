@@ -492,14 +492,15 @@ export class VideoCompositor {
           if (!effect.enabled) continue;
           if (effect.type === 'color-adjustment') {
             const filter = new ColorMatrixFilter();
+            filter.reset();
             if (effect.brightness !== undefined && effect.brightness !== 1) {
-              filter.brightness(effect.brightness, false);
+              filter.brightness(effect.brightness, true);
             }
             if (effect.contrast !== undefined && effect.contrast !== 1) {
-              filter.contrast(effect.contrast, false);
+              filter.contrast(effect.contrast, true);
             }
             if (effect.saturation !== undefined && effect.saturation !== 1) {
-              filter.saturate(effect.saturation - 1, false);
+              filter.saturate(effect.saturation - 1, true);
             }
             filters.push(filter);
           }
