@@ -3,6 +3,8 @@ import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
 import { safeDispose } from '../../utils/video-editor/utils';
 import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
+import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
+import { usToS } from './time';
 
 export async function extractMetadata(fileHandle: FileSystemFileHandle) {
   const file = await fileHandle.getFile();
@@ -79,23 +81,6 @@ function isOpusCodec(codec: string | undefined): boolean {
   return value.startsWith('opus');
 }
 
-function getClipRanges(clip: any) {
-  const timelineStartUs = Number(clip.timelineRange?.startUs || 0);
-  const timelineDurationUs = Number(clip.timelineRange?.durationUs || 0);
-  const sourceStartUs = Number(clip.sourceRange?.startUs || 0);
-  const sourceDurationUs = Number(clip.sourceRange?.durationUs || timelineDurationUs || 0);
-
-  const timelineStartS = Math.max(0, timelineStartUs / 1_000_000);
-  const sourceStartS = Math.max(0, sourceStartUs / 1_000_000);
-  const durationS = Math.max(0, sourceDurationUs / 1_000_000);
-
-  return {
-    timelineStartS,
-    sourceStartS,
-    sourceEndS: sourceStartS + durationS,
-  };
-}
-
 async function buildPassthroughAudioTrack(params: {
   clip: any;
   hostClient: VideoCoreHostAPI | null;
@@ -133,7 +118,7 @@ async function buildPassthroughAudioTrack(params: {
       audioSource: new EncodedAudioPacketSource('opus'),
       packetSink: new EncodedPacketSink(audioTrack),
       decoderConfig,
-      ranges: getClipRanges(clip),
+      ranges: getClipRangesS(clip),
       input,
     } as const;
   } catch (error) {
@@ -168,14 +153,6 @@ export async function runExport(
     } catch {
       // ignore
     }
-  }
-
-  function computeMaxAudioDurationUs(clips: any[]): number {
-    return clips.reduce((max, clip) => {
-      const endUs =
-        Number(clip.timelineRange?.startUs || 0) + Number(clip.timelineRange?.durationUs || 0);
-      return Math.max(max, endUs);
-    }, 0);
   }
 
   async function createOutput(params: { format: any }): Promise<{ output: any; writable: any }> {
@@ -263,7 +240,7 @@ export async function runExport(
     const fps = Math.max(1, Math.round(Number(params.fps) || 30));
     const totalFrames = Math.ceil(params.durationS * fps);
     const dtUs = Math.floor(1_000_000 / fps);
-    const dtS = dtUs / 1_000_000;
+    const dtS = usToS(dtUs);
     let currentTimeUs = 0;
 
     let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -276,7 +253,7 @@ export async function runExport(
 
       const generatedCanvas = await params.compositor.renderFrame(currentTimeUs);
       if (generatedCanvas) {
-        await (params.videoSource as any).add(currentTimeUs / 1_000_000, dtS);
+        await (params.videoSource as any).add(usToS(currentTimeUs), dtS);
       }
       currentTimeUs += dtUs;
 
@@ -316,7 +293,7 @@ export async function runExport(
 
     if (maxDurationUs <= 0) throw new Error('No clips to export');
 
-    const durationS = maxDurationUs / 1_000_000;
+    const durationS = usToS(maxDurationUs);
     const hasAnyAudio = audioClips.length > 0;
 
     const format =
@@ -427,16 +404,14 @@ export async function runExport(
     try {
       await runExportWithHardwareAcceleration('prefer-hardware', true);
     } catch (e) {
-      console.warn(
-        '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile',
-        e,
+      await reportExportWarning(
+        '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile.',
       );
       try {
         await runExportWithHardwareAcceleration('prefer-hardware', false);
       } catch (e2) {
-        console.warn(
-          '[Worker Export] Hardware acceleration export failed completely, retrying with software',
-          e2,
+        await reportExportWarning(
+          '[Worker Export] Hardware acceleration export failed completely, retrying with software.',
         );
         await runExportWithHardwareAcceleration('prefer-software', false);
       }

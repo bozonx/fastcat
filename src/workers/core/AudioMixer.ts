@@ -2,6 +2,7 @@ import { MAX_AUDIO_FILE_BYTES } from '../../utils/constants';
 import { safeDispose } from '../../utils/video-editor/utils';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { clampFloat32 } from './utils';
+import { usToS } from './time';
 
 export function interleavedToPlanar(params: {
   interleaved: Float32Array;
@@ -95,10 +96,10 @@ export class AudioMixer {
       const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
       const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
 
-      const clipStartS = Math.max(0, Number(startUs) / 1_000_000);
-      const rawOffsetS = Math.max(0, Number(sourceStartUs) / 1_000_000);
-      const sourceDurationS = Math.max(0, Number(sourceDurationUs) / 1_000_000);
-      const timelineDurationS = Math.max(0, Number(durationUs) / 1_000_000);
+      const clipStartS = Math.max(0, usToS(Number(startUs)));
+      const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
+      const sourceDurationS = Math.max(0, usToS(Number(sourceDurationUs)));
+      const timelineDurationS = Math.max(0, usToS(Number(durationUs)));
       const clipDurationS = Math.max(
         0,
         Math.min(sourceDurationS || Number.POSITIVE_INFINITY, timelineDurationS || sourceDurationS),
@@ -135,7 +136,6 @@ export class AudioMixer {
 
         prepared.push({ clipStartS, offsetS, playDurationS, input, sink, sourcePath });
       } catch (err) {
-        console.warn('[Worker Export] Failed to decode audio clip', err);
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
         safeDispose(input);
       }
@@ -241,7 +241,6 @@ export class AudioMixer {
           }
         }
       } catch (err) {
-        console.warn('[Worker Export] Failed to decode audio clip chunk', err);
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
       }
     }
