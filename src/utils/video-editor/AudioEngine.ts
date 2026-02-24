@@ -216,7 +216,10 @@ export class AudioEngine {
         this.decodedCache.set(sourceKey, audioBuffer);
         return audioBuffer;
       } catch (err) {
-        console.warn('[AudioEngine] Failed to decode audio', err);
+        const name = (err as any)?.name;
+        if (name !== 'NoAudioTrackError') {
+          console.warn('[AudioEngine] Failed to decode audio', err);
+        }
         this.decodedCache.set(sourceKey, null);
         return null;
       } finally {
@@ -299,7 +302,11 @@ export class AudioEngine {
     }
     if (!this.isPlaying) return;
     if (!buffer) {
-      console.warn(`[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`);
+      if (!clip.id.endsWith('__audio')) {
+        console.warn(
+          `[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`,
+        );
+      }
       return;
     }
 

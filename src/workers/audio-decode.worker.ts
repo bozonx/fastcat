@@ -25,7 +25,11 @@ async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();
-    if (!aTrack) throw new Error('No audio track');
+    if (!aTrack) {
+      const err = new Error('No audio track');
+      (err as any).name = 'NoAudioTrackError';
+      throw err;
+    }
     if (!(await aTrack.canDecode())) throw new Error('Audio track cannot be decoded');
 
     const sink = new AudioSampleSink(aTrack);
