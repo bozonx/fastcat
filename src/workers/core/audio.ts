@@ -8,6 +8,7 @@ export async function buildMixedAudioTrack(
   durationS: number,
   hostClient: VideoCoreHostAPI | null,
   reportExportWarning: (message: string) => Promise<void>,
+  checkCancel?: () => boolean,
 ) {
   const { AudioSampleSink, AudioSampleSource, Input, BlobSource, ALL_FORMATS } =
     await import('mediabunny');
@@ -17,18 +18,27 @@ export async function buildMixedAudioTrack(
 
   const chunkDurationS = 1;
   const chunkFrames = sampleRate * chunkDurationS;
+  const totalFrames = Math.ceil(durationS * sampleRate);
+  const totalChunks = Math.max(1, Math.ceil(totalFrames / chunkFrames));
 
-  const chunks = new Map<number, Float32Array>();
-
-  async function getOrCreateChunk(index: number) {
-    const existing = chunks.get(index);
-    if (existing) return existing;
-    const buf = new Float32Array(chunkFrames * numberOfChannels);
-    chunks.set(index, buf);
-    return buf;
+  interface PreparedClip {
+    clipStartS: number;
+    offsetS: number;
+    playDurationS: number;
+    input: any;
+    sink: any;
+    sourcePath: string;
   }
 
+  const prepared: PreparedClip[] = [];
+
   for (const clipData of audioClips) {
+    if (checkCancel?.()) {
+      const abortErr = new Error('Export was cancelled');
+      (abortErr as any).name = 'AbortError';
+      throw abortErr;
+    }
+
     const sourcePath = clipData.sourcePath || clipData.source?.path;
     if (!sourcePath) continue;
 
@@ -58,101 +68,58 @@ export async function buildMixedAudioTrack(
     const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
     const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
 
-    const clipStartS = Math.max(0, startUs / 1_000_000);
-    const rawOffsetS = Math.max(0, sourceStartUs / 1_000_000);
-    const sourceDurationS = Math.max(0, sourceDurationUs / 1_000_000);
-    const timelineDurationS = Math.max(0, durationUs / 1_000_000);
+    const clipStartS = Math.max(0, Number(startUs) / 1_000_000);
+    const rawOffsetS = Math.max(0, Number(sourceStartUs) / 1_000_000);
+    const sourceDurationS = Math.max(0, Number(sourceDurationUs) / 1_000_000);
+    const timelineDurationS = Math.max(0, Number(durationUs) / 1_000_000);
     const clipDurationS = Math.max(
       0,
       Math.min(sourceDurationS || Number.POSITIVE_INFINITY, timelineDurationS || sourceDurationS),
     );
-
     if (clipDurationS <= 0) continue;
 
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
     try {
       const aTrack = await input.getPrimaryAudioTrack();
-      if (!aTrack) continue;
-      if (!(await aTrack.canDecode())) continue;
+      if (!aTrack) {
+        if ('dispose' in input && typeof (input as any).dispose === 'function')
+          (input as any).dispose();
+        else if ('close' in input && typeof (input as any).close === 'function')
+          (input as any).close();
+        continue;
+      }
+      if (!(await aTrack.canDecode())) {
+        if ('dispose' in input && typeof (input as any).dispose === 'function')
+          (input as any).dispose();
+        else if ('close' in input && typeof (input as any).close === 'function')
+          (input as any).close();
+        continue;
+      }
 
       const sink = new AudioSampleSink(aTrack);
-      try {
-        const offsetS = Math.max(0, rawOffsetS);
-        const trackDurationS = (aTrack as any).duration;
-        const maxPlayableS = Math.max(
-          0,
-          (Number.isFinite(trackDurationS) ? Number(trackDurationS) : Number.POSITIVE_INFINITY) -
-            offsetS,
-        );
-        const playDurationS = Math.min(clipDurationS, maxPlayableS);
-        if (playDurationS <= 0) continue;
 
-        for await (const sampleRaw of (sink as any).samples(offsetS, offsetS + playDurationS)) {
-          const sample = sampleRaw as any;
-          try {
-            const frames = Number(sample.numberOfFrames) || 0;
-            const sr = Number(sample.sampleRate) || 0;
-            const ch = Number(sample.numberOfChannels) || 0;
-
-            if (frames <= 0) continue;
-            if (sr !== sampleRate || ch !== numberOfChannels) {
-              await reportExportWarning(
-                '[Worker Export] Audio clip sample format mismatch; skipping some audio.',
-              );
-              continue;
-            }
-
-            const localTimeS = Number(sample.timestamp) - offsetS;
-            const timelineTimeS = clipStartS + localTimeS;
-            if (!Number.isFinite(timelineTimeS)) continue;
-            if (timelineTimeS < 0 || timelineTimeS > durationS) continue;
-
-            const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
-            const endFrameGlobal = startFrameGlobal + frames;
-            if (endFrameGlobal <= 0) continue;
-
-            const tmpPlanes: Float32Array[] = [];
-            for (let planeIndex = 0; planeIndex < numberOfChannels; planeIndex += 1) {
-              const bytesNeeded = sample.allocationSize({
-                format: 'f32-planar',
-                planeIndex,
-              });
-              const plane = new Float32Array(bytesNeeded / 4);
-              sample.copyTo(plane, { format: 'f32-planar', planeIndex });
-              tmpPlanes.push(plane);
-            }
-
-            for (let i = 0; i < frames; i += 1) {
-              const globalFrame = startFrameGlobal + i;
-              if (globalFrame < 0) continue;
-              if (globalFrame >= Math.floor(durationS * sampleRate)) break;
-
-              const chunkIndex = Math.floor(globalFrame / chunkFrames);
-              const chunk = await getOrCreateChunk(chunkIndex);
-              const frameInChunk = globalFrame - chunkIndex * chunkFrames;
-              if (frameInChunk < 0 || frameInChunk >= chunkFrames) continue;
-
-              for (let c = 0; c < numberOfChannels; c += 1) {
-                const plane = tmpPlanes[c];
-                const v = plane ? (plane[i] ?? 0) : 0;
-                const idx = frameInChunk * numberOfChannels + c;
-                if (chunk) {
-                  chunk[idx] = clampFloat32(chunk[idx]! + v);
-                }
-              }
-            }
-          } finally {
-            if (typeof sample.close === 'function') sample.close();
-          }
-        }
-      } finally {
+      const offsetS = Math.max(0, rawOffsetS);
+      const trackDurationS = (aTrack as any).duration;
+      const maxPlayableS = Math.max(
+        0,
+        (Number.isFinite(trackDurationS) ? Number(trackDurationS) : Number.POSITIVE_INFINITY) -
+          offsetS,
+      );
+      const playDurationS = Math.min(clipDurationS, maxPlayableS);
+      if (playDurationS <= 0) {
         if (typeof (sink as any).close === 'function') (sink as any).close();
         if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
+        if ('dispose' in input && typeof (input as any).dispose === 'function')
+          (input as any).dispose();
+        else if ('close' in input && typeof (input as any).close === 'function')
+          (input as any).close();
+        continue;
       }
+
+      prepared.push({ clipStartS, offsetS, playDurationS, input, sink, sourcePath });
     } catch (err) {
       console.warn('[Worker Export] Failed to decode audio clip', err);
       await reportExportWarning('[Worker Export] Failed to decode audio clip');
-    } finally {
       if ('dispose' in input && typeof (input as any).dispose === 'function')
         (input as any).dispose();
       else if ('close' in input && typeof (input as any).close === 'function')
@@ -160,39 +127,148 @@ export async function buildMixedAudioTrack(
     }
   }
 
-  if (chunks.size === 0) return null;
+  if (prepared.length === 0) return null;
 
   const audioSource = new AudioSampleSource({
     codec: getBunnyAudioCodec(options.audioCodec),
     bitrate: options.audioBitrate,
   });
 
-  const samples: Array<{ data: Float32Array; timestamp: number }> = [];
-  const totalFrames = Math.ceil(durationS * sampleRate);
-  const totalChunks = Math.max(1, Math.ceil(totalFrames / chunkFrames));
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-    const chunk = chunks.get(chunkIndex) ?? new Float32Array(chunkFrames * numberOfChannels);
-    const framesInChunk = Math.min(chunkFrames, totalFrames - chunkIndex * chunkFrames);
-    if (framesInChunk <= 0) continue;
+  async function writeMixedToSource() {
+    const { AudioSample } = await import('mediabunny');
 
-    const plane0 = new Float32Array(framesInChunk);
-    const plane1 = new Float32Array(framesInChunk);
-    for (let i = 0; i < framesInChunk; i += 1) {
-      plane0[i] = chunk[i * 2] ?? 0;
-      plane1[i] = chunk[i * 2 + 1] ?? 0;
+    try {
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        if (checkCancel?.()) {
+          const abortErr = new Error('Export was cancelled');
+          (abortErr as any).name = 'AbortError';
+          throw abortErr;
+        }
+
+        const chunkStartS = chunkIndex * chunkDurationS;
+        const chunkEndS = Math.min(durationS, chunkStartS + chunkDurationS);
+        const framesInChunk = Math.min(chunkFrames, totalFrames - chunkIndex * chunkFrames);
+        if (framesInChunk <= 0) continue;
+
+        const mixedInterleaved = new Float32Array(framesInChunk * numberOfChannels);
+
+        for (const clip of prepared) {
+          if (checkCancel?.()) {
+            const abortErr = new Error('Export was cancelled');
+            (abortErr as any).name = 'AbortError';
+            throw abortErr;
+          }
+
+          const clipGlobalStartS = clip.clipStartS;
+          const clipGlobalEndS = clip.clipStartS + clip.playDurationS;
+          const overlapStartS = Math.max(chunkStartS, clipGlobalStartS);
+          const overlapEndS = Math.min(chunkEndS, clipGlobalEndS);
+          if (overlapEndS <= overlapStartS) continue;
+
+          const clipLocalStartS = overlapStartS - clipGlobalStartS;
+          const clipLocalEndS = overlapEndS - clipGlobalStartS;
+          const sinkStartS = clip.offsetS + clipLocalStartS;
+          const sinkEndS = clip.offsetS + clipLocalEndS;
+
+          try {
+            for await (const sampleRaw of (clip.sink as any).samples(sinkStartS, sinkEndS)) {
+              const sample = sampleRaw as any;
+              try {
+                const frames = Number(sample.numberOfFrames) || 0;
+                const sr = Number(sample.sampleRate) || 0;
+                const ch = Number(sample.numberOfChannels) || 0;
+
+                if (frames <= 0) continue;
+                if (sr !== sampleRate || ch !== numberOfChannels) {
+                  await reportExportWarning(
+                    '[Worker Export] Audio clip sample format mismatch; skipping some audio.',
+                  );
+                  continue;
+                }
+
+                const timelineTimeS = clip.clipStartS + (Number(sample.timestamp) - clip.offsetS);
+                if (!Number.isFinite(timelineTimeS)) continue;
+
+                const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
+                const startFrameInChunkGlobal = Math.floor(chunkStartS * sampleRate);
+                const writeOffsetFrames = startFrameGlobal - startFrameInChunkGlobal;
+                if (writeOffsetFrames >= framesInChunk) continue;
+
+                const tmpPlanes: Float32Array[] = [];
+                for (let planeIndex = 0; planeIndex < numberOfChannels; planeIndex += 1) {
+                  const bytesNeeded = sample.allocationSize({
+                    format: 'f32-planar',
+                    planeIndex,
+                  });
+                  const plane = new Float32Array(bytesNeeded / 4);
+                  sample.copyTo(plane, { format: 'f32-planar', planeIndex });
+                  tmpPlanes.push(plane);
+                }
+
+                for (let i = 0; i < frames; i += 1) {
+                  const dstFrame = writeOffsetFrames + i;
+                  if (dstFrame < 0) continue;
+                  if (dstFrame >= framesInChunk) break;
+                  for (let c = 0; c < numberOfChannels; c += 1) {
+                    const plane = tmpPlanes[c];
+                    const v = plane ? (plane[i] ?? 0) : 0;
+                    const idx = dstFrame * numberOfChannels + c;
+                    mixedInterleaved[idx] = clampFloat32(mixedInterleaved[idx]! + v);
+                  }
+                }
+              } finally {
+                if (typeof sample.close === 'function') sample.close();
+              }
+            }
+          } catch (err) {
+            console.warn('[Worker Export] Failed to decode audio clip chunk', err);
+            await reportExportWarning('[Worker Export] Failed to decode audio clip');
+          }
+        }
+
+        const planar = new Float32Array(framesInChunk * numberOfChannels);
+        for (let i = 0; i < framesInChunk; i += 1) {
+          planar[i] = mixedInterleaved[i * 2] ?? 0;
+          planar[i + framesInChunk] = mixedInterleaved[i * 2 + 1] ?? 0;
+        }
+
+        const audioSample = new AudioSample({
+          data: planar,
+          format: 'f32-planar',
+          numberOfChannels,
+          sampleRate,
+          timestamp: chunkStartS,
+        });
+
+        try {
+          await (audioSource as any).add(audioSample);
+        } finally {
+          if (typeof audioSample.close === 'function') audioSample.close();
+        }
+      }
+    } finally {
+      for (const clip of prepared) {
+        try {
+          if (typeof (clip.sink as any).close === 'function') (clip.sink as any).close();
+          if (typeof (clip.sink as any).dispose === 'function') (clip.sink as any).dispose();
+        } catch {
+          // ignore
+        }
+        try {
+          if ('dispose' in clip.input && typeof (clip.input as any).dispose === 'function')
+            (clip.input as any).dispose();
+          else if ('close' in clip.input && typeof (clip.input as any).close === 'function')
+            (clip.input as any).close();
+        } catch {
+          // ignore
+        }
+      }
     }
-
-    const planar = new Float32Array(framesInChunk * 2);
-    planar.set(plane0, 0);
-    planar.set(plane1, framesInChunk);
-
-    const timestamp = chunkIndex * chunkDurationS;
-    samples.push({ data: planar, timestamp });
   }
 
   return {
     audioSource,
-    samples,
+    writeMixedToSource,
     numberOfChannels,
     sampleRate,
   };

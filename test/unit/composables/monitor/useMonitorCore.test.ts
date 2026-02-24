@@ -37,6 +37,12 @@ vi.mock('~/utils/video-editor/AudioEngine', () => {
   return { AudioEngine: AudioEngineMock };
 });
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (_key: string, fallback?: string) => fallback ?? _key,
+  }),
+}));
+
 function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTimelineClip {
   return {
     kind: 'clip',
@@ -54,7 +60,6 @@ describe('useMonitorCore', () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     audioEngineInstances.length = 0;
-    vi.stubGlobal('useI18n', () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }));
 
     if (!('ResizeObserver' in globalThis)) {
       class ResizeObserverMock {
@@ -130,7 +135,7 @@ describe('useMonitorCore', () => {
 
     const wrapper = mount(TestComp);
 
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(500);
     await nextTick();
 
     expect(timelineStore.duration).toBe(5_000_000);

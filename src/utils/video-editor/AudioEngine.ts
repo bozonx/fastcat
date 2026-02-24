@@ -261,7 +261,15 @@ export class AudioEngine {
   seek(timeUs: number) {
     if (this.isPlaying) {
       this.stopAllNodes();
-      this.play(timeUs);
+      if (!this.ctx) return;
+
+      const timeS = timeUs / 1_000_000;
+      this.baseTimeS = timeS;
+      this.playbackContextTimeS = this.ctx.currentTime;
+
+      for (const clip of this.currentClips) {
+        void this.scheduleClip(clip, timeS);
+      }
     }
   }
 
@@ -339,13 +347,29 @@ export class AudioEngine {
     const remainingInClipS = Math.max(0, clipDurationS - localOffsetInClipS);
     const durationToPlayS = Math.min(remainingInClipS, remainingPlayableS);
 
-    if (!Number.isFinite(bufferOffsetS) || bufferOffsetS < 0 || bufferOffsetS >= buffer.duration) {
+    let safeBufferOffsetS = bufferOffsetS;
+    let safeDurationToPlayS = durationToPlayS;
+
+    if (!Number.isFinite(safeBufferOffsetS) || safeBufferOffsetS < 0) {
       console.warn(
-        `[AudioEngine] Invalid bufferOffsetS: ${bufferOffsetS} (buffer.duration: ${buffer.duration}) for clip ${clip.id}`,
+        `[AudioEngine] Invalid bufferOffsetS: ${safeBufferOffsetS} (buffer.duration: ${buffer.duration}) for clip ${clip.id}`,
       );
       return;
     }
-    if (!Number.isFinite(durationToPlayS) || durationToPlayS <= 0) {
+
+    if (safeBufferOffsetS >= buffer.duration) {
+      const epsilon = 1 / Math.max(1, Math.round(Number((buffer as any).sampleRate) || 48000));
+      safeBufferOffsetS = Math.max(0, buffer.duration - epsilon);
+    }
+
+    const epsilon = 1 / Math.max(1, Math.round(Number((buffer as any).sampleRate) || 48000));
+    const remainingInBufferS = Math.max(0, buffer.duration - safeBufferOffsetS);
+    safeDurationToPlayS = Math.min(
+      Math.max(safeDurationToPlayS, epsilon),
+      Math.max(remainingInBufferS, epsilon),
+    );
+
+    if (!Number.isFinite(safeDurationToPlayS) || safeDurationToPlayS <= 0) {
       console.warn(`[AudioEngine] Invalid durationToPlayS: ${durationToPlayS} for clip ${clip.id}`);
       return;
     }
@@ -365,7 +389,7 @@ export class AudioEngine {
     sourceNode.buffer = buffer;
     sourceNode.connect(this.masterGain);
 
-    sourceNode.start(playStartS, bufferOffsetS, durationToPlayS);
+    sourceNode.start(playStartS, safeBufferOffsetS, safeDurationToPlayS);
 
     // Keep track to stop if needed
     // Using a composite key since a clip might be split or repeated (id should be unique though)

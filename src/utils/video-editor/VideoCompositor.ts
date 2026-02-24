@@ -74,6 +74,7 @@ export class VideoCompositor {
   private nextClipStartIndex = 0;
   private stageSortDirty = true;
   private activeSortDirty = true;
+  private contextLost = false;
 
   async init(
     width: number,
@@ -93,6 +94,7 @@ export class VideoCompositor {
 
     this.width = width;
     this.height = height;
+    this.contextLost = false;
 
     if (typeof window === 'undefined') {
       DOMAdapter.set(WebWorkerAdapter);
@@ -110,6 +112,11 @@ export class VideoCompositor {
       this.canvas.height = height;
     }
 
+    if (this.canvas && 'addEventListener' in (this.canvas as any)) {
+      (this.canvas as any).addEventListener('webglcontextlost', this.onContextLost, false);
+      (this.canvas as any).addEventListener('webglcontextrestored', this.onContextRestored, false);
+    }
+
     await this.app.init({
       width,
       height,
@@ -123,9 +130,22 @@ export class VideoCompositor {
     this.app.ticker.stop();
   }
 
+  private onContextLost = (event: Event) => {
+    event.preventDefault();
+    console.warn('[VideoCompositor] WebGL context lost!');
+    this.contextLost = true;
+  };
+
+  private onContextRestored = () => {
+    console.warn('[VideoCompositor] WebGL context restored!');
+    this.contextLost = false;
+    this.stageSortDirty = true;
+  };
+
   async loadTimeline(
     timelineClips: any[],
     getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>,
+    checkCancel?: () => boolean,
   ): Promise<number> {
     if (!this.app) throw new Error('VideoCompositor not initialized');
 
@@ -136,6 +156,17 @@ export class VideoCompositor {
     let sequentialTimeUs = 0; // For fallback if startUs is missing
 
     for (const [index, clipData] of timelineClips.entries()) {
+      if (checkCancel?.()) {
+        // Очищаем частично загруженные ресурсы
+        for (const clip of nextClips) {
+          if (!this.clipById.has(clip.itemId)) {
+            this.destroyClip(clip);
+          }
+        }
+        const abortErr = new Error('Export was cancelled during timeline load');
+        (abortErr as any).name = 'AbortError';
+        throw abortErr;
+      }
       if (clipData.kind !== 'clip') continue;
 
       const itemId =
@@ -417,6 +448,10 @@ export class VideoCompositor {
   async renderFrame(timeUs: number): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas) return null;
 
+    if (this.contextLost) {
+      return null;
+    }
+
     if (timeUs === this.lastRenderedTimeUs && !this.stageSortDirty && !this.activeSortDirty) {
       return this.canvas;
     }
@@ -557,8 +592,6 @@ export class VideoCompositor {
         // Layout on stage
         this.applySpriteLayout(frameW, frameH, clip);
 
-        // Close the VideoSample immediately, but keep the VideoFrame alive until after render.
-        if ('close' in sample) (sample as any).close();
         clip.lastVideoFrame = frame;
         return;
       }
@@ -569,7 +602,6 @@ export class VideoCompositor {
 
     // Fallback: draw into 2D canvas and upload.
     await this.drawSampleToCanvas(sample, clip);
-    if ('close' in sample) (sample as any).close();
   }
 
   private applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip) {
@@ -693,6 +725,19 @@ export class VideoCompositor {
         console.error('[VideoCompositor] Application destroy failed', err);
       }
       this.app = null;
+    }
+
+    if (this.canvas && 'removeEventListener' in (this.canvas as any)) {
+      try {
+        (this.canvas as any).removeEventListener('webglcontextlost', this.onContextLost, false);
+        (this.canvas as any).removeEventListener(
+          'webglcontextrestored',
+          this.onContextRestored,
+          false,
+        );
+      } catch {
+        // ignore
+      }
     }
     this.canvas = null;
   }

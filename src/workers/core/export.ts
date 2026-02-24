@@ -160,10 +160,14 @@ export async function runExport(
   await localCompositor.init(options.width, options.height, '#000', true);
 
   try {
-    const maxVideoDurationUs = await localCompositor.loadTimeline(timelineClips, async (path) => {
-      if (!hostClient) return null;
-      return hostClient.getFileHandleByPath(path);
-    });
+    const maxVideoDurationUs = await localCompositor.loadTimeline(
+      timelineClips,
+      async (path) => {
+        if (!hostClient) return null;
+        return hostClient.getFileHandleByPath(path);
+      },
+      checkCancel,
+    );
 
     const maxAudioDurationUs = audioClips.reduce((max, clip) => {
       const endUs =
@@ -217,7 +221,7 @@ export async function runExport(
       output.addVideoTrack(videoSource);
 
       let audioSource: any = null;
-      let audioSamples: Array<{ data: Float32Array; timestamp: number }> | null = null;
+      let writeMixedAudioToSource: (() => Promise<void>) | null = null;
       let audioSampleRate = 48000;
       let audioNumberOfChannels = 2;
       let audioPacketState: {
@@ -251,10 +255,11 @@ export async function runExport(
             durationS,
             hostClient,
             reportExportWarning,
+            checkCancel,
           );
           if (audioTrack) {
             audioSource = audioTrack.audioSource;
-            audioSamples = audioTrack.samples;
+            writeMixedAudioToSource = audioTrack.writeMixedToSource;
             audioSampleRate = audioTrack.sampleRate;
             audioNumberOfChannels = audioTrack.numberOfChannels;
             output.addAudioTrack(audioSource);
@@ -323,22 +328,8 @@ export async function runExport(
           }
         }
 
-        if (audioSource && audioSamples) {
-          const { AudioSample } = await import('mediabunny');
-          for (const sampleInfo of audioSamples) {
-            const sample = new AudioSample({
-              data: sampleInfo.data,
-              format: 'f32-planar',
-              numberOfChannels: audioNumberOfChannels,
-              sampleRate: audioSampleRate,
-              timestamp: sampleInfo.timestamp,
-            });
-            try {
-              await audioSource.add(sample);
-            } finally {
-              if (typeof sample.close === 'function') sample.close();
-            }
-          }
+        if (audioSource && writeMixedAudioToSource) {
+          await writeMixedAudioToSource();
         }
 
         for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
