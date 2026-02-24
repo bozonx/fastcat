@@ -181,6 +181,7 @@ export async function runExport(
 
     async function runExportWithHardwareAcceleration(
       preference: 'prefer-hardware' | 'prefer-software',
+      fallbackCodecString = true,
     ) {
       if (hostClient) {
         try {
@@ -198,8 +199,12 @@ export async function runExport(
       });
       const output = new Output({ target, format });
 
+      const fullCodecString =
+        fallbackCodecString && options.videoCodec ? options.videoCodec : undefined;
+
       const videoSource = new CanvasSource(localCompositor.canvas as any, {
         codec: getBunnyVideoCodec(options.videoCodec),
+        fullCodecString,
         bitrate: options.bitrate,
         hardwareAcceleration: preference,
       });
@@ -391,13 +396,21 @@ export async function runExport(
     }
 
     try {
-      await runExportWithHardwareAcceleration('prefer-hardware');
+      await runExportWithHardwareAcceleration('prefer-hardware', true);
     } catch (e) {
       console.warn(
-        '[Worker Export] Hardware acceleration export failed, retrying with software',
+        '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile',
         e,
       );
-      await runExportWithHardwareAcceleration('prefer-software');
+      try {
+        await runExportWithHardwareAcceleration('prefer-hardware', false);
+      } catch (e2) {
+        console.warn(
+          '[Worker Export] Hardware acceleration export failed completely, retrying with software',
+          e2,
+        );
+        await runExportWithHardwareAcceleration('prefer-software', false);
+      }
     }
   } finally {
     localCompositor.destroy();
