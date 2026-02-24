@@ -228,21 +228,23 @@ async function buildMixedAudioTrack(options: any, audioClips: any[], durationS: 
   });
 
   const samples: Array<{ data: Float32Array; timestamp: number }> = [];
-  const maxChunkIndex = Math.max(...chunks.keys());
-  for (let chunkIndex = 0; chunkIndex <= maxChunkIndex; chunkIndex += 1) {
-    const chunk = chunks.get(chunkIndex);
-    if (!chunk) continue;
+  const totalFrames = Math.ceil(durationS * sampleRate);
+  const totalChunks = Math.max(1, Math.ceil(totalFrames / chunkFrames));
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+    const chunk = chunks.get(chunkIndex) ?? new Float32Array(chunkFrames * numberOfChannels);
+    const framesInChunk = Math.min(chunkFrames, totalFrames - chunkIndex * chunkFrames);
+    if (framesInChunk <= 0) continue;
 
-    const plane0 = new Float32Array(chunkFrames);
-    const plane1 = new Float32Array(chunkFrames);
-    for (let i = 0; i < chunkFrames; i += 1) {
+    const plane0 = new Float32Array(framesInChunk);
+    const plane1 = new Float32Array(framesInChunk);
+    for (let i = 0; i < framesInChunk; i += 1) {
       plane0[i] = chunk[i * 2] ?? 0;
       plane1[i] = chunk[i * 2 + 1] ?? 0;
     }
 
-    const planar = new Float32Array(chunkFrames * 2);
+    const planar = new Float32Array(framesInChunk * 2);
     planar.set(plane0, 0);
-    planar.set(plane1, chunkFrames);
+    planar.set(plane1, framesInChunk);
 
     const timestamp = chunkIndex * chunkDurationS;
     samples.push({ data: planar, timestamp });
