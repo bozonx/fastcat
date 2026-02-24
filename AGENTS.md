@@ -1,40 +1,40 @@
-# Правила для ИИ-агентов (AI Agents Guidelines)
+# AI Agents Guidelines
 
-## 1. Стек технологий
-- **Фреймворк**: Nuxt 4 (Vue 3, Composition API, `<script setup>`)
-- **Управление состоянием**: Pinia
-- **Стилизация**: Tailwind CSS (v4)
-- **Язык**: TypeScript
-- **Тестирование**: Vitest (Unit), Playwright (E2E)
-- **Линтинг и форматирование**: ESLint, Prettier
+## Tech Stack
+- **Framework**: Nuxt 4 (Vue 3, Composition API, `<script setup>`)
+- **State Management**: Pinia
+- **Styling**: Tailwind CSS (v4)
+- **Language**: TypeScript
+- **Testing**: Vitest (Unit), Playwright (E2E)
+- **Linting & Formatting**: ESLint, Prettier
 
-## 2. Специфичная структура проекта (`src/`)
-В проекте используется кастомная директория `src/`. Помимо стандартных папок Nuxt (`components/`, `composables/`, `pages/`, `assets/`), присутствуют специфичные:
-- `src/stores/` — хранилища Pinia (состояние приложения, воркспейса и др.).
-- `src/utils/` — вспомогательные чистые функции, константы, настройки.
-- `src/workers/` — Web Workers для тяжелых вычислений (например, ядро видео-редактора).
-- `src/timeline/` — логика и компоненты, специфичные для таймлайна видеоредактора.
-- `src/locales/` — файлы локализации (i18n).
+## Specific Project Structure (`src/`)
+The project uses a custom `src/` directory. Besides the standard Nuxt folders (`components/`, `composables/`, `pages/`, `assets/`), there are specific ones:
+- `src/stores/` — Pinia stores (application state, workspace, etc.).
+- `src/utils/` — auxiliary pure functions, constants, configurations.
+- `src/workers/` — Web Workers for heavy computations (e.g., video editor core).
+- `src/timeline/` — logic and components specific to the video editor timeline.
+- `src/locales/` — localization files (i18n).
 
-## 3. Общие принципы
-- Общение с пользователем ведется на русском языке (включая планы и рассуждения).
-- Код, коммиты, JSDoc, названия переменных и функций — на английском (кроме i18n).
-- Пиши минималистичный, читаемый код. Следуй принципам DRY, SOLID.
-- При обнаружении мелких проблем в рабочем файле (опечатки, форматирование) — исправляй их. О серьезных (уязвимости) — сообщай, но не исправляй без команды.
+## General Principles
+- Communication with the user is conducted in Russian (including plans and reasoning).
+- Code, commits, JSDoc, variable and function names must be in English (except i18n).
+- Write minimalist, readable code. Follow DRY and SOLID principles.
+- If you find minor issues in a working file (typos, formatting) — fix them. For serious ones (vulnerabilities) — report them, but do not fix without a command.
 
-##  2. Код и Архитектура
-- Предпочитай `interface` вместо `type` для объектов.
-- Функции с 3 и более аргументами должны принимать объект параметров.
-- Используй именованные экспорты (named exports) вместо экспортов по умолчанию.
-- Выбирай наиболее распространенные, проверенные решения для конкретных задач.
-- Не меняй схемы БД, не запускай миграции и не меняй API без явного запроса
+## Code and Architecture
+- Prefer `interface` over `type` for objects.
+- Functions with 3 or more arguments should accept a parameters object.
+- Use named exports instead of default exports.
+- Choose the most common, proven solutions for specific tasks.
+- Do not change DB schemas, do not run migrations, and do not change the API without an explicit request.
 
-## 3. Документация и Тесты
-- Добавляй подробные комментарии только к сложным блокам; пропускай их для очевидных строк.
-- Однострочные комментарии ставь строго над комментируемой строкой.
-- При добавлении или изменении функционала обновляй соответствующие тесты и документацию (включая `README.md`).
+## Documentation and Tests
+- Add detailed comments only to complex blocks; skip them for obvious lines.
+- Place single-line comments strictly above the commented line.
+- When adding or changing functionality, update relevant tests and documentation (including `README.md`).
 
-## 4. Зависимости
-- Используй только официальные, хорошо поддерживаемые библиотеки.
-- Опирайся на последние стабильные версии и официальную документацию.
-- Обязательно используй Context7 для генерации кода, настройки или получения документации по библиотекам/API.
+## Dependencies
+- Use only official, well-maintained libraries.
+- Rely on the latest stable versions and official documentation.
+- Always use Context7 for code generation, setup, or retrieving documentation for libraries/APIs.
