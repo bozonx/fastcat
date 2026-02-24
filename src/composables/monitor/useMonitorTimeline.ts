@@ -195,8 +195,13 @@ export function useMonitorTimeline() {
     let hash = mixHash(2166136261, videoItems.value.length);
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
-      if (item.kind === 'clip' && item.clipType === 'media' && item.source?.path) {
-        hash = mixHash(hash, hashString(item.source.path));
+      if (item.kind === 'clip') {
+        hash = mixHash(hash, hashString(item.clipType));
+        if (item.clipType === 'media' && item.source?.path) {
+          hash = mixHash(hash, hashString(item.source.path));
+        } else if (item.clipType === 'background') {
+          hash = mixHash(hash, hashString((item as any).backgroundColor ?? '#000000'));
+        }
       }
     }
     return hash;

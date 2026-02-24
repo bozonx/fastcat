@@ -105,10 +105,7 @@ export function addVirtualClipToTrack(
       ? {
           ...base,
           clipType: 'background',
-          backgroundColor:
-            typeof cmd.backgroundColor === 'string' && cmd.backgroundColor.trim().length > 0
-              ? cmd.backgroundColor
-              : '#000000',
+          backgroundColor: cmd.backgroundColor ?? '#1a56db',
         }
       : {
           ...base,

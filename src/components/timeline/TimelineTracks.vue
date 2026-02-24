@@ -88,7 +88,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   const mainGroup: any[] = [];
 
   if (item.kind === 'clip') {
-    const canExtract = track.kind === 'video' && !item.audioFromVideoDisabled;
+    const canExtract = track.kind === 'video' && item.clipType === 'media' && !item.audioFromVideoDisabled;
     if (canExtract) {
       mainGroup.push({
         label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
@@ -269,10 +269,14 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
           :class="[
             item.kind === 'gap'
-              ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70 cursor-default'
-              : track.kind === 'audio'
-                ? 'bg-teal-600 border border-teal-400 hover:bg-teal-500'
-                : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500',
+              ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70 cursor-default pointer-events-none'
+              : item.kind === 'clip' && (item as any).clipType === 'background'
+                ? 'border border-purple-400 hover:bg-purple-700/60 bg-purple-800/50'
+                : item.kind === 'clip' && (item as any).clipType === 'adjustment'
+                  ? 'border border-amber-400 hover:bg-amber-700/60 bg-amber-800/50'
+                  : track.kind === 'audio'
+                    ? 'bg-teal-600 border border-teal-400 hover:bg-teal-500'
+                    : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500',
             timelineStore.selectedItemIds.includes(item.id)
               ? 'ring-2 ring-white z-20 shadow-lg'
               : '',
