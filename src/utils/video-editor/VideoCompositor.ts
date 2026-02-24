@@ -518,6 +518,14 @@ export class VideoCompositor {
         } catch (error) {
           console.error('[VideoCompositor] Failed to update clip texture', error);
           clip.sprite.visible = false;
+        } finally {
+          if (typeof sample.close === 'function') {
+            try {
+              sample.close();
+            } catch (err) {
+              console.error('[VideoCompositor] Failed to close VideoSample', err);
+            }
+          }
         }
       }
     }
