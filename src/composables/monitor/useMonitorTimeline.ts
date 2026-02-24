@@ -227,6 +227,13 @@ export function useMonitorTimeline() {
           hash = mixHash(hash, hashString(JSON.stringify(clipEffects)));
         }
 
+        if (item.clipType === 'background') {
+          const bgColor = (item as any).backgroundColor;
+          if (bgColor) {
+            hash = mixHash(hash, hashString(bgColor));
+          }
+        }
+
         const track = trackById.get((item as any).trackId);
         if (Array.isArray((track as any)?.effects)) {
           hash = mixHash(hash, hashString(JSON.stringify((track as any).effects)));

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import ClipTransitionPanel from './ClipTransitionPanel.vue';
 import { ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const { selectedTransition } = storeToRefs(timelineStore);
 
 const props = defineProps<{
   tracks: TimelineTrack[];
@@ -68,6 +70,16 @@ function handleTransitionUpdate(payload: {
     });
   }
   openTransitionPanel.value = null;
+}
+
+function selectTransition(e: MouseEvent, input: { trackId: string; itemId: string; edge: 'in' | 'out' }) {
+  e.stopPropagation();
+  timelineStore.selectTransition(input);
+}
+
+function transitionUsToPx(durationUs: number | undefined): number {
+  const safeUs = typeof durationUs === 'number' && Number.isFinite(durationUs) ? durationUs : 0;
+  return Math.max(8, timeUsToPx(Math.max(0, safeUs), timelineStore.timelineZoom));
 }
 
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
@@ -276,8 +288,45 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             item.kind === 'clip' &&
             emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
           "
-          @click.stop="emit('selectItem', $event, item.id)"
+          @click.stop="item.kind === 'clip' && emit('selectItem', $event, item.id)"
         >
+          <!-- Transition blocks (selectable) -->
+          <button
+            v-if="item.kind === 'clip' && (item as any).transitionIn"
+            type="button"
+            class="absolute left-0 top-0 bottom-0 z-20 flex items-center justify-start px-1 text-[10px] text-white/90 bg-black/25 border-r border-white/20"
+            :class="
+              selectedTransition?.itemId === item.id &&
+              selectedTransition?.trackId === item.trackId &&
+              selectedTransition?.edge === 'in'
+                ? 'ring-2 ring-amber-300'
+                : ''
+            "
+            :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs)}px` }"
+            :title="`Transition In: ${(item as any).transitionIn?.type}`"
+            @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
+          >
+            <span class="truncate">{{ (item as any).transitionIn?.type }}</span>
+          </button>
+
+          <button
+            v-if="item.kind === 'clip' && (item as any).transitionOut"
+            type="button"
+            class="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end px-1 text-[10px] text-white/90 bg-black/25 border-l border-white/20"
+            :class="
+              selectedTransition?.itemId === item.id &&
+              selectedTransition?.trackId === item.trackId &&
+              selectedTransition?.edge === 'out'
+                ? 'ring-2 ring-amber-300'
+                : ''
+            "
+            :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs)}px` }"
+            :title="`Transition Out: ${(item as any).transitionOut?.type}`"
+            @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
+          >
+            <span class="truncate">{{ (item as any).transitionOut?.type }}</span>
+          </button>
+
           <div
             v-if="item.kind === 'clip'"
             class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/50"
@@ -305,22 +354,6 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
               })
             "
           />
-          <!-- TransitionIn marker -->
-          <div
-            v-if="item.kind === 'clip' && (item as any).transitionIn"
-            class="absolute left-0 top-0 bottom-0 w-2 flex items-center justify-start z-10 pointer-events-none opacity-70"
-            :title="`Transition In: ${(item as any).transitionIn?.type}`"
-          >
-            <span class="w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-white/70" />
-          </div>
-          <!-- TransitionOut marker -->
-          <div
-            v-if="item.kind === 'clip' && (item as any).transitionOut"
-            class="absolute right-0 top-0 bottom-0 w-2 flex items-center justify-end z-10 pointer-events-none opacity-70"
-            :title="`Transition Out: ${(item as any).transitionOut?.type}`"
-          >
-            <span class="w-0 h-0 border-y-[5px] border-y-transparent border-l-[6px] border-l-white/70" />
-          </div>
         </div>
       </UContextMenu>
     </div>

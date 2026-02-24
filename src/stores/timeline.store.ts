@@ -37,6 +37,11 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
+  const selectedTransition = ref<{
+    trackId: string;
+    itemId: string;
+    edge: 'in' | 'out';
+  } | null>(null);
 
   let persistTimelineTimeout: number | null = null;
   let loadTimelineRequestId = 0;
@@ -47,6 +52,17 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function clearSelection() {
     selectedItemIds.value = [];
+    selectedTransition.value = null;
+  }
+
+  function clearSelectedTransition() {
+    selectedTransition.value = null;
+  }
+
+  function selectTransition(input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) {
+    selectedTrackId.value = null;
+    selectedItemIds.value = [];
+    selectedTransition.value = input;
   }
 
   function setClipFreezeFrameFromPlayhead(input: { trackId: string; itemId: string }) {
@@ -80,9 +96,14 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function selectTrack(trackId: string | null) {
     selectedTrackId.value = trackId;
+    if (trackId) {
+      selectedTransition.value = null;
+      selectedItemIds.value = [];
+    }
   }
 
   function toggleSelection(itemId: string, options?: { multi?: boolean }) {
+    selectedTransition.value = null;
     if (options?.multi) {
       if (selectedItemIds.value.includes(itemId)) {
         selectedItemIds.value = selectedItemIds.value.filter((id) => id !== itemId);
@@ -689,6 +710,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineZoom,
     selectedItemIds,
     selectedTrackId,
+    selectedTransition,
     loadTimeline,
     saveTimeline,
     requestTimelineSave,
@@ -696,8 +718,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     addClipToTimelineFromPath,
     loadTimelineMetadata,
     clearSelection,
+    clearSelectedTransition,
     toggleSelection,
     selectTrack,
+    selectTransition,
     deleteSelectedItems,
     setTimelineZoom,
     setAudioVolume,

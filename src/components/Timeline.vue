@@ -155,29 +155,36 @@ async function onClipAction(payload: {
 async function onDrop(e: DragEvent, trackId: string) {
   clearDragPreview();
   const startUs = getDropStartUs(e);
-  const data = e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain');
-  if (data) {
-    try {
-      const parsed = JSON.parse(data);
-      if (parsed.name && parsed.path) {
-        await timelineStore.addClipToTimelineFromPath({
-          trackId,
-          name: parsed.name,
-          path: parsed.path,
-          startUs: startUs ?? undefined,
-        });
+  const raw = e.dataTransfer?.getData('application/json');
+  if (!raw) return;
 
-        toast.add({
-          title: t('granVideoEditor.timeline.clipAdded', 'Clip Added'),
-          description: `${parsed.name} added to track`,
-          icon: 'i-heroicons-check-circle',
-          color: 'success',
-        });
-      }
-    } catch (err) {
-      console.error('Failed to parse dropped data', err);
-    }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return;
   }
+
+  const kind = typeof parsed?.kind === 'string' ? parsed.kind : undefined;
+  if (kind && kind !== 'file') return;
+
+  const name = typeof parsed?.name === 'string' ? parsed.name : undefined;
+  const path = typeof parsed?.path === 'string' ? parsed.path : undefined;
+  if (!name || !path) return;
+
+  await timelineStore.addClipToTimelineFromPath({
+    trackId,
+    name,
+    path,
+    startUs: startUs ?? undefined,
+  });
+
+  toast.add({
+    title: t('granVideoEditor.timeline.clipAdded', 'Clip Added'),
+    description: `${name} added to track`,
+    icon: 'i-heroicons-check-circle',
+    color: 'success',
+  });
 }
 
 function formatTime(seconds: number): string {

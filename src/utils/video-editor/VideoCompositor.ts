@@ -823,7 +823,7 @@ export class VideoCompositor {
 
     if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
       const dur = clip.transitionOut.durationUs;
-      const clipDurUs = clip.sourceDurationUs > 0 ? clip.sourceDurationUs : clip.durationUs;
+      const clipDurUs = clip.durationUs;
       const outStartUs = clipDurUs - dur;
       if (localTimeUs >= outStartUs) {
         const manifest = getTransitionManifest(clip.transitionOut.type);

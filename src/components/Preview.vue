@@ -9,6 +9,7 @@ import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import type { TimelineTrack } from '~/timeline/types';
+import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 
 defineOptions({
   name: 'PreviewPanel',
@@ -43,6 +44,23 @@ const selectedClip = computed<TimelineClipItem | null>(() => {
     }
   }
   return null;
+});
+
+const selectedTransition = computed(() => timelineStore.selectedTransition);
+
+const selectedTransitionClip = computed<TimelineClipItem | null>(() => {
+  const sel = selectedTransition.value;
+  if (!sel) return null;
+  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === sel.trackId);
+  const item = track?.items.find((it) => it.id === sel.itemId);
+  return item && item.kind === 'clip' ? (item as TimelineClipItem) : null;
+});
+
+const selectedTransitionValue = computed<import('~/timeline/types').ClipTransition | undefined>(() => {
+  const sel = selectedTransition.value;
+  const clip = selectedTransitionClip.value as any;
+  if (!sel || !clip) return undefined;
+  return sel.edge === 'in' ? clip.transitionIn : clip.transitionOut;
 });
 
 const selectedTrack = computed<TimelineTrack | null>(() => {
@@ -83,7 +101,8 @@ function handleUpdateTrackEffects(effects: any[]) {
   timelineStore.updateTrackProperties(selectedTrack.value.id, { effects: effects as any });
 }
 
-const displayMode = computed<'clip' | 'track' | 'file' | 'empty'>(() => {
+const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>(() => {
+  if (selectedTransitionClip.value && selectedTransitionValue.value) return 'transition';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
   if (uiStore.selectedFsEntry && uiStore.selectedFsEntry.kind === 'file') return 'file';
@@ -240,6 +259,19 @@ function handleRenameClip(newName: string) {
 }
 
 const isUnknown = computed(() => mediaType.value === 'unknown');
+
+function handleTransitionUpdate(payload: {
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  transition: import('~/timeline/types').ClipTransition | null;
+}) {
+  if (payload.edge === 'in') {
+    timelineStore.updateClipTransition(payload.trackId, payload.itemId, { transitionIn: payload.transition });
+  } else {
+    timelineStore.updateClipTransition(payload.trackId, payload.itemId, { transitionOut: payload.transition });
+  }
+}
 </script>
 
 <template>
@@ -254,6 +286,12 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
         </span>
         <span v-if="displayMode === 'clip'" class="ml-2 text-xs text-gray-500 font-mono truncate">
           {{ selectedClip?.name }}
+        </span>
+        <span
+          v-else-if="displayMode === 'transition'"
+          class="ml-2 text-xs text-gray-500 font-mono truncate"
+        >
+          {{ selectedTransitionClip?.name }}
         </span>
         <span
           v-else-if="displayMode === 'file' && uiStore.selectedFsEntry"
@@ -276,6 +314,15 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
           color="red"
           icon="i-heroicons-trash"
           @click="handleDeleteClip"
+        />
+      </div>
+      <div v-else-if="displayMode === 'transition'" class="flex gap-1 shrink-0 ml-2">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-x-mark"
+          @click="timelineStore.clearSelectedTransition()"
         />
       </div>
       <div v-else-if="displayMode === 'file' && hasProxy" class="flex gap-1 shrink-0 ml-2">
@@ -308,6 +355,32 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
             <p class="text-sm">
               {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
             </p>
+          </div>
+
+          <!-- Transition Properties -->
+          <div
+            v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
+            class="w-full flex flex-col gap-4 text-white"
+          >
+            <div class="flex items-center gap-3">
+              <UIcon name="i-heroicons-arrows-right-left" class="w-10 h-10 shrink-0 text-amber-300" />
+              <div class="min-w-0">
+                <h3 class="font-medium text-lg truncate">
+                  {{ selectedTransition.edge === 'in' ? 'Transition In' : 'Transition Out' }}
+                </h3>
+                <span class="text-xs text-gray-400 uppercase truncate">{{ selectedTransitionClip.name }}</span>
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <ClipTransitionPanel
+                :edge="selectedTransition.edge"
+                :track-id="selectedTransition.trackId"
+                :item-id="selectedTransition.itemId"
+                :transition="selectedTransitionValue"
+                @update="handleTransitionUpdate"
+              />
+            </div>
           </div>
 
           <!-- Clip Properties -->
