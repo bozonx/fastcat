@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { Splitpanes, Pane } from 'splitpanes';
+import 'splitpanes/dist/splitpanes.css';
+import { useLocalStorage } from '@vueuse/core';
 import TimelineExportModal from '~/components/TimelineExportModal.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -21,6 +24,9 @@ const isEditorSettingsOpen = ref(false);
 useHead({
   title: t('navigation.granVideoEditor'),
 });
+
+const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split', [60, 40]);
+const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split', [25, 50, 25]);
 
 const newProjectName = ref('');
 const isStartingUp = ref(true);
@@ -312,19 +318,28 @@ function leaveProject() {
         </div>
       </div>
 
-      <!-- Top half: File Manager + Monitor + Preview -->
-      <div
-        class="grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,4fr)_minmax(0,3fr)] flex-1 min-h-0 border-b border-ui-border"
-      >
-        <FileManager />
-        <Monitor />
-        <Preview />
-      </div>
+      <!-- Editor Layout using Splitpanes -->
+      <Splitpanes class="flex-1 min-h-0 default-theme" horizontal @resize="mainSplitSizes = $event.map((p: any) => p.size)">
+        <!-- Top half: File Manager + Monitor + Preview -->
+        <Pane :size="mainSplitSizes[0]" min-size="20">
+          <Splitpanes class="default-theme" @resize="topSplitSizes = $event.map((p: any) => p.size)">
+            <Pane :size="topSplitSizes[0]" min-size="15">
+              <FileManager class="h-full border-r border-ui-border" />
+            </Pane>
+            <Pane :size="topSplitSizes[1]" min-size="20">
+              <Monitor class="h-full border-r border-ui-border" />
+            </Pane>
+            <Pane :size="topSplitSizes[2]" min-size="15">
+              <Preview class="h-full" />
+            </Pane>
+          </Splitpanes>
+        </Pane>
 
-      <!-- Bottom half: Timeline -->
-      <div class="flex-1 min-h-0">
-        <Timeline />
-      </div>
+        <!-- Bottom half: Timeline -->
+        <Pane :size="mainSplitSizes[1]" min-size="20">
+          <Timeline class="h-full" />
+        </Pane>
+      </Splitpanes>
 
       <TimelineExportModal v-model:open="isExportModalOpen" @exported="() => {}" />
 

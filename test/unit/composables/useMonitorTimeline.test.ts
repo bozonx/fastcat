@@ -343,4 +343,49 @@ describe('useMonitorTimeline', () => {
     expect(workerAudioClips.value.length).toBe(1);
     expect(workerAudioClips.value[0].id).toBe('aclip2');
   });
+
+  it('applies video track solo/mute to __audio clips extracted from video', () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          audioMuted: false,
+          audioSolo: false,
+          items: [
+            {
+              id: 'vclip1',
+              kind: 'clip',
+              source: { path: 'video1.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+        {
+          id: 'v2',
+          kind: 'video',
+          videoHidden: false,
+          audioMuted: false,
+          audioSolo: true,
+          items: [
+            {
+              id: 'vclip2',
+              kind: 'clip',
+              source: { path: 'video2.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { workerAudioClips } = useMonitorTimeline();
+    const ids = workerAudioClips.value.map((c: any) => c.id);
+    expect(ids).toContain('vclip2__audio');
+    expect(ids).not.toContain('vclip1__audio');
+  });
 });

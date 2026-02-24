@@ -77,10 +77,17 @@ export function useMonitorTimeline() {
     const clips: WorkerTimelineClip[] = [];
 
     const allAudioTracks = audioTracks.value;
-    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const allVideoTracks = videoTracks.value;
+
+    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
+
     const effectiveAudioTracks = hasSolo
       ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
       : allAudioTracks.filter((t) => !t.audioMuted);
+
+    const effectiveVideoTracksForAudio = hasSolo
+      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
+      : allVideoTracks.filter((t) => !t.audioMuted);
 
     for (const item of effectiveAudioTracks.flatMap((t) => t.items)) {
       if (item.kind !== 'clip') continue;
@@ -102,25 +109,29 @@ export function useMonitorTimeline() {
       });
     }
 
-    for (const item of videoItems.value) {
-      if (item.kind !== 'clip') continue;
-      if (item.audioFromVideoDisabled) continue;
-      clips.push({
-        kind: 'clip',
-        id: `${item.id}__audio`,
-        layer: 0,
-        source: {
-          path: item.source.path,
-        },
-        timelineRange: {
-          startUs: item.timelineRange.startUs,
-          durationUs: item.timelineRange.durationUs,
-        },
-        sourceRange: {
-          startUs: item.sourceRange.startUs,
-          durationUs: item.sourceRange.durationUs,
-        },
-      });
+    const videoTrackIdsForAudio = new Set(effectiveVideoTracksForAudio.map((t) => t.id));
+    for (const track of allVideoTracks) {
+      if (!videoTrackIdsForAudio.has(track.id)) continue;
+      for (const item of track.items) {
+        if (item.kind !== 'clip') continue;
+        if (item.audioFromVideoDisabled) continue;
+        clips.push({
+          kind: 'clip',
+          id: `${item.id}__audio`,
+          layer: 0,
+          source: {
+            path: item.source.path,
+          },
+          timelineRange: {
+            startUs: item.timelineRange.startUs,
+            durationUs: item.timelineRange.durationUs,
+          },
+          sourceRange: {
+            startUs: item.sourceRange.startUs,
+            durationUs: item.sourceRange.durationUs,
+          },
+        });
+      }
     }
 
     return clips;
@@ -197,21 +208,33 @@ export function useMonitorTimeline() {
   });
 
   const audioClipLayoutSignature = computed(() => {
-    const enabledVideoAudioItems = videoItems.value.filter(
-      (it) => it.kind === 'clip' && !it.audioFromVideoDisabled,
-    );
     const allAudioTracks = audioTracks.value;
-    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const allVideoTracks = videoTracks.value;
+
+    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
+
     const effectiveAudioTracks = hasSolo
       ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
       : allAudioTracks.filter((t) => !t.audioMuted);
+
+    const effectiveVideoTracksForAudio = hasSolo
+      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
+      : allVideoTracks.filter((t) => !t.audioMuted);
+
     const effectiveAudioItems = effectiveAudioTracks
       .flatMap((t) => t.items)
       .filter((it: TimelineTrackItem) => it.kind === 'clip');
 
+    const enabledVideoAudioItems = effectiveVideoTracksForAudio
+      .flatMap((t) => t.items)
+      .filter(
+        (it: TimelineTrackItem): it is Extract<TimelineTrackItem, { kind: 'clip' }> =>
+          it.kind === 'clip' && !it.audioFromVideoDisabled,
+      );
+
     let hash = mixHash(2166136261, effectiveAudioItems.length + enabledVideoAudioItems.length);
     hash = mixHash(hash, hasSolo ? 1 : 0);
-    for (const track of allAudioTracks) {
+    for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
       hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
@@ -237,21 +260,33 @@ export function useMonitorTimeline() {
   });
 
   const audioClipSourceSignature = computed(() => {
-    const enabledVideoAudioItems = videoItems.value.filter(
-      (it) => it.kind === 'clip' && !it.audioFromVideoDisabled,
-    );
     const allAudioTracks = audioTracks.value;
-    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const allVideoTracks = videoTracks.value;
+
+    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
+
     const effectiveAudioTracks = hasSolo
       ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
       : allAudioTracks.filter((t) => !t.audioMuted);
+
+    const effectiveVideoTracksForAudio = hasSolo
+      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
+      : allVideoTracks.filter((t) => !t.audioMuted);
+
     const effectiveAudioItems = effectiveAudioTracks
       .flatMap((t) => t.items)
       .filter((it: TimelineTrackItem) => it.kind === 'clip');
 
+    const enabledVideoAudioItems = effectiveVideoTracksForAudio
+      .flatMap((t) => t.items)
+      .filter(
+        (it: TimelineTrackItem): it is Extract<TimelineTrackItem, { kind: 'clip' }> =>
+          it.kind === 'clip' && !it.audioFromVideoDisabled,
+      );
+
     let hash = mixHash(2166136261, effectiveAudioItems.length + enabledVideoAudioItems.length);
     hash = mixHash(hash, hasSolo ? 1 : 0);
-    for (const track of allAudioTracks) {
+    for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
       hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);

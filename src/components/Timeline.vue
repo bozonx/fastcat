@@ -12,6 +12,9 @@ import {
   zoomToPxPerSecond,
 } from '~/composables/timeline/useTimelineInteraction';
 import { useDraggedFile } from '~/composables/useDraggedFile';
+import { Splitpanes, Pane } from 'splitpanes';
+import 'splitpanes/dist/splitpanes.css';
+import { useLocalStorage } from '@vueuse/core';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -21,6 +24,8 @@ const toast = useToast();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const { draggedFile } = useDraggedFile();
+
+const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split', [20, 80]);
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -165,51 +170,55 @@ function formatTime(seconds: number): string {
     <TimelineToolbar />
 
     <!-- Timeline area -->
-    <div class="flex flex-1 min-h-0 overflow-hidden">
+    <Splitpanes class="flex flex-1 min-h-0 overflow-hidden default-theme" @resize="timelineSplitSizes = $event.map((p: any) => p.size)">
       <!-- Track labels -->
-      <TimelineTrackLabels :tracks="tracks" />
+      <Pane :size="timelineSplitSizes[0]" min-size="10" max-size="50">
+        <TimelineTrackLabels :tracks="tracks" class="h-full border-r border-ui-border" />
+      </Pane>
 
       <!-- Scrollable track area -->
-      <div ref="scrollEl" class="flex-1 overflow-x-auto overflow-y-hidden relative">
-        <div
-          class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
-          @mousedown="onTimeRulerMouseDown"
-        >
-          <span
-            v-for="n in 10"
-            :key="n"
-            :style="{ marginLeft: n === 1 ? '0px' : `${Math.max(0, pxPerSecond * 10 - 64)}px` }"
-          >
-            {{ formatTime((n - 1) * 10) }}
-          </span>
-        </div>
-
-        <!-- Tracks -->
-        <TimelineTracks
-          :tracks="tracks"
-          :drag-preview="dragPreview"
-          @drop="onDrop"
-          @dragover="onTrackDragOver"
-          @dragleave="onTrackDragLeave"
-          @start-move-item="startMoveItem"
-          @select-item="selectItem"
-          @start-trim-item="startTrimItem"
-          @clip-action="onClipAction"
-        />
-
-        <!-- Playhead -->
-        <div
-          class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
-          :style="{
-            left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
-          }"
-        >
+      <Pane :size="timelineSplitSizes[1]" min-size="50">
+        <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
           <div
-            class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"
-            @mousedown="startPlayheadDrag"
+            class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
+            @mousedown="onTimeRulerMouseDown"
+          >
+            <span
+              v-for="n in 10"
+              :key="n"
+              :style="{ marginLeft: n === 1 ? '0px' : `${Math.max(0, pxPerSecond * 10 - 64)}px` }"
+            >
+              {{ formatTime((n - 1) * 10) }}
+            </span>
+          </div>
+
+          <!-- Tracks -->
+          <TimelineTracks
+            :tracks="tracks"
+            :drag-preview="dragPreview"
+            @drop="onDrop"
+            @dragover="onTrackDragOver"
+            @dragleave="onTrackDragLeave"
+            @start-move-item="startMoveItem"
+            @select-item="selectItem"
+            @start-trim-item="startTrimItem"
+            @clip-action="onClipAction"
           />
+
+          <!-- Playhead -->
+          <div
+            class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
+            :style="{
+              left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
+            }"
+          >
+            <div
+              class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"
+              @mousedown="startPlayheadDrag"
+            />
+          </div>
         </div>
-      </div>
-    </div>
+      </Pane>
+    </Splitpanes>
   </div>
 </template>

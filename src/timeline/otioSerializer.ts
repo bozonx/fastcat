@@ -373,8 +373,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           kind: t.kind,
           name: t.name,
           videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
-          audioMuted: t.kind === 'audio' ? Boolean(t.audioMuted) : undefined,
-          audioSolo: t.kind === 'audio' ? Boolean(t.audioSolo) : undefined,
+          audioMuted: Boolean(t.audioMuted),
+          audioSolo: Boolean(t.audioSolo),
           effects: Array.isArray(t.effects) ? t.effects : undefined,
         },
       },
@@ -475,8 +475,8 @@ export function parseTimelineFromOtio(
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
     const videoHidden = kind === 'video' ? Boolean(trackGranMeta?.videoHidden) : undefined;
-    const audioMuted = kind === 'audio' ? Boolean(trackGranMeta?.audioMuted) : undefined;
-    const audioSolo = kind === 'audio' ? Boolean(trackGranMeta?.audioSolo) : undefined;
+    const audioMuted = Boolean(trackGranMeta?.audioMuted);
+    const audioSolo = Boolean(trackGranMeta?.audioSolo);
     const effects = Array.isArray(trackGranMeta?.effects)
       ? (trackGranMeta.effects as any[])
       : undefined;

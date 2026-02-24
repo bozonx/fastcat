@@ -182,26 +182,30 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
               color="neutral"
               :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
               :aria-label="t('granVideoEditor.timeline.toggleTrackVisibility', 'Toggle track visibility')"
+              @pointerdown.prevent.stop
+              @mousedown.prevent.stop
               @click="toggleVideoHidden(track, $event)"
             />
 
             <UButton
-              v-if="track.kind === 'audio'"
               size="xs"
               variant="ghost"
               :color="track.audioMuted ? 'error' : 'neutral'"
               :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
               :aria-label="t('granVideoEditor.timeline.toggleTrackMute', 'Toggle track mute')"
+              @pointerdown.prevent.stop
+              @mousedown.prevent.stop
               @click="toggleAudioMuted(track, $event)"
             />
 
             <UButton
-              v-if="track.kind === 'audio'"
               size="xs"
               variant="ghost"
               :color="track.audioSolo ? 'primary' : 'neutral'"
               icon="i-heroicons-musical-note"
               :aria-label="t('granVideoEditor.timeline.toggleTrackSolo', 'Toggle track solo')"
+              @pointerdown.prevent.stop
+              @mousedown.prevent.stop
               @click="toggleAudioSolo(track, $event)"
             />
           </div>

@@ -375,9 +375,11 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       lastBuiltLayoutSignature = clipLayoutSignature.value;
 
       timelineStore.duration = normalizeTimeUs(Math.max(maxDuration, audioDuration));
-      updateStoreTime(0);
+      updateStoreTime(timelineStore.currentTime);
       timelineStore.isPlaying = false;
-      scheduleRender(0);
+
+      // Render at current time to avoid surprising playhead jumps.
+      scheduleRender(getRenderTimeForLayoutUpdate());
     } catch (e: any) {
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {

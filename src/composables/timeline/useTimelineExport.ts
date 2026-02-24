@@ -351,13 +351,19 @@ export function useTimelineExport() {
     onProgress: (progress: number) => void,
   ): Promise<void> {
     const doc = timelineStore.timelineDoc;
-    const videoTracks =
-      doc?.tracks?.filter((track) => track.kind === 'video' && !track.videoHidden) ?? [];
+    const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
+    const videoTracks = allVideoTracks.filter((track) => !track.videoHidden);
     const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
-    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+
+    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
+
     const audioTracks = hasSolo
       ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
       : allAudioTracks.filter((t) => !t.audioMuted);
+
+    const videoTracksForAudio = hasSolo
+      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
+      : allVideoTracks.filter((t) => !t.audioMuted);
 
     const videoClips = videoTracks.flatMap((track, index) => {
       const clips = toWorkerTimelineClips(track.items ?? [], {
@@ -374,7 +380,7 @@ export function useTimelineExport() {
     const audioItems = audioTracks.flatMap((t) => t.items);
     const audioClipsFromTracks = toWorkerTimelineClips(audioItems);
 
-    const audioClipsFromVideo = videoTracks.flatMap((track) =>
+    const audioClipsFromVideo = videoTracksForAudio.flatMap((track) =>
       (track.items ?? [])
         .filter(
           (item): item is Extract<typeof item, { kind: 'clip' }> =>

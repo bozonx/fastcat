@@ -86,10 +86,6 @@ export function updateTrackProperties(
     if (next.kind !== 'video') {
       next.videoHidden = undefined;
     }
-    if (next.kind !== 'audio') {
-      next.audioMuted = undefined;
-      next.audioSolo = undefined;
-    }
 
     return next;
   });

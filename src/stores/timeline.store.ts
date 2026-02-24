@@ -145,13 +145,13 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function toggleTrackAudioMuted(trackId: string) {
     const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind !== 'audio') return;
+    if (!track) return;
     updateTrackProperties(trackId, { audioMuted: !Boolean(track.audioMuted) });
   }
 
   function toggleTrackAudioSolo(trackId: string) {
     const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind !== 'audio') return;
+    if (!track) return;
     updateTrackProperties(trackId, { audioSolo: !Boolean(track.audioSolo) });
   }
 
