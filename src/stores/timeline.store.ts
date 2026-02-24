@@ -147,6 +147,65 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({ type: 'add_track', kind, name });
   }
 
+  function resolveTargetVideoTrackIdForInsert(): string {
+    const doc = timelineDoc.value;
+    if (!doc) throw new Error('Timeline not loaded');
+
+    const selected =
+      typeof selectedTrackId.value === 'string'
+        ? (doc.tracks.find((t) => t.id === selectedTrackId.value) ?? null)
+        : null;
+
+    if (selected?.kind === 'video') return selected.id;
+
+    const topVideo = doc.tracks.find((t) => t.kind === 'video') ?? null;
+    if (!topVideo) throw new Error('No video tracks');
+    return topVideo.id;
+  }
+
+  function addVirtualClipAtPlayhead(input: {
+    clipType: Extract<import('~/timeline/types').TimelineClipType, 'adjustment' | 'background'>;
+    name: string;
+    durationUs?: number;
+    backgroundColor?: string;
+  }) {
+    if (!timelineDoc.value) {
+      timelineDoc.value = projectStore.createFallbackTimelineDoc();
+    }
+
+    const trackId = resolveTargetVideoTrackIdForInsert();
+    applyTimeline({
+      type: 'add_virtual_clip_to_track',
+      trackId,
+      clipType: input.clipType,
+      name: input.name,
+      durationUs: input.durationUs,
+      backgroundColor: input.backgroundColor,
+      startUs: currentTime.value,
+    });
+  }
+
+  function addAdjustmentClipAtPlayhead(options?: { durationUs?: number; name?: string }) {
+    addVirtualClipAtPlayhead({
+      clipType: 'adjustment',
+      name: options?.name ?? 'Adjustment',
+      durationUs: options?.durationUs,
+    });
+  }
+
+  function addBackgroundClipAtPlayhead(options?: {
+    durationUs?: number;
+    name?: string;
+    backgroundColor?: string;
+  }) {
+    addVirtualClipAtPlayhead({
+      clipType: 'background',
+      name: options?.name ?? 'Background',
+      durationUs: options?.durationUs,
+      backgroundColor: options?.backgroundColor,
+    });
+  }
+
   function renameTrack(trackId: string, name: string) {
     applyTimeline({ type: 'rename_track', trackId, name });
   }
@@ -630,6 +689,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     togglePlayback,
     stopPlayback,
     addTrack,
+    addAdjustmentClipAtPlayhead,
+    addBackgroundClipAtPlayhead,
     renameTrack,
     updateTrackProperties,
     toggleVideoHidden,

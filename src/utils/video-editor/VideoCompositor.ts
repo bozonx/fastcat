@@ -207,6 +207,8 @@ export class VideoCompositor {
           ? Math.max(0, Math.round(Number(clipData.timelineRange.startUs)))
           : sequentialTimeUs;
 
+      const endUsFallback = startUs + Math.max(0, requestedTimelineDurationUs);
+
       const reusable = this.clipById.get(itemId);
       if (reusable && reusable.sourcePath === sourcePath) {
         const safeSourceDurationUs =
@@ -241,11 +243,14 @@ export class VideoCompositor {
 
         nextClips.push(reusable);
         nextClipById.set(itemId, reusable);
-        sequentialTimeUs = Math.max(sequentialTimeUs, reusable.endUs);
+        sequentialTimeUs = Math.max(sequentialTimeUs, reusable.endUs, endUsFallback);
         continue;
       }
 
-      if (!sourcePath) continue;
+      if (!sourcePath) {
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUsFallback);
+        continue;
+      }
 
       if (reusable) {
         this.destroyClip(reusable);
@@ -253,7 +258,10 @@ export class VideoCompositor {
       }
 
       const fileHandle = await getFileHandleByPath(sourcePath);
-      if (!fileHandle) continue;
+      if (!fileHandle) {
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUsFallback);
+        continue;
+      }
 
       const file = await fileHandle.getFile();
 
@@ -355,6 +363,9 @@ export class VideoCompositor {
         sprite.width = 1;
         sprite.height = 1;
         sprite.visible = false;
+        (sprite as any).__clipId = itemId;
+        this.app.stage.addChild(sprite);
+
         const compositorClip: CompositorClip = {
           itemId,
           layer,
@@ -377,12 +388,15 @@ export class VideoCompositor {
           canvas: null,
           ctx: null,
           bitmap: null,
+          opacity: clipData.opacity,
+          effects: clipData.effects,
         };
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
       } catch (err) {
         console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUsFallback);
         continue;
       }
     }
@@ -400,7 +414,8 @@ export class VideoCompositor {
     this.clips = nextClips;
     this.clipById = nextClipById;
     this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
-    this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
+    const maxClipEndUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
+    this.maxDurationUs = Math.max(maxClipEndUs, sequentialTimeUs);
 
     this.lastRenderedTimeUs = 0;
     this.activeTracker.reset();

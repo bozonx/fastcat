@@ -377,20 +377,21 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         name: item.name,
         media_reference: {
           OTIO_SCHEMA: 'ExternalReference.1',
-          target_url: item.source?.path ?? '',
+          target_url: item.clipType === 'media' ? item.source.path : '',
         },
         source_range: toTimeRange(item.sourceRange),
         metadata: {
           gran: {
             id: item.id,
             clipType: item.clipType,
-            sourceDurationUs: item.sourceDurationUs,
-            audioFromVideoDisabled: Boolean(item.audioFromVideoDisabled),
-            freezeFrameSourceUs: item.freezeFrameSourceUs,
+            sourceDurationUs: item.clipType === 'media' ? item.sourceDurationUs : undefined,
+            audioFromVideoDisabled:
+              item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
+            freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
             opacity: item.opacity,
             effects: item.effects,
-            linkedVideoClipId: item.linkedVideoClipId,
-            lockToLinkedVideo: item.lockToLinkedVideo,
+            linkedVideoClipId: item.clipType === 'media' ? item.linkedVideoClipId : undefined,
+            lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
             backgroundColor:
               item.clipType === 'background' ? (item as any).backgroundColor : undefined,
           },

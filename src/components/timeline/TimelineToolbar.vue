@@ -20,6 +20,14 @@ function addAudioTrack() {
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
 
+function addAdjustmentClip() {
+  timelineStore.addAdjustmentClipAtPlayhead();
+}
+
+function addBackgroundClip() {
+  timelineStore.addBackgroundClipAtPlayhead();
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -92,6 +100,25 @@ function onZoomInput(e: Event) {
         icon="i-heroicons-musical-note"
         :aria-label="t('granVideoEditor.timeline.addAudioTrack', 'Add audio track')"
         @click="addAudioTrack"
+      />
+
+      <div class="w-px h-4 bg-gray-700 mx-1" />
+
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-adjustments-horizontal"
+        :aria-label="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
+        @click="addAdjustmentClip"
+      />
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-swatch"
+        :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
+        @click="addBackgroundClip"
       />
     </div>
 
