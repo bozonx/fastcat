@@ -33,6 +33,10 @@ export interface GranVideoEditorProjectSettings {
     previewResolution: number;
     useProxy: boolean;
   };
+  timelines: {
+    openPaths: string[];
+    lastOpenedPath: string | null;
+  };
 }
 
 const DEFAULT_PROJECT_SETTINGS = {
@@ -52,6 +56,10 @@ const DEFAULT_PROJECT_SETTINGS = {
   monitor: {
     previewResolution: 480,
     useProxy: true,
+  },
+  timelines: {
+    openPaths: [],
+    lastOpenedPath: null,
   },
 };
 
@@ -141,6 +149,10 @@ function createDefaultProjectSettings(userExportDefaults: {
     monitor: {
       previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy: DEFAULT_PROJECT_SETTINGS.monitor.useProxy,
+    },
+    timelines: {
+      openPaths: [],
+      lastOpenedPath: null,
     },
   };
 }
@@ -263,6 +275,14 @@ function normalizeProjectSettings(
           : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy:
         useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
+    },
+    timelines: {
+      openPaths: Array.isArray(input.timelines?.openPaths)
+        ? input.timelines.openPaths.filter((p: any) => typeof p === 'string')
+        : [],
+      lastOpenedPath: typeof input.timelines?.lastOpenedPath === 'string'
+        ? input.timelines.lastOpenedPath
+        : null,
     },
   };
 }
@@ -540,10 +560,17 @@ export const useProjectStore = defineStore('project', () => {
       await writable.close();
 
       currentProjectName.value = name;
-      currentTimelinePath.value = otioFileName;
-      currentFileName.value = otioFileName;
+      const initialTimeline = otioFileName;
+      currentTimelinePath.value = initialTimeline;
+      currentFileName.value = initialTimeline;
+
+      const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings.exportDefaults);
+      initialSettings.timelines.openPaths = [initialTimeline];
+      initialSettings.timelines.lastOpenedPath = initialTimeline;
+      projectSettings.value = initialSettings;
 
       await workspaceStore.loadProjects();
+      await saveProjectSettings();
     } catch (e: any) {
       workspaceStore.error = e?.message ?? 'Failed to create project';
     } finally {
@@ -558,11 +585,26 @@ export const useProjectStore = defineStore('project', () => {
     }
 
     currentProjectName.value = name;
-    currentTimelinePath.value = `${name}_001.otio`;
-    currentFileName.value = `${name}_001.otio`;
     workspaceStore.lastProjectName = name;
 
     await loadProjectSettings();
+
+    // If no timelines are open, open the default one
+    if (projectSettings.value.timelines.openPaths.length === 0) {
+      const defaultTimeline = `${name}_001.otio`;
+      projectSettings.value.timelines.openPaths = [defaultTimeline];
+    }
+
+    // Set current timeline to the last opened one if it's in the list, otherwise use the first one
+    const openPaths = projectSettings.value.timelines.openPaths;
+    const lastOpened = projectSettings.value.timelines.lastOpenedPath;
+    
+    if (lastOpened && openPaths.includes(lastOpened)) {
+      await openTimelineFile(lastOpened);
+    } else if (openPaths.length > 0) {
+      await openTimelineFile(openPaths[0]!);
+    }
+
     await saveProjectSettings();
   }
 
@@ -575,8 +617,35 @@ export const useProjectStore = defineStore('project', () => {
     const normalizedPath = toProjectRelativePath(path);
     if (!normalizedPath.toLowerCase().endsWith('.otio')) return;
 
+    if (!projectSettings.value.timelines.openPaths.includes(normalizedPath)) {
+      projectSettings.value.timelines.openPaths.push(normalizedPath);
+    }
+    
+    projectSettings.value.timelines.lastOpenedPath = normalizedPath;
+
     currentTimelinePath.value = normalizedPath;
     currentFileName.value = normalizedPath.split('/').pop() ?? normalizedPath;
+  }
+
+  async function closeTimelineFile(path: string) {
+    const index = projectSettings.value.timelines.openPaths.indexOf(path);
+    if (index === -1) return;
+
+    projectSettings.value.timelines.openPaths.splice(index, 1);
+
+    if (currentTimelinePath.value === path) {
+      const nextPath = projectSettings.value.timelines.openPaths[0] || null;
+      if (nextPath) {
+        await openTimelineFile(nextPath);
+      } else {
+        currentTimelinePath.value = null;
+        currentFileName.value = null;
+      }
+    }
+  }
+
+  function reorderTimelines(paths: string[]) {
+    projectSettings.value.timelines.openPaths = paths;
   }
 
   function createFallbackTimelineDoc(): TimelineDocument {
@@ -600,6 +669,8 @@ export const useProjectStore = defineStore('project', () => {
     createProject,
     openProject,
     openTimelineFile,
+    closeTimelineFile,
+    reorderTimelines,
     closeProject,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,

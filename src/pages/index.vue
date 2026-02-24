@@ -10,6 +10,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
+import { storeToRefs } from 'pinia';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -17,6 +18,8 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const mediaStore = useMediaStore();
+
+const { currentTimelinePath } = storeToRefs(projectStore);
 
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
@@ -43,6 +46,13 @@ function onTopSplitResize(event: { panes: { size: number }[] }) {
 const newProjectName = ref('');
 const isStartingUp = ref(true);
 
+watch(currentTimelinePath, async (newPath) => {
+  if (newPath && projectStore.currentProjectName) {
+    await timelineStore.loadTimeline();
+    void timelineStore.loadTimelineMetadata();
+  }
+});
+
 onMounted(async () => {
   try {
     await workspaceStore.init();
@@ -55,8 +65,7 @@ onMounted(async () => {
     ) {
       await projectStore.openProject(workspaceStore.lastProjectName);
       uiStore.restoreFileTreeStateOnce(workspaceStore.lastProjectName);
-      await timelineStore.loadTimeline();
-      void timelineStore.loadTimelineMetadata();
+      // Timeline will be loaded by watcher on currentTimelinePath change
     }
   } finally {
     isStartingUp.value = false;
@@ -68,8 +77,7 @@ async function createNewProject() {
   await projectStore.createProject(newProjectName.value.trim());
   if (workspaceStore.userSettings.openLastProjectOnStart) {
     await projectStore.openProject(newProjectName.value.trim());
-    await timelineStore.loadTimeline();
-    void timelineStore.loadTimelineMetadata();
+    // Timeline will be loaded by watcher
   }
   newProjectName.value = '';
 }

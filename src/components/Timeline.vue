@@ -15,6 +15,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage } from '@vueuse/core';
+import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -188,6 +189,9 @@ function formatTime(seconds: number): string {
 
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated border-t border-ui-border">
+    <!-- Tabs -->
+    <TimelineTabs />
+
     <!-- Toolbar -->
     <TimelineToolbar />
 
