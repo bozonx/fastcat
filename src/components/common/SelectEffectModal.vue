@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
+import { getAllEffectManifests } from '~/effects';
 
 const props = defineProps<{
   open: boolean;
@@ -7,7 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean];
-  select: [effectType: 'color-adjustment'];
+  select: [effectType: string];
 }>();
 
 const isOpen = ref(props.open);
@@ -25,16 +26,9 @@ watch(isOpen, (val) => {
   }
 });
 
-const effects = [
-  {
-    type: 'color-adjustment' as const,
-    name: 'Цветокоррекция',
-    description: 'Настройка яркости, контрастности и насыщенности',
-    icon: 'i-heroicons-swatch',
-  },
-];
+const effects = computed(() => getAllEffectManifests());
 
-function handleSelect(type: 'color-adjustment') {
+function handleSelect(type: string) {
   emit('select', type);
   isOpen.value = false;
 }

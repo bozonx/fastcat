@@ -1,3 +1,7 @@
+import type { ClipEffect as BaseClipEffect } from '../effects/core/registry';
+import type { ColorAdjustmentParams } from '../effects/video/color-adjustment/manifest';
+import type { BlurParams } from '../effects/video/blur/manifest';
+
 export type TrackKind = 'video' | 'audio';
 
 export interface TimelineTimebase {
@@ -13,16 +17,12 @@ export interface TimelineSourceRef {
   path: string;
 }
 
-export interface ColorAdjustmentEffect {
-  id: string;
+export type ColorAdjustmentEffect = BaseClipEffect<ColorAdjustmentParams> & {
   type: 'color-adjustment';
-  enabled: boolean;
-  brightness: number;
-  contrast: number;
-  saturation: number;
-}
+};
+export type BlurEffect = BaseClipEffect<BlurParams> & { type: 'blur' };
 
-export type ClipEffect = ColorAdjustmentEffect;
+export type ClipEffect = ColorAdjustmentEffect | BlurEffect;
 
 export interface TimelineClipItem {
   kind: 'clip';

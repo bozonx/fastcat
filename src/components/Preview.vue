@@ -8,7 +8,9 @@ import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
-import type { ClipEffect, ColorAdjustmentEffect } from '~/timeline/types';
+import type { ClipEffect } from '~/timeline/types';
+import { getEffectManifest } from '~/effects';
+
 defineOptions({
   name: 'PreviewPanel',
 });
@@ -52,17 +54,19 @@ function handleUpdateOpacity(val: number) {
   timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { opacity: val });
 }
 
-function handleAddEffect(type: 'color-adjustment') {
+function handleAddEffect(type: string) {
   if (!selectedClip.value) return;
+  const manifest = getEffectManifest(type);
+  if (!manifest) return;
+
   const currentEffects = selectedClip.value.effects || [];
-  const newEffect: ColorAdjustmentEffect = {
+  const newEffect = {
     id: `effect_${Date.now()}`,
     type,
     enabled: true,
-    brightness: 1,
-    contrast: 1,
-    saturation: 1,
-  };
+    ...manifest.defaultValues,
+  } as unknown as ClipEffect;
+
   timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
     effects: [...currentEffects, newEffect],
   });
@@ -389,51 +393,38 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
                         size="sm"
                         @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
                       />
-                      <span class="font-medium">{{ effect.type === 'color-adjustment' ? 'Цветокоррекция' : effect.type }}</span>
+                      <span class="font-medium">{{ getEffectManifest(effect.type)?.name || effect.type }}</span>
                     </div>
                     <UButton size="xs" variant="ghost" color="red" icon="i-heroicons-trash" @click="handleRemoveEffect(effect.id)" />
+
                   </div>
 
-                  <div v-if="effect.type === 'color-adjustment'" class="space-y-3">
-                    <div class="flex flex-col gap-1">
-                      <div class="flex justify-between text-xs text-gray-400">
-                        <span>Яркость</span>
-                        <span>{{ Math.round((effect.brightness - 1) * 100) }}%</span>
+                  <div class="space-y-3">
+                    <template v-for="control in getEffectManifest(effect.type)?.controls" :key="String(control.key)">
+                      <div v-if="control.kind === 'slider'" class="flex flex-col gap-1">
+                        <div class="flex justify-between text-xs text-gray-400">
+                          <span>{{ control.label }}</span>
+                          <span>
+                            {{ control.format ? control.format((effect as any)[control.key]) : (effect as any)[control.key] }}
+                          </span>
+                        </div>
+                        <USlider
+                          :model-value="(effect as any)[control.key]"
+                          :min="control.min"
+                          :max="control.max"
+                          :step="control.step"
+                          @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
+                        />
                       </div>
-                      <USlider
-                        :model-value="effect.brightness"
-                        :min="0"
-                        :max="2"
-                        :step="0.05"
-                        @update:model-value="handleUpdateEffect(effect.id, { brightness: $event })"
-                      />
-                    </div>
-                    <div class="flex flex-col gap-1">
-                      <div class="flex justify-between text-xs text-gray-400">
-                        <span>Контрастность</span>
-                        <span>{{ Math.round((effect.contrast - 1) * 100) }}%</span>
+                      <div v-else-if="control.kind === 'toggle'" class="flex items-center justify-between">
+                        <span class="text-xs text-gray-400">{{ control.label }}</span>
+                        <USwitch
+                          :model-value="(effect as any)[control.key]"
+                          size="sm"
+                          @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
+                        />
                       </div>
-                      <USlider
-                        :model-value="effect.contrast"
-                        :min="0"
-                        :max="2"
-                        :step="0.05"
-                        @update:model-value="handleUpdateEffect(effect.id, { contrast: $event })"
-                      />
-                    </div>
-                    <div class="flex flex-col gap-1">
-                      <div class="flex justify-between text-xs text-gray-400">
-                        <span>Насыщенность</span>
-                        <span>{{ Math.round((effect.saturation - 1) * 100) }}%</span>
-                      </div>
-                      <USlider
-                        :model-value="effect.saturation"
-                        :min="0"
-                        :max="2"
-                        :step="0.05"
-                        @update:model-value="handleUpdateEffect(effect.id, { saturation: $event })"
-                      />
-                    </div>
+                    </template>
                   </div>
                 </div>
               </div>

@@ -8,9 +8,10 @@ import {
   ImageSource,
   DOMAdapter,
   WebWorkerAdapter,
-  ColorMatrixFilter,
+  Filter,
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
+import { getEffectManifest } from '../../effects';
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
@@ -59,6 +60,7 @@ export interface CompositorClip {
   bitmap: ImageBitmap | null;
   opacity?: number;
   effects?: any[];
+  effectFilters?: Map<string, Filter>;
 }
 
 export class VideoCompositor {
@@ -442,6 +444,9 @@ export class VideoCompositor {
       clip.layer = layer;
       clip.opacity = next.opacity;
       clip.effects = next.effects;
+      if (!clip.effectFilters) {
+        clip.effectFilters = new Map();
+      }
     }
 
     this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
@@ -486,27 +491,7 @@ export class VideoCompositor {
     for (const clip of active) {
       clip.sprite.alpha = clip.opacity ?? 1;
 
-      const filters: any[] = [];
-      if (clip.effects?.length) {
-        for (const effect of clip.effects) {
-          if (!effect.enabled) continue;
-          if (effect.type === 'color-adjustment') {
-            const filter = new ColorMatrixFilter();
-            filter.reset();
-            if (effect.brightness !== undefined && effect.brightness !== 1) {
-              filter.brightness(effect.brightness, true);
-            }
-            if (effect.contrast !== undefined && effect.contrast !== 1) {
-              filter.contrast(effect.contrast, true);
-            }
-            if (effect.saturation !== undefined && effect.saturation !== 1) {
-              filter.saturate(effect.saturation - 1, true);
-            }
-            filters.push(filter);
-          }
-        }
-      }
-      clip.sprite.filters = filters.length > 0 ? filters : null;
+      this.applyClipEffects(clip);
 
       if (clip.clipKind === 'image') {
         clip.sprite.visible = true;
@@ -599,6 +584,55 @@ export class VideoCompositor {
     const canvasSource = new CanvasSource({ resource: clipCanvas as any });
     clip.sprite.texture.source = canvasSource as any;
     clip.sourceKind = 'canvas';
+  }
+
+  private applyClipEffects(clip: CompositorClip) {
+    if (!clip.effectFilters) {
+      clip.effectFilters = new Map();
+    }
+
+    const filters: Filter[] = [];
+    const seenIds = new Set<string>();
+
+    if (Array.isArray(clip.effects) && clip.effects.length > 0) {
+      for (const effect of clip.effects) {
+        if (!effect?.enabled) continue;
+        if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
+        if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
+
+        const manifest = getEffectManifest(effect.type);
+        if (!manifest) continue;
+
+        seenIds.add(effect.id);
+        let filter = clip.effectFilters.get(effect.id);
+        if (!filter) {
+          filter = manifest.createFilter();
+          clip.effectFilters.set(effect.id, filter);
+        }
+
+        try {
+          manifest.updateFilter(filter, effect);
+        } catch (err) {
+          console.error('[VideoCompositor] Failed to update effect filter', err);
+          continue;
+        }
+
+        filters.push(filter);
+      }
+    }
+
+    // Cleanup filters for removed effects
+    for (const [id, filter] of clip.effectFilters.entries()) {
+      if (seenIds.has(id)) continue;
+      clip.effectFilters.delete(id);
+      try {
+        (filter as any)?.destroy?.();
+      } catch {
+        // ignore
+      }
+    }
+
+    clip.sprite.filters = filters.length > 0 ? (filters as any) : null;
   }
 
   private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
@@ -801,6 +835,17 @@ export class VideoCompositor {
 
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
+    }
+
+    if (clip.effectFilters) {
+      for (const filter of clip.effectFilters.values()) {
+        try {
+          (filter as any)?.destroy?.();
+        } catch {
+          // ignore
+        }
+      }
+      clip.effectFilters.clear();
     }
     clip.sprite.destroy(true);
   }

@@ -3,10 +3,12 @@ import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 
 import type { VideoCoreHostAPI } from '../utils/video-editor/worker-client';
 import { VideoCompositor } from '../utils/video-editor/VideoCompositor';
+import { initEffects } from '../effects';
 import { normalizeRpcError } from './core/utils';
 import { extractMetadata, runExport } from './core/export';
 
 DOMAdapter.set(WebWorkerAdapter);
+initEffects();
 
 let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
