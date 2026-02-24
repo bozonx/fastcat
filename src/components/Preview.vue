@@ -7,6 +7,8 @@ import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
+import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
+import type { ClipEffect, ColorAdjustmentEffect } from '~/timeline/types';
 defineOptions({
   name: 'PreviewPanel',
 });
@@ -43,6 +45,42 @@ const selectedClip = computed<TimelineClipItem | null>(() => {
 });
 
 const isRenameModalOpen = ref(false);
+const isEffectModalOpen = ref(false);
+
+function handleUpdateOpacity(val: number) {
+  if (!selectedClip.value) return;
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { opacity: val });
+}
+
+function handleAddEffect(type: 'color-adjustment') {
+  if (!selectedClip.value) return;
+  const currentEffects = selectedClip.value.effects || [];
+  const newEffect: ColorAdjustmentEffect = {
+    id: `effect_${Date.now()}`,
+    type,
+    enabled: true,
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+  };
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    effects: [...currentEffects, newEffect],
+  });
+}
+
+function handleUpdateEffect(effectId: string, updates: Partial<ClipEffect>) {
+  if (!selectedClip.value) return;
+  const currentEffects = selectedClip.value.effects || [];
+  const nextEffects = currentEffects.map((e) => (e.id === effectId ? { ...e, ...updates } as ClipEffect : e));
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { effects: nextEffects });
+}
+
+function handleRemoveEffect(effectId: string) {
+  if (!selectedClip.value) return;
+  const currentEffects = selectedClip.value.effects || [];
+  const nextEffects = currentEffects.filter((e) => e.id !== effectId);
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { effects: nextEffects });
+}
 
 const displayMode = computed<'clip' | 'file' | 'empty'>(() => {
   if (selectedClip.value) return 'clip';
@@ -313,6 +351,75 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
                 }}</span>
               </div>
             </div>
+
+            <!-- Transparency (Opacity) -->
+            <div class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">Прозрачность</span>
+                <span class="text-xs font-mono text-gray-500">{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span>
+              </div>
+              <URange
+                :model-value="selectedClip.opacity ?? 1"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                @update:model-value="handleUpdateOpacity"
+              />
+            </div>
+
+            <!-- Effects -->
+            <div class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">Дополнительные эффекты</span>
+                <UButton size="xs" variant="soft" color="primary" icon="i-heroicons-plus" @click="isEffectModalOpen = true">
+                  Добавить
+                </UButton>
+              </div>
+
+              <div v-if="!selectedClip.effects?.length" class="text-xs text-gray-500 text-center py-2">
+                Нет добавленных эффектов
+              </div>
+
+              <div class="space-y-2">
+                <div v-for="effect in selectedClip.effects || []" :key="effect.id" class="bg-black border border-gray-800 rounded p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <UToggle
+                        :model-value="effect.enabled"
+                        size="sm"
+                        @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
+                      />
+                      <span class="font-medium">{{ effect.type === 'color-adjustment' ? 'Цветокоррекция' : effect.type }}</span>
+                    </div>
+                    <UButton size="xs" variant="ghost" color="red" icon="i-heroicons-trash" @click="handleRemoveEffect(effect.id)" />
+                  </div>
+
+                  <div v-if="effect.type === 'color-adjustment'" class="space-y-3">
+                    <div class="flex flex-col gap-1">
+                      <div class="flex justify-between text-xs text-gray-400">
+                        <span>Яркость</span>
+                        <span>{{ Math.round((effect.brightness - 1) * 100) }}%</span>
+                      </div>
+                      <URange :model-value="effect.brightness" :min="0" :max="2" :step="0.05" @update:model-value="handleUpdateEffect(effect.id, { brightness: $event })" />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <div class="flex justify-between text-xs text-gray-400">
+                        <span>Контрастность</span>
+                        <span>{{ Math.round((effect.contrast - 1) * 100) }}%</span>
+                      </div>
+                      <URange :model-value="effect.contrast" :min="0" :max="2" :step="0.05" @update:model-value="handleUpdateEffect(effect.id, { contrast: $event })" />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <div class="flex justify-between text-xs text-gray-400">
+                        <span>Насыщенность</span>
+                        <span>{{ Math.round((effect.saturation - 1) * 100) }}%</span>
+                      </div>
+                      <URange :model-value="effect.saturation" :min="0" :max="2" :step="0.05" @update:model-value="handleUpdateEffect(effect.id, { saturation: $event })" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- File Preview & Properties -->
@@ -399,6 +506,11 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
       v-model:open="isRenameModalOpen"
       :initial-name="selectedClip?.name"
       @rename="handleRenameClip"
+    />
+
+    <SelectEffectModal
+      v-model:open="isEffectModalOpen"
+      @select="handleAddEffect"
     />
   </div>
 </template>

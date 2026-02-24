@@ -47,6 +47,8 @@ export function useMonitorTimeline() {
           source: {
             path: item.source.path,
           },
+          opacity: item.opacity,
+          effects: item.effects,
           timelineRange: {
             startUs: item.timelineRange.startUs,
             durationUs: item.timelineRange.durationUs,

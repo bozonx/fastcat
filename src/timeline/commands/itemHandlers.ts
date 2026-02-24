@@ -7,6 +7,7 @@ import type {
   TrimItemCommand,
   MoveItemToTrackCommand,
   RenameItemCommand,
+  UpdateClipPropertiesCommand,
   TimelineCommandResult,
 } from '../commands';
 import {
@@ -78,6 +79,28 @@ export function renameItem(doc: TimelineDocument, cmd: RenameItemCommand): Timel
         ...t,
         items: t.items.map((it) =>
           it.id === cmd.itemId && it.kind === 'clip' ? { ...it, name: cmd.name } : it,
+        ),
+      };
+    }
+    return t;
+  });
+  return { next: { ...doc, tracks: nextTracks } };
+}
+
+export function updateClipProperties(
+  doc: TimelineDocument,
+  cmd: UpdateClipPropertiesCommand,
+): TimelineCommandResult {
+  const track = getTrackById(doc, cmd.trackId);
+  const item = track.items.find((x) => x.id === cmd.itemId);
+  if (!item || item.kind !== 'clip') return { next: doc };
+
+  const nextTracks = doc.tracks.map((t) => {
+    if (t.id === track.id) {
+      return {
+        ...t,
+        items: t.items.map((it) =>
+          it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...cmd.properties } : it,
         ),
       };
     }

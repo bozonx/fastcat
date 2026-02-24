@@ -5,6 +5,8 @@ export interface WorkerTimelineClip {
   source: {
     path: string;
   };
+  opacity?: number;
+  effects?: unknown[];
   timelineRange: {
     startUs: number;
     durationUs: number;

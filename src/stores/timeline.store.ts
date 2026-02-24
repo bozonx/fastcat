@@ -122,7 +122,25 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   function renameItem(trackId: string, itemId: string, name: string) {
-    applyTimeline({ type: 'rename_item', trackId, itemId, name });
+    applyTimeline({
+      type: 'rename_item',
+      trackId,
+      itemId,
+      name,
+    });
+  }
+
+  function updateClipProperties(
+    trackId: string,
+    itemId: string,
+    properties: Partial<Pick<import('~/timeline/types').TimelineClipItem, 'opacity' | 'effects'>>,
+  ) {
+    applyTimeline({
+      type: 'update_clip_properties',
+      trackId,
+      itemId,
+      properties,
+    });
   }
 
   function deleteTrack(trackId: string, options?: { allowNonEmpty?: boolean }) {
@@ -534,6 +552,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     addTrack,
     renameTrack,
     renameItem,
+    updateClipProperties,
     deleteTrack,
     reorderTracks,
     moveItemToTrack,

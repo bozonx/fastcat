@@ -13,6 +13,17 @@ export interface TimelineSourceRef {
   path: string;
 }
 
+export interface ColorAdjustmentEffect {
+  id: string;
+  type: 'color-adjustment';
+  enabled: boolean;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+}
+
+export type ClipEffect = ColorAdjustmentEffect;
+
 export interface TimelineClipItem {
   kind: 'clip';
   id: string;
@@ -25,6 +36,8 @@ export interface TimelineClipItem {
   audioFromVideoDisabled?: boolean;
   linkedVideoClipId?: string;
   lockToLinkedVideo?: boolean;
+  opacity?: number;
+  effects?: ClipEffect[];
 }
 
 export interface TimelineGapItem {

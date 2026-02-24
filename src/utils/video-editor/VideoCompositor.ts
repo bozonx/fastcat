@@ -8,6 +8,7 @@ import {
   ImageSource,
   DOMAdapter,
   WebWorkerAdapter,
+  ColorMatrixFilter,
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 
@@ -56,6 +57,8 @@ export interface CompositorClip {
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
   bitmap: ImageBitmap | null;
+  opacity?: number;
+  effects?: any[];
 }
 
 export class VideoCompositor {
@@ -298,6 +301,8 @@ export class VideoCompositor {
           canvas: null,
           ctx: null,
           bitmap: bmp,
+          opacity: clipData.opacity,
+          effects: clipData.effects,
         };
 
         nextClips.push(compositorClip);
@@ -365,6 +370,8 @@ export class VideoCompositor {
           imageSource,
           lastVideoFrame: null,
           canvas: null,
+          opacity: clipData.opacity,
+          effects: clipData.effects,
           ctx: null,
           bitmap: null,
         };
@@ -433,6 +440,8 @@ export class VideoCompositor {
       clip.sourceStartUs = sourceStartUs;
       clip.sourceDurationUs = sourceDurationUs;
       clip.layer = layer;
+      clip.opacity = next.opacity;
+      clip.effects = next.effects;
     }
 
     this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
@@ -472,10 +481,32 @@ export class VideoCompositor {
       active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
       this.activeSortDirty = false;
     }
-
     const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
 
     for (const clip of active) {
+      clip.sprite.alpha = clip.opacity ?? 1;
+
+      const filters: any[] = [];
+      if (clip.effects?.length) {
+        for (const effect of clip.effects) {
+          if (!effect.enabled) continue;
+          if (effect.type === 'color-adjustment') {
+            const filter = new ColorMatrixFilter();
+            if (effect.brightness !== undefined && effect.brightness !== 1) {
+              filter.brightness(effect.brightness, false);
+            }
+            if (effect.contrast !== undefined && effect.contrast !== 1) {
+              filter.contrast(effect.contrast, false);
+            }
+            if (effect.saturation !== undefined && effect.saturation !== 1) {
+              filter.saturate(effect.saturation - 1, false);
+            }
+            filters.push(filter);
+          }
+        }
+      }
+      clip.sprite.filters = filters.length > 0 ? filters : null;
+
       if (clip.clipKind === 'image') {
         clip.sprite.visible = true;
         continue;

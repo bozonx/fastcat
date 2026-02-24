@@ -33,6 +33,8 @@ export interface WorkerTimelineClip {
   id: string;
   layer: number;
   source: { path: string };
+  opacity?: number;
+  effects?: unknown[];
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
 }
@@ -49,6 +51,8 @@ export function toWorkerTimelineClips(
       id: item.id,
       layer: options?.layer ?? 0,
       source: { path: item.source.path },
+      opacity: item.opacity,
+      effects: item.effects,
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
