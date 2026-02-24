@@ -114,6 +114,9 @@ export const useProxyStore = defineStore('proxy', () => {
           ]
         : [];
 
+      const isOpusAudio =
+        typeof meta.audio?.codec === 'string' && meta.audio.codec.toLowerCase().startsWith('opus');
+
       const options = {
         format: 'webm',
         videoCodec: 'vp09.00.10.08',
@@ -121,6 +124,7 @@ export const useProxyStore = defineStore('proxy', () => {
         audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
         audio: !!meta.audio,
         audioCodec: 'opus',
+        audioPassthrough: optimization.proxyCopyOpusAudio && isOpusAudio,
         width,
         height,
         fps: meta.video?.fps || 30,

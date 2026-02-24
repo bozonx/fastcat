@@ -70,6 +70,74 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
   }
 }
 
+function isOpusCodec(codec: string | undefined): boolean {
+  const value = String(codec ?? '').toLowerCase();
+  return value.startsWith('opus');
+}
+
+function getClipRanges(clip: any) {
+  const timelineStartUs = Number(clip.timelineRange?.startUs || 0);
+  const timelineDurationUs = Number(clip.timelineRange?.durationUs || 0);
+  const sourceStartUs = Number(clip.sourceRange?.startUs || 0);
+  const sourceDurationUs = Number(clip.sourceRange?.durationUs || timelineDurationUs || 0);
+
+  const timelineStartS = Math.max(0, timelineStartUs / 1_000_000);
+  const sourceStartS = Math.max(0, sourceStartUs / 1_000_000);
+  const durationS = Math.max(0, sourceDurationUs / 1_000_000);
+
+  return {
+    timelineStartS,
+    sourceStartS,
+    sourceEndS: sourceStartS + durationS,
+  };
+}
+
+async function buildPassthroughAudioTrack(params: {
+  clip: any;
+  hostClient: VideoCoreHostAPI | null;
+  reportExportWarning: (message: string) => Promise<void>;
+}) {
+  const { clip, hostClient, reportExportWarning } = params;
+  const sourcePath = clip.sourcePath || clip.source?.path;
+  if (!sourcePath || !hostClient) return null;
+
+  const fileHandle = clip.fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
+  if (!fileHandle) return null;
+
+  const file = await fileHandle.getFile();
+  const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
+    await import('mediabunny');
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
+
+  try {
+    const audioTrack = await input.getPrimaryAudioTrack();
+    if (!audioTrack) return null;
+
+    const codecParam = await audioTrack.getCodecParameterString();
+    const codec = codecParam || audioTrack.codec || '';
+    if (!isOpusCodec(codec)) return null;
+
+    const decoderConfig = await audioTrack.getDecoderConfig();
+    if (!decoderConfig) {
+      await reportExportWarning(
+        '[Worker Export] Opus audio passthrough requires decoder config; falling back to re-encode.',
+      );
+      return null;
+    }
+
+    return {
+      audioSource: new EncodedAudioPacketSource('opus'),
+      packetSink: new EncodedPacketSink(audioTrack),
+      decoderConfig,
+      ranges: getClipRanges(clip),
+      input,
+    } as const;
+  } catch (error) {
+    await reportExportWarning('[Worker Export] Failed to build Opus passthrough audio track.');
+    throw error;
+  }
+}
+
 export async function runExport(
   targetHandle: FileSystemFileHandle,
   options: any,
@@ -141,24 +209,49 @@ export async function runExport(
       let audioSamples: Array<{ data: Float32Array; timestamp: number }> | null = null;
       let audioSampleRate = 48000;
       let audioNumberOfChannels = 2;
+      let audioPacketState: {
+        audioSource: any;
+        packetSink: any;
+        decoderConfig: any;
+        ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
+        input: any;
+      } | null = null;
       if (options.audio && hasAnyAudio) {
-        const audioTrack = await buildMixedAudioTrack(
-          options,
-          audioClips,
-          durationS,
-          hostClient,
-          reportExportWarning,
-        );
-        if (audioTrack) {
-          audioSource = audioTrack.audioSource;
-          audioSamples = audioTrack.samples;
-          audioSampleRate = audioTrack.sampleRate;
-          audioNumberOfChannels = audioTrack.numberOfChannels;
-          output.addAudioTrack(audioSource);
-        } else {
-          await reportExportWarning(
-            '[Worker Export] No decodable audio track found; exporting without audio.',
+        if (options.audioPassthrough && audioClips.length === 1) {
+          audioPacketState = await buildPassthroughAudioTrack({
+            clip: audioClips[0],
+            hostClient,
+            reportExportWarning,
+          });
+          if (audioPacketState) {
+            audioSource = audioPacketState.audioSource;
+            output.addAudioTrack(audioSource);
+          } else {
+            await reportExportWarning(
+              '[Worker Export] Opus audio passthrough not available; falling back to re-encode.',
+            );
+          }
+        }
+
+        if (!audioSource) {
+          const audioTrack = await buildMixedAudioTrack(
+            options,
+            audioClips,
+            durationS,
+            hostClient,
+            reportExportWarning,
           );
+          if (audioTrack) {
+            audioSource = audioTrack.audioSource;
+            audioSamples = audioTrack.samples;
+            audioSampleRate = audioTrack.sampleRate;
+            audioNumberOfChannels = audioTrack.numberOfChannels;
+            output.addAudioTrack(audioSource);
+          } else {
+            await reportExportWarning(
+              '[Worker Export] No decodable audio track found; exporting without audio.',
+            );
+          }
         }
       }
 
@@ -175,6 +268,49 @@ export async function runExport(
 
       try {
         await output.start();
+
+        if (audioPacketState) {
+          const { packetSink, decoderConfig, ranges, input } = audioPacketState;
+          let isFirstPacket = true;
+          try {
+            for await (const packet of packetSink.packets()) {
+              if (checkCancel()) {
+                const abortErr = new Error('Export was cancelled');
+                (abortErr as any).name = 'AbortError';
+                throw abortErr;
+              }
+              const packetStart = Number(packet.timestamp || 0);
+              const packetDuration = Number(packet.duration || 0);
+              const packetEnd = packetStart + packetDuration;
+              if (packetEnd <= ranges.sourceStartS) continue;
+              if (packetStart >= ranges.sourceEndS) break;
+
+              const adjustedTimestamp = packetStart - ranges.sourceStartS + ranges.timelineStartS;
+              const adjustedPacket = packet.clone({ timestamp: adjustedTimestamp });
+              if (isFirstPacket) {
+                await audioPacketState.audioSource.add(adjustedPacket, { decoderConfig });
+                isFirstPacket = false;
+              } else {
+                await audioPacketState.audioSource.add(adjustedPacket);
+              }
+            }
+
+            if (isFirstPacket) {
+              await reportExportWarning(
+                '[Worker Export] No audio packets in selected range; exporting without audio.',
+              );
+            }
+          } finally {
+            if ('close' in packetSink && typeof (packetSink as any).close === 'function') {
+              (packetSink as any).close();
+            }
+            if ('dispose' in input && typeof (input as any).dispose === 'function') {
+              (input as any).dispose();
+            } else if ('close' in input && typeof (input as any).close === 'function') {
+              (input as any).close();
+            }
+          }
+        }
 
         if (audioSource && audioSamples) {
           const { AudioSample } = await import('mediabunny');
