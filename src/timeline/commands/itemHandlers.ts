@@ -81,7 +81,7 @@ export function addVirtualClipToTrack(
     throw new Error('Virtual clips can only be added to video tracks');
   }
 
-  const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 2_000_000), fps, 'round');
+  const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 5_000_000), fps, 'round');
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
@@ -411,7 +411,9 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
   const maxSourceDurationUs =
-    item.clipType === 'media' ? Math.max(0, Math.round(item.sourceDurationUs)) : prevSourceEndUs;
+    item.clipType === 'media'
+      ? Math.max(0, Math.round(item.sourceDurationUs))
+      : Number.POSITIVE_INFINITY;
 
   const minSourceStartUs = 0;
   const maxSourceEndUs = maxSourceDurationUs;

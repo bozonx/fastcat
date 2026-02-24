@@ -289,4 +289,39 @@ describe('timeline/commands gap behavior', () => {
     const reconstructedUs = Math.round((frames * 1_000_000) / fps);
     expect(c1.timelineRange.durationUs).toBe(reconstructedUs);
   });
+
+  it('allows extending virtual clips beyond initial duration (no max clamp)', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'background',
+          id: 'b1',
+          trackId: 'v1',
+          name: 'Background',
+          backgroundColor: '#000000',
+          timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        },
+      ],
+    });
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'trim_item',
+      trackId: 'v1',
+      itemId: 'b1',
+      edge: 'end',
+      deltaUs: 20_000_000,
+    });
+
+    const b1 = next.tracks[0].items.find(
+      (x: TimelineTrackItem) => x.kind === 'clip' && (x as any).id === 'b1',
+    ) as any;
+
+    expect(b1).toBeTruthy();
+    expect(b1.timelineRange.durationUs).toBeGreaterThan(5_000_000);
+  });
 });

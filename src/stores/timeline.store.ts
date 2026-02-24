@@ -19,6 +19,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const { mediaMetadata } = storeToRefs(mediaStore);
 
   const DEFAULT_IMAGE_DURATION_US = 5_000_000;
+  const DEFAULT_IMAGE_SOURCE_DURATION_US = Number.MAX_SAFE_INTEGER;
 
   const timelineDoc = ref<TimelineDocument | null>(null);
 
@@ -648,11 +649,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
 
     let durationUs = 0;
+    let sourceDurationUs = 0;
     if (isImageLike) {
       durationUs = DEFAULT_IMAGE_DURATION_US;
+      sourceDurationUs = DEFAULT_IMAGE_SOURCE_DURATION_US;
     } else {
       const durationS = Number(metadata?.duration);
       durationUs = Math.floor(durationS * 1_000_000);
+      sourceDurationUs = durationUs;
     }
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
       throw new Error('Failed to resolve media duration');
@@ -671,7 +675,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       name: input.name,
       path: input.path,
       durationUs,
-      sourceDurationUs: durationUs,
+      sourceDurationUs,
       startUs: input.startUs,
     });
   }

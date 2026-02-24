@@ -624,164 +624,186 @@ export class VideoCompositor {
       return this.canvas;
     }
 
-    const { activeClips: active, activeChanged } = this.activeTracker.update({
-      clips: this.clips,
-      timeUs,
-      lastTimeUs: this.lastRenderedTimeUs,
-      onDeactivate: (clip) => {
-        clip.sprite.visible = false;
-      },
-    });
+    let updatedClips: CompositorClip[] = [];
+    try {
+      const { activeClips: active, activeChanged } = this.activeTracker.update({
+        clips: this.clips,
+        timeUs,
+        lastTimeUs: this.lastRenderedTimeUs,
+        onDeactivate: (clip) => {
+          clip.sprite.visible = false;
+        },
+      });
 
-    if (activeChanged) {
-      this.activeSortDirty = true;
-    }
-    if (this.activeSortDirty) {
-      active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
-      this.activeSortDirty = false;
-    }
-    const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
-
-    for (const clip of active) {
-      const effectiveOpacity = this.computeTransitionOpacity(clip, timeUs);
-      clip.sprite.alpha = effectiveOpacity;
-
-      this.applyClipEffects(clip);
-
-      if (clip.clipKind === 'image') {
-        clip.sprite.visible = true;
-        continue;
+      if (activeChanged) {
+        this.activeSortDirty = true;
       }
-
-      if (clip.clipKind === 'solid') {
-        clip.sprite.visible = true;
-        continue;
+      if (this.activeSortDirty) {
+        active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
+        this.activeSortDirty = false;
       }
+      const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
 
-      if (clip.clipKind === 'adjustment') {
-        clip.sprite.visible = true;
-        continue;
-      }
+      for (const clip of active) {
+        const effectiveOpacity = this.computeTransitionOpacity(clip, timeUs);
+        clip.sprite.alpha = effectiveOpacity;
 
-      const localTimeUs = timeUs - clip.startUs;
-      if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
-        clip.sprite.visible = false;
-        continue;
-      }
+        this.applyClipEffects(clip);
 
-      const freezeUs = clip.freezeFrameSourceUs;
-      const sampleTimeS =
-        typeof freezeUs === 'number'
-          ? Math.max(0, freezeUs) / 1_000_000
-          : (clip.sourceStartUs + localTimeUs) / 1_000_000;
-      if (!clip.sink) {
-        clip.sprite.visible = false;
-        continue;
-      }
+        if (clip.clipKind === 'image') {
+          clip.sprite.visible = true;
+          continue;
+        }
 
-      const request = getVideoSampleWithZeroFallback(clip.sink, sampleTimeS, clip.firstTimestampS)
-        .then((sample) => ({ clip, sample }))
-        .catch((error) => {
-          console.error('[VideoCompositor] Failed to render sample', error);
-          return { clip, sample: null };
-        });
+        if (clip.clipKind === 'solid') {
+          clip.sprite.visible = true;
+          continue;
+        }
 
-      sampleRequests.push(request);
-    }
+        if (clip.clipKind === 'adjustment') {
+          clip.sprite.visible = true;
+          continue;
+        }
 
-    const updatedClips: CompositorClip[] = [];
-    if (sampleRequests.length > 0) {
-      const samples = await Promise.all(sampleRequests);
-      for (const { clip, sample } of samples) {
-        if (!sample) {
+        const localTimeUs = timeUs - clip.startUs;
+        if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
           clip.sprite.visible = false;
           continue;
         }
-        try {
-          await this.updateClipTextureFromSample(sample, clip);
-          clip.sprite.visible = true;
-          updatedClips.push(clip);
-        } catch (error) {
-          console.error('[VideoCompositor] Failed to update clip texture', error);
+
+        const freezeUs = clip.freezeFrameSourceUs;
+        const sampleTimeS =
+          typeof freezeUs === 'number'
+            ? Math.max(0, freezeUs) / 1_000_000
+            : (clip.sourceStartUs + localTimeUs) / 1_000_000;
+        if (!clip.sink) {
           clip.sprite.visible = false;
-        } finally {
-          if (typeof sample.close === 'function') {
-            try {
-              sample.close();
-            } catch (err) {
-              console.error('[VideoCompositor] Failed to close VideoSample', err);
-            }
-          }
+          continue;
         }
-      }
-    }
 
-    if (this.stageSortDirty) {
-      // Ensure stage ordering matches layer ordering for correct blending
-      this.app.stage.children.sort((a: any, b: any) => {
-        const aClip = this.clipById.get((a as any).__clipId ?? '') as any;
-        const bClip = this.clipById.get((b as any).__clipId ?? '') as any;
-        const aLayer = typeof aClip?.layer === 'number' ? aClip.layer : 0;
-        const bLayer = typeof bClip?.layer === 'number' ? bClip.layer : 0;
-        return aLayer - bLayer;
-      });
-      this.stageSortDirty = false;
-    }
-
-    this.lastRenderedTimeUs = timeUs;
-
-    if (
-      this.adjustmentTexture &&
-      active.some((c) => c.clipKind === 'adjustment' && c.sprite.visible)
-    ) {
-      const children = this.app.stage.children;
-      const visibilityState = children.map((c) => c.visible);
-
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        const clipId = (child as any).__clipId;
-        if (!clipId) continue;
-        const clip = this.clipById.get(clipId);
-
-        if (clip?.clipKind === 'adjustment' && clip.sprite.visible) {
-          // Скрываем сам adjustment слой и всё, что выше него
-          for (let j = i; j < children.length; j++) {
-            const childObj = children[j];
-            if (childObj) {
-              childObj.visible = false;
-            }
-          }
-
-          // Рендерим слои под adjustment слоем в текстуру
-          this.app.renderer.render({
-            container: this.app.stage,
-            target: this.adjustmentTexture,
-            clear: true,
+        const request = getVideoSampleWithZeroFallback(clip.sink, sampleTimeS, clip.firstTimestampS)
+          .then((sample) => ({ clip, sample }))
+          .catch((error) => {
+            console.error('[VideoCompositor] Failed to render sample', error);
+            return { clip, sample: null };
           });
 
-          // Восстанавливаем видимость
-          for (let j = 0; j < children.length; j++) {
-            const childObj = children[j];
-            if (childObj && visibilityState[j] !== undefined) {
-              childObj.visible = visibilityState[j] as boolean;
+        sampleRequests.push(request);
+      }
+
+      if (sampleRequests.length > 0) {
+        const samples = await Promise.all(sampleRequests);
+        for (const { clip, sample } of samples) {
+          if (!sample) {
+            clip.sprite.visible = false;
+            continue;
+          }
+          try {
+            await this.updateClipTextureFromSample(sample, clip);
+            clip.sprite.visible = true;
+            updatedClips.push(clip);
+          } catch (error) {
+            console.error('[VideoCompositor] Failed to update clip texture', error);
+            clip.sprite.visible = false;
+          } finally {
+            if (typeof sample.close === 'function') {
+              try {
+                sample.close();
+              } catch (err) {
+                console.error('[VideoCompositor] Failed to close VideoSample', err);
+              }
             }
           }
-
-          // Назначаем текстуру adjustment спрайту
-          clip.sprite.texture = this.adjustmentTexture;
         }
       }
-    }
 
-    this.app.render();
+      if (this.stageSortDirty) {
+        // Ensure stage ordering matches layer ordering for correct blending
+        this.app.stage.children.sort((a: any, b: any) => {
+          const aClip = this.clipById.get((a as any).__clipId ?? '') as any;
+          const bClip = this.clipById.get((b as any).__clipId ?? '') as any;
+          const aLayer = typeof aClip?.layer === 'number' ? aClip.layer : 0;
+          const bLayer = typeof bClip?.layer === 'number' ? bClip.layer : 0;
+          return aLayer - bLayer;
+        });
+        this.stageSortDirty = false;
+      }
 
-    // After rendering, it's safe to close the previous frame resources.
-    for (const clip of updatedClips) {
-      if (!clip.lastVideoFrame) continue;
-      safeDispose(clip.lastVideoFrame);
-      clip.lastVideoFrame = null;
+      this.lastRenderedTimeUs = timeUs;
+
+      if (
+        this.adjustmentTexture &&
+        active.some((c) => c.clipKind === 'adjustment' && c.sprite.visible)
+      ) {
+        const textureOk =
+          !(this.adjustmentTexture as any)?.destroyed &&
+          typeof (this.adjustmentTexture as any)?.uid === 'number';
+        if (!textureOk) {
+          try {
+            safeDispose(this.adjustmentTexture);
+          } catch {
+            // ignore
+          }
+          this.adjustmentTexture = RenderTexture.create({
+            width: this.width,
+            height: this.height,
+          });
+        }
+
+        const children = this.app.stage.children;
+        const visibilityState = children.map((c) => c.visible);
+
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const clipId = (child as any).__clipId;
+          if (!clipId) continue;
+          const clip = this.clipById.get(clipId);
+
+          if (clip?.clipKind === 'adjustment' && clip.sprite.visible) {
+            // Скрываем сам adjustment слой и всё, что выше него
+            for (let j = i; j < children.length; j++) {
+              const childObj = children[j];
+              if (childObj) {
+                childObj.visible = false;
+              }
+            }
+
+            // Рендерим слои под adjustment слоем в текстуру
+            if (this.adjustmentTexture) {
+              this.app.renderer.render({
+                container: this.app.stage,
+                target: this.adjustmentTexture,
+                clear: true,
+              });
+            }
+
+            // Восстанавливаем видимость
+            for (let j = 0; j < children.length; j++) {
+              const childObj = children[j];
+              if (childObj && visibilityState[j] !== undefined) {
+                childObj.visible = visibilityState[j] as boolean;
+              }
+            }
+
+            // Назначаем текстуру adjustment спрайту
+            if (this.adjustmentTexture) {
+              clip.sprite.texture = this.adjustmentTexture;
+            }
+          }
+        }
+      }
+
+      this.app.render();
+
+      return this.canvas;
+    } finally {
+      // Ensure VideoFrames are always closed even when rendering fails.
+      for (const clip of updatedClips) {
+        if (!clip.lastVideoFrame) continue;
+        safeDispose(clip.lastVideoFrame);
+        clip.lastVideoFrame = null;
+      }
     }
-    return this.canvas;
   }
 
   private ensureCanvasFallback(clip: CompositorClip) {
@@ -1029,6 +1051,10 @@ export class VideoCompositor {
 
   destroy() {
     this.clearClips();
+    if (this.adjustmentTexture) {
+      safeDispose(this.adjustmentTexture);
+      this.adjustmentTexture = null;
+    }
     if (this.app) {
       const pixiApp = this.app as any;
 

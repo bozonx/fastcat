@@ -85,6 +85,24 @@ function transitionUsToPx(durationUs: number | undefined): number {
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
   if (!item) return [];
 
+  if (item.kind === 'gap') {
+    return [
+      [
+        {
+          label: t('granVideoEditor.timeline.delete', 'Delete'),
+          icon: 'i-heroicons-trash',
+          onSelect: () => {
+            timelineStore.applyTimeline({
+              type: 'delete_items',
+              trackId: track.id,
+              itemIds: [item.id],
+            });
+          },
+        },
+      ],
+    ];
+  }
+
   const mainGroup: any[] = [];
 
   if (item.kind === 'clip') {
@@ -269,7 +287,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
           :class="[
             item.kind === 'gap'
-              ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70 cursor-default pointer-events-none'
+              ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70'
               : item.kind === 'clip' && (item as any).clipType === 'background'
                 ? 'border border-purple-400 hover:bg-purple-700/60 bg-purple-800/50'
                 : item.kind === 'clip' && (item as any).clipType === 'adjustment'
@@ -292,7 +310,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             item.kind === 'clip' &&
             emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
           "
-          @click.stop="item.kind === 'clip' && emit('selectItem', $event, item.id)"
+          @click.stop="emit('selectItem', $event, item.id)"
         >
           <!-- Transition blocks (selectable) -->
           <button
