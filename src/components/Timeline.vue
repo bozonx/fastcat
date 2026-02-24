@@ -25,7 +25,13 @@ const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const { draggedFile } = useDraggedFile();
 
-const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split', [20, 80]);
+const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v2', [10, 90]); // 10% is ~150px on 1440px screen
+
+function onTimelineSplitResize(event: any) {
+  if (Array.isArray(event)) {
+    timelineSplitSizes.value = event.map(p => p.size);
+  }
+}
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -170,9 +176,9 @@ function formatTime(seconds: number): string {
     <TimelineToolbar />
 
     <!-- Timeline area -->
-    <Splitpanes class="flex flex-1 min-h-0 overflow-hidden default-theme" @resize="timelineSplitSizes = $event.map((p: any) => p.size)">
+    <Splitpanes class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
       <!-- Track labels -->
-      <Pane :size="timelineSplitSizes[0]" min-size="10" max-size="50">
+      <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
         <TimelineTrackLabels :tracks="tracks" class="h-full border-r border-ui-border" />
       </Pane>
 

@@ -25,8 +25,20 @@ useHead({
   title: t('navigation.granVideoEditor'),
 });
 
-const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split', [60, 40]);
-const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split', [25, 50, 25]);
+const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split-v2', [40, 60]); // 40% top, 60% timeline (approx 800px on 1440px screen)
+const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split-v2', [20, 60, 20]); // 20% is ~280px on 1440px screen
+
+function onMainSplitResize(event: any) {
+  if (Array.isArray(event)) {
+    mainSplitSizes.value = event.map(p => p.size);
+  }
+}
+
+function onTopSplitResize(event: any) {
+  if (Array.isArray(event)) {
+    topSplitSizes.value = event.map(p => p.size);
+  }
+}
 
 const newProjectName = ref('');
 const isStartingUp = ref(true);
@@ -319,24 +331,24 @@ function leaveProject() {
       </div>
 
       <!-- Editor Layout using Splitpanes -->
-      <Splitpanes class="flex-1 min-h-0 default-theme" horizontal @resize="mainSplitSizes = $event.map((p: any) => p.size)">
+      <Splitpanes class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
         <!-- Top half: File Manager + Monitor + Preview -->
-        <Pane :size="mainSplitSizes[0]" min-size="20">
-          <Splitpanes class="default-theme" @resize="topSplitSizes = $event.map((p: any) => p.size)">
-            <Pane :size="topSplitSizes[0]" min-size="15">
-              <FileManager class="h-full border-r border-ui-border" />
+        <Pane :size="mainSplitSizes[0]" min-size="10">
+          <Splitpanes class="editor-splitpanes" @resized="onTopSplitResize">
+            <Pane :size="topSplitSizes[0]" min-size="5">
+              <FileManager class="h-full" />
             </Pane>
-            <Pane :size="topSplitSizes[1]" min-size="20">
-              <Monitor class="h-full border-r border-ui-border" />
+            <Pane :size="topSplitSizes[1]" min-size="10">
+              <Monitor class="h-full" />
             </Pane>
-            <Pane :size="topSplitSizes[2]" min-size="15">
+            <Pane :size="topSplitSizes[2]" min-size="5">
               <Preview class="h-full" />
             </Pane>
           </Splitpanes>
         </Pane>
 
         <!-- Bottom half: Timeline -->
-        <Pane :size="mainSplitSizes[1]" min-size="20">
+        <Pane :size="mainSplitSizes[1]" min-size="10">
           <Timeline class="h-full" />
         </Pane>
       </Splitpanes>
@@ -347,3 +359,48 @@ function leaveProject() {
     </template>
   </div>
 </template>
+
+<style>
+/* Custom theme for splitpanes matching Gran Video Editor dark mode */
+.editor-splitpanes {
+  background-color: transparent;
+}
+.editor-splitpanes .splitpanes__pane {
+  background-color: transparent;
+}
+.editor-splitpanes > .splitpanes__splitter {
+  background-color: var(--color-ui-border);
+  position: relative;
+  box-sizing: border-box;
+}
+.editor-splitpanes > .splitpanes__splitter:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  transition: background-color 0.2s;
+  background-color: transparent;
+  z-index: 10;
+}
+.editor-splitpanes > .splitpanes__splitter:hover:before {
+  background-color: var(--color-primary-500);
+}
+.editor-splitpanes.splitpanes--vertical > .splitpanes__splitter {
+  width: 2px;
+  cursor: col-resize;
+}
+.editor-splitpanes.splitpanes--vertical > .splitpanes__splitter:before {
+  left: -3px;
+  right: -3px;
+  height: 100%;
+}
+.editor-splitpanes.splitpanes--horizontal > .splitpanes__splitter {
+  height: 2px;
+  cursor: row-resize;
+}
+.editor-splitpanes.splitpanes--horizontal > .splitpanes__splitter:before {
+  top: -3px;
+  bottom: -3px;
+  width: 100%;
+}
+</style>
