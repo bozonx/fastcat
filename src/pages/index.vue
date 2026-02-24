@@ -42,8 +42,10 @@ function onTopSplitResize(event: any) {
 
 const newProjectName = ref('');
 const isStartingUp = ref(true);
+const isMounted = ref(false);
 
 onMounted(async () => {
+  isMounted.value = true;
   try {
     await workspaceStore.init();
 
@@ -330,9 +332,7 @@ function leaveProject() {
         </div>
       </div>
 
-      <!-- Editor Layout using Splitpanes -->
-      <Splitpanes class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
-        <!-- Top half: File Manager + Monitor + Preview -->
+      <Splitpanes v-if="isMounted" class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
         <Pane :size="mainSplitSizes[0]" min-size="10">
           <Splitpanes class="editor-splitpanes" @resized="onTopSplitResize">
             <Pane :size="topSplitSizes[0]" min-size="5">
@@ -346,8 +346,6 @@ function leaveProject() {
             </Pane>
           </Splitpanes>
         </Pane>
-
-        <!-- Bottom half: Timeline -->
         <Pane :size="mainSplitSizes[1]" min-size="10">
           <Timeline class="h-full" />
         </Pane>

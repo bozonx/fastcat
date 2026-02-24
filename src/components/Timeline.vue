@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { TimelineTrack } from '~/timeline/types';
@@ -38,6 +38,11 @@ const tracks = computed(
 );
 
 const scrollEl = ref<HTMLElement | null>(null);
+const isMounted = ref(false);
+
+onMounted(() => {
+  isMounted.value = true;
+});
 
 const dragPreview = ref<{
   trackId: string;
@@ -175,14 +180,10 @@ function formatTime(seconds: number): string {
     <!-- Toolbar -->
     <TimelineToolbar />
 
-    <!-- Timeline area -->
-    <Splitpanes class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
-      <!-- Track labels -->
+    <Splitpanes v-if="isMounted" class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
       <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
         <TimelineTrackLabels :tracks="tracks" class="h-full border-r border-ui-border" />
       </Pane>
-
-      <!-- Scrollable track area -->
       <Pane :size="timelineSplitSizes[1]" min-size="50">
         <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
           <div
