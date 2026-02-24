@@ -1,4 +1,5 @@
 import { safeDispose } from './utils';
+import { TimelineActiveTracker } from './TimelineActiveTracker';
 import {
   Application,
   Sprite,
@@ -70,12 +71,14 @@ export class VideoCompositor {
   private lastRenderedTimeUs = 0;
   private clipPreferBitmapFallback = new Map<string, boolean>();
   private clipPreferCanvasFallback = new Map<string, boolean>();
-  private activeClips: CompositorClip[] = [];
-  private prevActiveClipIds = new Set<string>();
-  private nextClipStartIndex = 0;
   private stageSortDirty = true;
   private activeSortDirty = true;
   private contextLost = false;
+  private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
+    getId: (clip) => clip.itemId,
+    getStartUs: (clip) => clip.startUs,
+    getEndUs: (clip) => clip.endUs,
+  });
 
   async init(
     width: number,
@@ -390,9 +393,7 @@ export class VideoCompositor {
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
     this.lastRenderedTimeUs = 0;
-    this.activeClips = [];
-    this.prevActiveClipIds.clear();
-    this.nextClipStartIndex = 0;
+    this.activeTracker.reset();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
 
@@ -438,9 +439,7 @@ export class VideoCompositor {
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
     this.lastRenderedTimeUs = 0;
-    this.activeClips = [];
-    this.prevActiveClipIds.clear();
-    this.nextClipStartIndex = 0;
+    this.activeTracker.reset();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
     return this.maxDurationUs;
@@ -457,7 +456,18 @@ export class VideoCompositor {
       return this.canvas;
     }
 
-    const active = this.updateActiveClips(timeUs);
+    const { activeClips: active, activeChanged } = this.activeTracker.update({
+      clips: this.clips,
+      timeUs,
+      lastTimeUs: this.lastRenderedTimeUs,
+      onDeactivate: (clip) => {
+        clip.sprite.visible = false;
+      },
+    });
+
+    if (activeChanged) {
+      this.activeSortDirty = true;
+    }
     if (this.activeSortDirty) {
       active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
       this.activeSortDirty = false;
@@ -686,9 +696,7 @@ export class VideoCompositor {
     this.clipById.clear();
     this.replacedClipIds.clear();
     this.lastRenderedTimeUs = 0;
-    this.activeClips = [];
-    this.prevActiveClipIds.clear();
-    this.nextClipStartIndex = 0;
+    this.activeTracker.reset();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
     this.maxDurationUs = 0;
@@ -755,95 +763,5 @@ export class VideoCompositor {
       clip.sprite.parent.removeChild(clip.sprite);
     }
     clip.sprite.destroy(true);
-  }
-
-  private updateActiveClips(timeUs: number): CompositorClip[] {
-    if (this.clips.length === 0) {
-      this.activeClips = [];
-      this.prevActiveClipIds.clear();
-      this.nextClipStartIndex = 0;
-      return this.activeClips;
-    }
-
-    const movingForward = timeUs >= this.lastRenderedTimeUs;
-    let activeChanged = false;
-
-    if (!movingForward) {
-      this.recomputeActiveClips(timeUs);
-      activeChanged = true;
-    } else {
-      while (this.nextClipStartIndex < this.clips.length) {
-        const nextClip = this.clips[this.nextClipStartIndex];
-        if (!nextClip || nextClip.startUs > timeUs) {
-          break;
-        }
-        this.activeClips.push(nextClip);
-        this.nextClipStartIndex += 1;
-        activeChanged = true;
-      }
-
-      if (this.activeClips.length > 0) {
-        const nextActive: CompositorClip[] = [];
-        for (const clip of this.activeClips) {
-          if (timeUs < clip.endUs) {
-            nextActive.push(clip);
-          } else {
-            clip.sprite.visible = false;
-            activeChanged = true;
-          }
-        }
-        if (nextActive.length !== this.activeClips.length) {
-          this.activeClips = nextActive;
-        }
-      }
-    }
-
-    if (activeChanged) {
-      this.activeSortDirty = true;
-      const nextActiveIds = new Set<string>();
-      for (const clip of this.activeClips) {
-        nextActiveIds.add(clip.itemId);
-      }
-      for (const prevId of this.prevActiveClipIds) {
-        if (!nextActiveIds.has(prevId)) {
-          const prevClip = this.clipById.get(prevId);
-          if (prevClip) prevClip.sprite.visible = false;
-        }
-      }
-      this.prevActiveClipIds = nextActiveIds;
-    }
-
-    return this.activeClips;
-  }
-
-  private recomputeActiveClips(timeUs: number) {
-    const nextStartIndex = this.findNextStartIndex(timeUs);
-    const nextActive: CompositorClip[] = [];
-    for (let i = 0; i < nextStartIndex; i += 1) {
-      const clip = this.clips[i];
-      if (!clip) continue;
-      if (timeUs >= clip.startUs && timeUs < clip.endUs) {
-        nextActive.push(clip);
-      } else {
-        clip.sprite.visible = false;
-      }
-    }
-    this.activeClips = nextActive;
-    this.nextClipStartIndex = nextStartIndex;
-  }
-
-  private findNextStartIndex(timeUs: number) {
-    let low = 0;
-    let high = this.clips.length;
-    while (low < high) {
-      const mid = Math.floor((low + high) / 2);
-      const clip = this.clips[mid];
-      if (clip && clip.startUs <= timeUs) {
-        low = mid + 1;
-      } else {
-        high = mid;
-      }
-    }
-    return low;
   }
 }

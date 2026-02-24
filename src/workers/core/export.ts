@@ -154,6 +154,149 @@ export async function runExport(
   const { Output, Mp4OutputFormat, WebMOutputFormat, MkvOutputFormat, CanvasSource, StreamTarget } =
     await import('mediabunny');
 
+  function ensureNotCancelled() {
+    if (!checkCancel()) return;
+    const abortErr = new Error('Export was cancelled');
+    (abortErr as any).name = 'AbortError';
+    throw abortErr;
+  }
+
+  async function notifyPhase(phase: string) {
+    if (!hostClient) return;
+    try {
+      await (hostClient as any).onExportPhase?.(phase);
+    } catch {
+      // ignore
+    }
+  }
+
+  function computeMaxAudioDurationUs(clips: any[]): number {
+    return clips.reduce((max, clip) => {
+      const endUs =
+        Number(clip.timelineRange?.startUs || 0) + Number(clip.timelineRange?.durationUs || 0);
+      return Math.max(max, endUs);
+    }, 0);
+  }
+
+  async function createOutput(params: { format: any }): Promise<{ output: any; writable: any }> {
+    const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
+
+    const target = new StreamTarget(writable, {
+      chunked: true,
+      chunkSize: 16 * 1024 * 1024,
+    });
+    const output = new Output({ target, format: params.format });
+    return { output, writable };
+  }
+
+  async function safeCancel(params: { output: any; writable: any }) {
+    const { output, writable } = params;
+    try {
+      if (typeof (output as any).cancel === 'function') {
+        await (output as any).cancel();
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      if (typeof (writable as any).abort === 'function') {
+        await (writable as any).abort();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function writeOpusPassthroughIfNeeded(params: {
+    audioPacketState: {
+      audioSource: any;
+      packetSink: any;
+      decoderConfig: any;
+      ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
+      input: any;
+    } | null;
+  }) {
+    const audioPacketState = params.audioPacketState;
+    if (!audioPacketState) return;
+
+    const { packetSink, decoderConfig, ranges, input } = audioPacketState;
+    let isFirstPacket = true;
+    try {
+      for await (const packet of packetSink.packets()) {
+        ensureNotCancelled();
+        const packetStart = Number(packet.timestamp || 0);
+        const packetDuration = Number(packet.duration || 0);
+        const packetEnd = packetStart + packetDuration;
+        if (packetEnd <= ranges.sourceStartS) continue;
+        if (packetStart >= ranges.sourceEndS) break;
+
+        const adjustedTimestamp = packetStart - ranges.sourceStartS + ranges.timelineStartS;
+        const adjustedPacket = packet.clone({ timestamp: adjustedTimestamp });
+        if (isFirstPacket) {
+          await audioPacketState.audioSource.add(adjustedPacket, { decoderConfig });
+          isFirstPacket = false;
+        } else {
+          await audioPacketState.audioSource.add(adjustedPacket);
+        }
+      }
+
+      if (isFirstPacket) {
+        await reportExportWarning(
+          '[Worker Export] No audio packets in selected range; exporting without audio.',
+        );
+      }
+    } finally {
+      if ('close' in packetSink && typeof (packetSink as any).close === 'function') {
+        (packetSink as any).close();
+      }
+      safeDispose(input);
+    }
+  }
+
+  async function encodeFrames(params: {
+    durationS: number;
+    fps: number;
+    videoSource: any;
+    compositor: VideoCompositor;
+  }) {
+    const fps = Math.max(1, Math.round(Number(params.fps) || 30));
+    const totalFrames = Math.ceil(params.durationS * fps);
+    const dtUs = Math.floor(1_000_000 / fps);
+    const dtS = dtUs / 1_000_000;
+    let currentTimeUs = 0;
+
+    let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    let lastProgressAtMs = lastYieldAtMs;
+    const yieldIntervalMs = 16;
+    const progressIntervalMs = 250;
+
+    for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
+      ensureNotCancelled();
+
+      const generatedCanvas = await params.compositor.renderFrame(currentTimeUs);
+      if (generatedCanvas) {
+        await (params.videoSource as any).add(currentTimeUs / 1_000_000, dtS);
+      }
+      currentTimeUs += dtUs;
+
+      const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
+      const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const shouldReport =
+        frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;
+      if (hostClient && shouldReport) {
+        lastProgressAtMs = nowProgressMs;
+        await hostClient.onExportProgress(progress);
+      }
+
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (nowMs - lastYieldAtMs >= yieldIntervalMs) {
+        lastYieldAtMs = nowMs;
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      }
+    }
+  }
+
   const localCompositor = new VideoCompositor();
   await localCompositor.init(options.width, options.height, '#000', true);
 
@@ -167,11 +310,7 @@ export async function runExport(
       checkCancel,
     );
 
-    const maxAudioDurationUs = audioClips.reduce((max, clip) => {
-      const endUs =
-        Number(clip.timelineRange?.startUs || 0) + Number(clip.timelineRange?.durationUs || 0);
-      return Math.max(max, endUs);
-    }, 0);
+    const maxAudioDurationUs = computeMaxAudioDurationUs(audioClips);
 
     const maxDurationUs = Math.max(maxVideoDurationUs, maxAudioDurationUs);
 
@@ -191,21 +330,9 @@ export async function runExport(
       preference: 'prefer-hardware' | 'prefer-software',
       fallbackCodecString = true,
     ) {
-      if (hostClient) {
-        try {
-          await (hostClient as any).onExportPhase?.('encoding');
-        } catch {
-          // ignore
-        }
-      }
+      await notifyPhase('encoding');
 
-      const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
-
-      const target = new StreamTarget(writable, {
-        chunked: true,
-        chunkSize: 16 * 1024 * 1024,
-      });
-      const output = new Output({ target, format });
+      const { output, writable } = await createOutput({ format });
 
       const fullCodecString =
         fallbackCodecString && options.videoCodec ? options.videoCodec : undefined;
@@ -269,119 +396,30 @@ export async function runExport(
         }
       }
 
-      const fps = Math.max(1, Math.round(Number(options.fps) || 30));
-      const totalFrames = Math.ceil(durationS * fps);
-      const dtUs = Math.floor(1_000_000 / fps);
-      const dtS = dtUs / 1_000_000;
-      let currentTimeUs = 0;
-
-      let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      let lastProgressAtMs = lastYieldAtMs;
-      const yieldIntervalMs = 16;
-      const progressIntervalMs = 250;
-
       try {
         await output.start();
 
-        if (audioPacketState) {
-          const { packetSink, decoderConfig, ranges, input } = audioPacketState;
-          let isFirstPacket = true;
-          try {
-            for await (const packet of packetSink.packets()) {
-              if (checkCancel()) {
-                const abortErr = new Error('Export was cancelled');
-                (abortErr as any).name = 'AbortError';
-                throw abortErr;
-              }
-              const packetStart = Number(packet.timestamp || 0);
-              const packetDuration = Number(packet.duration || 0);
-              const packetEnd = packetStart + packetDuration;
-              if (packetEnd <= ranges.sourceStartS) continue;
-              if (packetStart >= ranges.sourceEndS) break;
-
-              const adjustedTimestamp = packetStart - ranges.sourceStartS + ranges.timelineStartS;
-              const adjustedPacket = packet.clone({ timestamp: adjustedTimestamp });
-              if (isFirstPacket) {
-                await audioPacketState.audioSource.add(adjustedPacket, { decoderConfig });
-                isFirstPacket = false;
-              } else {
-                await audioPacketState.audioSource.add(adjustedPacket);
-              }
-            }
-
-            if (isFirstPacket) {
-              await reportExportWarning(
-                '[Worker Export] No audio packets in selected range; exporting without audio.',
-              );
-            }
-          } finally {
-            if ('close' in packetSink && typeof (packetSink as any).close === 'function') {
-              (packetSink as any).close();
-            }
-            safeDispose(input);
-          }
-        }
+        await writeOpusPassthroughIfNeeded({ audioPacketState });
 
         if (audioSource && writeMixedAudioToSource) {
           await writeMixedAudioToSource();
         }
 
-        for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
-          if (checkCancel()) {
-            const abortErr = new Error('Export was cancelled');
-            (abortErr as any).name = 'AbortError';
-            throw abortErr;
-          }
-          const generatedCanvas = await localCompositor.renderFrame(currentTimeUs);
-          if (generatedCanvas) {
-            await (videoSource as any).add(currentTimeUs / 1_000_000, dtS);
-          }
-          currentTimeUs += dtUs;
-
-          const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
-          const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-          const shouldReport =
-            frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;
-          if (hostClient && shouldReport) {
-            lastProgressAtMs = nowProgressMs;
-            await hostClient.onExportProgress(progress);
-          }
-
-          const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-          if (nowMs - lastYieldAtMs >= yieldIntervalMs) {
-            lastYieldAtMs = nowMs;
-            await new Promise<void>((resolve) => setTimeout(resolve, 0));
-          }
-        }
+        await encodeFrames({
+          durationS,
+          fps: options.fps,
+          videoSource,
+          compositor: localCompositor,
+        });
 
         if ('close' in videoSource) (videoSource as any).close();
         if (audioSource && 'close' in audioSource) (audioSource as any).close();
 
-        if (hostClient) {
-          try {
-            await (hostClient as any).onExportPhase?.('saving');
-          } catch {
-            // ignore
-          }
-        }
+        await notifyPhase('saving');
 
         await output.finalize();
       } catch (e) {
-        try {
-          if (typeof (output as any).cancel === 'function') {
-            await (output as any).cancel();
-          }
-        } catch {
-          // ignore
-        }
-
-        try {
-          if (typeof (writable as any).abort === 'function') {
-            await (writable as any).abort();
-          }
-        } catch {
-          // ignore
-        }
+        await safeCancel({ output, writable });
         throw e;
       }
     }
