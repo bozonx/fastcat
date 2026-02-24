@@ -23,7 +23,11 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
   (e: 'select', entry: FsEntry): void;
-  (e: 'action', action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy', entry: FsEntry): void;
+  (
+    e: 'action',
+    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy',
+    entry: FsEntry,
+  ): void;
 }>();
 
 const { t } = useI18n();
@@ -97,18 +101,18 @@ function getContextMenuItems(entry: FsEntry) {
   if (isVideo(entry)) {
     const hasP = hasProxy(entry);
     const generating = isGeneratingProxy(entry);
-    
+
     items.push([
       {
-        label: generating 
+        label: generating
           ? t('videoEditor.fileManager.actions.generatingProxy', 'Generating Proxy...')
-          : hasP 
-            ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy') 
+          : hasP
+            ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
             : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
         icon: generating ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
         disabled: generating,
         onSelect: () => emit('action', 'createProxy', entry),
-      }
+      },
     ]);
 
     if (hasP) {
@@ -118,7 +122,7 @@ function getContextMenuItems(entry: FsEntry) {
           icon: 'i-heroicons-trash',
           color: 'error',
           onSelect: () => emit('action', 'deleteProxy', entry),
-        }
+        },
       ]);
     }
   }
@@ -164,7 +168,7 @@ function getContextMenuItems(entry: FsEntry) {
             class="w-4 h-4 shrink-0 transition-colors"
             :class="[
               entry.kind === 'directory' ? 'text-yellow-500' : 'text-gray-400',
-              hasProxy(entry) ? 'text-green-500!' : ''
+              hasProxy(entry) ? 'text-green-500!' : '',
             ]"
           />
 
@@ -172,8 +176,10 @@ function getContextMenuItems(entry: FsEntry) {
           <span
             class="text-sm truncate transition-colors"
             :class="[
-              entry.kind === 'directory' ? 'font-medium text-gray-200 group-hover:text-white' : 'text-gray-200 group-hover:text-white',
-              hasProxy(entry) ? 'text-green-400! group-hover:text-green-300!' : ''
+              entry.kind === 'directory'
+                ? 'font-medium text-gray-200 group-hover:text-white'
+                : 'text-gray-200 group-hover:text-white',
+              hasProxy(entry) ? 'text-green-400! group-hover:text-green-300!' : '',
             ]"
           >
             {{ entry.name }}
@@ -183,7 +189,10 @@ function getContextMenuItems(entry: FsEntry) {
           <template v-if="isVideo(entry)">
             <div v-if="isGeneratingProxy(entry)" class="flex items-center gap-1 ml-2">
               <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 text-blue-400 animate-spin" />
-              <span v-if="proxyProgress(entry) !== undefined" class="text-xs text-blue-400 font-mono">
+              <span
+                v-if="proxyProgress(entry) !== undefined"
+                class="text-xs text-blue-400 font-mono"
+              >
                 {{ proxyProgress(entry) }}%
               </span>
             </div>

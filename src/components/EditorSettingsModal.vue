@@ -49,8 +49,11 @@ async function loadCodecSupport() {
     videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
     const selected = workspaceStore.userSettings.exportDefaults.encoding.videoCodec;
     if (videoCodecSupport.value[selected] === false) {
-      const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find((opt) => videoCodecSupport.value[opt.value]);
-      if (firstSupported) workspaceStore.userSettings.exportDefaults.encoding.videoCodec = firstSupported.value;
+      const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find(
+        (opt) => videoCodecSupport.value[opt.value],
+      );
+      if (firstSupported)
+        workspaceStore.userSettings.exportDefaults.encoding.videoCodec = firstSupported.value;
     }
   } finally {
     isLoadingCodecSupport.value = false;
@@ -90,7 +93,9 @@ const thumbnailsLimitGb = computed({
   set: (v: number) => {
     const n = Number(v);
     if (!Number.isFinite(n) || n <= 0) return;
-    workspaceStore.workspaceSettings.thumbnailsStorageLimitBytes = Math.round(n * 1024 * 1024 * 1024);
+    workspaceStore.workspaceSettings.thumbnailsStorageLimitBytes = Math.round(
+      n * 1024 * 1024 * 1024,
+    );
   },
 });
 </script>
@@ -178,8 +183,15 @@ const thumbnailsLimitGb = computed({
             {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
           </div>
 
-          <div class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded text-sm">
-            {{ t('videoEditor.settings.proxyInfo', 'Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.') }}
+          <div
+            class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded text-sm"
+          >
+            {{
+              t(
+                'videoEditor.settings.proxyInfo',
+                'Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.',
+              )
+            }}
           </div>
 
           <UFormField :label="t('videoEditor.settings.proxyResolution', 'Proxy resolution')">
@@ -189,18 +201,26 @@ const thumbnailsLimitGb = computed({
                 { label: '360p', value: '360p' },
                 { label: '480p', value: '480p' },
                 { label: '720p', value: '720p' },
-                { label: '1080p', value: '1080p' }
+                { label: '1080p', value: '1080p' },
               ]"
               value-key="value"
               label-key="label"
               class="w-full"
-              @update:model-value="(v: any) => workspaceStore.userSettings.optimization.proxyResolution = v?.value ?? v"
+              @update:model-value="
+                (v: any) =>
+                  (workspaceStore.userSettings.optimization.proxyResolution = v?.value ?? v)
+              "
             />
           </UFormField>
 
           <UFormField
             :label="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
-            :help="t('videoEditor.settings.proxyVideoBitrateHelp', 'Higher bitrate means better quality but larger file size')"
+            :help="
+              t(
+                'videoEditor.settings.proxyVideoBitrateHelp',
+                'Higher bitrate means better quality but larger file size',
+              )
+            "
           >
             <UInput
               v-model.number="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
@@ -213,9 +233,7 @@ const thumbnailsLimitGb = computed({
             />
           </UFormField>
 
-          <UFormField
-            :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')"
-          >
+          <UFormField :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')">
             <UInput
               v-model.number="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
               type="number"
@@ -230,7 +248,12 @@ const thumbnailsLimitGb = computed({
           <label class="flex items-center gap-3 cursor-pointer">
             <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
             <span class="text-sm text-gray-700 dark:text-gray-200">
-              {{ t('videoEditor.settings.proxyCopyOpusAudio', 'Copy Opus audio directly without re-encoding') }}
+              {{
+                t(
+                  'videoEditor.settings.proxyCopyOpusAudio',
+                  'Copy Opus audio directly without re-encoding',
+                )
+              }}
             </span>
           </label>
 
@@ -251,7 +274,9 @@ const thumbnailsLimitGb = computed({
             v-model:resolution-format="workspaceStore.userSettings.exportDefaults.resolutionFormat"
             v-model:orientation="workspaceStore.userSettings.exportDefaults.orientation"
             v-model:aspect-ratio="workspaceStore.userSettings.exportDefaults.aspectRatio"
-            v-model:is-custom-resolution="workspaceStore.userSettings.exportDefaults.isCustomResolution"
+            v-model:is-custom-resolution="
+              workspaceStore.userSettings.exportDefaults.isCustomResolution
+            "
             :disabled="false"
           />
 
@@ -261,7 +286,9 @@ const thumbnailsLimitGb = computed({
             v-model:bitrate-mbps="workspaceStore.userSettings.exportDefaults.encoding.bitrateMbps"
             v-model:exclude-audio="workspaceStore.userSettings.exportDefaults.encoding.excludeAudio"
             v-model:audio-codec="workspaceStore.userSettings.exportDefaults.encoding.audioCodec"
-            v-model:audio-bitrate-kbps="workspaceStore.userSettings.exportDefaults.encoding.audioBitrateKbps"
+            v-model:audio-bitrate-kbps="
+              workspaceStore.userSettings.exportDefaults.encoding.audioBitrateKbps
+            "
             :disabled="false"
             :has-audio="true"
             :is-loading-codec-support="isLoadingCodecSupport"
@@ -337,7 +364,9 @@ const thumbnailsLimitGb = computed({
           </UFormField>
 
           <div class="text-xs text-gray-500">
-            {{ t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json') }}
+            {{
+              t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json')
+            }}
           </div>
         </div>
       </div>

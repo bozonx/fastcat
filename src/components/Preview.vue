@@ -51,7 +51,8 @@ const displayMode = computed<'clip' | 'file' | 'empty'>(() => {
 });
 
 const hasProxy = computed(() => {
-  if (displayMode.value !== 'file' || !uiStore.selectedFsEntry || !uiStore.selectedFsEntry.path) return false;
+  if (displayMode.value !== 'file' || !uiStore.selectedFsEntry || !uiStore.selectedFsEntry.path)
+    return false;
   return proxyStore.existingProxies.has(uiStore.selectedFsEntry.path);
 });
 
@@ -66,13 +67,13 @@ async function loadPreviewMedia() {
     URL.revokeObjectURL(currentUrl.value);
     currentUrl.value = null;
   }
-  
+
   const entry = uiStore.selectedFsEntry;
   if (!entry || entry.kind !== 'file') return;
 
   try {
     let fileToPlay: File;
-    
+
     if (previewMode.value === 'proxy' && hasProxy.value && entry.path) {
       const proxyFile = await proxyStore.getProxyFile(entry.path);
       if (proxyFile) {
@@ -83,7 +84,7 @@ async function loadPreviewMedia() {
     } else {
       fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
     }
-    
+
     if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
       currentUrl.value = URL.createObjectURL(fileToPlay);
     }
@@ -146,8 +147,12 @@ watch(
       } else {
         mediaType.value = 'unknown';
       }
-      
-      if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+
+      if (
+        mediaType.value === 'image' ||
+        mediaType.value === 'video' ||
+        mediaType.value === 'audio'
+      ) {
         await loadPreviewMedia();
       }
     } catch (e) {

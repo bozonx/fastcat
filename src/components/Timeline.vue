@@ -5,7 +5,12 @@ import { useMediaStore } from '~/stores/media.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
-import { useTimelineInteraction, timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/composables/timeline/useTimelineInteraction';
+import {
+  useTimelineInteraction,
+  timeUsToPx,
+  pxToTimeUs,
+  zoomToPxPerSecond,
+} from '~/composables/timeline/useTimelineInteraction';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
@@ -23,16 +28,13 @@ const tracks = computed(
 
 const scrollEl = ref<HTMLElement | null>(null);
 
-const dragPreview = ref<
-  | {
-      trackId: string;
-      startUs: number;
-      label: string;
-      durationUs: number;
-      kind: 'timeline-clip' | 'file';
-    }
-  | null
->(null);
+const dragPreview = ref<{
+  trackId: string;
+  startUs: number;
+  label: string;
+  durationUs: number;
+  kind: 'timeline-clip' | 'file';
+} | null>(null);
 
 const {
   isDraggingPlayhead,
@@ -104,7 +106,10 @@ async function onClipAction(payload: {
 }) {
   try {
     if (payload.action === 'extractAudio') {
-      await timelineStore.extractAudioToTrack({ videoTrackId: payload.trackId, videoItemId: payload.itemId });
+      await timelineStore.extractAudioToTrack({
+        videoTrackId: payload.trackId,
+        videoItemId: payload.itemId,
+      });
     } else {
       timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
     }
@@ -122,8 +127,7 @@ async function onClipAction(payload: {
 async function onDrop(e: DragEvent, trackId: string) {
   clearDragPreview();
   const startUs = getDropStartUs(e);
-  const data =
-    e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain');
+  const data = e.dataTransfer?.getData('application/json') || e.dataTransfer?.getData('text/plain');
   if (data) {
     try {
       const parsed = JSON.parse(data);
@@ -196,7 +200,9 @@ function formatTime(seconds: number): string {
         <!-- Playhead -->
         <div
           class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
-          :style="{ left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px` }"
+          :style="{
+            left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
+          }"
         >
           <div
             class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"

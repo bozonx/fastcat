@@ -3,6 +3,8 @@ import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import type { WorkerTimelineClip } from '../../../../src/composables/monitor/types';
 
+import { useMonitorCore } from '../../../../src/composables/monitor/useMonitorCore';
+
 const mockClient = {
   loadTimeline: vi.fn().mockResolvedValue(0),
   updateTimelineLayout: vi.fn().mockResolvedValue(0),
@@ -34,8 +36,6 @@ vi.mock('~/utils/video-editor/AudioEngine', () => {
 
   return { AudioEngine: AudioEngineMock };
 });
-
-import { useMonitorCore } from '../../../../src/composables/monitor/useMonitorCore';
 
 function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTimelineClip {
   return {

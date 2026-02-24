@@ -268,7 +268,9 @@ function leaveProject() {
 
     <!-- Editor Screen -->
     <template v-else>
-      <div class="flex items-center justify-between px-4 py-2 bg-ui-bg-elevated border-b border-ui-border">
+      <div
+        class="flex items-center justify-between px-4 py-2 bg-ui-bg-elevated border-b border-ui-border"
+      >
         <div class="flex items-center gap-4">
           <UButton
             size="xs"

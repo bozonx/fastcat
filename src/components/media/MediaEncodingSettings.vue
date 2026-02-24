@@ -38,18 +38,13 @@ const filteredVideoCodecOptions = computed(() => {
   return props.videoCodecOptions.filter((opt) => {
     if (outputFormat.value === 'mp4') {
       const v = opt.value.toLowerCase();
-      if (
-        v.startsWith('hev1') ||
-        v.startsWith('hvc1')
-      ) {
+      if (v.startsWith('hev1') || v.startsWith('hvc1')) {
         return false;
       }
     }
     return true;
   });
 });
-
-
 
 watch(outputFormat, (fmt) => {
   if (fmt === 'mp4') {
@@ -120,10 +115,7 @@ const audioCodecOptions = [
       }}</span>
     </label>
 
-    <UFormField
-      v-if="!excludeAudio"
-      :label="t('videoEditor.export.audioCodec', 'Audio codec')"
-    >
+    <UFormField v-if="!excludeAudio" :label="t('videoEditor.export.audioCodec', 'Audio codec')">
       <div v-if="outputFormat === 'mp4'" class="w-full">
         <UiAppButtonGroup
           v-model="audioCodec"
@@ -131,9 +123,7 @@ const audioCodecOptions = [
           :disabled="props.disabled"
         />
       </div>
-      <div v-else class="text-sm text-gray-700 dark:text-gray-300 font-medium">
-        Opus
-      </div>
+      <div v-else class="text-sm text-gray-700 dark:text-gray-300 font-medium">Opus</div>
     </UFormField>
 
     <UFormField

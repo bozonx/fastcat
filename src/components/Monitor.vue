@@ -47,27 +47,27 @@ const {
   useProxyInMonitor,
   setCurrentTimeProvider,
 } = useMonitorCore({
-    projectStore,
-    timelineStore,
-    proxyStore,
-    monitorTimeline: {
-      videoItems,
-      workerTimelineClips,
-      workerAudioClips,
-      safeDurationUs,
-      clipSourceSignature,
-      clipLayoutSignature,
-      audioClipSourceSignature,
-      audioClipLayoutSignature,
-    },
-    monitorDisplay: {
-      containerEl,
-      viewportEl,
-      renderWidth,
-      renderHeight,
-      updateCanvasDisplaySize,
-    },
-  });
+  projectStore,
+  timelineStore,
+  proxyStore,
+  monitorTimeline: {
+    videoItems,
+    workerTimelineClips,
+    workerAudioClips,
+    safeDurationUs,
+    clipSourceSignature,
+    clipLayoutSignature,
+    audioClipSourceSignature,
+    audioClipLayoutSignature,
+  },
+  monitorDisplay: {
+    containerEl,
+    viewportEl,
+    renderWidth,
+    renderHeight,
+    updateCanvasDisplaySize,
+  },
+});
 
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
@@ -215,10 +215,7 @@ function toggleMute() {
     </div>
 
     <!-- Video area -->
-    <div
-      ref="viewportEl"
-      class="flex-1 min-h-0 min-w-0 overflow-hidden relative"
-    >
+    <div ref="viewportEl" class="flex-1 min-h-0 min-w-0 overflow-hidden relative">
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="shrink-0" :style="getCanvasWrapperStyle()">
           <div ref="containerEl" :style="getCanvasInnerStyle()" />

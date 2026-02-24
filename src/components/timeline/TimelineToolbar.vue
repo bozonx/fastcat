@@ -10,7 +10,6 @@ const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
 
-
 function addVideoTrack() {
   const idx = tracks.value.filter((tr) => tr.kind === 'video').length + 1;
   timelineStore.addTrack('video', `Video ${idx}`);
@@ -20,7 +19,6 @@ function addAudioTrack() {
   const idx = tracks.value.filter((tr) => tr.kind === 'audio').length + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
-
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -110,6 +108,5 @@ function onZoomInput(e: Event) {
       />
       <UIcon name="i-heroicons-magnifying-glass-plus" class="w-3.5 h-3.5" />
     </div>
-
   </div>
 </template>

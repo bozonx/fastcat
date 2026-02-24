@@ -17,6 +17,7 @@
     "@nuxt/ui": "^4.4.0",
     "@nuxtjs/i18n": "^10.2.3",
     "@pinia/nuxt": "^0.11.3",
+    "@vueuse/core": "^14.2.1",
     "@webav/av-canvas": "^1.2.8",
     "@webav/av-cliper": "^1.2.8",
     "bidc": "^0.0.4",

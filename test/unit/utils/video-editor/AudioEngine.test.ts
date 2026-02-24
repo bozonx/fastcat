@@ -160,19 +160,25 @@ describe('AudioEngine', () => {
     workerInstance = null;
     audioContextInstance = null;
 
-    vi.stubGlobal('Worker', class {
-      constructor() {
-        workerInstance = new WorkerMock();
-        return workerInstance as any;
-      }
-    });
+    vi.stubGlobal(
+      'Worker',
+      class {
+        constructor() {
+          workerInstance = new WorkerMock();
+          return workerInstance as any;
+        }
+      },
+    );
 
-    vi.stubGlobal('AudioContext', class {
-      constructor() {
-        audioContextInstance = new AudioContextMock();
-        return audioContextInstance as any;
-      }
-    });
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        constructor() {
+          audioContextInstance = new AudioContextMock();
+          return audioContextInstance as any;
+        }
+      },
+    );
   });
 
   afterEach(() => {
