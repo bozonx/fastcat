@@ -34,6 +34,12 @@ interface TimelineClipBase {
   name: string;
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
+  source?: TimelineSourceRef;
+  sourceDurationUs?: number;
+  audioFromVideoDisabled?: boolean;
+  linkedVideoClipId?: string;
+  lockToLinkedVideo?: boolean;
+  freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: ClipEffect[];
 }
@@ -42,9 +48,6 @@ export interface TimelineMediaClipItem extends TimelineClipBase {
   clipType: 'media';
   source: TimelineSourceRef;
   sourceDurationUs: number;
-  audioFromVideoDisabled?: boolean;
-  linkedVideoClipId?: string;
-  lockToLinkedVideo?: boolean;
 }
 
 export interface TimelineAdjustmentClipItem extends TimelineClipBase {

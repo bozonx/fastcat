@@ -187,11 +187,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await Promise.all(
           audioClips.map(async (clip) => {
             try {
-              const handle = await getFileHandleForAudio(clip.source.path);
+              const path = clip.source?.path;
+              if (!path) return null;
+              const handle = await getFileHandleForAudio(path);
               if (!handle) return null;
               return {
                 id: clip.id,
-                sourcePath: getAudioSourceKey(clip.source.path),
+                sourcePath: getAudioSourceKey(path),
                 fileHandle: handle,
                 startUs: clip.timelineRange.startUs,
                 durationUs: clip.timelineRange.durationUs,
@@ -352,11 +354,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await Promise.all(
           audioClips.map(async (clip) => {
             try {
-              const handle = await getFileHandleForAudio(clip.source.path);
+              const path = clip.source?.path;
+              if (!path) return null;
+              const handle = await getFileHandleForAudio(path);
               if (!handle) return null;
               return {
                 id: clip.id,
-                sourcePath: getAudioSourceKey(clip.source.path),
+                sourcePath: getAudioSourceKey(path),
                 fileHandle: handle,
                 startUs: clip.timelineRange.startUs,
                 durationUs: clip.timelineRange.durationUs,

@@ -50,13 +50,11 @@ export function useMonitorTimeline() {
             ? [...clipEffects, ...trackEffects]
             : (clipEffects ?? trackEffects);
 
-        clips.push({
+        const base: WorkerTimelineClip = {
           kind: 'clip',
+          clipType: item.clipType,
           id: item.id,
           layer: trackCount - 1 - trackIndex,
-          source: {
-            path: item.source.path,
-          },
           opacity: item.opacity,
           effects,
           timelineRange: {
@@ -67,7 +65,21 @@ export function useMonitorTimeline() {
             startUs: item.sourceRange.startUs,
             durationUs: item.sourceRange.durationUs,
           },
-        });
+        };
+
+        if (item.clipType === 'media') {
+          clips.push({
+            ...base,
+            source: { path: item.source.path },
+          });
+        } else if (item.clipType === 'background') {
+          clips.push({
+            ...base,
+            backgroundColor: item.backgroundColor,
+          });
+        } else {
+          clips.push(base);
+        }
       }
     }
     return clips;
@@ -91,8 +103,11 @@ export function useMonitorTimeline() {
 
     for (const item of effectiveAudioTracks.flatMap((t) => t.items)) {
       if (item.kind !== 'clip') continue;
+      if (item.clipType !== 'media') continue;
+      if (!item.source) continue;
       clips.push({
         kind: 'clip',
+        clipType: 'media',
         id: item.id,
         layer: 0,
         source: {
@@ -114,9 +129,12 @@ export function useMonitorTimeline() {
       if (!videoTrackIdsForAudio.has(track.id)) continue;
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
+        if (item.clipType !== 'media') continue;
         if (item.audioFromVideoDisabled) continue;
+        if (!item.source) continue;
         clips.push({
           kind: 'clip',
+          clipType: 'media',
           id: `${item.id}__audio`,
           layer: 0,
           source: {

@@ -27,9 +27,9 @@ const { draggedFile } = useDraggedFile();
 
 const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v4', [10, 90]);
 
-function onTimelineSplitResize(event: any) {
-  if (Array.isArray(event)) {
-    timelineSplitSizes.value = event.map(p => p.size);
+function onTimelineSplitResize(event: { panes: { size: number }[] }) {
+  if (Array.isArray(event?.panes)) {
+    timelineSplitSizes.value = event.panes.map(p => p.size);
   }
 }
 

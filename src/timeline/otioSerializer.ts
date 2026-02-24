@@ -225,6 +225,7 @@ function parseClipItem(input: {
 
   return {
     kind: 'clip',
+    clipType: 'media',
     id,
     trackId,
     name,
@@ -233,6 +234,11 @@ function parseClipItem(input: {
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
     audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
+    freezeFrameSourceUs:
+      typeof granMeta?.freezeFrameSourceUs === 'number' &&
+      Number.isFinite(granMeta.freezeFrameSourceUs)
+        ? Math.max(0, Math.round(granMeta.freezeFrameSourceUs))
+        : undefined,
     opacity:
       typeof granMeta?.opacity === 'number' && Number.isFinite(granMeta.opacity)
         ? Math.max(0, Math.min(1, granMeta.opacity))
@@ -352,6 +358,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             id: item.id,
             sourceDurationUs: item.sourceDurationUs,
             audioFromVideoDisabled: Boolean(item.audioFromVideoDisabled),
+            freezeFrameSourceUs: item.freezeFrameSourceUs,
             opacity: item.opacity,
             effects: item.effects,
             linkedVideoClipId: item.linkedVideoClipId,

@@ -1,6 +1,7 @@
 import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../types';
 import type {
   AddClipToTrackCommand,
+  AddVirtualClipToTrackCommand,
   RemoveItemCommand,
   DeleteItemsCommand,
   MoveItemCommand,
@@ -44,6 +45,7 @@ export function addClipToTrack(
 
   const clip: TimelineClipItem = {
     kind: 'clip',
+    clipType: 'media',
     id: nextItemId(track.id, 'clip'),
     trackId: track.id,
     name: cmd.name,
@@ -57,6 +59,64 @@ export function addClipToTrack(
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
   const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
 
+  const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+
+  return {
+    next: {
+      ...doc,
+      tracks: nextTracks,
+    },
+  };
+}
+
+export function addVirtualClipToTrack(
+  doc: TimelineDocument,
+  cmd: AddVirtualClipToTrackCommand,
+): TimelineCommandResult {
+  const track = getTrackById(doc, cmd.trackId);
+  const fps = getDocFps(doc);
+
+  if (track.kind !== 'video') {
+    throw new Error('Virtual clips can only be added to video tracks');
+  }
+
+  const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 2_000_000), fps, 'round');
+  const startCandidate =
+    cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
+  const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
+
+  assertNoOverlap(track, '', startUs, durationUs);
+
+  const base: Omit<Extract<TimelineClipItem, { kind: 'clip' }>, 'clipType'> & {
+    clipType: AddVirtualClipToTrackCommand['clipType'];
+  } = {
+    kind: 'clip',
+    clipType: cmd.clipType,
+    id: nextItemId(track.id, 'clip'),
+    trackId: track.id,
+    name: cmd.name,
+    timelineRange: { startUs, durationUs },
+    sourceRange: { startUs: 0, durationUs },
+  };
+
+  const clip: TimelineClipItem =
+    cmd.clipType === 'background'
+      ? {
+          ...base,
+          clipType: 'background',
+          backgroundColor:
+            typeof cmd.backgroundColor === 'string' && cmd.backgroundColor.trim().length > 0
+              ? cmd.backgroundColor
+              : '#000000',
+        }
+      : {
+          ...base,
+          clipType: 'adjustment',
+        };
+
+  const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
+  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
   const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
   return {
@@ -162,7 +222,12 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || !item.timelineRange) return { next: doc };
 
-  if (item.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo) {
+  if (
+    item.kind === 'clip' &&
+    item.clipType === 'media' &&
+    item.linkedVideoClipId &&
+    item.lockToLinkedVideo
+  ) {
     const linked = findClipById(doc, item.linkedVideoClipId);
     if (!linked) return { next: doc };
     if (linked.track.kind !== 'video') return { next: doc };
@@ -249,7 +314,10 @@ export function moveItemToTrack(
   if (!item) return { next: doc };
   if (!item.timelineRange) return { next: doc };
   const isLockedLinkedAudio =
-    item.kind === 'clip' && Boolean(item.linkedVideoClipId) && Boolean(item.lockToLinkedVideo);
+    item.kind === 'clip' &&
+    item.clipType === 'media' &&
+    Boolean(item.linkedVideoClipId) &&
+    Boolean(item.lockToLinkedVideo);
 
   const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
   const durationUs = Math.max(0, item.timelineRange.durationUs);
@@ -275,7 +343,12 @@ export function moveItemToTrack(
     return t;
   });
 
-  if (isLockedLinkedAudio && item.kind === 'clip' && item.linkedVideoClipId) {
+  if (
+    isLockedLinkedAudio &&
+    item.kind === 'clip' &&
+    item.clipType === 'media' &&
+    item.linkedVideoClipId
+  ) {
     const linked = findClipById({ ...doc, tracks: nextTracks }, item.linkedVideoClipId);
     if (linked && linked.track.kind === 'video') {
       const linkedDurationUs = Math.max(0, linked.item.timelineRange.durationUs);
@@ -314,7 +387,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || !item.timelineRange) return { next: doc };
   if (item.kind !== 'clip') return { next: doc };
-  if (item.linkedVideoClipId && item.lockToLinkedVideo) {
+  if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
     throw new Error('Locked audio clip');
   }
 
@@ -328,7 +401,8 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   const prevSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs));
 
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
-  const maxSourceDurationUs = Math.max(0, Math.round(item.sourceDurationUs));
+  const maxSourceDurationUs =
+    item.clipType === 'media' ? Math.max(0, Math.round(item.sourceDurationUs)) : prevSourceEndUs;
 
   const minSourceStartUs = 0;
   const maxSourceEndUs = maxSourceDurationUs;
@@ -383,7 +457,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
-  if (track.kind === 'video') {
+  if (track.kind === 'video' && item.clipType === 'media') {
     nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
       ...audio,
       timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },

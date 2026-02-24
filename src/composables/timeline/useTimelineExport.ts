@@ -30,9 +30,11 @@ export interface ExportOptions {
 
 export interface WorkerTimelineClip {
   kind: 'clip';
+  clipType: 'media' | 'adjustment' | 'background';
   id: string;
   layer: number;
-  source: { path: string };
+  source?: { path: string };
+  backgroundColor?: string;
   opacity?: number;
   effects?: unknown[];
   timelineRange: { startUs: number; durationUs: number };
@@ -46,11 +48,11 @@ export function toWorkerTimelineClips(
   const clips: WorkerTimelineClip[] = [];
   for (const item of items) {
     if (item.kind !== 'clip') continue;
-    clips.push({
+    const base: WorkerTimelineClip = {
       kind: 'clip',
+      clipType: item.clipType,
       id: item.id,
       layer: options?.layer ?? 0,
-      source: { path: item.source.path },
       opacity: item.opacity,
       effects: item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined,
       timelineRange: {
@@ -61,7 +63,21 @@ export function toWorkerTimelineClips(
         startUs: item.sourceRange.startUs,
         durationUs: item.sourceRange.durationUs,
       },
-    });
+    };
+
+    if (item.clipType === 'media') {
+      clips.push({
+        ...base,
+        source: { path: item.source.path },
+      });
+    } else if (item.clipType === 'background') {
+      clips.push({
+        ...base,
+        backgroundColor: item.backgroundColor,
+      });
+    } else {
+      clips.push(base);
+    }
   }
   return clips;
 }
@@ -383,11 +399,12 @@ export function useTimelineExport() {
     const audioClipsFromVideo = videoTracksForAudio.flatMap((track) =>
       (track.items ?? [])
         .filter(
-          (item): item is Extract<typeof item, { kind: 'clip' }> =>
-            item.kind === 'clip' && !item.audioFromVideoDisabled,
+          (item): item is Extract<typeof item, { kind: 'clip'; clipType: 'media' }> =>
+            item.kind === 'clip' && item.clipType === 'media' && !item.audioFromVideoDisabled,
         )
         .map((item) => ({
           kind: 'clip' as const,
+          clipType: 'media' as const,
           id: `${item.id}__audio`,
           layer: 0,
           source: { path: item.source.path },

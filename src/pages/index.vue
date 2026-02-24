@@ -28,15 +28,15 @@ useHead({
 const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split-v4', [40, 60]);
 const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split-v4', [20, 60, 20]);
 
-function onMainSplitResize(event: any) {
-  if (Array.isArray(event)) {
-    mainSplitSizes.value = event.map(p => p.size);
+function onMainSplitResize(event: { panes: { size: number }[] }) {
+  if (Array.isArray(event?.panes)) {
+    mainSplitSizes.value = event.panes.map(p => p.size);
   }
 }
 
-function onTopSplitResize(event: any) {
-  if (Array.isArray(event)) {
-    topSplitSizes.value = event.map(p => p.size);
+function onTopSplitResize(event: { panes: { size: number }[] }) {
+  if (Array.isArray(event?.panes)) {
+    topSplitSizes.value = event.panes.map(p => p.size);
   }
 }
 

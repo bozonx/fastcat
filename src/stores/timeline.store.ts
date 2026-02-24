@@ -167,7 +167,12 @@ export const useTimelineStore = defineStore('timeline', () => {
   function updateClipProperties(
     trackId: string,
     itemId: string,
-    properties: Partial<Pick<import('~/timeline/types').TimelineClipItem, 'opacity' | 'effects'>>,
+    properties: Partial<
+      Pick<
+        import('~/timeline/types').TimelineClipItem,
+        'opacity' | 'effects' | 'freezeFrameSourceUs'
+      >
+    >,
   ) {
     applyTimeline({
       type: 'update_clip_properties',
@@ -201,6 +206,10 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     const item = fromTrack.items.find((it) => it.id === input.itemId);
     if (!item || item.kind !== 'clip') throw new Error('Item not found');
+
+    if (item.clipType !== 'media') {
+      throw new Error('Only media clips can be moved across tracks');
+    }
 
     const path = item.source?.path;
     if (!path) throw new Error('Invalid source');
@@ -238,6 +247,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!videoTrack || videoTrack.kind !== 'video') throw new Error('Invalid video track');
     const videoItem = videoTrack.items.find((it) => it.id === input.videoItemId) ?? null;
     if (!videoItem || videoItem.kind !== 'clip') throw new Error('Clip not found');
+
+    if (videoItem.clipType !== 'media') {
+      throw new Error('Only media clips can extract audio');
+    }
 
     const audioTracks = doc.tracks.filter((t) => t.kind === 'audio');
     if (audioTracks.length === 0) throw new Error('No audio tracks');
@@ -427,6 +440,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const item = track.items.find((it) => it.id === cmd.itemId);
     if (!item) return doc;
     if (item.kind !== 'clip') return doc;
+    if (item.clipType !== 'media') return doc;
     if (!item.source?.path) return doc;
 
     const meta = mediaMetadata.value[item.source.path];
@@ -442,7 +456,9 @@ export const useTimelineStore = defineStore('timeline', () => {
         : {
             ...t,
             items: t.items.map((it) =>
-              it.id === item.id ? { ...it, sourceDurationUs: durationUs } : it,
+              it.id === item.id && it.kind === 'clip' && it.clipType === 'media'
+                ? { ...it, sourceDurationUs: durationUs }
+                : it,
             ),
           },
     );
@@ -541,7 +557,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const items: { path: string }[] = [];
     for (const track of timelineDoc.value.tracks) {
       for (const item of track.items) {
-        if (item.kind === 'clip' && item.source.path) {
+        if (item.kind === 'clip' && item.clipType === 'media' && item.source?.path) {
           items.push({ path: item.source.path });
         }
       }

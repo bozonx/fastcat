@@ -9,6 +9,7 @@ import {
 } from './commands/trackHandlers';
 import {
   addClipToTrack,
+  addVirtualClipToTrack,
   renameItem,
   removeItems,
   moveItem,
@@ -25,6 +26,16 @@ export interface AddClipToTrackCommand {
   durationUs?: number;
   sourceDurationUs?: number;
   startUs?: number;
+}
+
+export interface AddVirtualClipToTrackCommand {
+  type: 'add_virtual_clip_to_track';
+  trackId: string;
+  clipType: Extract<import('./types').TimelineClipType, 'adjustment' | 'background'>;
+  name: string;
+  durationUs?: number;
+  startUs?: number;
+  backgroundColor?: string;
 }
 
 export interface RemoveItemCommand {
@@ -109,7 +120,9 @@ export interface UpdateClipPropertiesCommand {
   type: 'update_clip_properties';
   trackId: string;
   itemId: string;
-  properties: Partial<Pick<import('./types').TimelineClipItem, 'opacity' | 'effects'>>;
+  properties: Partial<
+    Pick<import('./types').TimelineClipItem, 'opacity' | 'effects' | 'freezeFrameSourceUs'>
+  >;
 }
 
 export interface UpdateTrackPropertiesCommand {
@@ -122,6 +135,7 @@ export interface UpdateTrackPropertiesCommand {
 
 export type TimelineCommand =
   | AddClipToTrackCommand
+  | AddVirtualClipToTrackCommand
   | RemoveItemCommand
   | MoveItemCommand
   | TrimItemCommand
@@ -160,6 +174,8 @@ export function applyTimelineCommand(
       return reorderTracks(doc, cmd);
     case 'add_clip_to_track':
       return addClipToTrack(doc, cmd);
+    case 'add_virtual_clip_to_track':
+      return addVirtualClipToTrack(doc, cmd);
     case 'rename_item':
       return renameItem(doc, cmd);
     case 'remove_item':

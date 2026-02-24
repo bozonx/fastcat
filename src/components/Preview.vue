@@ -331,7 +331,7 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
             <div class="space-y-2 mt-4 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
               <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
                 <span class="text-gray-500">{{ t('common.source', 'Source File') }}</span>
-                <span class="font-medium break-all">{{ selectedClip.source.path }}</span>
+                <span class="font-medium break-all">{{ selectedClip.source?.path ?? '' }}</span>
               </div>
               <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
                 <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
