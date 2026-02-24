@@ -63,6 +63,214 @@ function getBunnyAudioCodec(codec: string | undefined): any {
   return codec;
 }
 
+function clampFloat32(v: number) {
+  if (v > 1) return 1;
+  if (v < -1) return -1;
+  return v;
+}
+
+async function buildMixedAudioTrack(
+  options: any,
+  audioClips: any[],
+  durationS: number,
+  connectToOutput: (audioSource: any) => void,
+) {
+  const { AudioSample, AudioSampleSink, AudioSampleSource, Input, BlobSource, ALL_FORMATS } =
+    await import('mediabunny');
+
+  const sampleRate = 48000;
+  const numberOfChannels = 2;
+
+  const chunkDurationS = 1;
+  const chunkFrames = sampleRate * chunkDurationS;
+
+  const chunks = new Map<number, Float32Array>();
+
+  async function getOrCreateChunk(index: number) {
+    const existing = chunks.get(index);
+    if (existing) return existing;
+    const buf = new Float32Array(chunkFrames * numberOfChannels);
+    chunks.set(index, buf);
+    return buf;
+  }
+
+  const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024;
+
+  for (const clipData of audioClips) {
+    const sourcePath = clipData.sourcePath || clipData.source?.path;
+    if (!sourcePath) continue;
+
+    let fileHandle: FileSystemFileHandle | null = clipData.fileHandle || null;
+    if (!fileHandle && hostClient) {
+      fileHandle = await hostClient.getFileHandleByPath(sourcePath);
+    }
+    if (!fileHandle) continue;
+
+    let file: File;
+    try {
+      file = await fileHandle.getFile();
+    } catch {
+      await reportExportWarning('[Worker Export] Failed to read audio file handle');
+      continue;
+    }
+
+    if (file.size > MAX_AUDIO_FILE_BYTES) {
+      await reportExportWarning(
+        '[Worker Export] Audio file is too large to decode in memory; skipping audio clip.',
+      );
+      continue;
+    }
+
+    const startUs = clipData.startUs ?? clipData.timelineRange?.startUs ?? 0;
+    const sourceStartUs = clipData.sourceStartUs ?? clipData.sourceRange?.startUs ?? 0;
+    const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
+    const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
+
+    const clipStartS = Math.max(0, startUs / 1_000_000);
+    const rawOffsetS = Math.max(0, sourceStartUs / 1_000_000);
+    const sourceDurationS = Math.max(0, sourceDurationUs / 1_000_000);
+    const timelineDurationS = Math.max(0, durationUs / 1_000_000);
+    const clipDurationS = Math.max(
+      0,
+      Math.min(sourceDurationS || Number.POSITIVE_INFINITY, timelineDurationS || sourceDurationS),
+    );
+
+    if (clipDurationS <= 0) continue;
+
+    const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
+    try {
+      const aTrack = await input.getPrimaryAudioTrack();
+      if (!aTrack) continue;
+      if (!(await aTrack.canDecode())) continue;
+
+      const sink = new AudioSampleSink(aTrack);
+      try {
+        const offsetS = Math.max(0, rawOffsetS);
+        const trackDurationS = (aTrack as any).duration;
+        const maxPlayableS = Math.max(
+          0,
+          (Number.isFinite(trackDurationS) ? Number(trackDurationS) : Number.POSITIVE_INFINITY) -
+            offsetS,
+        );
+        const playDurationS = Math.min(clipDurationS, maxPlayableS);
+        if (playDurationS <= 0) continue;
+
+        for await (const sampleRaw of (sink as any).samples(offsetS, playDurationS)) {
+          const sample = sampleRaw as any;
+          try {
+            const frames = Number(sample.numberOfFrames) || 0;
+            const sr = Number(sample.sampleRate) || 0;
+            const ch = Number(sample.numberOfChannels) || 0;
+
+            if (frames <= 0) continue;
+            if (sr !== sampleRate || ch !== numberOfChannels) {
+              await reportExportWarning(
+                '[Worker Export] Audio clip sample format mismatch; skipping some audio.',
+              );
+              continue;
+            }
+
+            const localTimeS = Number(sample.timestamp) - offsetS;
+            const timelineTimeS = clipStartS + localTimeS;
+            if (!Number.isFinite(timelineTimeS)) continue;
+            if (timelineTimeS < 0 || timelineTimeS >= durationS) continue;
+
+            const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
+            const endFrameGlobal = startFrameGlobal + frames;
+            if (endFrameGlobal <= 0) continue;
+
+            const tmpPlanes: Float32Array[] = [];
+            for (let planeIndex = 0; planeIndex < numberOfChannels; planeIndex += 1) {
+              const bytesNeeded = sample.allocationSize({
+                format: 'f32-planar',
+                planeIndex,
+              });
+              const plane = new Float32Array(bytesNeeded / 4);
+              sample.copyTo(plane, { format: 'f32-planar', planeIndex });
+              tmpPlanes.push(plane);
+            }
+
+            for (let i = 0; i < frames; i += 1) {
+              const globalFrame = startFrameGlobal + i;
+              if (globalFrame < 0) continue;
+              if (globalFrame >= Math.floor(durationS * sampleRate)) break;
+
+              const chunkIndex = Math.floor(globalFrame / chunkFrames);
+              const chunk = await getOrCreateChunk(chunkIndex);
+              const frameInChunk = globalFrame - chunkIndex * chunkFrames;
+              if (frameInChunk < 0 || frameInChunk >= chunkFrames) continue;
+
+              for (let c = 0; c < numberOfChannels; c += 1) {
+                const plane = tmpPlanes[c];
+                const v = plane ? (plane[i] ?? 0) : 0;
+                const idx = frameInChunk * numberOfChannels + c;
+                chunk[idx] = clampFloat32(chunk[idx] + v);
+              }
+            }
+          } finally {
+            if (typeof sample.close === 'function') sample.close();
+          }
+        }
+      } finally {
+        if (typeof (sink as any).close === 'function') (sink as any).close();
+        if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
+      }
+    } catch {
+      await reportExportWarning('[Worker Export] Failed to decode audio clip');
+    } finally {
+      if ('dispose' in input && typeof (input as any).dispose === 'function')
+        (input as any).dispose();
+      else if ('close' in input && typeof (input as any).close === 'function')
+        (input as any).close();
+    }
+  }
+
+  if (chunks.size === 0) return null;
+
+  const audioSource = new AudioSampleSource({
+    codec: getBunnyAudioCodec(options.audioCodec),
+    bitrate: options.audioBitrate,
+  });
+
+  connectToOutput(audioSource);
+
+  const maxChunkIndex = Math.max(...chunks.keys());
+  for (let chunkIndex = 0; chunkIndex <= maxChunkIndex; chunkIndex += 1) {
+    const chunk = chunks.get(chunkIndex);
+    if (!chunk) continue;
+
+    const plane0 = new Float32Array(chunkFrames);
+    const plane1 = new Float32Array(chunkFrames);
+    for (let i = 0; i < chunkFrames; i += 1) {
+      plane0[i] = chunk[i * 2] ?? 0;
+      plane1[i] = chunk[i * 2 + 1] ?? 0;
+    }
+
+    const planar = new Float32Array(chunkFrames * 2);
+    planar.set(plane0, 0);
+    planar.set(plane1, chunkFrames);
+
+    const timestamp = chunkIndex * chunkDurationS;
+    const sample = new AudioSample({
+      data: planar,
+      format: 'f32-planar',
+      numberOfChannels,
+      sampleRate,
+      timestamp,
+    });
+
+    try {
+      await audioSource.add(sample);
+    } catch (e) {
+      console.error('Error adding audio sample:', e);
+    } finally {
+      if (typeof sample.close === 'function') sample.close();
+    }
+  }
+
+  return audioSource;
+}
+
 const api: any = {
   async extractMetadata(fileHandle: FileSystemFileHandle) {
     const file = await fileHandle.getFile();
@@ -185,7 +393,6 @@ const api: any = {
       WebMOutputFormat,
       MkvOutputFormat,
       CanvasSource,
-      AudioBufferSource,
       StreamTarget,
     } = await import('mediabunny');
 
@@ -209,101 +416,7 @@ const api: any = {
       if (maxDurationUs <= 0) throw new Error('No clips to export');
 
       const durationS = maxDurationUs / 1_000_000;
-      let offlineCtx: OfflineAudioContext | null = null;
-      let audioData: AudioBuffer | null = null;
-
-      const allAudioClips = audioClips;
-      const hasAnyAudio = allAudioClips.length > 0;
-
-      const MAX_OFFLINE_AUDIO_DURATION_S = 10 * 60;
-
-      if (options.audio && hasAnyAudio) {
-        if (durationS > MAX_OFFLINE_AUDIO_DURATION_S) {
-          await reportExportWarning(
-            '[Worker Export] Audio duration is too large for offline rendering; skipping audio track.',
-          );
-        } else if (typeof OfflineAudioContext !== 'undefined') {
-          offlineCtx = new OfflineAudioContext({
-            numberOfChannels: 2,
-            sampleRate: 48000,
-            length: Math.ceil(48000 * durationS),
-          });
-
-          const decodedAudioCache = new Map<string, AudioBuffer | null>();
-
-          // Process audio from both video clips and dedicated audio clips
-          const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024;
-
-          for (const clipData of allAudioClips) {
-            const sourcePath = clipData.sourcePath || clipData.source?.path;
-            if (!sourcePath) continue;
-
-            let fileHandle: FileSystemFileHandle | null = clipData.fileHandle || null;
-            if (!fileHandle && hostClient) {
-              fileHandle = await hostClient.getFileHandleByPath(sourcePath);
-            }
-
-            if (!fileHandle) continue;
-
-            let decoded = decodedAudioCache.get(sourcePath);
-
-            if (typeof decoded === 'undefined') {
-              try {
-                const file = await fileHandle.getFile();
-                if (file.size > MAX_AUDIO_FILE_BYTES) {
-                  await reportExportWarning(
-                    '[Worker Export] Audio file is too large to decode in memory; skipping audio clip.',
-                  );
-                  decoded = null;
-                } else {
-                  const arrayBuffer = await file.arrayBuffer();
-                  decoded = await offlineCtx.decodeAudioData(arrayBuffer);
-                }
-              } catch (err) {
-                await reportExportWarning('[Worker Export] Failed to decode audio for clip');
-                decoded = null;
-              }
-              decodedAudioCache.set(sourcePath, decoded);
-            }
-
-            if (!decoded) continue;
-
-            const startUs = clipData.startUs ?? clipData.timelineRange?.startUs ?? 0;
-            const sourceStartUs = clipData.sourceStartUs ?? clipData.sourceRange?.startUs ?? 0;
-            const sourceDurationUs =
-              clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
-            const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
-
-            const startAtS = Math.max(0, startUs / 1_000_000);
-            const rawOffsetS = Math.max(0, sourceStartUs / 1_000_000);
-            const offsetS = Math.min(rawOffsetS, decoded.duration);
-            const sourceDurationS = Math.max(0, sourceDurationUs / 1_000_000);
-            const timelineDurationS = Math.max(0, durationUs / 1_000_000);
-            const clipDurationS = Math.max(
-              0,
-              Math.min(
-                sourceDurationS || Number.POSITIVE_INFINITY,
-                timelineDurationS || sourceDurationS,
-              ),
-            );
-            const maxPlayableS = Math.max(0, decoded.duration - offsetS);
-            const playDurationS = Math.min(clipDurationS || maxPlayableS, maxPlayableS);
-
-            if (playDurationS <= 0) continue;
-
-            const sourceNode = offlineCtx.createBufferSource();
-            sourceNode.buffer = decoded;
-            sourceNode.connect(offlineCtx.destination);
-            sourceNode.start(startAtS, offsetS, playDurationS);
-          }
-
-          audioData = await offlineCtx.startRendering();
-        } else {
-          await reportExportWarning(
-            '[Worker Export] OfflineAudioContext is not available in this environment. Audio export might be disabled or fallback is required.',
-          );
-        }
-      }
+      const hasAnyAudio = audioClips.length > 0;
 
       const format =
         options.format === 'webm'
@@ -339,14 +452,15 @@ const api: any = {
         output.addVideoTrack(videoSource);
 
         let audioSource: any = null;
-        if (audioData) {
-          audioSource = new (AudioBufferSource as any)(audioData, {
-            codec: getBunnyAudioCodec(options.audioCodec),
-            bitrate: options.audioBitrate,
-            numberOfChannels: audioData.numberOfChannels,
-            sampleRate: audioData.sampleRate,
+        if (options.audio && hasAnyAudio) {
+          audioSource = await buildMixedAudioTrack(options, audioClips, durationS, (src) => {
+            output.addAudioTrack(src);
           });
-          output.addAudioTrack(audioSource);
+          if (!audioSource) {
+            await reportExportWarning(
+              '[Worker Export] No decodable audio track found; exporting without audio.',
+            );
+          }
         }
 
         const fps = Math.max(1, Math.round(Number(options.fps) || 30));
