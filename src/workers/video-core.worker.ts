@@ -150,7 +150,7 @@ async function buildMixedAudioTrack(options: any, audioClips: any[], durationS: 
         const playDurationS = Math.min(clipDurationS, maxPlayableS);
         if (playDurationS <= 0) continue;
 
-        for await (const sampleRaw of (sink as any).samples(offsetS, playDurationS)) {
+        for await (const sampleRaw of (sink as any).samples(offsetS, offsetS + playDurationS)) {
           const sample = sampleRaw as any;
           try {
             const frames = Number(sample.numberOfFrames) || 0;
@@ -168,7 +168,7 @@ async function buildMixedAudioTrack(options: any, audioClips: any[], durationS: 
             const localTimeS = Number(sample.timestamp) - offsetS;
             const timelineTimeS = clipStartS + localTimeS;
             if (!Number.isFinite(timelineTimeS)) continue;
-            if (timelineTimeS < 0 || timelineTimeS >= durationS) continue;
+            if (timelineTimeS < 0 || timelineTimeS > durationS) continue;
 
             const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
             const endFrameGlobal = startFrameGlobal + frames;
