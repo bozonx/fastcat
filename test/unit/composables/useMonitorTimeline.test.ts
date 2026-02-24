@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
-import { useTimelineStore } from '~/stores/timeline.store';
+import { useMonitorTimeline } from '../../../src/composables/monitor/useMonitorTimeline';
+import { useTimelineStore } from '../../../src/stores/timeline.store';
 
 describe('useMonitorTimeline', () => {
   beforeEach(() => {
@@ -60,6 +60,7 @@ describe('useMonitorTimeline', () => {
         {
           id: '2',
           kind: 'video',
+          videoHidden: false,
           items: [
             {
               id: 'item1',
@@ -77,6 +78,8 @@ describe('useMonitorTimeline', () => {
         {
           id: '1',
           kind: 'audio',
+          audioMuted: false,
+          audioSolo: false,
           items: [
             {
               id: 'audio1',
@@ -115,6 +118,7 @@ describe('useMonitorTimeline', () => {
         {
           id: 'v1',
           kind: 'video',
+          videoHidden: false,
           items: [
             {
               id: 'clip1',
@@ -128,6 +132,7 @@ describe('useMonitorTimeline', () => {
         {
           id: 'v2',
           kind: 'video',
+          videoHidden: false,
           items: [
             {
               id: 'clip2',
@@ -160,6 +165,7 @@ describe('useMonitorTimeline', () => {
         {
           id: 'v1',
           kind: 'video',
+          videoHidden: false,
           items: [
             {
               id: 'vclip1',
@@ -181,6 +187,8 @@ describe('useMonitorTimeline', () => {
         {
           id: 'a1',
           kind: 'audio',
+          audioMuted: false,
+          audioSolo: false,
           items: [
             {
               id: 'aclip1',
@@ -211,6 +219,7 @@ describe('useMonitorTimeline', () => {
         {
           id: '1',
           kind: 'video',
+          videoHidden: false,
           items: [
             {
               id: 'item1',
@@ -224,6 +233,8 @@ describe('useMonitorTimeline', () => {
         {
           id: '2',
           kind: 'audio',
+          audioMuted: false,
+          audioSolo: false,
           items: [
             {
               id: 'audio1',
@@ -264,5 +275,72 @@ describe('useMonitorTimeline', () => {
 
     expect(audioClipSourceSignature.value).toBe(audioSig1);
     expect(audioClipLayoutSignature.value).not.toBe(audioLayout1);
+  });
+
+  it('filters hidden video tracks from workerTimelineClips', () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: true,
+          items: [
+            {
+              id: 'clip1',
+              kind: 'clip',
+              source: { path: 'a.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { workerTimelineClips } = useMonitorTimeline();
+    expect(workerTimelineClips.value.length).toBe(0);
+  });
+
+  it('applies audio solo/mute when building workerAudioClips', () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'a1',
+          kind: 'audio',
+          audioMuted: true,
+          audioSolo: false,
+          items: [
+            {
+              id: 'aclip1',
+              kind: 'clip',
+              source: { path: 'audio1.mp3' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+        {
+          id: 'a2',
+          kind: 'audio',
+          audioMuted: false,
+          audioSolo: true,
+          items: [
+            {
+              id: 'aclip2',
+              kind: 'clip',
+              source: { path: 'audio2.mp3' },
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { workerAudioClips } = useMonitorTimeline();
+    expect(workerAudioClips.value.length).toBe(1);
+    expect(workerAudioClips.value[0].id).toBe('aclip2');
   });
 });

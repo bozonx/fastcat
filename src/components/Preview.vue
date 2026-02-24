@@ -7,9 +7,8 @@ import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
-import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
-import type { ClipEffect } from '~/timeline/types';
-import { getEffectManifest } from '~/effects';
+import EffectsEditor from '~/components/common/EffectsEditor.vue';
+import type { TimelineTrack } from '~/timeline/types';
 
 defineOptions({
   name: 'PreviewPanel',
@@ -46,48 +45,38 @@ const selectedClip = computed<TimelineClipItem | null>(() => {
   return null;
 });
 
+const selectedTrack = computed<TimelineTrack | null>(() => {
+  const trackId = timelineStore.selectedTrackId;
+  if (!trackId) return null;
+  const tracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
+  return tracks.find((t) => t.id === trackId) ?? null;
+});
+
 const isRenameModalOpen = ref(false);
-const isEffectModalOpen = ref(false);
 
-function handleUpdateOpacity(val: number) {
+function handleUpdateOpacity(val: number | undefined) {
   if (!selectedClip.value) return;
-  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { opacity: val });
-}
-
-function handleAddEffect(type: string) {
-  if (!selectedClip.value) return;
-  const manifest = getEffectManifest(type);
-  if (!manifest) return;
-
-  const currentEffects = selectedClip.value.effects || [];
-  const newEffect = {
-    id: `effect_${Date.now()}`,
-    type,
-    enabled: true,
-    ...manifest.defaultValues,
-  } as unknown as ClipEffect;
-
+  const safe = typeof val === 'number' && Number.isFinite(val) ? val : 1;
   timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
-    effects: [...currentEffects, newEffect],
+    opacity: safe,
   });
 }
 
-function handleUpdateEffect(effectId: string, updates: Partial<ClipEffect>) {
+function handleUpdateClipEffects(effects: any[]) {
   if (!selectedClip.value) return;
-  const currentEffects = selectedClip.value.effects || [];
-  const nextEffects = currentEffects.map((e) => (e.id === effectId ? { ...e, ...updates } as ClipEffect : e));
-  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { effects: nextEffects });
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    effects: effects as any,
+  });
 }
 
-function handleRemoveEffect(effectId: string) {
-  if (!selectedClip.value) return;
-  const currentEffects = selectedClip.value.effects || [];
-  const nextEffects = currentEffects.filter((e) => e.id !== effectId);
-  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, { effects: nextEffects });
+function handleUpdateTrackEffects(effects: any[]) {
+  if (!selectedTrack.value) return;
+  timelineStore.updateTrackProperties(selectedTrack.value.id, { effects: effects as any });
 }
 
-const displayMode = computed<'clip' | 'file' | 'empty'>(() => {
+const displayMode = computed<'clip' | 'track' | 'file' | 'empty'>(() => {
   if (selectedClip.value) return 'clip';
+  if (selectedTrack.value) return 'track';
   if (uiStore.selectedFsEntry && uiStore.selectedFsEntry.kind === 'file') return 'file';
   return 'empty';
 });
@@ -371,64 +360,44 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
               />
             </div>
 
-            <!-- Effects -->
-            <div class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-300">Дополнительные эффекты</span>
-                <UButton size="xs" variant="soft" color="primary" icon="i-heroicons-plus" @click="isEffectModalOpen = true">
-                  Добавить
-                </UButton>
-              </div>
+            <EffectsEditor
+              :effects="selectedClip.effects"
+              :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
+              :add-label="t('granVideoEditor.effects.add', 'Add')"
+              :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
+              @update:effects="handleUpdateClipEffects"
+            />
+          </div>
 
-              <div v-if="!selectedClip.effects?.length" class="text-xs text-gray-500 text-center py-2">
-                Нет добавленных эффектов
-              </div>
-
-              <div class="space-y-2">
-                <div v-for="effect in selectedClip.effects || []" :key="effect.id" class="bg-black border border-gray-800 rounded p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                      <USwitch
-                        :model-value="effect.enabled"
-                        size="sm"
-                        @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
-                      />
-                      <span class="font-medium">{{ getEffectManifest(effect.type)?.name || effect.type }}</span>
-                    </div>
-                    <UButton size="xs" variant="ghost" color="red" icon="i-heroicons-trash" @click="handleRemoveEffect(effect.id)" />
-
-                  </div>
-
-                  <div class="space-y-3">
-                    <template v-for="control in getEffectManifest(effect.type)?.controls" :key="String(control.key)">
-                      <div v-if="control.kind === 'slider'" class="flex flex-col gap-1">
-                        <div class="flex justify-between text-xs text-gray-400">
-                          <span>{{ control.label }}</span>
-                          <span>
-                            {{ control.format ? control.format((effect as any)[control.key]) : (effect as any)[control.key] }}
-                          </span>
-                        </div>
-                        <USlider
-                          :model-value="(effect as any)[control.key]"
-                          :min="control.min"
-                          :max="control.max"
-                          :step="control.step"
-                          @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
-                        />
-                      </div>
-                      <div v-else-if="control.kind === 'toggle'" class="flex items-center justify-between">
-                        <span class="text-xs text-gray-400">{{ control.label }}</span>
-                        <USwitch
-                          :model-value="(effect as any)[control.key]"
-                          size="sm"
-                          @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
-                        />
-                      </div>
-                    </template>
-                  </div>
-                </div>
+          <div v-else-if="displayMode === 'track' && selectedTrack" class="w-full flex flex-col gap-4">
+            <div class="flex items-center gap-3">
+              <UIcon
+                :name="selectedTrack.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note'"
+                class="w-10 h-10 shrink-0"
+                :class="selectedTrack.kind === 'video' ? 'text-indigo-400' : 'text-teal-400'"
+              />
+              <div class="min-w-0">
+                <h3 class="font-medium text-lg truncate">{{ selectedTrack.name }}</h3>
+                <span class="text-xs text-gray-400 uppercase">
+                  {{ selectedTrack.kind === 'video' ? t('common.video', 'Video Track') : t('common.audio', 'Audio Track') }}
+                </span>
               </div>
             </div>
+
+            <div class="space-y-2 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+              <div class="flex flex-col gap-1">
+                <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
+                <span class="font-medium break-all">{{ selectedTrack.name }}</span>
+              </div>
+            </div>
+
+            <EffectsEditor
+              :effects="selectedTrack.effects"
+              :title="t('granVideoEditor.effects.trackTitle', 'Track effects')"
+              :add-label="t('granVideoEditor.effects.add', 'Add')"
+              :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
+              @update:effects="handleUpdateTrackEffects"
+            />
           </div>
 
           <!-- File Preview & Properties -->
@@ -515,11 +484,6 @@ const isUnknown = computed(() => mediaType.value === 'unknown');
       v-model:open="isRenameModalOpen"
       :initial-name="selectedClip?.name"
       @rename="handleRenameClip"
-    />
-
-    <SelectEffectModal
-      v-model:open="isEffectModalOpen"
-      @select="handleAddEffect"
     />
   </div>
 </template>

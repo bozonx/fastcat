@@ -290,10 +290,10 @@ export function createDefaultTimelineDocument(params: {
     name: params.name,
     timebase: { fps: params.fps },
     tracks: [
-      { id: 'v1', kind: 'video', name: 'Video 1', items: [] },
-      { id: 'v2', kind: 'video', name: 'Video 2', items: [] },
-      { id: 'a1', kind: 'audio', name: 'Audio 1', items: [] },
-      { id: 'a2', kind: 'audio', name: 'Audio 2', items: [] },
+      { id: 'v1', kind: 'video', name: 'Video 1', videoHidden: false, items: [] },
+      { id: 'v2', kind: 'video', name: 'Video 2', videoHidden: false, items: [] },
+      { id: 'a1', kind: 'audio', name: 'Audio 1', audioMuted: false, audioSolo: false, items: [] },
+      { id: 'a2', kind: 'audio', name: 'Audio 2', audioMuted: false, audioSolo: false, items: [] },
     ],
   };
 }
@@ -372,6 +372,10 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           id: t.id,
           kind: t.kind,
           name: t.name,
+          videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
+          audioMuted: t.kind === 'audio' ? Boolean(t.audioMuted) : undefined,
+          audioSolo: t.kind === 'audio' ? Boolean(t.audioSolo) : undefined,
+          effects: Array.isArray(t.effects) ? t.effects : undefined,
         },
       },
     };
@@ -470,7 +474,14 @@ export function parseTimelineFromOtio(
 
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    return { id, kind, name, items };
+    const videoHidden = kind === 'video' ? Boolean(trackGranMeta?.videoHidden) : undefined;
+    const audioMuted = kind === 'audio' ? Boolean(trackGranMeta?.audioMuted) : undefined;
+    const audioSolo = kind === 'audio' ? Boolean(trackGranMeta?.audioSolo) : undefined;
+    const effects = Array.isArray(trackGranMeta?.effects)
+      ? (trackGranMeta.effects as any[])
+      : undefined;
+
+    return { id, kind, name, videoHidden, audioMuted, audioSolo, effects, items };
   });
 
   const docId = coerceId(granMeta?.docId, fallback.id);

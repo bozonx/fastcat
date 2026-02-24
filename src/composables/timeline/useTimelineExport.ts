@@ -351,12 +351,26 @@ export function useTimelineExport() {
     onProgress: (progress: number) => void,
   ): Promise<void> {
     const doc = timelineStore.timelineDoc;
-    const videoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
-    const audioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
+    const videoTracks =
+      doc?.tracks?.filter((track) => track.kind === 'video' && !track.videoHidden) ?? [];
+    const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
+    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const audioTracks = hasSolo
+      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
+      : allAudioTracks.filter((t) => !t.audioMuted);
 
-    const videoClips = videoTracks.flatMap((track, index) =>
-      toWorkerTimelineClips(track.items ?? [], { layer: videoTracks.length - 1 - index }),
-    );
+    const videoClips = videoTracks.flatMap((track, index) => {
+      const clips = toWorkerTimelineClips(track.items ?? [], {
+        layer: videoTracks.length - 1 - index,
+      });
+      if (!track.effects?.length) return clips;
+
+      const trackEffects = JSON.parse(JSON.stringify(track.effects)) as any[];
+      return clips.map((clip) => ({
+        ...clip,
+        effects: clip.effects ? [...(clip.effects as any[]), ...trackEffects] : trackEffects,
+      }));
+    });
     const audioItems = audioTracks.flatMap((t) => t.items);
     const audioClipsFromTracks = toWorkerTimelineClips(audioItems);
 

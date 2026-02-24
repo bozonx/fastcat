@@ -121,6 +121,40 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({ type: 'rename_track', trackId, name });
   }
 
+  function updateTrackProperties(
+    trackId: string,
+    properties: Partial<
+      Pick<
+        import('~/timeline/types').TimelineTrack,
+        'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects'
+      >
+    >,
+  ) {
+    applyTimeline({
+      type: 'update_track_properties',
+      trackId,
+      properties,
+    });
+  }
+
+  function toggleVideoHidden(trackId: string) {
+    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind !== 'video') return;
+    updateTrackProperties(trackId, { videoHidden: !Boolean(track.videoHidden) });
+  }
+
+  function toggleTrackAudioMuted(trackId: string) {
+    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind !== 'audio') return;
+    updateTrackProperties(trackId, { audioMuted: !Boolean(track.audioMuted) });
+  }
+
+  function toggleTrackAudioSolo(trackId: string) {
+    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind !== 'audio') return;
+    updateTrackProperties(trackId, { audioSolo: !Boolean(track.audioSolo) });
+  }
+
   function renameItem(trackId: string, itemId: string, name: string) {
     applyTimeline({
       type: 'rename_item',
@@ -551,6 +585,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     stopPlayback,
     addTrack,
     renameTrack,
+    updateTrackProperties,
+    toggleVideoHidden,
+    toggleTrackAudioMuted,
+    toggleTrackAudioSolo,
     renameItem,
     updateClipProperties,
     deleteTrack,

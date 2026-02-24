@@ -4,6 +4,7 @@ import type {
   RenameTrackCommand,
   DeleteTrackCommand,
   ReorderTracksCommand,
+  UpdateTrackPropertiesCommand,
   TimelineCommandResult,
 } from '../commands';
 import { getTrackById, nextTrackId, normalizeTrackOrder } from './utils';
@@ -65,5 +66,33 @@ export function reorderTracks(
   cmd: ReorderTracksCommand,
 ): TimelineCommandResult {
   const nextTracks = normalizeTrackOrder(doc, cmd.trackIds);
+  return { next: { ...doc, tracks: nextTracks } };
+}
+
+export function updateTrackProperties(
+  doc: TimelineDocument,
+  cmd: UpdateTrackPropertiesCommand,
+): TimelineCommandResult {
+  const track = getTrackById(doc, cmd.trackId);
+
+  const nextTracks = doc.tracks.map((t) => {
+    if (t.id !== track.id) return t;
+
+    const next: TimelineTrack = {
+      ...t,
+      ...cmd.properties,
+    };
+
+    if (next.kind !== 'video') {
+      next.videoHidden = undefined;
+    }
+    if (next.kind !== 'audio') {
+      next.audioMuted = undefined;
+      next.audioSolo = undefined;
+    }
+
+    return next;
+  });
+
   return { next: { ...doc, tracks: nextTracks } };
 }

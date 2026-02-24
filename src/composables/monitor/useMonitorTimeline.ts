@@ -21,9 +21,11 @@ export function useMonitorTimeline() {
   );
 
   const videoItems = computed(() =>
-    videoTracks.value.flatMap((track) =>
-      (track.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'),
-    ),
+    videoTracks.value
+      .filter((track) => !track.videoHidden)
+      .flatMap((track) =>
+        (track.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'),
+      ),
   );
 
   const audioItems = computed(() =>
@@ -35,11 +37,19 @@ export function useMonitorTimeline() {
   const workerTimelineClips = computed(() => {
     const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
     const clips: WorkerTimelineClip[] = [];
-    const videoTracks = docTracks.filter((track) => track.kind === 'video');
+    const videoTracks = docTracks.filter((track) => track.kind === 'video' && !track.videoHidden);
     const trackCount = videoTracks.length;
     for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
+
+        const clipEffects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined;
+        const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : undefined;
+        const effects =
+          clipEffects && trackEffects
+            ? [...clipEffects, ...trackEffects]
+            : (clipEffects ?? trackEffects);
+
         clips.push({
           kind: 'clip',
           id: item.id,
@@ -48,7 +58,7 @@ export function useMonitorTimeline() {
             path: item.source.path,
           },
           opacity: item.opacity,
-          effects: item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined,
+          effects,
           timelineRange: {
             startUs: item.timelineRange.startUs,
             durationUs: item.timelineRange.durationUs,
@@ -66,7 +76,13 @@ export function useMonitorTimeline() {
   const workerAudioClips = computed(() => {
     const clips: WorkerTimelineClip[] = [];
 
-    for (const item of audioItems.value) {
+    const allAudioTracks = audioTracks.value;
+    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const effectiveAudioTracks = hasSolo
+      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
+      : allAudioTracks.filter((t) => !t.audioMuted);
+
+    for (const item of effectiveAudioTracks.flatMap((t) => t.items)) {
       if (item.kind !== 'clip') continue;
       clips.push({
         kind: 'clip',
@@ -152,6 +168,10 @@ export function useMonitorTimeline() {
 
   const clipLayoutSignature = computed(() => {
     let hash = mixHash(2166136261, videoItems.value.length);
+    const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
+    const videoTracks = docTracks.filter((t) => t.kind === 'video' && !t.videoHidden);
+    const trackById = new Map<string, TimelineTrack>(videoTracks.map((t) => [t.id, t]));
+
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
       hash = mixTime(hash, item.timelineRange.startUs);
@@ -162,9 +182,14 @@ export function useMonitorTimeline() {
 
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
 
-        if (Array.isArray((item as any).effects)) {
-          const effectsJson = JSON.stringify((item as any).effects);
-          hash = mixHash(hash, hashString(effectsJson));
+        const clipEffects = Array.isArray((item as any).effects) ? (item as any).effects : null;
+        if (clipEffects) {
+          hash = mixHash(hash, hashString(JSON.stringify(clipEffects)));
+        }
+
+        const track = trackById.get((item as any).trackId);
+        if (Array.isArray((track as any)?.effects)) {
+          hash = mixHash(hash, hashString(JSON.stringify((track as any).effects)));
         }
       }
     }
@@ -175,8 +200,24 @@ export function useMonitorTimeline() {
     const enabledVideoAudioItems = videoItems.value.filter(
       (it) => it.kind === 'clip' && !it.audioFromVideoDisabled,
     );
-    let hash = mixHash(2166136261, audioItems.value.length + enabledVideoAudioItems.length);
-    for (const item of audioItems.value) {
+    const allAudioTracks = audioTracks.value;
+    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const effectiveAudioTracks = hasSolo
+      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
+      : allAudioTracks.filter((t) => !t.audioMuted);
+    const effectiveAudioItems = effectiveAudioTracks
+      .flatMap((t) => t.items)
+      .filter((it: TimelineTrackItem) => it.kind === 'clip');
+
+    let hash = mixHash(2166136261, effectiveAudioItems.length + enabledVideoAudioItems.length);
+    hash = mixHash(hash, hasSolo ? 1 : 0);
+    for (const track of allAudioTracks) {
+      hash = mixHash(hash, hashString(track.id));
+      hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
+      hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
+    }
+
+    for (const item of effectiveAudioItems) {
       hash = mixHash(hash, hashString(item.id));
       hash = mixTime(hash, item.timelineRange.startUs);
       hash = mixTime(hash, item.timelineRange.durationUs);
@@ -199,8 +240,24 @@ export function useMonitorTimeline() {
     const enabledVideoAudioItems = videoItems.value.filter(
       (it) => it.kind === 'clip' && !it.audioFromVideoDisabled,
     );
-    let hash = mixHash(2166136261, audioItems.value.length + enabledVideoAudioItems.length);
-    for (const item of audioItems.value) {
+    const allAudioTracks = audioTracks.value;
+    const hasSolo = allAudioTracks.some((t) => Boolean(t.audioSolo));
+    const effectiveAudioTracks = hasSolo
+      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
+      : allAudioTracks.filter((t) => !t.audioMuted);
+    const effectiveAudioItems = effectiveAudioTracks
+      .flatMap((t) => t.items)
+      .filter((it: TimelineTrackItem) => it.kind === 'clip');
+
+    let hash = mixHash(2166136261, effectiveAudioItems.length + enabledVideoAudioItems.length);
+    hash = mixHash(hash, hasSolo ? 1 : 0);
+    for (const track of allAudioTracks) {
+      hash = mixHash(hash, hashString(track.id));
+      hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
+      hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
+    }
+
+    for (const item of effectiveAudioItems) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
         hash = mixHash(hash, hashString(item.source.path));

@@ -23,6 +23,24 @@ function onSelectTrack(trackId: string) {
   timelineStore.selectTrack(trackId);
 }
 
+function toggleVideoHidden(track: TimelineTrack, e: MouseEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+  timelineStore.toggleVideoHidden(track.id);
+}
+
+function toggleAudioMuted(track: TimelineTrack, e: MouseEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+  timelineStore.toggleTrackAudioMuted(track.id);
+}
+
+function toggleAudioSolo(track: TimelineTrack, e: MouseEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+  timelineStore.toggleTrackAudioSolo(track.id);
+}
+
 const selectedTrack = computed(() => {
   const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
   const id = contextTrackId.value ?? timelineStore.selectedTrackId;
@@ -154,7 +172,39 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
           @click="onSelectTrack(track.id)"
           @contextmenu="onSelectTrack(track.id)"
         >
-          {{ track.name }}
+          <span class="truncate" :title="track.name">{{ track.name }}</span>
+
+          <div class="ml-auto flex items-center gap-1">
+            <UButton
+              v-if="track.kind === 'video'"
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+              :aria-label="t('granVideoEditor.timeline.toggleTrackVisibility', 'Toggle track visibility')"
+              @click="toggleVideoHidden(track, $event)"
+            />
+
+            <UButton
+              v-if="track.kind === 'audio'"
+              size="xs"
+              variant="ghost"
+              :color="track.audioMuted ? 'error' : 'neutral'"
+              :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+              :aria-label="t('granVideoEditor.timeline.toggleTrackMute', 'Toggle track mute')"
+              @click="toggleAudioMuted(track, $event)"
+            />
+
+            <UButton
+              v-if="track.kind === 'audio'"
+              size="xs"
+              variant="ghost"
+              :color="track.audioSolo ? 'primary' : 'neutral'"
+              icon="i-heroicons-musical-note"
+              :aria-label="t('granVideoEditor.timeline.toggleTrackSolo', 'Toggle track solo')"
+              @click="toggleAudioSolo(track, $event)"
+            />
+          </div>
         </div>
       </UContextMenu>
     </div>

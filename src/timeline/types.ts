@@ -53,6 +53,10 @@ export interface TimelineTrack {
   id: string;
   kind: TrackKind;
   name: string;
+  videoHidden?: boolean;
+  audioMuted?: boolean;
+  audioSolo?: boolean;
+  effects?: ClipEffect[];
   items: TimelineTrackItem[];
 }
 

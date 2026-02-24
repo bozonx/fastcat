@@ -1,6 +1,12 @@
 import type { TimelineDocument } from './types';
 import { extractAudioToTrack, returnAudioToVideo } from './commands/audioHandlers';
-import { addTrack, renameTrack, deleteTrack, reorderTracks } from './commands/trackHandlers';
+import {
+  addTrack,
+  renameTrack,
+  deleteTrack,
+  reorderTracks,
+  updateTrackProperties,
+} from './commands/trackHandlers';
 import {
   addClipToTrack,
   renameItem,
@@ -106,6 +112,14 @@ export interface UpdateClipPropertiesCommand {
   properties: Partial<Pick<import('./types').TimelineClipItem, 'opacity' | 'effects'>>;
 }
 
+export interface UpdateTrackPropertiesCommand {
+  type: 'update_track_properties';
+  trackId: string;
+  properties: Partial<
+    Pick<import('./types').TimelineTrack, 'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects'>
+  >;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | RemoveItemCommand
@@ -120,7 +134,8 @@ export type TimelineCommand =
   | ExtractAudioToTrackCommand
   | ReturnAudioToVideoCommand
   | RenameItemCommand
-  | UpdateClipPropertiesCommand;
+  | UpdateClipPropertiesCommand
+  | UpdateTrackPropertiesCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -158,6 +173,8 @@ export function applyTimelineCommand(
       return trimItem(doc, cmd);
     case 'update_clip_properties':
       return updateClipProperties(doc, cmd);
+    case 'update_track_properties':
+      return updateTrackProperties(doc, cmd);
     default:
       return { next: doc };
   }
