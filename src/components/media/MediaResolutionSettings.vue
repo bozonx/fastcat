@@ -31,10 +31,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const formatOptions = [
-  { value: '720p', label: '720p (HD)' },
-  { value: '1080p', label: '1080p (FHD)' },
-  { value: '2.7k', label: '2.7K (QHD)' },
-  { value: '4k', label: '4K (UHD)' },
+  { value: '720p', label: t('videoEditor.resolution.preset.720p', '720p (HD)') },
+  { value: '1080p', label: t('videoEditor.resolution.preset.1080p', '1080p (FHD)') },
+  { value: '2.7k', label: t('videoEditor.resolution.preset.2.7k', '2.7K (QHD)') },
+  { value: '4k', label: t('videoEditor.resolution.preset.4k', '4K (UHD)') },
 ];
 
 const orientationOptions = [
@@ -43,10 +43,10 @@ const orientationOptions = [
 ];
 
 const aspectRatioOptions = [
-  { value: '16:9', label: '16:9' },
-  { value: '4:3', label: '4:3' },
-  { value: '1:1', label: '1:1' },
-  { value: '21:9', label: '21:9' },
+  { value: '16:9', label: t('videoEditor.resolution.aspect.16_9', '16:9') },
+  { value: '4:3', label: t('videoEditor.resolution.aspect.4_3', '4:3') },
+  { value: '1:1', label: t('videoEditor.resolution.aspect.1_1', '1:1') },
+  { value: '21:9', label: t('videoEditor.resolution.aspect.21_9', '21:9') },
 ];
 
 const bases: Record<string, number> = {

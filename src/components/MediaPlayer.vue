@@ -106,7 +106,7 @@ watch(
         class="flex flex-col items-center justify-center absolute inset-0 text-gray-400"
       >
         <UIcon name="i-heroicons-musical-note" class="w-20 h-20 mb-4 opacity-50" />
-        <span class="text-sm">Audio Track</span>
+        <span class="text-sm">{{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}</span>
       </div>
     </div>
 

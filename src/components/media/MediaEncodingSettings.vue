@@ -58,8 +58,8 @@ watch(outputFormat, (fmt) => {
 });
 
 const audioCodecOptions = [
-  { value: 'aac', label: 'AAC' },
-  { value: 'opus', label: 'Opus' },
+  { value: 'aac', label: t('videoEditor.export.codec.aac', 'AAC') },
+  { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
 ];
 </script>
 
