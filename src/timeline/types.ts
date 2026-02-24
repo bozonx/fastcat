@@ -19,6 +19,11 @@ export interface TimelineSourceRef {
 
 export type TimelineClipType = 'media' | 'adjustment' | 'background';
 
+export interface ClipTransition {
+  type: string;
+  durationUs: number;
+}
+
 export type ColorAdjustmentEffect = BaseClipEffect<ColorAdjustmentParams> & {
   type: 'color-adjustment';
 };
@@ -42,6 +47,8 @@ interface TimelineClipBase {
   freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: ClipEffect[];
+  transitionIn?: ClipTransition;
+  transitionOut?: ClipTransition;
 }
 
 export interface TimelineMediaClipItem extends TimelineClipBase {

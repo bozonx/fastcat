@@ -1,4 +1,4 @@
-import type { TimelineDocument } from './types';
+import type { TimelineDocument, ClipTransition } from './types';
 import { extractAudioToTrack, returnAudioToVideo } from './commands/audioHandlers';
 import {
   addTrack,
@@ -16,6 +16,7 @@ import {
   moveItemToTrack,
   trimItem,
   updateClipProperties,
+  updateClipTransition,
 } from './commands/itemHandlers';
 
 export interface AddClipToTrackCommand {
@@ -135,6 +136,14 @@ export interface UpdateTrackPropertiesCommand {
   >;
 }
 
+export interface UpdateClipTransitionCommand {
+  type: 'update_clip_transition';
+  trackId: string;
+  itemId: string;
+  transitionIn?: ClipTransition | null;
+  transitionOut?: ClipTransition | null;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -151,7 +160,8 @@ export type TimelineCommand =
   | ReturnAudioToVideoCommand
   | RenameItemCommand
   | UpdateClipPropertiesCommand
-  | UpdateTrackPropertiesCommand;
+  | UpdateTrackPropertiesCommand
+  | UpdateClipTransitionCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -191,6 +201,8 @@ export function applyTimelineCommand(
       return trimItem(doc, cmd);
     case 'update_clip_properties':
       return updateClipProperties(doc, cmd);
+    case 'update_clip_transition':
+      return updateClipTransition(doc, cmd);
     case 'update_track_properties':
       return updateTrackProperties(doc, cmd);
     default:

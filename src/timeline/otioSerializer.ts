@@ -249,6 +249,18 @@ function parseClipItem(input: {
         ? Math.max(0, Math.min(1, granMeta.opacity))
         : undefined,
     effects: Array.isArray(granMeta?.effects) ? (granMeta.effects as any[]) : undefined,
+    transitionIn:
+      granMeta?.transitionIn &&
+      typeof granMeta.transitionIn.type === 'string' &&
+      typeof granMeta.transitionIn.durationUs === 'number'
+        ? { type: granMeta.transitionIn.type, durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)) }
+        : undefined,
+    transitionOut:
+      granMeta?.transitionOut &&
+      typeof granMeta.transitionOut.type === 'string' &&
+      typeof granMeta.transitionOut.durationUs === 'number'
+        ? { type: granMeta.transitionOut.type, durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)) }
+        : undefined,
     linkedVideoClipId:
       typeof granMeta?.linkedVideoClipId === 'string' &&
       granMeta.linkedVideoClipId.trim().length > 0
@@ -390,6 +402,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
             opacity: item.opacity,
             effects: item.effects,
+            transitionIn: item.transitionIn,
+            transitionOut: item.transitionOut,
             linkedVideoClipId: item.clipType === 'media' ? item.linkedVideoClipId : undefined,
             lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
             backgroundColor:

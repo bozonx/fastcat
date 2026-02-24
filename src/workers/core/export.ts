@@ -5,6 +5,8 @@ import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
 import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
 import { usToS } from './time';
+import { initEffects } from '../../effects';
+import { initTransitions } from '../../transitions';
 
 export async function extractMetadata(fileHandle: FileSystemFileHandle) {
   const file = await fileHandle.getFile();
@@ -136,6 +138,9 @@ export async function runExport(
   reportExportWarning: (msg: string) => Promise<void>,
   checkCancel: () => boolean,
 ) {
+  initEffects();
+  initTransitions();
+
   const { Output, Mp4OutputFormat, WebMOutputFormat, MkvOutputFormat, CanvasSource, StreamTarget } =
     await import('mediabunny');
 

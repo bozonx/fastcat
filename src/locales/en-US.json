@@ -317,15 +317,19 @@
       "audioVolume": "Audio volume"
     },
     "timeline": {
-      "rewind": "Rewind to start",
-      "pause": "Pause",
+      "dropClip": "Drop clip here",
+      "addAdjustmentClip": "Add adjustment clip",
+      "addBackgroundClip": "Add background clip",
+      "rewind": "Rewind",
       "play": "Play",
+      "pause": "Pause",
       "stop": "Stop",
       "zoom": "Zoom",
-      "dropClip": "Drop clip here",
-      "clipAdded": "Clip Added",
       "addVideoTrack": "Add video track",
       "addAudioTrack": "Add audio track",
+      "toggleTrackVisibility": "Toggle track visibility",
+      "toggleTrackMute": "Toggle track mute",
+      "toggleTrackSolo": "Toggle track solo",
       "renameTrack": "Rename track",
       "deleteTrack": "Delete track",
       "deleteTrackTitle": "Delete track?",
@@ -335,7 +339,19 @@
       "clipMoveFailed": "Failed to move clip",
       "extractAudio": "Extract audio to audio track",
       "returnAudio": "Return audio to video clip",
-      "delete": "Delete"
+      "delete": "Delete",
+      "addTransitionIn": "Add transition in",
+      "addTransitionOut": "Add transition out",
+      "removeTransitionIn": "Remove transition in",
+      "removeTransitionOut": "Remove transition out",
+      "freezeFrame": "Freeze frame",
+      "resetFreezeFrame": "Reset freeze frame",
+      "transition": {
+        "title": "Transition",
+        "duration": "Duration (seconds)",
+        "panelIn": "Transition In",
+        "panelOut": "Transition Out"
+      }
     }
   },
   "navigation": {

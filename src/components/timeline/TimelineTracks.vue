@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ClipTransitionPanel from './ClipTransitionPanel.vue';
+import { ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
@@ -41,6 +43,32 @@ const emit = defineEmits<{
     payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ): void;
 }>();
+
+// Reactive state for the currently open transition panel
+const openTransitionPanel = ref<{
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  anchorEl: HTMLElement | null;
+} | null>(null);
+
+function handleTransitionUpdate(payload: {
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  transition: import('~/timeline/types').ClipTransition | null;
+}) {
+  if (payload.edge === 'in') {
+    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
+      transitionIn: payload.transition,
+    });
+  } else {
+    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
+      transitionOut: payload.transition,
+    });
+  }
+  openTransitionPanel.value = null;
+}
 
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
   if (!item) return [];
@@ -133,6 +161,44 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
   const result = [];
   if (mainGroup.length > 0) result.push(mainGroup);
+
+  // Transitions submenu items
+  if (item.kind === 'clip' && track.kind === 'video') {
+    const transitionGroup: any[] = [];
+    const hasIn = Boolean((item as any).transitionIn);
+    const hasOut = Boolean((item as any).transitionOut);
+
+    transitionGroup.push({
+      label: hasIn
+        ? t('granVideoEditor.timeline.removeTransitionIn')
+        : t('granVideoEditor.timeline.addTransitionIn'),
+      icon: hasIn ? 'i-heroicons-x-circle' : 'i-heroicons-arrow-left-end-on-rectangle',
+      onSelect: () => {
+        if (hasIn) {
+          timelineStore.updateClipTransition(track.id, item.id, { transitionIn: null });
+        } else {
+          openTransitionPanel.value = { trackId: track.id, itemId: item.id, edge: 'in', anchorEl: null };
+        }
+      },
+    });
+
+    transitionGroup.push({
+      label: hasOut
+        ? t('granVideoEditor.timeline.removeTransitionOut')
+        : t('granVideoEditor.timeline.addTransitionOut'),
+      icon: hasOut ? 'i-heroicons-x-circle' : 'i-heroicons-arrow-right-end-on-rectangle',
+      onSelect: () => {
+        if (hasOut) {
+          timelineStore.updateClipTransition(track.id, item.id, { transitionOut: null });
+        } else {
+          openTransitionPanel.value = { trackId: track.id, itemId: item.id, edge: 'out', anchorEl: null };
+        }
+      },
+    });
+
+    if (transitionGroup.length > 0) result.push(transitionGroup);
+  }
+
   result.push(actionGroup);
 
   return result;
@@ -239,8 +305,51 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
               })
             "
           />
+          <!-- TransitionIn marker -->
+          <div
+            v-if="item.kind === 'clip' && (item as any).transitionIn"
+            class="absolute left-0 top-0 bottom-0 w-2 flex items-center justify-start z-10 pointer-events-none opacity-70"
+            :title="`Transition In: ${(item as any).transitionIn?.type}`"
+          >
+            <span class="w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-white/70" />
+          </div>
+          <!-- TransitionOut marker -->
+          <div
+            v-if="item.kind === 'clip' && (item as any).transitionOut"
+            class="absolute right-0 top-0 bottom-0 w-2 flex items-center justify-end z-10 pointer-events-none opacity-70"
+            :title="`Transition Out: ${(item as any).transitionOut?.type}`"
+          >
+            <span class="w-0 h-0 border-y-[5px] border-y-transparent border-l-[6px] border-l-white/70" />
+          </div>
         </div>
       </UContextMenu>
+    </div>
+  </div>
+
+  <!-- Transition panel popup -->
+  <div
+    v-if="openTransitionPanel"
+    class="fixed inset-0 z-50"
+    @mousedown.self="openTransitionPanel = null"
+  >
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shadow-xl">
+      <ClipTransitionPanel
+        :edge="openTransitionPanel.edge"
+        :track-id="openTransitionPanel.trackId"
+        :item-id="openTransitionPanel.itemId"
+        :transition="
+          (() => {
+            const track = tracks.find((t) => t.id === openTransitionPanel!.trackId);
+            const item = track?.items.find((i) => i.id === openTransitionPanel!.itemId);
+            return item?.kind === 'clip'
+              ? openTransitionPanel!.edge === 'in'
+                ? (item as any).transitionIn
+                : (item as any).transitionOut
+              : undefined;
+          })()
+        "
+        @update="handleTransitionUpdate"
+      />
     </div>
   </div>
 </template>

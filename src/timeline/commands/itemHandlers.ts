@@ -9,6 +9,7 @@ import type {
   MoveItemToTrackCommand,
   RenameItemCommand,
   UpdateClipPropertiesCommand,
+  UpdateClipTransitionCommand,
   TimelineCommandResult,
 } from '../commands';
 import {
@@ -476,6 +477,35 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
       sourceDurationUs: item.sourceDurationUs,
     }));
   }
+
+  return { next: { ...doc, tracks: nextTracks } };
+}
+
+export function updateClipTransition(
+  doc: TimelineDocument,
+  cmd: UpdateClipTransitionCommand,
+): TimelineCommandResult {
+  const track = getTrackById(doc, cmd.trackId);
+  const item = track.items.find((x) => x.id === cmd.itemId);
+  if (!item || item.kind !== 'clip') return { next: doc };
+
+  const patch: Record<string, unknown> = {};
+  if ('transitionIn' in cmd) {
+    patch.transitionIn = cmd.transitionIn ?? undefined;
+  }
+  if ('transitionOut' in cmd) {
+    patch.transitionOut = cmd.transitionOut ?? undefined;
+  }
+
+  const nextTracks = doc.tracks.map((t) => {
+    if (t.id !== track.id) return t;
+    return {
+      ...t,
+      items: t.items.map((it) =>
+        it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...patch } : it,
+      ),
+    };
+  });
 
   return { next: { ...doc, tracks: nextTracks } };
 }

@@ -12,6 +12,7 @@ import {
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
+import { getTransitionManifest } from '../../transitions';
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
@@ -40,8 +41,8 @@ export async function getVideoSampleWithZeroFallback(
 export interface CompositorClip {
   itemId: string;
   layer: number;
-  sourcePath: string;
-  fileHandle: FileSystemFileHandle;
+  sourcePath?: string;
+  fileHandle?: FileSystemFileHandle;
   input?: Input;
   sink?: VideoSampleSink;
   firstTimestampS?: number;
@@ -52,16 +53,19 @@ export interface CompositorClip {
   sourceDurationUs: number;
   freezeFrameSourceUs?: number;
   sprite: Sprite;
-  clipKind: 'video' | 'image';
+  clipKind: 'video' | 'image' | 'solid';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | null;
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
   bitmap: ImageBitmap | null;
+  backgroundColor?: string;
   opacity?: number;
   effects?: any[];
   effectFilters?: Map<string, Filter>;
+  transitionIn?: { type: string; durationUs: number };
+  transitionOut?: { type: string; durationUs: number };
 }
 
 export class VideoCompositor {
@@ -179,6 +183,12 @@ export class VideoCompositor {
       }
       if (clipData.kind !== 'clip') continue;
 
+      const clipTypeRaw = (clipData as any).clipType;
+      const clipType =
+        clipTypeRaw === 'background' || clipTypeRaw === 'adjustment' || clipTypeRaw === 'media'
+          ? clipTypeRaw
+          : 'media';
+
       const itemId =
         typeof clipData.id === 'string' && clipData.id.length > 0 ? clipData.id : `clip_${index}`;
       const sourcePath =
@@ -210,7 +220,11 @@ export class VideoCompositor {
       const endUsFallback = startUs + Math.max(0, requestedTimelineDurationUs);
 
       const reusable = this.clipById.get(itemId);
-      if (reusable && reusable.sourcePath === sourcePath) {
+      if (
+        reusable &&
+        reusable.sourcePath === sourcePath &&
+        (reusable as any).clipType === clipType
+      ) {
         const safeSourceDurationUs =
           requestedSourceDurationUs > 0 ? requestedSourceDurationUs : reusable.sourceDurationUs;
         const safeTimelineDurationUs =
@@ -239,11 +253,65 @@ export class VideoCompositor {
         reusable.sourceDurationUs = safeSourceDurationUs;
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
+        reusable.opacity = clipData.opacity;
+        reusable.effects = clipData.effects;
+        if (reusable.clipKind === 'solid') {
+          reusable.backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
+          reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
+          this.applySolidLayout(reusable);
+        }
         reusable.sprite.visible = false;
 
         nextClips.push(reusable);
         nextClipById.set(itemId, reusable);
         sequentialTimeUs = Math.max(sequentialTimeUs, reusable.endUs, endUsFallback);
+        continue;
+      }
+
+      if (clipType === 'background') {
+        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+
+        if (reusable) {
+          this.destroyClip(reusable);
+          this.replacedClipIds.add(itemId);
+        }
+
+        const sprite = new Sprite(Texture.WHITE);
+        sprite.width = 1;
+        sprite.height = 1;
+        sprite.visible = false;
+        (sprite as any).__clipId = itemId;
+        this.app.stage.addChild(sprite);
+
+        const backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
+        sprite.tint = parseHexColor(backgroundColor);
+
+        const compositorClip: CompositorClip = {
+          itemId,
+          layer,
+          startUs,
+          endUs,
+          durationUs: Math.max(0, requestedTimelineDurationUs),
+          sourceStartUs: 0,
+          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          sprite,
+          clipKind: 'solid',
+          sourceKind: 'bitmap',
+          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+          lastVideoFrame: null,
+          canvas: null,
+          ctx: null,
+          bitmap: null,
+          backgroundColor,
+          opacity: clipData.opacity,
+          effects: clipData.effects,
+        };
+
+        this.applySolidLayout(compositorClip);
+
+        nextClips.push(compositorClip);
+        nextClipById.set(itemId, compositorClip);
         continue;
       }
 
@@ -318,8 +386,11 @@ export class VideoCompositor {
           canvas: null,
           ctx: null,
           bitmap: bmp,
+          backgroundColor: undefined,
           opacity: clipData.opacity,
           effects: clipData.effects,
+          transitionIn: clipData.transitionIn,
+          transitionOut: clipData.transitionOut,
         };
 
         nextClips.push(compositorClip);
@@ -388,8 +459,11 @@ export class VideoCompositor {
           canvas: null,
           ctx: null,
           bitmap: null,
+          backgroundColor: undefined,
           opacity: clipData.opacity,
           effects: clipData.effects,
+          transitionIn: clipData.transitionIn,
+          transitionOut: clipData.transitionOut,
         };
 
         nextClips.push(compositorClip);
@@ -466,6 +540,15 @@ export class VideoCompositor {
       clip.layer = layer;
       clip.opacity = next.opacity;
       clip.effects = next.effects;
+      clip.transitionIn = (next as any).transitionIn;
+      clip.transitionOut = (next as any).transitionOut;
+      if (clip.clipKind === 'solid') {
+        clip.backgroundColor = String(
+          (next as any).backgroundColor ?? clip.backgroundColor ?? '#000000',
+        );
+        clip.sprite.tint = parseHexColor(clip.backgroundColor);
+        this.applySolidLayout(clip);
+      }
       if (!clip.effectFilters) {
         clip.effectFilters = new Map();
       }
@@ -511,11 +594,17 @@ export class VideoCompositor {
     const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
 
     for (const clip of active) {
-      clip.sprite.alpha = clip.opacity ?? 1;
+      const effectiveOpacity = this.computeTransitionOpacity(clip, timeUs);
+      clip.sprite.alpha = effectiveOpacity;
 
       this.applyClipEffects(clip);
 
       if (clip.clipKind === 'image') {
+        clip.sprite.visible = true;
+        continue;
+      }
+
+      if (clip.clipKind === 'solid') {
         clip.sprite.visible = true;
         continue;
       }
@@ -610,6 +699,45 @@ export class VideoCompositor {
     const canvasSource = new CanvasSource({ resource: clipCanvas as any });
     clip.sprite.texture.source = canvasSource as any;
     clip.sourceKind = 'canvas';
+  }
+
+  private applySolidLayout(clip: CompositorClip) {
+    clip.sprite.x = 0;
+    clip.sprite.y = 0;
+    clip.sprite.width = this.width;
+    clip.sprite.height = this.height;
+  }
+
+  private computeTransitionOpacity(clip: CompositorClip, timeUs: number): number {
+    const baseOpacity = clip.opacity ?? 1;
+    const localTimeUs = timeUs - clip.startUs;
+    let opacity = baseOpacity;
+
+    if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
+      const dur = clip.transitionIn.durationUs;
+      if (localTimeUs < dur) {
+        const manifest = getTransitionManifest(clip.transitionIn.type);
+        if (manifest) {
+          const progress = Math.max(0, Math.min(1, localTimeUs / dur));
+          opacity = Math.min(opacity, baseOpacity * manifest.computeInOpacity(progress, {}));
+        }
+      }
+    }
+
+    if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
+      const dur = clip.transitionOut.durationUs;
+      const clipDurUs = clip.sourceDurationUs > 0 ? clip.sourceDurationUs : clip.durationUs;
+      const outStartUs = clipDurUs - dur;
+      if (localTimeUs >= outStartUs) {
+        const manifest = getTransitionManifest(clip.transitionOut.type);
+        if (manifest) {
+          const progress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
+          opacity = Math.min(opacity, baseOpacity * manifest.computeOutOpacity(progress, {}));
+        }
+      }
+    }
+
+    return Math.max(0, Math.min(1, opacity));
   }
 
   private applyClipEffects(clip: CompositorClip) {
@@ -875,4 +1003,19 @@ export class VideoCompositor {
     }
     clip.sprite.destroy(true);
   }
+}
+
+function parseHexColor(value: string): number {
+  const raw = String(value ?? '').trim();
+  const hex = raw.startsWith('#') ? raw.slice(1) : raw;
+  if (hex.length === 3) {
+    const r = hex[0] ?? '0';
+    const g = hex[1] ?? '0';
+    const b = hex[2] ?? '0';
+    const expanded = `${r}${r}${g}${g}${b}${b}`;
+    const parsed = Number.parseInt(expanded, 16);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const parsed = Number.parseInt(hex.padStart(6, '0').slice(0, 6), 16);
+  return Number.isFinite(parsed) ? parsed : 0;
 }

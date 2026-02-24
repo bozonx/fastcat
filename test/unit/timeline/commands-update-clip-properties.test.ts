@@ -43,6 +43,60 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.opacity).toBe(0.25);
   });
 
+  it('updates backgroundColor for a background clip only', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'background',
+          id: 'bg1',
+          trackId: 'v1',
+          name: 'BG',
+          backgroundColor: '#000000',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'bg1',
+      properties: { backgroundColor: '#112233' },
+    }).next;
+
+    const bg = (next.tracks[0] as TimelineTrack).items.find((it: any) => it.id === 'bg1') as any;
+    const media = (next.tracks[0] as TimelineTrack).items.find((it: any) => it.id === 'c1') as any;
+    expect(bg.backgroundColor).toBe('#112233');
+
+    const next2 = applyTimelineCommand(next, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: { backgroundColor: '#ff00ff' },
+    }).next;
+    const media2 = (next2.tracks[0] as TimelineTrack).items.find(
+      (it: any) => it.id === 'c1',
+    ) as any;
+    expect(media2.backgroundColor).toBeUndefined();
+    expect(media.backgroundColor).toBeUndefined();
+  });
+
   it('updates effects list for a clip', () => {
     const doc = makeDoc({
       id: 'v1',

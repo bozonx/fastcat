@@ -317,15 +317,19 @@
       "audioVolume": "Громкость аудио"
     },
     "timeline": {
-      "rewind": "В начало",
+      "dropClip": "Отпустите клип здесь",
+      "addAdjustmentClip": "Добавить клип корректировки",
+      "addBackgroundClip": "Добавить фон",
+      "rewind": "Перемотка в начало",
+      "play": "Воспроизведение",
       "pause": "Пауза",
-      "play": "Воспроизвести",
       "stop": "Стоп",
       "zoom": "Масштаб",
-      "dropClip": "Перетащите клип сюда",
-      "clipAdded": "Клип добавлен",
       "addVideoTrack": "Добавить видео дорожку",
       "addAudioTrack": "Добавить аудио дорожку",
+      "toggleTrackVisibility": "Показать/скрыть дорожку",
+      "toggleTrackMute": "Вкл/выкл звук дорожки",
+      "toggleTrackSolo": "Соло дорожки",
       "renameTrack": "Переименовать дорожку",
       "deleteTrack": "Удалить дорожку",
       "deleteTrackTitle": "Удалить дорожку?",
@@ -335,7 +339,19 @@
       "clipMoveFailed": "Не удалось переместить клип",
       "extractAudio": "Вынести аудио на аудио дорожку",
       "returnAudio": "Вернуть аудио в видео клип",
-      "delete": "Удалить"
+      "delete": "Удалить",
+      "addTransitionIn": "Добавить переход в начале",
+      "addTransitionOut": "Добавить переход в конце",
+      "removeTransitionIn": "Убрать переход в начале",
+      "removeTransitionOut": "Убрать переход в конце",
+      "freezeFrame": "Заморозить кадр",
+      "resetFreezeFrame": "Сбросить заморозку кадра",
+      "transition": {
+        "title": "Переход",
+        "duration": "Длительность (секунды)",
+        "panelIn": "Переход в начале",
+        "panelOut": "Переход в конце"
+      }
     }
   },
   "navigation": {

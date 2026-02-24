@@ -273,6 +273,22 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
   }
 
+  function updateClipTransition(
+    trackId: string,
+    itemId: string,
+    options: {
+      transitionIn?: import('~/timeline/types').ClipTransition | null;
+      transitionOut?: import('~/timeline/types').ClipTransition | null;
+    },
+  ) {
+    applyTimeline({
+      type: 'update_clip_transition',
+      trackId,
+      itemId,
+      ...options,
+    });
+  }
+
   function deleteTrack(trackId: string, options?: { allowNonEmpty?: boolean }) {
     applyTimeline({ type: 'delete_track', trackId, allowNonEmpty: options?.allowNonEmpty });
     if (selectedTrackId.value === trackId) {
@@ -700,6 +716,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleTrackAudioSolo,
     renameItem,
     updateClipProperties,
+    updateClipTransition,
     setClipFreezeFrameFromPlayhead,
     resetClipFreezeFrame,
     deleteTrack,
