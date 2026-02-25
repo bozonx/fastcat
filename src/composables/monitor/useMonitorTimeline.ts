@@ -89,7 +89,11 @@ export function useMonitorTimeline() {
         if (clipType === 'media' || clipType === 'timeline') {
           const path = (item as any).source?.path;
           if (!path) continue;
-          clips.push({ ...base, source: { path } });
+          if (clipType === 'timeline') {
+            clips.push({ ...base, source: { path }, clipType: 'media' });
+          } else {
+            clips.push({ ...base, source: { path } });
+          }
         } else if (clipType === 'background') {
           clips.push({
             ...base,
@@ -127,7 +131,7 @@ export function useMonitorTimeline() {
       if (!path) continue;
       clips.push({
         kind: 'clip',
-        clipType: clipType === 'timeline' ? 'media' : 'media',
+        clipType: 'media',
         id: item.id,
         layer: 0,
         source: {
@@ -157,7 +161,7 @@ export function useMonitorTimeline() {
 
         clips.push({
           kind: 'clip',
-          clipType: clipType === 'timeline' ? 'media' : 'media',
+          clipType: 'media',
           id: `${item.id}__audio`,
           layer: 0,
           source: {

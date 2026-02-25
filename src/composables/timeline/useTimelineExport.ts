@@ -46,21 +46,37 @@ export interface WorkerTimelineClip {
 export async function toWorkerTimelineClips(
   items: TimelineTrackItem[],
   projectStore: ReturnType<typeof useProjectStore>,
-  options?: { layer?: number },
+  options?: {
+    layer?: number;
+    trackKind?: 'video' | 'audio';
+    visitedPaths?: Set<string>;
+    parentOpacity?: number;
+    parentEffects?: any[];
+  },
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
+  const trackKind = options?.trackKind ?? 'video';
+  const visitedPaths = options?.visitedPaths ?? new Set<string>();
+
   for (const item of items) {
     if (item.kind !== 'clip') continue;
 
     const clipType = (item as any).clipType ?? 'media';
+    const parentOpacity = options?.parentOpacity ?? 1;
+    const itemOpacity = item.opacity ?? 1;
+    const combinedOpacity = parentOpacity * itemOpacity;
+
+    const parentEffects = options?.parentEffects ?? [];
+    const itemEffects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : [];
+    const combinedEffects = [...parentEffects, ...itemEffects];
 
     const base: WorkerTimelineClip = {
       kind: 'clip',
       clipType: clipType === 'timeline' ? 'media' : clipType,
       id: item.id,
       layer: options?.layer ?? 0,
-      opacity: item.opacity,
-      effects: item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined,
+      opacity: combinedOpacity,
+      effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
@@ -76,6 +92,11 @@ export async function toWorkerTimelineClips(
       if (!path) continue;
 
       if (clipType === 'timeline') {
+        if (visitedPaths.has(path)) {
+          console.warn('Circular dependency detected in nested timeline:', path);
+          continue;
+        }
+
         try {
           const handle = await projectStore.getFileHandleByPath(path);
           if (handle) {
@@ -87,17 +108,107 @@ export async function toWorkerTimelineClips(
               fps: 25,
             });
 
-            const nestedVideoTracks = nestedDoc.tracks.filter(
-              (t) => t.kind === 'video' && !t.videoHidden,
-            );
-            for (let i = 0; i < nestedVideoTracks.length; i++) {
-              const track = nestedVideoTracks[i];
-              if (!track) continue;
-              const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
+            const nextVisited = new Set(visitedPaths).add(path);
 
-              const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, {
-                layer: nestedLayer,
-              });
+            if (trackKind === 'video') {
+              const nestedVideoTracks = nestedDoc.tracks.filter(
+                (t) => t.kind === 'video' && !t.videoHidden,
+              );
+              for (let i = 0; i < nestedVideoTracks.length; i++) {
+                const track = nestedVideoTracks[i];
+                if (!track) continue;
+                const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
+
+                const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : [];
+                const combinedTrackEffects = [...combinedEffects, ...trackEffects];
+
+                const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, {
+                  layer: nestedLayer,
+                  trackKind: 'video',
+                  visitedPaths: nextVisited,
+                  parentOpacity: combinedOpacity,
+                  parentEffects: combinedTrackEffects,
+                });
+
+                for (const nClip of nestedWorkerClips) {
+                  const nStartUs = nClip.timelineRange.startUs;
+                  const nEndUs = nStartUs + nClip.timelineRange.durationUs;
+
+                  const windowStartUs = item.sourceRange.startUs;
+                  const windowEndUs = windowStartUs + item.sourceRange.durationUs;
+
+                  const overlapStartUs = Math.max(nStartUs, windowStartUs);
+                  const overlapEndUs = Math.min(nEndUs, windowEndUs);
+
+                  if (overlapStartUs < overlapEndUs) {
+                    const visibleDurationUs = overlapEndUs - overlapStartUs;
+                    const parentStartUs =
+                      item.timelineRange.startUs + (overlapStartUs - windowStartUs);
+                    const sourceShiftUs = overlapStartUs - nStartUs;
+
+                    clips.push({
+                      ...nClip,
+                      id: `${item.id}_nested_${nClip.id}`,
+                      layer: nestedLayer,
+                      timelineRange: {
+                        startUs: parentStartUs,
+                        durationUs: visibleDurationUs,
+                      },
+                      sourceRange: {
+                        startUs: nClip.sourceRange.startUs + sourceShiftUs,
+                        durationUs: visibleDurationUs,
+                      },
+                    });
+                  }
+                }
+              }
+            } else if (trackKind === 'audio') {
+              const allVideoTracks = nestedDoc.tracks.filter((t) => t.kind === 'video');
+              const allAudioTracks = nestedDoc.tracks.filter((t) => t.kind === 'audio');
+              const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) =>
+                Boolean(t.audioSolo),
+              );
+
+              const audioTracks = hasSolo
+                ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
+                : allAudioTracks.filter((t) => !t.audioMuted);
+
+              const videoTracksForAudio = hasSolo
+                ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
+                : allVideoTracks.filter((t) => !t.audioMuted);
+
+              const nestedAudioItems: import('~/timeline/types').TimelineTrackItem[] = [];
+
+              for (const t of audioTracks) {
+                nestedAudioItems.push(...t.items);
+              }
+
+              for (const t of videoTracksForAudio) {
+                for (const it of t.items) {
+                  if (it.kind !== 'clip') continue;
+                  const itClipType = (it as any).clipType ?? 'media';
+                  if (
+                    (itClipType === 'media' || itClipType === 'timeline') &&
+                    !(it as any).audioFromVideoDisabled
+                  ) {
+                    const audioIt = JSON.parse(JSON.stringify(it));
+                    audioIt.id = `${it.id}__audio`;
+                    nestedAudioItems.push(audioIt);
+                  }
+                }
+              }
+
+              const nestedWorkerClips = await toWorkerTimelineClips(
+                nestedAudioItems,
+                projectStore,
+                {
+                  layer: 0,
+                  trackKind: 'audio',
+                  visitedPaths: nextVisited,
+                  parentOpacity: combinedOpacity,
+                  parentEffects: combinedEffects,
+                },
+              );
 
               for (const nClip of nestedWorkerClips) {
                 const nStartUs = nClip.timelineRange.startUs;
@@ -118,7 +229,7 @@ export async function toWorkerTimelineClips(
                   clips.push({
                     ...nClip,
                     id: `${item.id}_nested_${nClip.id}`,
-                    layer: nestedLayer,
+                    layer: 0,
                     timelineRange: {
                       startUs: parentStartUs,
                       durationUs: visibleDurationUs,
@@ -127,7 +238,6 @@ export async function toWorkerTimelineClips(
                       startUs: nClip.sourceRange.startUs + sourceShiftUs,
                       durationUs: visibleDurationUs,
                     },
-                    opacity: (nClip.opacity ?? 1) * (item.opacity ?? 1),
                   });
                 }
               }
@@ -459,46 +569,39 @@ export function useTimelineExport() {
     for (let index = 0; index < videoTracks.length; index++) {
       const track = videoTracks[index];
       if (!track) continue;
+
+      const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : [];
       const clips = await toWorkerTimelineClips(track.items ?? [], projectStore, {
         layer: videoTracks.length - 1 - index,
+        trackKind: 'video',
+        parentEffects: trackEffects,
       });
 
-      if (track.effects?.length) {
-        const trackEffects = JSON.parse(JSON.stringify(track.effects)) as any[];
-        for (const clip of clips) {
-          clip.effects = clip.effects
-            ? [...(clip.effects as any[]), ...trackEffects]
-            : trackEffects;
-        }
-      }
       videoClips.push(...clips);
     }
 
     const audioItems = audioTracks.flatMap((t) => t.items);
-    const audioClipsFromTracks = await toWorkerTimelineClips(audioItems, projectStore);
+    const audioClipsFromTracks = await toWorkerTimelineClips(audioItems, projectStore, {
+      trackKind: 'audio',
+    });
 
-    const audioClipsFromVideo = videoTracksForAudio.flatMap((track) =>
+    const videoItemsForAudio = videoTracksForAudio.flatMap((track) =>
       (track.items ?? [])
         .filter(
-          (item): item is Extract<typeof item, { kind: 'clip'; clipType: 'media' }> =>
-            item.kind === 'clip' && item.clipType === 'media' && !item.audioFromVideoDisabled,
+          (item) =>
+            item.kind === 'clip' &&
+            ((item as any).clipType === 'media' || (item as any).clipType === 'timeline') &&
+            !(item as any).audioFromVideoDisabled,
         )
-        .map((item) => ({
-          kind: 'clip' as const,
-          id: `${item.id}__audio`,
-          layer: 0,
-          source: { path: item.source.path },
-          freezeFrameSourceUs: item.freezeFrameSourceUs,
-          timelineRange: {
-            startUs: item.timelineRange.startUs,
-            durationUs: item.timelineRange.durationUs,
-          },
-          sourceRange: {
-            startUs: item.sourceRange.startUs,
-            durationUs: item.sourceRange.durationUs,
-          },
-        })),
+        .map((item) => {
+          const cloned = JSON.parse(JSON.stringify(item));
+          cloned.id = `${cloned.id}__audio`;
+          return cloned;
+        }),
     );
+    const audioClipsFromVideo = await toWorkerTimelineClips(videoItemsForAudio, projectStore, {
+      trackKind: 'audio',
+    });
 
     const audioClips = [...audioClipsFromTracks, ...audioClipsFromVideo];
 

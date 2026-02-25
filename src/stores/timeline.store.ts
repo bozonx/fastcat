@@ -766,9 +766,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     const trackKind =
       resolvedTrackKind === 'audio' || resolvedTrackKind === 'video' ? resolvedTrackKind : null;
     if (!trackKind) throw new Error('Track not found');
-    if (trackKind !== 'video') {
-      throw new Error('Timeline clips can only be added to video tracks');
-    }
 
     let durationUs = 2_000_000;
     try {
