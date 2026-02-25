@@ -75,6 +75,7 @@ export function useMonitorTimeline() {
           freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
           effects,
+          transform: (item as any).transform,
           transitionIn: sanitizeTransition((item as any).transitionIn),
           transitionOut: sanitizeTransition((item as any).transitionOut),
           timelineRange: {
@@ -91,7 +92,11 @@ export function useMonitorTimeline() {
           const path = (item as any).source?.path;
           if (!path) continue;
           if (clipType === 'timeline') {
-            clips.push({ ...base, source: { path }, clipType: 'media' });
+            clips.push({
+              ...base,
+              source: { path },
+              clipType: 'media',
+            });
           } else {
             clips.push({ ...base, source: { path } });
           }
@@ -258,6 +263,11 @@ export function useMonitorTimeline() {
         const clipEffects = Array.isArray((item as any).effects) ? (item as any).effects : null;
         if (clipEffects) {
           hash = mixHash(hash, hashString(JSON.stringify(clipEffects)));
+        }
+
+        const transform = (item as any).transform;
+        if (transform) {
+          hash = mixHash(hash, hashString(JSON.stringify(transform)));
         }
 
         if (item.clipType === 'background') {

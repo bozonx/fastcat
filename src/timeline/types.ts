@@ -19,6 +19,42 @@ export interface TimelineSourceRef {
 
 export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background';
 
+export type ClipAnchorPreset =
+  | 'center'
+  | 'topLeft'
+  | 'topRight'
+  | 'bottomLeft'
+  | 'bottomRight'
+  | 'custom';
+
+export interface ClipAnchor {
+  preset: ClipAnchorPreset;
+  /** Normalized [0..1] coordinates in clip local space. Used when preset is 'custom'. */
+  x?: number;
+  /** Normalized [0..1] coordinates in clip local space. Used when preset is 'custom'. */
+  y?: number;
+}
+
+export interface ClipScale {
+  x: number;
+  y: number;
+  linked?: boolean;
+}
+
+export interface ClipPosition {
+  x: number;
+  y: number;
+}
+
+export interface ClipTransform {
+  scale?: ClipScale;
+  /** Rotation in degrees */
+  rotationDeg?: number;
+  /** Translation in compositor pixels, applied to the anchor point */
+  position?: ClipPosition;
+  anchor?: ClipAnchor;
+}
+
 export interface ClipTransition {
   type: string;
   durationUs: number;
@@ -54,6 +90,7 @@ interface TimelineClipBase {
   effects?: ClipEffect[];
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
+  transform?: ClipTransform;
 }
 
 export interface TimelineMediaClipItem extends TimelineClipBase {

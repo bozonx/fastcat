@@ -66,6 +66,12 @@ export interface CompositorClip {
   backgroundColor?: string;
   opacity?: number;
   effects?: any[];
+  transform?: {
+    scale?: { x: number; y: number; linked?: boolean };
+    rotationDeg?: number;
+    position?: { x: number; y: number };
+    anchor?: { preset: string; x?: number; y?: number };
+  };
   effectFilters?: Map<string, Filter>;
   transitionIn?: {
     type: string;
@@ -281,6 +287,7 @@ export class VideoCompositor {
         reusable.layer = layer;
         reusable.opacity = clipData.opacity;
         reusable.effects = clipData.effects;
+        reusable.transform = (clipData as any).transform;
         if (reusable.clipKind === 'solid') {
           reusable.backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
           reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
@@ -333,6 +340,7 @@ export class VideoCompositor {
           backgroundColor,
           opacity: clipData.opacity,
           effects: clipData.effects,
+          transform: (clipData as any).transform,
         };
 
         this.applySolidLayout(compositorClip);
@@ -377,6 +385,7 @@ export class VideoCompositor {
           bitmap: null,
           opacity: clipData.opacity,
           effects: clipData.effects,
+          transform: (clipData as any).transform,
         };
 
         nextClips.push(compositorClip);
@@ -459,6 +468,7 @@ export class VideoCompositor {
           backgroundColor: undefined,
           opacity: clipData.opacity,
           effects: clipData.effects,
+          transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
         };
@@ -533,6 +543,7 @@ export class VideoCompositor {
           backgroundColor: undefined,
           opacity: clipData.opacity,
           effects: clipData.effects,
+          transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
         };
@@ -617,6 +628,7 @@ export class VideoCompositor {
       clip.layer = layer;
       clip.opacity = next.opacity;
       clip.effects = next.effects;
+      clip.transform = (next as any).transform;
       clip.transitionIn = (next as any).transitionIn;
       clip.transitionOut = (next as any).transitionOut;
       if (clip.clipKind === 'solid') {
@@ -977,10 +989,52 @@ export class VideoCompositor {
   }
 
   private applySolidLayout(clip: CompositorClip) {
-    clip.sprite.x = 0;
-    clip.sprite.y = 0;
-    clip.sprite.width = this.width;
-    clip.sprite.height = this.height;
+    const tr = clip.transform;
+    const scaleX = typeof tr?.scale?.x === 'number' && Number.isFinite(tr.scale.x) ? tr.scale.x : 1;
+    const scaleY = typeof tr?.scale?.y === 'number' && Number.isFinite(tr.scale.y) ? tr.scale.y : 1;
+    const rotationDeg =
+      typeof tr?.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
+    const posX =
+      typeof tr?.position?.x === 'number' && Number.isFinite(tr.position.x) ? tr.position.x : 0;
+    const posY =
+      typeof tr?.position?.y === 'number' && Number.isFinite(tr.position.y) ? tr.position.y : 0;
+
+    const anchor = tr?.anchor;
+    const preset = typeof anchor?.preset === 'string' ? anchor.preset : 'center';
+    const normalizedAnchor = (() => {
+      switch (preset) {
+        case 'topLeft':
+          return { x: 0, y: 0 };
+        case 'topRight':
+          return { x: 1, y: 0 };
+        case 'bottomLeft':
+          return { x: 0, y: 1 };
+        case 'bottomRight':
+          return { x: 1, y: 1 };
+        case 'custom': {
+          const ax = typeof anchor?.x === 'number' && Number.isFinite(anchor.x) ? anchor.x : 0.5;
+          const ay = typeof anchor?.y === 'number' && Number.isFinite(anchor.y) ? anchor.y : 0.5;
+          return { x: Math.max(0, Math.min(1, ax)), y: Math.max(0, Math.min(1, ay)) };
+        }
+        case 'center':
+        default:
+          return { x: 0.5, y: 0.5 };
+      }
+    })();
+
+    this.applyTransformLayout({
+      clip,
+      baseX: 0,
+      baseY: 0,
+      targetW: this.width,
+      targetH: this.height,
+      normalizedAnchor,
+      scaleX,
+      scaleY,
+      rotationDeg,
+      posX,
+      posY,
+    });
   }
 
   private computeTransitionOpacity(clip: CompositorClip, timeUs: number): number {
@@ -1126,12 +1180,80 @@ export class VideoCompositor {
     const viewportScale = Math.min(this.width / frameW, this.height / frameH);
     const targetW = frameW * viewportScale;
     const targetH = frameH * viewportScale;
-    const targetX = (this.width - targetW) / 2;
-    const targetY = (this.height - targetH) / 2;
-    clip.sprite.x = targetX;
-    clip.sprite.y = targetY;
-    clip.sprite.width = targetW;
-    clip.sprite.height = targetH;
+    const baseX = (this.width - targetW) / 2;
+    const baseY = (this.height - targetH) / 2;
+
+    const tr = clip.transform;
+    const scaleX = typeof tr?.scale?.x === 'number' && Number.isFinite(tr.scale.x) ? tr.scale.x : 1;
+    const scaleY = typeof tr?.scale?.y === 'number' && Number.isFinite(tr.scale.y) ? tr.scale.y : 1;
+    const rotationDeg =
+      typeof tr?.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
+    const posX =
+      typeof tr?.position?.x === 'number' && Number.isFinite(tr.position.x) ? tr.position.x : 0;
+    const posY =
+      typeof tr?.position?.y === 'number' && Number.isFinite(tr.position.y) ? tr.position.y : 0;
+
+    const anchor = tr?.anchor;
+    const preset = typeof anchor?.preset === 'string' ? anchor.preset : 'center';
+    const normalizedAnchor = (() => {
+      switch (preset) {
+        case 'topLeft':
+          return { x: 0, y: 0 };
+        case 'topRight':
+          return { x: 1, y: 0 };
+        case 'bottomLeft':
+          return { x: 0, y: 1 };
+        case 'bottomRight':
+          return { x: 1, y: 1 };
+        case 'custom': {
+          const ax = typeof anchor?.x === 'number' && Number.isFinite(anchor.x) ? anchor.x : 0.5;
+          const ay = typeof anchor?.y === 'number' && Number.isFinite(anchor.y) ? anchor.y : 0.5;
+          return { x: Math.max(0, Math.min(1, ax)), y: Math.max(0, Math.min(1, ay)) };
+        }
+        case 'center':
+        default:
+          return { x: 0.5, y: 0.5 };
+      }
+    })();
+
+    this.applyTransformLayout({
+      clip,
+      baseX,
+      baseY,
+      targetW,
+      targetH,
+      normalizedAnchor,
+      scaleX,
+      scaleY,
+      rotationDeg,
+      posX,
+      posY,
+    });
+  }
+
+  private applyTransformLayout(input: {
+    clip: CompositorClip;
+    baseX: number;
+    baseY: number;
+    targetW: number;
+    targetH: number;
+    normalizedAnchor: { x: number; y: number };
+    scaleX: number;
+    scaleY: number;
+    rotationDeg: number;
+    posX: number;
+    posY: number;
+  }) {
+    input.clip.sprite.anchor.set(input.normalizedAnchor.x, input.normalizedAnchor.y);
+    input.clip.sprite.width = input.targetW;
+    input.clip.sprite.height = input.targetH;
+    input.clip.sprite.scale.set(input.scaleX, input.scaleY);
+    input.clip.sprite.rotation = (input.rotationDeg * Math.PI) / 180;
+
+    const anchorOffsetX = input.normalizedAnchor.x * input.targetW;
+    const anchorOffsetY = input.normalizedAnchor.y * input.targetH;
+    input.clip.sprite.x = input.baseX + anchorOffsetX + input.posX;
+    input.clip.sprite.y = input.baseY + anchorOffsetY + input.posY;
   }
 
   private async drawSampleToCanvas(sample: any, clip: CompositorClip) {

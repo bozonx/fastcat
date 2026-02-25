@@ -43,6 +43,52 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.opacity).toBe(0.25);
   });
 
+  it('updates transform for a clip and normalizes values', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: {
+        transform: {
+          scale: { x: 2, y: 3, linked: true },
+          rotationDeg: 45,
+          position: { x: 10, y: -20 },
+          anchor: { preset: 'custom', x: 2, y: -1 },
+        },
+      },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.transform).toBeDefined();
+    expect(clip.transform.scale.x).toBe(2);
+    expect(clip.transform.scale.y).toBe(3);
+    expect(clip.transform.scale.linked).toBe(true);
+    expect(clip.transform.rotationDeg).toBe(45);
+    expect(clip.transform.position).toEqual({ x: 10, y: -20 });
+    expect(clip.transform.anchor.preset).toBe('custom');
+    expect(clip.transform.anchor.x).toBe(1);
+    expect(clip.transform.anchor.y).toBe(0);
+  });
+
   it('updates backgroundColor for a background clip only', () => {
     const doc = makeDoc({
       id: 'v1',

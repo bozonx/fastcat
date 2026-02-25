@@ -138,6 +138,70 @@ function safeGranMetadata(raw: any): any {
   return gran;
 }
 
+function clampNumber(value: unknown, min: number, max: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return Math.max(min, Math.min(max, n));
+}
+
+function coerceTransform(raw: any): import('./types').ClipTransform | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+
+  const scaleRaw = (raw as any).scale;
+  const scale =
+    scaleRaw && typeof scaleRaw === 'object'
+      ? {
+          x: clampNumber((scaleRaw as any).x, 0.001, 1000),
+          y: clampNumber((scaleRaw as any).y, 0.001, 1000),
+          linked:
+            (scaleRaw as any).linked !== undefined ? Boolean((scaleRaw as any).linked) : undefined,
+        }
+      : undefined;
+
+  const rotationDegRaw = (raw as any).rotationDeg;
+  const rotationDeg =
+    typeof rotationDegRaw === 'number' && Number.isFinite(rotationDegRaw)
+      ? Math.max(-36000, Math.min(36000, rotationDegRaw))
+      : undefined;
+
+  const positionRaw = (raw as any).position;
+  const position =
+    positionRaw && typeof positionRaw === 'object'
+      ? {
+          x: clampNumber((positionRaw as any).x, -1_000_000, 1_000_000),
+          y: clampNumber((positionRaw as any).y, -1_000_000, 1_000_000),
+        }
+      : undefined;
+
+  const anchorRaw = (raw as any).anchor;
+  const preset =
+    anchorRaw && typeof anchorRaw === 'object' ? String((anchorRaw as any).preset ?? '') : '';
+  const safePreset =
+    preset === 'center' ||
+    preset === 'topLeft' ||
+    preset === 'topRight' ||
+    preset === 'bottomLeft' ||
+    preset === 'bottomRight' ||
+    preset === 'custom'
+      ? (preset as import('./types').ClipAnchorPreset)
+      : undefined;
+  const anchor =
+    safePreset !== undefined
+      ? {
+          preset: safePreset,
+          x: safePreset === 'custom' ? clampNumber((anchorRaw as any).x, 0, 1) : undefined,
+          y: safePreset === 'custom' ? clampNumber((anchorRaw as any).y, 0, 1) : undefined,
+        }
+      : undefined;
+
+  if (!scale && rotationDeg === undefined && !position && !anchor) return undefined;
+  return {
+    scale,
+    rotationDeg,
+    position,
+    anchor,
+  };
+}
+
 function hashString(input: string): string {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -281,6 +345,7 @@ function parseClipItem(input: {
         : undefined,
     lockToLinkedVideo:
       granMeta?.lockToLinkedVideo !== undefined ? Boolean(granMeta.lockToLinkedVideo) : undefined,
+    transform: coerceTransform(granMeta?.transform),
   };
 
   if (clipType === 'background') {
@@ -434,6 +499,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
             backgroundColor:
               item.clipType === 'background' ? (item as any).backgroundColor : undefined,
+            transform: item.transform,
           },
         },
       });

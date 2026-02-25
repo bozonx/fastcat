@@ -514,6 +514,69 @@ export function updateClipProperties(
   const nextProps: Record<string, unknown> = { ...cmd.properties };
   const fps = getDocFps(doc);
 
+  function clampNumber(value: unknown, min: number, max: number): number {
+    const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function sanitizeTransform(raw: unknown): import('~/timeline/types').ClipTransform | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const anyRaw = raw as any;
+
+    const scaleRaw = anyRaw.scale;
+    const scale =
+      scaleRaw && typeof scaleRaw === 'object'
+        ? {
+            x: clampNumber(scaleRaw.x, 0.001, 1000),
+            y: clampNumber(scaleRaw.y, 0.001, 1000),
+            linked: scaleRaw.linked !== undefined ? Boolean(scaleRaw.linked) : undefined,
+          }
+        : undefined;
+
+    const rotationDegRaw = anyRaw.rotationDeg;
+    const rotationDeg =
+      typeof rotationDegRaw === 'number' && Number.isFinite(rotationDegRaw)
+        ? Math.max(-36000, Math.min(36000, rotationDegRaw))
+        : undefined;
+
+    const positionRaw = anyRaw.position;
+    const position =
+      positionRaw && typeof positionRaw === 'object'
+        ? {
+            x: clampNumber(positionRaw.x, -1_000_000, 1_000_000),
+            y: clampNumber(positionRaw.y, -1_000_000, 1_000_000),
+          }
+        : undefined;
+
+    const anchorRaw = anyRaw.anchor;
+    const preset = anchorRaw && typeof anchorRaw === 'object' ? String(anchorRaw.preset ?? '') : '';
+    const safePreset =
+      preset === 'center' ||
+      preset === 'topLeft' ||
+      preset === 'topRight' ||
+      preset === 'bottomLeft' ||
+      preset === 'bottomRight' ||
+      preset === 'custom'
+        ? (preset as import('~/timeline/types').ClipAnchorPreset)
+        : undefined;
+    const anchor =
+      safePreset !== undefined
+        ? {
+            preset: safePreset,
+            x: safePreset === 'custom' ? clampNumber(anchorRaw.x, 0, 1) : undefined,
+            y: safePreset === 'custom' ? clampNumber(anchorRaw.y, 0, 1) : undefined,
+          }
+        : undefined;
+
+    if (!scale && rotationDeg === undefined && !position && !anchor) return undefined;
+    return {
+      scale,
+      rotationDeg,
+      position,
+      anchor,
+    };
+  }
+
   if ('speed' in nextProps) {
     const raw = (nextProps as any).speed;
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
@@ -625,6 +688,15 @@ export function updateClipProperties(
       const raw = nextProps.backgroundColor;
       const value = typeof raw === 'string' ? raw.trim() : '';
       nextProps.backgroundColor = value.length > 0 ? value : '#000000';
+    }
+  }
+
+  if ('transform' in nextProps) {
+    const safe = sanitizeTransform((nextProps as any).transform);
+    if (safe === undefined) {
+      delete nextProps.transform;
+    } else {
+      nextProps.transform = safe;
     }
   }
 

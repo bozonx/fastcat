@@ -101,6 +101,246 @@ function handleUpdateTrackEffects(effects: any[]) {
   timelineStore.updateTrackProperties(selectedTrack.value.id, { effects: effects as any });
 }
 
+function clampNumber(value: unknown, min: number, max: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return Math.max(min, Math.min(max, n));
+}
+
+function getSafeTransform(clip: TimelineClipItem): import('~/timeline/types').ClipTransform {
+  const tr = (clip as any).transform ?? {};
+  const scaleRaw = tr.scale ?? {};
+  const scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
+  const scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
+  const linked = Boolean(scaleRaw.linked);
+
+  const positionRaw = tr.position ?? {};
+  const posX = typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
+  const posY = typeof positionRaw.y === 'number' && Number.isFinite(positionRaw.y) ? positionRaw.y : 0;
+
+  const rotationDeg =
+    typeof tr.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
+
+  const anchorRaw = tr.anchor ?? {};
+  const preset =
+    anchorRaw.preset === 'center' ||
+    anchorRaw.preset === 'topLeft' ||
+    anchorRaw.preset === 'topRight' ||
+    anchorRaw.preset === 'bottomLeft' ||
+    anchorRaw.preset === 'bottomRight' ||
+    anchorRaw.preset === 'custom'
+      ? anchorRaw.preset
+      : 'center';
+  const anchorX = typeof anchorRaw.x === 'number' && Number.isFinite(anchorRaw.x) ? anchorRaw.x : 0.5;
+  const anchorY = typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
+
+  return {
+    scale: {
+      x: clampNumber(scaleX, 0.001, 1000),
+      y: clampNumber(scaleY, 0.001, 1000),
+      linked,
+    },
+    position: {
+      x: clampNumber(posX, -1_000_000, 1_000_000),
+      y: clampNumber(posY, -1_000_000, 1_000_000),
+    },
+    rotationDeg: clampNumber(rotationDeg, -36000, 36000),
+    anchor:
+      preset === 'custom'
+        ? { preset, x: clampNumber(anchorX, 0, 1), y: clampNumber(anchorY, 0, 1) }
+        : { preset },
+  };
+}
+
+function updateSelectedClipTransform(patch: Partial<import('~/timeline/types').ClipTransform>) {
+  if (!selectedClip.value) return;
+  const clip = selectedClip.value;
+  const current = getSafeTransform(clip);
+  const next: import('~/timeline/types').ClipTransform = {
+    ...current,
+    ...patch,
+    scale: {
+      ...(current.scale ?? { x: 1, y: 1, linked: true }),
+      ...(patch.scale ?? {}),
+    },
+    position: {
+      ...(current.position ?? { x: 0, y: 0 }),
+      ...(patch.position ?? {}),
+    },
+    anchor: {
+      ...(current.anchor ?? { preset: 'center' }),
+      ...(patch.anchor ?? {}),
+    },
+  };
+
+  timelineStore.updateClipProperties(clip.trackId, clip.id, {
+    transform: next,
+  });
+}
+
+const canEditTransform = computed(() => {
+  const clip = selectedClip.value;
+  if (!clip) return false;
+  return clip.trackId.startsWith('v');
+});
+
+const anchorPresetOptions = computed(() => [
+  { value: 'center', label: 'Center' },
+  { value: 'topLeft', label: 'Top Left' },
+  { value: 'topRight', label: 'Top Right' },
+  { value: 'bottomLeft', label: 'Bottom Left' },
+  { value: 'bottomRight', label: 'Bottom Right' },
+  { value: 'custom', label: 'Custom' },
+]);
+
+const transformScaleLinked = computed({
+  get: () => {
+    if (!selectedClip.value) return true;
+    return Boolean(getSafeTransform(selectedClip.value).scale?.linked);
+  },
+  set: (val: boolean) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    const linked = Boolean(val);
+    const x = current.scale?.x ?? 1;
+    const y = current.scale?.y ?? 1;
+    updateSelectedClipTransform({
+      scale: linked ? { x, y: x, linked } : { x, y, linked },
+    });
+  },
+});
+
+const transformScaleX = computed({
+  get: () => {
+    if (!selectedClip.value) return 1;
+    return getSafeTransform(selectedClip.value).scale?.x ?? 1;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    const linked = Boolean(current.scale?.linked);
+    const x = clampNumber(val, 0.001, 1000);
+    const y = linked ? x : current.scale?.y ?? 1;
+    updateSelectedClipTransform({ scale: { x, y, linked } });
+  },
+});
+
+const transformScaleY = computed({
+  get: () => {
+    if (!selectedClip.value) return 1;
+    return getSafeTransform(selectedClip.value).scale?.y ?? 1;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    const linked = Boolean(current.scale?.linked);
+    const y = clampNumber(val, 0.001, 1000);
+    const x = linked ? y : current.scale?.x ?? 1;
+    updateSelectedClipTransform({ scale: { x, y, linked } });
+  },
+});
+
+const transformRotationDeg = computed({
+  get: () => {
+    if (!selectedClip.value) return 0;
+    return getSafeTransform(selectedClip.value).rotationDeg ?? 0;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    updateSelectedClipTransform({ rotationDeg: clampNumber(val, -36000, 36000) });
+  },
+});
+
+const transformPosX = computed({
+  get: () => {
+    if (!selectedClip.value) return 0;
+    return getSafeTransform(selectedClip.value).position?.x ?? 0;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    updateSelectedClipTransform({
+      position: { x: clampNumber(val, -1_000_000, 1_000_000), y: current.position?.y ?? 0 },
+    });
+  },
+});
+
+const transformPosY = computed({
+  get: () => {
+    if (!selectedClip.value) return 0;
+    return getSafeTransform(selectedClip.value).position?.y ?? 0;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    updateSelectedClipTransform({
+      position: { x: current.position?.x ?? 0, y: clampNumber(val, -1_000_000, 1_000_000) },
+    });
+  },
+});
+
+const transformAnchorPreset = computed({
+  get: () => {
+    if (!selectedClip.value) return 'center';
+    return getSafeTransform(selectedClip.value).anchor?.preset ?? 'center';
+  },
+  set: (val: string) => {
+    if (!selectedClip.value) return;
+    if (
+      val !== 'center' &&
+      val !== 'topLeft' &&
+      val !== 'topRight' &&
+      val !== 'bottomLeft' &&
+      val !== 'bottomRight' &&
+      val !== 'custom'
+    ) {
+      return;
+    }
+    if (val === 'custom') {
+      updateSelectedClipTransform({ anchor: { preset: 'custom', x: 0.5, y: 0.5 } });
+    } else {
+      updateSelectedClipTransform({ anchor: { preset: val as any } });
+    }
+  },
+});
+
+const transformAnchorX = computed({
+  get: () => {
+    if (!selectedClip.value) return 0.5;
+    return getSafeTransform(selectedClip.value).anchor?.x ?? 0.5;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    if (current.anchor?.preset !== 'custom') return;
+    updateSelectedClipTransform({
+      anchor: {
+        preset: 'custom',
+        x: clampNumber(val, 0, 1),
+        y: current.anchor?.y ?? 0.5,
+      },
+    });
+  },
+});
+
+const transformAnchorY = computed({
+  get: () => {
+    if (!selectedClip.value) return 0.5;
+    return getSafeTransform(selectedClip.value).anchor?.y ?? 0.5;
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = getSafeTransform(selectedClip.value);
+    if (current.anchor?.preset !== 'custom') return;
+    updateSelectedClipTransform({
+      anchor: {
+        preset: 'custom',
+        x: current.anchor?.x ?? 0.5,
+        y: clampNumber(val, 0, 1),
+      },
+    });
+  },
+});
+
 const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>(() => {
   if (selectedTransitionClip.value && selectedTransitionValue.value) return 'transition';
   if (selectedClip.value) return 'clip';
@@ -470,6 +710,63 @@ function handleTransitionUpdate(payload: {
               :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
               @update:effects="handleUpdateClipEffects"
             />
+
+            <div
+              v-if="canEditTransform"
+              class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">Transform</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Scale X</span>
+                  <UInput v-model.number="transformScaleX" size="sm" type="number" step="0.01" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Scale Y</span>
+                  <UInput v-model.number="transformScaleY" size="sm" type="number" step="0.01" />
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-gray-500">Linked scale</span>
+                <UCheckbox v-model="transformScaleLinked" />
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <span class="text-gray-500">Rotation (deg)</span>
+                <UInput v-model.number="transformRotationDeg" size="sm" type="number" step="0.1" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Position X</span>
+                  <UInput v-model.number="transformPosX" size="sm" type="number" step="1" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Position Y</span>
+                  <UInput v-model.number="transformPosY" size="sm" type="number" step="1" />
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <span class="text-gray-500">Anchor</span>
+                <USelect v-model="transformAnchorPreset" :options="anchorPresetOptions" size="sm" />
+              </div>
+
+              <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Anchor X (0..1)</span>
+                  <UInput v-model.number="transformAnchorX" size="sm" type="number" step="0.01" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Anchor Y (0..1)</span>
+                  <UInput v-model.number="transformAnchorY" size="sm" type="number" step="0.01" />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div v-else-if="displayMode === 'track' && selectedTrack" class="w-full flex flex-col gap-4">

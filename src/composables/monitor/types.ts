@@ -19,6 +19,7 @@ export interface WorkerTimelineClip {
   freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: unknown[];
+  transform?: import('~/timeline/types').ClipTransform;
   timelineRange: {
     startUs: number;
     durationUs: number;
