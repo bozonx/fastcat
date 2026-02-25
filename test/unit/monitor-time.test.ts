@@ -15,7 +15,7 @@ describe('monitor-time utils', () => {
     expect(clampTimeUs(1200.8, 1000.2)).toBe(1000);
     expect(clampTimeUs(-50, 1000)).toBe(0);
     expect(clampTimeUs(400.7, 1000)).toBe(401);
-    expect(clampTimeUs(500, 0)).toBe(0);
+    expect(clampTimeUs(500, 0)).toBe(500);
   });
 
   it('sanitizeFps constrains values and provides fallback', () => {

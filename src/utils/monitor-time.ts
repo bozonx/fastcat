@@ -19,7 +19,7 @@ export function clampTimeUs(value: number, maxDurationUs: number): number {
   }
 
   if (normalizedMax <= 0) {
-    return 0;
+    return normalizedValue;
   }
 
   if (normalizedValue >= normalizedMax) {
