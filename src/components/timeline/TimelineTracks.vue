@@ -743,6 +743,13 @@ function getTransitionForPanel() {
             class="absolute left-0 right-0 bottom-0 h-1 bg-fuchsia-400/80"
           />
 
+          <div
+            v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
+            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-black/40 text-[10px] leading-none font-mono"
+          >
+            x{{ Number((item as any).speed ?? 1).toFixed(2) }}
+          </div>
+
           <!-- Transition In block -->
           <template v-if="item.kind === 'clip' && (item as any).transitionIn">
             <button

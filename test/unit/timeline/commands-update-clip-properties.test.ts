@@ -170,4 +170,51 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.timelineRange.durationUs).toBeGreaterThan(0);
     expect(clip.timelineRange.durationUs).toBeLessThan(1_000_000);
   });
+
+  it('ripples subsequent clips when slowing down would cause overlap', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c2',
+          trackId: 'v1',
+          name: 'C2',
+          source: { path: 'b.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: { speed: 0.5 },
+    }).next;
+
+    const track = next.tracks[0] as TimelineTrack;
+    const c1 = track.items.find((it: any) => it.id === 'c1') as any;
+    const c2 = track.items.find((it: any) => it.id === 'c2') as any;
+
+    expect(c1.speed).toBe(0.5);
+    expect(c1.timelineRange.durationUs).toBe(2_000_000);
+    expect(c2.timelineRange.startUs).toBe(2_000_000);
+  });
 });

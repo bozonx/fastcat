@@ -313,8 +313,98 @@ export function updateClipProperties(
       nextProps.speed = speed;
       const nextDurationUsRaw = Math.round(item.sourceRange.durationUs / speed);
       const nextDurationUs = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
-      assertNoOverlap(track, item.id, item.timelineRange.startUs, nextDurationUs);
-      nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
+      const startUs = item.timelineRange.startUs;
+      const prevDurationUs = Math.max(0, item.timelineRange.durationUs);
+
+      const shouldTryRipple = nextDurationUs > prevDurationUs;
+      if (shouldTryRipple) {
+        try {
+          assertNoOverlap(track, item.id, startUs, nextDurationUs);
+          nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
+        } catch {
+          const clips = track.items
+            .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+            .map((c) => ({ ...c, timelineRange: { ...c.timelineRange } }));
+          clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+          const movedVideoClipIds: string[] = [];
+          const nextClips = clips.map((c) => {
+            if (c.id !== item.id) return c;
+            return {
+              ...c,
+              speed,
+              timelineRange: { ...c.timelineRange, durationUs: nextDurationUs },
+            };
+          });
+
+          for (let i = 0; i < nextClips.length; i++) {
+            const curr = nextClips[i];
+            if (!curr) continue;
+            const prev = i > 0 ? nextClips[i - 1] : null;
+            if (!prev) continue;
+
+            const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
+            const currStartUs = curr.timelineRange.startUs;
+            if (currStartUs < prevEndUs) {
+              const qStartUs = quantizeTimeUsToFrames(prevEndUs, fps, 'round');
+              if (qStartUs !== currStartUs) {
+                nextClips[i] = {
+                  ...curr,
+                  timelineRange: { ...curr.timelineRange, startUs: qStartUs },
+                };
+                if (track.kind === 'video') {
+                  movedVideoClipIds.push(curr.id);
+                }
+              }
+            }
+          }
+
+          let nextTracksLocal = doc.tracks.map((t) =>
+            t.id === track.id ? { ...t, items: normalizeGaps(doc, t.id, nextClips) } : t,
+          );
+
+          for (const movedId of movedVideoClipIds) {
+            const moved = nextClips.find((c) => c.id === movedId);
+            if (!moved) continue;
+            nextTracksLocal = updateLinkedLockedAudio(
+              { ...doc, tracks: nextTracksLocal },
+              movedId,
+              (audio) => ({
+                ...audio,
+                timelineRange: { ...audio.timelineRange, startUs: moved.timelineRange.startUs },
+              }),
+            );
+          }
+
+          const updatedClip = nextClips.find((c) => c.id === item.id);
+          if (updatedClip && track.kind === 'video' && updatedClip.clipType === 'media') {
+            nextTracksLocal = updateLinkedLockedAudio(
+              { ...doc, tracks: nextTracksLocal },
+              updatedClip.id,
+              (a) => ({
+                ...a,
+                timelineRange: {
+                  ...a.timelineRange,
+                  startUs: updatedClip.timelineRange.startUs,
+                  durationUs: updatedClip.timelineRange.durationUs,
+                },
+                sourceRange: {
+                  ...a.sourceRange,
+                  startUs: updatedClip.sourceRange.startUs,
+                  durationUs: updatedClip.sourceRange.durationUs,
+                },
+                sourceDurationUs: updatedClip.sourceDurationUs,
+                speed: (updatedClip as any).speed,
+              }),
+            );
+          }
+
+          return { next: { ...doc, tracks: nextTracksLocal } };
+        }
+      } else {
+        assertNoOverlap(track, item.id, startUs, nextDurationUs);
+        nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
+      }
     }
   }
   if ('backgroundColor' in nextProps) {
@@ -329,12 +419,11 @@ export function updateClipProperties(
 
   const nextTracks = doc.tracks.map((t) => {
     if (t.id === track.id) {
-      return {
-        ...t,
-        items: t.items.map((it) =>
-          it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...(nextProps as any) } : it,
-        ),
-      };
+      const updatedItems = t.items.map((it) =>
+        it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...(nextProps as any) } : it,
+      );
+      const normalized = normalizeGaps(doc, t.id, updatedItems);
+      return { ...t, items: normalized };
     }
     return t;
   });
