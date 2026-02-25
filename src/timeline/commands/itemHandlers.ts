@@ -488,6 +488,107 @@ export function updateClipTransition(
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || item.kind !== 'clip') return { next: doc };
 
+  const itemId = item.id;
+
+  const fps = getDocFps(doc);
+
+  function coerceTransition(raw: any): { type: string; durationUs: number } | null {
+    if (!raw) return null;
+    const type = typeof raw.type === 'string' ? raw.type : '';
+    const durationUs = Number(raw.durationUs);
+    if (!type) return null;
+    if (!Number.isFinite(durationUs) || durationUs <= 0) return { type, durationUs: 0 };
+    return { type, durationUs: Math.max(0, Math.round(durationUs)) };
+  }
+
+  function findAdjacentClips() {
+    const clips = track.items
+      .filter((it): it is TimelineClipItem => it.kind === 'clip')
+      .map((c) => ({
+        ...c,
+        timelineRange: { ...c.timelineRange },
+        sourceRange: { ...c.sourceRange },
+      }));
+    clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const idx = clips.findIndex((c) => c.id === itemId);
+    if (idx === -1) return null;
+    const curr = clips[idx];
+    if (!curr) return null;
+    return {
+      ordered: clips,
+      index: idx,
+      prev: idx > 0 ? (clips[idx - 1] ?? null) : null,
+      curr,
+      next: idx < clips.length - 1 ? (clips[idx + 1] ?? null) : null,
+    };
+  }
+
+  function computeOverlapUs(params: {
+    left: TimelineClipItem;
+    right: TimelineClipItem;
+    requestedUs: number;
+  }): number {
+    const requestedUs = Math.max(0, Math.round(params.requestedUs));
+    if (requestedUs <= 0) return 0;
+
+    const left = params.left;
+    const right = params.right;
+
+    const leftSourceEndUs = left.sourceRange.startUs + left.sourceRange.durationUs;
+    const leftMaxEndUs =
+      left.clipType === 'media'
+        ? Math.max(0, Math.round(left.sourceDurationUs))
+        : Number.POSITIVE_INFINITY;
+    const leftTailHandleUs = Number.isFinite(leftMaxEndUs)
+      ? Math.max(0, leftMaxEndUs - leftSourceEndUs)
+      : requestedUs;
+
+    const rightHeadHandleUs = Math.max(0, Math.round(right.sourceRange.startUs));
+
+    const overlapUs = Math.min(requestedUs, leftTailHandleUs, rightHeadHandleUs);
+    return quantizeDeltaUsToFrames(overlapUs, fps, 'floor');
+  }
+
+  function applyOverlap(params: {
+    left: TimelineClipItem;
+    right: TimelineClipItem;
+    overlapUs: number;
+  }): { left: TimelineClipItem; right: TimelineClipItem } {
+    const overlapUs = Math.max(0, Math.round(params.overlapUs));
+    if (overlapUs <= 0) return { left: params.left, right: params.right };
+
+    const left = params.left;
+    const right = params.right;
+
+    const leftNext: TimelineClipItem = {
+      ...left,
+      timelineRange: {
+        ...left.timelineRange,
+        durationUs: left.timelineRange.durationUs + overlapUs,
+      },
+      sourceRange: {
+        ...left.sourceRange,
+        durationUs: left.sourceRange.durationUs + overlapUs,
+      },
+    };
+
+    const rightNext: TimelineClipItem = {
+      ...right,
+      timelineRange: {
+        ...right.timelineRange,
+        startUs: Math.max(0, right.timelineRange.startUs - overlapUs),
+        durationUs: right.timelineRange.durationUs + overlapUs,
+      },
+      sourceRange: {
+        ...right.sourceRange,
+        startUs: Math.max(0, right.sourceRange.startUs - overlapUs),
+        durationUs: right.sourceRange.durationUs + overlapUs,
+      },
+    };
+
+    return { left: leftNext, right: rightNext };
+  }
+
   const patch: Record<string, unknown> = {};
   if ('transitionIn' in cmd) {
     patch.transitionIn = cmd.transitionIn ?? undefined;
@@ -496,15 +597,105 @@ export function updateClipTransition(
     patch.transitionOut = cmd.transitionOut ?? undefined;
   }
 
+  const adjacent = findAdjacentClips();
+  const requestedIn = 'transitionIn' in cmd ? coerceTransition(cmd.transitionIn) : null;
+  const requestedOut = 'transitionOut' in cmd ? coerceTransition(cmd.transitionOut) : null;
+
+  const patchedItemsById = new Map<string, TimelineTrackItem>();
+  patchedItemsById.set(item.id, { ...item, ...(patch as any) } as any);
+
+  // Auto-overlap when applying a transition on a cut between adjacent clips.
+  // Strategy:
+  // - If setting transitionOut on current and there is an adjacent next clip starting at current end,
+  //   try to overlap them by requested duration (bounded by source handles), and mirror transitionIn on next.
+  // - If setting transitionIn on current and there is an adjacent prev clip ending at current start,
+  //   do the same with prev/current and mirror transitionOut on prev.
+  if (adjacent) {
+    const curr = adjacent.curr;
+    const currStartUs = curr.timelineRange.startUs;
+    const currEndUs = currStartUs + curr.timelineRange.durationUs;
+
+    const prev = adjacent.prev;
+    const next = adjacent.next;
+
+    if (requestedOut && requestedOut.durationUs > 0 && next) {
+      const nextStartUs = next.timelineRange.startUs;
+      if (nextStartUs === currEndUs) {
+        const overlapUs = computeOverlapUs({
+          left: curr,
+          right: next,
+          requestedUs: requestedOut.durationUs,
+        });
+        if (overlapUs > 0) {
+          const { left, right } = applyOverlap({ left: curr, right: next, overlapUs });
+          patchedItemsById.set(left.id, {
+            ...left,
+            transitionOut: { type: requestedOut.type, durationUs: overlapUs },
+          } as any);
+          patchedItemsById.set(right.id, {
+            ...right,
+            transitionIn: { type: requestedOut.type, durationUs: overlapUs },
+          } as any);
+        }
+      }
+    }
+
+    if (requestedIn && requestedIn.durationUs > 0 && prev) {
+      const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
+      if (prevEndUs === currStartUs) {
+        const overlapUs = computeOverlapUs({
+          left: prev,
+          right: curr,
+          requestedUs: requestedIn.durationUs,
+        });
+        if (overlapUs > 0) {
+          const { left, right } = applyOverlap({ left: prev, right: curr, overlapUs });
+          patchedItemsById.set(left.id, {
+            ...left,
+            transitionOut: { type: requestedIn.type, durationUs: overlapUs },
+          } as any);
+          patchedItemsById.set(right.id, {
+            ...right,
+            transitionIn: { type: requestedIn.type, durationUs: overlapUs },
+          } as any);
+        }
+      }
+    }
+  }
+
   const nextTracks = doc.tracks.map((t) => {
     if (t.id !== track.id) return t;
-    return {
-      ...t,
-      items: t.items.map((it) =>
-        it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...patch } : it,
-      ),
-    };
+    const nextItemsRaw = t.items.map((it) => patchedItemsById.get(it.id) ?? it);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(doc, t.id, nextItemsRaw);
+    return { ...t, items: nextItems };
   });
 
-  return { next: { ...doc, tracks: nextTracks } };
+  let finalTracks = nextTracks;
+  // If we changed a video media clip timing, keep linked locked audio in sync.
+  // We update for any patched item id that represents a video media clip.
+  const updatedDoc = { ...doc, tracks: nextTracks };
+  for (const updated of patchedItemsById.values()) {
+    if (!updated || updated.kind !== 'clip') continue;
+    if (updated.clipType !== 'media') continue;
+    const resolved = findClipById(updatedDoc, updated.id);
+    if (!resolved || resolved.track.kind !== 'video') continue;
+
+    finalTracks = updateLinkedLockedAudio({ ...doc, tracks: finalTracks }, updated.id, (audio) => ({
+      ...audio,
+      timelineRange: {
+        ...audio.timelineRange,
+        startUs: updated.timelineRange.startUs,
+        durationUs: updated.timelineRange.durationUs,
+      },
+      sourceRange: {
+        ...audio.sourceRange,
+        startUs: updated.sourceRange.startUs,
+        durationUs: updated.sourceRange.durationUs,
+      },
+      sourceDurationUs: updated.sourceDurationUs,
+    }));
+  }
+
+  return { next: { ...doc, tracks: finalTracks } };
 }

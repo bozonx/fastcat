@@ -3,6 +3,14 @@ export interface WorkerTimelineClip {
   clipType: 'media' | 'adjustment' | 'background';
   id: string;
   layer: number;
+  transitionIn?: {
+    type: string;
+    durationUs: number;
+  };
+  transitionOut?: {
+    type: string;
+    durationUs: number;
+  };
   source?: {
     path: string;
   };

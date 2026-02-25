@@ -112,12 +112,48 @@ export function assertNoOverlap(
   durationUs: number,
 ) {
   const endUs = startUs + durationUs;
+  const movedItem =
+    track.items.find((x): x is TimelineClipItem => x.id === movedItemId && x.kind === 'clip') ??
+    null;
+
   for (const it of track.items) {
     if (it.id === movedItemId) continue;
     if (it.kind !== 'clip') continue;
     const itStart = it.timelineRange.startUs;
     const itEnd = itStart + it.timelineRange.durationUs;
     if (rangesOverlap(startUs, endUs, itStart, itEnd)) {
+      // Allow overlap when it is a transition crossfade area.
+      // The overlap must be exactly at the end of the left clip and the start of the right clip
+      // and must be fully covered by transitionOut/transitionIn durations.
+      const overlapStart = Math.max(startUs, itStart);
+      const overlapEnd = Math.min(endUs, itEnd);
+      const overlapUs = Math.max(0, overlapEnd - overlapStart);
+      if (overlapUs > 0 && movedItem) {
+        const movedStartUs = startUs;
+        const movedEndUs = endUs;
+
+        const itIsRight = movedStartUs <= itStart;
+        const left = itIsRight ? movedItem : it;
+        const right = itIsRight ? it : movedItem;
+
+        const leftStartUs = itIsRight ? movedStartUs : itStart;
+        const leftEndUs = itIsRight ? movedEndUs : itEnd;
+        const rightStartUs = itIsRight ? itStart : movedStartUs;
+
+        const isCutOverlap = overlapStart === rightStartUs && overlapEnd === leftEndUs;
+        const leftOutDur = Number((left as any).transitionOut?.durationUs);
+        const rightInDur = Number((right as any).transitionIn?.durationUs);
+
+        if (
+          isCutOverlap &&
+          Number.isFinite(leftOutDur) &&
+          Number.isFinite(rightInDur) &&
+          leftOutDur >= overlapUs &&
+          rightInDur >= overlapUs
+        ) {
+          continue;
+        }
+      }
       throw new Error('Item overlaps with another item');
     }
   }

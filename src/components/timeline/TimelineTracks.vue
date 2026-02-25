@@ -207,7 +207,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         if (hasIn) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: null });
         } else {
-          openTransitionPanel.value = { trackId: track.id, itemId: item.id, edge: 'in', anchorEl: null };
+          const transition = { type: 'dissolve', durationUs: 2_000_000 };
+          timelineStore.updateClipTransition(track.id, item.id, { transitionIn: transition });
+          timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'in' });
         }
       },
     });
@@ -221,7 +223,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         if (hasOut) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: null });
         } else {
-          openTransitionPanel.value = { trackId: track.id, itemId: item.id, edge: 'out', anchorEl: null };
+          const transition = { type: 'dissolve', durationUs: 2_000_000 };
+          timelineStore.updateClipTransition(track.id, item.id, { transitionOut: transition });
+          timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'out' });
         }
       },
     });

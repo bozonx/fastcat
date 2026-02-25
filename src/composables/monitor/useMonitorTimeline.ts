@@ -39,6 +39,20 @@ export function useMonitorTimeline() {
     const clips: WorkerTimelineClip[] = [];
     const videoTracks = docTracks.filter((track) => track.kind === 'video' && !track.videoHidden);
     const trackCount = videoTracks.length;
+
+    function sanitizeTransition(raw: unknown): { type: string; durationUs: number } | undefined {
+      if (!raw || typeof raw !== 'object') return undefined;
+      const anyRaw = raw as any;
+      const type = typeof anyRaw.type === 'string' ? anyRaw.type : '';
+      const durationUs = Number(anyRaw.durationUs);
+      if (!type) return undefined;
+      if (!Number.isFinite(durationUs)) return undefined;
+      return {
+        type,
+        durationUs: Math.max(0, Math.round(durationUs)),
+      };
+    }
+
     for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
@@ -60,6 +74,8 @@ export function useMonitorTimeline() {
           freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
           effects,
+          transitionIn: sanitizeTransition((item as any).transitionIn),
+          transitionOut: sanitizeTransition((item as any).transitionOut),
           timelineRange: {
             startUs: item.timelineRange.startUs,
             durationUs: item.timelineRange.durationUs,
@@ -196,7 +212,7 @@ export function useMonitorTimeline() {
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
-        hash = mixHash(hash, hashString(item.clipType));
+        hash = mixHash(hash, hashString(String((item as any).clipType ?? '')));
         if (item.clipType === 'media' && item.source?.path) {
           hash = mixHash(hash, hashString(item.source.path));
         } else if (item.clipType === 'background') {
@@ -218,6 +234,7 @@ export function useMonitorTimeline() {
       hash = mixTime(hash, item.timelineRange.startUs);
       hash = mixTime(hash, item.timelineRange.durationUs);
       if (item.kind === 'clip') {
+        hash = mixHash(hash, hashString(String((item as any).clipType ?? '')));
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
 
