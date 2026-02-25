@@ -63,9 +63,12 @@ export function quantizeRangeToFrames(
   fps: number,
 ): { startUs: number; durationUs: number } {
   const startFrame = usToFrame(range.startUs, fps, 'round');
-  const durationFrames = usToFrame(range.durationUs, fps, 'round');
   const startUs = frameToUs(startFrame, fps);
-  const endUs = frameToUs(startFrame + durationFrames, fps);
+
+  const rawEndUs = Math.max(0, Math.round(range.startUs) + Math.round(range.durationUs));
+  const endFrame = usToFrame(rawEndUs, fps, 'round');
+  const endUs = frameToUs(Math.max(startFrame, endFrame), fps);
+
   return { startUs, durationUs: Math.max(0, endUs - startUs) };
 }
 

@@ -47,6 +47,52 @@ describe('timeline/commands gap behavior', () => {
     expect(clip.timelineRange.startUs).toBe(2_000_000);
   });
 
+  it('does not create a gap when moving clip to abut previous clip with rounding noise', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 999_999 },
+          sourceRange: { startUs: 0, durationUs: 999_999 },
+        },
+        {
+          kind: 'clip',
+          id: 'c2',
+          trackId: 'v1',
+          name: 'C2',
+          source: { path: 'b.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const moved = applyTimelineCommand(doc, {
+      type: 'move_item',
+      trackId: 'v1',
+      itemId: 'c2',
+      startUs: 1_000_000 + 1,
+    }).next;
+
+    const items = moved.tracks[0].items;
+    const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
+    expect(gaps.length).toBe(0);
+
+    const c1 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1') as any;
+    const c2 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c2') as any;
+    const endC1 = c1.timelineRange.startUs + c1.timelineRange.durationUs;
+    expect(c2.timelineRange.startUs).toBe(endC1);
+  });
+
   it('normalizes gaps after move_item (single gap between clips)', () => {
     const doc = makeDoc({
       id: 'v1',
