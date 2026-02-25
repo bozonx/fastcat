@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition } from '~/timeline/types';
 
@@ -26,15 +27,21 @@ const selectedType = ref(props.transition?.type ?? 'dissolve');
 const selectedMode = ref<'blend' | 'composite'>(props.transition?.mode ?? 'blend');
 const selectedCurve = ref<'linear' | 'bezier'>(props.transition?.curve ?? 'linear');
 
+// Track whether we're syncing from props to avoid emit loop
+let isSyncingFromProps = false;
+
 watch(
   () => props.transition,
   (t) => {
+    isSyncingFromProps = true;
     if (t) {
       selectedType.value = t.type;
       durationSec.value = t.durationUs / 1_000_000;
       selectedMode.value = t.mode ?? 'blend';
       selectedCurve.value = t.curve ?? 'linear';
     }
+    // Reset flag after Vue processes reactivity
+    void Promise.resolve().then(() => { isSyncingFromProps = false; });
   },
 );
 
@@ -42,7 +49,8 @@ const edgeIcon = computed(() =>
   props.edge === 'in' ? 'i-heroicons-arrow-left-end-on-rectangle' : 'i-heroicons-arrow-right-end-on-rectangle',
 );
 
-function apply() {
+function emitUpdate() {
+  if (isSyncingFromProps) return;
   emit('update', {
     trackId: props.trackId,
     itemId: props.itemId,
@@ -55,6 +63,14 @@ function apply() {
     },
   });
 }
+
+// Debounce slider changes to avoid spamming commands
+const emitDebouncedDuration = useDebounceFn(emitUpdate, 80);
+
+watch(selectedType, emitUpdate);
+watch(selectedMode, emitUpdate);
+watch(selectedCurve, emitUpdate);
+watch(durationSec, emitDebouncedDuration);
 
 function remove() {
   emit('update', {
@@ -73,9 +89,23 @@ const durationStep = 0.05;
 <template>
   <div class="flex flex-col gap-3 p-3 bg-gray-800 border border-gray-700 rounded text-xs text-gray-200 min-w-52">
     <!-- Header with edge icon -->
-    <div class="flex items-center gap-2 font-semibold text-gray-100">
-      <span :class="edgeIcon" class="w-4 h-4 shrink-0 text-indigo-400" />
-      <span>{{ t('granVideoEditor.timeline.transition.title') }}</span>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 font-semibold text-gray-100">
+        <span :class="edgeIcon" class="w-4 h-4 shrink-0 text-indigo-400" />
+        <span>{{ t('granVideoEditor.timeline.transition.title') }}</span>
+      </div>
+      <button
+        v-if="transition"
+        class="px-1.5 py-0.5 rounded bg-gray-700 hover:bg-red-800 text-gray-400 hover:text-white transition-colors"
+        :title="
+          edge === 'in'
+            ? t('granVideoEditor.timeline.removeTransitionIn')
+            : t('granVideoEditor.timeline.removeTransitionOut')
+        "
+        @click="remove"
+      >
+        <span class="i-heroicons-trash w-3.5 h-3.5" />
+      </button>
     </div>
 
     <!-- Transition type picker -->
@@ -156,28 +186,6 @@ const durationStep = 0.05;
           {{ t('granVideoEditor.timeline.transition.curveBezier') }}
         </button>
       </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="flex gap-2">
-      <button
-        class="flex-1 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
-        @click="apply"
-      >
-        {{ t('common.apply') }}
-      </button>
-      <button
-        v-if="transition"
-        class="px-2 py-1 rounded bg-gray-700 hover:bg-red-800 text-gray-300 hover:text-white transition-colors"
-        :title="
-          edge === 'in'
-            ? t('granVideoEditor.timeline.removeTransitionIn')
-            : t('granVideoEditor.timeline.removeTransitionOut')
-        "
-        @click="remove"
-      >
-        <span class="i-heroicons-trash w-4 h-4" />
-      </button>
     </div>
   </div>
 </template>

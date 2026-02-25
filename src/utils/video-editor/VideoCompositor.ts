@@ -722,9 +722,12 @@ export class VideoCompositor {
 
         if (!prevClip.sink) continue;
 
-        // Render the last available frame of the previous clip
-        const lastSampleTimeS = Math.max(0, (prevClip.sourceStartUs + prevClip.sourceDurationUs) / 1_000_000 - 0.002);
-        const req = getVideoSampleWithZeroFallback(prevClip.sink, lastSampleTimeS, prevClip.firstTimestampS)
+        // Animate the previous clip: continue from its actual source position at timeUs
+        const shadowLocalUs = timeUs - prevClip.startUs;
+        // Clamp to the last valid source position (don't go past clip's source end)
+        const clampedLocalUs = Math.min(shadowLocalUs, prevClip.sourceDurationUs - 1_000);
+        const shadowSampleTimeS = Math.max(0, (prevClip.sourceStartUs + clampedLocalUs) / 1_000_000);
+        const req = getVideoSampleWithZeroFallback(prevClip.sink, shadowSampleTimeS, prevClip.firstTimestampS)
           .then((sample) => ({ clip: prevClip, sample }))
           .catch(() => ({ clip: prevClip, sample: null }));
         blendShadowRequests.push(req);
@@ -748,6 +751,19 @@ export class VideoCompositor {
       // Hide shadow clips that were not activated
       for (const clip of blendShadowClips) {
         if (!clip.sprite.visible) clip.sprite.visible = false;
+      }
+
+      // --- Composite mode: explicitly hide same-layer prev clip ---
+      // In composite mode, the clip fades in over lower tracks only; prev clip on same layer must not show.
+      for (const clip of active) {
+        const tr = clip.transitionIn;
+        if (!tr || (tr.mode ?? 'blend') !== 'composite' || tr.durationUs <= 0) continue;
+        const localTimeUs = timeUs - clip.startUs;
+        if (localTimeUs >= tr.durationUs) continue;
+        const prevClip = this.findPrevClipOnLayer(clip);
+        if (prevClip && !active.includes(prevClip)) {
+          prevClip.sprite.visible = false;
+        }
       }
 
       if (sampleRequests.length > 0) {
