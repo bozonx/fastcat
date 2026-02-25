@@ -28,6 +28,10 @@ function addBackgroundClip() {
   timelineStore.addBackgroundClipAtPlayhead();
 }
 
+async function splitClips() {
+  await timelineStore.splitClipsAtPlayhead();
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -119,6 +123,17 @@ function onZoomInput(e: Event) {
         icon="i-heroicons-swatch"
         :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
         @click="addBackgroundClip"
+      />
+
+      <div class="w-px h-4 bg-gray-700 mx-1" />
+
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-scissors"
+        :aria-label="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
+        @click="splitClips"
       />
     </div>
 

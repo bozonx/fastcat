@@ -15,6 +15,7 @@ import {
   moveItem,
   moveItemToTrack,
   trimItem,
+  splitItem,
   updateClipProperties,
   updateClipTransition,
 } from './commands/itemHandlers';
@@ -58,6 +59,13 @@ export interface TrimItemCommand {
   itemId: string;
   edge: 'start' | 'end';
   deltaUs: number;
+}
+
+export interface SplitItemCommand {
+  type: 'split_item';
+  trackId: string;
+  itemId: string;
+  atUs: number;
 }
 
 export interface DeleteItemsCommand {
@@ -150,6 +158,7 @@ export type TimelineCommand =
   | RemoveItemCommand
   | MoveItemCommand
   | TrimItemCommand
+  | SplitItemCommand
   | DeleteItemsCommand
   | AddTrackCommand
   | RenameTrackCommand
@@ -199,6 +208,8 @@ export function applyTimelineCommand(
       return moveItemToTrack(doc, cmd);
     case 'trim_item':
       return trimItem(doc, cmd);
+    case 'split_item':
+      return splitItem(doc, cmd);
     case 'update_clip_properties':
       return updateClipProperties(doc, cmd);
     case 'update_clip_transition':

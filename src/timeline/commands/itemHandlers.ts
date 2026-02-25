@@ -6,6 +6,7 @@ import type {
   DeleteItemsCommand,
   MoveItemCommand,
   TrimItemCommand,
+  SplitItemCommand,
   MoveItemToTrackCommand,
   RenameItemCommand,
   UpdateClipPropertiesCommand,
@@ -142,6 +143,133 @@ export function renameItem(doc: TimelineDocument, cmd: RenameItemCommand): Timel
     }
     return t;
   });
+  return { next: { ...doc, tracks: nextTracks } };
+}
+
+export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): TimelineCommandResult {
+  const track = getTrackById(doc, cmd.trackId);
+  const item = track.items.find((x) => x.id === cmd.itemId);
+  if (!item || item.kind !== 'clip') return { next: doc };
+
+  if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
+    throw new Error('Locked audio clip');
+  }
+
+  const fps = getDocFps(doc);
+  const atUs = quantizeTimeUsToFrames(Number(cmd.atUs), fps, 'round');
+
+  const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
+  const endUs = Math.max(startUs, startUs + Math.max(0, Math.round(item.timelineRange.durationUs)));
+
+  if (!(atUs > startUs && atUs < endUs)) {
+    return { next: doc };
+  }
+
+  const leftDurationUs = Math.max(0, atUs - startUs);
+  const rightDurationUs = Math.max(0, endUs - atUs);
+  if (leftDurationUs <= 0 || rightDurationUs <= 0) return { next: doc };
+
+  const localCutUs = atUs - startUs;
+  const leftSourceDurationUs = Math.max(0, localCutUs);
+  const rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + localCutUs);
+  const rightSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs) - localCutUs);
+
+  const rightItemId = nextItemId(track.id, 'clip');
+
+  const leftPatched: TimelineClipItem = {
+    ...(item as TimelineClipItem),
+    timelineRange: { startUs, durationUs: leftDurationUs },
+    sourceRange: { startUs: item.sourceRange.startUs, durationUs: leftSourceDurationUs },
+    transitionOut: undefined,
+  };
+
+  const rightItem: TimelineClipItem = {
+    ...(item as TimelineClipItem),
+    id: rightItemId,
+    trackId: track.id,
+    timelineRange: { startUs: atUs, durationUs: rightDurationUs },
+    sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+    transitionIn: undefined,
+  };
+
+  const nextItemsRaw: TimelineTrackItem[] = [];
+  for (const it of track.items) {
+    if (it.id !== item.id) {
+      nextItemsRaw.push(it);
+      continue;
+    }
+    nextItemsRaw.push(leftPatched);
+    nextItemsRaw.push(rightItem);
+  }
+  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
+
+  let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+
+  if (track.kind === 'video' && item.clipType === 'media') {
+    // Split locked linked audio that follows this video item.
+    nextTracks = nextTracks.map((t) => {
+      if (t.kind !== 'audio') return t;
+
+      let changed = false;
+      const patched: TimelineTrackItem[] = [];
+      for (const it of t.items) {
+        if (
+          it.kind === 'clip' &&
+          it.clipType === 'media' &&
+          it.linkedVideoClipId === item.id &&
+          it.lockToLinkedVideo
+        ) {
+          changed = true;
+          const audioStartUs = Math.max(0, Math.round(it.timelineRange.startUs));
+          const audioEndUs = Math.max(
+            audioStartUs,
+            audioStartUs + Math.max(0, Math.round(it.timelineRange.durationUs)),
+          );
+          if (!(atUs > audioStartUs && atUs < audioEndUs)) {
+            patched.push(it);
+            continue;
+          }
+
+          const leftAudioDurationUs = Math.max(0, atUs - audioStartUs);
+          const rightAudioDurationUs = Math.max(0, audioEndUs - atUs);
+          const audioLocalCutUs = atUs - audioStartUs;
+
+          const leftAudio: TimelineClipItem = {
+            ...it,
+            timelineRange: { startUs: audioStartUs, durationUs: leftAudioDurationUs },
+            sourceRange: {
+              startUs: it.sourceRange.startUs,
+              durationUs: Math.max(0, audioLocalCutUs),
+            },
+            transitionOut: undefined,
+          };
+
+          const rightAudio: TimelineClipItem = {
+            ...it,
+            id: nextItemId(t.id, 'clip'),
+            linkedVideoClipId: rightItemId,
+            timelineRange: { startUs: atUs, durationUs: rightAudioDurationUs },
+            sourceRange: {
+              startUs: Math.max(0, Math.round(it.sourceRange.startUs) + audioLocalCutUs),
+              durationUs: Math.max(0, Math.round(it.sourceRange.durationUs) - audioLocalCutUs),
+            },
+            transitionIn: undefined,
+          };
+
+          patched.push(leftAudio);
+          patched.push(rightAudio);
+        } else {
+          patched.push(it);
+        }
+      }
+
+      if (!changed) return t;
+      patched.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      return { ...t, items: normalizeGaps(doc, t.id, patched) };
+    });
+  }
+
   return { next: { ...doc, tracks: nextTracks } };
 }
 

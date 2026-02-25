@@ -103,6 +103,45 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  async function splitClipsAtPlayhead() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const atUs = currentTime.value;
+
+    const selected = selectedItemIds.value;
+    const shouldUseSelection = selected.length > 0;
+    const targetIds = new Set<string>();
+
+    for (const t of doc.tracks) {
+      for (const it of t.items) {
+        if (it.kind !== 'clip') continue;
+        if (shouldUseSelection && !selected.includes(it.id)) continue;
+        targetIds.add(it.id);
+      }
+    }
+
+    if (targetIds.size === 0) return;
+
+    for (const t of (timelineDoc.value?.tracks ?? []) as any[]) {
+      for (const it of t.items ?? []) {
+        if (!it || it.kind !== 'clip') continue;
+        if (!targetIds.has(it.id)) continue;
+        applyTimeline(
+          {
+            type: 'split_item',
+            trackId: String(t.id),
+            itemId: String(it.id),
+            atUs,
+          },
+          { saveMode: 'none' },
+        );
+      }
+    }
+
+    await requestTimelineSave({ immediate: true });
+  }
+
   function toggleSelection(itemId: string, options?: { multi?: boolean }) {
     selectedTransition.value = null;
     if (options?.multi) {
@@ -747,6 +786,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     updateClipTransition,
     setClipFreezeFrameFromPlayhead,
     resetClipFreezeFrame,
+    splitClipsAtPlayhead,
     deleteTrack,
     reorderTracks,
     moveItemToTrack,
