@@ -357,6 +357,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             clipType:
               c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
             id: c.id,
+            layer: c.layer,
             source: c.source,
             timelineRange: c.timelineRange,
             sourceRange: c.sourceRange,
