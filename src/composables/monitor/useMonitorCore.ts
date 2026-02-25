@@ -366,6 +366,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             freezeFrameSourceUs: c.freezeFrameSourceUs,
             opacity: c.opacity,
             effects: c.effects,
+            transform: (c as any).transform,
             backgroundColor: c.backgroundColor,
           }) as any,
       );
@@ -384,6 +385,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             freezeFrameSourceUs: c.freezeFrameSourceUs,
             opacity: c.opacity,
             effects: c.effects,
+            transform: (c as any).transform,
           }) as any,
       );
 

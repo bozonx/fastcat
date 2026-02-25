@@ -89,6 +89,34 @@ describe('useTimelineExport pure functions', () => {
     expect(nested[0]?.layer).toBe(3);
   });
 
+  it('toWorkerTimelineClips should propagate transform', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    (items[0] as any).transform = {
+      scale: { x: 1.25, y: 0.75, linked: false },
+      rotationDeg: 10,
+      position: { x: 12, y: -34 },
+      anchor: { preset: 'center' },
+    };
+
+    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+
+    expect(clips[0]?.transform).toEqual((items[0] as any).transform);
+  });
+
   it('toWorkerTimelineClips should respect item.layer when options.layer is not provided', async () => {
     const items: TimelineTrackItem[] = [
       {

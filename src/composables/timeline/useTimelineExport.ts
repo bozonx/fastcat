@@ -9,7 +9,7 @@ import {
   terminateExportWorker,
   restartExportWorker,
 } from '~/utils/video-editor/worker-client';
-import type { TimelineTrackItem } from '~/timeline/types';
+import type { ClipTransform, TimelineTrackItem } from '~/timeline/types';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   checkAudioCodecSupport,
@@ -40,6 +40,7 @@ export interface WorkerTimelineClip {
   freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: unknown[];
+  transform?: ClipTransform;
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
 }
@@ -116,6 +117,7 @@ export async function toWorkerTimelineClips(
       speed: (item as any).speed,
       opacity: combinedOpacity,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
+      transform: (item as any).transform,
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
