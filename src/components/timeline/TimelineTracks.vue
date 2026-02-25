@@ -168,46 +168,88 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
   if (item.kind !== 'clip') return null;
   const clip = item as TimelineClipItem;
   const tr = clip.transitionIn;
-  if (!tr || (tr.mode ?? 'blend') !== 'blend') return null;
-  const prev = getPrevClipForItem(track, item);
-  if (!prev) return null;
-  const prevDurS = prev.timelineRange.durationUs / 1_000_000;
-  const needS = tr.durationUs / 1_000_000;
-  if (prevDurS >= needS) return null;
-  return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
-    need: needS.toFixed(2),
-    have: prevDurS.toFixed(2),
-  });
+  if (!tr) return null;
+  const mode = tr.mode ?? 'blend';
+
+  if (mode === 'blend') {
+    const prev = getPrevClipForItem(track, item);
+    // No previous clip at all
+    if (!prev) return 'No previous clip to blend with';
+    const prevDurS = prev.timelineRange.durationUs / 1_000_000;
+    const needS = tr.durationUs / 1_000_000;
+    if (prevDurS < needS) {
+      return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
+        need: needS.toFixed(2),
+        have: prevDurS.toFixed(2),
+      });
+    }
+    return null;
+  }
+
+  if (mode === 'composite') {
+    // Check lower tracks: if a clip starts before our transition start AND ends within the transition window
+    const transitionStart = clip.timelineRange.startUs;
+    const transitionEnd = transitionStart + tr.durationUs;
+    const myTrackIdx = props.tracks.findIndex((t) => t.id === track.id);
+    for (let i = myTrackIdx + 1; i < props.tracks.length; i++) {
+      const lowerTrack = props.tracks[i]!;
+      for (const it of lowerTrack.items) {
+        if (it.kind !== 'clip') continue;
+        const itStart = it.timelineRange.startUs;
+        const itEnd = itStart + it.timelineRange.durationUs;
+        if (itStart < transitionStart && itEnd > transitionStart && itEnd < transitionEnd) {
+          return 'A lower-track clip ends mid-transition (composite blend will be incomplete)';
+        }
+      }
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem): string | null {
+  if (item.kind !== 'clip') return null;
+  const clip = item as TimelineClipItem;
+  const tr = clip.transitionOut;
+  if (!tr) return null;
+  const mode = tr.mode ?? 'blend';
+
+  if (mode === 'composite') {
+    const clipEnd = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+    const outStart = clipEnd - tr.durationUs;
+    const myTrackIdx = props.tracks.findIndex((t) => t.id === track.id);
+    for (let i = myTrackIdx + 1; i < props.tracks.length; i++) {
+      const lowerTrack = props.tracks[i]!;
+      for (const it of lowerTrack.items) {
+        if (it.kind !== 'clip') continue;
+        const itStart = it.timelineRange.startUs;
+        const itEnd = itStart + it.timelineRange.durationUs;
+        // Lower clip starts within the transition-out window and ends after the current clip
+        if (itStart > outStart && itStart < clipEnd && itEnd > clipEnd) {
+          return 'A lower-track clip starts mid-transition (composite blend will be incomplete)';
+        }
+      }
+    }
+  }
+  return null;
 }
 
 // --- Transition visual helpers ---
-/** SVG path for two triangles (blend mode) with optional bezier curve */
-function buildTransitionSvg(
-  w: number,
-  h: number,
-  edge: 'in' | 'out',
-  curve: 'linear' | 'bezier',
-): string {
-  const m = h / 2;
-  if (edge === 'in') {
-    // Incoming: upper triangle - base right, tip left; lower triangle - base left, tip right
-    const upperTri = `M0,0 L${w},0 L${w},${m} Z`;
-    const lowerTri = `M0,${m} L0,${h} L${w},${h} Z`;
-    const mid =
-      curve === 'bezier'
-        ? `M${w * 0.15},${m} C${w * 0.4},${m * 0.2} ${w * 0.6},${m * 1.8} ${w * 0.85},${m}`
-        : `M${w * 0.15},${m} L${w * 0.85},${m}`;
-    return `${upperTri}||${lowerTri}||${mid}`;
-  } else {
-    // Outgoing: upper triangle - base left, tip right; lower triangle - base right, tip left
-    const upperTri = `M0,0 L${w},0 L0,${m} Z`;
-    const lowerTri = `M${w},${m} L0,${h} L${w},${h} Z`;
-    const mid =
-      curve === 'bezier'
-        ? `M${w * 0.15},${m} C${w * 0.4},${m * 1.8} ${w * 0.6},${m * 0.2} ${w * 0.85},${m}`
-        : `M${w * 0.15},${m} L${w * 0.85},${m}`;
-    return `${upperTri}||${lowerTri}||${mid}`;
-  }
+
+/** Upper triangle color based on clip type (same as clip bg) */
+function getClipUpperTriColor(item: TimelineTrackItem, track: TimelineTrack): string {
+  if (item.kind !== 'clip') return 'rgba(255,255,255,0.35)';
+  const clipItem = item as TimelineClipItem;
+  if (clipItem.clipType === 'background') return 'rgba(167,139,250,0.45)'; // purple
+  if (clipItem.clipType === 'adjustment') return 'rgba(251,191,36,0.45)';  // amber
+  if (track.kind === 'audio') return 'rgba(20,184,166,0.5)';              // teal
+  return 'rgba(99,102,241,0.5)';                                           // indigo
+}
+
+/** Lower triangle: darker variant */
+function getClipLowerTriColor(_item: TimelineTrackItem, _track: TimelineTrack): string {
+  return 'rgba(0,0,0,0.35)';
 }
 
 function transitionSvgParts(
@@ -218,28 +260,29 @@ function transitionSvgParts(
 ): { tri1: string; tri2: string; midLine: string } {
   const m = h / 2;
   if (edge === 'in') {
+    // Upper tri: apex left-center, base on right (previous clip recedes right)
+    // Lower tri: apex right-center, base on left (current clip grows in)
     return {
-      tri1: `M0,0 L${w},0 L${w},${m} Z`,
-      tri2: `M0,${m} L0,${h} L${w},${h} Z`,
+      tri1: `M0,${m} L${w},0 L${w},${h} Z`,
+      tri2: `M${w},${m} L0,0 L0,${h} Z`,
       midLine:
         curve === 'bezier'
-          ? `M${w * 0.15},${m} C${w * 0.4},${m * 0.2} ${w * 0.6},${m * 1.8} ${w * 0.85},${m}`
-          : `M${w * 0.15},${m} L${w * 0.85},${m}`,
+          ? `M0,${m} C${w * 0.35},${m * 0.1} ${w * 0.65},${m * 1.9} ${w},${m}`
+          : `M0,${m} L${w},${m}`,
     };
   } else {
+    // Upper tri: apex right-center, base on left (current clip leaves to left)
+    // Lower tri: apex left-center, base on right (next clip coming)
     return {
-      tri1: `M0,0 L${w},0 L0,${m} Z`,
-      tri2: `M${w},${m} L0,${h} L${w},${h} Z`,
+      tri1: `M${w},${m} L0,0 L0,${h} Z`,
+      tri2: `M0,${m} L${w},0 L${w},${h} Z`,
       midLine:
         curve === 'bezier'
-          ? `M${w * 0.15},${m} C${w * 0.4},${m * 1.8} ${w * 0.6},${m * 0.2} ${w * 0.85},${m}`
-          : `M${w * 0.15},${m} L${w * 0.85},${m}`,
+          ? `M0,${m} C${w * 0.35},${m * 1.9} ${w * 0.65},${m * 0.1} ${w},${m}`
+          : `M0,${m} L${w},${m}`,
     };
   }
 }
-
-// Prevent unused warning for buildTransitionSvg (used only as reference)
-void buildTransitionSvg;
 
 // --- Context menu ---
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
@@ -521,22 +564,22 @@ function getTransitionForPanel() {
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
               >
-                <!-- Upper triangle -->
+                <!-- Upper triangle: same color as clip (incoming clip fills from right) -->
                 <path
                   :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
-                  fill="rgba(255,255,255,0.18)"
+                  :fill="getClipUpperTriColor(item, track)"
                 />
-                <!-- Lower triangle -->
+                <!-- Lower triangle: dark (previous clip recedes) -->
                 <path
                   :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
-                  fill="rgba(255,255,255,0.08)"
+                  :fill="getClipLowerTriColor(item, track)"
                 />
                 <!-- Mid line (bezier or straight) -->
                 <path
                   :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
                   fill="none"
-                  stroke="rgba(255,255,255,0.6)"
-                  stroke-width="2"
+                  stroke="rgba(255,255,255,0.7)"
+                  stroke-width="2.5"
                   stroke-linecap="round"
                 />
               </svg>
@@ -579,9 +622,13 @@ function getTransitionForPanel() {
                 selectedTransition?.edge === 'out'
                   ? 'ring-2 ring-amber-300'
                   : '',
+                hasTransitionOutProblem(track, item) ? 'ring-2 ring-orange-500' : '',
               ]"
               :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs)}px` }"
-              :title="`Transition Out: ${(item as any).transitionOut?.type}`"
+              :title="
+                hasTransitionOutProblem(track, item) ??
+                `Transition Out: ${(item as any).transitionOut?.type}`
+              "
               @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
               @dblclick="
                 openTransitionPanel = {
@@ -599,19 +646,22 @@ function getTransitionForPanel() {
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
               >
+                <!-- Upper triangle: clip color (outgoing) -->
                 <path
                   :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri1"
-                  fill="rgba(255,255,255,0.18)"
+                  :fill="getClipUpperTriColor(item, track)"
                 />
+                <!-- Lower triangle: dark (next arrives from right) -->
                 <path
                   :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri2"
-                  fill="rgba(255,255,255,0.08)"
+                  :fill="getClipLowerTriColor(item, track)"
                 />
+                <!-- Mid line -->
                 <path
                   :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').midLine"
                   fill="none"
-                  stroke="rgba(255,255,255,0.6)"
-                  stroke-width="2"
+                  stroke="rgba(255,255,255,0.7)"
+                  stroke-width="2.5"
                   stroke-linecap="round"
                 />
               </svg>

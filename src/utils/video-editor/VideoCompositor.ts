@@ -691,6 +691,65 @@ export class VideoCompositor {
         sampleRequests.push(request);
       }
 
+      // --- Blend shadow rendering ---
+      // For clips with transitionIn mode='blend', render the previous clip (fade-out)
+      // even after its endUs, so it visually overlaps during the transition window.
+      const blendShadowRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
+      const blendShadowClips = new Set<CompositorClip>();
+
+      for (const clip of active) {
+        const tr = clip.transitionIn;
+        if (!tr || (tr.mode ?? 'blend') !== 'blend' || tr.durationUs <= 0) continue;
+        const localTimeUs = timeUs - clip.startUs;
+        if (localTimeUs >= tr.durationUs) continue;
+
+        const prevClip = this.findPrevClipOnLayer(clip);
+        if (!prevClip || active.includes(prevClip)) continue;
+
+        const manifest = getTransitionManifest(tr.type);
+        const rawProgress = Math.max(0, Math.min(1, localTimeUs / tr.durationUs));
+        const shadowAlpha = manifest
+          ? manifest.computeOutOpacity(rawProgress, {}, tr.curve ?? 'linear')
+          : 1 - rawProgress;
+
+        prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
+        blendShadowClips.add(prevClip);
+
+        if (prevClip.clipKind === 'image' || prevClip.clipKind === 'solid') {
+          prevClip.sprite.visible = true;
+          continue;
+        }
+
+        if (!prevClip.sink) continue;
+
+        // Render the last available frame of the previous clip
+        const lastSampleTimeS = Math.max(0, (prevClip.sourceStartUs + prevClip.sourceDurationUs) / 1_000_000 - 0.002);
+        const req = getVideoSampleWithZeroFallback(prevClip.sink, lastSampleTimeS, prevClip.firstTimestampS)
+          .then((sample) => ({ clip: prevClip, sample }))
+          .catch(() => ({ clip: prevClip, sample: null }));
+        blendShadowRequests.push(req);
+      }
+
+      if (blendShadowRequests.length > 0) {
+        const shadowSamples = await Promise.all(blendShadowRequests);
+        for (const { clip, sample } of shadowSamples) {
+          if (!sample) { clip.sprite.visible = false; continue; }
+          try {
+            await this.updateClipTextureFromSample(sample, clip);
+            clip.sprite.visible = true;
+            updatedClips.push(clip);
+          } catch {
+            clip.sprite.visible = false;
+          } finally {
+            if (typeof sample.close === 'function') { try { sample.close(); } catch { /**/ } }
+          }
+        }
+      }
+      // Hide shadow clips that were not activated
+      for (const clip of blendShadowClips) {
+        if (!clip.sprite.visible) clip.sprite.visible = false;
+      }
+
       if (sampleRequests.length > 0) {
         const samples = await Promise.all(sampleRequests);
         for (const { clip, sample } of samples) {
@@ -806,6 +865,20 @@ export class VideoCompositor {
     }
   }
 
+  /** Find the clip on the same layer that ends exactly where `clip` starts (previous sibling for blend). */
+  private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
+    let best: CompositorClip | null = null;
+    for (const c of this.clips) {
+      if (c.layer !== clip.layer) continue;
+      if (c.itemId === clip.itemId) continue;
+      // Accept clip if it ends at or before clip.startUs (with 1ms tolerance)
+      if (c.endUs <= clip.startUs + 1_000 && c.endUs > clip.startUs - 5_000_000) {
+        if (!best || c.endUs > best.endUs) best = c;
+      }
+    }
+    return best;
+  }
+
   private ensureCanvasFallback(clip: CompositorClip) {
     if (clip.canvas && clip.ctx) return;
     const clipCanvas = new OffscreenCanvas(2, 2);
@@ -841,9 +914,7 @@ export class VideoCompositor {
         const manifest = getTransitionManifest(clip.transitionIn.type);
         if (manifest) {
           const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
-          const progress = mode === 'blend' && curve === 'bezier' ? easeInOutCubic(rawProgress) : rawProgress;
-          // For composite mode still apply in-opacity (fade in from transparent)
-          opacity = Math.min(opacity, baseOpacity * manifest.computeInOpacity(progress, {}, curve));
+          opacity = Math.min(opacity, baseOpacity * manifest.computeInOpacity(rawProgress, {}, curve));
         }
       }
     }
@@ -858,8 +929,7 @@ export class VideoCompositor {
         const manifest = getTransitionManifest(clip.transitionOut.type);
         if (manifest) {
           const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
-          const progress = mode === 'blend' && curve === 'bezier' ? easeInOutCubic(rawProgress) : rawProgress;
-          opacity = Math.min(opacity, baseOpacity * manifest.computeOutOpacity(progress, {}, curve));
+          opacity = Math.min(opacity, baseOpacity * manifest.computeOutOpacity(rawProgress, {}, curve));
         }
       }
     }
