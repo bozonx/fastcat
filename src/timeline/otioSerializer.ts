@@ -150,8 +150,8 @@ function coerceTransform(raw: any): import('./types').ClipTransform | undefined 
   const scale =
     scaleRaw && typeof scaleRaw === 'object'
       ? {
-          x: clampNumber((scaleRaw as any).x, 0.001, 1000),
-          y: clampNumber((scaleRaw as any).y, 0.001, 1000),
+          x: clampNumber((scaleRaw as any).x, -1000, 1000),
+          y: clampNumber((scaleRaw as any).y, -1000, 1000),
           linked:
             (scaleRaw as any).linked !== undefined ? Boolean((scaleRaw as any).linked) : undefined,
         }
@@ -188,8 +188,8 @@ function coerceTransform(raw: any): import('./types').ClipTransform | undefined 
     safePreset !== undefined
       ? {
           preset: safePreset,
-          x: safePreset === 'custom' ? clampNumber((anchorRaw as any).x, 0, 1) : undefined,
-          y: safePreset === 'custom' ? clampNumber((anchorRaw as any).y, 0, 1) : undefined,
+          x: safePreset === 'custom' ? clampNumber((anchorRaw as any).x, -10, 10) : undefined,
+          y: safePreset === 'custom' ? clampNumber((anchorRaw as any).y, -10, 10) : undefined,
         }
       : undefined;
 

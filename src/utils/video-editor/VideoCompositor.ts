@@ -1247,7 +1247,8 @@ export class VideoCompositor {
     input.clip.sprite.anchor.set(input.normalizedAnchor.x, input.normalizedAnchor.y);
     input.clip.sprite.width = input.targetW;
     input.clip.sprite.height = input.targetH;
-    input.clip.sprite.scale.set(input.scaleX, input.scaleY);
+    input.clip.sprite.scale.x *= input.scaleX;
+    input.clip.sprite.scale.y *= input.scaleY;
     input.clip.sprite.rotation = (input.rotationDeg * Math.PI) / 180;
 
     const anchorOffsetX = input.normalizedAnchor.x * input.targetW;

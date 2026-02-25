@@ -29,20 +29,25 @@ export type ClipAnchorPreset =
 
 export interface ClipAnchor {
   preset: ClipAnchorPreset;
-  /** Normalized [0..1] coordinates in clip local space. Used when preset is 'custom'. */
+  /** Normalized coordinates in clip local space. Usually [0..1] but can extend beyond for custom rotation points (e.g. -10..10). Used when preset is 'custom'. */
   x?: number;
-  /** Normalized [0..1] coordinates in clip local space. Used when preset is 'custom'. */
+  /** Normalized coordinates in clip local space. Usually [0..1] but can extend beyond for custom rotation points (e.g. -10..10). Used when preset is 'custom'. */
   y?: number;
 }
 
 export interface ClipScale {
+  /** Scale factor for X axis. Negative values flip the clip horizontally. */
   x: number;
+  /** Scale factor for Y axis. Negative values flip the clip vertically. */
   y: number;
+  /** UI-only flag to lock proportions when resizing */
   linked?: boolean;
 }
 
 export interface ClipPosition {
+  /** Absolute translation in compositor pixels, applied relative to the anchor point */
   x: number;
+  /** Absolute translation in compositor pixels, applied relative to the anchor point */
   y: number;
 }
 

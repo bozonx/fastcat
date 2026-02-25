@@ -527,8 +527,8 @@ export function updateClipProperties(
     const scale =
       scaleRaw && typeof scaleRaw === 'object'
         ? {
-            x: clampNumber(scaleRaw.x, 0.001, 1000),
-            y: clampNumber(scaleRaw.y, 0.001, 1000),
+            x: clampNumber(scaleRaw.x, -1000, 1000),
+            y: clampNumber(scaleRaw.y, -1000, 1000),
             linked: scaleRaw.linked !== undefined ? Boolean(scaleRaw.linked) : undefined,
           }
         : undefined;
@@ -563,8 +563,8 @@ export function updateClipProperties(
       safePreset !== undefined
         ? {
             preset: safePreset,
-            x: safePreset === 'custom' ? clampNumber(anchorRaw.x, 0, 1) : undefined,
-            y: safePreset === 'custom' ? clampNumber(anchorRaw.y, 0, 1) : undefined,
+            x: safePreset === 'custom' ? clampNumber(anchorRaw.x, -10, 10) : undefined,
+            y: safePreset === 'custom' ? clampNumber(anchorRaw.y, -10, 10) : undefined,
           }
         : undefined;
 
