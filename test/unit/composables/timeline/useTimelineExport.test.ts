@@ -114,4 +114,70 @@ describe('useTimelineExport pure functions', () => {
     const overridden = await toWorkerTimelineClips(items, projectStoreMock, { layer: 2 });
     expect(overridden[0]?.layer).toBe(2);
   });
+
+  it('toWorkerTimelineClips should resolve relative media paths inside nested timeline', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { gran: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'Clip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'media/video.mp4',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                },
+                metadata: { gran: { clipType: 'media', sourceDurationUs: 1000000 } },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'timeline',
+        id: 'nested1',
+        trackId: 't1',
+        name: 'Nested',
+        source: { path: 'timelines/nested.otio' } as any,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async (path: string) => {
+        if (path !== 'timelines/nested.otio') return null;
+        return {
+          getFile: async () => ({ text: async () => nestedOtio }),
+        } as any;
+      },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, {
+      layer: 1,
+      trackKind: 'video',
+    });
+
+    expect(clips.length).toBe(1);
+    expect(clips[0]?.clipType).toBe('media');
+    expect(clips[0]?.source?.path).toBe('timelines/media/video.mp4');
+  });
 });

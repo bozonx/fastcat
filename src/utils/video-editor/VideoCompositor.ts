@@ -53,6 +53,7 @@ export interface CompositorClip {
   durationUs: number;
   sourceStartUs: number;
   sourceDurationUs: number;
+  speed?: number;
   freezeFrameSourceUs?: number;
   sprite: Sprite;
   clipKind: 'video' | 'image' | 'solid' | 'adjustment';
@@ -230,6 +231,12 @@ export class VideoCompositor {
         Math.round(Number(clipData.sourceRange?.durationUs ?? requestedTimelineDurationUs)),
       );
 
+      const speedRaw = (clipData as any).speed;
+      const speed =
+        typeof speedRaw === 'number' && Number.isFinite(speedRaw)
+          ? Math.max(0.1, Math.min(10, speedRaw))
+          : undefined;
+
       const startUs =
         typeof clipData.timelineRange?.startUs === 'number'
           ? Math.max(0, Math.round(Number(clipData.timelineRange.startUs)))
@@ -269,6 +276,7 @@ export class VideoCompositor {
         reusable.endUs = startUs + safeTimelineDurationUs;
         reusable.sourceStartUs = sourceStartUs;
         reusable.sourceDurationUs = safeSourceDurationUs;
+        reusable.speed = speed;
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
         reusable.opacity = clipData.opacity;
@@ -313,6 +321,7 @@ export class VideoCompositor {
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          speed,
           sprite,
           clipKind: 'solid',
           sourceKind: 'bitmap',
@@ -357,6 +366,7 @@ export class VideoCompositor {
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          speed,
           sprite,
           clipKind: 'adjustment',
           sourceKind: 'bitmap',
@@ -437,6 +447,7 @@ export class VideoCompositor {
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          speed,
           sprite,
           clipKind: 'image',
           sourceKind: 'bitmap',
@@ -509,6 +520,7 @@ export class VideoCompositor {
           durationUs,
           sourceStartUs,
           sourceDurationUs,
+          speed,
           freezeFrameSourceUs,
           sprite,
           clipKind: 'video',
@@ -584,6 +596,11 @@ export class VideoCompositor {
         Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceDurationUs)),
       );
       const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
+      const speedRaw = (next as any).speed;
+      const speed =
+        typeof speedRaw === 'number' && Number.isFinite(speedRaw)
+          ? Math.max(0.1, Math.min(10, speedRaw))
+          : undefined;
       const freezeFrameSourceUsRaw = (next as any).freezeFrameSourceUs;
       const freezeFrameSourceUs =
         typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
@@ -595,6 +612,7 @@ export class VideoCompositor {
       clip.endUs = startUs + timelineDurationUs;
       clip.sourceStartUs = sourceStartUs;
       clip.sourceDurationUs = sourceDurationUs;
+      clip.speed = speed;
       clip.freezeFrameSourceUs = freezeFrameSourceUs;
       clip.layer = layer;
       clip.opacity = next.opacity;
@@ -676,7 +694,9 @@ export class VideoCompositor {
         }
 
         const localTimeUs = timeUs - clip.startUs;
-        if (localTimeUs < 0 || localTimeUs >= clip.sourceDurationUs) {
+        const speed = typeof clip.speed === 'number' ? clip.speed : 1;
+        const maxTimelineUs = speed > 0 ? Math.round(clip.sourceDurationUs / speed) : 0;
+        if (localTimeUs < 0 || localTimeUs >= maxTimelineUs) {
           clip.sprite.visible = false;
           continue;
         }
@@ -685,7 +705,7 @@ export class VideoCompositor {
         const sampleTimeS =
           typeof freezeUs === 'number'
             ? Math.max(0, freezeUs) / 1_000_000
-            : (clip.sourceStartUs + localTimeUs) / 1_000_000;
+            : (clip.sourceStartUs + Math.round(localTimeUs * speed)) / 1_000_000;
         if (!clip.sink) {
           clip.sprite.visible = false;
           continue;

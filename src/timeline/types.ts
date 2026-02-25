@@ -45,6 +45,7 @@ interface TimelineClipBase {
   sourceRange: TimelineRange;
   source?: TimelineSourceRef;
   sourceDurationUs?: number;
+  speed?: number;
   audioFromVideoDisabled?: boolean;
   linkedVideoClipId?: string;
   lockToLinkedVideo?: boolean;

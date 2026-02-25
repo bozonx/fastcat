@@ -178,8 +178,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   const rightDurationUs = Math.max(0, endUs - atUs);
   if (leftDurationUs <= 0 || rightDurationUs <= 0) return { next: doc };
 
-  // TODO(speed): localCutUs should be multiplied by clip speed if speed != 1.0
-  const localCutUs = atUs - startUs;
+  const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
+  const localCutUs = Math.max(0, Math.round((atUs - startUs) * speed));
   const leftSourceDurationUs = Math.max(0, localCutUs);
   const rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + localCutUs);
   const rightSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs) - localCutUs);
@@ -246,8 +246,9 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
           const leftAudioDurationUs = Math.max(0, atUs - audioStartUs);
           const rightAudioDurationUs = Math.max(0, audioEndUs - atUs);
-          // TODO(speed): audioLocalCutUs should be multiplied by clip speed if speed != 1.0
-          const audioLocalCutUs = atUs - audioStartUs;
+          const audioSpeed =
+            typeof it.speed === 'number' && Number.isFinite(it.speed) ? (it.speed as number) : 1;
+          const audioLocalCutUs = Math.max(0, Math.round((atUs - audioStartUs) * audioSpeed));
 
           const leftAudio: TimelineClipItem = {
             ...it,
@@ -299,6 +300,22 @@ export function updateClipProperties(
   if (!item || item.kind !== 'clip') return { next: doc };
 
   const nextProps: Record<string, unknown> = { ...cmd.properties };
+  const fps = getDocFps(doc);
+
+  if ('speed' in nextProps) {
+    const raw = (nextProps as any).speed;
+    const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+    const speed = v === undefined ? undefined : Math.max(0.1, Math.min(10, v));
+    if (speed === undefined) {
+      delete nextProps.speed;
+    } else {
+      nextProps.speed = speed;
+      const nextDurationUsRaw = Math.round(item.sourceRange.durationUs / speed);
+      const nextDurationUs = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
+      assertNoOverlap(track, item.id, item.timelineRange.startUs, nextDurationUs);
+      nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
+    }
+  }
   if ('backgroundColor' in nextProps) {
     if (item.clipType !== 'background') {
       delete nextProps.backgroundColor;
@@ -320,7 +337,35 @@ export function updateClipProperties(
     }
     return t;
   });
-  return { next: { ...doc, tracks: nextTracks } };
+
+  let finalTracks = nextTracks;
+  const updatedDoc = { ...doc, tracks: nextTracks };
+  const updated = findClipById(updatedDoc, cmd.itemId);
+  if (updated && updated.track.kind === 'video' && updated.item.clipType === 'media') {
+    if ('timelineRange' in nextProps || 'speed' in nextProps) {
+      finalTracks = updateLinkedLockedAudio(
+        { ...doc, tracks: finalTracks },
+        updated.item.id,
+        (a) => ({
+          ...a,
+          timelineRange: {
+            ...a.timelineRange,
+            startUs: updated.item.timelineRange.startUs,
+            durationUs: updated.item.timelineRange.durationUs,
+          },
+          sourceRange: {
+            ...a.sourceRange,
+            startUs: updated.item.sourceRange.startUs,
+            durationUs: updated.item.sourceRange.durationUs,
+          },
+          sourceDurationUs: updated.item.sourceDurationUs,
+          speed: (updated.item as any).speed,
+        }),
+      );
+    }
+  }
+
+  return { next: { ...doc, tracks: finalTracks } };
 }
 
 export function removeItems(
@@ -548,6 +593,9 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   const fps = getDocFps(doc);
   const deltaUs = quantizeDeltaUsToFrames(Number(cmd.deltaUs), fps, 'round');
 
+  const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
+  const sourceDeltaUs = quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round');
+
   const prevTimelineStartUs = Math.max(0, Math.round(item.timelineRange.startUs));
   const prevTimelineDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
 
@@ -569,19 +617,21 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   let nextSourceEndUs = prevSourceEndUs;
 
   if (cmd.edge === 'start') {
-    const unclampedSourceStartUs = prevSourceStartUs + deltaUs;
+    const unclampedSourceStartUs = prevSourceStartUs + sourceDeltaUs;
     nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
     const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
 
-    nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedDeltaUs);
-    nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedDeltaUs);
+    const appliedTimelineDeltaUs = speed > 0 ? Math.round(appliedDeltaUs / speed) : 0;
+    nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
+    nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
     nextSourceEndUs = prevSourceEndUs;
   } else {
-    const unclampedSourceEndUs = prevSourceEndUs + deltaUs;
+    const unclampedSourceEndUs = prevSourceEndUs + sourceDeltaUs;
     nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
     const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
 
-    nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedDeltaUs);
+    const appliedTimelineDeltaUs = speed > 0 ? Math.round(appliedDeltaUs / speed) : 0;
+    nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
     nextTimelineStartUs = prevTimelineStartUs;
     nextSourceStartUs = prevSourceStartUs;
   }

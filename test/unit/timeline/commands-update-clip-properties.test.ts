@@ -137,4 +137,37 @@ describe('timeline/commands update_clip_properties', () => {
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.effects).toEqual(effects);
   });
+
+  it('updates speed and recomputes timeline duration based on sourceRange duration', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: { speed: 2 },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.speed).toBe(2);
+    expect(clip.timelineRange.durationUs).toBeGreaterThan(0);
+    expect(clip.timelineRange.durationUs).toBeLessThan(1_000_000);
+  });
 });

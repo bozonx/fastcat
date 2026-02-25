@@ -10,6 +10,7 @@ export interface AudioEngineClip {
   durationUs: number;
   sourceStartUs: number;
   sourceDurationUs: number;
+  speed?: number;
 }
 
 interface DecodeRequest {
@@ -331,6 +332,12 @@ export class AudioEngine {
     const sourceStartS = clip.sourceStartUs / 1_000_000;
     const sourceDurationS = Math.max(0, clip.sourceDurationUs / 1_000_000);
 
+    const speedRaw = clip.speed;
+    const speed =
+      typeof speedRaw === 'number' && Number.isFinite(speedRaw)
+        ? Math.max(0.1, Math.min(10, speedRaw))
+        : 1;
+
     const localOffsetInClipS = Math.max(0, currentTimeS - clipStartS);
 
     // When to start playing in AudioContext time.
@@ -340,15 +347,15 @@ export class AudioEngine {
         : this.ctx.currentTime;
 
     // Where to start in the audio buffer.
-    const bufferOffsetS = sourceStartS + localOffsetInClipS;
+    const bufferOffsetS = sourceStartS + localOffsetInClipS * speed;
 
     const maxPlayableFromBufferS = Math.max(0, buffer.duration - sourceStartS);
     const maxPlayableFromSourceS = sourceDurationS > 0 ? sourceDurationS : Number.POSITIVE_INFINITY;
     const maxPlayableS = Math.min(maxPlayableFromBufferS, maxPlayableFromSourceS);
-    const remainingPlayableS = maxPlayableS - localOffsetInClipS;
+    const remainingPlayableS = maxPlayableS - localOffsetInClipS * speed;
 
     const remainingInClipS = Math.max(0, clipDurationS - localOffsetInClipS);
-    const durationToPlayS = Math.min(remainingInClipS, remainingPlayableS);
+    const durationToPlayS = Math.min(remainingInClipS * speed, remainingPlayableS);
 
     let safeBufferOffsetS = bufferOffsetS;
     let safeDurationToPlayS = durationToPlayS;
@@ -390,6 +397,9 @@ export class AudioEngine {
 
     const sourceNode = this.ctx.createBufferSource();
     sourceNode.buffer = buffer;
+    if (sourceNode.playbackRate) {
+      sourceNode.playbackRate.value = speed;
+    }
     sourceNode.connect(this.masterGain);
 
     sourceNode.start(playStartS, safeBufferOffsetS, safeDurationToPlayS);

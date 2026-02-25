@@ -6,6 +6,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
+import AppModal from '~/components/ui/AppModal.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -55,6 +56,50 @@ const openTransitionPanel = ref<{
   edge: 'in' | 'out';
   anchorEl: HTMLElement | null;
 } | null>(null);
+
+const speedModal = ref<{
+  open: boolean;
+  trackId: string;
+  itemId: string;
+  speed: number;
+} | null>(null);
+
+const speedModalOpen = computed({
+  get: () => Boolean(speedModal.value?.open),
+  set: (v) => {
+    if (!speedModal.value) return;
+    speedModal.value.open = v;
+  },
+});
+
+const speedModalSpeed = computed({
+  get: () => speedModal.value?.speed ?? 1,
+  set: (v: number) => {
+    if (!speedModal.value) return;
+    speedModal.value.speed = v;
+  },
+});
+
+function openSpeedModal(trackId: string, itemId: string, currentSpeed: unknown) {
+  const base = typeof currentSpeed === 'number' && Number.isFinite(currentSpeed) ? currentSpeed : 1;
+  speedModal.value = {
+    open: true,
+    trackId,
+    itemId,
+    speed: Math.max(0.1, Math.min(10, base)),
+  };
+}
+
+async function saveSpeedModal() {
+  if (!speedModal.value) return;
+  const speed = Number(speedModal.value.speed);
+  if (!Number.isFinite(speed) || speed <= 0) return;
+  timelineStore.updateClipProperties(speedModal.value.trackId, speedModal.value.itemId, {
+    speed: Math.max(0.1, Math.min(10, speed)),
+  });
+  speedModal.value.open = false;
+  await timelineStore.requestTimelineSave({ immediate: true });
+}
 
 function handleTransitionUpdate(payload: {
   trackId: string;
@@ -402,6 +447,18 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   const mainGroup: any[] = [];
 
   if (item.kind === 'clip') {
+    const currentSpeedRaw = (item as any).speed;
+    const currentSpeed =
+      typeof currentSpeedRaw === 'number' && Number.isFinite(currentSpeedRaw)
+        ? currentSpeedRaw
+        : 1;
+
+    mainGroup.push({
+      label: `${t('granVideoEditor.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)})`,
+      icon: 'i-heroicons-forward',
+      onSelect: () => openSpeedModal(track.id, item.id, currentSpeed),
+    });
+
     const canExtract =
       track.kind === 'video' && item.clipType === 'media' && !item.audioFromVideoDisabled;
     if (canExtract) {
@@ -573,6 +630,45 @@ function getTransitionForPanel() {
       timelineStore.selectTrack(null);
     "
   >
+    <AppModal
+      v-model:open="speedModalOpen"
+      :title="t('granVideoEditor.timeline.speedModalTitle', 'Clip speed')"
+      :description="t('granVideoEditor.timeline.speedModalDescription', 'Changes clip playback speed')"
+      :ui="{ content: 'sm:max-w-md' }"
+    >
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm text-gray-700 dark:text-gray-200">
+            {{ t('granVideoEditor.timeline.speedValue', 'Speed') }}
+          </span>
+          <span class="text-sm font-mono text-gray-500">{{ Number(speedModalSpeed).toFixed(2) }}</span>
+        </div>
+
+        <UInput
+          v-model.number="speedModalSpeed"
+          type="number"
+          :min="0.1"
+          :max="10"
+          :step="0.05"
+        />
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="speedModal && (speedModal.open = false)"
+          >
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" @click="saveSpeedModal">
+            {{ t('common.save', 'Save') }}
+          </UButton>
+        </div>
+      </template>
+    </AppModal>
+
     <div
       v-for="track in tracks"
       :key="track.id"
@@ -642,6 +738,11 @@ function getTransitionForPanel() {
           "
           @click.stop="emit('selectItem', $event, item.id)"
         >
+          <div
+            v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
+            class="absolute left-0 right-0 bottom-0 h-1 bg-fuchsia-400/80"
+          />
+
           <!-- Transition In block -->
           <template v-if="item.kind === 'clip' && (item as any).transitionIn">
             <button

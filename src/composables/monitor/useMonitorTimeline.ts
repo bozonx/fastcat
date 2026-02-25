@@ -71,6 +71,7 @@ export function useMonitorTimeline() {
           clipType,
           id: item.id,
           layer: trackCount - 1 - trackIndex,
+          speed: (item as any).speed,
           freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
           effects,
@@ -134,6 +135,7 @@ export function useMonitorTimeline() {
         clipType: 'media',
         id: item.id,
         layer: 0,
+        speed: (item as any).speed,
         source: {
           path,
         },
@@ -164,6 +166,7 @@ export function useMonitorTimeline() {
           clipType: 'media',
           id: `${item.id}__audio`,
           layer: 0,
+          speed: (item as any).speed,
           source: {
             path,
           },
@@ -250,6 +253,7 @@ export function useMonitorTimeline() {
         }
 
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
+        hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
 
         const clipEffects = Array.isArray((item as any).effects) ? (item as any).effects : null;
         if (clipEffects) {
@@ -312,6 +316,8 @@ export function useMonitorTimeline() {
       if (item.kind === 'clip') {
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
+
+        hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
       }
     }
     for (const item of enabledVideoAudioItems) {
@@ -320,6 +326,8 @@ export function useMonitorTimeline() {
       hash = mixTime(hash, item.timelineRange.durationUs);
       hash = mixTime(hash, item.sourceRange.startUs);
       hash = mixTime(hash, item.sourceRange.durationUs);
+
+      hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
     }
     return hash;
   });
@@ -363,6 +371,8 @@ export function useMonitorTimeline() {
         if (item.clipType === 'media' && item.source?.path) {
           hash = mixHash(hash, hashString(item.source.path));
         }
+
+        hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
       }
     }
     for (const item of enabledVideoAudioItems) {
@@ -370,6 +380,8 @@ export function useMonitorTimeline() {
       if (item.clipType === 'media' && item.source?.path) {
         hash = mixHash(hash, hashString(item.source.path));
       }
+
+      hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
     }
     return hash;
   });

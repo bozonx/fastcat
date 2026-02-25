@@ -226,6 +226,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 durationUs: clip.timelineRange.durationUs,
                 sourceStartUs: clip.sourceRange.startUs,
                 sourceDurationUs: clip.sourceRange.durationUs,
+                speed: (clip as any).speed,
+                speed: (clip as any).speed,
               };
             } catch {
               return null;
@@ -358,6 +360,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
             id: c.id,
             layer: c.layer,
+            speed: (c as any).speed,
             source: c.source,
             timelineRange: c.timelineRange,
             sourceRange: c.sourceRange,
@@ -375,6 +378,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             clipType:
               c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
             id: c.id,
+            speed: (c as any).speed,
             source: c.source,
             timelineRange: c.timelineRange,
             sourceRange: c.sourceRange,

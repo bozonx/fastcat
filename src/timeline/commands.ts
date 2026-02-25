@@ -131,7 +131,10 @@ export interface UpdateClipPropertiesCommand {
   trackId: string;
   itemId: string;
   properties: Partial<
-    Pick<import('./types').TimelineClipItem, 'opacity' | 'effects' | 'freezeFrameSourceUs'>
+    Pick<
+      import('./types').TimelineClipItem,
+      'opacity' | 'effects' | 'freezeFrameSourceUs' | 'speed'
+    >
   > & {
     backgroundColor?: string;
   };

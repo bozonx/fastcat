@@ -34,6 +34,7 @@ export interface WorkerTimelineClip {
   clipType: 'media' | 'adjustment' | 'background';
   id: string;
   layer: number;
+  speed?: number;
   source?: { path: string };
   backgroundColor?: string;
   freezeFrameSourceUs?: number;
@@ -58,6 +59,39 @@ export async function toWorkerTimelineClips(
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
 
+  function isProbablyUrlLike(path: string): boolean {
+    return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path);
+  }
+
+  function getDirname(path: string): string {
+    const normalized = String(path).replace(/\\/g, '/');
+    const parts = normalized.split('/').filter(Boolean);
+    if (parts.length <= 1) return '';
+    parts.pop();
+    return parts.join('/');
+  }
+
+  function joinPaths(left: string, right: string): string {
+    const l = String(left).replace(/\\/g, '/').replace(/\/+$/g, '');
+    const r = String(right).replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!l) return r;
+    if (!r) return l;
+    return `${l}/${r}`;
+  }
+
+  function resolveNestedMediaPath(params: {
+    nestedTimelinePath: string;
+    mediaPath: string;
+  }): string {
+    const mediaPath = String(params.mediaPath);
+    if (!mediaPath) return mediaPath;
+    if (mediaPath.startsWith('/')) return mediaPath;
+    if (isProbablyUrlLike(mediaPath)) return mediaPath;
+    const baseDir = getDirname(params.nestedTimelinePath);
+    if (!baseDir) return mediaPath;
+    return joinPaths(baseDir, mediaPath);
+  }
+
   for (const item of items) {
     if (item.kind !== 'clip') continue;
 
@@ -79,6 +113,7 @@ export async function toWorkerTimelineClips(
         (typeof (item as any).layer === 'number' && Number.isFinite((item as any).layer)
           ? Math.round((item as any).layer)
           : 0),
+      speed: (item as any).speed,
       opacity: combinedOpacity,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       timelineRange: {
@@ -135,8 +170,21 @@ export async function toWorkerTimelineClips(
                 });
 
                 for (const nClip of nestedWorkerClips) {
-                  const nStartUs = nClip.timelineRange.startUs;
-                  const nEndUs = nStartUs + nClip.timelineRange.durationUs;
+                  const resolvedNClip: WorkerTimelineClip =
+                    nClip.clipType === 'media' && nClip.source?.path
+                      ? {
+                          ...nClip,
+                          source: {
+                            path: resolveNestedMediaPath({
+                              nestedTimelinePath: path,
+                              mediaPath: nClip.source.path,
+                            }),
+                          },
+                        }
+                      : nClip;
+
+                  const nStartUs = resolvedNClip.timelineRange.startUs;
+                  const nEndUs = nStartUs + resolvedNClip.timelineRange.durationUs;
 
                   const windowStartUs = item.sourceRange.startUs;
                   const windowEndUs = windowStartUs + item.sourceRange.durationUs;
@@ -151,15 +199,15 @@ export async function toWorkerTimelineClips(
                     const sourceShiftUs = overlapStartUs - nStartUs;
 
                     clips.push({
-                      ...nClip,
-                      id: `${item.id}_nested_${nClip.id}`,
+                      ...resolvedNClip,
+                      id: `${item.id}_nested_${resolvedNClip.id}`,
                       layer: nestedLayer,
                       timelineRange: {
                         startUs: parentStartUs,
                         durationUs: visibleDurationUs,
                       },
                       sourceRange: {
-                        startUs: nClip.sourceRange.startUs + sourceShiftUs,
+                        startUs: resolvedNClip.sourceRange.startUs + sourceShiftUs,
                         durationUs: visibleDurationUs,
                       },
                     });
@@ -215,8 +263,21 @@ export async function toWorkerTimelineClips(
               );
 
               for (const nClip of nestedWorkerClips) {
-                const nStartUs = nClip.timelineRange.startUs;
-                const nEndUs = nStartUs + nClip.timelineRange.durationUs;
+                const resolvedNClip: WorkerTimelineClip =
+                  nClip.clipType === 'media' && nClip.source?.path
+                    ? {
+                        ...nClip,
+                        source: {
+                          path: resolveNestedMediaPath({
+                            nestedTimelinePath: path,
+                            mediaPath: nClip.source.path,
+                          }),
+                        },
+                      }
+                    : nClip;
+
+                const nStartUs = resolvedNClip.timelineRange.startUs;
+                const nEndUs = nStartUs + resolvedNClip.timelineRange.durationUs;
 
                 const windowStartUs = item.sourceRange.startUs;
                 const windowEndUs = windowStartUs + item.sourceRange.durationUs;
@@ -231,15 +292,15 @@ export async function toWorkerTimelineClips(
                   const sourceShiftUs = overlapStartUs - nStartUs;
 
                   clips.push({
-                    ...nClip,
-                    id: `${item.id}_nested_${nClip.id}`,
+                    ...resolvedNClip,
+                    id: `${item.id}_nested_${resolvedNClip.id}`,
                     layer: 0,
                     timelineRange: {
                       startUs: parentStartUs,
                       durationUs: visibleDurationUs,
                     },
                     sourceRange: {
-                      startUs: nClip.sourceRange.startUs + sourceShiftUs,
+                      startUs: resolvedNClip.sourceRange.startUs + sourceShiftUs,
                       durationUs: visibleDurationUs,
                     },
                   });

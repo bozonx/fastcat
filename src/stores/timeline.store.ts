@@ -349,7 +349,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     properties: Partial<
       Pick<
         import('~/timeline/types').TimelineClipItem,
-        'opacity' | 'effects' | 'freezeFrameSourceUs'
+        'opacity' | 'effects' | 'freezeFrameSourceUs' | 'speed'
       >
     > & {
       backgroundColor?: string;

@@ -240,6 +240,10 @@ function parseClipItem(input: {
     sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
+    speed:
+      typeof granMeta?.speed === 'number' && Number.isFinite(granMeta.speed)
+        ? Math.max(0.1, Math.min(10, Number(granMeta.speed)))
+        : undefined,
     audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
     freezeFrameSourceUs:
       clipType === 'media' &&
@@ -418,6 +422,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
               item.clipType === 'media' || item.clipType === 'timeline'
                 ? item.sourceDurationUs
                 : undefined,
+            speed: item.speed,
             audioFromVideoDisabled:
               item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
