@@ -110,7 +110,7 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
     startUs,
     label: file.name,
     durationUs,
-    kind: 'file',
+    kind: file.kind === 'timeline' ? 'timeline-clip' : 'file',
   };
 }
 

@@ -34,7 +34,7 @@ export function useMonitorTimeline() {
       .filter((it: TimelineTrackItem) => it.kind === 'clip'),
   );
 
-  const workerTimelineClips = computed(() => {
+  const rawWorkerTimelineClips = computed(() => {
     const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
     const clips: WorkerTimelineClip[] = [];
     const videoTracks = docTracks.filter((track) => track.kind === 'video' && !track.videoHidden);
@@ -86,7 +86,7 @@ export function useMonitorTimeline() {
           },
         };
 
-        if (clipType === 'media') {
+        if (clipType === 'media' || clipType === 'timeline') {
           const path = (item as any).source?.path;
           if (!path) continue;
           clips.push({ ...base, source: { path } });
@@ -103,7 +103,7 @@ export function useMonitorTimeline() {
     return clips;
   });
 
-  const workerAudioClips = computed(() => {
+  const rawWorkerAudioClips = computed(() => {
     const clips: WorkerTimelineClip[] = [];
 
     const allAudioTracks = audioTracks.value;
@@ -122,12 +122,12 @@ export function useMonitorTimeline() {
     for (const item of effectiveAudioTracks.flatMap((t) => t.items)) {
       if (item.kind !== 'clip') continue;
       const clipType = (item as any).clipType ?? 'media';
-      if (clipType !== 'media') continue;
+      if (clipType !== 'media' && clipType !== 'timeline') continue;
       const path = (item as any).source?.path;
       if (!path) continue;
       clips.push({
         kind: 'clip',
-        clipType: 'media',
+        clipType: clipType === 'timeline' ? 'media' : 'media',
         id: item.id,
         layer: 0,
         source: {
@@ -150,14 +150,14 @@ export function useMonitorTimeline() {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
         const clipType = (item as any).clipType ?? 'media';
-        if (clipType !== 'media') continue;
+        if (clipType !== 'media' && clipType !== 'timeline') continue;
         if ((item as any).audioFromVideoDisabled) continue;
         const path = (item as any).source?.path;
         if (!path) continue;
 
         clips.push({
           kind: 'clip',
-          clipType: 'media',
+          clipType: clipType === 'timeline' ? 'media' : 'media',
           id: `${item.id}__audio`,
           layer: 0,
           source: {
@@ -177,6 +177,9 @@ export function useMonitorTimeline() {
 
     return clips;
   });
+
+  const workerTimelineClips = ref<WorkerTimelineClip[]>([]);
+  const workerAudioClips = ref<WorkerTimelineClip[]>([]);
 
   const safeDurationUs = computed(() => normalizeTimeUs(timelineStore.duration));
 
@@ -379,5 +382,7 @@ export function useMonitorTimeline() {
     clipLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
+    rawWorkerTimelineClips,
+    rawWorkerAudioClips,
   };
 }

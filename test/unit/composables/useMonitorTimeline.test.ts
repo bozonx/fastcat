@@ -93,21 +93,21 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { workerTimelineClips, workerAudioClips } = useMonitorTimeline();
+    const { rawWorkerTimelineClips, rawWorkerAudioClips } = useMonitorTimeline();
 
-    expect(workerTimelineClips.value.length).toBe(1);
-    expect(workerTimelineClips.value[0].id).toBe('item1');
-    expect(workerTimelineClips.value[0].clipType).toBe('media');
-    expect(workerTimelineClips.value[0].source?.path).toBe('test1.mp4');
-    expect(workerTimelineClips.value[0].timelineRange.startUs).toBe(0);
+    expect(rawWorkerTimelineClips.value.length).toBe(1);
+    expect(rawWorkerTimelineClips.value[0].id).toBe('item1');
+    expect(rawWorkerTimelineClips.value[0].clipType).toBe('media');
+    expect(rawWorkerTimelineClips.value[0].source?.path).toBe('test1.mp4');
+    expect(rawWorkerTimelineClips.value[0].timelineRange.startUs).toBe(0);
     // Single video track: layer should be 0 (trackCount - 1 - 0 = 0)
-    expect(workerTimelineClips.value[0].layer).toBe(0);
+    expect(rawWorkerTimelineClips.value[0].layer).toBe(0);
 
-    expect(workerAudioClips.value.length).toBe(2);
-    expect(workerAudioClips.value.find((x: any) => x.id === 'audio1')?.source?.path).toBe(
+    expect(rawWorkerAudioClips.value.length).toBe(2);
+    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.source?.path).toBe(
       'test1.mp3',
     );
-    expect(workerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path).toBe(
+    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path).toBe(
       'test1.mp4',
     );
   });
@@ -147,16 +147,14 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { workerTimelineClips } = useMonitorTimeline();
+    const { rawWorkerTimelineClips } = useMonitorTimeline();
 
-    const clip1 = workerTimelineClips.value.find((c: any) => c.id === 'clip1');
-    const clip2 = workerTimelineClips.value.find((c: any) => c.id === 'clip2');
+    const clip1 = rawWorkerTimelineClips.value.find((c: any) => c.id === 'clip1');
+    const clip2 = rawWorkerTimelineClips.value.find((c: any) => c.id === 'clip2');
 
-    // v1 is track[0] (top in UI) → layer = 2-1-0 = 1 (renders on top)
+    // rawWorkerTimelineClips still assigns initial layers (trackCount - 1 - trackIndex)
     expect(clip1?.layer).toBe(1);
-    // v2 is track[1] (bottom in UI) → layer = 2-1-1 = 0 (renders below)
     expect(clip2?.layer).toBe(0);
-    expect(clip1!.layer).toBeGreaterThan(clip2!.layer);
   });
 
   it('workerAudioClips does not duplicate audio from video clips', () => {
@@ -203,14 +201,14 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { workerAudioClips } = useMonitorTimeline();
+    const { rawWorkerAudioClips } = useMonitorTimeline();
 
     // Should have: aclip1 + vclip1__audio (vclip2 is disabled)
-    expect(workerAudioClips.value.length).toBe(2);
-    expect(workerAudioClips.value.find((c: any) => c.id === 'aclip1')).toBeDefined();
-    expect(workerAudioClips.value.find((c: any) => c.id === 'vclip1__audio')).toBeDefined();
+    expect(rawWorkerAudioClips.value.length).toBe(2);
+    expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'aclip1')).toBeDefined();
+    expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip1__audio')).toBeDefined();
     // Disabled audio must NOT appear
-    expect(workerAudioClips.value.find((c: any) => c.id === 'vclip2__audio')).toBeUndefined();
+    expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip2__audio')).toBeUndefined();
   });
 
   it('computes signatures correctly', () => {
@@ -340,9 +338,9 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { workerAudioClips } = useMonitorTimeline();
-    expect(workerAudioClips.value.length).toBe(1);
-    expect(workerAudioClips.value[0].id).toBe('aclip2');
+    const { rawWorkerAudioClips } = useMonitorTimeline();
+    expect(rawWorkerAudioClips.value.length).toBe(1);
+    expect(rawWorkerAudioClips.value[0].id).toBe('aclip2');
   });
 
   it('applies video track solo/mute to __audio clips extracted from video', () => {
@@ -384,8 +382,8 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { workerAudioClips } = useMonitorTimeline();
-    const ids = workerAudioClips.value.map((c: any) => c.id);
+    const { rawWorkerAudioClips } = useMonitorTimeline();
+    const ids = rawWorkerAudioClips.value.map((c: any) => c.id);
     expect(ids).toContain('vclip2__audio');
     expect(ids).not.toContain('vclip1__audio');
   });

@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import {
   getExportWorkerClient,
   setExportHostApi,
@@ -42,21 +43,20 @@ export interface WorkerTimelineClip {
   sourceRange: { startUs: number; durationUs: number };
 }
 
-export function toWorkerTimelineClips(
+export async function toWorkerTimelineClips(
   items: TimelineTrackItem[],
+  projectStore: ReturnType<typeof useProjectStore>,
   options?: { layer?: number },
-): WorkerTimelineClip[] {
+): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
   for (const item of items) {
     if (item.kind !== 'clip') continue;
 
     const clipType = (item as any).clipType ?? 'media';
-    if (clipType === 'timeline') {
-      continue;
-    }
+
     const base: WorkerTimelineClip = {
       kind: 'clip',
-      clipType,
+      clipType: clipType === 'timeline' ? 'media' : clipType,
       id: item.id,
       layer: options?.layer ?? 0,
       opacity: item.opacity,
@@ -71,9 +71,74 @@ export function toWorkerTimelineClips(
       },
     };
 
-    if (clipType === 'media') {
+    if (clipType === 'media' || clipType === 'timeline') {
       const path = (item as any).source?.path;
       if (!path) continue;
+
+      if (clipType === 'timeline') {
+        try {
+          const handle = await projectStore.getFileHandleByPath(path);
+          if (handle) {
+            const file = await handle.getFile();
+            const text = await file.text();
+            const nestedDoc = parseTimelineFromOtio(text, {
+              id: 'nested',
+              name: 'nested',
+              fps: 25,
+            });
+
+            const nestedVideoTracks = nestedDoc.tracks.filter(
+              (t) => t.kind === 'video' && !t.videoHidden,
+            );
+            for (let i = 0; i < nestedVideoTracks.length; i++) {
+              const track = nestedVideoTracks[i];
+              if (!track) continue;
+              const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
+
+              const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, {
+                layer: nestedLayer,
+              });
+
+              for (const nClip of nestedWorkerClips) {
+                const nStartUs = nClip.timelineRange.startUs;
+                const nEndUs = nStartUs + nClip.timelineRange.durationUs;
+
+                const windowStartUs = item.sourceRange.startUs;
+                const windowEndUs = windowStartUs + item.sourceRange.durationUs;
+
+                const overlapStartUs = Math.max(nStartUs, windowStartUs);
+                const overlapEndUs = Math.min(nEndUs, windowEndUs);
+
+                if (overlapStartUs < overlapEndUs) {
+                  const visibleDurationUs = overlapEndUs - overlapStartUs;
+                  const parentStartUs =
+                    item.timelineRange.startUs + (overlapStartUs - windowStartUs);
+                  const sourceShiftUs = overlapStartUs - nStartUs;
+
+                  clips.push({
+                    ...nClip,
+                    id: `${item.id}_nested_${nClip.id}`,
+                    layer: nestedLayer,
+                    timelineRange: {
+                      startUs: parentStartUs,
+                      durationUs: visibleDurationUs,
+                    },
+                    sourceRange: {
+                      startUs: nClip.sourceRange.startUs + sourceShiftUs,
+                      durationUs: visibleDurationUs,
+                    },
+                    opacity: (nClip.opacity ?? 1) * (item.opacity ?? 1),
+                  });
+                }
+              }
+            }
+            continue;
+          }
+        } catch (e) {
+          console.error('Failed to expand nested timeline', e);
+        }
+      }
+
       clips.push({
         ...base,
         source: { path },
@@ -390,20 +455,27 @@ export function useTimelineExport() {
       ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
       : allVideoTracks.filter((t) => !t.audioMuted);
 
-    const videoClips = videoTracks.flatMap((track, index) => {
-      const clips = toWorkerTimelineClips(track.items ?? [], {
+    const videoClips: WorkerTimelineClip[] = [];
+    for (let index = 0; index < videoTracks.length; index++) {
+      const track = videoTracks[index];
+      if (!track) continue;
+      const clips = await toWorkerTimelineClips(track.items ?? [], projectStore, {
         layer: videoTracks.length - 1 - index,
       });
-      if (!track.effects?.length) return clips;
 
-      const trackEffects = JSON.parse(JSON.stringify(track.effects)) as any[];
-      return clips.map((clip) => ({
-        ...clip,
-        effects: clip.effects ? [...(clip.effects as any[]), ...trackEffects] : trackEffects,
-      }));
-    });
+      if (track.effects?.length) {
+        const trackEffects = JSON.parse(JSON.stringify(track.effects)) as any[];
+        for (const clip of clips) {
+          clip.effects = clip.effects
+            ? [...(clip.effects as any[]), ...trackEffects]
+            : trackEffects;
+        }
+      }
+      videoClips.push(...clips);
+    }
+
     const audioItems = audioTracks.flatMap((t) => t.items);
-    const audioClipsFromTracks = toWorkerTimelineClips(audioItems);
+    const audioClipsFromTracks = await toWorkerTimelineClips(audioItems, projectStore);
 
     const audioClipsFromVideo = videoTracksForAudio.flatMap((track) =>
       (track.items ?? [])

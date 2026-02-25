@@ -56,7 +56,7 @@ describe('useTimelineExport pure functions', () => {
     });
   });
 
-  it('toWorkerTimelineClips should attach layer (default 0)', () => {
+  it('toWorkerTimelineClips should attach layer (default 0)', async () => {
     const items: TimelineTrackItem[] = [
       {
         kind: 'clip',
@@ -71,7 +71,9 @@ describe('useTimelineExport pure functions', () => {
       },
     ];
 
-    expect(toWorkerTimelineClips(items)).toMatchObject([
+    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+
+    expect(await toWorkerTimelineClips(items, projectStoreMock)).toMatchObject([
       {
         kind: 'clip',
         clipType: 'media',
@@ -83,6 +85,7 @@ describe('useTimelineExport pure functions', () => {
       },
     ]);
 
-    expect(toWorkerTimelineClips(items, { layer: 3 })[0]?.layer).toBe(3);
+    const nested = await toWorkerTimelineClips(items, projectStoreMock, { layer: 3 });
+    expect(nested[0]?.layer).toBe(3);
   });
 });

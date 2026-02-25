@@ -4,11 +4,14 @@ import type { Ref } from 'vue';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
+import { toWorkerTimelineClips } from '~/composables/timeline/useTimelineExport';
 
 import type { WorkerTimelineClip } from './types';
 
 interface MonitorTimelineState {
   videoItems: Ref<unknown[]>;
+  rawWorkerTimelineClips?: Ref<WorkerTimelineClip[]>;
+  rawWorkerAudioClips?: Ref<WorkerTimelineClip[]>;
   workerTimelineClips: Ref<WorkerTimelineClip[]>;
   workerAudioClips: Ref<WorkerTimelineClip[]>;
   safeDurationUs: Ref<number>;
@@ -53,6 +56,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { projectStore, timelineStore, proxyStore, monitorTimeline, monitorDisplay } = options;
 
   const {
+    rawWorkerTimelineClips,
+    rawWorkerAudioClips,
     workerTimelineClips,
     workerAudioClips,
     safeDurationUs,
@@ -319,8 +324,51 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     try {
       await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
       forceRecreateCompositorNextBuild = false;
-      const clips = workerTimelineClips.value;
-      const audioClips = workerAudioClips.value;
+
+      const rawClips = rawWorkerTimelineClips?.value ?? workerTimelineClips.value;
+      const rawAudio = rawWorkerAudioClips?.value ?? workerAudioClips.value;
+
+      const mockItems = rawClips.map(
+        (c) =>
+          ({
+            kind: 'clip',
+            clipType:
+              c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
+            id: c.id,
+            source: c.source,
+            timelineRange: c.timelineRange,
+            sourceRange: c.sourceRange,
+            freezeFrameSourceUs: c.freezeFrameSourceUs,
+            opacity: c.opacity,
+            effects: c.effects,
+            backgroundColor: c.backgroundColor,
+          }) as any,
+      );
+
+      const mockAudioItems = rawAudio.map(
+        (c) =>
+          ({
+            kind: 'clip',
+            clipType:
+              c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
+            id: c.id,
+            source: c.source,
+            timelineRange: c.timelineRange,
+            sourceRange: c.sourceRange,
+            freezeFrameSourceUs: c.freezeFrameSourceUs,
+            opacity: c.opacity,
+            effects: c.effects,
+          }) as any,
+      );
+
+      const flattenedClips = await toWorkerTimelineClips(mockItems, projectStore as any);
+      const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
+
+      workerTimelineClips.value = flattenedClips;
+      workerAudioClips.value = flattenedAudio;
+
+      const clips = flattenedClips;
+      const audioClips = flattenedAudio;
       const audioDuration = computeAudioDurationUs(audioClips);
 
       if (clips.length === 0 && audioClips.length === 0) {
