@@ -129,7 +129,7 @@ describe('TimelineStore', () => {
     store.currentTime = 1_500_000;
     store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
-    const clip = (store.timelineDoc as any).tracks[0].items[0];
+    const clip = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.id === 'c1');
     expect(typeof clip.freezeFrameSourceUs).toBe('number');
     expect(clip.freezeFrameSourceUs).toBeGreaterThanOrEqual(0);
   });
@@ -167,7 +167,7 @@ describe('TimelineStore', () => {
     store.currentTime = 10;
     store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
-    const clip = (store.timelineDoc as any).tracks[0].items[0];
+    const clip = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.id === 'c1');
     expect(clip.freezeFrameSourceUs).toBe(133_333);
   });
 

@@ -50,37 +50,67 @@ function quantizeStartUsToFrames(startUs: number, fps: number): number {
   return Math.round((frame * 1e6) / safeFps);
 }
 
+function sanitizeSnapTargetsUs(targets: number[]): number[] {
+  const result: number[] = [];
+  for (const v of targets) {
+    if (!Number.isFinite(v)) continue;
+    result.push(Math.max(0, Math.round(v)));
+  }
+  result.sort((a, b) => a - b);
+  // Deduplicate
+  const uniq: number[] = [];
+  for (const x of result) {
+    if (uniq.length === 0 || uniq[uniq.length - 1] !== x) uniq.push(x);
+  }
+  return uniq;
+}
+
+function pickBestSnapCandidateUs(params: {
+  rawUs: number;
+  thresholdUs: number;
+  targetsUs: number[];
+}): { snappedUs: number; distUs: number } {
+  const rawUs = Math.round(params.rawUs);
+  let best = rawUs;
+  let bestDist = Math.max(0, Math.round(params.thresholdUs));
+  for (const target of params.targetsUs) {
+    const dist = Math.abs(rawUs - target);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = target;
+    }
+  }
+  return { snappedUs: best, distUs: bestDist };
+}
+
 /**
  * Returns the snapped startUs considering clip-snap and frame-snap settings.
  * @param rawStartUs - raw candidate position in microseconds
- * @param draggingItemId - id of item being dragged (excluded from snap targets)
  * @param fps - timeline fps
  * @param zoom - timeline zoom
  * @param snapThresholdPx - snap threshold in pixels
- * @param allTracks - all timeline tracks
+ * @param snapTargetsUs - precomputed snap targets in microseconds
  * @param enableFrameSnap - whether frame snapping is active
  * @param enableClipSnap - whether clip snapping is active
  */
 function computeSnappedStartUs(params: {
   rawStartUs: number;
-  draggingItemId: string;
   draggingItemDurationUs: number;
   fps: number;
   zoom: number;
   snapThresholdPx: number;
-  allTracks: TimelineTrack[];
+  snapTargetsUs: number[];
   enableFrameSnap: boolean;
   enableClipSnap: boolean;
   frameOffsetUs: number;
 }): number {
   const {
     rawStartUs,
-    draggingItemId,
     draggingItemDurationUs,
     fps,
     zoom,
     snapThresholdPx,
-    allTracks,
+    snapTargetsUs,
     enableFrameSnap,
     enableClipSnap,
     frameOffsetUs,
@@ -91,19 +121,9 @@ function computeSnappedStartUs(params: {
   let bestDist = thresholdUs;
 
   if (enableClipSnap) {
-    // Snap targets: timeline start + all clip start/end positions (excluding dragged item)
-    const snapTargets: number[] = [0];
-    for (const track of allTracks) {
-      for (const it of track.items) {
-        if (it.id === draggingItemId || it.kind !== 'clip') continue;
-        snapTargets.push(it.timelineRange.startUs);
-        snapTargets.push(it.timelineRange.startUs + it.timelineRange.durationUs);
-      }
-    }
-
     const rawEndUs = rawStartUs + Math.max(0, Math.round(draggingItemDurationUs));
 
-    for (const target of snapTargets) {
+    for (const target of snapTargetsUs) {
       const distStart = Math.abs(rawStartUs - target);
       if (distStart < bestDist) {
         bestDist = distStart;
@@ -124,6 +144,37 @@ function computeSnappedStartUs(params: {
   }
 
   return Math.max(0, best);
+}
+
+function computeSnapTargetsUs(params: {
+  tracks: TimelineTrack[];
+  excludeItemId: string;
+  includeTimelineStart: boolean;
+  includeTimelineEndUs: number | null;
+  includePlayheadUs: number | null;
+}): number[] {
+  const targets: number[] = [];
+  if (params.includeTimelineStart) targets.push(0);
+  if (
+    typeof params.includeTimelineEndUs === 'number' &&
+    Number.isFinite(params.includeTimelineEndUs)
+  ) {
+    targets.push(params.includeTimelineEndUs);
+  }
+  if (typeof params.includePlayheadUs === 'number' && Number.isFinite(params.includePlayheadUs)) {
+    targets.push(params.includePlayheadUs);
+  }
+
+  for (const track of params.tracks) {
+    for (const it of track.items) {
+      if (it.kind !== 'clip') continue;
+      if (it.id === params.excludeItemId) continue;
+      targets.push(it.timelineRange.startUs);
+      targets.push(it.timelineRange.startUs + it.timelineRange.durationUs);
+    }
+  }
+
+  return sanitizeSnapTargetsUs(targets);
 }
 
 export interface TimelineMovePreview {
@@ -148,6 +199,8 @@ export function useTimelineInteraction(
   const dragAnchorDurationUs = ref(0);
   const dragFrameOffsetUs = ref(0);
   const dragLastAppliedQuantizedDeltaUs = ref(0);
+  const dragSnapTargetsUs = ref<number[]>([]);
+  const dragAnchorItemDurationUs = ref(0);
   const hasPendingTimelinePersist = ref(false);
   const lastDragClientX = ref(0);
   const pendingDragClientX = ref<number | null>(null);
@@ -227,10 +280,22 @@ export function useTimelineInteraction(
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
         ?.timelineRange.durationUs ?? 0;
+    dragAnchorItemDurationUs.value = dragAnchorDurationUs.value;
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const q = quantizeStartUsToFrames(startUs, fps);
     dragFrameOffsetUs.value = Math.round(startUs - q);
     dragLastAppliedQuantizedDeltaUs.value = 0;
+
+    const timelineEndUs = Number.isFinite(timelineStore.duration)
+      ? Math.max(0, Math.round(timelineStore.duration))
+      : null;
+    dragSnapTargetsUs.value = computeSnapTargetsUs({
+      tracks: tracks.value,
+      excludeItemId: itemId,
+      includeTimelineStart: true,
+      includeTimelineEndUs: timelineEndUs,
+      includePlayheadUs: timelineStore.currentTime,
+    });
 
     movePreview.value = {
       itemId,
@@ -258,6 +323,23 @@ export function useTimelineInteraction(
     lastDragClientX.value = e.clientX;
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
+
+    const item = tracks.value
+      .find((t) => t.id === input.trackId)
+      ?.items.find((it) => it.id === input.itemId);
+    const durationUs = item?.kind === 'clip' ? item.timelineRange.durationUs : 0;
+    dragAnchorItemDurationUs.value = Math.max(0, Math.round(Number(durationUs ?? 0)));
+
+    const timelineEndUs = Number.isFinite(timelineStore.duration)
+      ? Math.max(0, Math.round(timelineStore.duration))
+      : null;
+    dragSnapTargetsUs.value = computeSnapTargetsUs({
+      tracks: tracks.value,
+      excludeItemId: input.itemId,
+      includeTimelineStart: true,
+      includeTimelineEndUs: timelineEndUs,
+      includePlayheadUs: timelineStore.currentTime,
+    });
 
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
@@ -290,12 +372,11 @@ export function useTimelineInteraction(
 
       const startUs = computeSnappedStartUs({
         rawStartUs,
-        draggingItemId: itemId,
         draggingItemDurationUs: dragAnchorDurationUs.value,
         fps,
         zoom,
         snapThresholdPx,
-        allTracks: tracks.value,
+        snapTargetsUs: dragSnapTargetsUs.value,
         enableFrameSnap,
         enableClipSnap,
         frameOffsetUs: dragFrameOffsetUs.value,
@@ -346,39 +427,54 @@ export function useTimelineInteraction(
     const dxPx = clientX - dragAnchorClientX.value;
     const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
 
-    let quantizedDeltaUs: number;
-    if (enableFrameSnap) {
-      quantizedDeltaUs = quantizeDeltaUsToFrames(rawDeltaUs, fps);
-    } else {
-      quantizedDeltaUs = rawDeltaUs;
+    const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);
+    const anchorStartUs = Math.max(0, Math.round(dragAnchorStartUs.value));
+    const anchorDurationUs = Math.max(0, Math.round(dragAnchorItemDurationUs.value));
+    const anchorEndUs = anchorStartUs + anchorDurationUs;
+
+    const rawEdgeUs = mode === 'trim_start' ? anchorStartUs + rawDeltaUs : anchorEndUs + rawDeltaUs;
+
+    let snappedEdgeUs = Math.round(rawEdgeUs);
+    let bestDist = thresholdUs;
+
+    if (enableClipSnap) {
+      const clipSnap = pickBestSnapCandidateUs({
+        rawUs: rawEdgeUs,
+        thresholdUs,
+        targetsUs: dragSnapTargetsUs.value,
+      });
+      snappedEdgeUs = clipSnap.snappedUs;
+      bestDist = clipSnap.distUs;
     }
 
-    const nextStepDeltaUs = quantizedDeltaUs - dragLastAppliedQuantizedDeltaUs.value;
+    if (enableFrameSnap && bestDist >= thresholdUs) {
+      snappedEdgeUs = quantizeStartUsToFrames(rawEdgeUs, fps);
+    }
 
+    // Convert snapped edge back to delta relative to current edge (so we stay compatible with timeline commands)
+    const desiredDeltaUs =
+      mode === 'trim_start' ? snappedEdgeUs - anchorStartUs : snappedEdgeUs - anchorEndUs;
+    const desiredQuantizedDeltaUs = enableFrameSnap
+      ? quantizeDeltaUsToFrames(desiredDeltaUs, fps)
+      : Math.round(desiredDeltaUs);
+
+    const nextStepDeltaUs = desiredQuantizedDeltaUs - dragLastAppliedQuantizedDeltaUs.value;
     lastDragClientX.value = clientX;
-
     if (nextStepDeltaUs === 0) return;
-    dragLastAppliedQuantizedDeltaUs.value = quantizedDeltaUs;
+    dragLastAppliedQuantizedDeltaUs.value = desiredQuantizedDeltaUs;
 
-    if (mode === 'trim_start') {
-      try {
-        timelineStore.applyTimeline(
-          { type: 'trim_item', trackId, itemId, edge: 'start', deltaUs: nextStepDeltaUs },
-          { saveMode: 'none' },
-        );
-        hasPendingTimelinePersist.value = true;
-      } catch {}
-      return;
-    }
+    const cmdEdge = mode === 'trim_start' ? 'start' : 'end';
+    const cmdType = overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item';
 
-    if (mode === 'trim_end') {
-      try {
-        timelineStore.applyTimeline(
-          { type: 'trim_item', trackId, itemId, edge: 'end', deltaUs: nextStepDeltaUs },
-          { saveMode: 'none' },
-        );
-        hasPendingTimelinePersist.value = true;
-      } catch {}
+    try {
+      timelineStore.applyTimeline(
+        { type: cmdType as any, trackId, itemId, edge: cmdEdge, deltaUs: nextStepDeltaUs } as any,
+        { saveMode: 'none' },
+      );
+      hasPendingTimelinePersist.value = true;
+    } catch {
+      // Keep last applied quantized delta unchanged on failure? We intentionally keep it,
+      // so the user can continue dragging and we only apply deltas when possible.
     }
   }
 

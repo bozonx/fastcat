@@ -15,6 +15,7 @@ import {
   moveItem,
   moveItemToTrack,
   overlayPlaceItem,
+  overlayTrimItem,
   trimItem,
   splitItem,
   updateClipProperties,
@@ -170,6 +171,18 @@ export interface OverlayPlaceItemCommand {
   startUs: number;
 }
 
+/**
+ * Pseudo-overlay trim: trims an item and then cuts/trims any clips that overlap
+ * with the trimmed item's resulting range.
+ */
+export interface OverlayTrimItemCommand {
+  type: 'overlay_trim_item';
+  trackId: string;
+  itemId: string;
+  edge: 'start' | 'end';
+  deltaUs: number;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -189,7 +202,8 @@ export type TimelineCommand =
   | UpdateClipPropertiesCommand
   | UpdateTrackPropertiesCommand
   | UpdateClipTransitionCommand
-  | OverlayPlaceItemCommand;
+  | OverlayPlaceItemCommand
+  | OverlayTrimItemCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -237,6 +251,8 @@ export function applyTimelineCommand(
       return updateTrackProperties(doc, cmd);
     case 'overlay_place_item':
       return overlayPlaceItem(doc, cmd);
+    case 'overlay_trim_item':
+      return overlayTrimItem(doc, cmd);
     default:
       return { next: doc };
   }
