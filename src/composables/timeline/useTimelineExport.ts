@@ -74,7 +74,11 @@ export async function toWorkerTimelineClips(
       kind: 'clip',
       clipType: clipType === 'timeline' ? 'media' : clipType,
       id: item.id,
-      layer: options?.layer ?? 0,
+      layer:
+        options?.layer ??
+        (typeof (item as any).layer === 'number' && Number.isFinite((item as any).layer)
+          ? Math.round((item as any).layer)
+          : 0),
       opacity: combinedOpacity,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       timelineRange: {

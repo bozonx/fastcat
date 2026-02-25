@@ -88,4 +88,30 @@ describe('useTimelineExport pure functions', () => {
     const nested = await toWorkerTimelineClips(items, projectStoreMock, { layer: 3 });
     expect(nested[0]?.layer).toBe(3);
   });
+
+  it('toWorkerTimelineClips should respect item.layer when options.layer is not provided', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    (items[0] as any).layer = 5;
+
+    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+    expect(clips[0]?.layer).toBe(5);
+
+    const overridden = await toWorkerTimelineClips(items, projectStoreMock, { layer: 2 });
+    expect(overridden[0]?.layer).toBe(2);
+  });
 });
