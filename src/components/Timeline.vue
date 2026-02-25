@@ -88,17 +88,19 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
   }
 
   let durationUs = 2_000_000;
-  const metadata = mediaStore.mediaMetadata[file.path];
-  if (metadata) {
-    const hasVideo = Boolean(metadata.video);
-    const hasAudio = Boolean(metadata.audio);
-    const isImageLike = !hasVideo && !hasAudio;
-    if (isImageLike) {
-      durationUs = 5_000_000;
-    } else {
-      const durationS = Number(metadata.duration);
-      if (Number.isFinite(durationS) && durationS > 0) {
-        durationUs = Math.floor(durationS * 1_000_000);
+  if (file.kind !== 'timeline') {
+    const metadata = mediaStore.mediaMetadata[file.path];
+    if (metadata) {
+      const hasVideo = Boolean(metadata.video);
+      const hasAudio = Boolean(metadata.audio);
+      const isImageLike = !hasVideo && !hasAudio;
+      if (isImageLike) {
+        durationUs = 5_000_000;
+      } else {
+        const durationS = Number(metadata.duration);
+        if (Number.isFinite(durationS) && durationS > 0) {
+          durationUs = Math.floor(durationS * 1_000_000);
+        }
       }
     }
   }
@@ -166,18 +168,27 @@ async function onDrop(e: DragEvent, trackId: string) {
   }
 
   const kind = typeof parsed?.kind === 'string' ? parsed.kind : undefined;
-  if (kind && kind !== 'file') return;
+  if (kind && kind !== 'file' && kind !== 'timeline') return;
 
   const name = typeof parsed?.name === 'string' ? parsed.name : undefined;
   const path = typeof parsed?.path === 'string' ? parsed.path : undefined;
   if (!name || !path) return;
 
-  await timelineStore.addClipToTimelineFromPath({
-    trackId,
-    name,
-    path,
-    startUs: startUs ?? undefined,
-  });
+  if (kind === 'timeline') {
+    await timelineStore.addTimelineClipToTimelineFromPath({
+      trackId,
+      name,
+      path,
+      startUs: startUs ?? undefined,
+    });
+  } else {
+    await timelineStore.addClipToTimelineFromPath({
+      trackId,
+      name,
+      path,
+      startUs: startUs ?? undefined,
+    });
+  }
 
   toast.add({
     title: t('granVideoEditor.timeline.clipAdded', 'Clip Added'),

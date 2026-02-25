@@ -2,6 +2,7 @@
 import { useProxyStore } from '~/stores/proxy.store';
 import { computed } from 'vue';
 import { useDraggedFile } from '~/composables/useDraggedFile';
+import type { DraggedFileData } from '~/composables/useDraggedFile';
 
 interface FsEntry {
   name: string;
@@ -60,7 +61,13 @@ function onEntryClick(entry: FsEntry) {
 
 function onDragStart(e: DragEvent, entry: FsEntry) {
   if (entry.kind !== 'file') return;
-  const data = { name: entry.name, kind: 'file' as const, path: entry.path ?? '' };
+  const isTimeline = entry.name.toLowerCase().endsWith('.otio');
+  const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
+  const data = {
+    name: entry.name,
+    kind,
+    path: entry.path ?? '',
+  };
   if (e.dataTransfer) {
     e.dataTransfer.setData('application/json', JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'copy';

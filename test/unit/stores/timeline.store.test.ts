@@ -2,29 +2,43 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '../../../src/stores/timeline.store';
 
-vi.mock('../../../src/stores/project.store', () => ({
-  useProjectStore: () => ({
-    currentProjectName: { value: 'test' },
-    currentTimelinePath: { value: 'timeline.otio' },
-    createFallbackTimelineDoc: () => ({
-      id: 'doc-1',
-      name: 'Default',
-      tracks: [],
-      timebase: { fps: 30 },
-    }),
+const projectStoreMock = {
+  currentProjectName: 'test',
+  currentTimelinePath: 'timeline.otio',
+  getFileHandleByPath: vi.fn(),
+  createFallbackTimelineDoc: () => ({
+    OTIO_SCHEMA: 'Timeline.1',
+    id: 'doc-1',
+    name: 'Default',
+    timebase: { fps: 30 },
+    tracks: [
+      {
+        id: 'v1',
+        kind: 'video',
+        name: 'Video 1',
+        items: [],
+      },
+    ],
   }),
+};
+
+vi.mock('../../../src/stores/project.store', () => ({
+  useProjectStore: () => projectStoreMock,
 }));
 
+const mediaStoreMock = {
+  mediaMetadata: { value: {} },
+  getOrFetchMetadataByPath: vi.fn(),
+};
+
 vi.mock('../../../src/stores/media.store', () => ({
-  useMediaStore: () => ({
-    mediaMetadata: { value: {} },
-    getOrFetchMetadataByPath: vi.fn(),
-  }),
+  useMediaStore: () => mediaStoreMock,
 }));
 
 describe('TimelineStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    projectStoreMock.getFileHandleByPath.mockReset();
   });
 
   it('initializes with default state', () => {
@@ -191,5 +205,87 @@ describe('TimelineStore', () => {
     store.resetClipFreezeFrame({ trackId: 'v1', itemId: 'c1' });
     const clip = (store.timelineDoc as any).tracks[0].items[0];
     expect(clip.freezeFrameSourceUs).toBeUndefined();
+  });
+
+  it('adds nested timeline clip from .otio path and blocks self-drop', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [],
+        },
+      ],
+    } as any;
+
+    await expect(
+      store.addTimelineClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Self',
+        path: 'timeline.otio',
+        startUs: 0,
+      }),
+    ).rejects.toThrow(/currently opened timeline/i);
+
+    const otio = JSON.stringify(
+      {
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'Nested',
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'Video 1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'X',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: 'file.mp4',
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        metadata: { gran: { docId: 'nested', timebase: { fps: 25 } } },
+      },
+      null,
+      2,
+    );
+
+    projectStoreMock.getFileHandleByPath.mockResolvedValue({
+      getFile: async () => ({
+        text: async () => otio,
+      }),
+    });
+
+    await store.addTimelineClipToTimelineFromPath({
+      trackId: 'v1',
+      name: 'Nested.otio',
+      path: 'nested.otio',
+      startUs: 0,
+    });
+
+    const added = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(added.clipType).toBe('timeline');
+    expect(added.source.path).toBe('nested.otio');
+    expect(added.timelineRange.durationUs).toBeGreaterThan(0);
   });
 });

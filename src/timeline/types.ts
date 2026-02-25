@@ -17,7 +17,7 @@ export interface TimelineSourceRef {
   path: string;
 }
 
-export type TimelineClipType = 'media' | 'adjustment' | 'background';
+export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background';
 
 export interface ClipTransition {
   type: string;
@@ -61,6 +61,12 @@ export interface TimelineMediaClipItem extends TimelineClipBase {
   sourceDurationUs: number;
 }
 
+export interface TimelineTimelineClipItem extends TimelineClipBase {
+  clipType: 'timeline';
+  source: TimelineSourceRef;
+  sourceDurationUs: number;
+}
+
 export interface TimelineAdjustmentClipItem extends TimelineClipBase {
   clipType: 'adjustment';
 }
@@ -72,6 +78,7 @@ export interface TimelineBackgroundClipItem extends TimelineClipBase {
 
 export type TimelineClipItem =
   | TimelineMediaClipItem
+  | TimelineTimelineClipItem
   | TimelineAdjustmentClipItem
   | TimelineBackgroundClipItem;
 

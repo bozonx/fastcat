@@ -51,6 +51,9 @@ export function toWorkerTimelineClips(
     if (item.kind !== 'clip') continue;
 
     const clipType = (item as any).clipType ?? 'media';
+    if (clipType === 'timeline') {
+      continue;
+    }
     const base: WorkerTimelineClip = {
       kind: 'clip',
       clipType,

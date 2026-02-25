@@ -3,7 +3,7 @@ import { ref } from 'vue';
 export interface DraggedFileData {
   name: string;
   path: string;
-  kind: 'file';
+  kind: 'file' | 'timeline';
 }
 
 const draggedFile = ref<DraggedFileData | null>(null);

@@ -209,7 +209,10 @@ function parseClipItem(input: {
   const granMeta = safeGranMetadata(otio.metadata);
   const clipTypeRaw = granMeta?.clipType;
   const clipType =
-    clipTypeRaw === 'background' || clipTypeRaw === 'adjustment' || clipTypeRaw === 'media'
+    clipTypeRaw === 'background' ||
+    clipTypeRaw === 'adjustment' ||
+    clipTypeRaw === 'media' ||
+    clipTypeRaw === 'timeline'
       ? clipTypeRaw
       : 'media';
   const timelineStartUs = fallbackStartUs;
@@ -253,13 +256,19 @@ function parseClipItem(input: {
       granMeta?.transitionIn &&
       typeof granMeta.transitionIn.type === 'string' &&
       typeof granMeta.transitionIn.durationUs === 'number'
-        ? { type: granMeta.transitionIn.type, durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)) }
+        ? {
+            type: granMeta.transitionIn.type,
+            durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)),
+          }
         : undefined,
     transitionOut:
       granMeta?.transitionOut &&
       typeof granMeta.transitionOut.type === 'string' &&
       typeof granMeta.transitionOut.durationUs === 'number'
-        ? { type: granMeta.transitionOut.type, durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)) }
+        ? {
+            type: granMeta.transitionOut.type,
+            durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)),
+          }
         : undefined,
     linkedVideoClipId:
       typeof granMeta?.linkedVideoClipId === 'string' &&
@@ -284,6 +293,14 @@ function parseClipItem(input: {
 
   if (clipType === 'adjustment') {
     return { ...base, clipType: 'adjustment', source: { path: path || '' } };
+  }
+
+  if (clipType === 'timeline') {
+    return {
+      ...base,
+      clipType: 'timeline',
+      source: { path },
+    };
   }
 
   return {
@@ -389,14 +406,18 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         name: item.name,
         media_reference: {
           OTIO_SCHEMA: 'ExternalReference.1',
-          target_url: item.clipType === 'media' ? item.source.path : '',
+          target_url:
+            item.clipType === 'media' || item.clipType === 'timeline' ? item.source.path : '',
         },
         source_range: toTimeRange(item.sourceRange),
         metadata: {
           gran: {
             id: item.id,
             clipType: item.clipType,
-            sourceDurationUs: item.clipType === 'media' ? item.sourceDurationUs : undefined,
+            sourceDurationUs:
+              item.clipType === 'media' || item.clipType === 'timeline'
+                ? item.sourceDurationUs
+                : undefined,
             audioFromVideoDisabled:
               item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,

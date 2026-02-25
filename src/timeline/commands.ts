@@ -25,6 +25,7 @@ export interface AddClipToTrackCommand {
   trackId: string;
   name: string;
   path: string;
+  clipType?: Extract<import('./types').TimelineClipType, 'media' | 'timeline'>;
   durationUs?: number;
   sourceDurationUs?: number;
   startUs?: number;

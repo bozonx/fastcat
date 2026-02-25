@@ -15,8 +15,37 @@ import { useMediaStore } from './media.store';
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
-  const { currentProjectName, currentTimelinePath } = storeToRefs(projectStore);
-  const { mediaMetadata } = storeToRefs(mediaStore);
+
+  const projectRefs = (() => {
+    try {
+      return storeToRefs(projectStore as any) as any;
+    } catch {
+      return projectStore as any;
+    }
+  })();
+
+  const currentProjectName =
+    projectRefs?.currentProjectName && typeof projectRefs.currentProjectName === 'object'
+      ? projectRefs.currentProjectName
+      : ref((projectStore as any)?.currentProjectName ?? null);
+
+  const currentTimelinePath =
+    projectRefs?.currentTimelinePath && typeof projectRefs.currentTimelinePath === 'object'
+      ? projectRefs.currentTimelinePath
+      : ref((projectStore as any)?.currentTimelinePath ?? null);
+
+  const mediaRefs = (() => {
+    try {
+      return storeToRefs(mediaStore as any) as any;
+    } catch {
+      return mediaStore as any;
+    }
+  })();
+
+  const mediaMetadata =
+    mediaRefs?.mediaMetadata && typeof mediaRefs.mediaMetadata === 'object'
+      ? mediaRefs.mediaMetadata
+      : ref((mediaStore as any)?.mediaMetadata ?? {});
 
   const DEFAULT_IMAGE_DURATION_US = 5_000_000;
   const DEFAULT_IMAGE_SOURCE_DURATION_US = Number.MAX_SAFE_INTEGER;
@@ -713,8 +742,62 @@ export const useTimelineStore = defineStore('timeline', () => {
       trackId: targetTrack.id,
       name: input.name,
       path: input.path,
+      clipType: 'media',
       durationUs,
       sourceDurationUs,
+      startUs: input.startUs,
+    });
+  }
+
+  async function addTimelineClipToTimelineFromPath(input: {
+    trackId: string;
+    name: string;
+    path: string;
+    startUs?: number;
+  }) {
+    if (currentTimelinePath.value && input.path === currentTimelinePath.value) {
+      throw new Error('Cannot insert the currently opened timeline into itself');
+    }
+
+    const handle = await projectStore.getFileHandleByPath(input.path);
+    if (!handle) throw new Error('Failed to access file handle');
+
+    const resolvedTrackKind = timelineDoc.value?.tracks.find((t) => t.id === input.trackId)?.kind;
+    const trackKind =
+      resolvedTrackKind === 'audio' || resolvedTrackKind === 'video' ? resolvedTrackKind : null;
+    if (!trackKind) throw new Error('Track not found');
+    if (trackKind !== 'video') {
+      throw new Error('Timeline clips can only be added to video tracks');
+    }
+
+    let durationUs = 2_000_000;
+    try {
+      const file = await handle.getFile();
+      const text = await file.text();
+      const nested = parseTimelineFromOtio(text, { id: 'nested', name: input.name, fps: 25 });
+      const nestedDurationUs = selectTimelineDurationUs(nested);
+      if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {
+        durationUs = Math.max(1, Math.round(nestedDurationUs));
+      }
+    } catch {
+      // keep fallback duration
+    }
+
+    if (!timelineDoc.value) {
+      timelineDoc.value = projectStore.createFallbackTimelineDoc();
+    }
+
+    const targetTrack = timelineDoc.value.tracks.find((t) => t.id === input.trackId);
+    if (!targetTrack) throw new Error('Track not found');
+
+    applyTimeline({
+      type: 'add_clip_to_track',
+      trackId: targetTrack.id,
+      name: input.name,
+      path: input.path,
+      clipType: 'timeline',
+      durationUs,
+      sourceDurationUs: durationUs,
       startUs: input.startUs,
     });
   }
@@ -759,6 +842,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     requestTimelineSave,
     applyTimeline,
     addClipToTimelineFromPath,
+    addTimelineClipToTimelineFromPath,
     loadTimelineMetadata,
     clearSelection,
     clearSelectedTransition,

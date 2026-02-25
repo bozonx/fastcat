@@ -47,9 +47,11 @@ export function addClipToTrack(
 
   assertNoOverlap(track, '', startUs, durationUs);
 
+  const clipType = cmd.clipType === 'timeline' ? 'timeline' : 'media';
+
   const clip: TimelineClipItem = {
     kind: 'clip',
-    clipType: 'media',
+    clipType,
     id: nextItemId(track.id, 'clip'),
     trackId: track.id,
     name: cmd.name,
