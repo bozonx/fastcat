@@ -17,6 +17,8 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
+  usToFrame,
+  frameToUs,
   computeTrackEndUs,
   assertNoOverlap,
   nextItemId,
@@ -156,14 +158,19 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   }
 
   const fps = getDocFps(doc);
-  const atUs = quantizeTimeUsToFrames(Number(cmd.atUs), fps, 'round');
+  const qTimeline = quantizeRangeToFrames(item.timelineRange, fps);
+  const startUs = qTimeline.startUs;
+  const endUs = startUs + qTimeline.durationUs;
 
-  const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
-  const endUs = Math.max(startUs, startUs + Math.max(0, Math.round(item.timelineRange.durationUs)));
+  const startFrame = usToFrame(startUs, fps, 'round');
+  const endFrame = usToFrame(endUs, fps, 'round');
+  const cutFrame = usToFrame(quantizeTimeUsToFrames(Number(cmd.atUs), fps, 'round'), fps, 'round');
 
-  if (!(atUs > startUs && atUs < endUs)) {
+  if (!(cutFrame > startFrame && cutFrame < endFrame)) {
     return { next: doc };
   }
+
+  const atUs = frameToUs(cutFrame, fps);
 
   const leftDurationUs = Math.max(0, atUs - startUs);
   const rightDurationUs = Math.max(0, endUs - atUs);
@@ -221,12 +228,12 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           it.lockToLinkedVideo
         ) {
           changed = true;
-          const audioStartUs = Math.max(0, Math.round(it.timelineRange.startUs));
-          const audioEndUs = Math.max(
-            audioStartUs,
-            audioStartUs + Math.max(0, Math.round(it.timelineRange.durationUs)),
-          );
-          if (!(atUs > audioStartUs && atUs < audioEndUs)) {
+          const qAudioTimeline = quantizeRangeToFrames(it.timelineRange, fps);
+          const audioStartUs = qAudioTimeline.startUs;
+          const audioEndUs = audioStartUs + qAudioTimeline.durationUs;
+          const audioStartFrame = usToFrame(audioStartUs, fps, 'round');
+          const audioEndFrame = usToFrame(audioEndUs, fps, 'round');
+          if (!(cutFrame > audioStartFrame && cutFrame < audioEndFrame)) {
             patched.push(it);
             continue;
           }

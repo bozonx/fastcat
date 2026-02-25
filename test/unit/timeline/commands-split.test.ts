@@ -13,6 +13,50 @@ function makeDoc(tracks: TimelineTrack[]): TimelineDocument {
 }
 
 describe('timeline/commands split_item', () => {
+  it('does not create overlap or gaps due to frame quantization', () => {
+    const doc = makeDoc([
+      {
+        id: 'v1',
+        kind: 'video',
+        name: 'V1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'background',
+            id: 'img1',
+            trackId: 'v1',
+            name: 'Image',
+            backgroundColor: '#000000',
+            timelineRange: { startUs: 0, durationUs: 999_999 },
+            sourceRange: { startUs: 0, durationUs: 999_999 },
+          },
+        ],
+      },
+    ]);
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'split_item',
+      trackId: 'v1',
+      itemId: 'img1',
+      atUs: 333_333,
+    });
+
+    const items = next.tracks[0]?.items ?? [];
+    const clips = items.filter((x: TimelineTrackItem) => x.kind === 'clip') as any[];
+    expect(clips.length).toBe(2);
+
+    const ordered = [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const left = ordered[0];
+    const right = ordered[1];
+
+    expect(right.timelineRange.startUs).toBe(
+      left.timelineRange.startUs + left.timelineRange.durationUs,
+    );
+
+    const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
+    expect(gaps.length).toBe(0);
+  });
+
   it('splits a clip into two at playhead time', () => {
     const doc = makeDoc([
       {
