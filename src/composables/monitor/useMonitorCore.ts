@@ -104,6 +104,25 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return projectStore.projectSettings.monitor?.useProxy !== false;
   });
 
+  function cloneWorkerPayload<T>(value: T): T {
+    try {
+      if (typeof structuredClone === 'function') {
+        return structuredClone(value);
+      }
+    } catch {
+      // ignore and fallback
+    }
+    return JSON.parse(
+      JSON.stringify(value, (_key, v) => {
+        if (typeof v === 'function' || typeof v === 'symbol') return undefined;
+        if (typeof v === 'bigint') return Number(v);
+        if (v instanceof Map) return Array.from(v.entries());
+        if (v instanceof Set) return Array.from(v.values());
+        return v;
+      }),
+    );
+  }
+
   function setCurrentTimeProvider(provider: () => number) {
     currentTimeProvider = provider;
   }
@@ -177,13 +196,16 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         const layoutClips = pendingLayoutClips;
         pendingLayoutClips = null;
         try {
-          const maxDuration = await client.updateTimelineLayout(layoutClips);
+          const payload = cloneWorkerPayload(layoutClips);
+          const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(workerAudioClips.value);
           timelineStore.duration = Math.max(maxDuration, audioDuration);
           lastBuiltLayoutSignature = clipLayoutSignature.value;
           scheduleRender(getRenderTimeForLayoutUpdate());
         } catch (error) {
           console.error('[Monitor] Failed to update timeline layout', error);
+          timelineStore.isPlaying = false;
+          scheduleBuild();
         }
       }
 
@@ -391,7 +413,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         onExportProgress: () => {},
       });
 
-      const maxDuration = clips.length > 0 ? await client.loadTimeline(clips) : 0;
+      const payload = cloneWorkerPayload(clips);
+      const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
       if (clips.length === 0) {
         await client.clearClips();
       }

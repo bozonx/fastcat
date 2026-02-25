@@ -232,11 +232,12 @@ export class AudioEngine {
   }
 
   async play(timeUs: number) {
-    if (!this.ctx) return;
-
     this.isPlaying = true;
     const timeS = timeUs / 1_000_000;
     this.baseTimeS = timeS;
+
+    if (!this.ctx) return;
+
     this.playbackContextTimeS = this.ctx.currentTime;
 
     if (this.ctx.state === 'suspended') {
@@ -261,10 +262,12 @@ export class AudioEngine {
   seek(timeUs: number) {
     if (this.isPlaying) {
       this.stopAllNodes();
-      if (!this.ctx) return;
 
       const timeS = timeUs / 1_000_000;
       this.baseTimeS = timeS;
+
+      if (!this.ctx) return;
+
       this.playbackContextTimeS = this.ctx.currentTime;
 
       for (const clip of this.currentClips) {

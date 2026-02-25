@@ -178,6 +178,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   const rightDurationUs = Math.max(0, endUs - atUs);
   if (leftDurationUs <= 0 || rightDurationUs <= 0) return { next: doc };
 
+  // TODO(speed): localCutUs should be multiplied by clip speed if speed != 1.0
   const localCutUs = atUs - startUs;
   const leftSourceDurationUs = Math.max(0, localCutUs);
   const rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + localCutUs);
@@ -190,8 +191,10 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     timelineRange: { startUs, durationUs: leftDurationUs },
     sourceRange: { startUs: item.sourceRange.startUs, durationUs: leftSourceDurationUs },
     transitionOut: undefined,
+    effects: item.effects ? structuredClone(item.effects) : undefined,
   };
 
+  // TODO(keyframes): shift keyframes relative time in rightItem's effects by localCutUs
   const rightItem: TimelineClipItem = {
     ...(item as TimelineClipItem),
     id: rightItemId,
@@ -199,6 +202,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     timelineRange: { startUs: atUs, durationUs: rightDurationUs },
     sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
     transitionIn: undefined,
+    effects: item.effects ? structuredClone(item.effects) : undefined,
   };
 
   const nextItemsRaw: TimelineTrackItem[] = [];
@@ -242,6 +246,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
           const leftAudioDurationUs = Math.max(0, atUs - audioStartUs);
           const rightAudioDurationUs = Math.max(0, audioEndUs - atUs);
+          // TODO(speed): audioLocalCutUs should be multiplied by clip speed if speed != 1.0
           const audioLocalCutUs = atUs - audioStartUs;
 
           const leftAudio: TimelineClipItem = {
@@ -252,8 +257,10 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
               durationUs: Math.max(0, audioLocalCutUs),
             },
             transitionOut: undefined,
+            effects: it.effects ? structuredClone(it.effects) : undefined,
           };
 
+          // TODO(keyframes): shift keyframes relative time in rightAudio's effects by audioLocalCutUs
           const rightAudio: TimelineClipItem = {
             ...it,
             id: nextItemId(t.id, 'clip'),
@@ -264,6 +271,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
               durationUs: Math.max(0, Math.round(it.sourceRange.durationUs) - audioLocalCutUs),
             },
             transitionIn: undefined,
+            effects: it.effects ? structuredClone(it.effects) : undefined,
           };
 
           patched.push(leftAudio);

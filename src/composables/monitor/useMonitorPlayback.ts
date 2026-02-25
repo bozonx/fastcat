@@ -98,7 +98,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
     let newTimeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
 
-    if (newTimeUs >= safeDurationUs.value) {
+    if (safeDurationUs.value > 0 && newTimeUs >= safeDurationUs.value) {
       newTimeUs = safeDurationUs.value;
       isPlaying.value = false;
       localCurrentTimeUs = newTimeUs;
@@ -142,7 +142,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       }
 
       if (playing) {
-        if (localCurrentTimeUs >= safeDurationUs.value) {
+        if (safeDurationUs.value > 0 && localCurrentTimeUs >= safeDurationUs.value) {
           localCurrentTimeUs = 0;
           uiCurrentTimeUs.value = 0;
           updateTimecodeUi(0);
