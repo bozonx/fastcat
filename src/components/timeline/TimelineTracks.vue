@@ -23,9 +23,35 @@ const props = defineProps<{
     durationUs: number;
     kind: 'timeline-clip' | 'file';
   } | null;
+  movePreview?: {
+    itemId: string;
+    trackId: string;
+    startUs: number;
+  } | null;
 }>();
 
 const DEFAULT_TRACK_HEIGHT = 40;
+
+const movePreviewResolved = computed(() => {
+  const mp = props.movePreview;
+  if (!mp) return null;
+  const targetTrack = props.tracks.find((t) => t.id === mp.trackId);
+  if (!targetTrack) return null;
+
+  const clip = props.tracks
+    .flatMap((t) => t.items)
+    .find((it) => it.id === mp.itemId && it.kind === 'clip');
+  if (!clip || clip.kind !== 'clip') return null;
+  return {
+    trackId: targetTrack.id,
+    itemId: clip.id,
+    startUs: mp.startUs,
+    durationUs: clip.timelineRange.durationUs,
+    label: clip.name,
+    trackKind: targetTrack.kind,
+    clipType: (clip as any).clipType as any,
+  };
+});
 
 const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
@@ -694,6 +720,26 @@ function getTransitionForPanel() {
         }"
       >
         <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
+      </div>
+
+      <div
+        v-if="movePreviewResolved && movePreviewResolved.trackId === track.id"
+        class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-40 pointer-events-none opacity-60"
+        :class="[
+          movePreviewResolved.trackKind === 'audio'
+            ? 'bg-teal-500 border border-teal-300'
+            : movePreviewResolved.clipType === 'background'
+              ? 'bg-purple-700/60 border border-purple-300'
+              : movePreviewResolved.clipType === 'adjustment'
+                ? 'bg-amber-700/60 border border-amber-300'
+                : 'bg-indigo-500 border border-indigo-300',
+        ]"
+        :style="{
+          left: `${2 + timeUsToPx(movePreviewResolved.startUs, timelineStore.timelineZoom)}px`,
+          width: `${Math.max(30, timeUsToPx(movePreviewResolved.durationUs, timelineStore.timelineZoom))}px`,
+        }"
+      >
+        <span class="truncate" :title="movePreviewResolved.label">{{ movePreviewResolved.label }}</span>
       </div>
 
       <div

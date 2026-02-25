@@ -56,6 +56,7 @@ const dragPreview = ref<{
 
 const {
   isDraggingPlayhead,
+  movePreview,
   onTimeRulerMouseDown,
   startPlayheadDrag,
   selectItem,
@@ -243,6 +244,7 @@ function formatTime(seconds: number): string {
               :tracks="tracks"
               :track-heights="trackHeights"
               :drag-preview="dragPreview"
+              :move-preview="movePreview"
               @drop="onDrop"
               @dragover="onTrackDragOver"
               @dragleave="onTrackDragLeave"

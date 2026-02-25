@@ -64,22 +64,26 @@ function quantizeStartUsToFrames(startUs: number, fps: number): number {
 function computeSnappedStartUs(params: {
   rawStartUs: number;
   draggingItemId: string;
+  draggingItemDurationUs: number;
   fps: number;
   zoom: number;
   snapThresholdPx: number;
   allTracks: TimelineTrack[];
   enableFrameSnap: boolean;
   enableClipSnap: boolean;
+  frameOffsetUs: number;
 }): number {
   const {
     rawStartUs,
     draggingItemId,
+    draggingItemDurationUs,
     fps,
     zoom,
     snapThresholdPx,
     allTracks,
     enableFrameSnap,
     enableClipSnap,
+    frameOffsetUs,
   } = params;
   const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);
 
@@ -97,20 +101,35 @@ function computeSnappedStartUs(params: {
       }
     }
 
+    const rawEndUs = rawStartUs + Math.max(0, Math.round(draggingItemDurationUs));
+
     for (const target of snapTargets) {
-      const dist = Math.abs(rawStartUs - target);
-      if (dist < bestDist) {
-        bestDist = dist;
+      const distStart = Math.abs(rawStartUs - target);
+      if (distStart < bestDist) {
+        bestDist = distStart;
         best = target;
+      }
+
+      const distEnd = Math.abs(rawEndUs - target);
+      if (distEnd < bestDist) {
+        bestDist = distEnd;
+        best = target - Math.max(0, Math.round(draggingItemDurationUs));
       }
     }
   }
 
   if (enableFrameSnap && bestDist >= thresholdUs) {
-    best = quantizeStartUsToFrames(rawStartUs, fps);
+    const offsetUs = Number.isFinite(frameOffsetUs) ? Math.round(frameOffsetUs) : 0;
+    best = quantizeStartUsToFrames(rawStartUs - offsetUs, fps) + offsetUs;
   }
 
   return Math.max(0, best);
+}
+
+export interface TimelineMovePreview {
+  itemId: string;
+  trackId: string;
+  startUs: number;
 }
 
 export function useTimelineInteraction(
@@ -126,11 +145,21 @@ export function useTimelineInteraction(
   const draggingMode = ref<'move' | 'trim_start' | 'trim_end' | null>(null);
   const dragAnchorClientX = ref(0);
   const dragAnchorStartUs = ref(0);
+  const dragAnchorDurationUs = ref(0);
+  const dragFrameOffsetUs = ref(0);
   const dragLastAppliedQuantizedDeltaUs = ref(0);
   const hasPendingTimelinePersist = ref(false);
   const lastDragClientX = ref(0);
   const pendingDragClientX = ref<number | null>(null);
   const pendingDragClientY = ref<number | null>(null);
+
+  const movePreview = ref<TimelineMovePreview | null>(null);
+  const pendingMoveCommit = ref<{
+    fromTrackId: string;
+    toTrackId: string;
+    itemId: string;
+    startUs: number;
+  } | null>(null);
 
   let dragRafId: number | null = null;
 
@@ -195,7 +224,20 @@ export function useTimelineInteraction(
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
     dragAnchorStartUs.value = startUs;
+    dragAnchorDurationUs.value =
+      tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
+        ?.timelineRange.durationUs ?? 0;
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const q = quantizeStartUsToFrames(startUs, fps);
+    dragFrameOffsetUs.value = Math.round(startUs - q);
     dragLastAppliedQuantizedDeltaUs.value = 0;
+
+    movePreview.value = {
+      itemId,
+      trackId,
+      startUs,
+    };
+    pendingMoveCommit.value = null;
 
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
@@ -249,12 +291,14 @@ export function useTimelineInteraction(
       const startUs = computeSnappedStartUs({
         rawStartUs,
         draggingItemId: itemId,
+        draggingItemDurationUs: dragAnchorDurationUs.value,
         fps,
         zoom,
         snapThresholdPx,
         allTracks: tracks.value,
         enableFrameSnap,
         enableClipSnap,
+        frameOffsetUs: dragFrameOffsetUs.value,
       });
 
       const trackEl = document.elementFromPoint(clientX, clientY)?.closest('[data-track-id]');
@@ -269,30 +313,29 @@ export function useTimelineInteraction(
         }
       }
 
+      if (overlapMode === 'pseudo') {
+        movePreview.value = { itemId, trackId: targetTrackId, startUs };
+        pendingMoveCommit.value = {
+          fromTrackId: trackId,
+          toTrackId: targetTrackId,
+          itemId,
+          startUs,
+        };
+        draggingTrackId.value = targetTrackId;
+        return;
+      }
+
       try {
-        if (overlapMode === 'pseudo') {
-          timelineStore.applyTimeline(
-            {
-              type: 'overlay_place_item',
-              fromTrackId: trackId,
-              toTrackId: targetTrackId,
-              itemId,
-              startUs,
-            },
-            { saveMode: 'none' },
-          );
-        } else {
-          timelineStore.applyTimeline(
-            {
-              type: 'move_item_to_track',
-              fromTrackId: trackId,
-              toTrackId: targetTrackId,
-              itemId,
-              startUs,
-            },
-            { saveMode: 'none' },
-          );
-        }
+        timelineStore.applyTimeline(
+          {
+            type: 'move_item_to_track',
+            fromTrackId: trackId,
+            toTrackId: targetTrackId,
+            itemId,
+            startUs,
+          },
+          { saveMode: 'none' },
+        );
         draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
       } catch {}
@@ -373,6 +416,25 @@ export function useTimelineInteraction(
     }
     applyDragFromPendingClientX();
 
+    if (draggingMode.value === 'move' && settingsStore.overlapMode === 'pseudo') {
+      const commit = pendingMoveCommit.value;
+      if (commit) {
+        try {
+          timelineStore.applyTimeline(
+            {
+              type: 'overlay_place_item',
+              fromTrackId: commit.fromTrackId,
+              toTrackId: commit.toTrackId,
+              itemId: commit.itemId,
+              startUs: commit.startUs,
+            },
+            { saveMode: 'none' },
+          );
+          hasPendingTimelinePersist.value = true;
+        } catch {}
+      }
+    }
+
     if (hasPendingTimelinePersist.value) {
       void timelineStore.requestTimelineSave({ immediate: true });
       hasPendingTimelinePersist.value = false;
@@ -384,6 +446,9 @@ export function useTimelineInteraction(
     draggingTrackId.value = null;
     pendingDragClientX.value = null;
     pendingDragClientY.value = null;
+
+    movePreview.value = null;
+    pendingMoveCommit.value = null;
 
     window.removeEventListener('mousemove', onGlobalMouseMove);
     window.removeEventListener('mouseup', onGlobalMouseUp);
@@ -405,6 +470,7 @@ export function useTimelineInteraction(
 
   return {
     isDraggingPlayhead,
+    movePreview,
     onTimeRulerMouseDown,
     startPlayheadDrag,
     selectItem,

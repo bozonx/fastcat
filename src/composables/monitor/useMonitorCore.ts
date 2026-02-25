@@ -227,7 +227,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 sourceStartUs: clip.sourceRange.startUs,
                 sourceDurationUs: clip.sourceRange.durationUs,
                 speed: (clip as any).speed,
-                speed: (clip as any).speed,
               };
             } catch {
               return null;
@@ -442,6 +441,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 durationUs: clip.timelineRange.durationUs,
                 sourceStartUs: clip.sourceRange.startUs,
                 sourceDurationUs: clip.sourceRange.durationUs,
+                speed: (clip as any).speed,
               };
             } catch {
               return null;
