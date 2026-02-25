@@ -137,10 +137,10 @@ describe('timeline/commands update_clip_transition', () => {
     const nextLeft = items.find((it) => it.id === 'c1');
     const nextRight = items.find((it) => it.id === 'c2');
 
-    // Overlap is limited by right clip head handle = sourceRange.startUs = 2s
+    // Overlap is limited by left clip tail handle. We extend the left clip into the right clip by 2s.
     expect(nextLeft.timelineRange.durationUs).toBe(7_000_000);
-    expect(nextRight.timelineRange.startUs).toBe(3_000_000);
-    expect(nextRight.timelineRange.durationUs).toBe(7_000_000);
+    expect(nextRight.timelineRange.startUs).toBe(5_000_000);
+    expect(nextRight.timelineRange.durationUs).toBe(5_000_000);
     expect(nextLeft.transitionOut).toEqual({ type: 'dissolve', durationUs: 2_000_000 });
     expect(nextRight.transitionIn).toEqual({ type: 'dissolve', durationUs: 2_000_000 });
   });

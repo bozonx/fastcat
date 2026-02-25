@@ -3,11 +3,13 @@ import ClipTransitionPanel from './ClipTransitionPanel.vue';
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const { selectedTransition } = storeToRefs(timelineStore);
 
 const props = defineProps<{
@@ -94,6 +96,67 @@ const resizeTransition = ref<{
   startDurationUs: number;
 } | null>(null);
 
+function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
+  const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
+  return [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+}
+
+function getAdjacentClipForTransitionEdge(input: {
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+}): { clip: TimelineClipItem; adjacent: TimelineClipItem | null } | null {
+  const track = props.tracks.find((t) => t.id === input.trackId);
+  if (!track) return null;
+  const ordered = getOrderedClipsOnTrack(track);
+  const idx = ordered.findIndex((c) => c.id === input.itemId);
+  if (idx === -1) return null;
+  const clip = ordered[idx]!;
+  const adjacent = input.edge === 'in' ? (idx > 0 ? ordered[idx - 1]! : null) : idx < ordered.length - 1 ? ordered[idx + 1]! : null;
+  return { clip, adjacent };
+}
+
+function computeMaxResizableTransitionDurationUs(input: {
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  currentTransition: import('~/timeline/types').ClipTransition;
+}): number {
+  const resolved = getAdjacentClipForTransitionEdge({
+    trackId: input.trackId,
+    itemId: input.itemId,
+    edge: input.edge,
+  });
+  if (!resolved) return 10_000_000;
+
+  const { clip, adjacent } = resolved;
+  if (!adjacent) return 0;
+
+  // Only enforce hard max for blend crossfades (needs overlap material)
+  const mode = input.currentTransition.mode ?? 'blend';
+  if (mode !== 'blend') return 10_000_000;
+
+  if (input.edge === 'in') {
+    // We're resizing transitionIn of `clip` => crossfade uses previous clip tail handle.
+    const prev = adjacent;
+    const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
+    const prevMaxEnd = prev.clipType === 'media' ? (prev as any).sourceDurationUs ?? prevSourceEnd : Number.POSITIVE_INFINITY;
+    const prevTailHandleUs = Number.isFinite(prevMaxEnd)
+      ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
+      : 10_000_000;
+    return Math.max(0, Math.min(10_000_000, prevTailHandleUs));
+  }
+
+  // Resizing transitionOut of `clip` => uses this clip tail handle.
+  const curr = clip;
+  const currSourceEnd = (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
+  const currMaxEnd = curr.clipType === 'media' ? (curr as any).sourceDurationUs ?? currSourceEnd : Number.POSITIVE_INFINITY;
+  const currTailHandleUs = Number.isFinite(currMaxEnd)
+    ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
+    : 10_000_000;
+  return Math.max(0, Math.min(10_000_000, currTailHandleUs));
+}
+
 function startResizeTransition(
   e: MouseEvent,
   trackId: string,
@@ -120,18 +183,28 @@ function startResizeTransition(
     const deltaPx = dx * sign;
     const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
     const minUs = 100_000; // 0.1s
-    const maxUs = 10_000_000; // 10s
-    const newDurationUs = Math.min(
-      maxUs,
-      Math.max(minUs, resizeTransition.value.startDurationUs + deltaUs),
-    );
 
     const track = props.tracks.find((t) => t.id === trackId);
     const item = track?.items.find((i) => i.id === itemId);
     if (!item || item.kind !== 'clip') return;
 
-    const current = edge === 'in' ? (item as TimelineClipItem).transitionIn : (item as TimelineClipItem).transitionOut;
+    const current =
+      edge === 'in'
+        ? (item as TimelineClipItem).transitionIn
+        : (item as TimelineClipItem).transitionOut;
     if (!current) return;
+
+    const maxUs = computeMaxResizableTransitionDurationUs({
+      trackId,
+      itemId,
+      edge,
+      currentTransition: current,
+    });
+
+    const newDurationUs = Math.min(
+      maxUs,
+      Math.max(minUs, resizeTransition.value.startDurationUs + deltaUs),
+    );
 
     timelineStore.updateClipTransition(trackId, itemId, {
       [edge === 'in' ? 'transitionIn' : 'transitionOut']: {
@@ -421,6 +494,16 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
     const hasIn = Boolean((item as any).transitionIn);
     const hasOut = Boolean((item as any).transitionOut);
 
+    const defaultTransitionDurationUs = Math.max(
+      0,
+      Math.round(Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000)),
+    );
+    const clipDurationUs = Math.max(0, Math.round(Number(item.timelineRange?.durationUs ?? 0)));
+    const suggestedDurationUs =
+      clipDurationUs > 0 && clipDurationUs < defaultTransitionDurationUs
+        ? Math.round(clipDurationUs * 0.3)
+        : defaultTransitionDurationUs;
+
     transitionGroup.push({
       label: hasIn
         ? t('granVideoEditor.timeline.removeTransitionIn')
@@ -430,7 +513,12 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         if (hasIn) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: null });
         } else {
-          const transition = { type: 'dissolve', durationUs: 2_000_000, mode: 'blend' as const, curve: 'linear' as const };
+          const transition = {
+            type: 'dissolve',
+            durationUs: suggestedDurationUs,
+            mode: 'blend' as const,
+            curve: 'linear' as const,
+          };
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: transition });
           timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'in' });
         }
@@ -446,7 +534,12 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         if (hasOut) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: null });
         } else {
-          const transition = { type: 'dissolve', durationUs: 2_000_000, mode: 'blend' as const, curve: 'linear' as const };
+          const transition = {
+            type: 'dissolve',
+            durationUs: suggestedDurationUs,
+            mode: 'blend' as const,
+            curve: 'linear' as const,
+          };
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: transition });
           timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'out' });
         }

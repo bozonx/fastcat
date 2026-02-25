@@ -637,13 +637,20 @@ export function updateClipTransition(
 
   const fps = getDocFps(doc);
 
-  function coerceTransition(raw: any): { type: string; durationUs: number } | null {
+  function coerceTransition(
+    raw: any,
+  ): { type: string; durationUs: number; mode?: any; curve?: any } | null {
     if (!raw) return null;
     const type = typeof raw.type === 'string' ? raw.type : '';
     const durationUs = Number(raw.durationUs);
     if (!type) return null;
     if (!Number.isFinite(durationUs) || durationUs <= 0) return { type, durationUs: 0 };
-    return { type, durationUs: Math.max(0, Math.round(durationUs)) };
+    return {
+      type,
+      durationUs: Math.max(0, Math.round(durationUs)),
+      mode: raw.mode,
+      curve: raw.curve,
+    };
   }
 
   function findAdjacentClips() {
@@ -668,7 +675,7 @@ export function updateClipTransition(
     };
   }
 
-  function computeOverlapUs(params: {
+  function computeAllowedOverlapUs(params: {
     left: TimelineClipItem;
     right: TimelineClipItem;
     requestedUs: number;
@@ -688,50 +695,49 @@ export function updateClipTransition(
       ? Math.max(0, leftMaxEndUs - leftSourceEndUs)
       : requestedUs;
 
-    const rightHeadHandleUs = Math.max(0, Math.round(right.sourceRange.startUs));
-
-    const overlapUs = Math.min(requestedUs, leftTailHandleUs, rightHeadHandleUs);
+    const overlapUs = Math.min(
+      requestedUs,
+      leftTailHandleUs,
+      Math.max(0, Math.round(left.timelineRange.durationUs)),
+      Math.max(0, Math.round(right.timelineRange.durationUs)),
+    );
     return quantizeDeltaUsToFrames(overlapUs, fps, 'floor');
   }
 
-  function applyOverlap(params: {
+  function getCutOverlapUs(left: TimelineClipItem, right: TimelineClipItem): number {
+    const leftEnd = left.timelineRange.startUs + left.timelineRange.durationUs;
+    const rightStart = right.timelineRange.startUs;
+    return Math.max(0, Math.round(leftEnd - rightStart));
+  }
+
+  function applyCutOverlap(params: {
     left: TimelineClipItem;
     right: TimelineClipItem;
-    overlapUs: number;
+    desiredOverlapUs: number;
   }): { left: TimelineClipItem; right: TimelineClipItem } {
-    const overlapUs = Math.max(0, Math.round(params.overlapUs));
-    if (overlapUs <= 0) return { left: params.left, right: params.right };
+    const desiredOverlapUs = Math.max(0, Math.round(params.desiredOverlapUs));
+    const currentOverlapUs = getCutOverlapUs(params.left, params.right);
+    const deltaUs = desiredOverlapUs - currentOverlapUs;
+    if (deltaUs === 0) return { left: params.left, right: params.right };
 
     const left = params.left;
-    const right = params.right;
+
+    const nextLeftDurationUs = Math.max(0, Math.round(left.timelineRange.durationUs) + deltaUs);
+    const nextLeftSourceDurationUs = Math.max(0, Math.round(left.sourceRange.durationUs) + deltaUs);
 
     const leftNext: TimelineClipItem = {
       ...left,
       timelineRange: {
         ...left.timelineRange,
-        durationUs: left.timelineRange.durationUs + overlapUs,
+        durationUs: nextLeftDurationUs,
       },
       sourceRange: {
         ...left.sourceRange,
-        durationUs: left.sourceRange.durationUs + overlapUs,
+        durationUs: nextLeftSourceDurationUs,
       },
     };
 
-    const rightNext: TimelineClipItem = {
-      ...right,
-      timelineRange: {
-        ...right.timelineRange,
-        startUs: Math.max(0, right.timelineRange.startUs - overlapUs),
-        durationUs: right.timelineRange.durationUs + overlapUs,
-      },
-      sourceRange: {
-        ...right.sourceRange,
-        startUs: Math.max(0, right.sourceRange.startUs - overlapUs),
-        durationUs: right.sourceRange.durationUs + overlapUs,
-      },
-    };
-
-    return { left: leftNext, right: rightNext };
+    return { left: leftNext, right: params.right };
   }
 
   const patch: Record<string, unknown> = {};
@@ -755,6 +761,81 @@ export function updateClipTransition(
   //   try to overlap them by requested duration (bounded by source handles), and mirror transitionIn on next.
   // - If setting transitionIn on current and there is an adjacent prev clip ending at current start,
   //   do the same with prev/current and mirror transitionOut on prev.
+  function patchCut(params: {
+    left: TimelineClipItem;
+    right: TimelineClipItem;
+    requested: { type: string; durationUs: number; mode?: any; curve?: any } | null;
+    clear: boolean;
+  }) {
+    const leftEndUs = params.left.timelineRange.startUs + params.left.timelineRange.durationUs;
+    const rightStartUs = params.right.timelineRange.startUs;
+    const gapUs = Math.max(0, Math.round(rightStartUs - leftEndUs));
+    const existingOverlapUs = getCutOverlapUs(params.left, params.right);
+
+    // Do not auto-stretch across a positive gap. We only support overlap on a cut (adjacent)
+    // or when overlap already exists.
+    const isNearCut = gapUs <= 1_000;
+    if (!isNearCut && existingOverlapUs === 0) {
+      return;
+    }
+
+    if (params.clear || !params.requested || params.requested.durationUs <= 0) {
+      if (existingOverlapUs > 0) {
+        const { left } = applyCutOverlap({
+          left: params.left,
+          right: params.right,
+          desiredOverlapUs: 0,
+        });
+        patchedItemsById.set(left.id, {
+          ...left,
+          transitionOut: undefined,
+        } as any);
+      } else {
+        patchedItemsById.set(params.left.id, {
+          ...params.left,
+          transitionOut: undefined,
+        } as any);
+      }
+
+      patchedItemsById.set(params.right.id, {
+        ...params.right,
+        transitionIn: undefined,
+      } as any);
+      return;
+    }
+
+    const allowedOverlapUs = computeAllowedOverlapUs({
+      left: params.left,
+      right: params.right,
+      requestedUs: params.requested.durationUs,
+    });
+
+    const { left, right } = applyCutOverlap({
+      left: params.left,
+      right: params.right,
+      desiredOverlapUs: allowedOverlapUs,
+    });
+
+    patchedItemsById.set(left.id, {
+      ...left,
+      transitionOut: {
+        type: params.requested.type,
+        durationUs: allowedOverlapUs,
+        mode: params.requested.mode,
+        curve: params.requested.curve,
+      },
+    } as any);
+    patchedItemsById.set(right.id, {
+      ...right,
+      transitionIn: {
+        type: params.requested.type,
+        durationUs: allowedOverlapUs,
+        mode: params.requested.mode,
+        curve: params.requested.curve,
+      },
+    } as any);
+  }
+
   if (adjacent) {
     const curr = adjacent.curr;
     const currStartUs = curr.timelineRange.startUs;
@@ -763,48 +844,22 @@ export function updateClipTransition(
     const prev = adjacent.prev;
     const next = adjacent.next;
 
-    if (requestedOut && requestedOut.durationUs > 0 && next) {
-      const nextStartUs = next.timelineRange.startUs;
-      if (nextStartUs === currEndUs) {
-        const overlapUs = computeOverlapUs({
-          left: curr,
-          right: next,
-          requestedUs: requestedOut.durationUs,
-        });
-        if (overlapUs > 0) {
-          const { left, right } = applyOverlap({ left: curr, right: next, overlapUs });
-          patchedItemsById.set(left.id, {
-            ...left,
-            transitionOut: { type: requestedOut.type, durationUs: overlapUs },
-          } as any);
-          patchedItemsById.set(right.id, {
-            ...right,
-            transitionIn: { type: requestedOut.type, durationUs: overlapUs },
-          } as any);
-        }
-      }
+    if ('transitionOut' in cmd && next) {
+      patchCut({
+        left: curr,
+        right: next,
+        requested: requestedOut,
+        clear: cmd.transitionOut === null,
+      });
     }
 
-    if (requestedIn && requestedIn.durationUs > 0 && prev) {
-      const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      if (prevEndUs === currStartUs) {
-        const overlapUs = computeOverlapUs({
-          left: prev,
-          right: curr,
-          requestedUs: requestedIn.durationUs,
-        });
-        if (overlapUs > 0) {
-          const { left, right } = applyOverlap({ left: prev, right: curr, overlapUs });
-          patchedItemsById.set(left.id, {
-            ...left,
-            transitionOut: { type: requestedIn.type, durationUs: overlapUs },
-          } as any);
-          patchedItemsById.set(right.id, {
-            ...right,
-            transitionIn: { type: requestedIn.type, durationUs: overlapUs },
-          } as any);
-        }
-      }
+    if ('transitionIn' in cmd && prev) {
+      patchCut({
+        left: prev,
+        right: curr,
+        requested: requestedIn,
+        clear: cmd.transitionIn === null,
+      });
     }
   }
 

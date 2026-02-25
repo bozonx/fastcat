@@ -66,8 +66,18 @@ export interface CompositorClip {
   opacity?: number;
   effects?: any[];
   effectFilters?: Map<string, Filter>;
-  transitionIn?: { type: string; durationUs: number; mode?: 'blend' | 'composite'; curve?: 'linear' | 'bezier' };
-  transitionOut?: { type: string; durationUs: number; mode?: 'blend' | 'composite'; curve?: 'linear' | 'bezier' };
+  transitionIn?: {
+    type: string;
+    durationUs: number;
+    mode?: 'blend' | 'composite';
+    curve?: 'linear' | 'bezier';
+  };
+  transitionOut?: {
+    type: string;
+    durationUs: number;
+    mode?: 'blend' | 'composite';
+    curve?: 'linear' | 'bezier';
+  };
 }
 
 export class VideoCompositor {
@@ -695,9 +705,8 @@ export class VideoCompositor {
       // Behaviour:
       //  - image / solid clips: always kept visible (infinite source)
       //  - video with handle material (sourceDurationUs > durationUs): seek into handle frames
-      //  - video without handle material: hide (no frames available → error shown in UI)
+      //  - video without handle material: freeze the last available frame
       const blendShadowRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
-      const blendShadowClips = new Set<CompositorClip>();
 
       for (const clip of active) {
         const tr = clip.transitionIn;
@@ -715,7 +724,6 @@ export class VideoCompositor {
           : 1 - rawProgress;
 
         prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
-        blendShadowClips.add(prevClip);
 
         // Images and solid clips: keep visible indefinitely
         if (prevClip.clipKind === 'image' || prevClip.clipKind === 'solid') {
@@ -726,9 +734,23 @@ export class VideoCompositor {
         // Check if source media has frames beyond the clip's out-point (handle material)
         // handleUs = total available source after clip end
         const handleUs = prevClip.sourceDurationUs - prevClip.durationUs;
-        if (!prevClip.sink || handleUs < 1_000) {
-          // No extra source material → hide (error state, UI will show warning)
+        if (!prevClip.sink) {
           prevClip.sprite.visible = false;
+          continue;
+        }
+
+        if (handleUs < 1_000) {
+          // No extra source material: freeze the last available frame of the previous clip.
+          const lastUs = Math.max(0, prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000);
+          const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
+          const req = getVideoSampleWithZeroFallback(
+            prevClip.sink,
+            shadowSampleTimeS,
+            prevClip.firstTimestampS,
+          )
+            .then((sample) => ({ clip: prevClip, sample }))
+            .catch(() => ({ clip: prevClip, sample: null }));
+          blendShadowRequests.push(req);
           continue;
         }
 
@@ -736,9 +758,16 @@ export class VideoCompositor {
         const overrunUs = localTimeUs;
         const handleSampleUs = prevClip.sourceStartUs + prevClip.durationUs + overrunUs;
         // Clamp to available handle
-        const clampedUs = Math.min(handleSampleUs, prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000);
+        const clampedUs = Math.min(
+          handleSampleUs,
+          prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000,
+        );
         const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
-        const req = getVideoSampleWithZeroFallback(prevClip.sink, shadowSampleTimeS, prevClip.firstTimestampS)
+        const req = getVideoSampleWithZeroFallback(
+          prevClip.sink,
+          shadowSampleTimeS,
+          prevClip.firstTimestampS,
+        )
           .then((sample) => ({ clip: prevClip, sample }))
           .catch(() => ({ clip: prevClip, sample: null }));
         blendShadowRequests.push(req);
@@ -747,7 +776,10 @@ export class VideoCompositor {
       if (blendShadowRequests.length > 0) {
         const shadowSamples = await Promise.all(blendShadowRequests);
         for (const { clip, sample } of shadowSamples) {
-          if (!sample) { clip.sprite.visible = false; continue; }
+          if (!sample) {
+            clip.sprite.visible = false;
+            continue;
+          }
           try {
             await this.updateClipTextureFromSample(sample, clip);
             clip.sprite.visible = true;
@@ -755,7 +787,13 @@ export class VideoCompositor {
           } catch {
             clip.sprite.visible = false;
           } finally {
-            if (typeof sample.close === 'function') { try { sample.close(); } catch { /**/ } }
+            if (typeof sample.close === 'function') {
+              try {
+                sample.close();
+              } catch {
+                /**/
+              }
+            }
           }
         }
       }
@@ -899,8 +937,8 @@ export class VideoCompositor {
       if (!best || c.endUs > best.endUs) best = c;
     }
     if (!best) return null;
-    // Reject if there is a significant gap (> 200ms) — blend requires adjacent clips
-    if (clip.startUs - best.endUs > 200_000) return null;
+    // Reject only for a large gap — allow small gaps to still show a reasonable blend shadow.
+    if (clip.startUs - best.endUs > 1_000_000) return null;
     return best;
   }
 
@@ -932,21 +970,22 @@ export class VideoCompositor {
 
     if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
       const dur = clip.transitionIn.durationUs;
-      const mode = clip.transitionIn.mode ?? 'blend';
       const curve = clip.transitionIn.curve ?? 'linear';
       // In composite mode the clip fades from the lower track composition — opacity still applies
       if (localTimeUs < dur) {
         const manifest = getTransitionManifest(clip.transitionIn.type);
         if (manifest) {
           const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
-          opacity = Math.min(opacity, baseOpacity * manifest.computeInOpacity(rawProgress, {}, curve));
+          opacity = Math.min(
+            opacity,
+            baseOpacity * manifest.computeInOpacity(rawProgress, {}, curve),
+          );
         }
       }
     }
 
     if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
       const dur = clip.transitionOut.durationUs;
-      const mode = clip.transitionOut.mode ?? 'blend';
       const curve = clip.transitionOut.curve ?? 'linear';
       const clipDurUs = clip.durationUs;
       const outStartUs = clipDurUs - dur;
@@ -954,7 +993,10 @@ export class VideoCompositor {
         const manifest = getTransitionManifest(clip.transitionOut.type);
         if (manifest) {
           const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
-          opacity = Math.min(opacity, baseOpacity * manifest.computeOutOpacity(rawProgress, {}, curve));
+          opacity = Math.min(
+            opacity,
+            baseOpacity * manifest.computeOutOpacity(rawProgress, {}, curve),
+          );
         }
       }
     }

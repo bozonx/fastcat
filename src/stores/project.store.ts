@@ -37,6 +37,9 @@ export interface GranVideoEditorProjectSettings {
     openPaths: string[];
     lastOpenedPath: string | null;
   };
+  transitions: {
+    defaultDurationUs: number;
+  };
 }
 
 const DEFAULT_PROJECT_SETTINGS = {
@@ -60,6 +63,9 @@ const DEFAULT_PROJECT_SETTINGS = {
   timelines: {
     openPaths: [],
     lastOpenedPath: null,
+  },
+  transitions: {
+    defaultDurationUs: 2_000_000,
   },
 };
 
@@ -154,6 +160,9 @@ function createDefaultProjectSettings(userExportDefaults: {
       openPaths: [],
       lastOpenedPath: null,
     },
+    transitions: {
+      defaultDurationUs: DEFAULT_PROJECT_SETTINGS.transitions.defaultDurationUs,
+    },
   };
 }
 
@@ -186,6 +195,7 @@ function normalizeProjectSettings(
   const encodingInput = exportInput.encoding ?? {};
   const proxyInput = input.proxy ?? {};
   const monitorInput = input.monitor ?? {};
+  const transitionsInput = input.transitions ?? {};
 
   const defaultSettings = createDefaultProjectSettings(userExportDefaults);
 
@@ -198,6 +208,7 @@ function normalizeProjectSettings(
   const format = encodingInput.format;
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
+  const defaultTransitionDurationUs = Number(transitionsInput.defaultDurationUs);
 
   const finalWidth =
     Number.isFinite(width) && width > 0 ? Math.round(width) : defaultSettings.export.width;
@@ -280,9 +291,14 @@ function normalizeProjectSettings(
       openPaths: Array.isArray(input.timelines?.openPaths)
         ? input.timelines.openPaths.filter((p: any) => typeof p === 'string')
         : [],
-      lastOpenedPath: typeof input.timelines?.lastOpenedPath === 'string'
-        ? input.timelines.lastOpenedPath
-        : null,
+      lastOpenedPath:
+        typeof input.timelines?.lastOpenedPath === 'string' ? input.timelines.lastOpenedPath : null,
+    },
+    transitions: {
+      defaultDurationUs:
+        Number.isFinite(defaultTransitionDurationUs) && defaultTransitionDurationUs > 0
+          ? Math.round(defaultTransitionDurationUs)
+          : defaultSettings.transitions.defaultDurationUs,
     },
   };
 }
@@ -564,7 +580,9 @@ export const useProjectStore = defineStore('project', () => {
       currentTimelinePath.value = initialTimeline;
       currentFileName.value = initialTimeline;
 
-      const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings.exportDefaults);
+      const initialSettings = createDefaultProjectSettings(
+        workspaceStore.userSettings.exportDefaults,
+      );
       initialSettings.timelines.openPaths = [initialTimeline];
       initialSettings.timelines.lastOpenedPath = initialTimeline;
       projectSettings.value = initialSettings;
@@ -598,7 +616,7 @@ export const useProjectStore = defineStore('project', () => {
     // Set current timeline to the last opened one if it's in the list, otherwise use the first one
     const openPaths = projectSettings.value.timelines.openPaths;
     const lastOpened = projectSettings.value.timelines.lastOpenedPath;
-    
+
     if (lastOpened && openPaths.includes(lastOpened)) {
       await openTimelineFile(lastOpened);
     } else if (openPaths.length > 0) {
@@ -620,7 +638,7 @@ export const useProjectStore = defineStore('project', () => {
     if (!projectSettings.value.timelines.openPaths.includes(normalizedPath)) {
       projectSettings.value.timelines.openPaths.push(normalizedPath);
     }
-    
+
     projectSettings.value.timelines.lastOpenedPath = normalizedPath;
 
     currentTimelinePath.value = normalizedPath;
