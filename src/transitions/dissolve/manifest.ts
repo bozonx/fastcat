@@ -1,3 +1,4 @@
+import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -9,6 +10,11 @@ export const dissolveManifest: TransitionManifest<DissolveParams> = {
   icon: 'i-heroicons-arrows-right-left',
   defaultDurationUs: 500_000,
   defaultParams: {},
-  computeOutOpacity: (progress) => 1 - progress,
-  computeInOpacity: (progress) => progress,
+  computeOutOpacity: (progress, _params, curve) => {
+    const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
+    return 1 - p;
+  },
+  computeInOpacity: (progress, _params, curve) => {
+    return curve === 'bezier' ? easeInOutCubic(progress) : progress;
+  },
 };

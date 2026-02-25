@@ -14,7 +14,7 @@ import {
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
-import { getTransitionManifest } from '../../transitions';
+import { getTransitionManifest, easeInOutCubic } from '../../transitions';
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
@@ -66,8 +66,8 @@ export interface CompositorClip {
   opacity?: number;
   effects?: any[];
   effectFilters?: Map<string, Filter>;
-  transitionIn?: { type: string; durationUs: number };
-  transitionOut?: { type: string; durationUs: number };
+  transitionIn?: { type: string; durationUs: number; mode?: 'blend' | 'composite'; curve?: 'linear' | 'bezier' };
+  transitionOut?: { type: string; durationUs: number; mode?: 'blend' | 'composite'; curve?: 'linear' | 'bezier' };
 }
 
 export class VideoCompositor {
@@ -834,24 +834,32 @@ export class VideoCompositor {
 
     if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
       const dur = clip.transitionIn.durationUs;
+      const mode = clip.transitionIn.mode ?? 'blend';
+      const curve = clip.transitionIn.curve ?? 'linear';
+      // In composite mode the clip fades from the lower track composition — opacity still applies
       if (localTimeUs < dur) {
         const manifest = getTransitionManifest(clip.transitionIn.type);
         if (manifest) {
-          const progress = Math.max(0, Math.min(1, localTimeUs / dur));
-          opacity = Math.min(opacity, baseOpacity * manifest.computeInOpacity(progress, {}));
+          const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
+          const progress = mode === 'blend' && curve === 'bezier' ? easeInOutCubic(rawProgress) : rawProgress;
+          // For composite mode still apply in-opacity (fade in from transparent)
+          opacity = Math.min(opacity, baseOpacity * manifest.computeInOpacity(progress, {}, curve));
         }
       }
     }
 
     if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
       const dur = clip.transitionOut.durationUs;
+      const mode = clip.transitionOut.mode ?? 'blend';
+      const curve = clip.transitionOut.curve ?? 'linear';
       const clipDurUs = clip.durationUs;
       const outStartUs = clipDurUs - dur;
       if (localTimeUs >= outStartUs) {
         const manifest = getTransitionManifest(clip.transitionOut.type);
         if (manifest) {
-          const progress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
-          opacity = Math.min(opacity, baseOpacity * manifest.computeOutOpacity(progress, {}));
+          const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
+          const progress = mode === 'blend' && curve === 'bezier' ? easeInOutCubic(rawProgress) : rawProgress;
+          opacity = Math.min(opacity, baseOpacity * manifest.computeOutOpacity(progress, {}, curve));
         }
       }
     }

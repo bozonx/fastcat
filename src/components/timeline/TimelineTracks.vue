@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import ClipTransitionPanel from './ClipTransitionPanel.vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineTrack } from '~/timeline/types';
-import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
+import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -46,7 +46,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-// Reactive state for the currently open transition panel
+// --- Transition panel popup ---
 const openTransitionPanel = ref<{
   trackId: string;
   itemId: string;
@@ -72,7 +72,10 @@ function handleTransitionUpdate(payload: {
   openTransitionPanel.value = null;
 }
 
-function selectTransition(e: MouseEvent, input: { trackId: string; itemId: string; edge: 'in' | 'out' }) {
+function selectTransition(
+  e: MouseEvent,
+  input: { trackId: string; itemId: string; edge: 'in' | 'out' },
+) {
   e.stopPropagation();
   timelineStore.selectTransition(input);
 }
@@ -82,6 +85,163 @@ function transitionUsToPx(durationUs: number | undefined): number {
   return Math.max(8, timeUsToPx(Math.max(0, safeUs), timelineStore.timelineZoom));
 }
 
+// --- Resize transition by dragging ---
+const resizeTransition = ref<{
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  startX: number;
+  startDurationUs: number;
+} | null>(null);
+
+function startResizeTransition(
+  e: MouseEvent,
+  trackId: string,
+  itemId: string,
+  edge: 'in' | 'out',
+  currentDurationUs: number,
+) {
+  e.stopPropagation();
+  e.preventDefault();
+  resizeTransition.value = {
+    trackId,
+    itemId,
+    edge,
+    startX: e.clientX,
+    startDurationUs: currentDurationUs,
+  };
+
+  function onMouseMove(ev: MouseEvent) {
+    if (!resizeTransition.value) return;
+    const dx = ev.clientX - resizeTransition.value.startX;
+    // For 'in' edge: drag right = longer, drag left = shorter
+    // For 'out' edge: drag left = longer (towards start), drag right = shorter
+    const sign = edge === 'in' ? 1 : -1;
+    const deltaPx = dx * sign;
+    const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
+    const minUs = 100_000; // 0.1s
+    const maxUs = 10_000_000; // 10s
+    const newDurationUs = Math.min(
+      maxUs,
+      Math.max(minUs, resizeTransition.value.startDurationUs + deltaUs),
+    );
+
+    const track = props.tracks.find((t) => t.id === trackId);
+    const item = track?.items.find((i) => i.id === itemId);
+    if (!item || item.kind !== 'clip') return;
+
+    const current = edge === 'in' ? (item as TimelineClipItem).transitionIn : (item as TimelineClipItem).transitionOut;
+    if (!current) return;
+
+    timelineStore.updateClipTransition(trackId, itemId, {
+      [edge === 'in' ? 'transitionIn' : 'transitionOut']: {
+        ...current,
+        durationUs: Math.round(newDurationUs),
+      },
+    });
+  }
+
+  function onMouseUp() {
+    resizeTransition.value = null;
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  }
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
+// --- Problem detection: previous clip too short for blend transition ---
+function getPrevClipForItem(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+): TimelineClipItem | null {
+  const clips = track.items.filter(
+    (it): it is TimelineClipItem => it.kind === 'clip',
+  );
+  const idx = clips.findIndex((c) => c.id === item.id);
+  if (idx <= 0) return null;
+  return clips[idx - 1] ?? null;
+}
+
+function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): string | null {
+  if (item.kind !== 'clip') return null;
+  const clip = item as TimelineClipItem;
+  const tr = clip.transitionIn;
+  if (!tr || (tr.mode ?? 'blend') !== 'blend') return null;
+  const prev = getPrevClipForItem(track, item);
+  if (!prev) return null;
+  const prevDurS = prev.timelineRange.durationUs / 1_000_000;
+  const needS = tr.durationUs / 1_000_000;
+  if (prevDurS >= needS) return null;
+  return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
+    need: needS.toFixed(2),
+    have: prevDurS.toFixed(2),
+  });
+}
+
+// --- Transition visual helpers ---
+/** SVG path for two triangles (blend mode) with optional bezier curve */
+function buildTransitionSvg(
+  w: number,
+  h: number,
+  edge: 'in' | 'out',
+  curve: 'linear' | 'bezier',
+): string {
+  const m = h / 2;
+  if (edge === 'in') {
+    // Incoming: upper triangle - base right, tip left; lower triangle - base left, tip right
+    const upperTri = `M0,0 L${w},0 L${w},${m} Z`;
+    const lowerTri = `M0,${m} L0,${h} L${w},${h} Z`;
+    const mid =
+      curve === 'bezier'
+        ? `M${w * 0.15},${m} C${w * 0.4},${m * 0.2} ${w * 0.6},${m * 1.8} ${w * 0.85},${m}`
+        : `M${w * 0.15},${m} L${w * 0.85},${m}`;
+    return `${upperTri}||${lowerTri}||${mid}`;
+  } else {
+    // Outgoing: upper triangle - base left, tip right; lower triangle - base right, tip left
+    const upperTri = `M0,0 L${w},0 L0,${m} Z`;
+    const lowerTri = `M${w},${m} L0,${h} L${w},${h} Z`;
+    const mid =
+      curve === 'bezier'
+        ? `M${w * 0.15},${m} C${w * 0.4},${m * 1.8} ${w * 0.6},${m * 0.2} ${w * 0.85},${m}`
+        : `M${w * 0.15},${m} L${w * 0.85},${m}`;
+    return `${upperTri}||${lowerTri}||${mid}`;
+  }
+}
+
+function transitionSvgParts(
+  w: number,
+  h: number,
+  edge: 'in' | 'out',
+  curve: 'linear' | 'bezier',
+): { tri1: string; tri2: string; midLine: string } {
+  const m = h / 2;
+  if (edge === 'in') {
+    return {
+      tri1: `M0,0 L${w},0 L${w},${m} Z`,
+      tri2: `M0,${m} L0,${h} L${w},${h} Z`,
+      midLine:
+        curve === 'bezier'
+          ? `M${w * 0.15},${m} C${w * 0.4},${m * 0.2} ${w * 0.6},${m * 1.8} ${w * 0.85},${m}`
+          : `M${w * 0.15},${m} L${w * 0.85},${m}`,
+    };
+  } else {
+    return {
+      tri1: `M0,0 L${w},0 L0,${m} Z`,
+      tri2: `M${w},${m} L0,${h} L${w},${h} Z`,
+      midLine:
+        curve === 'bezier'
+          ? `M${w * 0.15},${m} C${w * 0.4},${m * 1.8} ${w * 0.6},${m * 0.2} ${w * 0.85},${m}`
+          : `M${w * 0.15},${m} L${w * 0.85},${m}`,
+    };
+  }
+}
+
+// Prevent unused warning for buildTransitionSvg (used only as reference)
+void buildTransitionSvg;
+
+// --- Context menu ---
 function getClipContextMenuItems(track: TimelineTrack, item: any) {
   if (!item) return [];
 
@@ -106,7 +266,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   const mainGroup: any[] = [];
 
   if (item.kind === 'clip') {
-    const canExtract = track.kind === 'video' && item.clipType === 'media' && !item.audioFromVideoDisabled;
+    const canExtract =
+      track.kind === 'video' && item.clipType === 'media' && !item.audioFromVideoDisabled;
     if (canExtract) {
       mainGroup.push({
         label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
@@ -192,7 +353,6 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   const result = [];
   if (mainGroup.length > 0) result.push(mainGroup);
 
-  // Transitions submenu items
   if (item.kind === 'clip' && track.kind === 'video') {
     const transitionGroup: any[] = [];
     const hasIn = Boolean((item as any).transitionIn);
@@ -207,7 +367,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         if (hasIn) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: null });
         } else {
-          const transition = { type: 'dissolve', durationUs: 2_000_000 };
+          const transition = { type: 'dissolve', durationUs: 2_000_000, mode: 'blend' as const, curve: 'linear' as const };
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: transition });
           timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'in' });
         }
@@ -223,7 +383,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         if (hasOut) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: null });
         } else {
-          const transition = { type: 'dissolve', durationUs: 2_000_000 };
+          const transition = { type: 'dissolve', durationUs: 2_000_000, mode: 'blend' as const, curve: 'linear' as const };
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: transition });
           timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'out' });
         }
@@ -236,6 +396,16 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   result.push(actionGroup);
 
   return result;
+}
+
+function getTransitionForPanel() {
+  if (!openTransitionPanel.value) return undefined;
+  const track = props.tracks.find((t) => t.id === openTransitionPanel.value!.trackId);
+  const item = track?.items.find((i) => i.id === openTransitionPanel.value!.itemId);
+  if (!item || item.kind !== 'clip') return undefined;
+  return openTransitionPanel.value!.edge === 'in'
+    ? (item as TimelineClipItem).transitionIn
+    : (item as TimelineClipItem).transitionOut;
 }
 </script>
 
@@ -316,42 +486,156 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           "
           @click.stop="emit('selectItem', $event, item.id)"
         >
-          <!-- Transition blocks (selectable) -->
-          <button
-            v-if="item.kind === 'clip' && (item as any).transitionIn"
-            type="button"
-            class="absolute left-0 top-0 bottom-0 z-20 flex items-center justify-start px-1 text-[10px] text-white/90 bg-black/25 border-r border-white/20"
-            :class="
-              selectedTransition?.itemId === item.id &&
-              selectedTransition?.trackId === item.trackId &&
-              selectedTransition?.edge === 'in'
-                ? 'ring-2 ring-amber-300'
-                : ''
-            "
-            :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs)}px` }"
-            :title="`Transition In: ${(item as any).transitionIn?.type}`"
-            @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
-          >
-            <span class="truncate">{{ (item as any).transitionIn?.type }}</span>
-          </button>
+          <!-- Transition In block -->
+          <template v-if="item.kind === 'clip' && (item as any).transitionIn">
+            <button
+              type="button"
+              class="absolute left-0 top-0 bottom-0 z-20 overflow-hidden"
+              :class="[
+                selectedTransition?.itemId === item.id &&
+                selectedTransition?.trackId === item.trackId &&
+                selectedTransition?.edge === 'in'
+                  ? 'ring-2 ring-amber-300'
+                  : '',
+                hasTransitionInProblem(track, item) ? 'ring-2 ring-orange-500' : '',
+              ]"
+              :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs)}px` }"
+              :title="
+                hasTransitionInProblem(track, item) ??
+                `Transition In: ${(item as any).transitionIn?.type}`
+              "
+              @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
+              @dblclick="
+                openTransitionPanel = {
+                  trackId: item.trackId,
+                  itemId: item.id,
+                  edge: 'in',
+                  anchorEl: $event.currentTarget as HTMLElement,
+                }
+              "
+            >
+              <!-- SVG blend visualization -->
+              <svg
+                v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
+                class="w-full h-full"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                <!-- Upper triangle -->
+                <path
+                  :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
+                  fill="rgba(255,255,255,0.18)"
+                />
+                <!-- Lower triangle -->
+                <path
+                  :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
+                  fill="rgba(255,255,255,0.08)"
+                />
+                <!-- Mid line (bezier or straight) -->
+                <path
+                  :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.6)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <!-- Composite mode: gradient + icon -->
+              <template v-else>
+                <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
+                <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+              </template>
 
-          <button
-            v-if="item.kind === 'clip' && (item as any).transitionOut"
-            type="button"
-            class="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end px-1 text-[10px] text-white/90 bg-black/25 border-l border-white/20"
-            :class="
-              selectedTransition?.itemId === item.id &&
-              selectedTransition?.trackId === item.trackId &&
-              selectedTransition?.edge === 'out'
-                ? 'ring-2 ring-amber-300'
-                : ''
-            "
-            :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs)}px` }"
-            :title="`Transition Out: ${(item as any).transitionOut?.type}`"
-            @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
-          >
-            <span class="truncate">{{ (item as any).transitionOut?.type }}</span>
-          </button>
+              <!-- Error indicator dot -->
+              <div
+                v-if="hasTransitionInProblem(track, item)"
+                class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500"
+              />
+
+              <!-- Resize handle on right edge of transition-in -->
+              <div
+                class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
+                @mousedown.stop="
+                  startResizeTransition(
+                    $event,
+                    item.trackId,
+                    item.id,
+                    'in',
+                    (item as any).transitionIn?.durationUs ?? 500_000,
+                  )
+                "
+              />
+            </button>
+          </template>
+
+          <!-- Transition Out block -->
+          <template v-if="item.kind === 'clip' && (item as any).transitionOut">
+            <button
+              type="button"
+              class="absolute right-0 top-0 bottom-0 z-20 overflow-hidden"
+              :class="[
+                selectedTransition?.itemId === item.id &&
+                selectedTransition?.trackId === item.trackId &&
+                selectedTransition?.edge === 'out'
+                  ? 'ring-2 ring-amber-300'
+                  : '',
+              ]"
+              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs)}px` }"
+              :title="`Transition Out: ${(item as any).transitionOut?.type}`"
+              @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
+              @dblclick="
+                openTransitionPanel = {
+                  trackId: item.trackId,
+                  itemId: item.id,
+                  edge: 'out',
+                  anchorEl: $event.currentTarget as HTMLElement,
+                }
+              "
+            >
+              <!-- SVG blend visualization -->
+              <svg
+                v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
+                class="w-full h-full"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                <path
+                  :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri1"
+                  fill="rgba(255,255,255,0.18)"
+                />
+                <path
+                  :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri2"
+                  fill="rgba(255,255,255,0.08)"
+                />
+                <path
+                  :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').midLine"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.6)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <!-- Composite mode -->
+              <template v-else>
+                <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
+                <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+              </template>
+
+              <!-- Resize handle on left edge of transition-out -->
+              <div
+                class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
+                @mousedown.stop="
+                  startResizeTransition(
+                    $event,
+                    item.trackId,
+                    item.id,
+                    'out',
+                    (item as any).transitionOut?.durationUs ?? 500_000,
+                  )
+                "
+              />
+            </button>
+          </template>
 
           <div
             v-if="item.kind === 'clip'"
@@ -385,7 +669,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
     </div>
   </div>
 
-  <!-- Transition panel popup -->
+  <!-- Transition panel popup (double-click to open, click outside to close) -->
   <div
     v-if="openTransitionPanel"
     class="fixed inset-0 z-50"
@@ -396,17 +680,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         :edge="openTransitionPanel.edge"
         :track-id="openTransitionPanel.trackId"
         :item-id="openTransitionPanel.itemId"
-        :transition="
-          (() => {
-            const track = tracks.find((t) => t.id === openTransitionPanel!.trackId);
-            const item = track?.items.find((i) => i.id === openTransitionPanel!.itemId);
-            return item?.kind === 'clip'
-              ? openTransitionPanel!.edge === 'in'
-                ? (item as any).transitionIn
-                : (item as any).transitionOut
-              : undefined;
-          })()
-        "
+        :transition="getTransitionForPanel()"
         @update="handleTransitionUpdate"
       />
     </div>

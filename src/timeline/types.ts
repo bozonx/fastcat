@@ -22,6 +22,10 @@ export type TimelineClipType = 'media' | 'adjustment' | 'background';
 export interface ClipTransition {
   type: string;
   durationUs: number;
+  /** 'blend' = cross-fade with the previous clip on the same track (default). 'composite' = fade with lower tracks */
+  mode?: 'blend' | 'composite';
+  /** Opacity interpolation curve */
+  curve?: 'linear' | 'bezier';
 }
 
 export type ColorAdjustmentEffect = BaseClipEffect<ColorAdjustmentParams> & {
