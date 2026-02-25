@@ -692,8 +692,10 @@ export class VideoCompositor {
       }
 
       // --- Blend shadow rendering ---
-      // For clips with transitionIn mode='blend', render the previous clip (fade-out)
-      // even after its endUs, so it visually overlaps during the transition window.
+      // Behaviour:
+      //  - image / solid clips: always kept visible (infinite source)
+      //  - video with handle material (sourceDurationUs > durationUs): seek into handle frames
+      //  - video without handle material: hide (no frames available → error shown in UI)
       const blendShadowRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
       const blendShadowClips = new Set<CompositorClip>();
 
@@ -715,18 +717,27 @@ export class VideoCompositor {
         prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
         blendShadowClips.add(prevClip);
 
+        // Images and solid clips: keep visible indefinitely
         if (prevClip.clipKind === 'image' || prevClip.clipKind === 'solid') {
           prevClip.sprite.visible = true;
           continue;
         }
 
-        if (!prevClip.sink) continue;
+        // Check if source media has frames beyond the clip's out-point (handle material)
+        // handleUs = total available source after clip end
+        const handleUs = prevClip.sourceDurationUs - prevClip.durationUs;
+        if (!prevClip.sink || handleUs < 1_000) {
+          // No extra source material → hide (error state, UI will show warning)
+          prevClip.sprite.visible = false;
+          continue;
+        }
 
-        // Animate the previous clip: continue from its actual source position at timeUs
-        const shadowLocalUs = timeUs - prevClip.startUs;
-        // Clamp to the last valid source position (don't go past clip's source end)
-        const clampedLocalUs = Math.min(shadowLocalUs, prevClip.sourceDurationUs - 1_000);
-        const shadowSampleTimeS = Math.max(0, (prevClip.sourceStartUs + clampedLocalUs) / 1_000_000);
+        // Seek into handle material: frames at sourceStartUs + durationUs + overrun
+        const overrunUs = localTimeUs;
+        const handleSampleUs = prevClip.sourceStartUs + prevClip.durationUs + overrunUs;
+        // Clamp to available handle
+        const clampedUs = Math.min(handleSampleUs, prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000);
+        const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
         const req = getVideoSampleWithZeroFallback(prevClip.sink, shadowSampleTimeS, prevClip.firstTimestampS)
           .then((sample) => ({ clip: prevClip, sample }))
           .catch(() => ({ clip: prevClip, sample: null }));
@@ -747,10 +758,6 @@ export class VideoCompositor {
             if (typeof sample.close === 'function') { try { sample.close(); } catch { /**/ } }
           }
         }
-      }
-      // Hide shadow clips that were not activated
-      for (const clip of blendShadowClips) {
-        if (!clip.sprite.visible) clip.sprite.visible = false;
       }
 
       // --- Composite mode: explicitly hide same-layer prev clip ---
@@ -881,17 +888,19 @@ export class VideoCompositor {
     }
   }
 
-  /** Find the clip on the same layer that ends exactly where `clip` starts (previous sibling for blend). */
+  /** Find the clip on the same layer immediately adjacent to `clip` (for blend shadow rendering).
+   *  Returns null if there is a gap larger than 200ms between the clips. */
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
     let best: CompositorClip | null = null;
     for (const c of this.clips) {
       if (c.layer !== clip.layer) continue;
       if (c.itemId === clip.itemId) continue;
-      // Accept clip if it ends at or before clip.startUs (with 1ms tolerance)
-      if (c.endUs <= clip.startUs + 1_000 && c.endUs > clip.startUs - 5_000_000) {
-        if (!best || c.endUs > best.endUs) best = c;
-      }
+      if (c.endUs > clip.startUs + 1_000) continue; // skip clips that end after current start
+      if (!best || c.endUs > best.endUs) best = c;
     }
+    if (!best) return null;
+    // Reject if there is a significant gap (> 200ms) — blend requires adjacent clips
+    if (clip.startUs - best.endUs > 200_000) return null;
     return best;
   }
 

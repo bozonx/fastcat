@@ -173,8 +173,16 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
 
   if (mode === 'blend') {
     const prev = getPrevClipForItem(track, item);
-    // No previous clip at all
     if (!prev) return 'No previous clip to blend with';
+
+    // Gap check: clips must be adjacent (no gap > 0)
+    const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
+    const gapUs = clip.timelineRange.startUs - prevEndUs;
+    if (gapUs > 1_000) {
+      return `Gap between clips (${(gapUs / 1_000_000).toFixed(2)}s). Blend requires adjacent clips.`;
+    }
+
+    // Duration check: prev clip must be long enough
     const prevDurS = prev.timelineRange.durationUs / 1_000_000;
     const needS = tr.durationUs / 1_000_000;
     if (prevDurS < needS) {
@@ -183,11 +191,23 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
         have: prevDurS.toFixed(2),
       });
     }
+
+    // Handle material check for media video clips only
+    if (prev.kind === 'clip' && prev.clipType === 'media') {
+      const prevClip = prev as TimelineClipItem;
+      const prevSourceEnd = (prevClip.sourceRange?.startUs ?? 0) + (prevClip.sourceRange?.durationUs ?? 0);
+      const prevTimelineEnd = prevClip.timelineRange.durationUs;
+      const handleUs = prevSourceEnd - prevTimelineEnd;
+      if (handleUs < tr.durationUs - 1_000) {
+        const haveS = Math.max(0, handleUs / 1_000_000);
+        return `Previous clip has insufficient handle material (needs ${needS.toFixed(2)}s, has ${haveS.toFixed(2)}s beyond out-point)`;
+      }
+    }
+
     return null;
   }
 
   if (mode === 'composite') {
-    // Check lower tracks: if a clip starts before our transition start AND ends within the transition window
     const transitionStart = clip.timelineRange.startUs;
     const transitionEnd = transitionStart + tr.durationUs;
     const myTrackIdx = props.tracks.findIndex((t) => t.id === track.id);
