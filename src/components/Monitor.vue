@@ -156,8 +156,10 @@ function centerMonitor() {
   projectStore.projectSettings.monitor.panY = 0;
 }
 
-function onPreviewPointerDown() {
+function onPreviewPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return;
   isPreviewSelected.value = true;
+  event.stopPropagation();
 }
 
 function onViewportPointerDown(event: PointerEvent) {
@@ -322,7 +324,7 @@ function toggleMute() {
             <div
               class="shrink-0 relative"
               :style="getCanvasWrapperStyle()"
-              @pointerdown.stop="onPreviewPointerDown"
+              @pointerdown="onPreviewPointerDown"
             >
               <div ref="containerEl" :style="getCanvasInnerStyle()" />
               <svg
