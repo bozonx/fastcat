@@ -8,6 +8,7 @@ import type {
   TrimItemCommand,
   SplitItemCommand,
   MoveItemToTrackCommand,
+  OverlayPlaceItemCommand,
   RenameItemCommand,
   UpdateClipPropertiesCommand,
   UpdateClipTransitionCommand,
@@ -948,4 +949,144 @@ export function updateClipTransition(
   }
 
   return { next: { ...doc, tracks: finalTracks } };
+}
+
+/**
+ * Pseudo-overlay placement: places an item on the track at startUs,
+ * trimming or deleting any clips that overlap with the placed item's range.
+ * Clips fully covered are removed; partially covered clips are trimmed.
+ */
+export function overlayPlaceItem(
+  doc: TimelineDocument,
+  cmd: OverlayPlaceItemCommand,
+): TimelineCommandResult {
+  const fromTrack = getTrackById(doc, cmd.fromTrackId);
+  const toTrack = getTrackById(doc, cmd.toTrackId);
+
+  const itemIdx = fromTrack.items.findIndex((x) => x.id === cmd.itemId);
+  if (itemIdx === -1) return { next: doc };
+  const item = fromTrack.items[itemIdx];
+  if (!item || !item.timelineRange) return { next: doc };
+
+  const fps = getDocFps(doc);
+  const startUs = quantizeTimeUsToFrames(cmd.startUs, fps, 'round');
+  const durationUs = Math.max(0, item.timelineRange.durationUs);
+  const endUs = startUs + durationUs;
+
+  const nextFromItemsRaw = fromTrack.items.filter((x) => x.id !== cmd.itemId);
+  const isSameTrack = fromTrack.id === toTrack.id;
+  const destItems: TimelineTrackItem[] = isSameTrack ? [...nextFromItemsRaw] : [...toTrack.items];
+
+  const nextDestItems: TimelineTrackItem[] = [];
+  for (const it of destItems) {
+    if (it.kind !== 'clip') {
+      nextDestItems.push(it);
+      continue;
+    }
+
+    const itStart = it.timelineRange.startUs;
+    const itEnd = itStart + it.timelineRange.durationUs;
+
+    if (itEnd <= startUs || itStart >= endUs) {
+      nextDestItems.push(it);
+      continue;
+    }
+
+    // Fully covered: delete
+    if (itStart >= startUs && itEnd <= endUs) {
+      continue;
+    }
+
+    // Overlaps only on the left side: trim end of existing clip
+    if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
+      const newDuration = quantizeTimeUsToFrames(startUs - itStart, fps, 'floor');
+      if (newDuration > 0) {
+        nextDestItems.push({
+          ...it,
+          timelineRange: { startUs: itStart, durationUs: newDuration },
+          sourceRange: { ...it.sourceRange, durationUs: newDuration },
+        });
+      }
+      continue;
+    }
+
+    // Overlaps only on the right side: trim start of existing clip
+    if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
+      const trimDelta = endUs - itStart;
+      const newStart = quantizeTimeUsToFrames(endUs, fps, 'ceil');
+      const newDuration = quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor');
+      if (newDuration > 0) {
+        const newSourceStartUs = Math.min(
+          it.sourceRange.startUs + trimDelta,
+          it.sourceRange.startUs + it.sourceRange.durationUs,
+        );
+        nextDestItems.push({
+          ...it,
+          timelineRange: { startUs: newStart, durationUs: newDuration },
+          sourceRange: {
+            startUs: newSourceStartUs,
+            durationUs: Math.max(0, it.sourceRange.durationUs - trimDelta),
+          },
+        });
+      }
+      continue;
+    }
+
+    // Existing clip fully contains the new item: split into two
+    if (itStart < startUs && itEnd > endUs) {
+      const leftDuration = quantizeTimeUsToFrames(startUs - itStart, fps, 'floor');
+      if (leftDuration > 0) {
+        nextDestItems.push({
+          ...it,
+          timelineRange: { startUs: itStart, durationUs: leftDuration },
+          sourceRange: { ...it.sourceRange, durationUs: leftDuration },
+        });
+      }
+      const rightTrimDelta = endUs - itStart;
+      const rightStart = quantizeTimeUsToFrames(endUs, fps, 'ceil');
+      const rightDuration = quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor');
+      if (rightDuration > 0) {
+        const rightSourceStartUs = Math.min(
+          it.sourceRange.startUs + rightTrimDelta,
+          it.sourceRange.startUs + it.sourceRange.durationUs,
+        );
+        nextDestItems.push({
+          ...it,
+          id: nextItemId(toTrack.id, 'clip'),
+          timelineRange: { startUs: rightStart, durationUs: rightDuration },
+          sourceRange: {
+            startUs: rightSourceStartUs,
+            durationUs: Math.max(0, it.sourceRange.durationUs - rightTrimDelta),
+          },
+        });
+      }
+      continue;
+    }
+
+    nextDestItems.push(it);
+  }
+
+  const movedItem: TimelineTrackItem = {
+    ...item,
+    trackId: toTrack.id,
+    timelineRange: { ...item.timelineRange, startUs },
+  };
+  nextDestItems.push(movedItem);
+  nextDestItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+  const normalizedDest = normalizeGaps(doc, toTrack.id, nextDestItems);
+
+  let nextTracks: typeof doc.tracks;
+  if (isSameTrack) {
+    nextTracks = doc.tracks.map((t) => (t.id === toTrack.id ? { ...t, items: normalizedDest } : t));
+  } else {
+    const normalizedFrom = normalizeGaps(doc, fromTrack.id, nextFromItemsRaw);
+    nextTracks = doc.tracks.map((t) => {
+      if (t.id === fromTrack.id) return { ...t, items: normalizedFrom };
+      if (t.id === toTrack.id) return { ...t, items: normalizedDest };
+      return t;
+    });
+  }
+
+  return { next: { ...doc, tracks: nextTracks } };
 }

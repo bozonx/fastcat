@@ -14,6 +14,7 @@ import {
   removeItems,
   moveItem,
   moveItemToTrack,
+  overlayPlaceItem,
   trimItem,
   splitItem,
   updateClipProperties,
@@ -156,6 +157,19 @@ export interface UpdateClipTransitionCommand {
   transitionOut?: ClipTransition | null;
 }
 
+/**
+ * Pseudo-overlay placement: moves an item to a new position on the track,
+ * cutting or trimming any clips that are in the way, and deleting clips
+ * fully covered by the placed item.
+ */
+export interface OverlayPlaceItemCommand {
+  type: 'overlay_place_item';
+  fromTrackId: string;
+  toTrackId: string;
+  itemId: string;
+  startUs: number;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -174,7 +188,8 @@ export type TimelineCommand =
   | RenameItemCommand
   | UpdateClipPropertiesCommand
   | UpdateTrackPropertiesCommand
-  | UpdateClipTransitionCommand;
+  | UpdateClipTransitionCommand
+  | OverlayPlaceItemCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -220,6 +235,8 @@ export function applyTimelineCommand(
       return updateClipTransition(doc, cmd);
     case 'update_track_properties':
       return updateTrackProperties(doc, cmd);
+    case 'overlay_place_item':
+      return overlayPlaceItem(doc, cmd);
     default:
       return { next: doc };
   }

@@ -1,6 +1,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
 
 export const BASE_PX_PER_SECOND = 10;
@@ -43,11 +44,81 @@ function quantizeDeltaUsToFrames(deltaUs: number, fps: number): number {
   return Math.round((frames * 1e6) / safeFps);
 }
 
+function quantizeStartUsToFrames(startUs: number, fps: number): number {
+  const safeFps = sanitizeFps(fps);
+  const frame = Math.round((Math.max(0, startUs) * safeFps) / 1e6);
+  return Math.round((frame * 1e6) / safeFps);
+}
+
+/**
+ * Returns the snapped startUs considering clip-snap and frame-snap settings.
+ * @param rawStartUs - raw candidate position in microseconds
+ * @param draggingItemId - id of item being dragged (excluded from snap targets)
+ * @param fps - timeline fps
+ * @param zoom - timeline zoom
+ * @param snapThresholdPx - snap threshold in pixels
+ * @param allTracks - all timeline tracks
+ * @param enableFrameSnap - whether frame snapping is active
+ * @param enableClipSnap - whether clip snapping is active
+ */
+function computeSnappedStartUs(params: {
+  rawStartUs: number;
+  draggingItemId: string;
+  fps: number;
+  zoom: number;
+  snapThresholdPx: number;
+  allTracks: TimelineTrack[];
+  enableFrameSnap: boolean;
+  enableClipSnap: boolean;
+}): number {
+  const {
+    rawStartUs,
+    draggingItemId,
+    fps,
+    zoom,
+    snapThresholdPx,
+    allTracks,
+    enableFrameSnap,
+    enableClipSnap,
+  } = params;
+  const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);
+
+  let best = rawStartUs;
+  let bestDist = thresholdUs;
+
+  if (enableClipSnap) {
+    // Snap targets: timeline start + all clip start/end positions (excluding dragged item)
+    const snapTargets: number[] = [0];
+    for (const track of allTracks) {
+      for (const it of track.items) {
+        if (it.id === draggingItemId || it.kind !== 'clip') continue;
+        snapTargets.push(it.timelineRange.startUs);
+        snapTargets.push(it.timelineRange.startUs + it.timelineRange.durationUs);
+      }
+    }
+
+    for (const target of snapTargets) {
+      const dist = Math.abs(rawStartUs - target);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = target;
+      }
+    }
+  }
+
+  if (enableFrameSnap && bestDist >= thresholdUs) {
+    best = quantizeStartUsToFrames(rawStartUs, fps);
+  }
+
+  return Math.max(0, best);
+}
+
 export function useTimelineInteraction(
   scrollEl: Ref<HTMLElement | null>,
   tracks: ComputedRef<TimelineTrack[]>,
 ) {
   const timelineStore = useTimelineStore();
+  const settingsStore = useTimelineSettingsStore();
 
   const isDraggingPlayhead = ref(false);
   const draggingItemId = ref<string | null>(null);
@@ -163,10 +234,28 @@ export function useTimelineInteraction(
 
     if (!mode || !trackId || !itemId || clientX === null || clientY === null) return;
 
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const zoom = timelineStore.timelineZoom;
+    const enableFrameSnap = settingsStore.frameSnapMode === 'frames';
+    const enableClipSnap = settingsStore.clipSnapMode === 'clips';
+    const snapThresholdPx = settingsStore.snapThresholdPx;
+    const overlapMode = settingsStore.overlapMode;
+
     if (mode === 'move') {
       const dxPx = clientX - dragAnchorClientX.value;
-      const deltaUs = pxToDeltaUs(dxPx, timelineStore.timelineZoom);
-      const startUs = Math.max(0, dragAnchorStartUs.value + deltaUs);
+      const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
+      const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
+
+      const startUs = computeSnappedStartUs({
+        rawStartUs,
+        draggingItemId: itemId,
+        fps,
+        zoom,
+        snapThresholdPx,
+        allTracks: tracks.value,
+        enableFrameSnap,
+        enableClipSnap,
+      });
 
       const trackEl = document.elementFromPoint(clientX, clientY)?.closest('[data-track-id]');
       const hoverTrackId = trackEl?.getAttribute('data-track-id');
@@ -181,26 +270,46 @@ export function useTimelineInteraction(
       }
 
       try {
-        timelineStore.applyTimeline(
-          {
-            type: 'move_item_to_track',
-            fromTrackId: trackId,
-            toTrackId: targetTrackId,
-            itemId,
-            startUs,
-          },
-          { saveMode: 'none' },
-        );
+        if (overlapMode === 'pseudo') {
+          timelineStore.applyTimeline(
+            {
+              type: 'overlay_place_item',
+              fromTrackId: trackId,
+              toTrackId: targetTrackId,
+              itemId,
+              startUs,
+            },
+            { saveMode: 'none' },
+          );
+        } else {
+          timelineStore.applyTimeline(
+            {
+              type: 'move_item_to_track',
+              fromTrackId: trackId,
+              toTrackId: targetTrackId,
+              itemId,
+              startUs,
+            },
+            { saveMode: 'none' },
+          );
+        }
         draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
       } catch {}
       return;
     }
 
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    // Trim modes
     const dxPx = clientX - dragAnchorClientX.value;
-    const rawDeltaUs = pxToDeltaUs(dxPx, timelineStore.timelineZoom);
-    const quantizedDeltaUs = quantizeDeltaUsToFrames(rawDeltaUs, fps);
+    const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
+
+    let quantizedDeltaUs: number;
+    if (enableFrameSnap) {
+      quantizedDeltaUs = quantizeDeltaUsToFrames(rawDeltaUs, fps);
+    } else {
+      quantizedDeltaUs = rawDeltaUs;
+    }
+
     const nextStepDeltaUs = quantizedDeltaUs - dragLastAppliedQuantizedDeltaUs.value;
 
     lastDragClientX.value = clientX;
