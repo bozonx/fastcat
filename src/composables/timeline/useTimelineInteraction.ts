@@ -193,6 +193,7 @@ export function useTimelineInteraction(
   const isDraggingPlayhead = ref(false);
   const draggingItemId = ref<string | null>(null);
   const draggingTrackId = ref<string | null>(null);
+  const dragOriginTrackId = ref<string | null>(null);
   const draggingMode = ref<'move' | 'trim_start' | 'trim_end' | null>(null);
   const dragAnchorClientX = ref(0);
   const dragAnchorStartUs = ref(0);
@@ -273,6 +274,7 @@ export function useTimelineInteraction(
 
     draggingMode.value = 'move';
     draggingTrackId.value = trackId;
+    dragOriginTrackId.value = trackId;
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
@@ -397,7 +399,7 @@ export function useTimelineInteraction(
       if (overlapMode === 'pseudo') {
         movePreview.value = { itemId, trackId: targetTrackId, startUs };
         pendingMoveCommit.value = {
-          fromTrackId: trackId,
+          fromTrackId: dragOriginTrackId.value ?? trackId,
           toTrackId: targetTrackId,
           itemId,
           startUs,
@@ -540,6 +542,7 @@ export function useTimelineInteraction(
     draggingMode.value = null;
     draggingItemId.value = null;
     draggingTrackId.value = null;
+    dragOriginTrackId.value = null;
     pendingDragClientX.value = null;
     pendingDragClientY.value = null;
 

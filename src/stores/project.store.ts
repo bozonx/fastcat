@@ -32,6 +32,8 @@ export interface GranVideoEditorProjectSettings {
   monitor: {
     previewResolution: number;
     useProxy: boolean;
+    panX: number;
+    panY: number;
   };
   timelines: {
     openPaths: string[];
@@ -59,6 +61,8 @@ const DEFAULT_PROJECT_SETTINGS = {
   monitor: {
     previewResolution: 480,
     useProxy: true,
+    panX: 0,
+    panY: 0,
   },
   timelines: {
     openPaths: [],
@@ -155,6 +159,8 @@ function createDefaultProjectSettings(userExportDefaults: {
     monitor: {
       previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy: DEFAULT_PROJECT_SETTINGS.monitor.useProxy,
+      panX: DEFAULT_PROJECT_SETTINGS.monitor.panX,
+      panY: DEFAULT_PROJECT_SETTINGS.monitor.panY,
     },
     timelines: {
       openPaths: [],
@@ -208,6 +214,8 @@ function normalizeProjectSettings(
   const format = encodingInput.format;
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
+  const panX = Number(monitorInput.panX);
+  const panY = Number(monitorInput.panY);
   const defaultTransitionDurationUs = Number(transitionsInput.defaultDurationUs);
 
   const finalWidth =
@@ -286,6 +294,8 @@ function normalizeProjectSettings(
           : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy:
         useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
+      panX: Number.isFinite(panX) ? panX : DEFAULT_PROJECT_SETTINGS.monitor.panX,
+      panY: Number.isFinite(panY) ? panY : DEFAULT_PROJECT_SETTINGS.monitor.panY,
     },
     timelines: {
       openPaths: Array.isArray(input.timelines?.openPaths)

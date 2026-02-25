@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -122,6 +122,85 @@ onMounted(() => {
   });
 });
 
+const isPreviewSelected = ref(false);
+
+const isPanning = ref(false);
+const panStart = ref({ x: 0, y: 0 });
+const panOrigin = ref({ x: 0, y: 0 });
+
+const panX = computed({
+  get: () => projectStore.projectSettings.monitor?.panX ?? 0,
+  set: (v: number) => {
+    if (!projectStore.projectSettings.monitor) return;
+    projectStore.projectSettings.monitor.panX = v;
+  },
+});
+
+const panY = computed({
+  get: () => projectStore.projectSettings.monitor?.panY ?? 0,
+  set: (v: number) => {
+    if (!projectStore.projectSettings.monitor) return;
+    projectStore.projectSettings.monitor.panY = v;
+  },
+});
+
+const workspaceStyle = computed(() => {
+  return {
+    transform: `translate(${panX.value}px, ${panY.value}px)`,
+  };
+});
+
+function centerMonitor() {
+  if (!projectStore.projectSettings.monitor) return;
+  projectStore.projectSettings.monitor.panX = 0;
+  projectStore.projectSettings.monitor.panY = 0;
+}
+
+function onPreviewPointerDown() {
+  isPreviewSelected.value = true;
+}
+
+function onViewportPointerDown(event: PointerEvent) {
+  if (event.button !== 1) return;
+  isPanning.value = true;
+  panStart.value = { x: event.clientX, y: event.clientY };
+  panOrigin.value = { x: panX.value, y: panY.value };
+  (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+function onViewportPointerMove(event: PointerEvent) {
+  if (!isPanning.value) return;
+  const dx = event.clientX - panStart.value.x;
+  const dy = event.clientY - panStart.value.y;
+  panX.value = panOrigin.value.x + dx;
+  panY.value = panOrigin.value.y + dy;
+}
+
+function stopPan(event?: PointerEvent) {
+  if (!isPanning.value) return;
+  isPanning.value = false;
+  if (event) {
+    try {
+      (event.currentTarget as HTMLElement | null)?.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function onWindowPointerUp() {
+  isPanning.value = false;
+}
+
+onMounted(() => {
+  window.addEventListener('pointerup', onWindowPointerUp);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerup', onWindowPointerUp);
+});
+
 function formatTime(seconds: number): string {
   if (isNaN(seconds)) return '00:00';
   const m = Math.floor(seconds / 60);
@@ -162,6 +241,16 @@ function toggleMute() {
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
       <div class="flex items-center gap-2 shrink-0">
+        <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-arrows-pointing-in"
+            @click="centerMonitor"
+          />
+        </UTooltip>
+
         <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
           <UButton
             v-if="projectStore.projectSettings.monitor"
@@ -219,10 +308,42 @@ function toggleMute() {
     </div>
 
     <!-- Video area -->
-    <div ref="viewportEl" class="flex-1 min-h-0 min-w-0 overflow-hidden relative">
-      <div class="absolute inset-0 flex items-center justify-center">
-        <div class="shrink-0" :style="getCanvasWrapperStyle()">
-          <div ref="containerEl" :style="getCanvasInnerStyle()" />
+    <div
+      ref="viewportEl"
+      class="flex-1 min-h-0 min-w-0 overflow-hidden relative"
+      @pointerdown="onViewportPointerDown"
+      @pointermove="onViewportPointerMove"
+      @pointerup="stopPan"
+      @pointercancel="stopPan"
+    >
+      <div class="absolute inset-0">
+        <div class="absolute inset-0" :style="workspaceStyle">
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div
+              class="shrink-0 relative"
+              :style="getCanvasWrapperStyle()"
+              @pointerdown.stop="onPreviewPointerDown"
+            >
+              <div ref="containerEl" :style="getCanvasInnerStyle()" />
+              <svg
+                class="absolute inset-0 overflow-visible"
+                :width="renderWidth"
+                :height="renderHeight"
+                style="pointer-events: none"
+              >
+                <rect
+                  v-if="isPreviewSelected"
+                  x="0"
+                  y="0"
+                  :width="renderWidth"
+                  :height="renderHeight"
+                  fill="none"
+                  stroke="#60a5fa"
+                  stroke-width="2"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div
