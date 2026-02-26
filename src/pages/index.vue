@@ -33,6 +33,8 @@ let volumeHoldTimeout: number | null = null;
 let volumeHoldInterval: number | null = null;
 let volumeHoldKeyCode: string | null = null;
 
+const suppressedKeyupCodes = new Set<string>();
+
 function clearVolumeHoldTimers() {
   if (volumeHoldTimeout !== null) {
     window.clearTimeout(volumeHoldTimeout);
@@ -86,6 +88,9 @@ function onGlobalKeydown(e: KeyboardEvent) {
   if (matched.length === 0) return;
 
   e.preventDefault();
+  e.stopPropagation();
+  (e as any).stopImmediatePropagation?.();
+  suppressedKeyupCodes.add(e.code);
 
   const cmd: string = matched[0]!;
   if (cmd === 'general.focus') {
@@ -194,24 +199,32 @@ function onGlobalKeydown(e: KeyboardEvent) {
 }
 
 function onGlobalKeyup(e: KeyboardEvent) {
+  if (suppressedKeyupCodes.has(e.code)) {
+    e.preventDefault();
+    e.stopPropagation();
+    (e as any).stopImmediatePropagation?.();
+    suppressedKeyupCodes.delete(e.code);
+  }
+
   if (!volumeHoldKeyCode) return;
   if (e.code !== volumeHoldKeyCode) return;
   clearVolumeHoldTimers();
 }
 
 function onGlobalBlur() {
+  suppressedKeyupCodes.clear();
   clearVolumeHoldTimers();
 }
 
 onMounted(() => {
   window.addEventListener('keydown', onGlobalKeydown, true);
-  window.addEventListener('keyup', onGlobalKeyup);
+  window.addEventListener('keyup', onGlobalKeyup, true);
   window.addEventListener('blur', onGlobalBlur);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalKeydown, true);
-  window.removeEventListener('keyup', onGlobalKeyup);
+  window.removeEventListener('keyup', onGlobalKeyup, true);
   window.removeEventListener('blur', onGlobalBlur);
   clearVolumeHoldTimers();
 });
