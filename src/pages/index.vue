@@ -335,23 +335,23 @@ function leaveProject() {
     <!-- Editor Screen -->
     <template v-else>
       <div
-        class="flex items-center justify-between px-4 py-2 bg-ui-bg-elevated border-b border-ui-border"
+        class="flex items-center justify-between px-4 py-2.5 bg-ui-bg-elevated border-b border-ui-border"
       >
         <div class="flex items-center gap-4">
           <UButton
-            size="xs"
+            size="sm"
             variant="ghost"
             color="neutral"
             icon="i-heroicons-arrow-left"
             @click="leaveProject"
           />
           <div class="flex items-center gap-2">
-            <span class="text-gray-400 font-medium text-sm">{{
+            <span class="text-ui-text-muted font-medium text-sm">{{
               projectStore.currentProjectName
             }}</span>
-            <span class="text-gray-600">/</span>
-            <span class="text-white font-medium text-sm flex items-center gap-1">
-              <UIcon name="i-heroicons-document" class="w-4 h-4 text-gray-500" />
+            <span class="text-ui-border">/</span>
+            <span class="text-ui-text font-medium text-sm flex items-center gap-1">
+              <UIcon name="i-heroicons-document" class="w-4 h-4 text-ui-text-muted" />
               {{ projectStore.currentFileName }}
             </span>
           </div>
@@ -359,7 +359,7 @@ function leaveProject() {
 
         <div class="flex items-center gap-2">
           <UButton
-            size="xs"
+            size="sm"
             variant="ghost"
             color="neutral"
             icon="i-heroicons-cog-6-tooth"
@@ -367,7 +367,7 @@ function leaveProject() {
             @click="isEditorSettingsOpen = true"
           />
           <UButton
-            size="xs"
+            size="sm"
             variant="soft"
             color="primary"
             icon="i-heroicons-arrow-down-tray"

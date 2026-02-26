@@ -207,7 +207,7 @@ function formatTime(seconds: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated border-t border-ui-border">
+  <div class="flex flex-col h-full bg-ui-bg border-t border-ui-border">
     <!-- Tabs -->
     <TimelineTabs />
 
@@ -227,7 +227,7 @@ function formatTime(seconds: number): string {
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
             <div
-              class="h-6 border-b border-ui-border bg-ui-bg-accent sticky top-0 flex items-end px-2 gap-16 text-xxs text-ui-text-muted font-mono select-none cursor-pointer"
+              class="h-7 border-b border-ui-border bg-ui-bg-elevated sticky top-0 flex items-end px-2 gap-16 text-xs text-ui-text-muted font-mono select-none cursor-pointer"
               @mousedown="onTimeRulerMouseDown"
             >
               <span

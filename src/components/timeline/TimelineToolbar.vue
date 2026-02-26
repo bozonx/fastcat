@@ -73,9 +73,9 @@ function toggleClipSnapMode() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-700 shrink-0">
+  <div class="flex items-center gap-2 px-3 py-2.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated">
     <UButton
-      size="xs"
+      size="sm"
       variant="ghost"
       color="neutral"
       icon="i-heroicons-backward"
@@ -83,7 +83,7 @@ function toggleClipSnapMode() {
       @click="stop"
     />
     <UButton
-      size="xs"
+      size="sm"
       variant="ghost"
       color="neutral"
       :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
@@ -95,7 +95,7 @@ function toggleClipSnapMode() {
       @click="togglePlay"
     />
     <UButton
-      size="xs"
+      size="sm"
       variant="ghost"
       color="neutral"
       icon="i-heroicons-stop"
@@ -103,14 +103,14 @@ function toggleClipSnapMode() {
       @click="stop"
     />
 
-    <span class="text-xs font-mono text-gray-400 ml-2">
+    <span class="text-sm font-mono text-ui-text-muted ml-3">
       {{ formatTime(timelineStore.currentTime / 1e6) }} /
       {{ formatTime(timelineStore.duration / 1e6) }}
     </span>
 
-    <div class="ml-4 flex items-center gap-1">
+    <div class="ml-4 flex items-center gap-1.5">
       <UButton
-        size="xs"
+        size="sm"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-video-camera"
@@ -118,7 +118,7 @@ function toggleClipSnapMode() {
         @click="addVideoTrack"
       />
       <UButton
-        size="xs"
+        size="sm"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-musical-note"
@@ -126,10 +126,10 @@ function toggleClipSnapMode() {
         @click="addAudioTrack"
       />
 
-      <div class="w-px h-4 bg-gray-700 mx-1" />
+      <div class="w-px h-5 bg-ui-border mx-1.5" />
 
       <UButton
-        size="xs"
+        size="sm"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-adjustments-horizontal"
@@ -137,7 +137,7 @@ function toggleClipSnapMode() {
         @click="addAdjustmentClip"
       />
       <UButton
-        size="xs"
+        size="sm"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-swatch"
@@ -145,7 +145,7 @@ function toggleClipSnapMode() {
         @click="addBackgroundClip"
       />
       <UButton
-        size="xs"
+        size="sm"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-chat-bubble-bottom-center-text"
@@ -153,10 +153,10 @@ function toggleClipSnapMode() {
         @click="addTextClip"
       />
 
-      <div class="w-px h-4 bg-gray-700 mx-1" />
+      <div class="w-px h-5 bg-ui-border mx-1.5" />
 
       <UButton
-        size="xs"
+        size="sm"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-scissors"
@@ -165,12 +165,12 @@ function toggleClipSnapMode() {
       />
     </div>
 
-    <div class="mx-2 flex items-center gap-1">
-      <div class="w-px h-4 bg-gray-700" />
+    <div class="mx-2 flex items-center gap-1.5">
+      <div class="w-px h-5 bg-ui-border" />
 
       <!-- Overlap mode toggle -->
       <UButton
-        size="xs"
+        size="sm"
         :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
         :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
         icon="i-heroicons-squares-2x2"
@@ -187,11 +187,11 @@ function toggleClipSnapMode() {
         @click="toggleOverlapMode"
       />
 
-      <div class="w-px h-4 bg-gray-700" />
+      <div class="w-px h-5 bg-ui-border" />
 
       <!-- Frame snap toggle -->
       <UButton
-        size="xs"
+        size="sm"
         :variant="settingsStore.frameSnapMode === 'frames' ? 'solid' : 'ghost'"
         :color="settingsStore.frameSnapMode === 'frames' ? 'primary' : 'neutral'"
         icon="i-heroicons-film"
@@ -210,7 +210,7 @@ function toggleClipSnapMode() {
 
       <!-- Clip snap toggle -->
       <UButton
-        size="xs"
+        size="sm"
         :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
         :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
         icon="i-heroicons-magnet"
@@ -228,18 +228,18 @@ function toggleClipSnapMode() {
       />
     </div>
 
-    <div class="ml-auto flex items-center gap-1 text-xs text-gray-500">
-      <UIcon name="i-heroicons-magnifying-glass-minus" class="w-3.5 h-3.5" />
+    <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted">
+      <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4" />
       <input
         type="range"
         min="10"
         max="200"
         :value="timelineStore.timelineZoom"
-        class="w-20 accent-primary-500"
+        class="w-28"
         :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
         @input="onZoomInput"
       />
-      <UIcon name="i-heroicons-magnifying-glass-plus" class="w-3.5 h-3.5" />
+      <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
     </div>
   </div>
 </template>

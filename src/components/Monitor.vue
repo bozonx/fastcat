@@ -237,15 +237,15 @@ function toggleMute() {
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0">
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10"
+      class="flex items-center justify-between px-3 py-2.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated"
     >
-      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+      <span class="text-sm font-semibold text-ui-text-muted uppercase tracking-wider">
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
       <div class="flex items-center gap-2 shrink-0">
         <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
           <UButton
-            size="xs"
+            size="sm"
             color="neutral"
             variant="ghost"
             icon="i-heroicons-arrows-pointing-in"
@@ -256,7 +256,7 @@ function toggleMute() {
         <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
           <UButton
             v-if="projectStore.projectSettings.monitor"
-            size="xs"
+            size="sm"
             :color="useProxyInMonitor ? 'primary' : 'neutral'"
             :variant="useProxyInMonitor ? 'soft' : 'ghost'"
             icon="i-heroicons-bolt"
@@ -264,7 +264,7 @@ function toggleMute() {
           />
         </UTooltip>
 
-        <div class="w-24">
+        <div class="w-28">
           <USelectMenu
             v-if="projectStore.projectSettings.monitor"
             :model-value="
@@ -275,7 +275,7 @@ function toggleMute() {
             :items="previewResolutions"
             value-key="value"
             label-key="label"
-            size="xs"
+            size="sm"
             class="w-full"
             @update:model-value="
               (v: any) => {
@@ -376,10 +376,10 @@ function toggleMute() {
 
     <!-- Playback controls -->
     <div
-      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3 border-t border-ui-border shrink-0"
+      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-t border-ui-border shrink-0 bg-ui-bg-elevated"
     >
       <UButton
-        size="sm"
+        size="md"
         variant="ghost"
         color="neutral"
         icon="i-heroicons-backward"
@@ -388,7 +388,7 @@ function toggleMute() {
         @click="timelineStore.currentTime = 0"
       />
       <UButton
-        size="sm"
+        size="md"
         variant="solid"
         color="primary"
         :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
@@ -396,9 +396,9 @@ function toggleMute() {
         :disabled="!canInteractPlayback"
         @click="togglePlayback"
       />
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2.5">
         <UButton
-          size="xs"
+          size="sm"
           variant="ghost"
           color="neutral"
           :icon="audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
@@ -415,15 +415,15 @@ function toggleMute() {
           max="1"
           step="0.05"
           :value="audioMuted ? 0 : audioVolume"
-          class="w-24 accent-primary-500"
+          class="w-28"
           :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
           @input="onVolumeInput"
         />
-        <span class="text-[11px] text-gray-500 tabular-nums">
+        <span class="text-sm text-ui-text-muted tabular-nums min-w-12">
           {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%
         </span>
       </div>
-      <span ref="timecodeEl" class="text-xs text-gray-600 ml-2 font-mono">
+      <span ref="timecodeEl" class="text-sm text-ui-text-muted ml-2 font-mono">
         {{ formatTime(uiCurrentTimeUs / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
       </span>
     </div>

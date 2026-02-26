@@ -1,9 +1,9 @@
 :root, .dark {
-  /* Default Dark Theme */
-  --ui-bg: #030712; /* gray-950 */
-  --ui-bg-elevated: #111827; /* gray-900 */
-  --ui-bg-accent: #1f2937; /* gray-800 */
-  --ui-border: #1f2937; /* gray-800 */
-  --ui-text: #e5e7eb; /* gray-200 */
-  --ui-text-muted: #9ca3af; /* gray-400 */
+  /* Professional Video Editor Dark Theme */
+  --ui-bg: #0a0a0a; /* Deeper black for main background */
+  --ui-bg-elevated: #1a1a1a; /* Slightly elevated panels */
+  --ui-bg-accent: #252525; /* Accent areas */
+  --ui-border: #2a2a2a; /* Subtle borders */
+  --ui-text: #e8e8e8; /* High contrast text */
+  --ui-text-muted: #8a8a8a; /* Muted text */
 }
