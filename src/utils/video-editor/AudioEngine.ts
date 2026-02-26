@@ -11,6 +11,7 @@ export interface AudioEngineClip {
   sourceStartUs: number;
   sourceDurationUs: number;
   speed?: number;
+  audioGain?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
 }
@@ -353,6 +354,12 @@ export class AudioEngine {
     const fadeInS = Math.min(fadeInSRaw, Math.max(0, clipDurationS));
     const fadeOutS = Math.min(fadeOutSRaw, Math.max(0, clipDurationS));
 
+    const audioGainRaw = clip.audioGain;
+    const audioGain =
+      typeof audioGainRaw === 'number' && Number.isFinite(audioGainRaw)
+        ? Math.max(0, Math.min(10, audioGainRaw))
+        : 1;
+
     // When to start playing in AudioContext time.
     const playStartS =
       currentTimeS < clipStartS
@@ -427,14 +434,14 @@ export class AudioEngine {
 
     function gainAtClipTime(tClipS: number): number {
       const t = Math.max(0, Math.min(clipDurationS, tClipS));
-      let g = 1;
+      let g = audioGain;
       if (fadeInS > 0 && t < fadeInS) {
         g *= t / fadeInS;
       }
       if (fadeOutS > 0 && t > clipDurationS - fadeOutS) {
         g *= (clipDurationS - t) / fadeOutS;
       }
-      return Math.max(0, Math.min(1, g));
+      return Math.max(0, Math.min(10, g));
     }
 
     const t0 = localOffsetInClipS;

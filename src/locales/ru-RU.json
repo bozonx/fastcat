@@ -285,6 +285,9 @@
   },
   "granVideoEditor": {
     "clip": {
+      "audio": {
+        "volume": "Громкость"
+      },
       "audioFade": {
         "title": "Фейды звука",
         "fadeIn": "Фейд в начале",

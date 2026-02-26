@@ -26,6 +26,7 @@ export interface PreparedClip {
   input: any;
   sink: any;
   sourcePath: string;
+  audioGain?: number;
   audioFadeInS?: number;
   audioFadeOutS?: number;
 }
@@ -100,6 +101,7 @@ export class AudioMixer {
 
       const audioFadeInUs = clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs ?? 0;
       const audioFadeOutUs = clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs ?? 0;
+      const audioGainRaw = clipData.audioGain ?? clipData.gran?.audioGain ?? 1;
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
@@ -116,6 +118,10 @@ export class AudioMixer {
         clipDurationS,
         Math.max(0, usToS(Number(audioFadeOutUs) || 0)),
       );
+      const audioGain =
+        typeof audioGainRaw === 'number' && Number.isFinite(audioGainRaw)
+          ? Math.max(0, Math.min(10, Number(audioGainRaw)))
+          : 1;
 
       const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
       try {
@@ -152,6 +158,7 @@ export class AudioMixer {
           input,
           sink,
           sourcePath,
+          audioGain,
           audioFadeInS,
           audioFadeOutS,
         });
@@ -206,16 +213,21 @@ export class AudioMixer {
           ? Math.max(0, clip.audioFadeOutS)
           : 0;
 
+      const audioGain =
+        typeof clip.audioGain === 'number' && Number.isFinite(clip.audioGain)
+          ? Math.max(0, Math.min(10, clip.audioGain))
+          : 1;
+
       function gainAtClipTimeS(tClipS: number): number {
         const t = Math.max(0, Math.min(clip.playDurationS, tClipS));
-        let g = 1;
+        let g = audioGain;
         if (fadeInS > 0 && t < fadeInS) {
           g *= t / fadeInS;
         }
         if (fadeOutS > 0 && t > clip.playDurationS - fadeOutS) {
           g *= (clip.playDurationS - t) / fadeOutS;
         }
-        return Math.max(0, Math.min(1, g));
+        return Math.max(0, Math.min(10, g));
       }
 
       const clipGlobalStartS = clip.clipStartS;

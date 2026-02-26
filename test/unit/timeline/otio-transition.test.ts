@@ -29,6 +29,7 @@ function makeDoc(): TimelineDocument {
             sourceRange: { startUs: 0, durationUs: 5_000_000 },
             transitionIn: { type: 'dissolve', durationUs: 300_000 },
             transitionOut: { type: 'dissolve', durationUs: 500_000 },
+            audioGain: 1.25,
             audioFadeInUs: 200_000,
             audioFadeOutUs: 400_000,
           },
@@ -47,6 +48,7 @@ describe('timeline/otioSerializer: transitions', () => {
     const clip = parsed.tracks[0]?.items[0] as any;
     expect(clip.transitionIn).toEqual({ type: 'dissolve', durationUs: 300_000 });
     expect(clip.transitionOut).toEqual({ type: 'dissolve', durationUs: 500_000 });
+    expect(clip.audioGain).toBe(1.25);
     expect(clip.audioFadeInUs).toBe(200_000);
     expect(clip.audioFadeOutUs).toBe(400_000);
   });

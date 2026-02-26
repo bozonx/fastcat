@@ -87,6 +87,15 @@ function handleUpdateClipEffects(effects: any[]) {
   });
 }
 
+function handleUpdateAudioGain(val: unknown) {
+  if (!selectedClip.value) return;
+  const v = typeof val === 'number' && Number.isFinite(val) ? val : Number(val);
+  const safe = Number.isFinite(v) ? Math.max(0, Math.min(2, v)) : 1;
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    audioGain: safe,
+  });
+}
+
 function handleUpdateBackgroundColor(val: string | undefined) {
   if (!selectedClip.value) return;
   if (selectedClip.value.clipType !== 'background') return;
@@ -386,6 +395,27 @@ const canEditAudioFades = computed(() => {
   if (!clip) return false;
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
   return true;
+});
+
+const canEditAudioGain = computed(() => {
+  const clip = selectedClip.value;
+  if (!clip) return false;
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
+  return true;
+});
+
+const audioGain = computed({
+  get: () => {
+    const clip = selectedClip.value as any;
+    const v = typeof clip?.audioGain === 'number' && Number.isFinite(clip.audioGain) ? clip.audioGain : 1;
+    return Math.max(0, Math.min(2, v));
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = selectedClip.value as any;
+    const v = Math.max(0, Math.min(2, Number(val)));
+    timelineStore.updateClipProperties(current.trackId, current.id, { audioGain: v });
+  },
 });
 
 const clipDurationSec = computed(() => {
@@ -880,7 +910,7 @@ function handleTransitionUpdate(payload: {
 
             <EffectsEditor
               :effects="selectedClip.effects"
-              :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
+              :titlv-if="canEditAudioGain" e="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
               :add-label="t('granVideoEditor.effects.add', 'Add')"
               :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
               @update:effects="handleUpdateClipEffects"
@@ -892,6 +922,20 @@ function handleTransitionUpdate(payload: {
             >
               <div class="flex items-center justify-between">
                 <span class="font-medium text-gray-300">{{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}</span>
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audio.volume', 'Volume') }}</span>
+                  <span class="text-xs font-mono text-gray-500">{{ audioGain.toFixed(2) }}x</span>
+                </div>
+                <USlider
+                  :model-value="audioGain"
+                  :min="0"
+                  :max="2"
+                  :step="0.01"
+                  @update:model-value="handleUpdateAudioGain"
+                />
               </div>
 
               <div class="space-y-2">

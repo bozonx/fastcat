@@ -103,6 +103,7 @@ interface TimelineClipBase {
   source?: TimelineSourceRef;
   sourceDurationUs?: number;
   speed?: number;
+  audioGain?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFromVideoDisabled?: boolean;

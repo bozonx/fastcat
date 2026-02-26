@@ -849,6 +849,17 @@ export function updateClipProperties(
     }
   }
 
+  if ('audioGain' in nextProps) {
+    const raw = (nextProps as any).audioGain;
+    const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+    const gain = v === undefined ? undefined : clampNumber(v, 0, 10);
+    if (gain === undefined) {
+      delete (nextProps as any).audioGain;
+    } else {
+      (nextProps as any).audioGain = gain;
+    }
+  }
+
   // Fade values are stored in timeline microseconds.
   // Clamp to the current clip duration to avoid invalid envelopes.
   if ('audioFadeInUs' in nextProps) {
@@ -875,6 +886,9 @@ export function updateClipProperties(
           ? (() => {
               const updated = { ...it, ...(nextProps as any) } as any;
               const durationUs = Math.max(0, Math.round(updated.timelineRange?.durationUs ?? 0));
+              if (typeof updated.audioGain === 'number') {
+                updated.audioGain = clampNumber(updated.audioGain, 0, 10);
+              }
               if (typeof updated.audioFadeInUs === 'number') {
                 updated.audioFadeInUs = clampNumber(updated.audioFadeInUs, 0, durationUs);
               }
@@ -912,6 +926,19 @@ export function updateClipProperties(
             durationUs: updated.item.sourceRange.durationUs,
           },
           speed: (updated.item as any).speed,
+        }),
+      );
+    }
+
+    if ('audioGain' in nextProps || 'audioFadeInUs' in nextProps || 'audioFadeOutUs' in nextProps) {
+      finalTracks = updateLinkedLockedAudio(
+        { ...doc, tracks: finalTracks },
+        updated.item.id,
+        (a) => ({
+          ...a,
+          audioGain: (updated.item as any).audioGain,
+          audioFadeInUs: (updated.item as any).audioFadeInUs,
+          audioFadeOutUs: (updated.item as any).audioFadeOutUs,
         }),
       );
     }
