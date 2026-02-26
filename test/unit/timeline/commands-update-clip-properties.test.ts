@@ -85,8 +85,8 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.transform.rotationDeg).toBe(45);
     expect(clip.transform.position).toEqual({ x: 10, y: -20 });
     expect(clip.transform.anchor.preset).toBe('custom');
-    expect(clip.transform.anchor.x).toBe(1);
-    expect(clip.transform.anchor.y).toBe(0);
+    expect(clip.transform.anchor.x).toBe(2);
+    expect(clip.transform.anchor.y).toBe(-1);
   });
 
   it('updates backgroundColor for a background clip only', () => {

@@ -90,6 +90,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let layoutDebounceTimer: number | null = null;
   let layoutUpdateInFlight = false;
   let pendingLayoutClips: WorkerTimelineClip[] | null = null;
+  let pendingLayoutAudioClips: WorkerTimelineClip[] | null = null;
   let renderLoopInFlight = false;
   let latestRenderTimeUs: number | null = null;
   let isUnmounted = false;
@@ -171,8 +172,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     }
   }
 
-  function scheduleLayoutUpdate(layoutClips: WorkerTimelineClip[]) {
+  function scheduleLayoutUpdate(
+    layoutClips: WorkerTimelineClip[],
+    audioClips: WorkerTimelineClip[],
+  ) {
     pendingLayoutClips = layoutClips;
+    pendingLayoutAudioClips = audioClips;
     if (layoutDebounceTimer !== null) {
       clearTimeout(layoutDebounceTimer);
     }
@@ -192,13 +197,63 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
     layoutUpdateInFlight = true;
     try {
-      while (pendingLayoutClips) {
+      while (pendingLayoutClips && pendingLayoutAudioClips) {
         const layoutClips = pendingLayoutClips;
+        const layoutAudioClips = pendingLayoutAudioClips;
         pendingLayoutClips = null;
+        pendingLayoutAudioClips = null;
         try {
-          const payload = cloneWorkerPayload(layoutClips);
+          const mockItems = layoutClips.map(
+            (c) =>
+              ({
+                kind: 'clip',
+                clipType:
+                  c.clipType === 'media' && c.source?.path?.endsWith('.otio')
+                    ? 'timeline'
+                    : c.clipType,
+                id: c.id,
+                layer: c.layer,
+                speed: (c as any).speed,
+                source: c.source,
+                timelineRange: c.timelineRange,
+                sourceRange: c.sourceRange,
+                freezeFrameSourceUs: c.freezeFrameSourceUs,
+                opacity: c.opacity,
+                effects: c.effects,
+                transform: (c as any).transform,
+                backgroundColor: c.backgroundColor,
+              }) as any,
+          );
+
+          const mockAudioItems = layoutAudioClips.map(
+            (c) =>
+              ({
+                kind: 'clip',
+                clipType:
+                  c.clipType === 'media' && c.source?.path?.endsWith('.otio')
+                    ? 'timeline'
+                    : c.clipType,
+                id: c.id,
+                speed: (c as any).speed,
+                source: c.source,
+                timelineRange: c.timelineRange,
+                sourceRange: c.sourceRange,
+                freezeFrameSourceUs: c.freezeFrameSourceUs,
+                opacity: c.opacity,
+                effects: c.effects,
+                transform: (c as any).transform,
+              }) as any,
+          );
+
+          const flattenedClips = await toWorkerTimelineClips(mockItems, projectStore as any);
+          const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
+
+          workerTimelineClips.value = flattenedClips;
+          workerAudioClips.value = flattenedAudio;
+
+          const payload = cloneWorkerPayload(flattenedClips);
           const maxDuration = await client.updateTimelineLayout(payload);
-          const audioDuration = computeAudioDurationUs(workerAudioClips.value);
+          const audioDuration = computeAudioDurationUs(flattenedAudio);
           timelineStore.duration = Math.max(maxDuration, audioDuration);
           lastBuiltLayoutSignature = clipLayoutSignature.value;
           scheduleRender(getRenderTimeForLayoutUpdate());
@@ -507,8 +562,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       return;
     }
 
-    const layoutClips = workerTimelineClips.value;
-    scheduleLayoutUpdate(layoutClips);
+    const layoutClips = rawWorkerTimelineClips?.value ?? workerTimelineClips.value;
+    const layoutAudioClips = rawWorkerAudioClips?.value ?? workerAudioClips.value;
+    scheduleLayoutUpdate(layoutClips, layoutAudioClips);
   });
 
   watch(audioClipLayoutSignature, () => {
@@ -516,8 +572,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       return;
     }
 
-    const layoutClips = workerTimelineClips.value;
-    scheduleLayoutUpdate(layoutClips);
+    const layoutClips = rawWorkerTimelineClips?.value ?? workerTimelineClips.value;
+    const layoutAudioClips = rawWorkerAudioClips?.value ?? workerAudioClips.value;
+    scheduleLayoutUpdate(layoutClips, layoutAudioClips);
   });
 
   watch(
@@ -581,6 +638,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     viewportResizeObserver?.disconnect();
     viewportResizeObserver = null;
     pendingLayoutClips = null;
+    pendingLayoutAudioClips = null;
     void client.destroyCompositor().catch((error) => {
       console.error('[Monitor] Failed to destroy compositor on unmount', error);
     });
