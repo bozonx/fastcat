@@ -320,12 +320,15 @@
       "projectResolutionHint": "Project resolution",
       "audioMute": "Mute",
       "audioUnmute": "Unmute",
-      "audioVolume": "Audio volume"
+      "audioVolume": "Audio volume",
+      "center": "Center"
     },
     "timeline": {
       "dropClip": "Drop clip here",
       "addAdjustmentClip": "Add adjustment clip",
       "addBackgroundClip": "Add background clip",
+      "addTextClip": "Add text clip",
+      "splitClips": "Split clips",
       "textClipDefaultName": "Text",
       "textClipDefaultText": "Text",
       "rewind": "Rewind",
@@ -354,6 +357,9 @@
       "removeTransitionOut": "Remove transition out",
       "freezeFrame": "Freeze frame",
       "resetFreezeFrame": "Reset freeze frame",
+      "overlayModeNone": "No overlay",
+      "frameSnapOn": "Frame snap on",
+      "clipSnapOn": "Clip snap on",
       "transition": {
         "title": "Transition",
         "duration": "Duration (seconds)",
