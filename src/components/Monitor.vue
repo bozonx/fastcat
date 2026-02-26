@@ -237,15 +237,15 @@ function toggleMute() {
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0">
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-3 py-2.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated"
+      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated"
     >
-      <span class="text-sm font-semibold text-ui-text-muted uppercase tracking-wider">
+      <span class="text-xs font-semibold text-ui-text-muted uppercase tracking-wider">
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
       <div class="flex items-center gap-2 shrink-0">
         <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
           <UButton
-            size="sm"
+            size="xs"
             color="neutral"
             variant="ghost"
             icon="i-heroicons-arrows-pointing-in"
@@ -256,7 +256,7 @@ function toggleMute() {
         <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
           <UButton
             v-if="projectStore.projectSettings.monitor"
-            size="sm"
+            size="xs"
             :color="useProxyInMonitor ? 'primary' : 'neutral'"
             :variant="useProxyInMonitor ? 'soft' : 'ghost'"
             icon="i-heroicons-bolt"
@@ -275,7 +275,7 @@ function toggleMute() {
             :items="previewResolutions"
             value-key="value"
             label-key="label"
-            size="sm"
+            size="xs"
             class="w-full"
             @update:model-value="
               (v: any) => {

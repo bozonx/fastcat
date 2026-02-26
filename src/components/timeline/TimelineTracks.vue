@@ -650,7 +650,7 @@ function getTransitionForPanel() {
 
 <template>
   <div
-    class="flex flex-col divide-y divide-gray-700"
+    class="flex flex-col divide-y divide-ui-border"
     @mousedown="
       timelineStore.clearSelection();
       timelineStore.selectTrack(null);
@@ -700,7 +700,7 @@ function getTransitionForPanel() {
       :key="track.id"
       :data-track-id="track.id"
       class="flex items-center px-2 relative"
-      :class="timelineStore.selectedTrackId === track.id ? 'bg-gray-850/60' : ''"
+      :class="timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : ''"
       :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
       @dragover.prevent="emit('dragover', $event, track.id)"
       @dragleave.prevent="emit('dragleave', $event, track.id)"
@@ -712,7 +712,7 @@ function getTransitionForPanel() {
         :class="
           dragPreview.kind === 'file'
             ? 'bg-primary-600 border border-primary-400'
-            : 'bg-gray-600 border border-gray-400'
+            : 'bg-ui-bg-accent border border-ui-border'
         "
         :style="{
           left: `${2 + timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
@@ -724,28 +724,13 @@ function getTransitionForPanel() {
 
       <div
         v-if="movePreviewResolved && movePreviewResolved.trackId === track.id"
-        class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-40 pointer-events-none opacity-60"
-        :class="[
-          movePreviewResolved.trackKind === 'audio'
-            ? 'bg-teal-500 border border-teal-300'
-            : movePreviewResolved.clipType === 'background'
-              ? 'bg-purple-700/60 border border-purple-300'
-              : movePreviewResolved.clipType === 'adjustment'
-                ? 'bg-amber-700/60 border border-amber-300'
-                : 'bg-indigo-500 border border-indigo-300',
-        ]"
+        class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
         :style="{
           left: `${2 + timeUsToPx(movePreviewResolved.startUs, timelineStore.timelineZoom)}px`,
           width: `${Math.max(30, timeUsToPx(movePreviewResolved.durationUs, timelineStore.timelineZoom))}px`,
         }"
       >
         <span class="truncate" :title="movePreviewResolved.label">{{ movePreviewResolved.label }}</span>
-      </div>
-
-      <div
-        v-if="track.items.length === 0 && (!dragPreview || dragPreview.trackId !== track.id)"
-        class="absolute inset-y-1 left-2 right-2 rounded bg-ui-bg-elevated border border-dashed border-ui-border flex items-center justify-center pointer-events-none"
-      >
       </div>
 
       <UContextMenu
@@ -757,14 +742,8 @@ function getTransitionForPanel() {
           class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
           :class="[
             item.kind === 'gap'
-              ? 'bg-gray-800/20 border border-dashed border-gray-700 text-gray-500 opacity-70'
-              : item.kind === 'clip' && (item as any).clipType === 'background'
-                ? 'border border-purple-400 hover:bg-purple-700/60 bg-purple-800/50'
-                : item.kind === 'clip' && (item as any).clipType === 'adjustment'
-                  ? 'border border-amber-400 hover:bg-amber-700/60 bg-amber-800/50'
-                  : track.kind === 'audio'
-                    ? 'bg-teal-600 border border-teal-400 hover:bg-teal-500'
-                    : 'bg-indigo-600 border border-indigo-400 hover:bg-indigo-500',
+              ? 'bg-ui-bg-elevated/40 border border-ui-border text-ui-text-muted opacity-70'
+              : 'bg-ui-bg-accent border border-ui-border hover:bg-ui-bg-elevated',
             timelineStore.selectedItemIds.includes(item.id)
               ? 'ring-2 ring-white z-20 shadow-lg'
               : '',

@@ -14,7 +14,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  ui: {},
+  ui: {
+    colors: {
+      primary: 'blue',
+      neutral: 'slate',
+    },
+  },
 
   colorMode: {
     preference: 'dark',
