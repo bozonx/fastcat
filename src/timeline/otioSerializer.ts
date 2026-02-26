@@ -31,6 +31,7 @@ interface OtioClip {
   name: string;
   media_reference: OtioExternalReference;
   source_range: OtioTimeRange;
+  enabled?: boolean;
   metadata?: Record<string, unknown>;
 }
 
@@ -302,6 +303,8 @@ function parseClipItem(input: {
     id,
     trackId,
     name,
+    disabled: otio.enabled === false ? true : undefined,
+    locked: granMeta?.locked !== undefined ? Boolean(granMeta.locked) : undefined,
     sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
@@ -509,6 +512,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       children.push({
         OTIO_SCHEMA: 'Clip.1',
         name: item.name,
+        enabled: item.disabled ? false : undefined,
         media_reference: {
           OTIO_SCHEMA: 'ExternalReference.1',
           target_url:
@@ -519,6 +523,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           gran: {
             id: item.id,
             clipType: item.clipType,
+            locked: item.locked ? true : undefined,
             sourceDurationUs:
               item.clipType === 'media' || item.clipType === 'timeline'
                 ? item.sourceDurationUs

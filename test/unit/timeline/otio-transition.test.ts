@@ -23,6 +23,8 @@ function makeDoc(): TimelineDocument {
             trackId: 'v1',
             name: 'Clip1',
             clipType: 'media',
+            disabled: true,
+            locked: true,
             source: { path: 'file.mp4' },
             sourceDurationUs: 10_000_000,
             timelineRange: { startUs: 0, durationUs: 5_000_000 },
@@ -46,6 +48,8 @@ describe('timeline/otioSerializer: transitions', () => {
     const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
 
     const clip = parsed.tracks[0]?.items[0] as any;
+    expect(clip.disabled).toBe(true);
+    expect(clip.locked).toBe(true);
     expect(clip.transitionIn).toEqual({ type: 'dissolve', durationUs: 300_000 });
     expect(clip.transitionOut).toEqual({ type: 'dissolve', durationUs: 500_000 });
     expect(clip.audioGain).toBe(1.25);

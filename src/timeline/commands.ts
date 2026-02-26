@@ -137,6 +137,8 @@ export interface UpdateClipPropertiesCommand {
   properties: Partial<
     Pick<
       import('./types').TimelineClipItem,
+      | 'disabled'
+      | 'locked'
       | 'opacity'
       | 'effects'
       | 'freezeFrameSourceUs'

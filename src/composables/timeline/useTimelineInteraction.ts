@@ -258,6 +258,9 @@ export function useTimelineInteraction(
     if (e.button !== 0) return;
     e.stopPropagation();
 
+    const item = tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId);
+    if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
+
     if (!timelineStore.selectedItemIds.includes(itemId)) {
       timelineStore.toggleSelection(itemId);
     }
@@ -314,6 +317,11 @@ export function useTimelineInteraction(
     e.preventDefault();
     e.stopPropagation();
 
+    const item = tracks.value
+      .find((t) => t.id === input.trackId)
+      ?.items.find((it) => it.id === input.itemId);
+    if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
+
     draggingMode.value = input.edge === 'start' ? 'trim_start' : 'trim_end';
     draggingTrackId.value = input.trackId;
     draggingItemId.value = input.itemId;
@@ -322,10 +330,10 @@ export function useTimelineInteraction(
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
-    const item = tracks.value
+    const currentItem = tracks.value
       .find((t) => t.id === input.trackId)
       ?.items.find((it) => it.id === input.itemId);
-    const durationUs = item?.kind === 'clip' ? item.timelineRange.durationUs : 0;
+    const durationUs = currentItem?.kind === 'clip' ? currentItem.timelineRange.durationUs : 0;
     dragAnchorItemDurationUs.value = Math.max(0, Math.round(Number(durationUs ?? 0)));
 
     const timelineEndUs = Number.isFinite(timelineStore.duration)

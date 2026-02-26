@@ -33,6 +33,12 @@ import {
 } from './utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 
+function assertClipNotLocked(item: TimelineTrackItem, action: string) {
+  if (item.kind !== 'clip') return;
+  if (!item.locked) return;
+  throw new Error(`Locked clip: ${action}`);
+}
+
 export function addClipToTrack(
   doc: TimelineDocument,
   cmd: AddClipToTrackCommand,
@@ -175,6 +181,8 @@ export function overlayTrimItem(
   if (!movedPrev || movedPrev.kind !== 'clip') return { next: doc };
   const moved = movedPrev as TimelineClipItem;
 
+  assertClipNotLocked(moved, 'trim');
+
   if (moved.clipType === 'media' && moved.linkedVideoClipId && moved.lockToLinkedVideo) {
     throw new Error('Locked audio clip');
   }
@@ -248,6 +256,11 @@ export function overlayTrimItem(
       continue;
     }
     if (it.kind !== 'clip') {
+      nextItems.push(it);
+      continue;
+    }
+
+    if (it.locked) {
       nextItems.push(it);
       continue;
     }
@@ -374,6 +387,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   const track = getTrackById(doc, cmd.trackId);
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || item.kind !== 'clip') return { next: doc };
+
+  assertClipNotLocked(item, 'split');
 
   if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
     throw new Error('Locked audio clip');
@@ -984,6 +999,10 @@ export function removeItems(
 
     const item = nextItems[idx];
     if (!item) continue;
+
+    if (item.kind === 'clip' && item.locked) {
+      continue;
+    }
     itemsRemoved = true;
 
     if (item.kind === 'clip') {
@@ -1020,6 +1039,8 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   const track = getTrackById(doc, cmd.trackId);
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || !item.timelineRange) return { next: doc };
+
+  assertClipNotLocked(item, 'move');
 
   if (
     item.kind === 'clip' &&
@@ -1112,6 +1133,8 @@ export function moveItemToTrack(
   const item = fromTrack.items[itemIdx];
   if (!item) return { next: doc };
   if (!item.timelineRange) return { next: doc };
+
+  assertClipNotLocked(item, 'move');
   const isLockedLinkedAudio =
     item.kind === 'clip' &&
     item.clipType === 'media' &&
@@ -1186,6 +1209,8 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || !item.timelineRange) return { next: doc };
   if (item.kind !== 'clip') return { next: doc };
+
+  assertClipNotLocked(item, 'trim');
   if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
     throw new Error('Locked audio clip');
   }
@@ -1567,6 +1592,8 @@ export function overlayPlaceItem(
   const item = fromTrack.items[itemIdx];
   if (!item || !item.timelineRange) return { next: doc };
 
+  assertClipNotLocked(item, 'move');
+
   const fps = getDocFps(doc);
   const startUs = quantizeTimeUsToFrames(cmd.startUs, fps, 'round');
   const durationUs = Math.max(0, item.timelineRange.durationUs);
@@ -1579,6 +1606,17 @@ export function overlayPlaceItem(
   const nextDestItems: TimelineTrackItem[] = [];
   for (const it of destItems) {
     if (it.kind !== 'clip') {
+      nextDestItems.push(it);
+      continue;
+    }
+
+    if (it.locked) {
+      const itStartLocked = it.timelineRange.startUs;
+      const itEndLocked = itStartLocked + it.timelineRange.durationUs;
+      const overlapsLocked = itEndLocked > startUs && itStartLocked < endUs;
+      if (overlapsLocked) {
+        throw new Error('Locked clip');
+      }
       nextDestItems.push(it);
       continue;
     }

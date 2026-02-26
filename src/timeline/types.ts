@@ -98,6 +98,8 @@ interface TimelineClipBase {
   id: string;
   trackId: string;
   name: string;
+  disabled?: boolean;
+  locked?: boolean;
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
   source?: TimelineSourceRef;

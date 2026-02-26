@@ -501,6 +501,28 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   const mainGroup: any[] = [];
 
   if (item.kind === 'clip') {
+    mainGroup.push({
+      label: item.disabled
+        ? t('granVideoEditor.timeline.enableClip', 'Enable clip')
+        : t('granVideoEditor.timeline.disableClip', 'Disable clip'),
+      icon: item.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      onSelect: async () => {
+        timelineStore.updateClipProperties(track.id, item.id, { disabled: !Boolean(item.disabled) });
+        await timelineStore.requestTimelineSave({ immediate: true });
+      },
+    });
+
+    mainGroup.push({
+      label: item.locked
+        ? t('granVideoEditor.timeline.unlockClip', 'Unlock clip')
+        : t('granVideoEditor.timeline.lockClip', 'Lock clip'),
+      icon: item.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+      onSelect: async () => {
+        timelineStore.updateClipProperties(track.id, item.id, { locked: !Boolean(item.locked) });
+        await timelineStore.requestTimelineSave({ immediate: true });
+      },
+    });
+
     const currentSpeedRaw = (item as any).speed;
     const currentSpeed =
       typeof currentSpeedRaw === 'number' && Number.isFinite(currentSpeedRaw)
@@ -587,6 +609,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
     {
       label: t('granVideoEditor.timeline.delete', 'Delete'),
       icon: 'i-heroicons-trash',
+      disabled: item.kind === 'clip' && Boolean(item.locked),
       onSelect: () => {
         timelineStore.applyTimeline({
           type: 'delete_items',
@@ -773,6 +796,8 @@ function getTransitionForPanel() {
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
               ? 'outline outline-2 outline-yellow-400/80'
               : '',
+            item.kind === 'clip' && Boolean((item as any).disabled) ? 'opacity-40' : '',
+            item.kind === 'clip' && Boolean((item as any).locked) ? 'cursor-not-allowed' : '',
             ...getClipClass(item, track),
           ]"
           :style="{
@@ -781,6 +806,7 @@ function getTransitionForPanel() {
           }"
           @mousedown="
             item.kind === 'clip' &&
+            !Boolean((item as any).locked) &&
             emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
           "
           @pointerdown.stop="emit('selectItem', $event, item.id)"

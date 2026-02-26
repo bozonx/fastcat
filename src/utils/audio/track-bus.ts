@@ -27,6 +27,7 @@ export function buildEffectiveAudioClipItems(
   for (const track of effectiveAudioTracks) {
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
+      if ((item as any).disabled) continue;
       const clipType = (item as any).clipType ?? 'media';
       if (clipType !== 'media' && clipType !== 'timeline') continue;
       const path = (item as any).source?.path;
@@ -48,6 +49,7 @@ export function buildEffectiveAudioClipItems(
 
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
+      if ((item as any).disabled) continue;
       const clipType = (item as any).clipType ?? 'media';
       if (clipType !== 'media' && clipType !== 'timeline') continue;
       if ((item as any).audioFromVideoDisabled) continue;

@@ -149,6 +149,7 @@ export async function toWorkerTimelineClips(
 
   for (const item of items) {
     if (item.kind !== 'clip') continue;
+    if ((item as any).disabled) continue;
 
     const clipType = (item as any).clipType ?? 'media';
     const parentOpacity = options?.parentOpacity ?? 1;
