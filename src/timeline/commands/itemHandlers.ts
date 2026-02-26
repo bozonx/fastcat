@@ -31,6 +31,7 @@ import {
   clampInt,
   quantizeRangeToFrames,
 } from './utils';
+import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 
 export function addClipToTrack(
   doc: TimelineDocument,
@@ -852,7 +853,7 @@ export function updateClipProperties(
   if ('audioGain' in nextProps) {
     const raw = (nextProps as any).audioGain;
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
-    const gain = v === undefined ? undefined : clampNumber(v, 0, 10);
+    const gain = v === undefined ? undefined : normalizeGain(v, 1);
     if (gain === undefined) {
       delete (nextProps as any).audioGain;
     } else {
@@ -863,7 +864,7 @@ export function updateClipProperties(
   if ('audioBalance' in nextProps) {
     const raw = (nextProps as any).audioBalance;
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
-    const balance = v === undefined ? undefined : clampNumber(v, -1, 1);
+    const balance = v === undefined ? undefined : normalizeBalance(v, 0);
     if (balance === undefined) {
       delete (nextProps as any).audioBalance;
     } else {

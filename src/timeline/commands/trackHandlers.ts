@@ -8,6 +8,7 @@ import type {
   TimelineCommandResult,
 } from '../commands';
 import { getTrackById, nextTrackId, normalizeTrackOrder } from './utils';
+import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 
 export function addTrack(doc: TimelineDocument, cmd: AddTrackCommand): TimelineCommandResult {
   const idPrefix = cmd.kind === 'audio' ? 'a' : 'v';
@@ -75,11 +76,6 @@ export function updateTrackProperties(
 ): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
 
-  function clampNumber(value: unknown, min: number, max: number): number {
-    const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
-    return Math.max(min, Math.min(max, n));
-  }
-
   const nextTracks = doc.tracks.map((t) => {
     if (t.id !== track.id) return t;
 
@@ -91,13 +87,13 @@ export function updateTrackProperties(
     if ('audioGain' in cmd.properties) {
       const raw = (cmd.properties as any).audioGain;
       const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
-      next.audioGain = v === undefined ? undefined : clampNumber(v, 0, 10);
+      next.audioGain = v === undefined ? undefined : normalizeGain(v, 1);
     }
 
     if ('audioBalance' in cmd.properties) {
       const raw = (cmd.properties as any).audioBalance;
       const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
-      next.audioBalance = v === undefined ? undefined : clampNumber(v, -1, 1);
+      next.audioBalance = v === undefined ? undefined : normalizeBalance(v, 0);
     }
 
     if (next.kind !== 'video') {
