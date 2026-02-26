@@ -31,12 +31,14 @@ export interface ExportOptions {
 
 export interface WorkerTimelineClip {
   kind: 'clip';
-  clipType: 'media' | 'adjustment' | 'background';
+  clipType: 'media' | 'adjustment' | 'background' | 'text';
   id: string;
   layer: number;
   speed?: number;
   source?: { path: string };
   backgroundColor?: string;
+  text?: string;
+  style?: import('~/timeline/types').TextClipStyle;
   freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: unknown[];
@@ -325,6 +327,12 @@ export async function toWorkerTimelineClips(
       clips.push({
         ...base,
         backgroundColor: String((item as any).backgroundColor ?? '#000000'),
+      });
+    } else if (clipType === 'text') {
+      clips.push({
+        ...base,
+        text: String((item as any).text ?? ''),
+        style: (item as any).style,
       });
     } else {
       clips.push(base);

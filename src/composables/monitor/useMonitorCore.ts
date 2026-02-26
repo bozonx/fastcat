@@ -222,6 +222,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 effects: c.effects,
                 transform: (c as any).transform,
                 backgroundColor: c.backgroundColor,
+                text: (c as any).text,
+                style: (c as any).style,
               }) as any,
           );
 
@@ -423,6 +425,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             effects: c.effects,
             transform: (c as any).transform,
             backgroundColor: c.backgroundColor,
+            text: (c as any).text,
+            style: (c as any).style,
           }) as any,
       );
 
