@@ -11,6 +11,8 @@ export interface AudioEngineClip {
   sourceStartUs: number;
   sourceDurationUs: number;
   speed?: number;
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
 }
 
 interface DecodeRequest {
@@ -340,6 +342,17 @@ export class AudioEngine {
 
     const localOffsetInClipS = Math.max(0, currentTimeS - clipStartS);
 
+    const fadeInSRaw =
+      typeof clip.audioFadeInUs === 'number' && Number.isFinite(clip.audioFadeInUs)
+        ? Math.max(0, clip.audioFadeInUs / 1_000_000)
+        : 0;
+    const fadeOutSRaw =
+      typeof clip.audioFadeOutUs === 'number' && Number.isFinite(clip.audioFadeOutUs)
+        ? Math.max(0, clip.audioFadeOutUs / 1_000_000)
+        : 0;
+    const fadeInS = Math.min(fadeInSRaw, Math.max(0, clipDurationS));
+    const fadeOutS = Math.min(fadeOutSRaw, Math.max(0, clipDurationS));
+
     // When to start playing in AudioContext time.
     const playStartS =
       currentTimeS < clipStartS
@@ -400,7 +413,51 @@ export class AudioEngine {
     if (sourceNode.playbackRate) {
       sourceNode.playbackRate.value = speed;
     }
-    sourceNode.connect(this.masterGain);
+
+    const clipGain = this.ctx.createGain();
+    clipGain.connect(this.masterGain);
+    sourceNode.connect(clipGain);
+
+    // Apply clip-local fade envelope (in timeline time, not buffer time).
+    // Since playbackRate is set, the node plays `durationToPlayS / speed` seconds in context time,
+    // which equals `remainingInClipS`.
+    const nowS = this.ctx.currentTime;
+    const startAtS = playStartS;
+    const endAtS = startAtS + remainingInClipS;
+
+    function gainAtClipTime(tClipS: number): number {
+      const t = Math.max(0, Math.min(clipDurationS, tClipS));
+      let g = 1;
+      if (fadeInS > 0 && t < fadeInS) {
+        g *= t / fadeInS;
+      }
+      if (fadeOutS > 0 && t > clipDurationS - fadeOutS) {
+        g *= (clipDurationS - t) / fadeOutS;
+      }
+      return Math.max(0, Math.min(1, g));
+    }
+
+    const t0 = localOffsetInClipS;
+    const t1 = localOffsetInClipS + remainingInClipS;
+    const g0 = gainAtClipTime(t0);
+    clipGain.gain.cancelScheduledValues(nowS);
+    clipGain.gain.setValueAtTime(g0, startAtS);
+
+    const inEndClipS = fadeInS;
+    if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
+      const rampEndClipS = Math.min(inEndClipS, t1);
+      const rampEndAtS = startAtS + (rampEndClipS - t0);
+      clipGain.gain.linearRampToValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+    }
+
+    const outStartClipS = clipDurationS - fadeOutS;
+    if (fadeOutS > 0 && t1 > outStartClipS) {
+      const rampStartClipS = Math.max(outStartClipS, t0);
+      const rampStartAtS = startAtS + (rampStartClipS - t0);
+      // Ensure we are at the correct value at ramp start, then ramp down to end.
+      clipGain.gain.setValueAtTime(gainAtClipTime(rampStartClipS), rampStartAtS);
+      clipGain.gain.linearRampToValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+    }
 
     sourceNode.start(playStartS, safeBufferOffsetS, safeDurationToPlayS);
 

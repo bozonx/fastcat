@@ -35,6 +35,8 @@ export interface WorkerTimelineClip {
   id: string;
   layer: number;
   speed?: number;
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
   source?: { path: string };
   backgroundColor?: string;
   text?: string;
@@ -118,6 +120,8 @@ export async function toWorkerTimelineClips(
           ? Math.round((item as any).layer)
           : 0),
       speed: (item as any).speed,
+      audioFadeInUs: (item as any).audioFadeInUs,
+      audioFadeOutUs: (item as any).audioFadeOutUs,
       opacity: combinedOpacity,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       transform: (item as any).transform,

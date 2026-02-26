@@ -26,6 +26,8 @@ export interface PreparedClip {
   input: any;
   sink: any;
   sourcePath: string;
+  audioFadeInS?: number;
+  audioFadeOutS?: number;
 }
 
 export interface AudioMixerPrepareParams {
@@ -96,6 +98,9 @@ export class AudioMixer {
       const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
       const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
 
+      const audioFadeInUs = clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs ?? 0;
+      const audioFadeOutUs = clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs ?? 0;
+
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
       const sourceDurationS = Math.max(0, usToS(Number(sourceDurationUs)));
@@ -105,6 +110,12 @@ export class AudioMixer {
         Math.min(sourceDurationS || Number.POSITIVE_INFINITY, timelineDurationS || sourceDurationS),
       );
       if (clipDurationS <= 0) continue;
+
+      const audioFadeInS = Math.min(clipDurationS, Math.max(0, usToS(Number(audioFadeInUs) || 0)));
+      const audioFadeOutS = Math.min(
+        clipDurationS,
+        Math.max(0, usToS(Number(audioFadeOutUs) || 0)),
+      );
 
       const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
       try {
@@ -134,7 +145,16 @@ export class AudioMixer {
           continue;
         }
 
-        prepared.push({ clipStartS, offsetS, playDurationS, input, sink, sourcePath });
+        prepared.push({
+          clipStartS,
+          offsetS,
+          playDurationS,
+          input,
+          sink,
+          sourcePath,
+          audioFadeInS,
+          audioFadeOutS,
+        });
       } catch (err) {
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
         safeDispose(input);
@@ -176,6 +196,27 @@ export class AudioMixer {
       mixedInterleaved: Float32Array;
     }) {
       const { clip, chunkStartS, chunkEndS, framesInChunk, mixedInterleaved } = args;
+
+      const fadeInS =
+        typeof clip.audioFadeInS === 'number' && Number.isFinite(clip.audioFadeInS)
+          ? Math.max(0, clip.audioFadeInS)
+          : 0;
+      const fadeOutS =
+        typeof clip.audioFadeOutS === 'number' && Number.isFinite(clip.audioFadeOutS)
+          ? Math.max(0, clip.audioFadeOutS)
+          : 0;
+
+      function gainAtClipTimeS(tClipS: number): number {
+        const t = Math.max(0, Math.min(clip.playDurationS, tClipS));
+        let g = 1;
+        if (fadeInS > 0 && t < fadeInS) {
+          g *= t / fadeInS;
+        }
+        if (fadeOutS > 0 && t > clip.playDurationS - fadeOutS) {
+          g *= (clip.playDurationS - t) / fadeOutS;
+        }
+        return Math.max(0, Math.min(1, g));
+      }
 
       const clipGlobalStartS = clip.clipStartS;
       const clipGlobalEndS = clip.clipStartS + clip.playDurationS;
@@ -229,9 +270,13 @@ export class AudioMixer {
               const dstFrame = writeOffsetFrames + i;
               if (dstFrame < 0) continue;
               if (dstFrame >= framesInChunk) break;
+
+              const tClipS = timelineTimeS + i / sampleRate - clip.clipStartS;
+              const gain = gainAtClipTimeS(tClipS);
+
               for (let c = 0; c < numberOfChannels; c += 1) {
                 const plane = tmpPlanes[c];
-                const v = plane ? (plane[i] ?? 0) : 0;
+                const v = (plane ? (plane[i] ?? 0) : 0) * gain;
                 const idx = dstFrame * numberOfChannels + c;
                 mixedInterleaved[idx] = clampFloat32(mixedInterleaved[idx]! + v);
               }

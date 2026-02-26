@@ -375,6 +375,55 @@ const hasProxy = computed(() => {
   return proxyStore.existingProxies.has(uiStore.selectedFsEntry.path);
 });
 
+const selectedClipTrack = computed<TimelineTrack | null>(() => {
+  const clip = selectedClip.value;
+  if (!clip) return null;
+  return (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find((t) => t.id === clip.trackId) ?? null;
+});
+
+const canEditAudioFades = computed(() => {
+  const clip = selectedClip.value;
+  if (!clip) return false;
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
+  return true;
+});
+
+const clipDurationSec = computed(() => {
+  const clip = selectedClip.value;
+  if (!clip) return 0;
+  return Math.max(0, Number(clip.timelineRange?.durationUs ?? 0) / 1_000_000);
+});
+
+const audioFadeInSec = computed({
+  get: () => {
+    const clip = selectedClip.value as any;
+    const v = typeof clip?.audioFadeInUs === 'number' && Number.isFinite(clip.audioFadeInUs) ? clip.audioFadeInUs : 0;
+    return Math.max(0, v / 1_000_000);
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = selectedClip.value as any;
+    const v = Math.max(0, Math.min(val, clipDurationSec.value)) * 1_000_000;
+    timelineStore.updateClipProperties(current.trackId, current.id, { audioFadeInUs: v });
+  },
+});
+
+const audioFadeOutSec = computed({
+  get: () => {
+    const clip = selectedClip.value as any;
+    const v = typeof clip?.audioFadeOutUs === 'number' && Number.isFinite(clip.audioFadeOutUs) ? clip.audioFadeOutUs : 0;
+    return Math.max(0, v / 1_000_000);
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = selectedClip.value as any;
+    const v = Math.max(0, Math.min(val, clipDurationSec.value)) * 1_000_000;
+    timelineStore.updateClipProperties(current.trackId, current.id, { audioFadeOutUs: v });
+  },
+});
+
+const audioFadeMaxSec = computed(() => Math.max(0, Math.min(10, clipDurationSec.value)));
+
 watch(hasProxy, (val) => {
   if (!val && previewMode.value === 'proxy') {
     previewMode.value = 'original';
@@ -836,6 +885,43 @@ function handleTransitionUpdate(payload: {
               :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
               @update:effects="handleUpdateClipEffects"
             />
+
+            <div
+              v-if="canEditAudioFades && (selectedClipTrack?.kind === 'audio' || selectedClipTrack?.kind === 'video')"
+              class="space-y-4 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">{{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}</span>
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audioFade.fadeIn', 'Fade in') }}</span>
+                  <span class="text-xs font-mono text-gray-500">{{ audioFadeInSec.toFixed(2) }}s</span>
+                </div>
+                <USlider
+                  :model-value="audioFadeInSec"
+                  :min="0"
+                  :max="audioFadeMaxSec"
+                  :step="0.05"
+                  @update:model-value="(v: any) => (audioFadeInSec = Number(v))"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audioFade.fadeOut', 'Fade out') }}</span>
+                  <span class="text-xs font-mono text-gray-500">{{ audioFadeOutSec.toFixed(2) }}s</span>
+                </div>
+                <USlider
+                  :model-value="audioFadeOutSec"
+                  :min="0"
+                  :max="audioFadeMaxSec"
+                  :step="0.05"
+                  @update:model-value="(v: any) => (audioFadeOutSec = Number(v))"
+                />
+              </div>
+            </div>
 
             <div
               v-if="canEditTransform"

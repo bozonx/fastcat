@@ -789,6 +789,42 @@ function getTransitionForPanel() {
             class="absolute left-0 right-0 bottom-0 h-1 bg-fuchsia-400/80"
           />
 
+          <svg
+            v-if="item.kind === 'clip' && (item as any).audioFadeInUs > 0"
+            class="absolute left-0 top-0 h-full pointer-events-none"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+            :style="{
+              width: `${Math.min(
+                Math.max(
+                  0,
+                  timeUsToPx(Math.max(0, Math.round(Number((item as any).audioFadeInUs) || 0)), timelineStore.timelineZoom),
+                ),
+                Math.max(0, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom)),
+              )}px`,
+            }"
+          >
+            <polygon points="0,0 100,0 0,100" fill="rgba(0,0,0,0.35)" />
+          </svg>
+
+          <svg
+            v-if="item.kind === 'clip' && (item as any).audioFadeOutUs > 0"
+            class="absolute right-0 top-0 h-full pointer-events-none"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+            :style="{
+              width: `${Math.min(
+                Math.max(
+                  0,
+                  timeUsToPx(Math.max(0, Math.round(Number((item as any).audioFadeOutUs) || 0)), timelineStore.timelineZoom),
+                ),
+                Math.max(0, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom)),
+              )}px`,
+            }"
+          >
+            <polygon points="0,0 100,0 100,100" fill="rgba(0,0,0,0.35)" />
+          </svg>
+
           <div
             v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
             class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-black/40 text-[10px] leading-none font-mono"

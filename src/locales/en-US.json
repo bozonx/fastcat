@@ -284,6 +284,13 @@
     }
   },
   "granVideoEditor": {
+    "clip": {
+      "audioFade": {
+        "title": "Audio fades",
+        "fadeIn": "Fade in",
+        "fadeOut": "Fade out"
+      }
+    },
     "welcome": {
       "selectFolder": "Select a workspace folder on your computer. This folder will store all your project files, media proxies, and cache.",
       "openWorkspace": "Select Workspace Folder"

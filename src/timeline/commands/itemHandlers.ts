@@ -526,6 +526,12 @@ export function updateClipProperties(
     return Math.max(min, Math.min(max, n));
   }
 
+  function clampAudioFadeUs(value: unknown, maxUs: number): number | undefined {
+    if (value === undefined) return undefined;
+    const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 0;
+    return clampNumber(n, 0, Math.max(0, Math.round(maxUs)));
+  }
+
   function sanitizeTransform(raw: unknown): import('~/timeline/types').ClipTransform | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
     const anyRaw = raw as any;
@@ -843,10 +849,41 @@ export function updateClipProperties(
     }
   }
 
+  // Fade values are stored in timeline microseconds.
+  // Clamp to the current clip duration to avoid invalid envelopes.
+  if ('audioFadeInUs' in nextProps) {
+    const safe = clampAudioFadeUs((nextProps as any).audioFadeInUs, item.timelineRange.durationUs);
+    if (safe === undefined) {
+      delete (nextProps as any).audioFadeInUs;
+    } else {
+      (nextProps as any).audioFadeInUs = safe;
+    }
+  }
+  if ('audioFadeOutUs' in nextProps) {
+    const safe = clampAudioFadeUs((nextProps as any).audioFadeOutUs, item.timelineRange.durationUs);
+    if (safe === undefined) {
+      delete (nextProps as any).audioFadeOutUs;
+    } else {
+      (nextProps as any).audioFadeOutUs = safe;
+    }
+  }
+
   const nextTracks = doc.tracks.map((t) => {
     if (t.id === track.id) {
       const updatedItems = t.items.map((it) =>
-        it.id === cmd.itemId && it.kind === 'clip' ? { ...it, ...(nextProps as any) } : it,
+        it.id === cmd.itemId && it.kind === 'clip'
+          ? (() => {
+              const updated = { ...it, ...(nextProps as any) } as any;
+              const durationUs = Math.max(0, Math.round(updated.timelineRange?.durationUs ?? 0));
+              if (typeof updated.audioFadeInUs === 'number') {
+                updated.audioFadeInUs = clampNumber(updated.audioFadeInUs, 0, durationUs);
+              }
+              if (typeof updated.audioFadeOutUs === 'number') {
+                updated.audioFadeOutUs = clampNumber(updated.audioFadeOutUs, 0, durationUs);
+              }
+              return updated;
+            })()
+          : it,
       );
       const normalized = normalizeGaps(doc, t.id, updatedItems);
       return { ...t, items: normalized };

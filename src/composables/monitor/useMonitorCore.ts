@@ -284,6 +284,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 sourceStartUs: clip.sourceRange.startUs,
                 sourceDurationUs: clip.sourceRange.durationUs,
                 speed: (clip as any).speed,
+                audioFadeInUs: (clip as any).audioFadeInUs,
+                audioFadeOutUs: (clip as any).audioFadeOutUs,
               };
             } catch {
               return null;
@@ -503,6 +505,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 sourceStartUs: clip.sourceRange.startUs,
                 sourceDurationUs: clip.sourceRange.durationUs,
                 speed: (clip as any).speed,
+                audioFadeInUs: (clip as any).audioFadeInUs,
+                audioFadeOutUs: (clip as any).audioFadeOutUs,
               };
             } catch {
               return null;

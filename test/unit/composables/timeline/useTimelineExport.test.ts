@@ -68,6 +68,8 @@ describe('useTimelineExport pure functions', () => {
         sourceDurationUs: 1_000_000,
         timelineRange: { startUs: 0, durationUs: 1_000_000 },
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        audioFadeInUs: 120_000,
+        audioFadeOutUs: 340_000,
       },
     ];
 
@@ -82,6 +84,8 @@ describe('useTimelineExport pure functions', () => {
         source: { path: '/video.mp4' },
         timelineRange: { startUs: 0, durationUs: 1_000_000 },
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        audioFadeInUs: 120_000,
+        audioFadeOutUs: 340_000,
       },
     ]);
 

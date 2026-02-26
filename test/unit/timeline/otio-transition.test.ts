@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { serializeTimelineToOtio, parseTimelineFromOtio } from '~/timeline/otioSerializer';
-import type { TimelineDocument } from '~/timeline/types';
+import {
+  serializeTimelineToOtio,
+  parseTimelineFromOtio,
+} from '../../../src/timeline/otioSerializer';
+import type { TimelineDocument } from '../../../src/timeline/types';
 
 function makeDoc(): TimelineDocument {
   return {
@@ -26,6 +29,8 @@ function makeDoc(): TimelineDocument {
             sourceRange: { startUs: 0, durationUs: 5_000_000 },
             transitionIn: { type: 'dissolve', durationUs: 300_000 },
             transitionOut: { type: 'dissolve', durationUs: 500_000 },
+            audioFadeInUs: 200_000,
+            audioFadeOutUs: 400_000,
           },
         ],
       },
@@ -42,6 +47,8 @@ describe('timeline/otioSerializer: transitions', () => {
     const clip = parsed.tracks[0]?.items[0] as any;
     expect(clip.transitionIn).toEqual({ type: 'dissolve', durationUs: 300_000 });
     expect(clip.transitionOut).toEqual({ type: 'dissolve', durationUs: 500_000 });
+    expect(clip.audioFadeInUs).toBe(200_000);
+    expect(clip.audioFadeOutUs).toBe(400_000);
   });
 
   it('omits transitions when not set', () => {
