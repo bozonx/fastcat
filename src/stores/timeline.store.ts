@@ -72,6 +72,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineSaveError = ref<string | null>(null);
 
   const isPlaying = ref(false);
+  const playbackSpeed = ref(1);
   const currentTime = ref(0);
   const duration = ref(0);
   const audioVolume = ref(1);
@@ -108,6 +109,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectedTrackId.value = null;
     selectedItemIds.value = [];
     selectedTransition.value = input;
+  }
+
+  function setPlaybackSpeed(speed: number) {
+    playbackSpeed.value = Math.max(0.1, Math.min(10, speed));
   }
 
   function setClipFreezeFrameFromPlayhead(input: { trackId: string; itemId: string }) {
@@ -1001,6 +1006,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     setAudioVolume,
     setAudioMuted,
     toggleAudioMuted,
+    playbackSpeed,
+    setPlaybackSpeed,
     setPlaybackGestureHandler,
     togglePlayback,
     stopPlayback,

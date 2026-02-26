@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
 
 import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
+import { useTimelineStore } from '~/stores/timeline.store';
 
 export interface UseMonitorPlaybackOptions {
   isLoading: { value: boolean };
@@ -32,6 +33,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     scheduleRender,
     audioEngine,
   } = options;
+
+  const timelineStore = useTimelineStore();
 
   const STORE_TIME_SYNC_MS = 100;
   const PLAYBACK_SEEK_EPSILON_US = 25_000;
@@ -153,7 +156,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         renderAccumulatorMs = 0;
         storeSyncAccumulatorMs = 0;
 
-        audioEngine.play(localCurrentTimeUs);
+        audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed);
 
         playbackLoopId = requestAnimationFrame((ts) => {
           lastFrameTimeMs = ts;

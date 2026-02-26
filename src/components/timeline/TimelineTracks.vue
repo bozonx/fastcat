@@ -856,8 +856,10 @@ function getTransitionForPanel() {
                     hasTransitionInProblem(track, item) ??
                     `Transition In: ${(item as any).transitionIn?.type}`
                   "
-                  @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
-                  @dblclick="
+                  @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
+                  @pointerdown.stop
+                  @mousedown.stop
+                  @dblclick.stop="
                     openTransitionPanel = {
                       trackId: item.trackId,
                       itemId: item.id,
@@ -898,7 +900,7 @@ function getTransitionForPanel() {
                   />
                   <!-- Resize handle inside transition block -->
                   <div
-                    class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
+                    class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-40"
                     @mousedown.stop="
                       startResizeTransition(
                         $event,
@@ -942,8 +944,10 @@ function getTransitionForPanel() {
                     hasTransitionOutProblem(track, item) ??
                     `Transition Out: ${(item as any).transitionOut?.type}`
                   "
-                  @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
-                  @dblclick="
+                  @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
+                  @pointerdown.stop
+                  @mousedown.stop
+                  @dblclick.stop="
                     openTransitionPanel = {
                       trackId: item.trackId,
                       itemId: item.id,
@@ -980,7 +984,7 @@ function getTransitionForPanel() {
                   </template>
                   <!-- Resize handle inside transition block -->
                    <div
-                    class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
+                    class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-40"
                     @mousedown.stop="
                       startResizeTransition(
                         $event,

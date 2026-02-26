@@ -242,8 +242,11 @@ export class AudioEngine {
     return task;
   }
 
-  async play(timeUs: number) {
+  private globalSpeed = 1;
+
+  async play(timeUs: number, speed = 1) {
     this.isPlaying = true;
+    this.globalSpeed = speed;
     const timeS = timeUs / 1_000_000;
     this.baseTimeS = timeS;
 
@@ -259,9 +262,11 @@ export class AudioEngine {
       this.playbackContextTimeS = this.ctx.currentTime;
     }
 
-    for (const clip of this.currentClips) {
-      // Fire and forget
-      void this.scheduleClip(clip, timeS);
+    if (this.globalSpeed !== 0) {
+      for (const clip of this.currentClips) {
+        // Fire and forget
+        void this.scheduleClip(clip, timeS);
+      }
     }
   }
 
@@ -348,6 +353,8 @@ export class AudioEngine {
         ? Math.max(0.1, Math.min(10, speedRaw))
         : 1;
 
+    const effectiveSpeed = speed * Math.abs(this.globalSpeed);
+
     const localOffsetInClipS = Math.max(0, currentTimeS - clipStartS);
 
     const { fadeInS, fadeOutS } = computeFadeDurationsSeconds({
@@ -362,7 +369,7 @@ export class AudioEngine {
     // When to start playing in AudioContext time.
     const playStartS =
       currentTimeS < clipStartS
-        ? this.ctx.currentTime + (clipStartS - currentTimeS)
+        ? this.ctx.currentTime + (clipStartS - currentTimeS) / Math.abs(this.globalSpeed)
         : this.ctx.currentTime;
 
     // Where to start in the audio buffer.
@@ -417,7 +424,7 @@ export class AudioEngine {
     const sourceNode = this.ctx.createBufferSource();
     sourceNode.buffer = buffer;
     if (sourceNode.playbackRate) {
-      sourceNode.playbackRate.value = speed;
+      sourceNode.playbackRate.value = effectiveSpeed;
     }
 
     const clipGain = this.ctx.createGain();

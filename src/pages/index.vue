@@ -58,7 +58,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
 
   e.preventDefault();
 
-  const cmd = matched[0];
+  const cmd: string = matched[0]!;
   if (cmd === 'general.focus') {
     focusStore.handleFocusHotkey();
     return;
@@ -85,9 +85,32 @@ function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
+  // --- Timeline Tabs ---
+  if (cmd.startsWith('timeline.tab')) {
+    const tabIndexStr = cmd.replace('timeline.tab', '');
+    let tabIndex = parseInt(tabIndexStr, 10);
+    if (!isNaN(tabIndex)) {
+      if (tabIndex === 0) tabIndex = 10;
+      const openPaths = projectStore.projectSettings.timelines.openPaths;
+      if (tabIndex > 0 && tabIndex <= openPaths.length) {
+        const path = openPaths[tabIndex - 1];
+        if (path) {
+          projectStore.openTimelineFile(path);
+        }
+      }
+    }
+    return;
+  }
+
+  // --- Playback ---
   if (cmd === 'playback.toggle') {
     if (!focusStore.canUsePlaybackHotkeys) return;
-    timelineStore.togglePlayback();
+    if (timelineStore.playbackSpeed !== 1) {
+      timelineStore.setPlaybackSpeed(1);
+      if (!timelineStore.isPlaying) timelineStore.togglePlayback();
+    } else {
+      timelineStore.togglePlayback();
+    }
     return;
   }
 
@@ -100,6 +123,38 @@ function onGlobalKeydown(e: KeyboardEvent) {
   if (cmd === 'playback.toEnd') {
     if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.goToEnd();
+    return;
+  }
+
+  const playbackSpeedMatch = cmd.match(/^playback\.(forward|backward)([\d_]+)$/);
+  if (playbackSpeedMatch && focusStore.canUsePlaybackHotkeys) {
+    const direction = playbackSpeedMatch[1];
+    const speedStr = playbackSpeedMatch[2]?.replace('_', '.');
+    if (speedStr) {
+      const speed = parseFloat(speedStr);
+      if (!isNaN(speed)) {
+        const finalSpeed = direction === 'backward' ? -speed : speed;
+        timelineStore.setPlaybackSpeed(finalSpeed);
+        if (!timelineStore.isPlaying) timelineStore.togglePlayback();
+      }
+    }
+    return;
+  }
+
+  // --- Audio ---
+  if (cmd === 'audio.mute') {
+    timelineStore.toggleAudioMuted();
+    return;
+  }
+
+  if (cmd === 'audio.volumeUp') {
+    timelineStore.setAudioVolume(timelineStore.audioVolume + 0.1);
+    return;
+  }
+
+  if (cmd === 'audio.volumeDown') {
+    timelineStore.setAudioVolume(timelineStore.audioVolume - 0.1);
+    return;
   }
 }
 

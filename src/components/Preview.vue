@@ -680,6 +680,44 @@ function handleTransitionUpdate(payload: {
   }
 }
 
+function toggleTransition(edge: 'in' | 'out') {
+  if (!selectedClip.value) return;
+  const clip = selectedClip.value;
+  const current = edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut;
+
+  if (current) {
+    handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition: null });
+  } else {
+    // Basic defaults
+    const transition = {
+      type: 'dissolve',
+      durationUs: 1_000_000,
+      mode: 'blend' as const,
+      curve: 'linear' as const,
+    };
+    handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition });
+    // Optionally select it right away
+    timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
+  }
+}
+
+function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
+  if (!selectedClip.value) return;
+  const clip = selectedClip.value;
+  const current = (edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut) as import('~/timeline/types').ClipTransition;
+  if (!current) return;
+
+  handleTransitionUpdate({
+    trackId: clip.trackId,
+    itemId: clip.id,
+    edge,
+    transition: {
+      ...current,
+      durationUs: Math.round(durationSec * 1_000_000),
+    },
+  });
+}
+
 function onPanelFocusIn(e: FocusEvent) {
   if (!isEditableTarget(e.target)) return;
   focusStore.setTempFocus('right');
@@ -950,6 +988,90 @@ function onPanelFocusOut() {
               </div>
             </div>
 
+            <!-- Quick Transitions -->
+            <div
+              v-if="selectedClip.trackId.startsWith('v')"
+              class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+            >
+              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+                {{ t('granVideoEditor.timeline.transitions', 'Transitions') }}
+              </div>
+
+              <!-- In Transition -->
+              <div class="flex flex-col gap-1 pb-1.5 border-b border-ui-border/40">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-medium text-ui-text-muted">Transition IN</span>
+                  <UButton
+                    size="xs"
+                    :color="(selectedClip as any).transitionIn ? 'red' : 'primary'"
+                    variant="ghost"
+                    :icon="(selectedClip as any).transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+                    @click="toggleTransition('in')"
+                  />
+                </div>
+                <div v-if="(selectedClip as any).transitionIn" class="space-y-1.5 pl-2 border-l-2 border-primary-500/40">
+                  <div class="flex items-center justify-between">
+                    <UButton
+                      variant="link"
+                      color="primary"
+                      size="xs"
+                      class="p-0 h-auto font-mono text-[10px]"
+                      @click="timelineStore.selectTransition({ trackId: selectedClip.trackId, itemId: selectedClip.id, edge: 'in' })"
+                    >
+                      {{ (selectedClip as any).transitionIn.type }}
+                    </UButton>
+                    <span class="text-[10px] font-mono text-ui-text-muted">
+                      {{ formatTime((selectedClip as any).transitionIn.durationUs) }}
+                    </span>
+                  </div>
+                  <USlider
+                    :model-value="(selectedClip as any).transitionIn.durationUs / 1_000_000"
+                    :min="0.1"
+                    :max="Math.min(5, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
+                    :step="0.01"
+                    @update:model-value="(v: any) => updateTransitionDuration('in', Number(v))"
+                  />
+                </div>
+              </div>
+
+              <!-- Out Transition -->
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-medium text-ui-text-muted">Transition OUT</span>
+                  <UButton
+                    size="xs"
+                    :color="(selectedClip as any).transitionOut ? 'red' : 'primary'"
+                    variant="ghost"
+                    :icon="(selectedClip as any).transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+                    @click="toggleTransition('out')"
+                  />
+                </div>
+                <div v-if="(selectedClip as any).transitionOut" class="space-y-1.5 pl-2 border-l-2 border-primary-500/40">
+                  <div class="flex items-center justify-between">
+                    <UButton
+                      variant="link"
+                      color="primary"
+                      size="xs"
+                      class="p-0 h-auto font-mono text-[10px]"
+                      @click="timelineStore.selectTransition({ trackId: selectedClip.trackId, itemId: selectedClip.id, edge: 'out' })"
+                    >
+                      {{ (selectedClip as any).transitionOut.type }}
+                    </UButton>
+                    <span class="text-[10px] font-mono text-ui-text-muted">
+                      {{ formatTime((selectedClip as any).transitionOut.durationUs) }}
+                    </span>
+                  </div>
+                  <USlider
+                    :model-value="(selectedClip as any).transitionOut.durationUs / 1_000_000"
+                    :min="0.1"
+                    :max="Math.min(5, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
+                    :step="0.01"
+                    @update:model-value="(v: any) => updateTransitionDuration('out', Number(v))"
+                  />
+                </div>
+              </div>
+            </div>
+
             <!-- Transparency (Opacity) -->
             <div
               v-if="selectedClip.clipType !== 'adjustment'"
@@ -970,7 +1092,7 @@ function onPanelFocusOut() {
 
             <EffectsEditor
               :effects="selectedClip.effects"
-              :titlv-if="canEditAudioGain" e="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
+              :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
               :add-label="t('granVideoEditor.effects.add', 'Add')"
               :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
               @update:effects="handleUpdateClipEffects"
