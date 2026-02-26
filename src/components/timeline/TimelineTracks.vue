@@ -317,23 +317,36 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
 
   if (mode === 'blend') {
     const prev = getPrevClipForItem(track, item);
-    if (!prev) return 'No previous clip to blend with';
+    if (!prev)
+      return t(
+        'granVideoEditor.timeline.transition.errorNoPreviousClip',
+        'No previous clip to blend with',
+      );
 
     // Gap check: clips must be adjacent (no gap > 0)
     const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
     const gapUs = clip.timelineRange.startUs - prevEndUs;
     if (gapUs > 1_000) {
-      return `Gap between clips (${(gapUs / 1_000_000).toFixed(2)}s). Blend requires adjacent clips.`;
+      const gapSeconds = (gapUs / 1_000_000).toFixed(2);
+      return t(
+        'granVideoEditor.timeline.transition.errorGapBetweenClips',
+        {
+          gapSeconds,
+        },
+      );
     }
 
     // Duration check: prev clip must be long enough
     const prevDurS = prev.timelineRange.durationUs / 1_000_000;
     const needS = tr.durationUs / 1_000_000;
     if (prevDurS < needS) {
-      return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
-        need: needS.toFixed(2),
-        have: prevDurS.toFixed(2),
-      });
+      return t(
+        'granVideoEditor.timeline.transition.errorPrevClipTooShort',
+        {
+          needSeconds: needS.toFixed(2),
+          haveSeconds: prevDurS.toFixed(2),
+        },
+      );
     }
 
     // Handle material check for media video clips only
@@ -344,7 +357,13 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
       const handleUs = prevSourceEnd - prevTimelineEnd;
       if (handleUs < tr.durationUs - 1_000) {
         const haveS = Math.max(0, handleUs / 1_000_000);
-        return `Previous clip has insufficient handle material (needs ${needS.toFixed(2)}s, has ${haveS.toFixed(2)}s beyond out-point)`;
+        return t(
+          'granVideoEditor.timeline.transition.errorPrevHandleTooShort',
+          {
+            needSeconds: needS.toFixed(2),
+            haveSeconds: haveS.toFixed(2),
+          },
+        );
       }
     }
 
@@ -362,7 +381,10 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
         const itStart = it.timelineRange.startUs;
         const itEnd = itStart + it.timelineRange.durationUs;
         if (itStart < transitionStart && itEnd > transitionStart && itEnd < transitionEnd) {
-          return 'A lower-track clip ends mid-transition (composite blend will be incomplete)';
+          return t(
+            'granVideoEditor.timeline.transition.errorCompositeLowerEndsMid',
+            'A lower-track clip ends mid-transition (composite blend will be incomplete)',
+          );
         }
       }
     }
@@ -391,7 +413,10 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
         const itEnd = itStart + it.timelineRange.durationUs;
         // Lower clip starts within the transition-out window and ends after the current clip
         if (itStart > outStart && itStart < clipEnd && itEnd > clipEnd) {
-          return 'A lower-track clip starts mid-transition (composite blend will be incomplete)';
+          return t(
+            'granVideoEditor.timeline.transition.errorCompositeLowerStartsMid',
+            'A lower-track clip starts mid-transition (composite blend will be incomplete)',
+          );
         }
       }
     }
@@ -926,6 +951,7 @@ function getTransitionForPanel() {
                   />
                   <!-- Resize handle inside transition block -->
                   <div
+                    v-if="!Boolean((item as any).locked)"
                     class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-40"
                     @mousedown.stop="
                       startResizeTransition(
@@ -1009,6 +1035,7 @@ function getTransitionForPanel() {
                   </template>
                   <!-- Resize handle inside transition block -->
                    <div
+                    v-if="!Boolean((item as any).locked)"
                     class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-40"
                     @mousedown.stop="
                       startResizeTransition(
@@ -1027,7 +1054,7 @@ function getTransitionForPanel() {
 
           <!-- Trim Handles (On top of everything, transparent by default) -->
           <div
-            v-if="item.kind === 'clip'"
+            v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
             class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group"
             @mousedown.stop="
               emit('startTrimItem', $event, {
@@ -1039,7 +1066,7 @@ function getTransitionForPanel() {
             "
           />
           <div
-            v-if="item.kind === 'clip'"
+            v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
             class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group"
             @mousedown.stop="
               emit('startTrimItem', $event, {

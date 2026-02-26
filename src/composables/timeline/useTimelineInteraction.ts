@@ -5,6 +5,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { selectTimelineDurationUs } from '~/timeline/selectors';
 
 export const BASE_PX_PER_SECOND = 10;
 
@@ -522,7 +523,7 @@ export function useTimelineInteraction(
     }
     applyDragFromPendingClientX();
 
-    if (draggingMode.value === 'move' && settingsStore.overlapMode === 'pseudo') {
+    if (!cancel && draggingMode.value === 'move' && settingsStore.overlapMode === 'pseudo') {
       const commit = pendingMoveCommit.value;
       if (commit) {
         try {
@@ -543,11 +544,18 @@ export function useTimelineInteraction(
     const snapshot = dragStartSnapshot.value;
     const appliedCmd = lastDragAppliedCmd.value;
     const currDoc = timelineStore.timelineDoc;
-    if (snapshot && appliedCmd && currDoc && snapshot !== currDoc) {
+    if (!cancel && snapshot && appliedCmd && currDoc && snapshot !== currDoc) {
       historyStore.push(appliedCmd as any, snapshot as any);
     }
 
-    if (hasPendingTimelinePersist.value) {
+    if (cancel && snapshot) {
+      timelineStore.timelineDoc = snapshot as any;
+      if (snapshot) {
+        timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
+      }
+    }
+
+    if (!cancel && hasPendingTimelinePersist.value) {
       void timelineStore.requestTimelineSave({ immediate: true });
       hasPendingTimelinePersist.value = false;
     }
