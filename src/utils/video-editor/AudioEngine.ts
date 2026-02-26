@@ -440,14 +440,25 @@ export class AudioEngine {
     const t0 = localOffsetInClipS;
     const t1 = localOffsetInClipS + remainingInClipS;
     const g0 = gainAtClipTime(t0);
-    clipGain.gain.cancelScheduledValues(nowS);
-    clipGain.gain.setValueAtTime(g0, startAtS);
+    const gainParam: any = clipGain.gain as any;
+    if (typeof gainParam.cancelScheduledValues === 'function') {
+      gainParam.cancelScheduledValues(nowS);
+    }
+    if (typeof gainParam.setValueAtTime === 'function') {
+      gainParam.setValueAtTime(g0, startAtS);
+    } else {
+      gainParam.value = g0;
+    }
 
     const inEndClipS = fadeInS;
     if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
       const rampEndClipS = Math.min(inEndClipS, t1);
       const rampEndAtS = startAtS + (rampEndClipS - t0);
-      clipGain.gain.linearRampToValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+      if (typeof gainParam.linearRampToValueAtTime === 'function') {
+        gainParam.linearRampToValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+      } else if (typeof gainParam.setValueAtTime === 'function') {
+        gainParam.setValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+      }
     }
 
     const outStartClipS = clipDurationS - fadeOutS;
@@ -455,8 +466,14 @@ export class AudioEngine {
       const rampStartClipS = Math.max(outStartClipS, t0);
       const rampStartAtS = startAtS + (rampStartClipS - t0);
       // Ensure we are at the correct value at ramp start, then ramp down to end.
-      clipGain.gain.setValueAtTime(gainAtClipTime(rampStartClipS), rampStartAtS);
-      clipGain.gain.linearRampToValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+      if (typeof gainParam.setValueAtTime === 'function') {
+        gainParam.setValueAtTime(gainAtClipTime(rampStartClipS), rampStartAtS);
+      }
+      if (typeof gainParam.linearRampToValueAtTime === 'function') {
+        gainParam.linearRampToValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+      } else if (typeof gainParam.setValueAtTime === 'function') {
+        gainParam.setValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+      }
     }
 
     sourceNode.start(playStartS, safeBufferOffsetS, safeDurationToPlayS);
