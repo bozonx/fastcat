@@ -385,60 +385,116 @@ export const useTimelineStore = defineStore('timeline', () => {
     const doc = timelineDoc.value;
     if (!doc) return;
 
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
     const cutUs = computeCutUs(doc, currentTime.value);
-    const allTrackIds = doc.tracks.map((t) => t.id);
+    const startUs = item.timelineRange.startUs;
+    const endUs = startUs + item.timelineRange.durationUs;
 
-    const intersectingClips = [];
-    for (const track of doc.tracks) {
-      for (const it of track.items) {
-        if (it.kind !== 'clip') continue;
-        const start = it.timelineRange.startUs;
-        const end = start + it.timelineRange.durationUs;
-        if (cutUs >= start && cutUs <= end) {
-          intersectingClips.push(it);
-        }
-      }
-    }
+    // Check if playhead is within the target clip
+    if (!(cutUs > startUs && cutUs < endUs)) return;
 
-    if (intersectingClips.length === 0) return;
+    const deltaUs = endUs - cutUs;
+    if (deltaUs <= 0) return;
 
-    const maxEndUs = Math.max(
-      ...intersectingClips.map((c) => c.timelineRange.startUs + c.timelineRange.durationUs),
+    // 1. Trim the target clip (shrink duration)
+    applyTimeline(
+      {
+        type: 'trim_item',
+        trackId: target.trackId,
+        itemId: target.itemId,
+        edge: 'end',
+        deltaUs: -deltaUs,
+      },
+      { saveMode: 'none' },
     );
 
-    if (maxEndUs > cutUs) {
-      rippleDeleteRange({ trackIds: allTrackIds, startUs: cutUs, endUs: maxEndUs });
-      await requestTimelineSave({ immediate: true });
+    // 2. Shift all subsequent clips on the same track left by deltaUs
+    const updatedDoc = timelineDoc.value;
+    if (!updatedDoc) return;
+    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
+    if (!updatedTrack) return;
+
+    const subsequentClips = updatedTrack.items
+      .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+      .filter((it) => it.timelineRange.startUs >= endUs - 10); // Use a small epsilon
+
+    for (const clip of subsequentClips) {
+      applyTimeline(
+        {
+          type: 'move_item',
+          trackId: target.trackId,
+          itemId: clip.id,
+          startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
+        },
+        { saveMode: 'none' },
+      );
     }
+
+    await requestTimelineSave({ immediate: true });
   }
 
   async function rippleTrimLeft() {
     const doc = timelineDoc.value;
     if (!doc) return;
 
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
     const cutUs = computeCutUs(doc, currentTime.value);
-    const allTrackIds = doc.tracks.map((t) => t.id);
+    const startUs = item.timelineRange.startUs;
+    const endUs = startUs + item.timelineRange.durationUs;
 
-    const intersectingClips = [];
-    for (const track of doc.tracks) {
-      for (const it of track.items) {
-        if (it.kind !== 'clip') continue;
-        const start = it.timelineRange.startUs;
-        const end = start + it.timelineRange.durationUs;
-        if (cutUs >= start && cutUs <= end) {
-          intersectingClips.push(it);
-        }
-      }
+    // Check if playhead is within the target clip
+    if (!(cutUs > startUs && cutUs < endUs)) return;
+
+    const deltaUs = cutUs - startUs;
+    if (deltaUs <= 0) return;
+
+    // 1. Trim the target clip (shrink duration from start)
+    applyTimeline(
+      {
+        type: 'trim_item',
+        trackId: target.trackId,
+        itemId: target.itemId,
+        edge: 'start',
+        deltaUs: deltaUs,
+      },
+      { saveMode: 'none' },
+    );
+
+    // 2. Shift the trimmed clip and all subsequent clips on the same track left by deltaUs
+    const updatedDoc = timelineDoc.value;
+    if (!updatedDoc) return;
+    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
+    if (!updatedTrack) return;
+
+    const clipsToShift = updatedTrack.items
+      .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+      .filter((it) => it.timelineRange.startUs >= cutUs - 10); // Target clip is now at cutUs, subsequent are later
+
+    for (const clip of clipsToShift) {
+      applyTimeline(
+        {
+          type: 'move_item',
+          trackId: target.trackId,
+          itemId: clip.id,
+          startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
+        },
+        { saveMode: 'none' },
+      );
     }
 
-    if (intersectingClips.length === 0) return;
-
-    const minStartUs = Math.min(...intersectingClips.map((c) => c.timelineRange.startUs));
-
-    if (cutUs > minStartUs) {
-      rippleDeleteRange({ trackIds: allTrackIds, startUs: minStartUs, endUs: cutUs });
-      await requestTimelineSave({ immediate: true });
-    }
+    await requestTimelineSave({ immediate: true });
   }
 
   function getBoundaryTimesUs(trackFilter: ((trackId: string) => boolean) | null): number[] {
