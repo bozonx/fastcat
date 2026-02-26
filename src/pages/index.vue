@@ -24,6 +24,31 @@ const { currentTimelinePath } = storeToRefs(projectStore);
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
 
+function onGlobalKeydown(e: KeyboardEvent) {
+  const target = e.target as HTMLElement | null;
+  const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+  if (isInput) return;
+
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    e.preventDefault();
+    timelineStore.undoTimeline();
+    return;
+  }
+
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+    e.preventDefault();
+    timelineStore.redoTimeline();
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeydown);
+});
+
 useHead({
   title: t('navigation.granVideoEditor'),
 });

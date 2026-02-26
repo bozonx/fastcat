@@ -193,11 +193,17 @@
       "tabs": {
         "project": "Project",
         "files": "Files",
-        "effects": "Effects"
+        "effects": "Effects",
+        "history": "History"
       },
       "sort": {
         "name": "Name",
         "modified": "Modified"
+      },
+      "history": {
+        "undo": "Undo",
+        "redo": "Redo",
+        "empty": "No history yet. Start editing to record actions."
       },
       "actions": {
         "createFolder": "Create folder",

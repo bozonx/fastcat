@@ -10,6 +10,7 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerProject from '~/components/file-manager/FileManagerProject.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
+import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
 import { useProxyStore } from '~/stores/proxy.store';
 
 const { t } = useI18n();
@@ -195,6 +196,13 @@ function onFileSelect(e: Event) {
       >
         {{ t('videoEditor.fileManager.tabs.effects', 'Effects') }}
       </button>
+      <button
+        class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
+        :class="activeTab === 'history' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'"
+        @click="activeTab = 'history'"
+      >
+        {{ t('videoEditor.fileManager.tabs.history', 'History') }}
+      </button>
     </div>
 
     <!-- Actions Toolbar (only for Files tab) -->
@@ -258,6 +266,7 @@ function onFileSelect(e: Event) {
       @create-folder="openCreateFolderModal"
     />
     <FileManagerEffects v-else-if="activeTab === 'effects'" />
+    <FileManagerHistory v-else-if="activeTab === 'history'" />
 
     <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
 

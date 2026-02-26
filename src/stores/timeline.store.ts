@@ -11,10 +11,12 @@ import { quantizeTimeUsToFrames, getDocFps } from '~/timeline/commands/utils';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
+import { useHistoryStore } from './history.store';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
+  const historyStore = useHistoryStore();
 
   const projectRefs = (() => {
     try {
@@ -501,6 +503,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTrack(null);
     timelineRevision = 0;
     savedTimelineRevision = 0;
+    historyStore.clear();
   }
 
   function markTimelineAsCleanForCurrentRevision() {
@@ -588,6 +591,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTrack(null);
     isPlaying.value = false;
     currentTime.value = 0;
+    historyStore.clear();
 
     const fallback = projectStore.createFallbackTimelineDoc();
 
@@ -665,7 +669,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function applyTimeline(
     cmd: TimelineCommand,
-    options?: { saveMode?: 'debounced' | 'immediate' | 'none' },
+    options?: { saveMode?: 'debounced' | 'immediate' | 'none'; skipHistory?: boolean },
   ) {
     if (!timelineDoc.value) {
       timelineDoc.value = projectStore.createFallbackTimelineDoc();
@@ -675,6 +679,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     const hydrated = hydrateClipSourceDuration(timelineDoc.value, cmd);
     const { next } = applyTimelineCommand(hydrated, cmd);
     if (next === prev) return;
+
+    if (!options?.skipHistory) {
+      historyStore.push(cmd, prev);
+    }
 
     timelineDoc.value = next;
     duration.value = selectTimelineDurationUs(next);
@@ -686,6 +694,26 @@ export const useTimelineStore = defineStore('timeline', () => {
     } else if (saveMode === 'debounced') {
       void requestTimelineSave();
     }
+  }
+
+  function undoTimeline() {
+    if (!timelineDoc.value || !historyStore.canUndo) return;
+    const restored = historyStore.undo(timelineDoc.value);
+    if (!restored) return;
+    timelineDoc.value = restored;
+    duration.value = selectTimelineDurationUs(restored);
+    markTimelineAsDirty();
+    void requestTimelineSave();
+  }
+
+  function redoTimeline() {
+    if (!timelineDoc.value || !historyStore.canRedo) return;
+    const restored = historyStore.redo(timelineDoc.value);
+    if (!restored) return;
+    timelineDoc.value = restored;
+    duration.value = selectTimelineDurationUs(restored);
+    markTimelineAsDirty();
+    void requestTimelineSave();
   }
 
   async function addClipToTimelineFromPath(input: {
@@ -874,5 +902,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     extractAudioToTrack,
     returnAudioToVideo,
     resetTimelineState,
+    undoTimeline,
+    redoTimeline,
+    historyStore,
   };
 });
