@@ -1,4 +1,4 @@
-export type HotkeyGroupId = 'general' | 'playback' | 'timeline';
+export type HotkeyGroupId = 'general' | 'playback' | 'timeline' | 'audio';
 
 export type HotkeyCommandId =
   | 'general.focus'
@@ -6,9 +6,39 @@ export type HotkeyCommandId =
   | 'general.undo'
   | 'general.redo'
   | 'timeline.deleteClip'
+  | 'timeline.tab1'
+  | 'timeline.tab2'
+  | 'timeline.tab3'
+  | 'timeline.tab4'
+  | 'timeline.tab5'
+  | 'timeline.tab6'
+  | 'timeline.tab7'
+  | 'timeline.tab8'
+  | 'timeline.tab9'
+  | 'timeline.tab0'
   | 'playback.toggle'
   | 'playback.toStart'
-  | 'playback.toEnd';
+  | 'playback.toEnd'
+  | 'playback.forward1_25'
+  | 'playback.backward1_25'
+  | 'playback.forward1_5'
+  | 'playback.backward1_5'
+  | 'playback.forward1_75'
+  | 'playback.backward1_75'
+  | 'playback.forward2'
+  | 'playback.backward2'
+  | 'playback.forward3'
+  | 'playback.backward3'
+  | 'playback.forward5'
+  | 'playback.backward5'
+  | 'playback.forward0_75'
+  | 'playback.backward0_75'
+  | 'playback.forward0_5'
+  | 'playback.backward0_5'
+  | 'playback.backward1'
+  | 'audio.mute'
+  | 'audio.volumeUp'
+  | 'audio.volumeDown';
 
 export interface HotkeyCommandDefinition {
   id: HotkeyCommandId;
@@ -31,10 +61,41 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
 
     { id: 'timeline.deleteClip', groupId: 'timeline', title: 'Delete clip' },
+    { id: 'timeline.tab1', groupId: 'timeline', title: 'Timeline Tab 1' },
+    { id: 'timeline.tab2', groupId: 'timeline', title: 'Timeline Tab 2' },
+    { id: 'timeline.tab3', groupId: 'timeline', title: 'Timeline Tab 3' },
+    { id: 'timeline.tab4', groupId: 'timeline', title: 'Timeline Tab 4' },
+    { id: 'timeline.tab5', groupId: 'timeline', title: 'Timeline Tab 5' },
+    { id: 'timeline.tab6', groupId: 'timeline', title: 'Timeline Tab 6' },
+    { id: 'timeline.tab7', groupId: 'timeline', title: 'Timeline Tab 7' },
+    { id: 'timeline.tab8', groupId: 'timeline', title: 'Timeline Tab 8' },
+    { id: 'timeline.tab9', groupId: 'timeline', title: 'Timeline Tab 9' },
+    { id: 'timeline.tab0', groupId: 'timeline', title: 'Timeline Tab 10' },
 
-    { id: 'playback.toggle', groupId: 'playback', title: 'Play / pause' },
+    { id: 'playback.toggle', groupId: 'playback', title: 'Play / pause (normal speed)' },
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
+    { id: 'playback.forward1_25', groupId: 'playback', title: 'Forward x1.25' },
+    { id: 'playback.backward1_25', groupId: 'playback', title: 'Backward x1.25' },
+    { id: 'playback.forward1_5', groupId: 'playback', title: 'Forward x1.5' },
+    { id: 'playback.backward1_5', groupId: 'playback', title: 'Backward x1.5' },
+    { id: 'playback.forward1_75', groupId: 'playback', title: 'Forward x1.75' },
+    { id: 'playback.backward1_75', groupId: 'playback', title: 'Backward x1.75' },
+    { id: 'playback.forward2', groupId: 'playback', title: 'Forward x2' },
+    { id: 'playback.backward2', groupId: 'playback', title: 'Backward x2' },
+    { id: 'playback.forward3', groupId: 'playback', title: 'Forward x3' },
+    { id: 'playback.backward3', groupId: 'playback', title: 'Backward x3' },
+    { id: 'playback.forward5', groupId: 'playback', title: 'Forward x5' },
+    { id: 'playback.backward5', groupId: 'playback', title: 'Backward x5' },
+    { id: 'playback.forward0_75', groupId: 'playback', title: 'Forward x0.75' },
+    { id: 'playback.backward0_75', groupId: 'playback', title: 'Backward x0.75' },
+    { id: 'playback.forward0_5', groupId: 'playback', title: 'Forward x0.5' },
+    { id: 'playback.backward0_5', groupId: 'playback', title: 'Backward x0.5' },
+    { id: 'playback.backward1', groupId: 'playback', title: 'Backward x1' },
+
+    { id: 'audio.mute', groupId: 'audio', title: 'Mute' },
+    { id: 'audio.volumeUp', groupId: 'audio', title: 'Volume Up' },
+    { id: 'audio.volumeDown', groupId: 'audio', title: 'Volume Down' },
   ],
   bindings: {
     'general.focus': ['Tab'],
@@ -42,10 +103,41 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.undo': ['Ctrl+Z'],
     'general.redo': ['Ctrl+Shift+Z'],
 
-    'timeline.deleteClip': ['X'],
+    'timeline.deleteClip': ['Delete'],
+    'timeline.tab1': ['1'],
+    'timeline.tab2': ['2'],
+    'timeline.tab3': ['3'],
+    'timeline.tab4': ['4'],
+    'timeline.tab5': ['5'],
+    'timeline.tab6': ['6'],
+    'timeline.tab7': ['7'],
+    'timeline.tab8': ['8'],
+    'timeline.tab9': ['9'],
+    'timeline.tab0': ['0'],
 
     'playback.toggle': ['Space'],
-    'playback.toStart': ['W'],
-    'playback.toEnd': ['T'],
+    'playback.toStart': ['w'],
+    'playback.toEnd': ['t'],
+    'playback.forward1_25': ['f'],
+    'playback.backward1_25': ['d'],
+    'playback.forward1_5': ['Shift+F'],
+    'playback.backward1_5': ['Shift+D'],
+    'playback.forward1_75': ['r'],
+    'playback.backward1_75': ['e'],
+    'playback.forward2': ['Shift+R'],
+    'playback.backward2': ['Shift+E'],
+    'playback.forward3': ['g'],
+    'playback.backward3': ['s'],
+    'playback.forward5': ['Shift+G'],
+    'playback.backward5': ['Shift+S'],
+    'playback.forward0_75': ['c'],
+    'playback.backward0_75': ['v'],
+    'playback.forward0_5': ['Shift+V'],
+    'playback.backward0_5': ['Shift+C'],
+    'playback.backward1': ['a'],
+
+    'audio.mute': ['q'],
+    'audio.volumeUp': ['x'],
+    'audio.volumeDown': ['z'],
   },
 };

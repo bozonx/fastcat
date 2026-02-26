@@ -426,21 +426,21 @@ function getClipClass(item: TimelineTrackItem, track: TimelineTrack): string[] {
   const baseClasses = ['border', 'transition-colors'];
 
   if (clipItem.clipType === 'background') {
-    return [...baseClasses, 'bg-violet-500/20', 'border-violet-500/40', 'hover:bg-violet-500/30'];
+    return [...baseClasses, 'bg-violet-500/40', 'border-violet-500/60', 'hover:bg-violet-500/50'];
   }
   if (clipItem.clipType === 'adjustment') {
-    return [...baseClasses, 'bg-amber-500/20', 'border-amber-500/40', 'hover:bg-amber-500/30'];
+    return [...baseClasses, 'bg-amber-500/40', 'border-amber-500/60', 'hover:bg-amber-500/50'];
   }
   if (track.kind === 'audio') {
-    return [...baseClasses, 'bg-teal-500/20', 'border-teal-500/40', 'hover:bg-teal-500/30'];
+    return [...baseClasses, 'bg-teal-500/50', 'border-teal-500/70', 'hover:bg-teal-500/60'];
   }
 
   // Default video clip: indigo/primary
   return [
     ...baseClasses,
-    'bg-primary-500/40',
-    'border-primary-500/50',
-    'hover:bg-primary-500/50',
+    'bg-primary-500/60',
+    'border-primary-500/70',
+    'hover:bg-primary-500/70',
   ];
 }
 
@@ -767,14 +767,13 @@ function getTransitionForPanel() {
         :items="getClipContextMenuItems(track, item)"
       >
         <div
-          class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
+          class="absolute inset-y-1 rounded overflow-hidden flex flex-col text-xs text-white z-10 cursor-pointer select-none transition-shadow"
           :class="[
-            'absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow',
-            ...getClipClass(item, track),
             timelineStore.selectedItemIds.includes(item.id) ? 'ring-2 ring-white z-20 shadow-lg' : '',
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
               ? 'outline outline-2 outline-yellow-400/80'
               : '',
+            ...getClipClass(item, track),
           ]"
           :style="{
             left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
@@ -786,216 +785,230 @@ function getTransitionForPanel() {
           "
           @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
+          <!-- Audio Fade Layer (Triangles on top) -->
+          <div v-if="item.kind === 'clip'" class="absolute inset-0 pointer-events-none z-30">
+            <svg
+              v-if="(item as any).audioFadeInUs > 0"
+              class="absolute left-0 top-0 h-full"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+              :style="{
+                width: `${Math.min(
+                  Math.max(
+                    0,
+                    timeUsToPx(Math.max(0, Math.round(Number((item as any).audioFadeInUs) || 0)), timelineStore.timelineZoom),
+                  ),
+                  Math.max(0, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom)),
+                )}px`,
+              }"
+            >
+              <polygon points="0,0 100,0 0,100" fill="rgba(0,0,0,0.35)" />
+            </svg>
+
+            <svg
+              v-if="(item as any).audioFadeOutUs > 0"
+              class="absolute right-0 top-0 h-full"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+              :style="{
+                width: `${Math.min(
+                  Math.max(
+                    0,
+                    timeUsToPx(Math.max(0, Math.round(Number((item as any).audioFadeOutUs) || 0)), timelineStore.timelineZoom),
+                  ),
+                  Math.max(0, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom)),
+                )}px`,
+              }"
+            >
+              <polygon points="0,0 100,0 100,100" fill="rgba(0,0,0,0.35)" />
+            </svg>
+          </div>
+
+          <!-- Speed Indicator -->
           <div
             v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
-            class="absolute left-0 right-0 bottom-0 h-1 bg-fuchsia-400/80"
-          />
-
-          <svg
-            v-if="item.kind === 'clip' && (item as any).audioFadeInUs > 0"
-            class="absolute left-0 top-0 h-full pointer-events-none"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-            :style="{
-              width: `${Math.min(
-                Math.max(
-                  0,
-                  timeUsToPx(Math.max(0, Math.round(Number((item as any).audioFadeInUs) || 0)), timelineStore.timelineZoom),
-                ),
-                Math.max(0, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom)),
-              )}px`,
-            }"
-          >
-            <polygon points="0,0 100,0 0,100" fill="rgba(0,0,0,0.35)" />
-          </svg>
-
-          <svg
-            v-if="item.kind === 'clip' && (item as any).audioFadeOutUs > 0"
-            class="absolute right-0 top-0 h-full pointer-events-none"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-            :style="{
-              width: `${Math.min(
-                Math.max(
-                  0,
-                  timeUsToPx(Math.max(0, Math.round(Number((item as any).audioFadeOutUs) || 0)), timelineStore.timelineZoom),
-                ),
-                Math.max(0, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom)),
-              )}px`,
-            }"
-          >
-            <polygon points="0,0 100,0 100,100" fill="rgba(0,0,0,0.35)" />
-          </svg>
-
-          <div
-            v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
-            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-black/40 text-[10px] leading-none font-mono"
+            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-black/40 text-[10px] leading-none font-mono z-40"
           >
             x{{ Number((item as any).speed ?? 1).toFixed(2) }}
           </div>
 
-          <!-- Transition In block -->
-          <template v-if="item.kind === 'clip' && (item as any).transitionIn">
-            <button
-              type="button"
-              class="absolute left-0 top-0 bottom-0 z-20 overflow-hidden"
-              :class="[
-                selectedTransition?.itemId === item.id &&
-                selectedTransition?.trackId === item.trackId &&
-                selectedTransition?.edge === 'in'
-                  ? 'ring-2 ring-amber-300'
-                  : '',
-                hasTransitionInProblem(track, item) ? 'ring-2 ring-orange-500' : '',
-              ]"
-              :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs)}px` }"
-              :title="
-                hasTransitionInProblem(track, item) ??
-                `Transition In: ${(item as any).transitionIn?.type}`
-              "
-              @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
-              @dblclick="
-                openTransitionPanel = {
-                  trackId: item.trackId,
-                  itemId: item.id,
-                  edge: 'in',
-                  anchorEl: $event.currentTarget as HTMLElement,
-                }
-              "
+          <!-- Main Content (3-column layout) -->
+          <div class="flex-1 flex w-full min-h-0 relative z-10">
+            <!-- Left: Transition In Column -->
+            <div
+              v-if="item.kind === 'clip'"
+              class="h-full relative transition-colors"
+              :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs || 0)}px` }"
             >
-              <!-- SVG blend visualization -->
-              <svg
-                v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
-                class="w-full h-full"
-                preserveAspectRatio="none"
-                viewBox="0 0 100 100"
-              >
-                <!-- Upper triangle: same color as clip (incoming clip fills from right) -->
-                <path
-                  :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
-                  :fill="getClipUpperTriColor(item, track)"
-                />
-                <!-- Lower triangle: dark (previous clip recedes) -->
-                <path
-                  :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
-                  :fill="getClipLowerTriColor(item, track)"
-                />
-                <!-- Mid line (bezier or straight) -->
-                <path
-                  :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.7)"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <!-- Composite mode: gradient + icon -->
-              <template v-else>
-                <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
-                <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+              <template v-if="(item as any).transitionIn">
+                <button
+                  type="button"
+                  class="w-full h-full overflow-hidden"
+                  :class="[
+                    selectedTransition?.itemId === item.id &&
+                    selectedTransition?.trackId === item.trackId &&
+                    selectedTransition?.edge === 'in'
+                      ? 'ring-2 ring-amber-300'
+                      : '',
+                    hasTransitionInProblem(track, item) ? 'ring-2 ring-orange-500' : '',
+                  ]"
+                  :title="
+                    hasTransitionInProblem(track, item) ??
+                    `Transition In: ${(item as any).transitionIn?.type}`
+                  "
+                  @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
+                  @dblclick="
+                    openTransitionPanel = {
+                      trackId: item.trackId,
+                      itemId: item.id,
+                      edge: 'in',
+                      anchorEl: $event.currentTarget as HTMLElement,
+                    }
+                  "
+                >
+                  <svg
+                    v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
+                    class="w-full h-full"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 100"
+                  >
+                    <path
+                      :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
+                      :fill="getClipUpperTriColor(item, track)"
+                    />
+                    <path
+                      :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
+                      :fill="getClipLowerTriColor(item, track)"
+                    />
+                    <path
+                      :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.7)"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  <template v-else>
+                    <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
+                    <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+                  </template>
+                  <div
+                    v-if="hasTransitionInProblem(track, item)"
+                    class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500"
+                  />
+                  <!-- Resize handle inside transition block -->
+                  <div
+                    class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
+                    @mousedown.stop="
+                      startResizeTransition(
+                        $event,
+                        item.trackId,
+                        item.id,
+                        'in',
+                        (item as any).transitionIn?.durationUs ?? 500_000,
+                      )
+                    "
+                  />
+                </button>
               </template>
+            </div>
 
-              <!-- Error indicator dot -->
-              <div
-                v-if="hasTransitionInProblem(track, item)"
-                class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500"
-              />
+            <!-- Middle: Title Block -->
+            <div class="flex-1 flex items-end justify-center px-1 pb-1 min-w-0">
+              <span class="truncate" :title="item.kind === 'clip' ? item.name : ''">
+                {{ item.kind === 'clip' ? item.name : '' }}
+              </span>
+            </div>
 
-              <!-- Resize handle on right edge of transition-in -->
-              <div
-                class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
-                @mousedown.stop="
-                  startResizeTransition(
-                    $event,
-                    item.trackId,
-                    item.id,
-                    'in',
-                    (item as any).transitionIn?.durationUs ?? 500_000,
-                  )
-                "
-              />
-            </button>
-          </template>
-
-          <!-- Transition Out block -->
-          <template v-if="item.kind === 'clip' && (item as any).transitionOut">
-            <button
-              type="button"
-              class="absolute right-0 top-0 bottom-0 z-20 overflow-hidden"
-              :class="[
-                selectedTransition?.itemId === item.id &&
-                selectedTransition?.trackId === item.trackId &&
-                selectedTransition?.edge === 'out'
-                  ? 'ring-2 ring-amber-300'
-                  : '',
-                hasTransitionOutProblem(track, item) ? 'ring-2 ring-orange-500' : '',
-              ]"
-              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs)}px` }"
-              :title="
-                hasTransitionOutProblem(track, item) ??
-                `Transition Out: ${(item as any).transitionOut?.type}`
-              "
-              @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
-              @dblclick="
-                openTransitionPanel = {
-                  trackId: item.trackId,
-                  itemId: item.id,
-                  edge: 'out',
-                  anchorEl: $event.currentTarget as HTMLElement,
-                }
-              "
+            <!-- Right: Transition Out Column -->
+            <div
+              v-if="item.kind === 'clip'"
+              class="h-full relative transition-colors"
+              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs || 0)}px` }"
             >
-              <!-- SVG blend visualization -->
-              <svg
-                v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
-                class="w-full h-full"
-                preserveAspectRatio="none"
-                viewBox="0 0 100 100"
-              >
-                <!-- Upper triangle: clip color (outgoing) -->
-                <path
-                  :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri1"
-                  :fill="getClipUpperTriColor(item, track)"
-                />
-                <!-- Lower triangle: dark (next arrives from right) -->
-                <path
-                  :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri2"
-                  :fill="getClipLowerTriColor(item, track)"
-                />
-                <!-- Mid line -->
-                <path
-                  :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').midLine"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.7)"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <!-- Composite mode -->
-              <template v-else>
-                <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
-                <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+              <template v-if="(item as any).transitionOut">
+                <button
+                  type="button"
+                  class="w-full h-full overflow-hidden"
+                  :class="[
+                    selectedTransition?.itemId === item.id &&
+                    selectedTransition?.trackId === item.trackId &&
+                    selectedTransition?.edge === 'out'
+                      ? 'ring-2 ring-amber-300'
+                      : '',
+                    hasTransitionOutProblem(track, item) ? 'ring-2 ring-orange-500' : '',
+                  ]"
+                  :title="
+                    hasTransitionOutProblem(track, item) ??
+                    `Transition Out: ${(item as any).transitionOut?.type}`
+                  "
+                  @click="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
+                  @dblclick="
+                    openTransitionPanel = {
+                      trackId: item.trackId,
+                      itemId: item.id,
+                      edge: 'out',
+                      anchorEl: $event.currentTarget as HTMLElement,
+                    }
+                  "
+                >
+                  <svg
+                    v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
+                    class="w-full h-full"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 100"
+                  >
+                    <path
+                      :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri1"
+                      :fill="getClipUpperTriColor(item, track)"
+                    />
+                    <path
+                      :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri2"
+                      :fill="getClipLowerTriColor(item, track)"
+                    />
+                    <path
+                      :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').midLine"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.7)"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  <template v-else>
+                    <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
+                    <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+                  </template>
+                  <!-- Resize handle inside transition block -->
+                   <div
+                    class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
+                    @mousedown.stop="
+                      startResizeTransition(
+                        $event,
+                        item.trackId,
+                        item.id,
+                        'out',
+                        (item as any).transitionOut?.durationUs ?? 500_000,
+                      )
+                    "
+                  />
+                </button>
               </template>
+            </div>
+          </div>
 
-              <!-- Resize handle on left edge of transition-out -->
-              <div
-                class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-30"
-                @mousedown.stop="
-                  startResizeTransition(
-                    $event,
-                    item.trackId,
-                    item.id,
-                    'out',
-                    (item as any).transitionOut?.durationUs ?? 500_000,
-                  )
-                "
-              />
-            </button>
-          </template>
-
+          <!-- Bottom: Preview Frames Block -->
           <div
             v-if="item.kind === 'clip'"
-            class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/50"
-            @mousedown="
+            class="h-6 w-full bg-black/10 border-t border-white/5 flex items-center justify-center overflow-hidden"
+          >
+            <!-- Frames will be here -->
+          </div>
+
+          <!-- Trim Handles (On top of everything, transparent by default) -->
+          <div
+            v-if="item.kind === 'clip'"
+            class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group"
+            @mousedown.stop="
               emit('startTrimItem', $event, {
                 trackId: item.trackId,
                 itemId: item.id,
@@ -1004,13 +1017,10 @@ function getTransitionForPanel() {
               })
             "
           />
-          <span class="truncate" :title="item.kind === 'clip' ? item.name : ''">{{
-            item.kind === 'clip' ? item.name : ''
-          }}</span>
           <div
             v-if="item.kind === 'clip'"
-            class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/50"
-            @mousedown="
+            class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group"
+            @mousedown.stop="
               emit('startTrimItem', $event, {
                 trackId: item.trackId,
                 itemId: item.id,
