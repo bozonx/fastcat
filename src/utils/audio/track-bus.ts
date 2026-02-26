@@ -1,4 +1,4 @@
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 
 export interface BuildEffectiveAudioClipItemsParams {
@@ -8,7 +8,7 @@ export interface BuildEffectiveAudioClipItemsParams {
 
 export function buildEffectiveAudioClipItems(
   params: BuildEffectiveAudioClipItemsParams,
-): TimelineClipItem[] {
+): TimelineTrackItem[] {
   const allAudioTracks = params.audioTracks;
   const allVideoTracks = params.videoTracks;
 
@@ -22,19 +22,23 @@ export function buildEffectiveAudioClipItems(
     ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
     : allVideoTracks.filter((t) => !t.audioMuted);
 
-  const result: TimelineClipItem[] = [];
+  const result: TimelineTrackItem[] = [];
 
   for (const track of effectiveAudioTracks) {
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
-      if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
-      if (!item.source?.path) continue;
+      const clipType = (item as any).clipType ?? 'media';
+      if (clipType !== 'media' && clipType !== 'timeline') continue;
+      const path = (item as any).source?.path;
+      if (!path) continue;
 
       result.push({
-        ...item,
-        audioGain: mergeGain(track.audioGain, item.audioGain),
-        audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
-      });
+        ...(item as any),
+        clipType,
+        source: { path },
+        audioGain: mergeGain(track.audioGain, (item as any).audioGain),
+        audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
+      } as any);
     }
   }
 
@@ -44,16 +48,20 @@ export function buildEffectiveAudioClipItems(
 
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
-      if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
-      if (item.audioFromVideoDisabled) continue;
-      if (!item.source?.path) continue;
+      const clipType = (item as any).clipType ?? 'media';
+      if (clipType !== 'media' && clipType !== 'timeline') continue;
+      if ((item as any).audioFromVideoDisabled) continue;
+      const path = (item as any).source?.path;
+      if (!path) continue;
 
       result.push({
-        ...item,
+        ...(item as any),
+        clipType,
         id: `${item.id}__audio`,
-        audioGain: mergeGain(track.audioGain, item.audioGain),
-        audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
-      });
+        source: { path },
+        audioGain: mergeGain(track.audioGain, (item as any).audioGain),
+        audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
+      } as any);
     }
   }
 
