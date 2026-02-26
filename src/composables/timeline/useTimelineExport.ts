@@ -90,6 +90,7 @@ export async function toWorkerTimelineClips(
     if (!mediaPath) return mediaPath;
     if (mediaPath.startsWith('/')) return mediaPath;
     if (isProbablyUrlLike(mediaPath)) return mediaPath;
+    if (mediaPath.startsWith('sources/') || mediaPath.startsWith('timelines/')) return mediaPath;
     const baseDir = getDirname(params.nestedTimelinePath);
     if (!baseDir) return mediaPath;
     return joinPaths(baseDir, mediaPath);
