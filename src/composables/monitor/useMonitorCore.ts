@@ -516,6 +516,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 sourceDurationUs: clip.sourceRange.durationUs,
                 speed: (clip as any).speed,
                 audioGain: (clip as any).audioGain,
+                audioBalance: (clip as any).audioBalance,
                 audioFadeInUs: (clip as any).audioFadeInUs,
                 audioFadeOutUs: (clip as any).audioFadeOutUs,
               };

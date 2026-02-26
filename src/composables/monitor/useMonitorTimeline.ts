@@ -367,6 +367,9 @@ export function useMonitorTimeline() {
       hash = mixHash(hash, hashString(track.id));
       hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
       hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
+
+      hash = mixFloat(hash, (track as any).audioGain ?? 1, 1000);
+      hash = mixFloat(hash, (track as any).audioBalance ?? 0, 1000);
     }
 
     for (const item of effectiveAudioItems) {
@@ -378,6 +381,11 @@ export function useMonitorTimeline() {
         hash = mixTime(hash, item.sourceRange.durationUs);
 
         hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
+
+        hash = mixFloat(hash, (item as any).audioGain ?? 1, 1000);
+        hash = mixFloat(hash, (item as any).audioBalance ?? 0, 1000);
+        hash = mixTime(hash, Math.round(Number((item as any).audioFadeInUs ?? 0)));
+        hash = mixTime(hash, Math.round(Number((item as any).audioFadeOutUs ?? 0)));
       }
     }
     for (const item of enabledVideoAudioItems) {
@@ -388,6 +396,11 @@ export function useMonitorTimeline() {
       hash = mixTime(hash, item.sourceRange.durationUs);
 
       hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
+
+      hash = mixFloat(hash, (item as any).audioGain ?? 1, 1000);
+      hash = mixFloat(hash, (item as any).audioBalance ?? 0, 1000);
+      hash = mixTime(hash, Math.round(Number((item as any).audioFadeInUs ?? 0)));
+      hash = mixTime(hash, Math.round(Number((item as any).audioFadeOutUs ?? 0)));
     }
     return hash;
   });
