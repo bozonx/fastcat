@@ -29,6 +29,35 @@ const { currentTimelinePath } = storeToRefs(projectStore);
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
 
+let volumeHoldTimeout: number | null = null;
+let volumeHoldInterval: number | null = null;
+let volumeHoldKeyCode: string | null = null;
+
+function clearVolumeHoldTimers() {
+  if (volumeHoldTimeout !== null) {
+    window.clearTimeout(volumeHoldTimeout);
+    volumeHoldTimeout = null;
+  }
+  if (volumeHoldInterval !== null) {
+    window.clearInterval(volumeHoldInterval);
+    volumeHoldInterval = null;
+  }
+  volumeHoldKeyCode = null;
+}
+
+function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
+  clearVolumeHoldTimers();
+  volumeHoldKeyCode = params.keyCode;
+
+  timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
+
+  volumeHoldTimeout = window.setTimeout(() => {
+    volumeHoldInterval = window.setInterval(() => {
+      timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
+    }, 60);
+  }, 350);
+}
+
 function onGlobalKeydown(e: KeyboardEvent) {
   if (e.defaultPrevented) return;
   if (e.repeat) return;
@@ -155,22 +184,37 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
 
   if (cmd === 'audio.volumeUp') {
-    timelineStore.setAudioVolume(timelineStore.audioVolume + 0.1);
+    startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
     return;
   }
 
   if (cmd === 'audio.volumeDown') {
-    timelineStore.setAudioVolume(timelineStore.audioVolume - 0.1);
+    startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
     return;
   }
 }
 
+function onGlobalKeyup(e: KeyboardEvent) {
+  if (!volumeHoldKeyCode) return;
+  if (e.code !== volumeHoldKeyCode) return;
+  clearVolumeHoldTimers();
+}
+
+function onGlobalBlur() {
+  clearVolumeHoldTimers();
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onGlobalKeydown);
+  window.addEventListener('keyup', onGlobalKeyup);
+  window.addEventListener('blur', onGlobalBlur);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalKeydown);
+  window.removeEventListener('keyup', onGlobalKeyup);
+  window.removeEventListener('blur', onGlobalBlur);
+  clearVolumeHoldTimers();
 });
 
 useHead({

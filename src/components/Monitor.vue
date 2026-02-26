@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -97,6 +97,10 @@ const {
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );
+
+function blurActiveElement() {
+  (document.activeElement as HTMLElement | null)?.blur?.();
+}
 
 const previewResolutions = computed(() => {
   const projectHeight = projectStore.projectSettings.export.height;
@@ -253,6 +257,7 @@ function setPlayback(params: { direction: 'forward' | 'backward'; speed: number 
 
   if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
     timelineStore.togglePlayback();
+    blurActiveElement();
     return;
   }
 
@@ -260,6 +265,8 @@ function setPlayback(params: { direction: 'forward' | 'backward'; speed: number 
   if (!timelineStore.isPlaying) {
     timelineStore.togglePlayback();
   }
+
+  blurActiveElement();
 }
 
 function onPlaybackSpeedChange(next: { value: number } | number | null) {
@@ -268,6 +275,15 @@ function onPlaybackSpeedChange(next: { value: number } | number | null) {
 
   const sign = playbackDirection.value === 'backward' ? -1 : 1;
   timelineStore.setPlaybackSpeed(sign * nextValue);
+
+  void nextTick(() => {
+    blurActiveElement();
+  });
+}
+
+function rewindToStart() {
+  timelineStore.currentTime = 0;
+  blurActiveElement();
 }
 
 let volumeHoldTimeout: number | null = null;
@@ -294,6 +310,8 @@ function startVolumeHold(step: number) {
 
   applyVolumeStep(step);
 
+  blurActiveElement();
+
   volumeHoldTimeout = window.setTimeout(() => {
     volumeHoldInterval = window.setInterval(() => {
       applyVolumeStep(step);
@@ -312,6 +330,7 @@ function onVolumeInput(event: Event) {
 
 function toggleMute() {
   timelineStore.toggleAudioMuted();
+  blurActiveElement();
 }
 </script>
 
@@ -471,7 +490,7 @@ function toggleMute() {
         icon="i-heroicons-arrow-uturn-left"
         :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
         :disabled="!canInteractPlayback"
-        @click="timelineStore.currentTime = 0"
+        @click="rewindToStart"
       />
 
       <UButton
