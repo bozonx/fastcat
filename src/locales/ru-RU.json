@@ -326,6 +326,8 @@
       "dropClip": "Отпустите клип здесь",
       "addAdjustmentClip": "Добавить клип корректировки",
       "addBackgroundClip": "Добавить фон",
+      "textClipDefaultName": "Текст",
+      "textClipDefaultText": "Текст",
       "rewind": "Перемотка в начало",
       "play": "Воспроизведение",
       "pause": "Пауза",
@@ -358,6 +360,16 @@
         "panelIn": "Переход в начале",
         "panelOut": "Переход в конце"
       }
+    },
+    "textClip": {
+      "text": "Текст",
+      "fontSize": "Размер шрифта",
+      "align": "Выравнивание",
+      "verticalAlign": "Вертикальное выравнивание",
+      "lineHeight": "Высота строки",
+      "letterSpacing": "Межбуквенный интервал",
+      "backgroundColor": "Фон",
+      "padding": "Отступы"
     }
   },
   "navigation": {

@@ -31,7 +31,9 @@ function addBackgroundClip() {
 }
 
 function addTextClip() {
-  timelineStore.addTextClipAtPlayhead();
+  const defaultName = t('granVideoEditor.timeline.textClipDefaultName', 'Text');
+  const defaultText = t('granVideoEditor.timeline.textClipDefaultText', 'Text');
+  timelineStore.addTextClipAtPlayhead({ name: defaultName, text: defaultText });
 }
 
 async function splitClips() {

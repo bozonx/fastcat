@@ -25,6 +25,14 @@ export interface TextClipStyle {
   fontWeight?: string | number;
   color?: string;
   align?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  lineHeight?: number;
+  letterSpacing?: number;
+  backgroundColor?: string;
+  padding?:
+    | number
+    | { x?: number; y?: number }
+    | { top?: number; right?: number; bottom?: number; left?: number };
 }
 
 export type ClipAnchorPreset =

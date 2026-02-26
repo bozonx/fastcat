@@ -326,6 +326,8 @@
       "dropClip": "Drop clip here",
       "addAdjustmentClip": "Add adjustment clip",
       "addBackgroundClip": "Add background clip",
+      "textClipDefaultName": "Text",
+      "textClipDefaultText": "Text",
       "rewind": "Rewind",
       "play": "Play",
       "pause": "Pause",
@@ -365,6 +367,16 @@
         "curveBezier": "Bezier",
         "errorPrevClipTooShort": "Previous clip is too short for this transition (needs {need}s, has {have}s)"
       }
+    },
+    "textClip": {
+      "text": "Text",
+      "fontSize": "Font size",
+      "align": "Align",
+      "verticalAlign": "Vertical align",
+      "lineHeight": "Line height",
+      "letterSpacing": "Letter spacing",
+      "backgroundColor": "Background",
+      "padding": "Padding"
     }
   },
   "navigation": {

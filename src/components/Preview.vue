@@ -697,7 +697,7 @@ function handleTransitionUpdate(payload: {
                 v-else-if="selectedClip.clipType === 'text'"
                 class="flex flex-col gap-3 border-b border-gray-800 pb-2"
               >
-                <span class="text-gray-500">Text</span>
+                <span class="text-gray-500">{{ t('granVideoEditor.textClip.text', 'Text') }}</span>
                 <UTextarea
                   :model-value="(selectedClip as any).text"
                   size="sm"
@@ -707,7 +707,7 @@ function handleTransitionUpdate(payload: {
 
                 <div class="grid grid-cols-2 gap-3">
                   <div class="flex flex-col gap-1">
-                    <span class="text-gray-500">Font size</span>
+                    <span class="text-gray-500">{{ t('granVideoEditor.textClip.fontSize', 'Font size') }}</span>
                     <UInput
                       :model-value="Number(((selectedClip as any).style?.fontSize ?? 64))"
                       size="sm"
@@ -717,7 +717,7 @@ function handleTransitionUpdate(payload: {
                     />
                   </div>
                   <div class="flex flex-col gap-1">
-                    <span class="text-gray-500">Color</span>
+                    <span class="text-gray-500">{{ t('common.color', 'Color') }}</span>
                     <UColorPicker
                       :model-value="String(((selectedClip as any).style?.color ?? '#ffffff'))"
                       format="hex"
@@ -728,7 +728,7 @@ function handleTransitionUpdate(payload: {
                 </div>
 
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Align</span>
+                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.align', 'Align') }}</span>
                   <USelect
                     :model-value="String(((selectedClip as any).style?.align ?? 'center'))"
                     :options="[
@@ -738,6 +738,64 @@ function handleTransitionUpdate(payload: {
                     ]"
                     size="sm"
                     @update:model-value="(v: any) => handleUpdateTextStyle({ align: v })"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.verticalAlign', 'Vertical align') }}</span>
+                  <USelect
+                    :model-value="String(((selectedClip as any).style?.verticalAlign ?? 'middle'))"
+                    :options="[
+                      { value: 'top', label: 'Top' },
+                      { value: 'middle', label: 'Middle' },
+                      { value: 'bottom', label: 'Bottom' },
+                    ]"
+                    size="sm"
+                    @update:model-value="(v: any) => handleUpdateTextStyle({ verticalAlign: v })"
+                  />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="flex flex-col gap-1">
+                    <span class="text-gray-500">{{ t('granVideoEditor.textClip.lineHeight', 'Line height') }}</span>
+                    <UInput
+                      :model-value="Number(((selectedClip as any).style?.lineHeight ?? 1.2))"
+                      size="sm"
+                      type="number"
+                      step="0.1"
+                      @update:model-value="(v: any) => handleUpdateTextStyle({ lineHeight: Number(v) })"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <span class="text-gray-500">{{ t('granVideoEditor.textClip.letterSpacing', 'Letter spacing') }}</span>
+                    <UInput
+                      :model-value="Number(((selectedClip as any).style?.letterSpacing ?? 0))"
+                      size="sm"
+                      type="number"
+                      step="1"
+                      @update:model-value="(v: any) => handleUpdateTextStyle({ letterSpacing: Number(v) })"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.backgroundColor', 'Background') }}</span>
+                  <UColorPicker
+                    :model-value="String(((selectedClip as any).style?.backgroundColor ?? ''))"
+                    format="hex"
+                    size="sm"
+                    @update:model-value="(v: any) => handleUpdateTextStyle({ backgroundColor: String(v) })"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.padding', 'Padding') }}</span>
+                  <UInput
+                    :model-value="Number(((selectedClip as any).style?.padding ?? 60))"
+                    size="sm"
+                    type="number"
+                    step="1"
+                    @update:model-value="(v: any) => handleUpdateTextStyle({ padding: Number(v) })"
                   />
                 </div>
               </div>

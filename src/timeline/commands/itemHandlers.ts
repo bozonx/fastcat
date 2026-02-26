@@ -734,12 +734,95 @@ export function updateClipProperties(
             ? alignRaw
             : undefined;
 
+        const verticalAlignRaw = anyRaw.verticalAlign;
+        const verticalAlign =
+          verticalAlignRaw === 'top' ||
+          verticalAlignRaw === 'middle' ||
+          verticalAlignRaw === 'bottom'
+            ? verticalAlignRaw
+            : undefined;
+
+        const lineHeightRaw = anyRaw.lineHeight;
+        const lineHeight =
+          typeof lineHeightRaw === 'number' && Number.isFinite(lineHeightRaw)
+            ? Math.max(0.1, Math.min(10, lineHeightRaw))
+            : undefined;
+
+        const letterSpacingRaw = anyRaw.letterSpacing;
+        const letterSpacing =
+          typeof letterSpacingRaw === 'number' && Number.isFinite(letterSpacingRaw)
+            ? Math.max(-1000, Math.min(1000, letterSpacingRaw))
+            : undefined;
+
+        const backgroundColor =
+          typeof anyRaw.backgroundColor === 'string' ? anyRaw.backgroundColor.trim() : undefined;
+
+        const paddingRaw = anyRaw.padding;
+        const padding = (() => {
+          const clampPadding = (v: unknown) =>
+            typeof v === 'number' && Number.isFinite(v)
+              ? Math.max(0, Math.min(10_000, v))
+              : undefined;
+
+          if (typeof paddingRaw === 'number') {
+            const v = clampPadding(paddingRaw);
+            return v === undefined ? undefined : { top: v, right: v, bottom: v, left: v };
+          }
+          if (!paddingRaw || typeof paddingRaw !== 'object') return undefined;
+
+          const anyPad = paddingRaw as any;
+          const x = clampPadding(anyPad.x);
+          const y = clampPadding(anyPad.y);
+          const top = clampPadding(anyPad.top);
+          const right = clampPadding(anyPad.right);
+          const bottom = clampPadding(anyPad.bottom);
+          const left = clampPadding(anyPad.left);
+
+          const fromXY =
+            x !== undefined || y !== undefined
+              ? {
+                  top: y ?? 0,
+                  right: x ?? 0,
+                  bottom: y ?? 0,
+                  left: x ?? 0,
+                }
+              : undefined;
+          const fromEdges =
+            top !== undefined || right !== undefined || bottom !== undefined || left !== undefined
+              ? {
+                  top: top ?? 0,
+                  right: right ?? 0,
+                  bottom: bottom ?? 0,
+                  left: left ?? 0,
+                }
+              : undefined;
+
+          const resolved = fromEdges ?? fromXY;
+          if (!resolved) return undefined;
+          if (
+            resolved.top === 0 &&
+            resolved.right === 0 &&
+            resolved.bottom === 0 &&
+            resolved.left === 0
+          ) {
+            return undefined;
+          }
+          return resolved;
+        })();
+
         const safeStyle = {
           ...(fontFamily !== undefined ? { fontFamily } : {}),
           ...(fontSize !== undefined ? { fontSize } : {}),
           ...(fontWeight !== undefined ? { fontWeight } : {}),
           ...(color !== undefined ? { color } : {}),
           ...(align !== undefined ? { align } : {}),
+          ...(verticalAlign !== undefined ? { verticalAlign } : {}),
+          ...(lineHeight !== undefined ? { lineHeight } : {}),
+          ...(letterSpacing !== undefined ? { letterSpacing } : {}),
+          ...(backgroundColor !== undefined && backgroundColor.length > 0
+            ? { backgroundColor }
+            : {}),
+          ...(padding !== undefined ? { padding } : {}),
         };
 
         if (Object.keys(safeStyle).length === 0) {

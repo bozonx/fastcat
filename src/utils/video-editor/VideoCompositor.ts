@@ -15,6 +15,7 @@ import {
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
 import { getTransitionManifest, easeInOutCubic } from '../../transitions';
+import type { TextClipStyle } from '~/timeline/types';
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
@@ -65,13 +66,7 @@ export interface CompositorClip {
   bitmap: ImageBitmap | null;
   backgroundColor?: string;
   text?: string;
-  style?: {
-    fontFamily?: string;
-    fontSize?: number;
-    fontWeight?: string | number;
-    color?: string;
-    align?: 'left' | 'center' | 'right';
-  };
+  style?: TextClipStyle;
   opacity?: number;
   effects?: any[];
   transform?: {
@@ -1349,6 +1344,20 @@ export class VideoCompositor {
     const ctx = clip.ctx;
     const canvas = clip.canvas;
 
+    const targetW = Math.max(1, Math.round(this.width));
+    const targetH = Math.max(1, Math.round(this.height));
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+      try {
+        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
+          (clip.sprite.texture.source as any).resize(targetW, targetH);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const style = clip.style ?? {};
@@ -1371,15 +1380,153 @@ export class VideoCompositor {
         ? style.align
         : 'center';
 
+    const verticalAlign =
+      style.verticalAlign === 'top' ||
+      style.verticalAlign === 'middle' ||
+      style.verticalAlign === 'bottom'
+        ? style.verticalAlign
+        : 'middle';
+
+    const lineHeightMultiplier =
+      typeof style.lineHeight === 'number' && Number.isFinite(style.lineHeight)
+        ? Math.max(0.1, Math.min(10, style.lineHeight))
+        : 1.2;
+    const lineHeightPx = Math.max(1, Math.round(fontSize * lineHeightMultiplier));
+
+    const letterSpacing =
+      typeof style.letterSpacing === 'number' && Number.isFinite(style.letterSpacing)
+        ? Math.max(-1000, Math.min(1000, style.letterSpacing))
+        : 0;
+
+    const backgroundColor =
+      typeof style.backgroundColor === 'string' && style.backgroundColor.trim().length > 0
+        ? style.backgroundColor.trim()
+        : '';
+
+    const padding = (() => {
+      const raw = (style as any).padding;
+      const clampPadding = (v: unknown) =>
+        typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(10_000, v)) : undefined;
+
+      if (typeof raw === 'number') {
+        const v = clampPadding(raw) ?? 0;
+        return { top: v, right: v, bottom: v, left: v };
+      }
+
+      if (raw && typeof raw === 'object') {
+        const anyPad = raw as any;
+        const x = clampPadding(anyPad.x);
+        const y = clampPadding(anyPad.y);
+        const top = clampPadding(anyPad.top);
+        const right = clampPadding(anyPad.right);
+        const bottom = clampPadding(anyPad.bottom);
+        const left = clampPadding(anyPad.left);
+
+        const fromXY =
+          x !== undefined || y !== undefined
+            ? { top: y ?? 0, right: x ?? 0, bottom: y ?? 0, left: x ?? 0 }
+            : undefined;
+        const fromEdges =
+          top !== undefined || right !== undefined || bottom !== undefined || left !== undefined
+            ? { top: top ?? 0, right: right ?? 0, bottom: bottom ?? 0, left: left ?? 0 }
+            : undefined;
+
+        return fromEdges ?? fromXY ?? { top: 60, right: 60, bottom: 60, left: 60 };
+      }
+
+      return { top: 60, right: 60, bottom: 60, left: 60 };
+    })();
+
+    const safeW = Math.max(1, canvas.width);
+    const safeH = Math.max(1, canvas.height);
+    const boxX = Math.max(0, padding.left);
+    const boxY = Math.max(0, padding.top);
+    const boxW = Math.max(1, safeW - Math.max(0, padding.left) - Math.max(0, padding.right));
+    const boxH = Math.max(1, safeH - Math.max(0, padding.top) - Math.max(0, padding.bottom));
+
+    if (backgroundColor.length > 0) {
+      ctx.save();
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(boxX, boxY, boxW, boxH);
+      ctx.restore();
+    }
+
     ctx.fillStyle = color;
     ctx.textAlign = align;
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'top';
     ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
 
-    const text = String(clip.text ?? '');
-    const x = align === 'left' ? 60 : align === 'right' ? canvas.width - 60 : canvas.width / 2;
-    const y = canvas.height / 2;
-    ctx.fillText(text, x, y);
+    const rawText = String(clip.text ?? '');
+    const paragraphs = rawText.split(/\r?\n/g);
+
+    const wrapLine = (line: string): string[] => {
+      const trimmed = String(line);
+      if (trimmed.length === 0) return [''];
+
+      const words = trimmed.split(/\s+/g);
+      const lines: string[] = [];
+      let curr = '';
+
+      for (const w of words) {
+        const next = curr.length > 0 ? `${curr} ${w}` : w;
+        const width =
+          ctx.measureText(next).width + Math.max(0, next.length - 1) * Math.max(0, letterSpacing);
+        if (width <= boxW || curr.length === 0) {
+          curr = next;
+          continue;
+        }
+        lines.push(curr);
+        curr = w;
+      }
+      lines.push(curr);
+      return lines;
+    };
+
+    const lines = paragraphs.flatMap((p) => wrapLine(p));
+    const textBlockH = lines.length * lineHeightPx;
+    const startY =
+      verticalAlign === 'top'
+        ? boxY
+        : verticalAlign === 'bottom'
+          ? boxY + Math.max(0, boxH - textBlockH)
+          : boxY + Math.max(0, (boxH - textBlockH) / 2);
+
+    const startX = align === 'left' ? boxX : align === 'right' ? boxX + boxW : boxX + boxW / 2;
+
+    const drawWithLetterSpacing = (text: string, x: number, y: number) => {
+      if (!Number.isFinite(letterSpacing) || letterSpacing === 0) {
+        ctx.fillText(text, x, y);
+        return;
+      }
+
+      if (ctx.textAlign === 'center' || ctx.textAlign === 'right') {
+        const baseWidth = ctx.measureText(text).width;
+        const extra = Math.max(0, text.length - 1) * letterSpacing;
+        const total = baseWidth + extra;
+        const leftX = ctx.textAlign === 'center' ? x - total / 2 : x - total;
+
+        let dx = leftX;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i] ?? '';
+          ctx.fillText(ch, dx, y);
+          dx += ctx.measureText(ch).width + letterSpacing;
+        }
+        return;
+      }
+
+      let dx = x;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i] ?? '';
+        ctx.fillText(ch, dx, y);
+        dx += ctx.measureText(ch).width + letterSpacing;
+      }
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? '';
+      const y = startY + i * lineHeightPx;
+      drawWithLetterSpacing(line, startX, y);
+    }
 
     try {
       (clip.sprite.texture.source as any)?.update?.();

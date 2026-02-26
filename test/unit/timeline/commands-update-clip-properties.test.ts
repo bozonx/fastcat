@@ -263,4 +263,89 @@ describe('timeline/commands update_clip_properties', () => {
     expect(c1.timelineRange.durationUs).toBe(2_000_000);
     expect(c2.timelineRange.startUs).toBe(2_000_000);
   });
+
+  it('sanitizes style for a text clip', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'text',
+          id: 't1',
+          trackId: 'v1',
+          name: 'T1',
+          text: 'Hello',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        } as any,
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 't1',
+      properties: {
+        style: {
+          fontSize: 12.4,
+          verticalAlign: 'bottom',
+          lineHeight: 2,
+          letterSpacing: 5,
+          backgroundColor: '  #112233  ',
+          padding: { x: 10, y: 20 },
+          unknown: 'x',
+        } as any,
+      },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.style).toEqual({
+      fontSize: 12,
+      verticalAlign: 'bottom',
+      lineHeight: 2,
+      letterSpacing: 5,
+      backgroundColor: '#112233',
+      padding: { top: 20, right: 10, bottom: 20, left: 10 },
+    });
+  });
+
+  it('drops invalid style fields for a text clip', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'text',
+          id: 't1',
+          trackId: 'v1',
+          name: 'T1',
+          text: 'Hello',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        } as any,
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 't1',
+      properties: {
+        style: {
+          verticalAlign: 'nope',
+          lineHeight: Infinity,
+          letterSpacing: 'a',
+          backgroundColor: '   ',
+          padding: { top: 0, left: 0, right: 0, bottom: 0 },
+        } as any,
+      },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.style).toBeUndefined();
+  });
 });
