@@ -68,7 +68,7 @@ function isSelected(value: any) {
       :variant="isSelected(option.value) ? activeVariant : variant"
       :disabled="disabled || option.disabled"
       :title="option.title"
-      class="focus:z-10 rounded-none! transition-all duration-200 justify-center whitespace-normal h-auto py-2"
+      class="focus:z-10 rounded-none! transition-all duration-200 justify-center whitespace-normal h-auto py-1.5 px-2 text-xs"
       :class="[
         !(disabled || option.disabled) ? 'cursor-pointer' : '',
         orientation === 'horizontal'

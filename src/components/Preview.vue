@@ -682,24 +682,21 @@ function handleTransitionUpdate(payload: {
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-3 py-2 border-b border-ui-border shrink-0 h-10"
+      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0"
     >
       <div class="flex items-center overflow-hidden min-w-0">
-        <span class="text-xs font-semibold text-ui-text-muted uppercase tracking-wider shrink-0">
-          {{ t('granVideoEditor.preview.title', 'Properties') }}
-        </span>
-        <span v-if="displayMode === 'clip'" class="ml-2 text-xs text-gray-500 font-mono truncate">
+        <span v-if="displayMode === 'clip'" class="ml-2 text-xs text-ui-text-muted font-mono truncate">
           {{ selectedClip?.name }}
         </span>
         <span
           v-else-if="displayMode === 'transition'"
-          class="ml-2 text-xs text-gray-500 font-mono truncate"
+          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
         >
           {{ selectedTransitionClip?.name }}
         </span>
         <span
           v-else-if="displayMode === 'file' && uiStore.selectedFsEntry"
-          class="ml-2 text-xs text-gray-500 font-mono truncate"
+          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
         >
           {{ uiStore.selectedFsEntry.name }}
         </span>
@@ -748,15 +745,14 @@ function handleTransitionUpdate(payload: {
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 min-h-0 bg-black relative">
+    <div class="flex-1 min-h-0 bg-ui-bg relative">
       <div class="absolute inset-0 overflow-auto">
-        <div class="flex flex-col min-w-62.5 p-4 items-start w-full">
+        <div class="flex flex-col p-2 items-start w-full">
           <div
             v-if="displayMode === 'empty'"
-            class="w-full flex flex-col items-center justify-center gap-3 text-gray-700 min-h-50"
+            class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
           >
-            <UIcon name="i-heroicons-eye" class="w-16 h-16" />
-            <p class="text-sm">
+            <p class="text-xs">
               {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
             </p>
           </div>
@@ -764,71 +760,45 @@ function handleTransitionUpdate(payload: {
           <!-- Transition Properties -->
           <div
             v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
-            class="w-full flex flex-col gap-4 text-white"
+            class="w-full flex flex-col gap-2 text-ui-text"
           >
-            <div class="flex items-center gap-3">
-              <UIcon name="i-heroicons-arrows-right-left" class="w-10 h-10 shrink-0 text-amber-300" />
-              <div class="min-w-0">
-                <h3 class="font-medium text-lg truncate">
-                  {{ selectedTransition.edge === 'in' ? 'Transition In' : 'Transition Out' }}
-                </h3>
-                <span class="text-xs text-gray-400 uppercase truncate">{{ selectedTransitionClip.name }}</span>
-              </div>
+            <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              {{ selectedTransition.edge === 'in' ? 'Transition In' : 'Transition Out' }}
             </div>
 
-            <div class="mt-2">
-              <ClipTransitionPanel
-                :edge="selectedTransition.edge"
-                :track-id="selectedTransition.trackId"
-                :item-id="selectedTransition.itemId"
-                :transition="selectedTransitionValue"
-                @update="handleTransitionUpdate"
-              />
-            </div>
+            <ClipTransitionPanel
+              :edge="selectedTransition.edge"
+              :track-id="selectedTransition.trackId"
+              :item-id="selectedTransition.itemId"
+              :transition="selectedTransitionValue"
+              @update="handleTransitionUpdate"
+            />
           </div>
 
           <!-- Clip Properties -->
           <div
             v-else-if="displayMode === 'clip' && selectedClip"
-            class="w-full flex flex-col gap-4 text-white"
+            class="w-full flex flex-col gap-2 text-ui-text"
           >
-            <div class="flex items-center gap-3">
-              <UIcon
-                :name="
-                  selectedClip.trackId.startsWith('v')
-                    ? 'i-heroicons-video-camera'
-                    : 'i-heroicons-musical-note'
-                "
-                class="w-10 h-10 shrink-0"
-                :class="selectedClip.trackId.startsWith('v') ? 'text-indigo-400' : 'text-teal-400'"
-              />
-              <div class="min-w-0">
-                <h3 class="font-medium text-lg truncate">{{ selectedClip.name }}</h3>
-                <span class="text-xs text-gray-400 uppercase">
-                  {{
-                    selectedClip.trackId.startsWith('v')
-                      ? t('common.video', 'Video Clip')
-                      : t('common.audio', 'Audio Clip')
-                  }}
-                </span>
-              </div>
+            <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              {{ selectedClip.name }}
             </div>
 
-            <div class="space-y-2 mt-4 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+            <div class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border text-xs">
               <div
                 v-if="selectedClip.clipType === 'media'"
-                class="flex flex-col gap-1 border-b border-gray-800 pb-2"
+                class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
               >
-                <span class="text-gray-500">{{ t('common.source', 'Source File') }}</span>
-                <span class="font-medium break-all">{{ selectedClip.source.path }}</span>
+                <span class="text-ui-text-muted text-xs">{{ t('common.source', 'Source File') }}</span>
+                <span class="font-medium break-all text-xs">{{ selectedClip.source.path }}</span>
               </div>
               <div
                 v-else-if="selectedClip.clipType === 'background'"
-                class="flex flex-col gap-1 border-b border-gray-800 pb-2"
+                class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
               >
-                <span class="text-gray-500">{{ t('common.color', 'Color') }}</span>
+                <span class="text-ui-text-muted text-xs">{{ t('common.color', 'Color') }}</span>
                 <div class="flex items-center justify-between gap-3">
-                  <span class="font-mono text-xs text-gray-300">{{ selectedClip.backgroundColor }}</span>
+                  <span class="font-mono text-xs text-ui-text">{{ selectedClip.backgroundColor }}</span>
                   <UColorPicker
                     :model-value="selectedClip.backgroundColor"
                     format="hex"
@@ -839,9 +809,9 @@ function handleTransitionUpdate(payload: {
               </div>
               <div
                 v-else-if="selectedClip.clipType === 'text'"
-                class="flex flex-col gap-3 border-b border-gray-800 pb-2"
+                class="flex flex-col gap-1.5 border-b border-ui-border pb-1.5"
               >
-                <span class="text-gray-500">{{ t('granVideoEditor.textClip.text', 'Text') }}</span>
+                <span class="text-ui-text-muted text-xs">{{ t('granVideoEditor.textClip.text', 'Text') }}</span>
                 <UTextarea
                   :model-value="(selectedClip as any).text"
                   size="sm"
@@ -849,9 +819,9 @@ function handleTransitionUpdate(payload: {
                   @update:model-value="handleUpdateText"
                 />
 
-                <div class="grid grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-1">
-                    <span class="text-gray-500">{{ t('granVideoEditor.textClip.fontSize', 'Font size') }}</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="flex flex-col gap-0.5">
+                    <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.fontSize', 'Font size') }}</span>
                     <UInput
                       :model-value="Number(((selectedClip as any).style?.fontSize ?? 64))"
                       size="sm"
@@ -860,8 +830,8 @@ function handleTransitionUpdate(payload: {
                       @update:model-value="(v: any) => handleUpdateTextStyle({ fontSize: Number(v) })"
                     />
                   </div>
-                  <div class="flex flex-col gap-1">
-                    <span class="text-gray-500">{{ t('common.color', 'Color') }}</span>
+                  <div class="flex flex-col gap-0.5">
+                    <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
                     <UColorPicker
                       :model-value="String(((selectedClip as any).style?.color ?? '#ffffff'))"
                       format="hex"
@@ -871,8 +841,8 @@ function handleTransitionUpdate(payload: {
                   </div>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.align', 'Align') }}</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.align', 'Align') }}</span>
                   <USelect
                     :model-value="String(((selectedClip as any).style?.align ?? 'center'))"
                     :options="[
@@ -885,8 +855,8 @@ function handleTransitionUpdate(payload: {
                   />
                 </div>
 
-                <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.verticalAlign', 'Vertical align') }}</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.verticalAlign', 'Vertical align') }}</span>
                   <USelect
                     :model-value="String(((selectedClip as any).style?.verticalAlign ?? 'middle'))"
                     :options="[
@@ -899,9 +869,9 @@ function handleTransitionUpdate(payload: {
                   />
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-1">
-                    <span class="text-gray-500">{{ t('granVideoEditor.textClip.lineHeight', 'Line height') }}</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="flex flex-col gap-0.5">
+                    <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.lineHeight', 'Line height') }}</span>
                     <UInput
                       :model-value="Number(((selectedClip as any).style?.lineHeight ?? 1.2))"
                       size="sm"
@@ -910,8 +880,8 @@ function handleTransitionUpdate(payload: {
                       @update:model-value="(v: any) => handleUpdateTextStyle({ lineHeight: Number(v) })"
                     />
                   </div>
-                  <div class="flex flex-col gap-1">
-                    <span class="text-gray-500">{{ t('granVideoEditor.textClip.letterSpacing', 'Letter spacing') }}</span>
+                  <div class="flex flex-col gap-0.5">
+                    <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.letterSpacing', 'Letter spacing') }}</span>
                     <UInput
                       :model-value="Number(((selectedClip as any).style?.letterSpacing ?? 0))"
                       size="sm"
@@ -922,8 +892,8 @@ function handleTransitionUpdate(payload: {
                   </div>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.backgroundColor', 'Background') }}</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.backgroundColor', 'Background') }}</span>
                   <UColorPicker
                     :model-value="String(((selectedClip as any).style?.backgroundColor ?? ''))"
                     format="hex"
@@ -932,8 +902,8 @@ function handleTransitionUpdate(payload: {
                   />
                 </div>
 
-                <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">{{ t('granVideoEditor.textClip.padding', 'Padding') }}</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.padding', 'Padding') }}</span>
                   <UInput
                     :model-value="Number(((selectedClip as any).style?.padding ?? 60))"
                     size="sm"
@@ -943,13 +913,13 @@ function handleTransitionUpdate(payload: {
                   />
                 </div>
               </div>
-              <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
-                <span class="text-gray-500">{{ t('common.start', 'Start Time') }}</span>
-                <span class="font-mono">{{ formatTime(selectedClip.timelineRange.startUs) }}</span>
+              <div class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
+                <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
+                <span class="font-mono text-xs">{{ formatTime(selectedClip.timelineRange.startUs) }}</span>
               </div>
-              <div class="flex flex-col gap-1 pb-2">
-                <span class="text-gray-500">{{ t('common.duration', 'Duration') }}</span>
-                <span class="font-mono">{{
+              <div class="flex flex-col gap-0.5 pb-1.5">
+                <span class="text-xs text-ui-text-muted">{{ t('common.duration', 'Duration') }}</span>
+                <span class="font-mono text-xs">{{
                   formatTime(selectedClip.timelineRange.durationUs)
                 }}</span>
               </div>
@@ -958,11 +928,11 @@ function handleTransitionUpdate(payload: {
             <!-- Transparency (Opacity) -->
             <div
               v-if="selectedClip.clipType !== 'adjustment'"
-              class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+              class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
               <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-300">Прозрачность</span>
-                <span class="text-xs font-mono text-gray-500">{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span>
+                <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">Прозрачность</span>
+                <span class="text-xs font-mono text-ui-text-muted">{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span>
               </div>
               <USlider
                 :model-value="selectedClip.opacity ?? 1"
@@ -983,16 +953,16 @@ function handleTransitionUpdate(payload: {
 
             <div
               v-if="canEditAudioFades && (selectedClipTrack?.kind === 'audio' || selectedClipTrack?.kind === 'video')"
-              class="space-y-4 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+              class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-300">{{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}</span>
+              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+                {{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audio.volume', 'Volume') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ audioGain.toFixed(3) }}x</span>
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audio.volume', 'Volume') }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{ audioGain.toFixed(3) }}x</span>
                 </div>
                 <USlider
                   :model-value="audioGain"
@@ -1003,10 +973,10 @@ function handleTransitionUpdate(payload: {
                 />
               </div>
 
-              <div v-if="canEditAudioBalance" class="space-y-2">
+              <div v-if="canEditAudioBalance" class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audio.balance', 'Balance') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ audioBalance.toFixed(2) }}</span>
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audio.balance', 'Balance') }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{ audioBalance.toFixed(2) }}</span>
                 </div>
                 <USlider
                   :model-value="audioBalance"
@@ -1017,10 +987,10 @@ function handleTransitionUpdate(payload: {
                 />
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audioFade.fadeIn', 'Fade in') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ audioFadeInSec.toFixed(2) }}s</span>
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.fadeIn', 'Fade in') }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{ audioFadeInSec.toFixed(2) }}s</span>
                 </div>
                 <USlider
                   :model-value="audioFadeInSec"
@@ -1031,10 +1001,10 @@ function handleTransitionUpdate(payload: {
                 />
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audioFade.fadeOut', 'Fade out') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ audioFadeOutSec.toFixed(2) }}s</span>
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.fadeOut', 'Fade out') }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{ audioFadeOutSec.toFixed(2) }}s</span>
                 </div>
                 <USlider
                   :model-value="audioFadeOutSec"
@@ -1048,104 +1018,94 @@ function handleTransitionUpdate(payload: {
 
             <div
               v-if="canEditTransform"
-              class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+              class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-300">Transform</span>
+              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+                Transform
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div class="flex flex-col gap-1">
-                  <span class="text-xs text-gray-500">Scale X</span>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">Scale X</span>
                   <UInput v-model.number="transformScaleX" size="sm" type="number" step="0.01" />
                 </div>
-                <div class="flex flex-col gap-1">
-                  <span class="text-xs text-gray-500">Scale Y</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">Scale Y</span>
                   <UInput v-model.number="transformScaleY" size="sm" type="number" step="0.01" />
                 </div>
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-gray-500">Linked scale</span>
+                <span class="text-sm text-ui-text">Linked scale</span>
                 <UCheckbox v-model="transformScaleLinked" />
               </div>
 
-              <div class="flex flex-col gap-1">
-                <span class="text-xs text-gray-500">Rotation (deg)</span>
+              <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-ui-text-muted">Rotation (deg)</span>
                 <UInput v-model.number="transformRotationDeg" size="sm" type="number" step="0.1" />
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div class="flex flex-col gap-1">
-                  <span class="text-xs text-gray-500">Position X</span>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">Position X</span>
                   <UInput v-model.number="transformPosX" size="sm" type="number" step="1" />
                 </div>
-                <div class="flex flex-col gap-1">
-                  <span class="text-xs text-gray-500">Position Y</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">Position Y</span>
                   <UInput v-model.number="transformPosY" size="sm" type="number" step="1" />
                 </div>
               </div>
 
-              <div class="flex flex-col gap-1">
-                <span class="text-xs text-gray-500">Anchor</span>
+              <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-ui-text-muted">Anchor</span>
                 <USelect v-model="transformAnchorPreset" :options="anchorPresetOptions" size="sm" />
               </div>
 
-              <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-3">
-                <div class="flex flex-col gap-1">
-                  <span class="text-xs text-gray-500">Anchor X (0..1)</span>
+              <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">Anchor X (0..1)</span>
                   <UInput v-model.number="transformAnchorX" size="sm" type="number" step="0.01" />
                 </div>
-                <div class="flex flex-col gap-1">
-                  <span class="text-xs text-gray-500">Anchor Y (0..1)</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-xs text-ui-text-muted">Anchor Y (0..1)</span>
                   <UInput v-model.number="transformAnchorY" size="sm" type="number" step="0.01" />
                 </div>
               </div>
             </div>
           </div>
 
-          <div v-else-if="displayMode === 'track' && selectedTrack" class="w-full flex flex-col gap-4">
-            <div class="flex items-center gap-3">
-              <UIcon
-                :name="selectedTrack.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note'"
-                class="w-10 h-10 shrink-0"
-                :class="selectedTrack.kind === 'video' ? 'text-indigo-400' : 'text-teal-400'"
-              />
-              <div class="min-w-0">
-                <h3 class="font-medium text-lg truncate">{{ selectedTrack.name }}</h3>
-                <span class="text-xs text-gray-400 uppercase">
-                  {{ selectedTrack.kind === 'video' ? t('common.video', 'Video Track') : t('common.audio', 'Audio Track') }}
-                </span>
-              </div>
+          <div v-else-if="displayMode === 'track' && selectedTrack" class="w-full flex flex-col gap-2">
+            <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              {{ selectedTrack.name }}
             </div>
 
-            <div class="space-y-2 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
-              <div class="flex flex-col gap-1">
-                <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
-                <span class="font-medium break-all">{{ selectedTrack.name }}</span>
+            <div class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-ui-text-muted">{{ t('common.name', 'Name') }}</span>
+                <span class="font-medium break-all text-xs">{{ selectedTrack.name }}</span>
               </div>
             </div>
 
             <div
               v-if="selectedTrack.kind === 'audio' || selectedTrack.kind === 'video'"
-              class="space-y-4 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+              class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-300">{{ t('granVideoEditor.track.audio.title', 'Track audio') }}</span>
+              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+                {{ t('granVideoEditor.track.audio.title', 'Track audio') }}
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">{{ t('granVideoEditor.track.audio.volume', 'Volume') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ trackAudioGain.toFixed(3) }}x</span>
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.track.audio.volume', 'Volume') }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioGain.toFixed(3) }}x</span>
                 </div>
                 <USlider :model-value="trackAudioGain" :min="0" :max="2" :step="0.001" @update:model-value="(v: any) => (trackAudioGain = Number(v))" />
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">{{ t('granVideoEditor.track.audio.balance', 'Balance') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ trackAudioBalance.toFixed(2) }}</span>
+                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.track.audio.balance', 'Balance') }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioBalance.toFixed(2) }}</span>
                 </div>
                 <USlider :model-value="trackAudioBalance" :min="-1" :max="1" :step="0.01" @update:model-value="(v: any) => (trackAudioBalance = Number(v))" />
               </div>
@@ -1164,9 +1124,9 @@ function handleTransitionUpdate(payload: {
           <div v-else-if="displayMode === 'file'" class="w-full flex flex-col gap-4">
             <!-- Preview Box -->
             <div
-              class="w-full bg-black rounded border border-gray-800 flex items-center justify-center min-h-50 overflow-hidden shrink-0"
+              class="w-full bg-ui-bg rounded border border-ui-border flex items-center justify-center min-h-50 overflow-hidden shrink-0"
             >
-              <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-gray-700 p-8">
+              <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-ui-text-muted p-8">
                 <UIcon name="i-heroicons-document" class="w-16 h-16" />
                 <p class="text-sm text-center">
                   {{
@@ -1194,7 +1154,7 @@ function handleTransitionUpdate(payload: {
 
               <pre
                 v-else-if="mediaType === 'text'"
-                class="w-full max-h-64 overflow-auto p-4 text-xs font-mono text-gray-300 whitespace-pre-wrap"
+                class="w-full max-h-64 overflow-auto p-4 text-xs font-mono text-ui-text whitespace-pre-wrap"
                 >{{ textContent }}</pre
               >
             </div>
@@ -1202,35 +1162,35 @@ function handleTransitionUpdate(payload: {
             <!-- File Info -->
             <div
               v-if="fileInfo"
-              class="space-y-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm w-full"
+              class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border text-xs w-full"
             >
-              <div class="flex flex-col gap-1 border-b border-gray-800 pb-2">
-                <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
-                <span class="font-medium text-white break-all">{{ fileInfo.name }}</span>
+              <div class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
+                <span class="text-xs text-ui-text-muted">{{ t('common.name', 'Name') }}</span>
+                <span class="font-medium text-ui-text break-all">{{ fileInfo.name }}</span>
               </div>
               <div
                 v-if="fileInfo.size !== undefined"
-                class="flex flex-col gap-1 border-b border-gray-800 pb-2"
+                class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
               >
-                <span class="text-gray-500">{{ t('common.size', 'Size') }}</span>
-                <span class="font-medium text-white">{{ formatMegabytes(fileInfo.size) }}</span>
+                <span class="text-xs text-ui-text-muted">{{ t('common.size', 'Size') }}</span>
+                <span class="font-medium text-ui-text">{{ formatMegabytes(fileInfo.size) }}</span>
               </div>
               <div
-                v-if="fileInfo.lastModified"
-                class="flex flex-col gap-1 pb-2"
-                :class="{ 'border-b border-gray-800': metadataYaml }"
+                v-if="fileInfo.lastModified !== undefined"
+                class="flex flex-col gap-0.5 pb-1.5"
+                :class="{ 'border-b border-ui-border': metadataYaml }"
               >
-                <span class="text-gray-500">{{ t('common.modified', 'Modified') }}</span>
-                <span class="font-medium text-white">{{
+                <span class="text-xs text-ui-text-muted">{{ t('common.modified', 'Modified') }}</span>
+                <span class="font-medium text-ui-text">{{
                   new Date(fileInfo.lastModified).toLocaleString()
                 }}</span>
               </div>
-              <div v-if="metadataYaml" class="flex flex-col gap-1 pt-2">
-                <span class="text-gray-500">{{
+              <div v-if="metadataYaml" class="flex flex-col gap-0.5 pt-1.5">
+                <span class="text-xs text-ui-text-muted">{{
                   t('videoEditor.fileManager.info.metadata', 'Metadata')
                 }}</span>
                 <pre
-                  class="bg-gray-950 p-2 rounded text-[10px] font-mono overflow-auto max-h-40 whitespace-pre text-gray-400"
+                  class="bg-ui-bg p-2 rounded text-[10px] font-mono overflow-auto max-h-40 whitespace-pre text-ui-text-muted"
                   >{{ metadataYaml }}</pre
                 >
               </div>

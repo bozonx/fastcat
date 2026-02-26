@@ -58,65 +58,66 @@
   background: #1f2937;
 }
 
-/* Professional Input Ranges */
+/* Professional Compact Input Ranges */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
   cursor: pointer;
-  height: 20px;
+  height: 16px;
 }
 
 input[type="range"]::-webkit-slider-track {
-  background: #374151;
-  height: 4px;
-  border-radius: 2px;
+  background: #2a2a2a;
+  height: 3px;
+  border-radius: 1.5px;
 }
 
 input[type="range"]::-moz-range-track {
-  background: #374151;
-  height: 4px;
-  border-radius: 2px;
+  background: #2a2a2a;
+  height: 3px;
+  border-radius: 1.5px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   background: #3b82f6;
-  height: 14px;
-  width: 14px;
+  height: 12px;
+  width: 12px;
   border-radius: 2px;
-  margin-top: -5px;
+  margin-top: -4.5px;
   transition: all 0.15s ease;
+  border: 1px solid #1a1a1a;
 }
 
 input[type="range"]::-moz-range-thumb {
   background: #3b82f6;
-  height: 14px;
-  width: 14px;
+  height: 12px;
+  width: 12px;
   border-radius: 2px;
-  border: none;
+  border: 1px solid #1a1a1a;
   transition: all 0.15s ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
   background: #60a5fa;
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 input[type="range"]::-moz-range-thumb:hover {
   background: #60a5fa;
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 input[type="range"]::-webkit-slider-thumb:active {
   background: #2563eb;
-  transform: scale(1.2);
+  transform: scale(1.25);
 }
 
 input[type="range"]::-moz-range-thumb:active {
   background: #2563eb;
-  transform: scale(1.2);
+  transform: scale(1.25);
 }
 
 /* Professional Focus Styles */
@@ -138,5 +139,18 @@ select {
 .select-none {
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Override USlider colors - change from green to blue */
+[data-slider-thumb] {
+  background-color: #3b82f6 !important;
+}
+
+[data-slider-range] {
+  background-color: #3b82f6 !important;
+}
+
+[data-slider-track] {
+  background-color: #2a2a2a !important;
 }
 
