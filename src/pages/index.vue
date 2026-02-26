@@ -134,8 +134,15 @@ function onGlobalKeydown(e: KeyboardEvent) {
       const speed = parseFloat(speedStr);
       if (!isNaN(speed)) {
         const finalSpeed = direction === 'backward' ? -speed : speed;
+        if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
+          timelineStore.togglePlayback();
+          return;
+        }
+
         timelineStore.setPlaybackSpeed(finalSpeed);
-        if (!timelineStore.isPlaying) timelineStore.togglePlayback();
+        if (!timelineStore.isPlaying) {
+          timelineStore.togglePlayback();
+        }
       }
     }
     return;

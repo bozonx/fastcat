@@ -101,6 +101,17 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
     let newTimeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
 
+    if (newTimeUs <= 0 && timelineStore.playbackSpeed < 0) {
+      newTimeUs = 0;
+      isPlaying.value = false;
+      localCurrentTimeUs = newTimeUs;
+      uiCurrentTimeUs.value = newTimeUs;
+      updateTimecodeUi(newTimeUs);
+      updateStoreTime(newTimeUs);
+      scheduleRender(newTimeUs);
+      return;
+    }
+
     if (safeDurationUs.value > 0 && newTimeUs >= safeDurationUs.value) {
       newTimeUs = safeDurationUs.value;
       isPlaying.value = false;
@@ -169,6 +180,14 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         updateTimecodeUi(uiCurrentTimeUs.value);
         internalUpdateStoreTime(uiCurrentTimeUs.value);
       }
+    },
+  );
+
+  watch(
+    () => timelineStore.playbackSpeed,
+    (speed) => {
+      if (!isPlaying.value) return;
+      audioEngine.setGlobalSpeed(speed);
     },
   );
 

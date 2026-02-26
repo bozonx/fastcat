@@ -275,6 +275,31 @@ export class AudioEngine {
     this.stopAllNodes();
   }
 
+  setGlobalSpeed(speed: number) {
+    const parsed = Number(speed);
+    if (!Number.isFinite(parsed)) return;
+
+    this.globalSpeed = parsed;
+
+    if (!this.isPlaying) {
+      return;
+    }
+
+    if (!this.ctx) {
+      return;
+    }
+
+    const currentTimeS = this.getCurrentTimeS();
+    this.stopAllNodes();
+
+    this.baseTimeS = currentTimeS;
+    this.playbackContextTimeS = this.ctx.currentTime;
+
+    for (const clip of this.currentClips) {
+      void this.scheduleClip(clip, currentTimeS);
+    }
+  }
+
   seek(timeUs: number) {
     if (this.isPlaying) {
       this.stopAllNodes();
@@ -300,7 +325,7 @@ export class AudioEngine {
 
   getCurrentTimeS(): number {
     if (!this.isPlaying || !this.ctx) return this.baseTimeS;
-    return this.baseTimeS + (this.ctx.currentTime - this.playbackContextTimeS);
+    return this.baseTimeS + (this.ctx.currentTime - this.playbackContextTimeS) * this.globalSpeed;
   }
 
   getCurrentTimeUs(): number {

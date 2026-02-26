@@ -84,6 +84,19 @@ describe('TimelineStore', () => {
     expect(handler).toHaveBeenCalledWith(false);
   });
 
+  it('allows negative playback speed and clamps magnitude', () => {
+    const store = useTimelineStore();
+
+    store.setPlaybackSpeed(-2);
+    expect(store.playbackSpeed).toBe(-2);
+
+    store.setPlaybackSpeed(-999);
+    expect(store.playbackSpeed).toBe(-10);
+
+    store.setPlaybackSpeed(-0.00001);
+    expect(store.playbackSpeed).toBe(-0.1);
+  });
+
   it('resets state correctly', () => {
     const store = useTimelineStore();
     store.isPlaying = true;

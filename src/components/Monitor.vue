@@ -17,6 +17,25 @@ const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
 const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
 
+const playbackSpeedOptions = [
+  { label: '0.5x', value: 0.5 },
+  { label: '0.75x', value: 0.75 },
+  { label: '1x', value: 1 },
+  { label: '1.25x', value: 1.25 },
+  { label: '1.5x', value: 1.5 },
+  { label: '1.75x', value: 1.75 },
+  { label: '2x', value: 2 },
+  { label: '3x', value: 3 },
+  { label: '5x', value: 5 },
+];
+
+const playbackDirection = computed(() => (timelineStore.playbackSpeed < 0 ? 'backward' : 'forward'));
+
+const selectedPlaybackSpeedOption = computed(() => {
+  const abs = Math.abs(timelineStore.playbackSpeed);
+  return playbackSpeedOptions.find((o) => o.value === abs) ?? playbackSpeedOptions[2];
+});
+
 const {
   videoItems,
   workerTimelineClips,
@@ -225,6 +244,31 @@ function togglePlayback() {
   timelineStore.togglePlayback();
 }
 
+function setPlayback(params: { direction: 'forward' | 'backward'; speed: number }) {
+  if (isLoading.value) return;
+  if (!canInteractPlayback.value) return;
+
+  const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
+
+  if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
+    timelineStore.togglePlayback();
+    return;
+  }
+
+  timelineStore.setPlaybackSpeed(finalSpeed);
+  if (!timelineStore.isPlaying) {
+    timelineStore.togglePlayback();
+  }
+}
+
+function onPlaybackSpeedChange(next: { value: number } | number | null) {
+  const nextValue = typeof next === 'number' ? next : next?.value;
+  if (typeof nextValue !== 'number' || !Number.isFinite(nextValue)) return;
+
+  const sign = playbackDirection.value === 'backward' ? -1 : 1;
+  timelineStore.setPlaybackSpeed(sign * nextValue);
+}
+
 function onVolumeInput(event: Event) {
   const target = event.target as HTMLInputElement | null;
   timelineStore.setAudioVolume(Number(target?.value ?? 1));
@@ -388,11 +432,22 @@ function toggleMute() {
         size="md"
         variant="ghost"
         color="neutral"
-        icon="i-heroicons-backward"
+        icon="i-heroicons-arrow-uturn-left"
         :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
         :disabled="!canInteractPlayback"
         @click="timelineStore.currentTime = 0"
       />
+
+      <UButton
+        size="md"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-backward"
+        :aria-label="t('granVideoEditor.monitor.playBackward', 'Play backward')"
+        :disabled="!canInteractPlayback"
+        @click="setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption.value })"
+      />
+
       <UButton
         size="md"
         variant="solid"
@@ -400,8 +455,22 @@ function toggleMute() {
         :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
         :aria-label="t('granVideoEditor.monitor.play', 'Play')"
         :disabled="!canInteractPlayback"
-        @click="togglePlayback"
+        @click="setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption.value })"
       />
+
+      <div class="w-24">
+        <USelectMenu
+          :model-value="selectedPlaybackSpeedOption as any"
+          :items="playbackSpeedOptions"
+          value-key="value"
+          label-key="label"
+          size="sm"
+          class="w-full"
+          :disabled="!canInteractPlayback"
+          @update:model-value="onPlaybackSpeedChange"
+        />
+      </div>
+
       <div class="flex items-center gap-2.5">
         <UButton
           size="sm"

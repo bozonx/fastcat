@@ -112,7 +112,14 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   function setPlaybackSpeed(speed: number) {
-    playbackSpeed.value = Math.max(0.1, Math.min(10, speed));
+    const parsed = Number(speed);
+    if (!Number.isFinite(parsed)) return;
+
+    const abs = Math.abs(parsed);
+    const clampedAbs = Math.max(0.1, Math.min(10, abs));
+
+    const sign = parsed < 0 ? -1 : 1;
+    playbackSpeed.value = clampedAbs * sign;
   }
 
   function setClipFreezeFrameFromPlayhead(input: { trackId: string; itemId: string }) {
