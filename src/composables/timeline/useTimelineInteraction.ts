@@ -1,8 +1,10 @@
-import { ref, onMounted, onBeforeUnmount } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+
 import type { TimelineTrack } from '~/timeline/types';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useHistoryStore } from '~/stores/history.store';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 
 export const BASE_PX_PER_SECOND = 10;
 
@@ -188,6 +190,7 @@ export function useTimelineInteraction(
   tracks: ComputedRef<TimelineTrack[]>,
 ) {
   const timelineStore = useTimelineStore();
+  const historyStore = useHistoryStore();
   const settingsStore = useTimelineSettingsStore();
 
   const isDraggingPlayhead = ref(false);
@@ -214,6 +217,9 @@ export function useTimelineInteraction(
     itemId: string;
     startUs: number;
   } | null>(null);
+
+  const dragStartSnapshot = ref<import('~/timeline/types').TimelineDocument | null>(null);
+  const lastDragAppliedCmd = ref<import('~/timeline/commands').TimelineCommand | null>(null);
 
   let dragRafId: number | null = null;
 
@@ -299,12 +305,18 @@ export function useTimelineInteraction(
       includePlayheadUs: timelineStore.currentTime,
     });
 
+    dragStartSnapshot.value = timelineStore.timelineDoc;
+    lastDragAppliedCmd.value = null;
+
     movePreview.value = {
       itemId,
       trackId,
       startUs,
     };
     pendingMoveCommit.value = null;
+
+    dragStartSnapshot.value = timelineStore.timelineDoc;
+    lastDragAppliedCmd.value = null;
 
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
@@ -409,16 +421,15 @@ export function useTimelineInteraction(
       }
 
       try {
-        timelineStore.applyTimeline(
-          {
-            type: 'move_item_to_track',
-            fromTrackId: trackId,
-            toTrackId: targetTrackId,
-            itemId,
-            startUs,
-          },
-          { saveMode: 'none' },
-        );
+        const cmd = {
+          type: 'move_item_to_track',
+          fromTrackId: trackId,
+          toTrackId: targetTrackId,
+          itemId,
+          startUs,
+        } as const;
+        timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+        lastDragAppliedCmd.value = cmd as any;
         draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
       } catch {}
@@ -469,10 +480,15 @@ export function useTimelineInteraction(
     const cmdType = overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item';
 
     try {
-      timelineStore.applyTimeline(
-        { type: cmdType as any, trackId, itemId, edge: cmdEdge, deltaUs: nextStepDeltaUs } as any,
-        { saveMode: 'none' },
-      );
+      const cmd = {
+        type: cmdType as any,
+        trackId,
+        itemId,
+        edge: cmdEdge,
+        deltaUs: nextStepDeltaUs,
+      } as any;
+      timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+      lastDragAppliedCmd.value = cmd as any;
       hasPendingTimelinePersist.value = true;
     } catch {
       // Keep last applied quantized delta unchanged on failure? We intentionally keep it,
@@ -518,19 +534,25 @@ export function useTimelineInteraction(
       const commit = pendingMoveCommit.value;
       if (commit) {
         try {
-          timelineStore.applyTimeline(
-            {
-              type: 'overlay_place_item',
-              fromTrackId: commit.fromTrackId,
-              toTrackId: commit.toTrackId,
-              itemId: commit.itemId,
-              startUs: commit.startUs,
-            },
-            { saveMode: 'none' },
-          );
+          const cmd = {
+            type: 'overlay_place_item',
+            fromTrackId: commit.fromTrackId,
+            toTrackId: commit.toTrackId,
+            itemId: commit.itemId,
+            startUs: commit.startUs,
+          } as const;
+          timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+          lastDragAppliedCmd.value = cmd as any;
           hasPendingTimelinePersist.value = true;
         } catch {}
       }
+    }
+
+    const snapshot = dragStartSnapshot.value;
+    const appliedCmd = lastDragAppliedCmd.value;
+    const currDoc = timelineStore.timelineDoc;
+    if (snapshot && appliedCmd && currDoc && snapshot !== currDoc) {
+      historyStore.push(appliedCmd as any, snapshot as any);
     }
 
     if (hasPendingTimelinePersist.value) {
@@ -548,6 +570,9 @@ export function useTimelineInteraction(
 
     movePreview.value = null;
     pendingMoveCommit.value = null;
+
+    dragStartSnapshot.value = null;
+    lastDragAppliedCmd.value = null;
 
     window.removeEventListener('mousemove', onGlobalMouseMove);
     window.removeEventListener('mouseup', onGlobalMouseUp);

@@ -18,6 +18,19 @@ export const useTimelineStore = defineStore('timeline', () => {
   const mediaStore = useMediaStore();
   const historyStore = useHistoryStore();
 
+  const pendingDebouncedHistory = ref<{
+    snapshot: TimelineDocument;
+    cmd: TimelineCommand;
+    timeoutId: number;
+  } | null>(null);
+
+  function clearPendingDebouncedHistory() {
+    const pending = pendingDebouncedHistory.value;
+    if (!pending) return;
+    window.clearTimeout(pending.timeoutId);
+    pendingDebouncedHistory.value = null;
+  }
+
   const projectRefs = (() => {
     try {
       return storeToRefs(projectStore as any) as any;
@@ -311,11 +324,14 @@ export const useTimelineStore = defineStore('timeline', () => {
       >
     >,
   ) {
-    applyTimeline({
-      type: 'update_track_properties',
-      trackId,
-      properties,
-    });
+    applyTimeline(
+      {
+        type: 'update_track_properties',
+        trackId,
+        properties,
+      },
+      { historyMode: 'debounced' },
+    );
   }
 
   function toggleVideoHidden(trackId: string) {
@@ -357,12 +373,15 @@ export const useTimelineStore = defineStore('timeline', () => {
       backgroundColor?: string;
     },
   ) {
-    applyTimeline({
-      type: 'update_clip_properties',
-      trackId,
-      itemId,
-      properties,
-    });
+    applyTimeline(
+      {
+        type: 'update_clip_properties',
+        trackId,
+        itemId,
+        properties,
+      },
+      { historyMode: 'debounced' },
+    );
   }
 
   function updateClipTransition(
@@ -504,6 +523,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineRevision = 0;
     savedTimelineRevision = 0;
     historyStore.clear();
+    clearPendingDebouncedHistory();
   }
 
   function markTimelineAsCleanForCurrentRevision() {
@@ -592,6 +612,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying.value = false;
     currentTime.value = 0;
     historyStore.clear();
+    clearPendingDebouncedHistory();
 
     const fallback = projectStore.createFallbackTimelineDoc();
 
@@ -669,7 +690,12 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   function applyTimeline(
     cmd: TimelineCommand,
-    options?: { saveMode?: 'debounced' | 'immediate' | 'none'; skipHistory?: boolean },
+    options?: {
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      skipHistory?: boolean;
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+    },
   ) {
     if (!timelineDoc.value) {
       timelineDoc.value = projectStore.createFallbackTimelineDoc();
@@ -681,7 +707,43 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (next === prev) return;
 
     if (!options?.skipHistory) {
-      historyStore.push(cmd, prev);
+      const historyMode = options?.historyMode ?? 'immediate';
+      if (historyMode === 'debounced') {
+        const debounceMs = Math.max(0, Math.round(options?.historyDebounceMs ?? 300));
+        const pending = pendingDebouncedHistory.value;
+
+        if (pending) {
+          window.clearTimeout(pending.timeoutId);
+          pendingDebouncedHistory.value = {
+            snapshot: pending.snapshot,
+            cmd,
+            timeoutId: window.setTimeout(() => {
+              const p = pendingDebouncedHistory.value;
+              if (!p) return;
+              historyStore.push(p.cmd, p.snapshot);
+              pendingDebouncedHistory.value = null;
+            }, debounceMs),
+          };
+        } else {
+          pendingDebouncedHistory.value = {
+            snapshot: prev,
+            cmd,
+            timeoutId: window.setTimeout(() => {
+              const p = pendingDebouncedHistory.value;
+              if (!p) return;
+              historyStore.push(p.cmd, p.snapshot);
+              pendingDebouncedHistory.value = null;
+            }, debounceMs),
+          };
+        }
+      } else {
+        const pending = pendingDebouncedHistory.value;
+        if (pending) {
+          window.clearTimeout(pending.timeoutId);
+          pendingDebouncedHistory.value = null;
+        }
+        historyStore.push(cmd, prev);
+      }
     }
 
     timelineDoc.value = next;

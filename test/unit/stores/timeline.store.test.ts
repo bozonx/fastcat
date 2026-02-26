@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '../../../src/stores/timeline.store';
+import { useHistoryStore } from '../../../src/stores/history.store';
 
 const projectStoreMock = {
   currentProjectName: 'test',
@@ -205,6 +206,31 @@ describe('TimelineStore', () => {
     store.resetClipFreezeFrame({ trackId: 'v1', itemId: 'c1' });
     const clip = (store.timelineDoc as any).tracks[0].items[0];
     expect(clip.freezeFrameSourceUs).toBeUndefined();
+  });
+
+  it('debounces history entries when requested', () => {
+    vi.useFakeTimers();
+
+    const store = useTimelineStore();
+    const historyStore = useHistoryStore();
+
+    store.timelineDoc = projectStoreMock.createFallbackTimelineDoc() as any;
+
+    store.applyTimeline(
+      { type: 'add_track', kind: 'audio', name: 'Audio 1' },
+      { historyMode: 'debounced', historyDebounceMs: 100, saveMode: 'none' },
+    );
+    store.applyTimeline(
+      { type: 'add_track', kind: 'audio', name: 'Audio 2' },
+      { historyMode: 'debounced', historyDebounceMs: 100, saveMode: 'none' },
+    );
+
+    expect(historyStore.past).toHaveLength(0);
+
+    vi.advanceTimersByTime(110);
+    expect(historyStore.past).toHaveLength(1);
+
+    vi.useRealTimers();
   });
 
   it('adds nested timeline clip from .otio path and blocks self-drop', async () => {
