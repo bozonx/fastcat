@@ -4,6 +4,7 @@ import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { normalizeTimeUs } from '~/utils/monitor-time';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
+import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
@@ -123,85 +124,37 @@ export function useMonitorTimeline() {
   const rawWorkerAudioClips = computed(() => {
     const clips: WorkerTimelineClip[] = [];
 
-    const allAudioTracks = audioTracks.value;
-    const allVideoTracks = videoTracks.value;
+    const effectiveItems = buildEffectiveAudioClipItems({
+      audioTracks: audioTracks.value,
+      videoTracks: videoTracks.value,
+    });
 
-    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
+    for (const item of effectiveItems) {
+      if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
+      if (!item.source?.path) continue;
 
-    const effectiveAudioTracks = hasSolo
-      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
-      : allAudioTracks.filter((t) => !t.audioMuted);
-
-    const effectiveVideoTracksForAudio = hasSolo
-      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
-      : allVideoTracks.filter((t) => !t.audioMuted);
-
-    for (const track of effectiveAudioTracks) {
-      for (const item of track.items) {
-        if (item.kind !== 'clip') continue;
-        const clipType = (item as any).clipType ?? 'media';
-        if (clipType !== 'media' && clipType !== 'timeline') continue;
-        const path = (item as any).source?.path;
-        if (!path) continue;
-        clips.push({
-          kind: 'clip',
-          clipType: 'media',
-          id: item.id,
-          layer: 0,
-          speed: (item as any).speed,
-          audioGain: mergeGain(track.audioGain, (item as any).audioGain),
-          audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
-          audioFadeInUs: (item as any).audioFadeInUs,
-          audioFadeOutUs: (item as any).audioFadeOutUs,
-          source: {
-            path,
-          },
-          timelineRange: {
-            startUs: item.timelineRange.startUs,
-            durationUs: item.timelineRange.durationUs,
-          },
-          sourceRange: {
-            startUs: item.sourceRange.startUs,
-            durationUs: item.sourceRange.durationUs,
-          },
-        });
-      }
-    }
-
-    const videoTrackIdsForAudio = new Set(effectiveVideoTracksForAudio.map((t) => t.id));
-    for (const track of allVideoTracks) {
-      if (!videoTrackIdsForAudio.has(track.id)) continue;
-      for (const item of track.items) {
-        if (item.kind !== 'clip') continue;
-        const clipType = (item as any).clipType ?? 'media';
-        if (clipType !== 'media' && clipType !== 'timeline') continue;
-        if ((item as any).audioFromVideoDisabled) continue;
-        const path = (item as any).source?.path;
-        if (!path) continue;
-
-        clips.push({
-          kind: 'clip',
-          clipType: 'media',
-          id: `${item.id}__audio`,
-          layer: 0,
-          speed: (item as any).speed,
-          audioGain: mergeGain(track.audioGain, (item as any).audioGain),
-          audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
-          audioFadeInUs: (item as any).audioFadeInUs,
-          audioFadeOutUs: (item as any).audioFadeOutUs,
-          source: {
-            path,
-          },
-          timelineRange: {
-            startUs: item.timelineRange.startUs,
-            durationUs: item.timelineRange.durationUs,
-          },
-          sourceRange: {
-            startUs: item.sourceRange.startUs,
-            durationUs: item.sourceRange.durationUs,
-          },
-        });
-      }
+      clips.push({
+        kind: 'clip',
+        clipType: 'media',
+        id: item.id,
+        layer: 0,
+        speed: item.speed,
+        audioGain: item.audioGain,
+        audioBalance: item.audioBalance,
+        audioFadeInUs: item.audioFadeInUs,
+        audioFadeOutUs: item.audioFadeOutUs,
+        source: {
+          path: item.source.path,
+        },
+        timelineRange: {
+          startUs: item.timelineRange.startUs,
+          durationUs: item.timelineRange.durationUs,
+        },
+        sourceRange: {
+          startUs: item.sourceRange.startUs,
+          durationUs: item.sourceRange.durationUs,
+        },
+      });
     }
 
     return clips;

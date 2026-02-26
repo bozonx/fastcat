@@ -1,6 +1,7 @@
 import { MAX_AUDIO_FILE_BYTES } from '../../utils/constants';
 import { safeDispose } from '../../utils/video-editor/utils';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
+import { getGainAtClipTime, normalizeBalance, normalizeGain } from '../../utils/audio/envelope';
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
 
@@ -23,24 +24,68 @@ export interface PreparedClip {
   clipStartS: number;
   offsetS: number;
   playDurationS: number;
-  input: any;
-  sink: any;
+  input: MediabunnyInput;
+  sink: MediabunnyAudioSampleSink;
   sourcePath: string;
+  audioGain: number;
+  audioBalance: number;
+  audioFadeInS: number;
+  audioFadeOutS: number;
+}
+
+interface MediabunnyInput {
+  getPrimaryAudioTrack(): Promise<MediabunnyAudioTrack | null>;
+}
+
+interface MediabunnyAudioTrack {
+  canDecode(): Promise<boolean>;
+  duration?: number;
+}
+
+interface MediabunnyAudioSampleSink {
+  samples(startS: number, endS: number): AsyncIterable<MediabunnyAudioSample>;
+}
+
+interface MediabunnyAudioSample {
+  numberOfFrames: number;
+  sampleRate: number;
+  numberOfChannels: number;
+  timestamp: number;
+  allocationSize(options: { format: 'f32-planar'; planeIndex: number }): number;
+  copyTo(dst: Float32Array, options: { format: 'f32-planar'; planeIndex: number }): void;
+}
+
+interface AudioClipData {
+  sourcePath?: string;
+  source?: { path?: string };
+  fileHandle?: FileSystemFileHandle;
+  timelineRange?: { startUs?: number; durationUs?: number };
+  sourceRange?: { startUs?: number; durationUs?: number };
+  startUs?: number;
+  durationUs?: number;
+  sourceStartUs?: number;
+  sourceDurationUs?: number;
   audioGain?: number;
   audioBalance?: number;
-  audioFadeInS?: number;
-  audioFadeOutS?: number;
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
+  gran?: {
+    audioGain?: number;
+    audioBalance?: number;
+    audioFadeInUs?: number;
+    audioFadeOutUs?: number;
+  };
 }
 
 export interface AudioMixerPrepareParams {
-  audioClips: any[];
+  audioClips: AudioClipData[];
   hostClient: VideoCoreHostAPI | null;
   reportExportWarning: (message: string) => Promise<void>;
   checkCancel?: () => boolean;
   mediabunny: {
-    AudioSampleSink: any;
-    Input: any;
-    BlobSource: any;
+    AudioSampleSink: new (track: MediabunnyAudioTrack) => MediabunnyAudioSampleSink;
+    Input: new (params: any) => MediabunnyInput;
+    BlobSource: new (file: File) => unknown;
     ALL_FORMATS: any;
   };
 }
@@ -48,13 +93,19 @@ export interface AudioMixerPrepareParams {
 export interface AudioMixerWriteParams {
   prepared: PreparedClip[];
   durationS: number;
-  audioSource: any;
+  audioSource: { add(sample: unknown): Promise<void> };
   chunkDurationS: number;
   sampleRate: number;
   numberOfChannels: number;
   reportExportWarning: (message: string) => Promise<void>;
   checkCancel?: () => boolean;
-  AudioSample: any;
+  AudioSample: new (params: {
+    data: Float32Array;
+    format: 'f32-planar';
+    numberOfChannels: number;
+    sampleRate: number;
+    timestamp: number;
+  }) => unknown;
 }
 
 export class AudioMixer {
@@ -102,8 +153,6 @@ export class AudioMixer {
 
       const audioFadeInUs = clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs ?? 0;
       const audioFadeOutUs = clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs ?? 0;
-      const audioGainRaw = clipData.audioGain ?? clipData.gran?.audioGain ?? 1;
-      const audioBalanceRaw = clipData.audioBalance ?? clipData.gran?.audioBalance ?? 0;
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
@@ -120,15 +169,12 @@ export class AudioMixer {
         clipDurationS,
         Math.max(0, usToS(Number(audioFadeOutUs) || 0)),
       );
-      const audioGain =
-        typeof audioGainRaw === 'number' && Number.isFinite(audioGainRaw)
-          ? Math.max(0, Math.min(10, Number(audioGainRaw)))
-          : 1;
 
-      const audioBalance =
-        typeof audioBalanceRaw === 'number' && Number.isFinite(audioBalanceRaw)
-          ? Math.max(-1, Math.min(1, Number(audioBalanceRaw)))
-          : 0;
+      const audioGain = normalizeGain(clipData.audioGain ?? clipData.gran?.audioGain, 1);
+      const audioBalance = normalizeBalance(
+        clipData.audioBalance ?? clipData.gran?.audioBalance,
+        0,
+      );
 
       const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
       try {
@@ -212,39 +258,24 @@ export class AudioMixer {
     }) {
       const { clip, chunkStartS, chunkEndS, framesInChunk, mixedInterleaved } = args;
 
-      const fadeInS =
-        typeof clip.audioFadeInS === 'number' && Number.isFinite(clip.audioFadeInS)
-          ? Math.max(0, clip.audioFadeInS)
-          : 0;
-      const fadeOutS =
-        typeof clip.audioFadeOutS === 'number' && Number.isFinite(clip.audioFadeOutS)
-          ? Math.max(0, clip.audioFadeOutS)
-          : 0;
+      const fadeInS = clip.audioFadeInS;
+      const fadeOutS = clip.audioFadeOutS;
 
-      const audioGain =
-        typeof clip.audioGain === 'number' && Number.isFinite(clip.audioGain)
-          ? Math.max(0, Math.min(10, clip.audioGain))
-          : 1;
-
-      const audioBalance =
-        typeof clip.audioBalance === 'number' && Number.isFinite(clip.audioBalance)
-          ? Math.max(-1, Math.min(1, clip.audioBalance))
-          : 0;
+      const audioGain = clip.audioGain;
+      const audioBalance = clip.audioBalance;
 
       const hasStereoPan = numberOfChannels === 2;
       const leftScale = hasStereoPan ? Math.max(0, Math.min(1, 1 - Math.max(0, audioBalance))) : 1;
       const rightScale = hasStereoPan ? Math.max(0, Math.min(1, 1 + Math.min(0, audioBalance))) : 1;
 
       function gainAtClipTimeS(tClipS: number): number {
-        const t = Math.max(0, Math.min(clip.playDurationS, tClipS));
-        let g = audioGain;
-        if (fadeInS > 0 && t < fadeInS) {
-          g *= t / fadeInS;
-        }
-        if (fadeOutS > 0 && t > clip.playDurationS - fadeOutS) {
-          g *= (clip.playDurationS - t) / fadeOutS;
-        }
-        return Math.max(0, Math.min(10, g));
+        return getGainAtClipTime({
+          clipDurationS: clip.playDurationS,
+          fadeInS,
+          fadeOutS,
+          baseGain: audioGain,
+          tClipS,
+        });
       }
 
       const clipGlobalStartS = clip.clipStartS;
@@ -259,10 +290,10 @@ export class AudioMixer {
       const sinkEndS = clip.offsetS + clipLocalEndS;
 
       try {
-        for await (const sampleRaw of (clip.sink as any).samples(sinkStartS, sinkEndS)) {
+        for await (const sampleRaw of clip.sink.samples(sinkStartS, sinkEndS)) {
           ensureNotCancelled();
 
-          const sample = sampleRaw as any;
+          const sample = sampleRaw as MediabunnyAudioSample;
           try {
             const frames = Number(sample.numberOfFrames) || 0;
             const sr = Number(sample.sampleRate) || 0;

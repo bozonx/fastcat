@@ -10,6 +10,8 @@ import {
   restartExportWorker,
 } from '~/utils/video-editor/worker-client';
 import type { ClipTransform, TimelineTrackItem } from '~/timeline/types';
+import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
+import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   checkAudioCodecSupport,
@@ -65,26 +67,6 @@ export async function toWorkerTimelineClips(
   const clips: WorkerTimelineClip[] = [];
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
-
-  function clampNumber(value: unknown, min: number, max: number): number | undefined {
-    const n = typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-    if (n === undefined) return undefined;
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function mergeGain(a: unknown, b: unknown): number | undefined {
-    const ga = clampNumber(a, 0, 10);
-    const gb = clampNumber(b, 0, 10);
-    if (ga === undefined && gb === undefined) return undefined;
-    return Math.max(0, Math.min(10, (ga ?? 1) * (gb ?? 1)));
-  }
-
-  function mergeBalance(a: unknown, b: unknown): number | undefined {
-    const ba = clampNumber(a, -1, 1);
-    const bb = clampNumber(b, -1, 1);
-    if (ba === undefined && bb === undefined) return undefined;
-    return Math.max(-1, Math.min(1, (ba ?? 0) + (bb ?? 0)));
-  }
 
   function mergeFadeInUs(input: {
     childFadeInUs: unknown;
@@ -298,40 +280,10 @@ export async function toWorkerTimelineClips(
                 }
               }
             } else if (trackKind === 'audio') {
-              const allVideoTracks = nestedDoc.tracks.filter((t) => t.kind === 'video');
-              const allAudioTracks = nestedDoc.tracks.filter((t) => t.kind === 'audio');
-              const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) =>
-                Boolean(t.audioSolo),
-              );
-
-              const audioTracks = hasSolo
-                ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
-                : allAudioTracks.filter((t) => !t.audioMuted);
-
-              const videoTracksForAudio = hasSolo
-                ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
-                : allVideoTracks.filter((t) => !t.audioMuted);
-
-              const nestedAudioItems: import('~/timeline/types').TimelineTrackItem[] = [];
-
-              for (const t of audioTracks) {
-                nestedAudioItems.push(...t.items);
-              }
-
-              for (const t of videoTracksForAudio) {
-                for (const it of t.items) {
-                  if (it.kind !== 'clip') continue;
-                  const itClipType = (it as any).clipType ?? 'media';
-                  if (
-                    (itClipType === 'media' || itClipType === 'timeline') &&
-                    !(it as any).audioFromVideoDisabled
-                  ) {
-                    const audioIt = JSON.parse(JSON.stringify(it));
-                    audioIt.id = `${it.id}__audio`;
-                    nestedAudioItems.push(audioIt);
-                  }
-                }
-              }
+              const nestedAudioItems = buildEffectiveAudioClipItems({
+                audioTracks: nestedDoc.tracks.filter((t) => t.kind === 'audio'),
+                videoTracks: nestedDoc.tracks.filter((t) => t.kind === 'video'),
+              });
 
               const nestedWorkerClips = await toWorkerTimelineClips(
                 nestedAudioItems,
@@ -724,40 +676,10 @@ export function useTimelineExport() {
     fileHandle: FileSystemFileHandle,
     onProgress: (progress: number) => void,
   ): Promise<void> {
-    function clampNumber(value: unknown, min: number, max: number): number | undefined {
-      const n = typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-      if (n === undefined) return undefined;
-      return Math.max(min, Math.min(max, n));
-    }
-
-    function mergeGain(a: unknown, b: unknown): number | undefined {
-      const ga = clampNumber(a, 0, 10);
-      const gb = clampNumber(b, 0, 10);
-      if (ga === undefined && gb === undefined) return undefined;
-      return Math.max(0, Math.min(10, (ga ?? 1) * (gb ?? 1)));
-    }
-
-    function mergeBalance(a: unknown, b: unknown): number | undefined {
-      const ba = clampNumber(a, -1, 1);
-      const bb = clampNumber(b, -1, 1);
-      if (ba === undefined && bb === undefined) return undefined;
-      return Math.max(-1, Math.min(1, (ba ?? 0) + (bb ?? 0)));
-    }
-
     const doc = timelineStore.timelineDoc;
     const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
     const videoTracks = allVideoTracks.filter((track) => !track.videoHidden);
     const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
-
-    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
-
-    const audioTracks = hasSolo
-      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
-      : allAudioTracks.filter((t) => !t.audioMuted);
-
-    const videoTracksForAudio = hasSolo
-      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
-      : allVideoTracks.filter((t) => !t.audioMuted);
 
     const videoClips: WorkerTimelineClip[] = [];
     for (let index = 0; index < videoTracks.length; index++) {
@@ -774,45 +696,14 @@ export function useTimelineExport() {
       videoClips.push(...clips);
     }
 
-    const audioItemsWithTrackAudio = audioTracks.flatMap((track) =>
-      (track.items ?? [])
-        .filter((it) => it.kind === 'clip')
-        .map((it) => {
-          const cloned = JSON.parse(JSON.stringify(it));
-          cloned.audioGain = mergeGain((track as any).audioGain, cloned.audioGain);
-          cloned.audioBalance = mergeBalance((track as any).audioBalance, cloned.audioBalance);
-          return cloned;
-        }),
-    );
-    const audioClipsFromTracks = await toWorkerTimelineClips(
-      audioItemsWithTrackAudio,
-      projectStore,
-      {
-        trackKind: 'audio',
-      },
-    );
-
-    const videoItemsForAudio = videoTracksForAudio.flatMap((track) =>
-      (track.items ?? [])
-        .filter(
-          (item) =>
-            item.kind === 'clip' &&
-            ((item as any).clipType === 'media' || (item as any).clipType === 'timeline') &&
-            !(item as any).audioFromVideoDisabled,
-        )
-        .map((item) => {
-          const cloned = JSON.parse(JSON.stringify(item));
-          cloned.id = `${cloned.id}__audio`;
-          cloned.audioGain = mergeGain((track as any).audioGain, cloned.audioGain);
-          cloned.audioBalance = mergeBalance((track as any).audioBalance, cloned.audioBalance);
-          return cloned;
-        }),
-    );
-    const audioClipsFromVideo = await toWorkerTimelineClips(videoItemsForAudio, projectStore, {
-      trackKind: 'audio',
+    const effectiveAudioItems = buildEffectiveAudioClipItems({
+      audioTracks: allAudioTracks,
+      videoTracks: allVideoTracks,
     });
 
-    const audioClips = [...audioClipsFromTracks, ...audioClipsFromVideo];
+    const audioClips = await toWorkerTimelineClips(effectiveAudioItems, projectStore, {
+      trackKind: 'audio',
+    });
 
     if (!videoClips.length && !audioClips.length) throw new Error('Timeline is empty');
 

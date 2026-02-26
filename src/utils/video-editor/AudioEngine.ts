@@ -1,4 +1,10 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import {
+  computeFadeDurationsSeconds,
+  getGainAtClipTime,
+  normalizeBalance,
+  normalizeGain,
+} from '~/utils/audio/envelope';
 
 const logger = createDevLogger('AudioEngine');
 
@@ -344,28 +350,14 @@ export class AudioEngine {
 
     const localOffsetInClipS = Math.max(0, currentTimeS - clipStartS);
 
-    const fadeInSRaw =
-      typeof clip.audioFadeInUs === 'number' && Number.isFinite(clip.audioFadeInUs)
-        ? Math.max(0, clip.audioFadeInUs / 1_000_000)
-        : 0;
-    const fadeOutSRaw =
-      typeof clip.audioFadeOutUs === 'number' && Number.isFinite(clip.audioFadeOutUs)
-        ? Math.max(0, clip.audioFadeOutUs / 1_000_000)
-        : 0;
-    const fadeInS = Math.min(fadeInSRaw, Math.max(0, clipDurationS));
-    const fadeOutS = Math.min(fadeOutSRaw, Math.max(0, clipDurationS));
+    const { fadeInS, fadeOutS } = computeFadeDurationsSeconds({
+      clipDurationS,
+      fadeInUs: clip.audioFadeInUs,
+      fadeOutUs: clip.audioFadeOutUs,
+    });
 
-    const audioGainRaw = clip.audioGain;
-    const audioGain =
-      typeof audioGainRaw === 'number' && Number.isFinite(audioGainRaw)
-        ? Math.max(0, Math.min(10, audioGainRaw))
-        : 1;
-
-    const audioBalanceRaw = clip.audioBalance;
-    const audioBalance =
-      typeof audioBalanceRaw === 'number' && Number.isFinite(audioBalanceRaw)
-        ? Math.max(-1, Math.min(1, audioBalanceRaw))
-        : 0;
+    const audioGain = normalizeGain(clip.audioGain, 1);
+    const audioBalance = normalizeBalance(clip.audioBalance, 0);
 
     // When to start playing in AudioContext time.
     const playStartS =
@@ -451,15 +443,13 @@ export class AudioEngine {
     const endAtS = startAtS + remainingInClipS;
 
     function gainAtClipTime(tClipS: number): number {
-      const t = Math.max(0, Math.min(clipDurationS, tClipS));
-      let g = audioGain;
-      if (fadeInS > 0 && t < fadeInS) {
-        g *= t / fadeInS;
-      }
-      if (fadeOutS > 0 && t > clipDurationS - fadeOutS) {
-        g *= (clipDurationS - t) / fadeOutS;
-      }
-      return Math.max(0, Math.min(10, g));
+      return getGainAtClipTime({
+        clipDurationS,
+        fadeInS,
+        fadeOutS,
+        baseGain: audioGain,
+        tClipS,
+      });
     }
 
     const t0 = localOffsetInClipS;
