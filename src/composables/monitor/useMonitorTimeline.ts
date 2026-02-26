@@ -3,29 +3,10 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { normalizeTimeUs } from '~/utils/monitor-time';
+import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
-
-  function clampNumber(value: unknown, min: number, max: number): number | undefined {
-    const n = typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-    if (n === undefined) return undefined;
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function mergeGain(a: unknown, b: unknown): number | undefined {
-    const ga = clampNumber(a, 0, 10);
-    const gb = clampNumber(b, 0, 10);
-    if (ga === undefined && gb === undefined) return undefined;
-    return Math.max(0, Math.min(10, (ga ?? 1) * (gb ?? 1)));
-  }
-
-  function mergeBalance(a: unknown, b: unknown): number | undefined {
-    const ba = clampNumber(a, -1, 1);
-    const bb = clampNumber(b, -1, 1);
-    if (ba === undefined && bb === undefined) return undefined;
-    return Math.max(-1, Math.min(1, (ba ?? 0) + (bb ?? 0)));
-  }
 
   const videoTracks = computed(
     () =>
@@ -368,8 +349,8 @@ export function useMonitorTimeline() {
       hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
       hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
 
-      hash = mixFloat(hash, (track as any).audioGain ?? 1, 1000);
-      hash = mixFloat(hash, (track as any).audioBalance ?? 0, 1000);
+      hash = mixFloat(hash, mergeGain((track as any).audioGain, 1) ?? 1, 1000);
+      hash = mixFloat(hash, mergeBalance((track as any).audioBalance, 0) ?? 0, 1000);
     }
 
     for (const item of effectiveAudioItems) {
