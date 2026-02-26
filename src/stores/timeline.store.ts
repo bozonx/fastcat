@@ -334,7 +334,12 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (b >= atUs) break;
       prev = b;
     }
-    if (prev === null) return;
+
+    if (prev === null) {
+      currentTime.value = 0;
+      return;
+    }
+
     currentTime.value = prev;
   }
 
@@ -351,7 +356,18 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     const atUs = currentTime.value;
     const next = boundaries.find((b) => b > atUs) ?? null;
-    if (next === null) return;
+
+    if (next === null) {
+      const endFromState =
+        Number.isFinite(duration.value) && duration.value > 0
+          ? Math.max(0, Math.round(duration.value))
+          : 0;
+      const end =
+        endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationUs(doc)));
+      currentTime.value = end;
+      return;
+    }
+
     currentTime.value = next;
   }
 

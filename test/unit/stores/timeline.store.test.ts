@@ -337,7 +337,7 @@ describe('TimelineStore', () => {
     store.jumpToPrevClipBoundary({ currentTrackOnly: true });
     expect(store.currentTime).toBe(2_000_000);
     store.jumpToNextClipBoundary({ currentTrackOnly: true });
-    expect(store.currentTime).toBe(2_000_000);
+    expect(store.currentTime).toBe(6_000_000);
   });
 
   it('splits a selected clip at playhead', async () => {

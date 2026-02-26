@@ -23,13 +23,27 @@ export async function getVideoSampleWithZeroFallback(
   timeS: number,
   firstTimestampS?: number,
 ): Promise<any | null> {
-  const primary = await sink.getSample(timeS);
+  const primary = await sink.getSample(timeS).catch((e) => {
+    const msg = String((e as any)?.message ?? e ?? '');
+    const name = String((e as any)?.name ?? '');
+    if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
+      return null;
+    }
+    throw e;
+  });
   if (primary) return primary;
 
   if (Number.isFinite(firstTimestampS) && typeof firstTimestampS === 'number') {
     const safeFirst = Math.max(0, firstTimestampS);
     if (timeS <= safeFirst) {
-      const first = await sink.getSample(safeFirst);
+      const first = await sink.getSample(safeFirst).catch((e) => {
+        const msg = String((e as any)?.message ?? e ?? '');
+        const name = String((e as any)?.name ?? '');
+        if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
+          return null;
+        }
+        throw e;
+      });
       if (first) return first;
     }
   }
@@ -39,7 +53,14 @@ export async function getVideoSampleWithZeroFallback(
   }
 
   // Some decoders return null for exact 0.0 but can provide the first frame for a tiny epsilon.
-  return sink.getSample(1e-6);
+  return sink.getSample(1e-6).catch((e) => {
+    const msg = String((e as any)?.message ?? e ?? '');
+    const name = String((e as any)?.name ?? '');
+    if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
+      return null;
+    }
+    throw e;
+  });
 }
 
 export interface CompositorClip {

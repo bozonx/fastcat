@@ -106,9 +106,10 @@ function onGlobalKeydown(e: KeyboardEvent) {
     return order[0] ?? matched[0]!;
   })();
 
-  // Если нажали Space, сбрасываем фокус с кнопок, чтобы они не нажимались
-  if (e.key === ' ' && document.activeElement instanceof HTMLElement) {
-    document.activeElement.blur();
+  if (document.activeElement instanceof HTMLElement) {
+    if (!isEditableTarget(document.activeElement)) {
+      document.activeElement.blur();
+    }
   }
 
   e.preventDefault();
@@ -266,16 +267,19 @@ function onGlobalKeydown(e: KeyboardEvent) {
 
   // --- Audio ---
   if (cmd === 'audio.mute') {
+    if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.toggleAudioMuted();
     return;
   }
 
   if (cmd === 'audio.volumeUp') {
+    if (!focusStore.canUsePlaybackHotkeys) return;
     startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
     return;
   }
 
   if (cmd === 'audio.volumeDown') {
+    if (!focusStore.canUsePlaybackHotkeys) return;
     startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
     return;
   }
