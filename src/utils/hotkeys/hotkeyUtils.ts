@@ -13,12 +13,13 @@ const MOD_ORDER = ['Ctrl', 'Meta', 'Alt', 'Shift'] as const;
 type ModLabel = (typeof MOD_ORDER)[number];
 
 function normalizeKeyLabel(rawKey: string): string {
+  if (rawKey === ' ') return 'Space';
+
   const key = rawKey.trim();
   if (!key) return '';
 
   const lower = key.toLowerCase();
 
-  if (lower === ' ') return 'Space';
   if (lower === 'spacebar') return 'Space';
   if (lower === 'esc') return 'Escape';
   if (lower === 'del') return 'Delete';

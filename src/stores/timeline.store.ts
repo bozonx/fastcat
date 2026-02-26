@@ -7,7 +7,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { quantizeTimeUsToFrames, getDocFps } from '~/timeline/commands/utils';
+import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timeline/commands/utils';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -157,6 +157,271 @@ export const useTimelineStore = defineStore('timeline', () => {
       selectedTransition.value = null;
       selectedItemIds.value = [];
     }
+  }
+
+  function getHotkeyTargetClip(): { trackId: string; itemId: string } | null {
+    const doc = timelineDoc.value;
+    if (!doc) return null;
+
+    const selectedId = selectedItemIds.value[0];
+    if (selectedId) {
+      for (const track of doc.tracks) {
+        for (const it of track.items) {
+          if (it.kind !== 'clip') continue;
+          if (it.id !== selectedId) continue;
+          return { trackId: track.id, itemId: it.id };
+        }
+      }
+    }
+
+    const trackId = selectedTrackId.value;
+    if (!trackId) return null;
+    const track = doc.tracks.find((t) => t.id === trackId) ?? null;
+    if (!track) return null;
+
+    const atUs = currentTime.value;
+    for (const it of track.items) {
+      if (it.kind !== 'clip') continue;
+      const startUs = it.timelineRange.startUs;
+      const endUs = startUs + it.timelineRange.durationUs;
+      if (atUs >= startUs && atUs < endUs) {
+        return { trackId: track.id, itemId: it.id };
+      }
+    }
+
+    return null;
+  }
+
+  function getSelectedOrActiveTrackId(): string | null {
+    const doc = timelineDoc.value;
+    if (!doc) return null;
+
+    const selectedId = selectedItemIds.value[0];
+    if (selectedId) {
+      for (const track of doc.tracks) {
+        for (const it of track.items) {
+          if (it.kind !== 'clip') continue;
+          if (it.id === selectedId) return track.id;
+        }
+      }
+    }
+
+    return selectedTrackId.value;
+  }
+
+  function computeCutUs(doc: TimelineDocument, atUs: number): number {
+    const fps = getDocFps(doc);
+    const q = quantizeTimeUsToFrames(Number(atUs), fps, 'round');
+    const frame = usToFrame(q, fps, 'round');
+    return frameToUs(frame, fps);
+  }
+
+  async function trimToPlayheadLeftNoRipple() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const startUs = item.timelineRange.startUs;
+    const endUs = startUs + item.timelineRange.durationUs;
+    if (!(cutUs > startUs && cutUs < endUs)) return;
+
+    applyTimeline(
+      { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
+      { saveMode: 'none' },
+    );
+
+    const updatedDoc = timelineDoc.value;
+    if (!updatedDoc) return;
+    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
+    if (!updatedTrack) return;
+
+    const right =
+      updatedTrack.items
+        .filter((it) => it.kind === 'clip')
+        .find((it) => it.timelineRange.startUs === cutUs) ?? null;
+    if (!right || right.kind !== 'clip') return;
+
+    applyTimeline(
+      { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
+      { saveMode: 'none' },
+    );
+
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function trimToPlayheadRightNoRipple() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const startUs = item.timelineRange.startUs;
+    const endUs = startUs + item.timelineRange.durationUs;
+    if (!(cutUs > startUs && cutUs < endUs)) return;
+
+    applyTimeline(
+      { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
+      { saveMode: 'none' },
+    );
+
+    const updatedDoc = timelineDoc.value;
+    if (!updatedDoc) return;
+    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
+    if (!updatedTrack) return;
+
+    const left =
+      updatedTrack.items.filter((it) => it.kind === 'clip').find((it) => it.id === target.itemId) ??
+      null;
+    if (!left || left.kind !== 'clip') return;
+
+    applyTimeline(
+      { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
+      { saveMode: 'none' },
+    );
+
+    await requestTimelineSave({ immediate: true });
+  }
+
+  function getBoundaryTimesUs(trackFilter: ((trackId: string) => boolean) | null): number[] {
+    const doc = timelineDoc.value;
+    if (!doc) return [];
+
+    const boundaries: number[] = [];
+    for (const track of doc.tracks) {
+      if (trackFilter && !trackFilter(track.id)) continue;
+      for (const it of track.items) {
+        if (it.kind !== 'clip') continue;
+        const startUs = Math.max(0, Math.round(it.timelineRange.startUs));
+        const endUs = Math.max(
+          0,
+          Math.round(it.timelineRange.startUs + it.timelineRange.durationUs),
+        );
+        boundaries.push(startUs, endUs);
+      }
+    }
+
+    boundaries.sort((a, b) => a - b);
+    return Array.from(new Set(boundaries));
+  }
+
+  function jumpToPrevClipBoundary(options?: { currentTrackOnly?: boolean }) {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const currentTrackOnly = Boolean(options?.currentTrackOnly);
+    const trackId = currentTrackOnly ? getSelectedOrActiveTrackId() : null;
+    if (currentTrackOnly && !trackId) return;
+
+    const boundaries = getBoundaryTimesUs(trackId ? (id) => id === trackId : null);
+    if (boundaries.length === 0) return;
+
+    const atUs = currentTime.value;
+    let prev: number | null = null;
+    for (const b of boundaries) {
+      if (b >= atUs) break;
+      prev = b;
+    }
+    if (prev === null) return;
+    currentTime.value = prev;
+  }
+
+  function jumpToNextClipBoundary(options?: { currentTrackOnly?: boolean }) {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const currentTrackOnly = Boolean(options?.currentTrackOnly);
+    const trackId = currentTrackOnly ? getSelectedOrActiveTrackId() : null;
+    if (currentTrackOnly && !trackId) return;
+
+    const boundaries = getBoundaryTimesUs(trackId ? (id) => id === trackId : null);
+    if (boundaries.length === 0) return;
+
+    const atUs = currentTime.value;
+    const next = boundaries.find((b) => b > atUs) ?? null;
+    if (next === null) return;
+    currentTime.value = next;
+  }
+
+  async function splitClipAtPlayhead() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    applyTimeline(
+      { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
+      { saveMode: 'none' },
+    );
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function splitAllClipsAtPlayhead() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const targets: Array<{ trackId: string; itemId: string }> = [];
+    for (const track of doc.tracks) {
+      for (const it of track.items) {
+        if (it.kind !== 'clip') continue;
+        targets.push({ trackId: track.id, itemId: it.id });
+      }
+    }
+    if (targets.length === 0) return;
+
+    for (const t of targets) {
+      applyTimeline(
+        { type: 'split_item', trackId: t.trackId, itemId: t.itemId, atUs: cutUs },
+        { saveMode: 'none' },
+      );
+    }
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function toggleDisableTargetClip() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    updateClipProperties(target.trackId, target.itemId, { disabled: !Boolean(item.disabled) });
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function toggleMuteTargetClip() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    const prevGain =
+      typeof item.audioGain === 'number' && Number.isFinite(item.audioGain) ? item.audioGain : 1;
+    const nextGain = prevGain === 0 ? 1 : 0;
+    updateClipProperties(target.trackId, target.itemId, { audioGain: nextGain });
+    await requestTimelineSave({ immediate: true });
   }
 
   async function splitClipsAtPlayhead() {
@@ -1035,6 +1300,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     setClipFreezeFrameFromPlayhead,
     resetClipFreezeFrame,
     splitClipsAtPlayhead,
+    trimToPlayheadLeftNoRipple,
+    trimToPlayheadRightNoRipple,
+    jumpToPrevClipBoundary,
+    jumpToNextClipBoundary,
+    splitClipAtPlayhead,
+    splitAllClipsAtPlayhead,
+    toggleDisableTargetClip,
+    toggleMuteTargetClip,
     deleteTrack,
     reorderTracks,
     moveItemToTrack,

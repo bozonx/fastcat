@@ -87,12 +87,36 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
   if (matched.length === 0) return;
 
+  const focusAware = (() => {
+    const order: HotkeyCommandId[] = [];
+
+    const timeline = matched.filter((c) => c.startsWith('timeline.'));
+    const playback = matched.filter((c) => c.startsWith('playback.'));
+    const audio = matched.filter((c) => c.startsWith('audio.'));
+    const general = matched.filter((c) => c.startsWith('general.'));
+
+    if (focusStore.canUseTimelineHotkeys) {
+      order.push(...timeline, ...general, ...playback, ...audio);
+    } else if (focusStore.canUsePlaybackHotkeys) {
+      order.push(...playback, ...general, ...timeline, ...audio);
+    } else {
+      order.push(...general, ...timeline, ...playback, ...audio);
+    }
+
+    return order[0] ?? matched[0]!;
+  })();
+
+  // Если нажали Space, сбрасываем фокус с кнопок, чтобы они не нажимались
+  if (e.key === ' ' && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+
   e.preventDefault();
   e.stopPropagation();
   (e as any).stopImmediatePropagation?.();
   suppressedKeyupCodes.add(e.code);
 
-  const cmd: string = matched[0]!;
+  const cmd: string = focusAware;
   if (cmd === 'general.focus') {
     focusStore.handleFocusHotkey();
     return;
@@ -119,12 +143,71 @@ function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
+  if (cmd === 'timeline.trimToPlayheadLeft') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.trimToPlayheadLeftNoRipple();
+    return;
+  }
+
+  if (cmd === 'timeline.trimToPlayheadRight') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.trimToPlayheadRightNoRipple();
+    return;
+  }
+
+  if (cmd === 'timeline.jumpPrevBoundary') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.jumpToPrevClipBoundary();
+    return;
+  }
+
+  if (cmd === 'timeline.jumpNextBoundary') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.jumpToNextClipBoundary();
+    return;
+  }
+
+  if (cmd === 'timeline.jumpPrevBoundaryTrack') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.jumpToPrevClipBoundary({ currentTrackOnly: true });
+    return;
+  }
+
+  if (cmd === 'timeline.jumpNextBoundaryTrack') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.jumpToNextClipBoundary({ currentTrackOnly: true });
+    return;
+  }
+
+  if (cmd === 'timeline.splitAtPlayhead') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.splitClipAtPlayhead();
+    return;
+  }
+
+  if (cmd === 'timeline.splitAllAtPlayhead') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.splitAllClipsAtPlayhead();
+    return;
+  }
+
+  if (cmd === 'timeline.toggleDisableClip') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.toggleDisableTargetClip();
+    return;
+  }
+
+  if (cmd === 'timeline.toggleMuteClip') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.toggleMuteTargetClip();
+    return;
+  }
+
   // --- Timeline Tabs ---
   if (cmd.startsWith('timeline.tab')) {
     const tabIndexStr = cmd.replace('timeline.tab', '');
-    let tabIndex = parseInt(tabIndexStr, 10);
+    const tabIndex = parseInt(tabIndexStr, 10);
     if (!isNaN(tabIndex)) {
-      if (tabIndex === 0) tabIndex = 10;
       const openPaths = projectStore.projectSettings.timelines.openPaths;
       if (tabIndex > 0 && tabIndex <= openPaths.length) {
         const path = openPaths[tabIndex - 1];

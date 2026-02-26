@@ -6,6 +6,16 @@ export type HotkeyCommandId =
   | 'general.undo'
   | 'general.redo'
   | 'timeline.deleteClip'
+  | 'timeline.trimToPlayheadLeft'
+  | 'timeline.trimToPlayheadRight'
+  | 'timeline.jumpPrevBoundary'
+  | 'timeline.jumpNextBoundary'
+  | 'timeline.jumpPrevBoundaryTrack'
+  | 'timeline.jumpNextBoundaryTrack'
+  | 'timeline.splitAtPlayhead'
+  | 'timeline.splitAllAtPlayhead'
+  | 'timeline.toggleDisableClip'
+  | 'timeline.toggleMuteClip'
   | 'timeline.tab1'
   | 'timeline.tab2'
   | 'timeline.tab3'
@@ -15,7 +25,7 @@ export type HotkeyCommandId =
   | 'timeline.tab7'
   | 'timeline.tab8'
   | 'timeline.tab9'
-  | 'timeline.tab0'
+  | 'timeline.tab10'
   | 'playback.toggle'
   | 'playback.toStart'
   | 'playback.toEnd'
@@ -62,6 +72,40 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'playback.toggle', groupId: 'general', title: 'Play / pause (normal speed)' },
 
     { id: 'timeline.deleteClip', groupId: 'timeline', title: 'Delete clip' },
+    {
+      id: 'timeline.trimToPlayheadLeft',
+      groupId: 'timeline',
+      title: 'Trim clip to playhead (remove right part, no ripple)',
+    },
+    {
+      id: 'timeline.trimToPlayheadRight',
+      groupId: 'timeline',
+      title: 'Trim clip to playhead (remove left part, no ripple)',
+    },
+    {
+      id: 'timeline.jumpPrevBoundary',
+      groupId: 'timeline',
+      title: 'Jump to previous clip boundary',
+    },
+    { id: 'timeline.jumpNextBoundary', groupId: 'timeline', title: 'Jump to next clip boundary' },
+    {
+      id: 'timeline.jumpPrevBoundaryTrack',
+      groupId: 'timeline',
+      title: 'Jump to previous clip boundary (current track)',
+    },
+    {
+      id: 'timeline.jumpNextBoundaryTrack',
+      groupId: 'timeline',
+      title: 'Jump to next clip boundary (current track)',
+    },
+    { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split clip at playhead' },
+    {
+      id: 'timeline.splitAllAtPlayhead',
+      groupId: 'timeline',
+      title: 'Split all clips at playhead',
+    },
+    { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / enable clip' },
+    { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / unmute clip' },
     { id: 'timeline.tab1', groupId: 'timeline', title: 'Timeline Tab 1' },
     { id: 'timeline.tab2', groupId: 'timeline', title: 'Timeline Tab 2' },
     { id: 'timeline.tab3', groupId: 'timeline', title: 'Timeline Tab 3' },
@@ -71,7 +115,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'timeline.tab7', groupId: 'timeline', title: 'Timeline Tab 7' },
     { id: 'timeline.tab8', groupId: 'timeline', title: 'Timeline Tab 8' },
     { id: 'timeline.tab9', groupId: 'timeline', title: 'Timeline Tab 9' },
-    { id: 'timeline.tab0', groupId: 'timeline', title: 'Timeline Tab 10' },
+    { id: 'timeline.tab10', groupId: 'timeline', title: 'Timeline Tab 10' },
 
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
@@ -104,6 +148,16 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.redo': ['Ctrl+Shift+Z'],
 
     'timeline.deleteClip': ['Delete'],
+    'timeline.trimToPlayheadLeft': ['C'],
+    'timeline.trimToPlayheadRight': ['V'],
+    'timeline.jumpPrevBoundary': ['A'],
+    'timeline.jumpNextBoundary': ['S'],
+    'timeline.jumpPrevBoundaryTrack': ['Shift+A'],
+    'timeline.jumpNextBoundaryTrack': ['Shift+S'],
+    'timeline.splitAtPlayhead': ['G'],
+    'timeline.splitAllAtPlayhead': ['Shift+G'],
+    'timeline.toggleDisableClip': ['Q'],
+    'timeline.toggleMuteClip': ['W'],
     'timeline.tab1': ['1'],
     'timeline.tab2': ['2'],
     'timeline.tab3': ['3'],
@@ -113,7 +167,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.tab7': ['7'],
     'timeline.tab8': ['8'],
     'timeline.tab9': ['9'],
-    'timeline.tab0': ['0'],
+    'timeline.tab10': ['0'],
 
     'playback.toggle': ['Space'],
     'playback.toStart': ['W'],

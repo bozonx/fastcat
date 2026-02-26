@@ -246,6 +246,264 @@ describe('TimelineStore', () => {
     vi.useRealTimers();
   });
 
+  it('jumps to previous/next clip boundary (all tracks)', () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip 1',
+              source: { path: '/a.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    store.currentTime = 2_500_000;
+    store.jumpToPrevClipBoundary();
+    expect(store.currentTime).toBe(1_000_000);
+
+    store.jumpToNextClipBoundary();
+    expect(store.currentTime).toBe(3_000_000);
+  });
+
+  it('jumps to previous/next clip boundary (current track only)', () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip 1',
+              source: { path: '/a.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+        {
+          id: 'a1',
+          kind: 'audio',
+          name: 'Audio 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'ac1',
+              trackId: 'a1',
+              name: 'Audio Clip 1',
+              source: { path: '/a.wav' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    store.selectTrack('v1');
+    store.currentTime = 5_500_000;
+    store.jumpToPrevClipBoundary({ currentTrackOnly: true });
+    expect(store.currentTime).toBe(2_000_000);
+    store.jumpToNextClipBoundary({ currentTrackOnly: true });
+    expect(store.currentTime).toBe(2_000_000);
+  });
+
+  it('splits a selected clip at playhead', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip 1',
+              source: { path: '/a.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 0, durationUs: 3_000_000 },
+              sourceRange: { startUs: 0, durationUs: 3_000_000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    store.toggleSelection('c1');
+    store.currentTime = 1_000_000;
+    await store.splitClipAtPlayhead();
+
+    const clips = (store.timelineDoc as any).tracks[0].items.filter(
+      (it: any) => it.kind === 'clip',
+    );
+    expect(clips).toHaveLength(2);
+  });
+
+  it('trims left/right to playhead without ripple', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip 1',
+              source: { path: '/a.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 0, durationUs: 3_000_000 },
+              sourceRange: { startUs: 0, durationUs: 3_000_000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    store.toggleSelection('c1');
+    store.currentTime = 1_000_000;
+    await store.trimToPlayheadLeftNoRipple();
+
+    const afterLeft = (store.timelineDoc as any).tracks[0].items.filter(
+      (it: any) => it.kind === 'clip',
+    );
+    expect(afterLeft).toHaveLength(1);
+    expect(afterLeft[0].timelineRange.durationUs).toBeGreaterThan(0);
+    expect(afterLeft[0].timelineRange.startUs).toBe(0);
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip 1',
+              source: { path: '/a.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 0, durationUs: 3_000_000 },
+              sourceRange: { startUs: 0, durationUs: 3_000_000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    store.toggleSelection('c1');
+    store.currentTime = 1_000_000;
+    await store.trimToPlayheadRightNoRipple();
+    const afterRight = (store.timelineDoc as any).tracks[0].items.filter(
+      (it: any) => it.kind === 'clip',
+    );
+    expect(afterRight).toHaveLength(1);
+    expect(afterRight[0].timelineRange.startUs).toBeGreaterThan(0);
+  });
+
+  it('toggles disable and mute on target clip', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'media',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip 1',
+              source: { path: '/a.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 0, durationUs: 3_000_000 },
+              sourceRange: { startUs: 0, durationUs: 3_000_000 },
+              audioGain: 1,
+              disabled: false,
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    store.toggleSelection('c1');
+    await store.toggleDisableTargetClip();
+    let clip = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.id === 'c1');
+    expect(clip.disabled).toBe(true);
+
+    await store.toggleMuteTargetClip();
+    clip = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.id === 'c1');
+    expect(clip.audioGain).toBe(0);
+
+    await store.toggleMuteTargetClip();
+    clip = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.id === 'c1');
+    expect(clip.audioGain).toBe(1);
+  });
+
   it('adds nested timeline clip from .otio path and blocks self-drop', async () => {
     const store = useTimelineStore();
 
