@@ -222,6 +222,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointerup', onWindowPointerUp);
+  clearVolumeHoldTimers();
 });
 
 function formatTime(seconds: number): string {
@@ -267,6 +268,41 @@ function onPlaybackSpeedChange(next: { value: number } | number | null) {
 
   const sign = playbackDirection.value === 'backward' ? -1 : 1;
   timelineStore.setPlaybackSpeed(sign * nextValue);
+}
+
+let volumeHoldTimeout: number | null = null;
+let volumeHoldInterval: number | null = null;
+
+function clearVolumeHoldTimers() {
+  if (volumeHoldTimeout !== null) {
+    window.clearTimeout(volumeHoldTimeout);
+    volumeHoldTimeout = null;
+  }
+  if (volumeHoldInterval !== null) {
+    window.clearInterval(volumeHoldInterval);
+    volumeHoldInterval = null;
+  }
+}
+
+function applyVolumeStep(step: number) {
+  timelineStore.setAudioVolume(timelineStore.audioVolume + step);
+}
+
+function startVolumeHold(step: number) {
+  if (isLoading.value) return;
+  clearVolumeHoldTimers();
+
+  applyVolumeStep(step);
+
+  volumeHoldTimeout = window.setTimeout(() => {
+    volumeHoldInterval = window.setInterval(() => {
+      applyVolumeStep(step);
+    }, 60);
+  }, 350);
+}
+
+function stopVolumeHold() {
+  clearVolumeHoldTimers();
 }
 
 function onVolumeInput(event: Event) {
@@ -445,7 +481,7 @@ function toggleMute() {
         icon="i-heroicons-backward"
         :aria-label="t('granVideoEditor.monitor.playBackward', 'Play backward')"
         :disabled="!canInteractPlayback"
-        @click="setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption.value })"
+        @click="setPlayback({ direction: 'backward', speed: (selectedPlaybackSpeedOption?.value ?? 1) })"
       />
 
       <UButton
@@ -455,7 +491,7 @@ function toggleMute() {
         :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
         :aria-label="t('granVideoEditor.monitor.play', 'Play')"
         :disabled="!canInteractPlayback"
-        @click="setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption.value })"
+        @click="setPlayback({ direction: 'forward', speed: (selectedPlaybackSpeedOption?.value ?? 1) })"
       />
 
       <div class="w-24">
@@ -484,6 +520,19 @@ function toggleMute() {
           "
           @click="toggleMute"
         />
+
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-minus"
+          :aria-label="t('granVideoEditor.monitor.audioVolumeDown', 'Volume down')"
+          @pointerdown.prevent="startVolumeHold(-0.05)"
+          @pointerup="stopVolumeHold"
+          @pointercancel="stopVolumeHold"
+          @pointerleave="stopVolumeHold"
+        />
+
         <USlider
           :min="0"
           :max="1"
@@ -493,6 +542,19 @@ function toggleMute() {
           :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
           @update:model-value="(v) => timelineStore.setAudioVolume(Number(v ?? 1))"
         />
+
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-plus"
+          :aria-label="t('granVideoEditor.monitor.audioVolumeUp', 'Volume up')"
+          @pointerdown.prevent="startVolumeHold(0.05)"
+          @pointerup="stopVolumeHold"
+          @pointercancel="stopVolumeHold"
+          @pointerleave="stopVolumeHold"
+        />
+
         <span class="text-sm text-ui-text-muted tabular-nums min-w-12">
           {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%
         </span>

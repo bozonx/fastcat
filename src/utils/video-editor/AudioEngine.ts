@@ -279,6 +279,7 @@ export class AudioEngine {
     const parsed = Number(speed);
     if (!Number.isFinite(parsed)) return;
 
+    const currentTimeS = this.getCurrentTimeS();
     this.globalSpeed = parsed;
 
     if (!this.isPlaying) {
@@ -289,7 +290,6 @@ export class AudioEngine {
       return;
     }
 
-    const currentTimeS = this.getCurrentTimeS();
     this.stopAllNodes();
 
     this.baseTimeS = currentTimeS;
