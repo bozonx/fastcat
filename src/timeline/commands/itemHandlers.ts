@@ -114,10 +114,17 @@ export function addVirtualClipToTrack(
           clipType: 'background',
           backgroundColor: cmd.backgroundColor ?? '#1a56db',
         }
-      : {
-          ...base,
-          clipType: 'adjustment',
-        };
+      : cmd.clipType === 'text'
+        ? {
+            ...base,
+            clipType: 'text',
+            text: typeof cmd.text === 'string' ? cmd.text : 'Text',
+            style: cmd.style,
+          }
+        : {
+            ...base,
+            clipType: 'adjustment',
+          };
 
   const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
@@ -688,6 +695,59 @@ export function updateClipProperties(
       const raw = nextProps.backgroundColor;
       const value = typeof raw === 'string' ? raw.trim() : '';
       nextProps.backgroundColor = value.length > 0 ? value : '#000000';
+    }
+  }
+
+  if ('text' in nextProps) {
+    if (item.clipType !== 'text') {
+      delete (nextProps as any).text;
+    } else {
+      const raw = (nextProps as any).text;
+      const safe = typeof raw === 'string' ? raw : '';
+      (nextProps as any).text = safe;
+    }
+  }
+
+  if ('style' in nextProps) {
+    if (item.clipType !== 'text') {
+      delete (nextProps as any).style;
+    } else {
+      const raw = (nextProps as any).style;
+      if (!raw || typeof raw !== 'object') {
+        delete (nextProps as any).style;
+      } else {
+        const anyRaw = raw as any;
+        const fontFamily = typeof anyRaw.fontFamily === 'string' ? anyRaw.fontFamily : undefined;
+        const fontSizeRaw = anyRaw.fontSize;
+        const fontSize =
+          typeof fontSizeRaw === 'number' && Number.isFinite(fontSizeRaw)
+            ? Math.max(1, Math.min(1000, Math.round(fontSizeRaw)))
+            : undefined;
+        const fontWeight =
+          typeof anyRaw.fontWeight === 'string' || typeof anyRaw.fontWeight === 'number'
+            ? anyRaw.fontWeight
+            : undefined;
+        const color = typeof anyRaw.color === 'string' ? anyRaw.color : undefined;
+        const alignRaw = anyRaw.align;
+        const align =
+          alignRaw === 'left' || alignRaw === 'center' || alignRaw === 'right'
+            ? alignRaw
+            : undefined;
+
+        const safeStyle = {
+          ...(fontFamily !== undefined ? { fontFamily } : {}),
+          ...(fontSize !== undefined ? { fontSize } : {}),
+          ...(fontWeight !== undefined ? { fontWeight } : {}),
+          ...(color !== undefined ? { color } : {}),
+          ...(align !== undefined ? { align } : {}),
+        };
+
+        if (Object.keys(safeStyle).length === 0) {
+          delete (nextProps as any).style;
+        } else {
+          (nextProps as any).style = safeStyle;
+        }
+      }
     }
   }
 

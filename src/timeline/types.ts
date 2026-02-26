@@ -17,7 +17,15 @@ export interface TimelineSourceRef {
   path: string;
 }
 
-export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background';
+export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background' | 'text';
+
+export interface TextClipStyle {
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string | number;
+  color?: string;
+  align?: 'left' | 'center' | 'right';
+}
 
 export type ClipAnchorPreset =
   | 'center'
@@ -119,11 +127,18 @@ export interface TimelineBackgroundClipItem extends TimelineClipBase {
   backgroundColor: string;
 }
 
+export interface TimelineTextClipItem extends TimelineClipBase {
+  clipType: 'text';
+  text: string;
+  style?: TextClipStyle;
+}
+
 export type TimelineClipItem =
   | TimelineMediaClipItem
   | TimelineTimelineClipItem
   | TimelineAdjustmentClipItem
-  | TimelineBackgroundClipItem;
+  | TimelineBackgroundClipItem
+  | TimelineTextClipItem;
 
 export interface TimelineGapItem {
   kind: 'gap';

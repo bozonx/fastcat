@@ -96,6 +96,26 @@ function handleUpdateBackgroundColor(val: string | undefined) {
   });
 }
 
+function handleUpdateText(val: string | undefined) {
+  if (!selectedClip.value) return;
+  if (selectedClip.value.clipType !== 'text') return;
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    text: typeof val === 'string' ? val : '',
+  });
+}
+
+function handleUpdateTextStyle(patch: Partial<import('~/timeline/types').TextClipStyle>) {
+  if (!selectedClip.value) return;
+  if (selectedClip.value.clipType !== 'text') return;
+  const curr = ((selectedClip.value as any).style ?? {}) as import('~/timeline/types').TextClipStyle;
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    style: {
+      ...curr,
+      ...patch,
+    },
+  });
+}
+
 function handleUpdateTrackEffects(effects: any[]) {
   if (!selectedTrack.value) return;
   timelineStore.updateTrackProperties(selectedTrack.value.id, { effects: effects as any });
@@ -670,6 +690,54 @@ function handleTransitionUpdate(payload: {
                     format="hex"
                     size="sm"
                     @update:model-value="handleUpdateBackgroundColor"
+                  />
+                </div>
+              </div>
+              <div
+                v-else-if="selectedClip.clipType === 'text'"
+                class="flex flex-col gap-3 border-b border-gray-800 pb-2"
+              >
+                <span class="text-gray-500">Text</span>
+                <UTextarea
+                  :model-value="(selectedClip as any).text"
+                  size="sm"
+                  :rows="4"
+                  @update:model-value="handleUpdateText"
+                />
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="flex flex-col gap-1">
+                    <span class="text-gray-500">Font size</span>
+                    <UInput
+                      :model-value="Number(((selectedClip as any).style?.fontSize ?? 64))"
+                      size="sm"
+                      type="number"
+                      step="1"
+                      @update:model-value="(v: any) => handleUpdateTextStyle({ fontSize: Number(v) })"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <span class="text-gray-500">Color</span>
+                    <UColorPicker
+                      :model-value="String(((selectedClip as any).style?.color ?? '#ffffff'))"
+                      format="hex"
+                      size="sm"
+                      @update:model-value="(v: any) => handleUpdateTextStyle({ color: String(v) })"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <span class="text-gray-500">Align</span>
+                  <USelect
+                    :model-value="String(((selectedClip as any).style?.align ?? 'center'))"
+                    :options="[
+                      { value: 'left', label: 'Left' },
+                      { value: 'center', label: 'Center' },
+                      { value: 'right', label: 'Right' },
+                    ]"
+                    size="sm"
+                    @update:model-value="(v: any) => handleUpdateTextStyle({ align: v })"
                   />
                 </div>
               </div>

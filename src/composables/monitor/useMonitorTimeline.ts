@@ -105,6 +105,12 @@ export function useMonitorTimeline() {
             ...base,
             backgroundColor: String((item as any).backgroundColor ?? '#000000'),
           });
+        } else if (clipType === 'text') {
+          clips.push({
+            ...base,
+            text: String((item as any).text ?? ''),
+            style: (item as any).style,
+          });
         } else {
           clips.push(base);
         }
@@ -232,6 +238,12 @@ export function useMonitorTimeline() {
           hash = mixHash(hash, hashString(item.source.path));
         } else if (item.clipType === 'background') {
           hash = mixHash(hash, hashString((item as any).backgroundColor ?? '#000000'));
+        } else if ((item as any).clipType === 'text') {
+          hash = mixHash(hash, hashString(String((item as any).text ?? '')));
+          const style = (item as any).style;
+          if (style) {
+            hash = mixHash(hash, hashString(JSON.stringify(style)));
+          }
         }
       }
     }
@@ -274,6 +286,14 @@ export function useMonitorTimeline() {
           const bgColor = (item as any).backgroundColor;
           if (bgColor) {
             hash = mixHash(hash, hashString(bgColor));
+          }
+        }
+
+        if ((item as any).clipType === 'text') {
+          hash = mixHash(hash, hashString(String((item as any).text ?? '')));
+          const style = (item as any).style;
+          if (style) {
+            hash = mixHash(hash, hashString(JSON.stringify(style)));
           }
         }
 

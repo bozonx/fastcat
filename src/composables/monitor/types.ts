@@ -1,6 +1,6 @@
 export interface WorkerTimelineClip {
   kind: 'clip';
-  clipType: 'media' | 'adjustment' | 'background';
+  clipType: 'media' | 'adjustment' | 'background' | 'text';
   id: string;
   layer: number;
   speed?: number;
@@ -16,6 +16,8 @@ export interface WorkerTimelineClip {
     path: string;
   };
   backgroundColor?: string;
+  text?: string;
+  style?: import('~/timeline/types').TextClipStyle;
   freezeFrameSourceUs?: number;
   opacity?: number;
   effects?: unknown[];

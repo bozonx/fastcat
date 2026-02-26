@@ -56,7 +56,7 @@ export interface CompositorClip {
   speed?: number;
   freezeFrameSourceUs?: number;
   sprite: Sprite;
-  clipKind: 'video' | 'image' | 'solid' | 'adjustment';
+  clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | null;
@@ -64,6 +64,14 @@ export interface CompositorClip {
   ctx: OffscreenCanvasRenderingContext2D | null;
   bitmap: ImageBitmap | null;
   backgroundColor?: string;
+  text?: string;
+  style?: {
+    fontFamily?: string;
+    fontSize?: number;
+    fontWeight?: string | number;
+    color?: string;
+    align?: 'left' | 'center' | 'right';
+  };
   opacity?: number;
   effects?: any[];
   transform?: {
@@ -210,7 +218,10 @@ export class VideoCompositor {
 
       const clipTypeRaw = (clipData as any).clipType;
       const clipType =
-        clipTypeRaw === 'background' || clipTypeRaw === 'adjustment' || clipTypeRaw === 'media'
+        clipTypeRaw === 'background' ||
+        clipTypeRaw === 'adjustment' ||
+        clipTypeRaw === 'media' ||
+        clipTypeRaw === 'text'
           ? clipTypeRaw
           : 'media';
 
@@ -343,6 +354,72 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
         };
 
+        (compositorClip as any).clipType = 'background';
+
+        this.applySolidLayout(compositorClip);
+
+        nextClips.push(compositorClip);
+        nextClipById.set(itemId, compositorClip);
+        continue;
+      }
+
+      if (clipType === 'text') {
+        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+
+        if (reusable) {
+          this.destroyClip(reusable);
+          this.replacedClipIds.add(itemId);
+        }
+
+        const clipCanvas = new OffscreenCanvas(Math.max(1, this.width), Math.max(1, this.height));
+        const clipCtx = clipCanvas.getContext('2d');
+        if (!clipCtx) {
+          sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+          continue;
+        }
+
+        const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+        const texture = new Texture({ source: imageSource });
+        const sprite = new Sprite(texture);
+        sprite.width = this.width;
+        sprite.height = this.height;
+        sprite.visible = false;
+        (sprite as any).__clipId = itemId;
+        this.app.stage.addChild(sprite);
+
+        const canvasSource = new CanvasSource({ resource: clipCanvas as any });
+        sprite.texture.source = canvasSource as any;
+
+        const compositorClip: CompositorClip = {
+          itemId,
+          layer,
+          startUs,
+          endUs,
+          durationUs: Math.max(0, requestedTimelineDurationUs),
+          sourceStartUs: 0,
+          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          speed,
+          sprite,
+          clipKind: 'text',
+          sourceKind: 'canvas',
+          imageSource,
+          lastVideoFrame: null,
+          canvas: clipCanvas,
+          ctx: clipCtx,
+          bitmap: null,
+          text: String((clipData as any).text ?? ''),
+          style: (clipData as any).style,
+          opacity: clipData.opacity,
+          effects: clipData.effects,
+          transform: (clipData as any).transform,
+          transitionIn: clipData.transitionIn,
+          transitionOut: clipData.transitionOut,
+        };
+
+        (compositorClip as any).clipType = 'text';
+
+        this.drawTextClip(compositorClip);
         this.applySolidLayout(compositorClip);
 
         nextClips.push(compositorClip);
@@ -387,6 +464,8 @@ export class VideoCompositor {
           effects: clipData.effects,
           transform: (clipData as any).transform,
         };
+
+        (compositorClip as any).clipType = 'adjustment';
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -701,6 +780,12 @@ export class VideoCompositor {
         }
 
         if (clip.clipKind === 'adjustment') {
+          clip.sprite.visible = true;
+          continue;
+        }
+
+        if (clip.clipKind === 'text') {
+          this.drawTextClip(clip);
           clip.sprite.visible = true;
           continue;
         }
@@ -1255,6 +1340,52 @@ export class VideoCompositor {
     const anchorOffsetY = input.normalizedAnchor.y * input.targetH;
     input.clip.sprite.x = input.baseX + anchorOffsetX + input.posX;
     input.clip.sprite.y = input.baseY + anchorOffsetY + input.posY;
+  }
+
+  private drawTextClip(clip: CompositorClip) {
+    if (clip.clipKind !== 'text') return;
+    if (!clip.canvas || !clip.ctx) return;
+
+    const ctx = clip.ctx;
+    const canvas = clip.canvas;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const style = clip.style ?? {};
+    const fontSize =
+      typeof style.fontSize === 'number' && Number.isFinite(style.fontSize)
+        ? Math.max(1, Math.min(1000, Math.round(style.fontSize)))
+        : 64;
+    const fontFamily =
+      typeof style.fontFamily === 'string' && style.fontFamily.length > 0
+        ? style.fontFamily
+        : 'sans-serif';
+    const fontWeight =
+      typeof style.fontWeight === 'string' || typeof style.fontWeight === 'number'
+        ? String(style.fontWeight)
+        : '700';
+    const color =
+      typeof style.color === 'string' && style.color.length > 0 ? style.color : '#ffffff';
+    const align =
+      style.align === 'left' || style.align === 'center' || style.align === 'right'
+        ? style.align
+        : 'center';
+
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'middle';
+    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+    const text = String(clip.text ?? '');
+    const x = align === 'left' ? 60 : align === 'right' ? canvas.width - 60 : canvas.width / 2;
+    const y = canvas.height / 2;
+    ctx.fillText(text, x, y);
+
+    try {
+      (clip.sprite.texture.source as any)?.update?.();
+    } catch {
+      // ignore
+    }
   }
 
   private async drawSampleToCanvas(sample: any, clip: CompositorClip) {

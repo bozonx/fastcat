@@ -269,10 +269,15 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   function addVirtualClipAtPlayhead(input: {
-    clipType: Extract<import('~/timeline/types').TimelineClipType, 'adjustment' | 'background'>;
+    clipType: Extract<
+      import('~/timeline/types').TimelineClipType,
+      'adjustment' | 'background' | 'text'
+    >;
     name: string;
     durationUs?: number;
     backgroundColor?: string;
+    text?: string;
+    style?: import('~/timeline/types').TextClipStyle;
   }) {
     if (!timelineDoc.value) {
       timelineDoc.value = projectStore.createFallbackTimelineDoc();
@@ -286,6 +291,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       name: input.name,
       durationUs: input.durationUs,
       backgroundColor: input.backgroundColor,
+      text: input.text,
+      style: input.style,
       startUs: currentTime.value,
     });
   }
@@ -308,6 +315,21 @@ export const useTimelineStore = defineStore('timeline', () => {
       name: options?.name ?? 'Background',
       durationUs: options?.durationUs,
       backgroundColor: options?.backgroundColor,
+    });
+  }
+
+  function addTextClipAtPlayhead(options?: {
+    durationUs?: number;
+    name?: string;
+    text?: string;
+    style?: import('~/timeline/types').TextClipStyle;
+  }) {
+    addVirtualClipAtPlayhead({
+      clipType: 'text',
+      name: options?.name ?? 'Text',
+      durationUs: options?.durationUs,
+      text: options?.text,
+      style: options?.style,
     });
   }
 
@@ -371,6 +393,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       >
     > & {
       backgroundColor?: string;
+      text?: string;
+      style?: import('~/timeline/types').TextClipStyle;
     },
   ) {
     applyTimeline(
@@ -947,6 +971,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     addTrack,
     addAdjustmentClipAtPlayhead,
     addBackgroundClipAtPlayhead,
+    addTextClipAtPlayhead,
     renameTrack,
     updateTrackProperties,
     toggleVideoHidden,

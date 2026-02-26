@@ -30,6 +30,10 @@ function addBackgroundClip() {
   timelineStore.addBackgroundClipAtPlayhead();
 }
 
+function addTextClip() {
+  timelineStore.addTextClipAtPlayhead();
+}
+
 async function splitClips() {
   await timelineStore.splitClipsAtPlayhead();
 }
@@ -137,6 +141,14 @@ function toggleClipSnapMode() {
         icon="i-heroicons-swatch"
         :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
         @click="addBackgroundClip"
+      />
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-chat-bubble-bottom-center-text"
+        :aria-label="t('granVideoEditor.timeline.addTextClip', 'Add text clip')"
+        @click="addTextClip"
       />
 
       <div class="w-px h-4 bg-gray-700 mx-1" />

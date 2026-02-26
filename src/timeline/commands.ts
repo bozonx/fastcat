@@ -36,11 +36,13 @@ export interface AddClipToTrackCommand {
 export interface AddVirtualClipToTrackCommand {
   type: 'add_virtual_clip_to_track';
   trackId: string;
-  clipType: Extract<import('./types').TimelineClipType, 'adjustment' | 'background'>;
+  clipType: Extract<import('./types').TimelineClipType, 'adjustment' | 'background' | 'text'>;
   name: string;
   durationUs?: number;
   startUs?: number;
   backgroundColor?: string;
+  text?: string;
+  style?: import('./types').TextClipStyle;
 }
 
 export interface RemoveItemCommand {
@@ -139,6 +141,8 @@ export interface UpdateClipPropertiesCommand {
     >
   > & {
     backgroundColor?: string;
+    text?: string;
+    style?: import('./types').TextClipStyle;
   };
 }
 
