@@ -42,6 +42,13 @@ export function useMonitorTimeline() {
     const videoTracks = docTracks.filter((track) => track.kind === 'video' && !track.videoHidden);
     const trackCount = videoTracks.length;
 
+    function sanitizeSpeed(raw: unknown): number | undefined {
+      if (raw === undefined) return undefined;
+      const v = Number(raw);
+      if (!Number.isFinite(v)) return undefined;
+      return Math.max(0.1, Math.min(10, v));
+    }
+
     function sanitizeTransition(raw: unknown): { type: string; durationUs: number } | undefined {
       if (!raw || typeof raw !== 'object') return undefined;
       const anyRaw = raw as any;
@@ -58,6 +65,7 @@ export function useMonitorTimeline() {
     for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
+        if (Boolean((item as any).disabled)) continue;
 
         const clipType = (item as any).clipType ?? 'media';
 
@@ -73,7 +81,7 @@ export function useMonitorTimeline() {
           clipType,
           id: item.id,
           layer: trackCount - 1 - trackIndex,
-          speed: (item as any).speed,
+          speed: sanitizeSpeed((item as any).speed) ?? 1,
           freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
           effects,
@@ -124,12 +132,19 @@ export function useMonitorTimeline() {
   const rawWorkerAudioClips = computed(() => {
     const clips: WorkerTimelineClip[] = [];
 
+    function sanitizeSpeed(raw: unknown): number {
+      const v = Number(raw);
+      if (!Number.isFinite(v)) return 1;
+      return Math.max(0.1, Math.min(10, v));
+    }
+
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: audioTracks.value,
       videoTracks: videoTracks.value,
     });
 
     for (const item of effectiveItems) {
+      if (item.kind !== 'clip') continue;
       if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
       if (!item.source?.path) continue;
 
@@ -138,7 +153,7 @@ export function useMonitorTimeline() {
         clipType: 'media',
         id: item.id,
         layer: 0,
-        speed: item.speed,
+        speed: sanitizeSpeed((item as any).speed),
         audioGain: item.audioGain,
         audioBalance: item.audioBalance,
         audioFadeInUs: item.audioFadeInUs,
