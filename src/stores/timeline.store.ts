@@ -295,6 +295,152 @@ export const useTimelineStore = defineStore('timeline', () => {
     await requestTimelineSave({ immediate: true });
   }
 
+  function rippleDeleteRange(input: { trackIds: string[]; startUs: number; endUs: number }) {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const startUs = computeCutUs(doc, input.startUs);
+    const endUs = computeCutUs(doc, input.endUs);
+    if (!(endUs > startUs)) return;
+
+    const deltaUs = endUs - startUs;
+    const trackIdSet = new Set(input.trackIds);
+
+    const splitTargets: Array<{ trackId: string; itemId: string }> = [];
+    for (const track of doc.tracks) {
+      if (!trackIdSet.has(track.id)) continue;
+      for (const it of track.items) {
+        if (it.kind !== 'clip') continue;
+        splitTargets.push({ trackId: track.id, itemId: it.id });
+      }
+    }
+
+    const splitAt = (atUs: number) => {
+      for (const t of splitTargets) {
+        applyTimeline(
+          { type: 'split_item', trackId: t.trackId, itemId: t.itemId, atUs },
+          { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+        );
+      }
+    };
+
+    splitAt(endUs);
+    splitAt(startUs);
+
+    const updated = timelineDoc.value;
+    if (!updated) return;
+
+    for (const track of updated.tracks) {
+      if (!trackIdSet.has(track.id)) continue;
+
+      const toDelete: string[] = [];
+      for (const it of track.items) {
+        if (it.kind !== 'clip') continue;
+        const itStart = it.timelineRange.startUs;
+        const center = itStart + it.timelineRange.durationUs / 2;
+
+        if (center >= startUs && center <= endUs) {
+          toDelete.push(it.id);
+        }
+      }
+
+      if (toDelete.length > 0) {
+        applyTimeline(
+          { type: 'delete_items', trackId: track.id, itemIds: toDelete },
+          { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+        );
+      }
+    }
+
+    const afterDelete = timelineDoc.value;
+    if (!afterDelete) return;
+
+    const EPSILON = 10;
+    for (const track of afterDelete.tracks) {
+      if (!trackIdSet.has(track.id)) continue;
+
+      const clips = track.items
+        .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+        .slice()
+        .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+      for (const clip of clips) {
+        const clipStart = clip.timelineRange.startUs;
+        if (clipStart >= endUs - EPSILON) {
+          applyTimeline(
+            {
+              type: 'move_item',
+              trackId: track.id,
+              itemId: clip.id,
+              startUs: Math.max(0, clipStart - deltaUs),
+            },
+            { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+          );
+        }
+      }
+    }
+  }
+
+  async function rippleTrimRight() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const allTrackIds = doc.tracks.map((t) => t.id);
+
+    const intersectingClips = [];
+    for (const track of doc.tracks) {
+      for (const it of track.items) {
+        if (it.kind !== 'clip') continue;
+        const start = it.timelineRange.startUs;
+        const end = start + it.timelineRange.durationUs;
+        if (cutUs >= start && cutUs <= end) {
+          intersectingClips.push(it);
+        }
+      }
+    }
+
+    if (intersectingClips.length === 0) return;
+
+    const maxEndUs = Math.max(
+      ...intersectingClips.map((c) => c.timelineRange.startUs + c.timelineRange.durationUs),
+    );
+
+    if (maxEndUs > cutUs) {
+      rippleDeleteRange({ trackIds: allTrackIds, startUs: cutUs, endUs: maxEndUs });
+      await requestTimelineSave({ immediate: true });
+    }
+  }
+
+  async function rippleTrimLeft() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const allTrackIds = doc.tracks.map((t) => t.id);
+
+    const intersectingClips = [];
+    for (const track of doc.tracks) {
+      for (const it of track.items) {
+        if (it.kind !== 'clip') continue;
+        const start = it.timelineRange.startUs;
+        const end = start + it.timelineRange.durationUs;
+        if (cutUs >= start && cutUs <= end) {
+          intersectingClips.push(it);
+        }
+      }
+    }
+
+    if (intersectingClips.length === 0) return;
+
+    const minStartUs = Math.min(...intersectingClips.map((c) => c.timelineRange.startUs));
+
+    if (cutUs > minStartUs) {
+      rippleDeleteRange({ trackIds: allTrackIds, startUs: minStartUs, endUs: cutUs });
+      await requestTimelineSave({ immediate: true });
+    }
+  }
+
   function getBoundaryTimesUs(trackFilter: ((trackId: string) => boolean) | null): number[] {
     const doc = timelineDoc.value;
     if (!doc) return [];
@@ -1318,6 +1464,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     splitClipsAtPlayhead,
     trimToPlayheadLeftNoRipple,
     trimToPlayheadRightNoRipple,
+    rippleTrimLeft,
+    rippleTrimRight,
     jumpToPrevClipBoundary,
     jumpToNextClipBoundary,
     splitClipAtPlayhead,

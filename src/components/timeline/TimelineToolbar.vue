@@ -40,6 +40,14 @@ async function splitClips() {
   await timelineStore.splitClipsAtPlayhead();
 }
 
+async function rippleTrimLeft() {
+  await timelineStore.rippleTrimLeft();
+}
+
+async function rippleTrimRight() {
+  await timelineStore.rippleTrimRight();
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -109,6 +117,23 @@ function toggleClipSnapMode() {
         icon="i-heroicons-scissors"
         :aria-label="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
         @click="splitClips"
+      />
+
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-arrow-left"
+        :aria-label="t('granVideoEditor.timeline.rippleTrimLeft', 'Ripple trim left')"
+        @click="rippleTrimLeft"
+      />
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-arrow-right"
+        :aria-label="t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right')"
+        @click="rippleTrimRight"
       />
     </div>
 

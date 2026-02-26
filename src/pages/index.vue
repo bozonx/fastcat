@@ -156,6 +156,18 @@ function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
+  if (cmd === 'timeline.rippleTrimLeft') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.rippleTrimLeft();
+    return;
+  }
+
+  if (cmd === 'timeline.rippleTrimRight') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.rippleTrimRight();
+    return;
+  }
+
   if (cmd === 'timeline.jumpPrevBoundary') {
     if (!focusStore.canUseTimelineHotkeys) return;
     timelineStore.jumpToPrevClipBoundary();
