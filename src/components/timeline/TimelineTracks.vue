@@ -215,7 +215,7 @@ function computeMaxResizableTransitionDurationUs(input: {
     const prevTailHandleUs = Number.isFinite(prevMaxEnd)
       ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
       : 10_000_000;
-    return Math.max(0, Math.min(10_000_000, prevTailHandleUs));
+    return Math.max(0, Math.min(10_000_000, prevTailHandleUs + input.currentTransition.durationUs));
   }
 
   // Resizing transitionOut of `clip` => uses this clip tail handle.
@@ -225,7 +225,7 @@ function computeMaxResizableTransitionDurationUs(input: {
   const currTailHandleUs = Number.isFinite(currMaxEnd)
     ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
     : 10_000_000;
-  return Math.max(0, Math.min(10_000_000, currTailHandleUs));
+  return Math.max(0, Math.min(10_000_000, currTailHandleUs + input.currentTransition.durationUs));
 }
 
 function startResizeTransition(
@@ -759,7 +759,7 @@ function getTransitionForPanel() {
     >
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"
-        class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-30 pointer-events-none opacity-80"
+        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-white z-30 pointer-events-none opacity-80"
         :class="
           dragPreview.kind === 'file'
             ? 'bg-primary-600 border border-primary-400'
@@ -775,7 +775,7 @@ function getTransitionForPanel() {
 
       <div
         v-if="movePreviewResolved && movePreviewResolved.trackId === track.id"
-        class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
+        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-white z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
         :style="{
           left: `${2 + timeUsToPx(movePreviewResolved.startUs, timelineStore.timelineZoom)}px`,
           width: `${Math.max(30, timeUsToPx(movePreviewResolved.durationUs, timelineStore.timelineZoom))}px`,
@@ -790,7 +790,7 @@ function getTransitionForPanel() {
         :items="getClipContextMenuItems(track, item)"
       >
         <div
-          class="absolute inset-y-1 rounded overflow-hidden flex flex-col text-xs text-white z-10 cursor-pointer select-none transition-shadow"
+          class="absolute inset-y-0 rounded overflow-hidden flex flex-col text-xs text-white z-10 cursor-pointer select-none transition-shadow"
           :class="[
             timelineStore.selectedItemIds.includes(item.id) ? 'ring-2 ring-white z-20 shadow-lg' : '',
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
@@ -942,17 +942,16 @@ function getTransitionForPanel() {
             </div>
 
             <!-- Middle: Title Block -->
-            <div class="flex-1 flex items-end justify-center px-1 pb-1 min-w-0">
-              <span class="truncate" :title="item.kind === 'clip' ? item.name : ''">
-                {{ item.kind === 'clip' ? item.name : '' }}
-              </span>
-            </div>
+          <div class="flex-1 flex items-end justify-center px-1 min-w-0">
+            <span class="truncate" :title="item.kind === 'clip' ? item.name : ''">
+              {{ item.kind === 'clip' ? item.name : '' }}
+            </span>
+          </div>
 
             <!-- Right: Transition Out Column -->
             <div
               v-if="item.kind === 'clip'"
               class="h-full relative transition-colors"
-              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs || 0)}px` }"
             >
               <template v-if="(item as any).transitionOut">
                 <button
@@ -1024,14 +1023,6 @@ function getTransitionForPanel() {
                 </button>
               </template>
             </div>
-          </div>
-
-          <!-- Bottom: Preview Frames Block -->
-          <div
-            v-if="item.kind === 'clip'"
-            class="h-6 w-full bg-black/10 border-t border-white/5 flex items-center justify-center overflow-hidden"
-          >
-            <!-- Frames will be here -->
           </div>
 
           <!-- Trim Handles (On top of everything, transparent by default) -->

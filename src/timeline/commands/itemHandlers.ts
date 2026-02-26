@@ -1361,6 +1361,8 @@ export function updateClipTransition(
     const left = params.left;
     const right = params.right;
 
+    const existingOverlapUs = getCutOverlapUs(left, right);
+
     const leftSourceEndUs = left.sourceRange.startUs + left.sourceRange.durationUs;
     const leftMaxEndUs =
       left.clipType === 'media'
@@ -1370,9 +1372,13 @@ export function updateClipTransition(
       ? Math.max(0, leftMaxEndUs - leftSourceEndUs)
       : requestedUs;
 
+    const leftTotalAvailableOverlapUs = Number.isFinite(leftMaxEndUs)
+      ? Math.max(0, existingOverlapUs + leftTailHandleUs)
+      : requestedUs;
+
     const overlapUs = Math.min(
       requestedUs,
-      leftTailHandleUs,
+      leftTotalAvailableOverlapUs,
       Math.max(0, Math.round(left.timelineRange.durationUs)),
       Math.max(0, Math.round(right.timelineRange.durationUs)),
     );
