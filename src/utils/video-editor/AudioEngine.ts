@@ -12,6 +12,7 @@ export interface AudioEngineClip {
   sourceDurationUs: number;
   speed?: number;
   audioGain?: number;
+  audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
 }
@@ -360,6 +361,12 @@ export class AudioEngine {
         ? Math.max(0, Math.min(10, audioGainRaw))
         : 1;
 
+    const audioBalanceRaw = clip.audioBalance;
+    const audioBalance =
+      typeof audioBalanceRaw === 'number' && Number.isFinite(audioBalanceRaw)
+        ? Math.max(-1, Math.min(1, audioBalanceRaw))
+        : 0;
+
     // When to start playing in AudioContext time.
     const playStartS =
       currentTimeS < clipStartS
@@ -422,8 +429,19 @@ export class AudioEngine {
     }
 
     const clipGain = this.ctx.createGain();
+
+    const anyCtx = this.ctx as any;
+    const canPan = typeof anyCtx.createStereoPanner === 'function';
+    const panner: StereoPannerNode | null = canPan ? (anyCtx.createStereoPanner() as any) : null;
+    if (panner) {
+      panner.pan.value = audioBalance;
+      sourceNode.connect(panner);
+      panner.connect(clipGain);
+    } else {
+      sourceNode.connect(clipGain);
+    }
+
     clipGain.connect(this.masterGain);
-    sourceNode.connect(clipGain);
 
     // Apply clip-local fade envelope (in timeline time, not buffer time).
     // Since playbackRate is set, the node plays `durationToPlayS / speed` seconds in context time,

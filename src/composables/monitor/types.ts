@@ -4,6 +4,10 @@ export interface WorkerTimelineClip {
   id: string;
   layer: number;
   speed?: number;
+  audioGain?: number;
+  audioBalance?: number;
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
   transitionIn?: {
     type: string;
     durationUs: number;

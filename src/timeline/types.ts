@@ -104,6 +104,7 @@ interface TimelineClipBase {
   sourceDurationUs?: number;
   speed?: number;
   audioGain?: number;
+  audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFromVideoDisabled?: boolean;
@@ -167,6 +168,8 @@ export interface TimelineTrack {
   videoHidden?: boolean;
   audioMuted?: boolean;
   audioSolo?: boolean;
+  audioGain?: number;
+  audioBalance?: number;
   effects?: ClipEffect[];
   items: TimelineTrackItem[];
 }

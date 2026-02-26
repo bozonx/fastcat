@@ -70,6 +70,38 @@ const selectedTrack = computed<TimelineTrack | null>(() => {
   return tracks.find((t) => t.id === trackId) ?? null;
 });
 
+const trackAudioGain = computed({
+  get: () => {
+    const track = selectedTrack.value as any;
+    const v =
+      typeof track?.audioGain === 'number' && Number.isFinite(track.audioGain) ? track.audioGain : 1;
+    return Math.max(0, Math.min(2, v));
+  },
+  set: (val: number) => {
+    if (!selectedTrack.value) return;
+    const track = selectedTrack.value as any;
+    const v = Math.max(0, Math.min(2, Number(val)));
+    timelineStore.updateTrackProperties(track.id, { audioGain: v });
+  },
+});
+
+const trackAudioBalance = computed({
+  get: () => {
+    const track = selectedTrack.value as any;
+    const v =
+      typeof track?.audioBalance === 'number' && Number.isFinite(track.audioBalance)
+        ? track.audioBalance
+        : 0;
+    return Math.max(-1, Math.min(1, v));
+  },
+  set: (val: number) => {
+    if (!selectedTrack.value) return;
+    const track = selectedTrack.value as any;
+    const v = Math.max(-1, Math.min(1, Number(val)));
+    timelineStore.updateTrackProperties(track.id, { audioBalance: v });
+  },
+});
+
 const isRenameModalOpen = ref(false);
 
 function handleUpdateOpacity(val: number | undefined) {
@@ -93,6 +125,15 @@ function handleUpdateAudioGain(val: unknown) {
   const safe = Number.isFinite(v) ? Math.max(0, Math.min(2, v)) : 1;
   timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
     audioGain: safe,
+  });
+}
+
+function handleUpdateAudioBalance(val: unknown) {
+  if (!selectedClip.value) return;
+  const v = typeof val === 'number' && Number.isFinite(val) ? val : Number(val);
+  const safe = Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0;
+  timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
+    audioBalance: safe,
   });
 }
 
@@ -404,6 +445,13 @@ const canEditAudioGain = computed(() => {
   return true;
 });
 
+const canEditAudioBalance = computed(() => {
+  const clip = selectedClip.value;
+  if (!clip) return false;
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
+  return true;
+});
+
 const audioGain = computed({
   get: () => {
     const clip = selectedClip.value as any;
@@ -415,6 +463,23 @@ const audioGain = computed({
     const current = selectedClip.value as any;
     const v = Math.max(0, Math.min(2, Number(val)));
     timelineStore.updateClipProperties(current.trackId, current.id, { audioGain: v });
+  },
+});
+
+const audioBalance = computed({
+  get: () => {
+    const clip = selectedClip.value as any;
+    const v =
+      typeof clip?.audioBalance === 'number' && Number.isFinite(clip.audioBalance)
+        ? clip.audioBalance
+        : 0;
+    return Math.max(-1, Math.min(1, v));
+  },
+  set: (val: number) => {
+    if (!selectedClip.value) return;
+    const current = selectedClip.value as any;
+    const v = Math.max(-1, Math.min(1, Number(val)));
+    timelineStore.updateClipProperties(current.trackId, current.id, { audioBalance: v });
   },
 });
 
@@ -927,14 +992,28 @@ function handleTransitionUpdate(payload: {
               <div class="space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="text-gray-500">{{ t('granVideoEditor.clip.audio.volume', 'Volume') }}</span>
-                  <span class="text-xs font-mono text-gray-500">{{ audioGain.toFixed(2) }}x</span>
+                  <span class="text-xs font-mono text-gray-500">{{ audioGain.toFixed(3) }}x</span>
                 </div>
                 <USlider
                   :model-value="audioGain"
                   :min="0"
                   :max="2"
-                  :step="0.01"
+                  :step="0.001"
                   @update:model-value="handleUpdateAudioGain"
+                />
+              </div>
+
+              <div v-if="canEditAudioBalance" class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">{{ t('granVideoEditor.clip.audio.balance', 'Balance') }}</span>
+                  <span class="text-xs font-mono text-gray-500">{{ audioBalance.toFixed(2) }}</span>
+                </div>
+                <USlider
+                  :model-value="audioBalance"
+                  :min="-1"
+                  :max="1"
+                  :step="0.01"
+                  @update:model-value="handleUpdateAudioBalance"
                 />
               </div>
 
@@ -947,7 +1026,7 @@ function handleTransitionUpdate(payload: {
                   :model-value="audioFadeInSec"
                   :min="0"
                   :max="audioFadeMaxSec"
-                  :step="0.05"
+                  :step="0.01"
                   @update:model-value="(v: any) => (audioFadeInSec = Number(v))"
                 />
               </div>
@@ -961,7 +1040,7 @@ function handleTransitionUpdate(payload: {
                   :model-value="audioFadeOutSec"
                   :min="0"
                   :max="audioFadeMaxSec"
-                  :step="0.05"
+                  :step="0.01"
                   @update:model-value="(v: any) => (audioFadeOutSec = Number(v))"
                 />
               </div>
@@ -1044,6 +1123,31 @@ function handleTransitionUpdate(payload: {
               <div class="flex flex-col gap-1">
                 <span class="text-gray-500">{{ t('common.name', 'Name') }}</span>
                 <span class="font-medium break-all">{{ selectedTrack.name }}</span>
+              </div>
+            </div>
+
+            <div
+              v-if="selectedTrack.kind === 'audio' || selectedTrack.kind === 'video'"
+              class="space-y-4 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">{{ t('granVideoEditor.track.audio.title', 'Track audio') }}</span>
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">{{ t('granVideoEditor.track.audio.volume', 'Volume') }}</span>
+                  <span class="text-xs font-mono text-gray-500">{{ trackAudioGain.toFixed(3) }}x</span>
+                </div>
+                <USlider :model-value="trackAudioGain" :min="0" :max="2" :step="0.001" @update:model-value="(v: any) => (trackAudioGain = Number(v))" />
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">{{ t('granVideoEditor.track.audio.balance', 'Balance') }}</span>
+                  <span class="text-xs font-mono text-gray-500">{{ trackAudioBalance.toFixed(2) }}</span>
+                </div>
+                <USlider :model-value="trackAudioBalance" :min="-1" :max="1" :step="0.01" @update:model-value="(v: any) => (trackAudioBalance = Number(v))" />
               </div>
             </div>
 

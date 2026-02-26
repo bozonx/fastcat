@@ -238,6 +238,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 id: c.id,
                 speed: (c as any).speed,
                 audioGain: (c as any).audioGain,
+                audioBalance: (c as any).audioBalance,
                 audioFadeInUs: (c as any).audioFadeInUs,
                 audioFadeOutUs: (c as any).audioFadeOutUs,
                 source: c.source,
@@ -288,6 +289,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 sourceDurationUs: clip.sourceRange.durationUs,
                 speed: (clip as any).speed,
                 audioGain: (clip as any).audioGain,
+                audioBalance: (clip as any).audioBalance,
                 audioFadeInUs: (clip as any).audioFadeInUs,
                 audioFadeOutUs: (clip as any).audioFadeOutUs,
               };
@@ -443,6 +445,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             clipType:
               c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
             id: c.id,
+            audioBalance: (c as any).audioBalance,
             speed: (c as any).speed,
             audioGain: (c as any).audioGain,
             audioFadeInUs: (c as any).audioFadeInUs,

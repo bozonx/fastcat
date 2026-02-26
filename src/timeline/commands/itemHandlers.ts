@@ -860,6 +860,17 @@ export function updateClipProperties(
     }
   }
 
+  if ('audioBalance' in nextProps) {
+    const raw = (nextProps as any).audioBalance;
+    const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+    const balance = v === undefined ? undefined : clampNumber(v, -1, 1);
+    if (balance === undefined) {
+      delete (nextProps as any).audioBalance;
+    } else {
+      (nextProps as any).audioBalance = balance;
+    }
+  }
+
   // Fade values are stored in timeline microseconds.
   // Clamp to the current clip duration to avoid invalid envelopes.
   if ('audioFadeInUs' in nextProps) {
@@ -888,6 +899,9 @@ export function updateClipProperties(
               const durationUs = Math.max(0, Math.round(updated.timelineRange?.durationUs ?? 0));
               if (typeof updated.audioGain === 'number') {
                 updated.audioGain = clampNumber(updated.audioGain, 0, 10);
+              }
+              if (typeof updated.audioBalance === 'number') {
+                updated.audioBalance = clampNumber(updated.audioBalance, -1, 1);
               }
               if (typeof updated.audioFadeInUs === 'number') {
                 updated.audioFadeInUs = clampNumber(updated.audioFadeInUs, 0, durationUs);
@@ -930,13 +944,19 @@ export function updateClipProperties(
       );
     }
 
-    if ('audioGain' in nextProps || 'audioFadeInUs' in nextProps || 'audioFadeOutUs' in nextProps) {
+    if (
+      'audioGain' in nextProps ||
+      'audioBalance' in nextProps ||
+      'audioFadeInUs' in nextProps ||
+      'audioFadeOutUs' in nextProps
+    ) {
       finalTracks = updateLinkedLockedAudio(
         { ...doc, tracks: finalTracks },
         updated.item.id,
         (a) => ({
           ...a,
           audioGain: (updated.item as any).audioGain,
+          audioBalance: (updated.item as any).audioBalance,
           audioFadeInUs: (updated.item as any).audioFadeInUs,
           audioFadeOutUs: (updated.item as any).audioFadeOutUs,
         }),

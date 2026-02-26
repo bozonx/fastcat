@@ -342,7 +342,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     properties: Partial<
       Pick<
         import('~/timeline/types').TimelineTrack,
-        'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects'
+        'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects' | 'audioGain' | 'audioBalance'
       >
     >,
   ) {
@@ -394,6 +394,8 @@ export const useTimelineStore = defineStore('timeline', () => {
         | 'freezeFrameSourceUs'
         | 'speed'
         | 'transform'
+        | 'audioGain'
+        | 'audioBalance'
         | 'audioFadeInUs'
         | 'audioFadeOutUs'
       >

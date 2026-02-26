@@ -75,6 +75,11 @@ export function updateTrackProperties(
 ): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
 
+  function clampNumber(value: unknown, min: number, max: number): number {
+    const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    return Math.max(min, Math.min(max, n));
+  }
+
   const nextTracks = doc.tracks.map((t) => {
     if (t.id !== track.id) return t;
 
@@ -82,6 +87,18 @@ export function updateTrackProperties(
       ...t,
       ...cmd.properties,
     };
+
+    if ('audioGain' in cmd.properties) {
+      const raw = (cmd.properties as any).audioGain;
+      const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+      next.audioGain = v === undefined ? undefined : clampNumber(v, 0, 10);
+    }
+
+    if ('audioBalance' in cmd.properties) {
+      const raw = (cmd.properties as any).audioBalance;
+      const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+      next.audioBalance = v === undefined ? undefined : clampNumber(v, -1, 1);
+    }
 
     if (next.kind !== 'video') {
       next.videoHidden = undefined;

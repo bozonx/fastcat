@@ -27,6 +27,7 @@ export interface PreparedClip {
   sink: any;
   sourcePath: string;
   audioGain?: number;
+  audioBalance?: number;
   audioFadeInS?: number;
   audioFadeOutS?: number;
 }
@@ -102,6 +103,7 @@ export class AudioMixer {
       const audioFadeInUs = clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs ?? 0;
       const audioFadeOutUs = clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs ?? 0;
       const audioGainRaw = clipData.audioGain ?? clipData.gran?.audioGain ?? 1;
+      const audioBalanceRaw = clipData.audioBalance ?? clipData.gran?.audioBalance ?? 0;
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
@@ -122,6 +124,11 @@ export class AudioMixer {
         typeof audioGainRaw === 'number' && Number.isFinite(audioGainRaw)
           ? Math.max(0, Math.min(10, Number(audioGainRaw)))
           : 1;
+
+      const audioBalance =
+        typeof audioBalanceRaw === 'number' && Number.isFinite(audioBalanceRaw)
+          ? Math.max(-1, Math.min(1, Number(audioBalanceRaw)))
+          : 0;
 
       const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
       try {
@@ -159,6 +166,7 @@ export class AudioMixer {
           sink,
           sourcePath,
           audioGain,
+          audioBalance,
           audioFadeInS,
           audioFadeOutS,
         });
@@ -217,6 +225,15 @@ export class AudioMixer {
         typeof clip.audioGain === 'number' && Number.isFinite(clip.audioGain)
           ? Math.max(0, Math.min(10, clip.audioGain))
           : 1;
+
+      const audioBalance =
+        typeof clip.audioBalance === 'number' && Number.isFinite(clip.audioBalance)
+          ? Math.max(-1, Math.min(1, clip.audioBalance))
+          : 0;
+
+      const hasStereoPan = numberOfChannels === 2;
+      const leftScale = hasStereoPan ? Math.max(0, Math.min(1, 1 - Math.max(0, audioBalance))) : 1;
+      const rightScale = hasStereoPan ? Math.max(0, Math.min(1, 1 + Math.min(0, audioBalance))) : 1;
 
       function gainAtClipTimeS(tClipS: number): number {
         const t = Math.max(0, Math.min(clip.playDurationS, tClipS));
@@ -288,7 +305,9 @@ export class AudioMixer {
 
               for (let c = 0; c < numberOfChannels; c += 1) {
                 const plane = tmpPlanes[c];
-                const v = (plane ? (plane[i] ?? 0) : 0) * gain;
+                const panScale =
+                  hasStereoPan && c === 0 ? leftScale : hasStereoPan && c === 1 ? rightScale : 1;
+                const v = (plane ? (plane[i] ?? 0) : 0) * gain * panScale;
                 const idx = dstFrame * numberOfChannels + c;
                 mixedInterleaved[idx] = clampFloat32(mixedInterleaved[idx]! + v);
               }

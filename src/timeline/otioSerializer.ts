@@ -313,6 +313,10 @@ function parseClipItem(input: {
       typeof granMeta?.audioGain === 'number' && Number.isFinite(granMeta.audioGain)
         ? Math.max(0, Math.min(10, Number(granMeta.audioGain)))
         : undefined,
+    audioBalance:
+      typeof granMeta?.audioBalance === 'number' && Number.isFinite(granMeta.audioBalance)
+        ? Math.max(-1, Math.min(1, Number(granMeta.audioBalance)))
+        : undefined,
     audioFadeInUs:
       typeof granMeta?.audioFadeInUs === 'number' && Number.isFinite(granMeta.audioFadeInUs)
         ? Math.max(0, Math.round(granMeta.audioFadeInUs))
@@ -556,6 +560,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
           audioMuted: Boolean(t.audioMuted),
           audioSolo: Boolean(t.audioSolo),
+          audioGain: t.audioGain,
+          audioBalance: t.audioBalance,
           effects: Array.isArray(t.effects) ? t.effects : undefined,
         },
       },
@@ -658,11 +664,30 @@ export function parseTimelineFromOtio(
     const videoHidden = kind === 'video' ? Boolean(trackGranMeta?.videoHidden) : undefined;
     const audioMuted = Boolean(trackGranMeta?.audioMuted);
     const audioSolo = Boolean(trackGranMeta?.audioSolo);
+    const audioGain =
+      typeof trackGranMeta?.audioGain === 'number' && Number.isFinite(trackGranMeta.audioGain)
+        ? Math.max(0, Math.min(10, Number(trackGranMeta.audioGain)))
+        : undefined;
+    const audioBalance =
+      typeof trackGranMeta?.audioBalance === 'number' && Number.isFinite(trackGranMeta.audioBalance)
+        ? Math.max(-1, Math.min(1, Number(trackGranMeta.audioBalance)))
+        : undefined;
     const effects = Array.isArray(trackGranMeta?.effects)
       ? (trackGranMeta.effects as any[])
       : undefined;
 
-    return { id, kind, name, videoHidden, audioMuted, audioSolo, effects, items };
+    return {
+      id,
+      kind,
+      name,
+      videoHidden,
+      audioMuted,
+      audioSolo,
+      audioGain,
+      audioBalance,
+      effects,
+      items,
+    };
   });
 
   const docId = coerceId(granMeta?.docId, fallback.id);

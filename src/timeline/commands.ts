@@ -142,6 +142,8 @@ export interface UpdateClipPropertiesCommand {
       | 'freezeFrameSourceUs'
       | 'speed'
       | 'transform'
+      | 'audioGain'
+      | 'audioBalance'
       | 'audioFadeInUs'
       | 'audioFadeOutUs'
     >
@@ -156,7 +158,10 @@ export interface UpdateTrackPropertiesCommand {
   type: 'update_track_properties';
   trackId: string;
   properties: Partial<
-    Pick<import('./types').TimelineTrack, 'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects'>
+    Pick<
+      import('./types').TimelineTrack,
+      'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects' | 'audioGain' | 'audioBalance'
+    >
   >;
 }
 

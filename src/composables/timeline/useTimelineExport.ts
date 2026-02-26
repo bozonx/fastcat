@@ -36,6 +36,7 @@ export interface WorkerTimelineClip {
   layer: number;
   speed?: number;
   audioGain?: number;
+  audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   source?: { path: string };
@@ -64,6 +65,60 @@ export async function toWorkerTimelineClips(
   const clips: WorkerTimelineClip[] = [];
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
+
+  function clampNumber(value: unknown, min: number, max: number): number | undefined {
+    const n = typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+    if (n === undefined) return undefined;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function mergeGain(a: unknown, b: unknown): number | undefined {
+    const ga = clampNumber(a, 0, 10);
+    const gb = clampNumber(b, 0, 10);
+    if (ga === undefined && gb === undefined) return undefined;
+    return Math.max(0, Math.min(10, (ga ?? 1) * (gb ?? 1)));
+  }
+
+  function mergeBalance(a: unknown, b: unknown): number | undefined {
+    const ba = clampNumber(a, -1, 1);
+    const bb = clampNumber(b, -1, 1);
+    if (ba === undefined && bb === undefined) return undefined;
+    return Math.max(-1, Math.min(1, (ba ?? 0) + (bb ?? 0)));
+  }
+
+  function mergeFadeInUs(input: {
+    childFadeInUs: unknown;
+    parentFadeInUs: unknown;
+    parentLocalStartUs: number;
+  }): number | undefined {
+    const child = clampNumber(input.childFadeInUs, 0, Number.MAX_SAFE_INTEGER);
+    const parent = clampNumber(input.parentFadeInUs, 0, Number.MAX_SAFE_INTEGER);
+    if (!parent || parent <= 0) return child;
+    const remaining = Math.max(0, Math.round(parent - input.parentLocalStartUs));
+    if (remaining <= 0) return child;
+    if (child === undefined) return remaining;
+    return Math.max(child, remaining);
+  }
+
+  function mergeFadeOutUs(input: {
+    childFadeOutUs: unknown;
+    parentFadeOutUs: unknown;
+    parentLocalEndUs: number;
+    parentDurationUs: number;
+  }): number | undefined {
+    const child = clampNumber(input.childFadeOutUs, 0, Number.MAX_SAFE_INTEGER);
+    const parent = clampNumber(input.parentFadeOutUs, 0, Number.MAX_SAFE_INTEGER);
+    if (!parent || parent <= 0) return child;
+    const outStart = Math.max(0, Math.round(input.parentDurationUs - parent));
+    if (input.parentLocalEndUs <= outStart) return child;
+    const remaining = Math.max(
+      0,
+      Math.round(parent - (input.parentDurationUs - input.parentLocalEndUs)),
+    );
+    if (remaining <= 0) return child;
+    if (child === undefined) return remaining;
+    return Math.max(child, remaining);
+  }
 
   function isProbablyUrlLike(path: string): boolean {
     return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path);
@@ -122,6 +177,7 @@ export async function toWorkerTimelineClips(
           : 0),
       speed: (item as any).speed,
       audioGain: (item as any).audioGain,
+      audioBalance: (item as any).audioBalance,
       audioFadeInUs: (item as any).audioFadeInUs,
       audioFadeOutUs: (item as any).audioFadeOutUs,
       opacity: combinedOpacity,
@@ -213,6 +269,22 @@ export async function toWorkerTimelineClips(
                       ...resolvedNClip,
                       id: `${item.id}_nested_${resolvedNClip.id}`,
                       layer: nestedLayer,
+                      audioGain: mergeGain((item as any).audioGain, resolvedNClip.audioGain),
+                      audioBalance: mergeBalance(
+                        (item as any).audioBalance,
+                        resolvedNClip.audioBalance,
+                      ),
+                      audioFadeInUs: mergeFadeInUs({
+                        childFadeInUs: resolvedNClip.audioFadeInUs,
+                        parentFadeInUs: (item as any).audioFadeInUs,
+                        parentLocalStartUs: overlapStartUs - windowStartUs,
+                      }),
+                      audioFadeOutUs: mergeFadeOutUs({
+                        childFadeOutUs: resolvedNClip.audioFadeOutUs,
+                        parentFadeOutUs: (item as any).audioFadeOutUs,
+                        parentLocalEndUs: overlapEndUs - windowStartUs,
+                        parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
+                      }),
                       timelineRange: {
                         startUs: parentStartUs,
                         durationUs: visibleDurationUs,
@@ -302,10 +374,30 @@ export async function toWorkerTimelineClips(
                     item.timelineRange.startUs + (overlapStartUs - windowStartUs);
                   const sourceShiftUs = overlapStartUs - nStartUs;
 
+                  const parentLocalStartUs = overlapStartUs - windowStartUs;
+                  const parentLocalEndUs = overlapEndUs - windowStartUs;
+                  const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+
                   clips.push({
                     ...resolvedNClip,
                     id: `${item.id}_nested_${resolvedNClip.id}`,
                     layer: 0,
+                    audioGain: mergeGain((item as any).audioGain, resolvedNClip.audioGain),
+                    audioBalance: mergeBalance(
+                      (item as any).audioBalance,
+                      resolvedNClip.audioBalance,
+                    ),
+                    audioFadeInUs: mergeFadeInUs({
+                      childFadeInUs: resolvedNClip.audioFadeInUs,
+                      parentFadeInUs: (item as any).audioFadeInUs,
+                      parentLocalStartUs,
+                    }),
+                    audioFadeOutUs: mergeFadeOutUs({
+                      childFadeOutUs: resolvedNClip.audioFadeOutUs,
+                      parentFadeOutUs: (item as any).audioFadeOutUs,
+                      parentLocalEndUs,
+                      parentDurationUs,
+                    }),
                     timelineRange: {
                       startUs: parentStartUs,
                       durationUs: visibleDurationUs,
@@ -632,6 +724,26 @@ export function useTimelineExport() {
     fileHandle: FileSystemFileHandle,
     onProgress: (progress: number) => void,
   ): Promise<void> {
+    function clampNumber(value: unknown, min: number, max: number): number | undefined {
+      const n = typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+      if (n === undefined) return undefined;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function mergeGain(a: unknown, b: unknown): number | undefined {
+      const ga = clampNumber(a, 0, 10);
+      const gb = clampNumber(b, 0, 10);
+      if (ga === undefined && gb === undefined) return undefined;
+      return Math.max(0, Math.min(10, (ga ?? 1) * (gb ?? 1)));
+    }
+
+    function mergeBalance(a: unknown, b: unknown): number | undefined {
+      const ba = clampNumber(a, -1, 1);
+      const bb = clampNumber(b, -1, 1);
+      if (ba === undefined && bb === undefined) return undefined;
+      return Math.max(-1, Math.min(1, (ba ?? 0) + (bb ?? 0)));
+    }
+
     const doc = timelineStore.timelineDoc;
     const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
     const videoTracks = allVideoTracks.filter((track) => !track.videoHidden);
@@ -662,10 +774,23 @@ export function useTimelineExport() {
       videoClips.push(...clips);
     }
 
-    const audioItems = audioTracks.flatMap((t) => t.items);
-    const audioClipsFromTracks = await toWorkerTimelineClips(audioItems, projectStore, {
-      trackKind: 'audio',
-    });
+    const audioItemsWithTrackAudio = audioTracks.flatMap((track) =>
+      (track.items ?? [])
+        .filter((it) => it.kind === 'clip')
+        .map((it) => {
+          const cloned = JSON.parse(JSON.stringify(it));
+          cloned.audioGain = mergeGain((track as any).audioGain, cloned.audioGain);
+          cloned.audioBalance = mergeBalance((track as any).audioBalance, cloned.audioBalance);
+          return cloned;
+        }),
+    );
+    const audioClipsFromTracks = await toWorkerTimelineClips(
+      audioItemsWithTrackAudio,
+      projectStore,
+      {
+        trackKind: 'audio',
+      },
+    );
 
     const videoItemsForAudio = videoTracksForAudio.flatMap((track) =>
       (track.items ?? [])
@@ -678,6 +803,8 @@ export function useTimelineExport() {
         .map((item) => {
           const cloned = JSON.parse(JSON.stringify(item));
           cloned.id = `${cloned.id}__audio`;
+          cloned.audioGain = mergeGain((track as any).audioGain, cloned.audioGain);
+          cloned.audioBalance = mergeBalance((track as any).audioBalance, cloned.audioBalance);
           return cloned;
         }),
     );

@@ -69,6 +69,7 @@ describe('useTimelineExport pure functions', () => {
         timelineRange: { startUs: 0, durationUs: 1_000_000 },
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
         audioGain: 1.5,
+        audioBalance: -0.25,
         audioFadeInUs: 120_000,
         audioFadeOutUs: 340_000,
       },
@@ -86,6 +87,7 @@ describe('useTimelineExport pure functions', () => {
         timelineRange: { startUs: 0, durationUs: 1_000_000 },
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
         audioGain: 1.5,
+        audioBalance: -0.25,
         audioFadeInUs: 120_000,
         audioFadeOutUs: 340_000,
       },
@@ -213,5 +215,86 @@ describe('useTimelineExport pure functions', () => {
     expect(clips.length).toBe(1);
     expect(clips[0]?.clipType).toBe('media');
     expect(clips[0]?.source?.path).toBe('timelines/media/video.mp4');
+  });
+
+  it('toWorkerTimelineClips should apply nested timeline parent audio gain/balance/fades when trackKind is audio', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { gran: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'A1',
+            kind: 'Audio',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'AudioClip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'audio.wav',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                },
+                metadata: {
+                  gran: {
+                    clipType: 'media',
+                    sourceDurationUs: 1000000,
+                    audioGain: 2,
+                    audioBalance: 0.1,
+                    audioFadeInUs: 100000,
+                    audioFadeOutUs: 100000,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'timeline',
+        id: 'nested1',
+        trackId: 't1',
+        name: 'Nested',
+        source: { path: 'timelines/nested.otio' } as any,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        audioGain: 0.5,
+        audioBalance: -0.2,
+        audioFadeInUs: 200_000,
+        audioFadeOutUs: 300_000,
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async (path: string) => {
+        if (path !== 'timelines/nested.otio') return null;
+        return {
+          getFile: async () => ({ text: async () => nestedOtio }),
+        } as any;
+      },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, {
+      trackKind: 'audio',
+    });
+
+    expect(clips.length).toBe(1);
+    expect(clips[0]?.source?.path).toBe('timelines/audio.wav');
+    expect(clips[0]?.audioGain).toBeCloseTo(1);
+    expect(clips[0]?.audioBalance).toBeCloseTo(-0.1);
+    expect(clips[0]?.audioFadeInUs).toBe(200_000);
+    expect(clips[0]?.audioFadeOutUs).toBe(300_000);
   });
 });

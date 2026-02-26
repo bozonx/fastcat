@@ -7,6 +7,26 @@ import { normalizeTimeUs } from '~/utils/monitor-time';
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
 
+  function clampNumber(value: unknown, min: number, max: number): number | undefined {
+    const n = typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+    if (n === undefined) return undefined;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function mergeGain(a: unknown, b: unknown): number | undefined {
+    const ga = clampNumber(a, 0, 10);
+    const gb = clampNumber(b, 0, 10);
+    if (ga === undefined && gb === undefined) return undefined;
+    return Math.max(0, Math.min(10, (ga ?? 1) * (gb ?? 1)));
+  }
+
+  function mergeBalance(a: unknown, b: unknown): number | undefined {
+    const ba = clampNumber(a, -1, 1);
+    const bb = clampNumber(b, -1, 1);
+    if (ba === undefined && bb === undefined) return undefined;
+    return Math.max(-1, Math.min(1, (ba ?? 0) + (bb ?? 0)));
+  }
+
   const videoTracks = computed(
     () =>
       (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.filter(
@@ -135,30 +155,36 @@ export function useMonitorTimeline() {
       ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
       : allVideoTracks.filter((t) => !t.audioMuted);
 
-    for (const item of effectiveAudioTracks.flatMap((t) => t.items)) {
-      if (item.kind !== 'clip') continue;
-      const clipType = (item as any).clipType ?? 'media';
-      if (clipType !== 'media' && clipType !== 'timeline') continue;
-      const path = (item as any).source?.path;
-      if (!path) continue;
-      clips.push({
-        kind: 'clip',
-        clipType: 'media',
-        id: item.id,
-        layer: 0,
-        speed: (item as any).speed,
-        source: {
-          path,
-        },
-        timelineRange: {
-          startUs: item.timelineRange.startUs,
-          durationUs: item.timelineRange.durationUs,
-        },
-        sourceRange: {
-          startUs: item.sourceRange.startUs,
-          durationUs: item.sourceRange.durationUs,
-        },
-      });
+    for (const track of effectiveAudioTracks) {
+      for (const item of track.items) {
+        if (item.kind !== 'clip') continue;
+        const clipType = (item as any).clipType ?? 'media';
+        if (clipType !== 'media' && clipType !== 'timeline') continue;
+        const path = (item as any).source?.path;
+        if (!path) continue;
+        clips.push({
+          kind: 'clip',
+          clipType: 'media',
+          id: item.id,
+          layer: 0,
+          speed: (item as any).speed,
+          audioGain: mergeGain(track.audioGain, (item as any).audioGain),
+          audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
+          audioFadeInUs: (item as any).audioFadeInUs,
+          audioFadeOutUs: (item as any).audioFadeOutUs,
+          source: {
+            path,
+          },
+          timelineRange: {
+            startUs: item.timelineRange.startUs,
+            durationUs: item.timelineRange.durationUs,
+          },
+          sourceRange: {
+            startUs: item.sourceRange.startUs,
+            durationUs: item.sourceRange.durationUs,
+          },
+        });
+      }
     }
 
     const videoTrackIdsForAudio = new Set(effectiveVideoTracksForAudio.map((t) => t.id));
@@ -178,6 +204,10 @@ export function useMonitorTimeline() {
           id: `${item.id}__audio`,
           layer: 0,
           speed: (item as any).speed,
+          audioGain: mergeGain(track.audioGain, (item as any).audioGain),
+          audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
+          audioFadeInUs: (item as any).audioFadeInUs,
+          audioFadeOutUs: (item as any).audioFadeOutUs,
           source: {
             path,
           },
