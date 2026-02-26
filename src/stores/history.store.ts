@@ -18,7 +18,7 @@ export interface HistoryEntry {
 let entryIdCounter = 0;
 
 /** Human-readable labels for timeline command types */
-const COMMAND_LABELS: Partial<Record<TimelineCommand['type'], string>> = {
+const COMMAND_LABELS: Record<TimelineCommand['type'], string> = {
   add_clip_to_track: 'Add clip',
   add_virtual_clip_to_track: 'Add clip',
   remove_item: 'Remove item',
@@ -53,7 +53,7 @@ export const useHistoryStore = defineStore('history', () => {
   const lastEntry = computed(() => past.value[past.value.length - 1] ?? null);
 
   function getCommandLabel(type: TimelineCommand['type']): string {
-    return COMMAND_LABELS[type] ?? type;
+    return COMMAND_LABELS[type];
   }
 
   /**

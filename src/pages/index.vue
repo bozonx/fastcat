@@ -25,17 +25,32 @@ const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
 
 function onGlobalKeydown(e: KeyboardEvent) {
-  const target = e.target as HTMLElement | null;
-  const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
-  if (isInput) return;
+  if (e.defaultPrevented) return;
+  if (e.repeat) return;
 
-  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+  const target = e.target as HTMLElement | null;
+  const tag = target?.tagName;
+  const isEditable =
+    tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || Boolean(target?.isContentEditable);
+  if (isEditable) return;
+
+  const key = e.key.toLowerCase();
+  const hasMod = e.ctrlKey || e.metaKey;
+  if (!hasMod) return;
+
+  if (key === 'z' && !e.shiftKey) {
     e.preventDefault();
     timelineStore.undoTimeline();
     return;
   }
 
-  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+  if (key === 'z' && e.shiftKey) {
+    e.preventDefault();
+    timelineStore.redoTimeline();
+    return;
+  }
+
+  if (key === 'y' && !e.shiftKey) {
     e.preventDefault();
     timelineStore.redoTimeline();
   }
