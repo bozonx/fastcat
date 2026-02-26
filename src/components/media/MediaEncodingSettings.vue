@@ -60,19 +60,25 @@ const audioCodecOptions = [
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="text-sm font-medium text-gray-700 dark:text-gray-200">
+    <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
       {{ t('videoEditor.export.encodingSettings', 'Encoding settings') }}
     </div>
 
-    <UFormField :label="t('videoEditor.export.outputFormat', 'Output format')">
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.outputFormat', 'Output format') }}
+      </label>
       <UiAppButtonGroup
         v-model="outputFormat"
         :options="props.formatOptions"
         :disabled="props.disabled"
       />
-    </UFormField>
+    </div>
 
-    <UFormField :label="t('videoEditor.export.videoCodec', 'Video codec')">
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.videoCodec', 'Video codec') }}
+      </label>
       <div v-if="outputFormat === 'mp4'" class="w-full">
         <USelectMenu
           :model-value="
@@ -82,40 +88,46 @@ const audioCodecOptions = [
           value-key="value"
           label-key="label"
           :disabled="props.disabled || props.isLoadingCodecSupport"
+          size="sm"
           class="w-full"
           @update:model-value="(v: any) => (videoCodec = v?.value ?? v)"
         />
       </div>
-      <div v-else class="text-sm text-gray-700 dark:text-gray-300 font-medium">
+      <div v-else class="text-sm text-ui-text font-medium bg-ui-bg-accent px-3 py-2 rounded">
         {{ outputFormat === 'mkv' ? 'AV1' : 'VP9' }}
       </div>
-    </UFormField>
+    </div>
 
-    <UFormField
-      :label="t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)')"
-      :help="
-        t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file')
-      "
-    >
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)') }}
+      </label>
       <UInput
         v-model.number="bitrateMbps"
         type="number"
         inputmode="decimal"
         min="0.2"
         step="0.1"
+        size="sm"
         :disabled="props.disabled"
         class="w-full"
       />
-    </UFormField>
+      <span class="text-xs text-ui-text-muted">
+        {{ t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file') }}
+      </span>
+    </div>
 
     <label class="flex items-center gap-3 cursor-pointer">
       <UCheckbox v-model="excludeAudio" :disabled="isAudioDisabled" />
-      <span class="text-sm text-gray-700 dark:text-gray-200">{{
+      <span class="text-sm text-ui-text">{{
         t('videoEditor.export.excludeAudio', 'Exclude audio')
       }}</span>
     </label>
 
-    <UFormField v-if="!excludeAudio" :label="t('videoEditor.export.audioCodec', 'Audio codec')">
+    <div v-if="!excludeAudio" class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
+      </label>
       <div v-if="outputFormat === 'mp4'" class="w-full">
         <UiAppButtonGroup
           v-model="audioCodec"
@@ -123,25 +135,26 @@ const audioCodecOptions = [
           :disabled="props.disabled"
         />
       </div>
-      <div v-else class="text-sm text-gray-700 dark:text-gray-300 font-medium">Opus</div>
-    </UFormField>
+      <div v-else class="text-sm text-ui-text font-medium bg-ui-bg-accent px-3 py-2 rounded">Opus</div>
+    </div>
 
-    <UFormField
-      v-if="!excludeAudio"
-      :label="t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)')"
-      :help="
-        t('videoEditor.export.audioBitrateHelp', 'Higher bitrate = better quality and larger file')
-      "
-    >
+    <div v-if="!excludeAudio" class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
+      </label>
       <UInput
         v-model.number="audioBitrateKbps"
         type="number"
         inputmode="numeric"
         min="32"
         step="16"
+        size="sm"
         :disabled="props.disabled"
         class="w-full"
       />
-    </UFormField>
+      <span class="text-xs text-ui-text-muted">
+        {{ t('videoEditor.export.audioBitrateHelp', 'Higher bitrate = better quality and larger file') }}
+      </span>
+    </div>
   </div>
 </template>

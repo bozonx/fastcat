@@ -150,52 +150,67 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <UFormField :label="t('videoEditor.resolution.customResolution', 'Custom Resolution')">
+    <div class="flex items-center justify-between">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.resolution.customResolution', 'Custom Resolution') }}
+      </label>
       <USwitch v-model="localIsCustom" :disabled="disabled" />
-    </UFormField>
+    </div>
 
     <!-- Preset Mode -->
     <template v-if="!localIsCustom">
       <div class="grid grid-cols-3 gap-4">
-        <UFormField :label="t('videoEditor.resolution.format', 'Format')">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.resolution.format', 'Format') }}
+          </label>
           <USelect
             v-model="localFormat"
             :items="formatOptions"
             :disabled="disabled"
+            size="sm"
             class="w-full"
             value-key="value"
             label-key="label"
           />
-        </UFormField>
+        </div>
 
-        <UFormField :label="t('videoEditor.resolution.orientation', 'Orientation')">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.resolution.orientation', 'Orientation') }}
+          </label>
           <USelect
             v-model="localOrientation"
             :items="orientationOptions"
             :disabled="disabled"
+            size="sm"
             class="w-full"
             value-key="value"
             label-key="label"
           />
-        </UFormField>
+        </div>
 
-        <UFormField :label="t('videoEditor.resolution.aspectRatio', 'Aspect Ratio')">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.resolution.aspectRatio', 'Aspect Ratio') }}
+          </label>
           <USelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
             :disabled="disabled"
+            size="sm"
             class="w-full"
             value-key="value"
             label-key="label"
           />
-        </UFormField>
+        </div>
       </div>
 
       <div
-        class="text-sm text-gray-500 font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md flex justify-between items-center"
+        class="text-sm text-ui-text-muted font-medium bg-ui-bg-accent p-3 rounded flex justify-between items-center"
       >
         <span>{{ t('videoEditor.resolution.finalResolution', 'Final Resolution:') }}</span>
-        <span class="font-mono text-gray-900 dark:text-gray-100"
+        <span class="font-mono text-ui-text"
           >{{ localWidth }} &times; {{ localHeight }}</span
         >
       </div>
@@ -204,30 +219,38 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     <!-- Custom Mode -->
     <template v-else>
       <div class="grid grid-cols-2 gap-4">
-        <UFormField :label="t('videoEditor.export.width', 'Width')">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.export.width', 'Width') }}
+          </label>
           <UInput
             v-model.number="localWidth"
             type="number"
             inputmode="numeric"
             min="2"
             step="2"
+            size="sm"
             class="w-full"
             :disabled="disabled"
           />
-        </UFormField>
-        <UFormField :label="t('videoEditor.export.height', 'Height')">
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.export.height', 'Height') }}
+          </label>
           <UInput
             v-model.number="localHeight"
             type="number"
             inputmode="numeric"
             min="2"
             step="2"
+            size="sm"
             class="w-full"
             :disabled="disabled"
           />
-        </UFormField>
+        </div>
       </div>
-      <div class="text-xs text-gray-500 flex justify-end">
+      <div class="text-xs text-ui-text-muted flex justify-end">
         {{
           localOrientation === 'portrait'
             ? t('videoEditor.resolution.portrait', 'Portrait')
@@ -237,7 +260,10 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     </template>
 
     <!-- FPS -->
-    <UFormField :label="t('videoEditor.export.fps', 'FPS')">
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.fps', 'FPS') }}
+      </label>
       <UInput
         v-model.number="localFps"
         type="number"
@@ -245,9 +271,10 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         min="1"
         max="240"
         step="1"
+        size="sm"
         class="w-full"
         :disabled="disabled"
       />
-    </UFormField>
+    </div>
   </div>
 </template>

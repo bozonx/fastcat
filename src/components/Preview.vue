@@ -1056,11 +1056,11 @@ function handleTransitionUpdate(payload: {
 
               <div class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Scale X</span>
+                  <span class="text-xs text-gray-500">Scale X</span>
                   <UInput v-model.number="transformScaleX" size="sm" type="number" step="0.01" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Scale Y</span>
+                  <span class="text-xs text-gray-500">Scale Y</span>
                   <UInput v-model.number="transformScaleY" size="sm" type="number" step="0.01" />
                 </div>
               </div>
@@ -1071,33 +1071,33 @@ function handleTransitionUpdate(payload: {
               </div>
 
               <div class="flex flex-col gap-1">
-                <span class="text-gray-500">Rotation (deg)</span>
+                <span class="text-xs text-gray-500">Rotation (deg)</span>
                 <UInput v-model.number="transformRotationDeg" size="sm" type="number" step="0.1" />
               </div>
 
               <div class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Position X</span>
+                  <span class="text-xs text-gray-500">Position X</span>
                   <UInput v-model.number="transformPosX" size="sm" type="number" step="1" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Position Y</span>
+                  <span class="text-xs text-gray-500">Position Y</span>
                   <UInput v-model.number="transformPosY" size="sm" type="number" step="1" />
                 </div>
               </div>
 
               <div class="flex flex-col gap-1">
-                <span class="text-gray-500">Anchor</span>
+                <span class="text-xs text-gray-500">Anchor</span>
                 <USelect v-model="transformAnchorPreset" :options="anchorPresetOptions" size="sm" />
               </div>
 
               <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Anchor X (0..1)</span>
+                  <span class="text-xs text-gray-500">Anchor X (0..1)</span>
                   <UInput v-model.number="transformAnchorX" size="sm" type="number" step="0.01" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-500">Anchor Y (0..1)</span>
+                  <span class="text-xs text-gray-500">Anchor Y (0..1)</span>
                   <UInput v-model.number="transformAnchorY" size="sm" type="number" step="0.01" />
                 </div>
               </div>
