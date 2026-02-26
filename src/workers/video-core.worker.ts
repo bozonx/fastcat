@@ -7,6 +7,7 @@ import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
 import { extractMetadata, runExport } from './core/export';
+import { VIDEO_CORE_LIMITS } from '../utils/constants';
 
 DOMAdapter.set(WebWorkerAdapter);
 initEffects();
@@ -15,6 +16,9 @@ initTransitions();
 let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
 let cancelExportRequested = false;
+
+let renderInFlight = false;
+let latestRenderTimeUs: number | null = null;
 
 async function reportExportWarning(message: string) {
   console.warn(message);
@@ -54,7 +58,19 @@ const api: any = {
 
   async renderFrame(timeUs: number) {
     if (!compositor) return;
-    await compositor.renderFrame(timeUs);
+    latestRenderTimeUs = Math.round(Number(timeUs) || 0);
+    if (renderInFlight) return;
+
+    renderInFlight = true;
+    try {
+      while (latestRenderTimeUs !== null) {
+        const next = latestRenderTimeUs;
+        latestRenderTimeUs = null;
+        await compositor.renderFrame(next);
+      }
+    } finally {
+      renderInFlight = false;
+    }
   },
 
   async clearClips() {
@@ -135,6 +151,13 @@ hostClient = new Proxy(
     get(_, method: string) {
       return async (...args: any[]) => {
         return new Promise((resolve, reject) => {
+          const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_WORKER_RPC_PENDING_CALLS));
+          if (pendingCalls.size >= max) {
+            const err = new Error('Host RPC queue overflow');
+            (err as any).name = 'HostQueueOverflowError';
+            reject(err);
+            return;
+          }
           const id = ++callIdCounter;
           pendingCalls.set(id, { resolve, reject });
           self.postMessage({ type: 'rpc-call', id, method, args });

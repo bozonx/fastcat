@@ -16,6 +16,7 @@ import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
 import { getTransitionManifest, easeInOutCubic } from '../../transitions';
 import type { TextClipStyle } from '~/timeline/types';
+import { VIDEO_CORE_LIMITS } from '../constants';
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
@@ -107,11 +108,29 @@ export class VideoCompositor {
   private activeSortDirty = true;
   private contextLost = false;
   private adjustmentTexture: RenderTexture | null = null;
+  private stageVisibilityState: boolean[] = [];
+  private sampleRequestsInFlight = 0;
+  private readonly sampleRequestQueue: Array<() => void> = [];
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
     getStartUs: (clip) => clip.startUs,
     getEndUs: (clip) => clip.endUs,
   });
+
+  private async withVideoSampleSlot<T>(task: () => Promise<T>): Promise<T> {
+    const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
+    if (this.sampleRequestsInFlight >= max) {
+      await new Promise<void>((resolve) => this.sampleRequestQueue.push(resolve));
+    }
+    this.sampleRequestsInFlight += 1;
+    try {
+      return await task();
+    } finally {
+      this.sampleRequestsInFlight = Math.max(0, this.sampleRequestsInFlight - 1);
+      const next = this.sampleRequestQueue.shift();
+      if (next) next();
+    }
+  }
 
   async init(
     width: number,
@@ -803,7 +822,9 @@ export class VideoCompositor {
           continue;
         }
 
-        const request = getVideoSampleWithZeroFallback(clip.sink, sampleTimeS, clip.firstTimestampS)
+        const request = this.withVideoSampleSlot(() =>
+          getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
+        )
           .then((sample) => ({ clip, sample }))
           .catch((error) => {
             console.error('[VideoCompositor] Failed to render sample', error);
@@ -855,10 +876,12 @@ export class VideoCompositor {
           // No extra source material: freeze the last available frame of the previous clip.
           const lastUs = Math.max(0, prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000);
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
-          const req = getVideoSampleWithZeroFallback(
-            prevClip.sink,
-            shadowSampleTimeS,
-            prevClip.firstTimestampS,
+          const req = this.withVideoSampleSlot(() =>
+            getVideoSampleWithZeroFallback(
+              prevClip.sink as any,
+              shadowSampleTimeS,
+              prevClip.firstTimestampS,
+            ),
           )
             .then((sample) => ({ clip: prevClip, sample }))
             .catch(() => ({ clip: prevClip, sample: null }));
@@ -875,10 +898,12 @@ export class VideoCompositor {
           prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000,
         );
         const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
-        const req = getVideoSampleWithZeroFallback(
-          prevClip.sink,
-          shadowSampleTimeS,
-          prevClip.firstTimestampS,
+        const req = this.withVideoSampleSlot(() =>
+          getVideoSampleWithZeroFallback(
+            prevClip.sink as any,
+            shadowSampleTimeS,
+            prevClip.firstTimestampS,
+          ),
         )
           .then((sample) => ({ clip: prevClip, sample }))
           .catch(() => ({ clip: prevClip, sample: null }));
@@ -983,43 +1008,54 @@ export class VideoCompositor {
         }
 
         const children = this.app.stage.children;
-        const visibilityState = children.map((c) => c.visible);
+        if (this.stageVisibilityState.length !== children.length) {
+          this.stageVisibilityState = new Array(children.length);
+        }
+        for (let i = 0; i < children.length; i++) {
+          this.stageVisibilityState[i] = children[i]?.visible ?? false;
+        }
 
+        let applied = false;
         for (let i = 0; i < children.length; i++) {
           const child = children[i];
-          const clipId = (child as any).__clipId;
+          const clipId = (child as any)?.__clipId;
           if (!clipId) continue;
           const clip = this.clipById.get(clipId);
+          if (!clip || clip.clipKind !== 'adjustment' || !clip.sprite.visible) continue;
 
-          if (clip?.clipKind === 'adjustment' && clip.sprite.visible) {
-            // Скрываем сам adjustment слой и всё, что выше него
-            for (let j = i; j < children.length; j++) {
-              const childObj = children[j];
-              if (childObj) {
-                childObj.visible = false;
-              }
-            }
+          // Hide adjustment layer itself and everything above it
+          for (let j = i; j < children.length; j++) {
+            const childObj = children[j];
+            if (childObj) childObj.visible = false;
+          }
 
-            // Рендерим слои под adjustment слоем в текстуру
-            if (this.adjustmentTexture) {
-              this.app.renderer.render({
-                container: this.app.stage,
-                target: this.adjustmentTexture,
-                clear: true,
-              });
-            }
+          if (this.adjustmentTexture) {
+            this.app.renderer.render({
+              container: this.app.stage,
+              target: this.adjustmentTexture,
+              clear: true,
+            });
+          }
 
-            // Восстанавливаем видимость
-            for (let j = 0; j < children.length; j++) {
-              const childObj = children[j];
-              if (childObj && visibilityState[j] !== undefined) {
-                childObj.visible = visibilityState[j] as boolean;
-              }
-            }
+          // Restore visibility
+          for (let j = 0; j < children.length; j++) {
+            const childObj = children[j];
+            if (childObj) childObj.visible = this.stageVisibilityState[j] as boolean;
+          }
 
-            // Назначаем текстуру adjustment спрайту
-            if (this.adjustmentTexture) {
-              clip.sprite.texture = this.adjustmentTexture;
+          if (this.adjustmentTexture) {
+            clip.sprite.texture = this.adjustmentTexture;
+          }
+
+          applied = true;
+          break;
+        }
+
+        if (!applied) {
+          for (const c of this.clips) {
+            if (c.clipKind !== 'adjustment') continue;
+            if (c.sprite.texture === this.adjustmentTexture) {
+              c.sprite.texture = Texture.EMPTY;
             }
           }
         }

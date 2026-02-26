@@ -1,4 +1,5 @@
 import type { VideoCoreWorkerAPI } from './worker-rpc';
+import { VIDEO_CORE_LIMITS } from '../constants';
 
 export interface VideoCoreHostAPI {
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
@@ -144,6 +145,15 @@ function createChannelClient(channel: WorkerChannel): {
   const state = channelStates[channel];
   const worker = ensureWorker(channel);
 
+  function ensurePendingSlot() {
+    const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_WORKER_RPC_PENDING_CALLS));
+    if (state.pendingCalls.size >= max) {
+      const err = new Error('Worker RPC queue overflow');
+      (err as any).name = 'WorkerQueueOverflowError';
+      throw err;
+    }
+  }
+
   const clientAPI = new Proxy(
     {},
     {
@@ -156,6 +166,12 @@ function createChannelClient(channel: WorkerChannel): {
             bgColor: string,
           ) => {
             return new Promise<void>((resolve, reject) => {
+              try {
+                ensurePendingSlot();
+              } catch (err) {
+                reject(err);
+                return;
+              }
               const id = ++state.callIdCounter;
               state.pendingCalls.set(id, { resolve, reject });
               ensureWorker(channel).postMessage(
@@ -172,6 +188,12 @@ function createChannelClient(channel: WorkerChannel): {
         }
         return async (...args: any[]) => {
           return new Promise((resolve, reject) => {
+            try {
+              ensurePendingSlot();
+            } catch (err) {
+              reject(err);
+              return;
+            }
             const id = ++state.callIdCounter;
             state.pendingCalls.set(id, { resolve, reject });
             ensureWorker(channel).postMessage({ type: 'rpc-call', id, method, args });

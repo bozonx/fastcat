@@ -113,15 +113,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     } catch {
       // ignore and fallback
     }
-    return JSON.parse(
-      JSON.stringify(value, (_key, v) => {
-        if (typeof v === 'function' || typeof v === 'symbol') return undefined;
-        if (typeof v === 'bigint') return Number(v);
-        if (v instanceof Map) return Array.from(v.entries());
-        if (v instanceof Set) return Array.from(v.values());
-        return v;
-      }),
-    );
+    return value;
   }
 
   function setCurrentTimeProvider(provider: () => number) {
@@ -378,7 +370,10 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     }
 
     if (shouldRecreate || !canvasEl || needReinit) {
-      containerEl.value.innerHTML = '';
+      const container = containerEl.value;
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
+      }
       canvasEl = document.createElement('canvas');
       canvasEl.style.width = `${targetWidth}px`;
       canvasEl.style.height = `${targetHeight}px`;

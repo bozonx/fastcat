@@ -68,6 +68,17 @@ export async function toWorkerTimelineClips(
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
 
+  function cloneEffects<T>(effects: T): T {
+    try {
+      if (typeof structuredClone === 'function') {
+        return structuredClone(effects);
+      }
+    } catch {
+      // ignore
+    }
+    return effects;
+  }
+
   function mergeFadeInUs(input: {
     childFadeInUs: unknown;
     parentFadeInUs: unknown;
@@ -145,8 +156,9 @@ export async function toWorkerTimelineClips(
     const combinedOpacity = parentOpacity * itemOpacity;
 
     const parentEffects = options?.parentEffects ?? [];
-    const itemEffects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : [];
-    const combinedEffects = [...parentEffects, ...itemEffects];
+    const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
+    const combinedEffects =
+      parentEffects.length > 0 ? [...parentEffects, ...itemEffects] : itemEffects;
 
     const base: WorkerTimelineClip = {
       kind: 'clip',
@@ -207,8 +219,11 @@ export async function toWorkerTimelineClips(
                 if (!track) continue;
                 const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
 
-                const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : [];
-                const combinedTrackEffects = [...combinedEffects, ...trackEffects];
+                const trackEffects = Array.isArray(track.effects)
+                  ? cloneEffects(track.effects)
+                  : [];
+                const combinedTrackEffects =
+                  combinedEffects.length > 0 ? [...combinedEffects, ...trackEffects] : trackEffects;
 
                 const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, {
                   layer: nestedLayer,
