@@ -148,8 +148,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.redo': ['Ctrl+Shift+Z'],
 
     'timeline.deleteClip': ['Delete'],
-    'timeline.trimToPlayheadLeft': ['C'],
-    'timeline.trimToPlayheadRight': ['V'],
+    'timeline.trimToPlayheadLeft': ['V'],
+    'timeline.trimToPlayheadRight': ['C'],
     'timeline.jumpPrevBoundary': ['A'],
     'timeline.jumpNextBoundary': ['S'],
     'timeline.jumpPrevBoundaryTrack': ['Shift+A'],
