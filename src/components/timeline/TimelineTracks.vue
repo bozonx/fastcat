@@ -784,7 +784,7 @@ function getTransitionForPanel() {
             item.kind === 'clip' &&
             emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
           "
-          @click.stop="emit('selectItem', $event, item.id)"
+          @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
           <div
             v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"

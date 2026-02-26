@@ -53,34 +53,22 @@ describe('FocusStore', () => {
     expect(store.mainFocus).toBe('timeline');
   });
 
-  it('temporary left focus stays while file selection is active', () => {
+  it('temporary left focus stays active', () => {
     const store = useFocusStore();
 
     store.setMainFocus('timeline');
-    store.setFileManagerSelectionActive(true);
     store.setTempFocus('left');
 
     expect(store.effectiveFocus).toBe('left');
-
-    store.setFileManagerSelectionActive(false);
-
-    expect(store.tempFocus).toBe('none');
-    expect(store.effectiveFocus).toBe('timeline');
   });
 
-  it('temporary right focus stays while right input focused', () => {
+  it('temporary right focus stays active', () => {
     const store = useFocusStore();
 
     store.setMainFocus('monitor');
-    store.setRightInputFocused(true);
     store.setTempFocus('right');
 
     expect(store.effectiveFocus).toBe('right');
-
-    store.setRightInputFocused(false);
-
-    expect(store.tempFocus).toBe('none');
-    expect(store.effectiveFocus).toBe('monitor');
   });
 
   it('hotkey permissions follow effective focus', () => {
@@ -94,7 +82,6 @@ describe('FocusStore', () => {
     expect(store.canUseTimelineHotkeys).toBe(true);
 
     store.setTempFocus('left');
-    store.setFileManagerSelectionActive(true);
     expect(store.canUsePlaybackHotkeys).toBe(false);
     expect(store.canUseTimelineHotkeys).toBe(false);
   });

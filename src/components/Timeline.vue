@@ -211,7 +211,7 @@ function formatTime(seconds: number): string {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg border-t border-ui-border"
-    :class="{ 'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('timeline') }"
+    :class="{ 'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('timeline') }"
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <!-- Toolbar -->

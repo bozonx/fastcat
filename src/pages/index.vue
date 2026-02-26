@@ -141,14 +141,6 @@ watch(currentTimelinePath, async (newPath) => {
   }
 });
 
-watch(
-  () => uiStore.selectedFsEntry,
-  (entry) => {
-    focusStore.setFileManagerSelectionActive(Boolean(entry && entry.kind === 'file'));
-  },
-  { deep: true },
-);
-
 onMounted(async () => {
   try {
     await workspaceStore.init();

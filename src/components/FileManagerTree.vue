@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useProxyStore } from '~/stores/proxy.store';
 import { computed } from 'vue';
+import { useProxyStore } from '~/stores/proxy.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const proxyStore = useProxyStore();
+const uiStore = useUiStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 function isVideo(entry: FsEntry) {
@@ -158,7 +160,8 @@ function getContextMenuItems(entry: FsEntry) {
           :draggable="entry.kind === 'file'"
           @dragstart="onDragStart($event, entry)"
           @dragend="onDragEnd()"
-          @click="onEntryClick(entry)"
+          @click.stop="onEntryClick(entry)"
+          @pointerdown.stop="uiStore.selectedFsEntry = entry as any"
         >
           <!-- Chevron for directories -->
           <UIcon

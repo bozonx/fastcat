@@ -682,19 +682,19 @@ function handleTransitionUpdate(payload: {
 
 function onPanelFocusIn(e: FocusEvent) {
   if (!isEditableTarget(e.target)) return;
-  focusStore.setRightInputFocused(true);
   focusStore.setTempFocus('right');
 }
 
 function onPanelFocusOut() {
-  focusStore.setRightInputFocused(false);
+  // We no longer automatically clear temp focus on blur
 }
 </script>
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0"
-    :class="{ 'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('right') }"
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
+    :class="{ 'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('right') }"
+    @pointerdown.capture="focusStore.setTempFocus('right')"
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"
   >

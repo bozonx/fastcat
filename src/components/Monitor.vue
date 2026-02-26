@@ -238,7 +238,7 @@ function toggleMute() {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0"
-    :class="{ 'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('monitor') }"
+    :class="{ 'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('monitor') }"
     @pointerdown="focusStore.setMainFocus('monitor')"
   >
     <!-- Header -->

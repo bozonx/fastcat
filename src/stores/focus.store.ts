@@ -14,10 +14,6 @@ export const useFocusStore = defineStore('focus', () => {
   const lastMainFocusBeforeTemp = ref<MainPanelFocus>('monitor');
   const tempFocus = ref<TempPanelFocus>('none');
 
-  const isFileManagerSelectionActive = ref(false);
-  const isLeftInputFocused = ref(false);
-  const isRightInputFocused = ref(false);
-
   const effectiveFocus = computed<AnyPanelFocus>(() => {
     if (tempFocus.value === 'left') return 'left';
     if (tempFocus.value === 'right') return 'right';
@@ -83,35 +79,6 @@ export const useFocusStore = defineStore('focus', () => {
     toggleMainFocus();
   }
 
-  function setFileManagerSelectionActive(next: boolean) {
-    isFileManagerSelectionActive.value = next;
-    maybeClearTempFocus();
-  }
-
-  function setLeftInputFocused(next: boolean) {
-    isLeftInputFocused.value = next;
-    maybeClearTempFocus();
-  }
-
-  function setRightInputFocused(next: boolean) {
-    isRightInputFocused.value = next;
-    maybeClearTempFocus();
-  }
-
-  function maybeClearTempFocus() {
-    if (tempFocus.value === 'left') {
-      if (isLeftInputFocused.value) return;
-      if (isFileManagerSelectionActive.value) return;
-      clearTempFocus();
-      return;
-    }
-
-    if (tempFocus.value === 'right') {
-      if (isRightInputFocused.value) return;
-      clearTempFocus();
-    }
-  }
-
   function isPanelFocused(panel: AnyPanelFocus) {
     return effectiveFocus.value === panel;
   }
@@ -133,10 +100,6 @@ export const useFocusStore = defineStore('focus', () => {
     setMainFocus,
     setTempFocus,
     clearTempFocus,
-
-    setFileManagerSelectionActive,
-    setLeftInputFocused,
-    setRightInputFocused,
 
     handleFocusHotkey,
   };

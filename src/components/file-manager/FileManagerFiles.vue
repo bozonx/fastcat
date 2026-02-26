@@ -52,10 +52,7 @@ async function onEntrySelect(entry: FsEntry) {
   uiStore.selectedFsEntry = entry as any;
 
   if (entry.kind === 'file') {
-    focusStore.setFileManagerSelectionActive(true);
     focusStore.setTempFocus('left');
-  } else {
-    focusStore.setFileManagerSelectionActive(false);
   }
 
   if (entry.kind !== 'file') return;
@@ -70,7 +67,7 @@ async function onEntrySelect(entry: FsEntry) {
 <template>
   <div class="flex-1 overflow-auto min-h-0 min-w-0 relative">
     <UContextMenu :items="rootContextMenuItems">
-      <div class="min-w-full w-max min-h-full flex flex-col">
+      <div class="min-w-full w-max min-h-full flex flex-col" @pointerdown="uiStore.selectedFsEntry = null">
         <!-- Dropzone Overlay -->
         <div
           v-if="isDragging"

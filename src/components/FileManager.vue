@@ -167,13 +167,12 @@ function onFileSelect(e: Event) {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden"
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
     :class="{
-      'bg-ui-bg-accent ring-2 ring-inset ring-primary-500/50': isDragging,
-      'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('left'),
+      'bg-ui-bg-accent outline-2 outline-primary-500/50 -outline-offset-2 z-10': isDragging,
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('left'),
     }"
-    @focusin.capture="(e) => focusStore.setLeftInputFocused(isEditableTarget(e.target))"
-    @focusout.capture="() => focusStore.setLeftInputFocused(false)"
+    @pointerdown.capture="focusStore.setTempFocus('left')"
     @dragover.prevent="isDragging = true"
     @dragleave.prevent="isDragging = false"
     @drop.prevent="onDrop"
