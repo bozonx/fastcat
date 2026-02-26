@@ -276,26 +276,12 @@ export function useMonitorTimeline() {
 
     const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
 
-    const effectiveAudioTracks = hasSolo
-      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
-      : allAudioTracks.filter((t) => !t.audioMuted);
+    const effectiveItems = buildEffectiveAudioClipItems({
+      audioTracks: allAudioTracks,
+      videoTracks: allVideoTracks,
+    });
 
-    const effectiveVideoTracksForAudio = hasSolo
-      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
-      : allVideoTracks.filter((t) => !t.audioMuted);
-
-    const effectiveAudioItems = effectiveAudioTracks
-      .flatMap((t) => t.items)
-      .filter((it: TimelineTrackItem) => it.kind === 'clip');
-
-    const enabledVideoAudioItems = effectiveVideoTracksForAudio
-      .flatMap((t) => t.items)
-      .filter(
-        (it: TimelineTrackItem): it is Extract<TimelineTrackItem, { kind: 'clip' }> =>
-          it.kind === 'clip' && !it.audioFromVideoDisabled,
-      );
-
-    let hash = mixHash(2166136261, effectiveAudioItems.length + enabledVideoAudioItems.length);
+    let hash = mixHash(2166136261, effectiveItems.length);
     hash = mixHash(hash, hasSolo ? 1 : 0);
     for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
@@ -306,7 +292,7 @@ export function useMonitorTimeline() {
       hash = mixFloat(hash, mergeBalance((track as any).audioBalance, 0) ?? 0, 1000);
     }
 
-    for (const item of effectiveAudioItems) {
+    for (const item of effectiveItems) {
       hash = mixHash(hash, hashString(item.id));
       hash = mixTime(hash, item.timelineRange.startUs);
       hash = mixTime(hash, item.timelineRange.durationUs);
@@ -322,20 +308,6 @@ export function useMonitorTimeline() {
         hash = mixTime(hash, Math.round(Number((item as any).audioFadeOutUs ?? 0)));
       }
     }
-    for (const item of enabledVideoAudioItems) {
-      hash = mixHash(hash, hashString(`${item.id}__audio`));
-      hash = mixTime(hash, item.timelineRange.startUs);
-      hash = mixTime(hash, item.timelineRange.durationUs);
-      hash = mixTime(hash, item.sourceRange.startUs);
-      hash = mixTime(hash, item.sourceRange.durationUs);
-
-      hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
-
-      hash = mixFloat(hash, (item as any).audioGain ?? 1, 1000);
-      hash = mixFloat(hash, (item as any).audioBalance ?? 0, 1000);
-      hash = mixTime(hash, Math.round(Number((item as any).audioFadeInUs ?? 0)));
-      hash = mixTime(hash, Math.round(Number((item as any).audioFadeOutUs ?? 0)));
-    }
     return hash;
   });
 
@@ -345,26 +317,12 @@ export function useMonitorTimeline() {
 
     const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
 
-    const effectiveAudioTracks = hasSolo
-      ? allAudioTracks.filter((t) => Boolean(t.audioSolo))
-      : allAudioTracks.filter((t) => !t.audioMuted);
+    const effectiveItems = buildEffectiveAudioClipItems({
+      audioTracks: allAudioTracks,
+      videoTracks: allVideoTracks,
+    });
 
-    const effectiveVideoTracksForAudio = hasSolo
-      ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
-      : allVideoTracks.filter((t) => !t.audioMuted);
-
-    const effectiveAudioItems = effectiveAudioTracks
-      .flatMap((t) => t.items)
-      .filter((it: TimelineTrackItem) => it.kind === 'clip');
-
-    const enabledVideoAudioItems = effectiveVideoTracksForAudio
-      .flatMap((t) => t.items)
-      .filter(
-        (it: TimelineTrackItem): it is Extract<TimelineTrackItem, { kind: 'clip' }> =>
-          it.kind === 'clip' && !it.audioFromVideoDisabled,
-      );
-
-    let hash = mixHash(2166136261, effectiveAudioItems.length + enabledVideoAudioItems.length);
+    let hash = mixHash(2166136261, effectiveItems.length);
     hash = mixHash(hash, hasSolo ? 1 : 0);
     for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
@@ -372,7 +330,7 @@ export function useMonitorTimeline() {
       hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
     }
 
-    for (const item of effectiveAudioItems) {
+    for (const item of effectiveItems) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
         if (item.clipType === 'media' && item.source?.path) {
@@ -381,14 +339,6 @@ export function useMonitorTimeline() {
 
         hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
       }
-    }
-    for (const item of enabledVideoAudioItems) {
-      hash = mixHash(hash, hashString(`${item.id}__audio`));
-      if (item.clipType === 'media' && item.source?.path) {
-        hash = mixHash(hash, hashString(item.source.path));
-      }
-
-      hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
     }
     return hash;
   });
