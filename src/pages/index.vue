@@ -133,7 +133,6 @@ function onGlobalKeydown(e: KeyboardEvent) {
 
   // --- Playback ---
   if (cmd === 'playback.toggle') {
-    if (!focusStore.canUsePlaybackHotkeys) return;
     if (timelineStore.playbackSpeed !== 1) {
       timelineStore.setPlaybackSpeed(1);
       if (!timelineStore.isPlaying) timelineStore.togglePlayback();
@@ -205,13 +204,13 @@ function onGlobalBlur() {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', onGlobalKeydown);
+  window.addEventListener('keydown', onGlobalKeydown, true);
   window.addEventListener('keyup', onGlobalKeyup);
   window.addEventListener('blur', onGlobalBlur);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', onGlobalKeydown);
+  window.removeEventListener('keydown', onGlobalKeydown, true);
   window.removeEventListener('keyup', onGlobalKeyup);
   window.removeEventListener('blur', onGlobalBlur);
   clearVolumeHoldTimers();

@@ -59,6 +59,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.delete', groupId: 'general', title: 'Delete' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
+    { id: 'playback.toggle', groupId: 'general', title: 'Play / pause (normal speed)' },
 
     { id: 'timeline.deleteClip', groupId: 'timeline', title: 'Delete clip' },
     { id: 'timeline.tab1', groupId: 'timeline', title: 'Timeline Tab 1' },
@@ -72,7 +73,6 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'timeline.tab9', groupId: 'timeline', title: 'Timeline Tab 9' },
     { id: 'timeline.tab0', groupId: 'timeline', title: 'Timeline Tab 10' },
 
-    { id: 'playback.toggle', groupId: 'playback', title: 'Play / pause (normal speed)' },
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
     { id: 'playback.forward1_25', groupId: 'playback', title: 'Forward x1.25' },

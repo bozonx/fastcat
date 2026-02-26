@@ -105,6 +105,25 @@ export function hotkeyFromKeyboardEvent(e: KeyboardEvent): HotkeyCombo | null {
 export function isEditableTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el) return false;
+
+  if (el.isContentEditable) return true;
+
   const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || Boolean(el.isContentEditable);
+  if (tag === 'TEXTAREA') return true;
+
+  if (tag !== 'INPUT') return false;
+
+  const input = el as HTMLInputElement;
+  const type = (input.type || '').toLowerCase();
+  if (!type) return true;
+
+  return (
+    type === 'text' ||
+    type === 'search' ||
+    type === 'password' ||
+    type === 'email' ||
+    type === 'tel' ||
+    type === 'url' ||
+    type === 'number'
+  );
 }
