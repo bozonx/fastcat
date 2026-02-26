@@ -416,6 +416,34 @@ function getClipLowerTriColor(_item: TimelineTrackItem, _track: TimelineTrack): 
   return 'rgba(0,0,0,0.35)';
 }
 
+/** Get dynamic classes for clip background and border */
+function getClipClass(item: TimelineTrackItem, track: TimelineTrack): string[] {
+  if (item.kind === 'gap') {
+    return ['bg-ui-bg-elevated/40', 'border-ui-border', 'text-ui-text-muted', 'opacity-70'];
+  }
+
+  const clipItem = item as TimelineClipItem;
+  const baseClasses = ['border', 'transition-colors'];
+
+  if (clipItem.clipType === 'background') {
+    return [...baseClasses, 'bg-violet-500/20', 'border-violet-500/40', 'hover:bg-violet-500/30'];
+  }
+  if (clipItem.clipType === 'adjustment') {
+    return [...baseClasses, 'bg-amber-500/20', 'border-amber-500/40', 'hover:bg-amber-500/30'];
+  }
+  if (track.kind === 'audio') {
+    return [...baseClasses, 'bg-teal-500/20', 'border-teal-500/40', 'hover:bg-teal-500/30'];
+  }
+
+  // Default video clip: indigo/primary
+  return [
+    ...baseClasses,
+    'bg-primary-500/40',
+    'border-primary-500/50',
+    'hover:bg-primary-500/50',
+  ];
+}
+
 function transitionSvgParts(
   w: number,
   h: number,
@@ -741,12 +769,9 @@ function getTransitionForPanel() {
         <div
           class="absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow"
           :class="[
-            item.kind === 'gap'
-              ? 'bg-ui-bg-elevated/40 border border-ui-border text-ui-text-muted opacity-70'
-              : 'bg-ui-bg-accent border border-ui-border hover:bg-ui-bg-elevated',
-            timelineStore.selectedItemIds.includes(item.id)
-              ? 'ring-2 ring-white z-20 shadow-lg'
-              : '',
+            'absolute inset-y-1 rounded px-2 flex items-center text-xs text-white z-10 cursor-pointer select-none transition-shadow',
+            ...getClipClass(item, track),
+            timelineStore.selectedItemIds.includes(item.id) ? 'ring-2 ring-white z-20 shadow-lg' : '',
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
               ? 'outline outline-2 outline-yellow-400/80'
               : '',

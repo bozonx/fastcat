@@ -12,10 +12,13 @@ import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useFocusStore } from '~/stores/focus.store';
+import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
+const focusStore = useFocusStore();
 
 const fileManager = useFileManager();
 const {
@@ -165,7 +168,12 @@ function onFileSelect(e: Event) {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden"
-    :class="{ 'bg-ui-bg-accent ring-2 ring-inset ring-primary-500/50': isDragging }"
+    :class="{
+      'bg-ui-bg-accent ring-2 ring-inset ring-primary-500/50': isDragging,
+      'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('left'),
+    }"
+    @focusin.capture="(e) => focusStore.setLeftInputFocused(isEditableTarget(e.target))"
+    @focusout.capture="() => focusStore.setLeftInputFocused(false)"
     @dragover.prevent="isDragging = true"
     @dragleave.prevent="isDragging = false"
     @drop.prevent="onDrop"

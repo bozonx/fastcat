@@ -10,6 +10,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { storeToRefs } from 'pinia';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
@@ -21,6 +22,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const mediaStore = useMediaStore();
+const focusStore = useFocusStore();
 
 const { currentTimelinePath } = storeToRefs(projectStore);
 
@@ -30,6 +32,12 @@ const isEditorSettingsOpen = ref(false);
 function onGlobalKeydown(e: KeyboardEvent) {
   if (e.defaultPrevented) return;
   if (e.repeat) return;
+
+  if (e.key === 'Tab' && focusStore.tempFocus !== 'none') {
+    e.preventDefault();
+    focusStore.handleFocusHotkey();
+    return;
+  }
 
   if (isEditableTarget(e.target)) return;
 
@@ -51,6 +59,11 @@ function onGlobalKeydown(e: KeyboardEvent) {
   e.preventDefault();
 
   const cmd = matched[0];
+  if (cmd === 'general.focus') {
+    focusStore.handleFocusHotkey();
+    return;
+  }
+
   if (cmd === 'general.undo') {
     timelineStore.undoTimeline();
     return;
@@ -67,21 +80,25 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
 
   if (cmd === 'timeline.deleteClip') {
+    if (!focusStore.canUseTimelineHotkeys) return;
     timelineStore.deleteFirstSelectedItem();
     return;
   }
 
   if (cmd === 'playback.toggle') {
+    if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.togglePlayback();
     return;
   }
 
   if (cmd === 'playback.toStart') {
+    if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.goToStart();
     return;
   }
 
   if (cmd === 'playback.toEnd') {
+    if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.goToEnd();
   }
 }
@@ -118,10 +135,19 @@ const isStartingUp = ref(true);
 
 watch(currentTimelinePath, async (newPath) => {
   if (newPath && projectStore.currentProjectName) {
+    focusStore.setActiveTimelinePath(newPath);
     await timelineStore.loadTimeline();
     void timelineStore.loadTimelineMetadata();
   }
 });
+
+watch(
+  () => uiStore.selectedFsEntry,
+  (entry) => {
+    focusStore.setFileManagerSelectionActive(Boolean(entry && entry.kind === 'file'));
+  },
+  { deep: true },
+);
 
 onMounted(async () => {
   try {

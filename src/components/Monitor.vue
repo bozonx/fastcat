@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
@@ -13,6 +14,7 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
+const focusStore = useFocusStore();
 const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
 
 const {
@@ -234,7 +236,11 @@ function toggleMute() {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0">
+  <div
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0"
+    :class="{ 'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('monitor') }"
+    @pointerdown="focusStore.setMainFocus('monitor')"
+  >
     <!-- Header -->
     <div
       class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated"

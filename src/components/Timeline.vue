@@ -2,6 +2,7 @@
 import { computed, ref, onMounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
@@ -24,6 +25,7 @@ const { t } = useI18n();
 const toast = useToast();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const focusStore = useFocusStore();
 const { draggedFile } = useDraggedFile();
 
 const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v4', [10, 90]);
@@ -207,7 +209,11 @@ function formatTime(seconds: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg border-t border-ui-border">
+  <div
+    class="flex flex-col h-full bg-ui-bg border-t border-ui-border"
+    :class="{ 'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('timeline') }"
+    @pointerdown="focusStore.setMainFocus('timeline')"
+  >
     <!-- Toolbar -->
     <TimelineToolbar />
 

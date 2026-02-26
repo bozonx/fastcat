@@ -5,6 +5,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useFocusStore } from '~/stores/focus.store';
 import FileManagerTree from '~/components/FileManagerTree.vue';
 import type { FsEntry } from '~/composables/fileManager/useFileManager';
 
@@ -13,6 +14,7 @@ const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
+const focusStore = useFocusStore();
 
 const props = defineProps<{
   isDragging: boolean;
@@ -48,6 +50,13 @@ const rootContextMenuItems = computed(() => {
 
 async function onEntrySelect(entry: FsEntry) {
   uiStore.selectedFsEntry = entry as any;
+
+  if (entry.kind === 'file') {
+    focusStore.setFileManagerSelectionActive(true);
+    focusStore.setTempFocus('left');
+  } else {
+    focusStore.setFileManagerSelectionActive(false);
+  }
 
   if (entry.kind !== 'file') return;
   if (!entry.path?.toLowerCase().endsWith('.otio')) return;

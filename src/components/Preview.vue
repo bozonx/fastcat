@@ -4,12 +4,14 @@ import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import type { TimelineTrack } from '~/timeline/types';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
+import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 defineOptions({
   name: 'PreviewPanel',
@@ -20,6 +22,7 @@ const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const proxyStore = useProxyStore();
+const focusStore = useFocusStore();
 
 const currentUrl = ref<string | null>(null);
 const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
@@ -676,10 +679,25 @@ function handleTransitionUpdate(payload: {
     timelineStore.updateClipTransition(payload.trackId, payload.itemId, { transitionOut: payload.transition });
   }
 }
+
+function onPanelFocusIn(e: FocusEvent) {
+  if (!isEditableTarget(e.target)) return;
+  focusStore.setRightInputFocused(true);
+  focusStore.setTempFocus('right');
+}
+
+function onPanelFocusOut() {
+  focusStore.setRightInputFocused(false);
+}
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
+  <div
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0"
+    :class="{ 'ring-2 ring-inset ring-primary-500/60': focusStore.isPanelFocused('right') }"
+    @focusin.capture="onPanelFocusIn"
+    @focusout.capture="onPanelFocusOut"
+  >
     <!-- Header -->
     <div
       v-if="displayMode !== 'empty'"

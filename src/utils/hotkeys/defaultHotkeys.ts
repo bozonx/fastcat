@@ -1,6 +1,7 @@
 export type HotkeyGroupId = 'general' | 'playback' | 'timeline';
 
 export type HotkeyCommandId =
+  | 'general.focus'
   | 'general.delete'
   | 'general.undo'
   | 'general.redo'
@@ -24,6 +25,7 @@ export interface DefaultHotkeysConfig {
 
 export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
   commands: [
+    { id: 'general.focus', groupId: 'general', title: 'Focus' },
     { id: 'general.delete', groupId: 'general', title: 'Delete' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
@@ -35,6 +37,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
   ],
   bindings: {
+    'general.focus': ['Tab'],
     'general.delete': ['Delete'],
     'general.undo': ['Ctrl+Z'],
     'general.redo': ['Ctrl+Shift+Z'],
