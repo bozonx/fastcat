@@ -1,21 +1,20 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import {
-  normalizeUserSettings,
-  normalizeWorkspaceSettings,
-} from '../../src/utils/settings';
-
+import { normalizeUserSettings, normalizeWorkspaceSettings } from '../../src/utils/settings';
 
 describe('settings normalization', () => {
   it('migrates openBehavior to openLastProjectOnStart', () => {
     const normalized = normalizeUserSettings({ openBehavior: 'show_project_picker' });
     expect(normalized.openLastProjectOnStart).toBe(false);
+    expect(normalized.hotkeys).toBeDefined();
+    expect(normalized.hotkeys.bindings).toBeDefined();
   });
 
   it('uses exportDefaults fallback when missing', () => {
     const normalized = normalizeUserSettings({ openLastProjectOnStart: true });
     expect(normalized.exportDefaults.width).toBe(1920);
     expect(normalized.exportDefaults.encoding.format).toBe('mp4');
+    expect(normalized.hotkeys.bindings).toEqual({});
   });
 
   it('normalizes workspace limits', () => {

@@ -223,22 +223,6 @@ export function useTimelineInteraction(
 
   let dragRafId: number | null = null;
 
-  function onTimelineKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-      if (timelineStore.selectedItemIds.length > 0) {
-        const items = tracks.value.flatMap((t) =>
-          t.items.map((it) => ({ trackId: t.id, itemId: it.id })),
-        );
-        const firstSelection = items.find((it) =>
-          timelineStore.selectedItemIds.includes(it.itemId),
-        );
-        if (firstSelection) {
-          timelineStore.deleteSelectedItems(firstSelection.trackId);
-        }
-      }
-    }
-  }
-
   function getLocalX(e: MouseEvent): number {
     const target = e.currentTarget as HTMLElement | null;
     const rect = target?.getBoundingClientRect();
@@ -578,12 +562,9 @@ export function useTimelineInteraction(
     window.removeEventListener('mouseup', onGlobalMouseUp);
   }
 
-  onMounted(() => {
-    window.addEventListener('keydown', onTimelineKeyDown);
-  });
+  onMounted(() => {});
 
   onBeforeUnmount(() => {
-    window.removeEventListener('keydown', onTimelineKeyDown);
     if (dragRafId !== null) {
       cancelAnimationFrame(dragRafId);
       dragRafId = null;

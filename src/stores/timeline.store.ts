@@ -209,6 +209,31 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectedItemIds.value = [];
   }
 
+  function deleteFirstSelectedItem() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+    if (selectedItemIds.value.length === 0) return;
+
+    const selectedSet = new Set(selectedItemIds.value);
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (selectedSet.has(item.id)) {
+          deleteSelectedItems(track.id);
+          return;
+        }
+      }
+    }
+  }
+
+  function goToStart() {
+    currentTime.value = 0;
+  }
+
+  function goToEnd() {
+    const end = Number.isFinite(duration.value) ? Math.max(0, Math.round(duration.value)) : 0;
+    currentTime.value = end;
+  }
+
   function setTimelineZoom(next: number) {
     const parsed = Math.round(Number(next));
     if (!Number.isFinite(parsed)) return;
@@ -969,6 +994,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTrack,
     selectTransition,
     deleteSelectedItems,
+    deleteFirstSelectedItem,
+    goToStart,
+    goToEnd,
     setTimelineZoom,
     setAudioVolume,
     setAudioMuted,

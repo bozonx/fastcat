@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import AppModal from '~/components/ui/AppModal.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
@@ -11,6 +12,13 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import {
+  hotkeyFromKeyboardEvent,
+  isEditableTarget,
+  normalizeHotkeyCombo,
+} from '~/utils/hotkeys/hotkeyUtils';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 
 interface Props {
   open: boolean;
@@ -25,9 +33,138 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-type SettingsSection = 'user.general' | 'user.optimization' | 'user.export' | 'workspace.storage';
+type SettingsSection =
+  | 'user.general'
+  | 'user.hotkeys'
+  | 'user.optimization'
+  | 'user.export'
+  | 'workspace.storage';
 
 const activeSection = ref<SettingsSection>('user.general');
+
+const isCapturingHotkey = ref(false);
+const captureTargetCommandId = ref<HotkeyCommandId | null>(null);
+const capturedCombo = ref<string | null>(null);
+const isDuplicateConfirmOpen = ref(false);
+const duplicateWarningText = ref('');
+
+function getCommandTitle(cmdId: HotkeyCommandId): string {
+  return DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
+}
+
+function getCommandGroupTitle(groupId: string): string {
+  if (groupId === 'general') return t('videoEditor.settings.hotkeysGroupGeneral', 'General');
+  if (groupId === 'playback')
+    return t('videoEditor.settings.hotkeysGroupPlayback', 'Playback');
+  if (groupId === 'timeline') return t('videoEditor.settings.hotkeysGroupTimeline', 'Timeline');
+  return groupId;
+}
+
+function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
+  const overrides = workspaceStore.userSettings.hotkeys.bindings[cmdId];
+  if (Array.isArray(overrides)) return overrides;
+  return DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
+}
+
+function setBindings(cmdId: HotkeyCommandId, next: string[]) {
+  workspaceStore.userSettings.hotkeys.bindings[cmdId] = [...next];
+}
+
+function removeBinding(cmdId: HotkeyCommandId, combo: string) {
+  const next = getCurrentBindings(cmdId).filter((c) => c !== combo);
+  setBindings(cmdId, next);
+}
+
+function findDuplicateOwner(combo: string, targetCmdId: HotkeyCommandId): HotkeyCommandId | null {
+  const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+  for (const cmd of DEFAULT_HOTKEYS.commands) {
+    if (cmd.id === targetCmdId) continue;
+    const bindings = effective[cmd.id];
+    if (bindings.includes(combo)) return cmd.id;
+  }
+  return null;
+}
+
+function finishCapture() {
+  isCapturingHotkey.value = false;
+  captureTargetCommandId.value = null;
+}
+
+function startCapture(cmdId: HotkeyCommandId) {
+  if (isCapturingHotkey.value) return;
+  isCapturingHotkey.value = true;
+  captureTargetCommandId.value = cmdId;
+  capturedCombo.value = null;
+
+  const handler = (e: KeyboardEvent) => {
+    if (!isCapturingHotkey.value) {
+      window.removeEventListener('keydown', handler, true);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      window.removeEventListener('keydown', handler, true);
+      finishCapture();
+      return;
+    }
+
+    if (isEditableTarget(e.target)) {
+      return;
+    }
+
+    const comboRaw = hotkeyFromKeyboardEvent(e);
+    const combo = comboRaw ? normalizeHotkeyCombo(comboRaw) : null;
+    if (!combo) return;
+
+    e.preventDefault();
+    window.removeEventListener('keydown', handler, true);
+    capturedCombo.value = combo;
+
+    const target = captureTargetCommandId.value;
+    if (!target) {
+      finishCapture();
+      return;
+    }
+
+    const owner = findDuplicateOwner(combo, target);
+    if (owner) {
+      duplicateWarningText.value = `${combo} is already assigned to ${getCommandTitle(owner)}.`;
+      isDuplicateConfirmOpen.value = true;
+      return;
+    }
+
+    const next = [...getCurrentBindings(target), combo];
+    setBindings(target, Array.from(new Set(next)));
+    finishCapture();
+  };
+
+  window.addEventListener('keydown', handler, true);
+}
+
+function confirmAddDuplicate() {
+  const target = captureTargetCommandId.value;
+  const combo = capturedCombo.value;
+  if (!target || !combo) {
+    isDuplicateConfirmOpen.value = false;
+    finishCapture();
+    return;
+  }
+
+  const next = [...getCurrentBindings(target), combo];
+  setBindings(target, Array.from(new Set(next)));
+  isDuplicateConfirmOpen.value = false;
+  finishCapture();
+}
+
+const hotkeyGroups = computed(() => {
+  const groupIds = Array.from(new Set(DEFAULT_HOTKEYS.commands.map((c) => c.groupId)));
+  return groupIds.map((groupId) => ({
+    id: groupId,
+    title: getCommandGroupTitle(groupId),
+    commands: DEFAULT_HOTKEYS.commands.filter((c) => c.groupId === groupId),
+  }));
+});
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
@@ -109,6 +246,17 @@ const thumbnailsLimitGb = computed({
       body: '!p-0 !overflow-hidden flex flex-col',
     }"
   >
+    <UiConfirmModal
+      v-model:open="isDuplicateConfirmOpen"
+      :title="t('videoEditor.settings.hotkeysDuplicateTitle', 'Duplicate hotkey')"
+      :description="duplicateWarningText"
+      :confirm-text="t('videoEditor.settings.hotkeysDuplicateConfirm', 'Add anyway')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="confirmAddDuplicate"
+    />
+
     <div class="flex flex-1 min-h-0 w-full h-full">
       <div
         class="w-56 shrink-0 p-6 bg-gray-50/50 dark:bg-gray-800/20 border-r border-gray-100 dark:border-gray-800 overflow-y-auto"
@@ -125,6 +273,14 @@ const thumbnailsLimitGb = computed({
               :label="t('videoEditor.settings.userGeneral', 'General')"
               :disabled="activeSection === 'user.general'"
               @click="activeSection = 'user.general'"
+            />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userHotkeys', 'Hotkeys')"
+              :disabled="activeSection === 'user.hotkeys'"
+              @click="activeSection = 'user.hotkeys'"
             />
             <UButton
               variant="ghost"
@@ -172,6 +328,87 @@ const thumbnailsLimitGb = computed({
               {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
             </span>
           </label>
+
+          <div class="text-xs text-gray-500">
+            {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+          </div>
+        </div>
+
+        <div v-else-if="activeSection === 'user.hotkeys'" class="flex flex-col gap-6">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+              {{ t('videoEditor.settings.userHotkeys', 'Hotkeys') }}
+            </div>
+            <div v-if="isCapturingHotkey" class="text-xs text-gray-500">
+              {{
+                t(
+                  'videoEditor.settings.hotkeysCaptureHint',
+                  'Press a key combination (Esc to cancel)',
+                )
+              }}
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-6">
+            <div v-for="group in hotkeyGroups" :key="group.id" class="flex flex-col gap-3">
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                {{ group.title }}
+              </div>
+
+              <div class="flex flex-col gap-3">
+                <div
+                  v-for="cmd in group.commands"
+                  :key="cmd.id"
+                  class="p-3 rounded border border-gray-100 dark:border-gray-800"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="text-sm text-gray-900 dark:text-gray-200">
+                      {{ cmd.title }}
+                    </div>
+                    <UButton
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      :disabled="isCapturingHotkey"
+                      :label="
+                        isCapturingHotkey && captureTargetCommandId === cmd.id
+                          ? t('videoEditor.settings.hotkeysCapturing', 'Listening...')
+                          : t('videoEditor.settings.hotkeysAdd', 'Add')
+                      "
+                      @click="startCapture(cmd.id)"
+                    />
+                  </div>
+
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <div
+                      v-for="combo in getCurrentBindings(cmd.id)"
+                      :key="combo"
+                      class="inline-flex items-center gap-2 px-2 py-1 rounded bg-gray-100 dark:bg-gray-800"
+                    >
+                      <span class="text-xs font-mono text-gray-800 dark:text-gray-200">{{
+                        combo
+                      }}</span>
+                      <UButton
+                        size="2xs"
+                        color="neutral"
+                        variant="ghost"
+                        icon="i-heroicons-x-mark"
+                        :aria-label="t('common.remove', 'Remove')"
+                        @click="removeBinding(cmd.id, combo)"
+                      />
+                    </div>
+
+                    <div
+                      v-if="getCurrentBindings(cmd.id).length === 0"
+                      class="text-xs text-gray-500"
+                    >
+                      {{ t('videoEditor.settings.hotkeysNotSet', 'Not set') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="text-xs text-gray-500">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}

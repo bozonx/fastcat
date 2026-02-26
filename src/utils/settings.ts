@@ -1,7 +1,12 @@
 import { STORAGE_LIMITS } from './constants';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from './hotkeys/defaultHotkeys';
+import { normalizeHotkeyCombo } from './hotkeys/hotkeyUtils';
 
 export interface GranVideoEditorUserSettings {
   openLastProjectOnStart: boolean;
+  hotkeys: {
+    bindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>>;
+  };
   optimization: {
     proxyResolution: '360p' | '480p' | '720p' | '1080p';
     proxyVideoBitrateMbps: number;
@@ -35,6 +40,9 @@ export interface GranVideoEditorWorkspaceSettings {
 
 export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   openLastProjectOnStart: true,
+  hotkeys: {
+    bindings: {},
+  },
   optimization: {
     proxyResolution: '720p',
     proxyVideoBitrateMbps: 2,
@@ -112,9 +120,47 @@ export function createDefaultExportDefaults(): GranVideoEditorUserSettings['expo
 export function createDefaultUserSettings(): GranVideoEditorUserSettings {
   return {
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
+    hotkeys: {
+      bindings: {},
+    },
     optimization: { ...DEFAULT_USER_SETTINGS.optimization },
     exportDefaults: createDefaultExportDefaults(),
   };
+}
+
+function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] {
+  if (!raw || typeof raw !== 'object') {
+    return { bindings: {} };
+  }
+
+  const input = raw as Record<string, any>;
+  const bindingsInput = input.bindings;
+  if (!bindingsInput || typeof bindingsInput !== 'object') {
+    return { bindings: {} };
+  }
+
+  const normalizedBindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>> = {};
+  const allowedCommands = new Set<HotkeyCommandId>(DEFAULT_HOTKEYS.commands.map((c) => c.id));
+
+  for (const [cmdIdRaw, combosRaw] of Object.entries(bindingsInput)) {
+    const cmdId = cmdIdRaw as HotkeyCommandId;
+    if (!allowedCommands.has(cmdId)) continue;
+
+    const combos = Array.isArray(combosRaw) ? combosRaw : [];
+    const normalizedCombos = combos
+      .filter((c): c is string => typeof c === 'string')
+      .map((c) => normalizeHotkeyCombo(c))
+      .filter((c): c is string => Boolean(c));
+
+    if (normalizedCombos.length > 0) {
+      normalizedBindings[cmdId] = Array.from(new Set(normalizedCombos));
+    } else if (Array.isArray(combosRaw)) {
+      // Preserve explicit empty arrays to allow disabling a command.
+      normalizedBindings[cmdId] = [];
+    }
+  }
+
+  return { bindings: normalizedBindings };
 }
 
 export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings {
@@ -182,8 +228,11 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const proxyAudioBitrateKbps = Number(optimizationInput.proxyAudioBitrateKbps);
   const proxyCopyOpusAudio = optimizationInput.proxyCopyOpusAudio;
 
+  const hotkeys = normalizeHotkeys(input.hotkeys);
+
   return {
     openLastProjectOnStart,
+    hotkeys,
     optimization: {
       proxyResolution: ['360p', '480p', '720p', '1080p'].includes(proxyResolution)
         ? proxyResolution

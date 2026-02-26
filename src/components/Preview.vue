@@ -682,6 +682,7 @@ function handleTransitionUpdate(payload: {
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0">
     <!-- Header -->
     <div
+      v-if="displayMode !== 'empty'"
       class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0"
     >
       <div class="flex items-center overflow-hidden min-w-0">
@@ -699,6 +700,12 @@ function handleTransitionUpdate(payload: {
           class="ml-2 text-xs text-ui-text-muted font-mono truncate"
         >
           {{ uiStore.selectedFsEntry.name }}
+        </span>
+        <span
+          v-else-if="displayMode === 'track' && selectedTrack"
+          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+        >
+          {{ selectedTrack.name }}
         </span>
       </div>
       <div v-if="displayMode === 'clip'" class="flex gap-1 shrink-0 ml-2">
@@ -748,6 +755,15 @@ function handleTransitionUpdate(payload: {
     <div class="flex-1 min-h-0 bg-ui-bg relative">
       <div class="absolute inset-0 overflow-auto">
         <div class="flex flex-col p-2 items-start w-full">
+          <div
+            v-if="displayMode === 'empty'"
+            class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
+          >
+            <p class="text-xs">
+              {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
+            </p>
+          </div>
+
           <!-- Transition Properties -->
           <div
             v-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
@@ -1068,13 +1084,6 @@ function handleTransitionUpdate(payload: {
           <div v-else-if="displayMode === 'track' && selectedTrack" class="w-full flex flex-col gap-2">
             <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
               {{ selectedTrack.name }}
-            </div>
-
-            <div class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border">
-              <div class="flex flex-col gap-0.5">
-                <span class="text-xs text-ui-text-muted">{{ t('common.name', 'Name') }}</span>
-                <span class="font-medium break-all text-xs">{{ selectedTrack.name }}</span>
-              </div>
             </div>
 
             <div

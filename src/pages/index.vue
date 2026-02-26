@@ -11,6 +11,9 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { storeToRefs } from 'pinia';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -28,31 +31,58 @@ function onGlobalKeydown(e: KeyboardEvent) {
   if (e.defaultPrevented) return;
   if (e.repeat) return;
 
-  const target = e.target as HTMLElement | null;
-  const tag = target?.tagName;
-  const isEditable =
-    tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || Boolean(target?.isContentEditable);
-  if (isEditable) return;
+  if (isEditableTarget(e.target)) return;
 
-  const key = e.key.toLowerCase();
-  const hasMod = e.ctrlKey || e.metaKey;
-  if (!hasMod) return;
+  const combo = hotkeyFromKeyboardEvent(e);
+  if (!combo) return;
 
-  if (key === 'z' && !e.shiftKey) {
-    e.preventDefault();
+  const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+
+  const cmdOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const matched: HotkeyCommandId[] = [];
+  for (const cmdId of cmdOrder) {
+    const bindings = effective[cmdId];
+    if (bindings.includes(combo)) {
+      matched.push(cmdId);
+    }
+  }
+  if (matched.length === 0) return;
+
+  e.preventDefault();
+
+  const cmd = matched[0];
+  if (cmd === 'general.undo') {
     timelineStore.undoTimeline();
     return;
   }
 
-  if (key === 'z' && e.shiftKey) {
-    e.preventDefault();
+  if (cmd === 'general.redo') {
     timelineStore.redoTimeline();
     return;
   }
 
-  if (key === 'y' && !e.shiftKey) {
-    e.preventDefault();
-    timelineStore.redoTimeline();
+  if (cmd === 'general.delete') {
+    timelineStore.deleteFirstSelectedItem();
+    return;
+  }
+
+  if (cmd === 'timeline.deleteClip') {
+    timelineStore.deleteFirstSelectedItem();
+    return;
+  }
+
+  if (cmd === 'playback.toggle') {
+    timelineStore.togglePlayback();
+    return;
+  }
+
+  if (cmd === 'playback.toStart') {
+    timelineStore.goToStart();
+    return;
+  }
+
+  if (cmd === 'playback.toEnd') {
+    timelineStore.goToEnd();
   }
 }
 
