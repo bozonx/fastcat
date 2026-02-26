@@ -184,12 +184,61 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
 
   timelineStore.reorderTracks(nextTracks.map((t) => t.id));
 }
+function addVideoTrack() {
+  const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
+  timelineStore.addTrack('video', `Video ${idx}`);
+}
+
+function addAudioTrack() {
+  const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
+  timelineStore.addTrack('audio', `Audio ${idx}`);
+}
 </script>
 
 <template>
-  <div class="h-full w-full shrink-0 border-r border-gray-700 flex flex-col" v-bind="$attrs">
-    <div class="h-6 border-b border-gray-700 bg-gray-850" />
-    <div class="flex flex-col divide-y divide-gray-700 flex-1">
+  <div class="h-full w-full shrink-0 border-r border-ui-border flex flex-col bg-ui-bg" v-bind="$attrs">
+    <div class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5">
+      <UTooltip :text="t('granVideoEditor.timeline.addVideoTrack', 'Add video track')">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-video-camera"
+          @click="addVideoTrack"
+        />
+      </UTooltip>
+      <UTooltip :text="t('granVideoEditor.timeline.addAudioTrack', 'Add audio track')">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-musical-note"
+          @click="addAudioTrack"
+        />
+      </UTooltip>
+      
+      <div v-if="selectedTrack" class="flex items-center gap-0.5 ml-auto">
+        <UTooltip :text="t('granVideoEditor.timeline.renameTrack', 'Rename track')">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-pencil"
+            @click="openRename(selectedTrack)"
+          />
+        </UTooltip>
+        <UTooltip :text="t('granVideoEditor.timeline.deleteTrack', 'Delete track')">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-trash"
+            @click="requestDelete(selectedTrack)"
+          />
+        </UTooltip>
+      </div>
+    </div>
+    <div class="flex flex-col divide-y divide-ui-border flex-1">
       <UContextMenu
         v-for="track in tracks"
         :key="track.id"
@@ -199,8 +248,8 @@ function onDrop(e: DragEvent, targetTrack: TimelineTrack) {
           class="flex items-center px-2 text-xs font-medium cursor-pointer select-none relative group"
           :class="
             selectedTrackId === track.id
-              ? 'text-white bg-gray-800'
-              : 'text-gray-500 hover:text-gray-300 hover:bg-gray-850'
+              ? 'text-ui-text bg-ui-bg-accent'
+              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated'
           "
           :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
           draggable="true"

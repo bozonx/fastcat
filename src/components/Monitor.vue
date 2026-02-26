@@ -409,15 +409,14 @@ function toggleMute() {
           "
           @click="toggleMute"
         />
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          :value="audioMuted ? 0 : audioVolume"
+        <USlider
+          :min="0"
+          :max="1"
+          :step="0.05"
+          :model-value="audioMuted ? 0 : audioVolume"
           class="w-28"
           :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
-          @input="onVolumeInput"
+          @update:model-value="(v) => timelineStore.setAudioVolume(Number(v ?? 1))"
         />
         <span class="text-sm text-ui-text-muted tabular-nums min-w-12">
           {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%

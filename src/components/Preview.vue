@@ -748,18 +748,9 @@ function handleTransitionUpdate(payload: {
     <div class="flex-1 min-h-0 bg-ui-bg relative">
       <div class="absolute inset-0 overflow-auto">
         <div class="flex flex-col p-2 items-start w-full">
-          <div
-            v-if="displayMode === 'empty'"
-            class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
-          >
-            <p class="text-xs">
-              {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
-            </p>
-          </div>
-
           <!-- Transition Properties -->
           <div
-            v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
+            v-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
             class="w-full flex flex-col gap-2 text-ui-text"
           >
             <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">

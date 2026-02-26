@@ -82,7 +82,7 @@ input[type="range"]::-moz-range-track {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  background: #3b82f6;
+  background: var(--color-primary-500);
   height: 12px;
   width: 12px;
   border-radius: 2px;
@@ -92,7 +92,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 input[type="range"]::-moz-range-thumb {
-  background: #3b82f6;
+  background: var(--color-primary-500);
   height: 12px;
   width: 12px;
   border-radius: 2px;
@@ -101,22 +101,22 @@ input[type="range"]::-moz-range-thumb {
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  background: #60a5fa;
+  background: var(--color-primary-400);
   transform: scale(1.15);
 }
 
 input[type="range"]::-moz-range-thumb:hover {
-  background: #60a5fa;
+  background: var(--color-primary-400);
   transform: scale(1.15);
 }
 
 input[type="range"]::-webkit-slider-thumb:active {
-  background: #2563eb;
+  background: var(--color-primary-600);
   transform: scale(1.25);
 }
 
 input[type="range"]::-moz-range-thumb:active {
-  background: #2563eb;
+  background: var(--color-primary-600);
   transform: scale(1.25);
 }
 
@@ -124,7 +124,7 @@ input[type="range"]::-moz-range-thumb:active {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
 }
 
@@ -143,11 +143,11 @@ select {
 
 /* Override USlider colors - change from green to blue */
 [data-slider-thumb] {
-  background-color: #3b82f6 !important;
+  background-color: var(--color-primary-500) !important;
 }
 
 [data-slider-range] {
-  background-color: #3b82f6 !important;
+  background-color: var(--color-primary-500) !important;
 }
 
 [data-slider-track] {

@@ -743,11 +743,9 @@ function getTransitionForPanel() {
       </div>
 
       <div
-        class="absolute inset-y-1 left-2 right-2 rounded bg-gray-800 border border-dashed border-gray-700 flex items-center justify-center"
+        v-if="track.items.length === 0 && (!dragPreview || dragPreview.trackId !== track.id)"
+        class="absolute inset-y-1 left-2 right-2 rounded bg-ui-bg-elevated border border-dashed border-ui-border flex items-center justify-center pointer-events-none"
       >
-        <span v-if="track.items.length === 0" class="text-xs text-gray-700">
-          {{ t('granVideoEditor.timeline.dropClip', 'Drop clip here') }}
-        </span>
       </div>
 
       <UContextMenu

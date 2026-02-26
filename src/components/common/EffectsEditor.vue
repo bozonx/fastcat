@@ -62,9 +62,9 @@ function handleRemoveEffect(effectId: string) {
 </script>
 
 <template>
-  <div class="space-y-3 mt-2 bg-gray-900 p-4 rounded border border-gray-800 text-sm">
+  <div class="space-y-3 mt-2 bg-ui-bg-elevated p-4 rounded border border-ui-border text-sm">
     <div class="flex items-center justify-between">
-      <span class="font-medium text-gray-300">{{ safeTitle }}</span>
+      <span class="font-medium text-ui-text">{{ safeTitle }}</span>
       <UButton
         size="xs"
         variant="soft"
@@ -76,7 +76,7 @@ function handleRemoveEffect(effectId: string) {
       </UButton>
     </div>
 
-    <div v-if="safeEffects.length === 0" class="text-xs text-gray-500 text-center py-2">
+    <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
       {{ safeEmptyLabel }}
     </div>
 
@@ -84,7 +84,7 @@ function handleRemoveEffect(effectId: string) {
       <div
         v-for="effect in safeEffects"
         :key="effect.id"
-        class="bg-black border border-gray-800 rounded p-3"
+        class="bg-ui-bg border border-ui-border rounded p-3"
       >
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
@@ -110,7 +110,7 @@ function handleRemoveEffect(effectId: string) {
             :key="String(control.key)"
           >
             <div v-if="control.kind === 'slider'" class="flex flex-col gap-1">
-              <div class="flex justify-between text-xs text-gray-400">
+              <div class="flex justify-between text-xs text-ui-text-muted">
                 <span>{{ control.label }}</span>
                 <span>
                   {{
@@ -129,7 +129,7 @@ function handleRemoveEffect(effectId: string) {
               />
             </div>
             <div v-else-if="control.kind === 'toggle'" class="flex items-center justify-between">
-              <span class="text-xs text-gray-400">{{ control.label }}</span>
+              <span class="text-xs text-ui-text-muted">{{ control.label }}</span>
               <USwitch
                 :model-value="(effect as any)[control.key]"
                 size="sm"

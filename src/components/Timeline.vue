@@ -208,9 +208,6 @@ function formatTime(seconds: number): string {
 
 <template>
   <div class="flex flex-col h-full bg-ui-bg border-t border-ui-border">
-    <!-- Tabs -->
-    <TimelineTabs />
-
     <!-- Toolbar -->
     <TimelineToolbar />
 
@@ -270,5 +267,8 @@ function formatTime(seconds: number): string {
         </Pane>
       </Splitpanes>
     </ClientOnly>
+
+    <!-- Tabs -->
+    <TimelineTabs />
   </div>
 </template>

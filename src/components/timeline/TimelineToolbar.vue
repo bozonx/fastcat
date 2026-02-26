@@ -73,61 +73,8 @@ function toggleClipSnapMode() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2 px-3 py-2.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated">
-    <UButton
-      size="sm"
-      variant="ghost"
-      color="neutral"
-      icon="i-heroicons-backward"
-      :aria-label="t('granVideoEditor.timeline.rewind', 'Rewind to start')"
-      @click="stop"
-    />
-    <UButton
-      size="sm"
-      variant="ghost"
-      color="neutral"
-      :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
-      :aria-label="
-        timelineStore.isPlaying
-          ? t('granVideoEditor.timeline.pause', 'Pause')
-          : t('granVideoEditor.timeline.play', 'Play')
-      "
-      @click="togglePlay"
-    />
-    <UButton
-      size="sm"
-      variant="ghost"
-      color="neutral"
-      icon="i-heroicons-stop"
-      :aria-label="t('granVideoEditor.timeline.stop', 'Stop')"
-      @click="stop"
-    />
-
-    <span class="text-sm font-mono text-ui-text-muted ml-3">
-      {{ formatTime(timelineStore.currentTime / 1e6) }} /
-      {{ formatTime(timelineStore.duration / 1e6) }}
-    </span>
-
-    <div class="ml-4 flex items-center gap-1.5">
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-video-camera"
-        :aria-label="t('granVideoEditor.timeline.addVideoTrack', 'Add video track')"
-        @click="addVideoTrack"
-      />
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-musical-note"
-        :aria-label="t('granVideoEditor.timeline.addAudioTrack', 'Add audio track')"
-        @click="addAudioTrack"
-      />
-
-      <div class="w-px h-5 bg-ui-border mx-1.5" />
-
+  <div class="flex items-center gap-2 px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated h-10">
+    <div class="ml-2 flex items-center gap-1.5">
       <UButton
         size="sm"
         variant="ghost"
@@ -213,7 +160,7 @@ function toggleClipSnapMode() {
         size="sm"
         :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
         :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
-        icon="i-heroicons-magnet"
+        icon="i-heroicons-link"
         :aria-label="
           settingsStore.clipSnapMode === 'clips'
             ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
@@ -230,14 +177,13 @@ function toggleClipSnapMode() {
 
     <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted">
       <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4" />
-      <input
-        type="range"
-        min="10"
-        max="200"
-        :value="timelineStore.timelineZoom"
+      <USlider
+        :min="10"
+        :max="200"
+        :model-value="timelineStore.timelineZoom"
         class="w-28"
         :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
-        @input="onZoomInput"
+        @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 100)"
       />
       <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
     </div>
