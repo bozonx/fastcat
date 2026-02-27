@@ -159,11 +159,12 @@ function transitionUsToPx(durationUs: number | undefined): number {
 }
 
 /**
- * Returns true if this clip's transitionIn is part of a blend crossfade where
- * the previous clip overlaps this one. In that case we suppress rendering
- * transitionIn here — the visual is already covered by the left clip's transitionOut.
+ * Returns true when this clip's transitionIn visually overlaps with the previous
+ * clip's transitionOut (blend crossfade overlap). In that case we hide the transitionIn
+ * SVG/icon to avoid rendering two overlapping triangles, but keep the button and
+ * resize handle functional.
  */
-function isTransitionInRenderedByPrev(track: TimelineTrack, item: TimelineClipItem): boolean {
+function isCrossfadeTransitionIn(track: TimelineTrack, item: TimelineClipItem): boolean {
   if (!item.transitionIn) return false;
   const ordered = getOrderedClipsOnTrack(track);
   const idx = ordered.findIndex((c) => c.id === item.id);
@@ -230,14 +231,7 @@ function computeMaxResizableTransitionDurationUs(input: {
     const prevTailHandleUs = Number.isFinite(prevMaxEnd)
       ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
       : 10_000_000;
-    // Existing overlap is already consumed from the tail — add it back to get the real max.
-    const existingOverlapUs = Math.max(
-      0,
-      Math.round(
-        (prev.timelineRange.startUs + prev.timelineRange.durationUs) - clip.timelineRange.startUs,
-      ),
-    );
-    return Math.max(0, Math.min(10_000_000, prevTailHandleUs + existingOverlapUs));
+    return Math.max(0, Math.min(10_000_000, prevTailHandleUs + input.currentTransition.durationUs));
   }
 
   // Resizing transitionOut of `clip` => uses this clip tail handle.
@@ -247,13 +241,7 @@ function computeMaxResizableTransitionDurationUs(input: {
   const currTailHandleUs = Number.isFinite(currMaxEnd)
     ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
     : 10_000_000;
-  const existingOutOverlapUs = Math.max(
-    0,
-    Math.round(
-      (curr.timelineRange.startUs + curr.timelineRange.durationUs) - (adjacent.timelineRange.startUs),
-    ),
-  );
-  return Math.max(0, Math.min(10_000_000, currTailHandleUs + existingOutOverlapUs));
+  return Math.max(0, Math.min(10_000_000, currTailHandleUs + input.currentTransition.durationUs));
 }
 
 function startResizeTransition(
@@ -919,7 +907,7 @@ function getTransitionForPanel() {
               class="h-full relative transition-colors"
               :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs || 0)}px` }"
             >
-              <template v-if="(item as any).transitionIn && !isTransitionInRenderedByPrev(track, item as TimelineClipItem)">
+              <template v-if="(item as any).transitionIn">
                 <button
                   type="button"
                   class="w-full h-full overflow-hidden"
@@ -947,31 +935,33 @@ function getTransitionForPanel() {
                     }
                   "
                 >
-                  <svg
-                    v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
-                    class="w-full h-full"
-                    preserveAspectRatio="none"
-                    viewBox="0 0 100 100"
-                  >
-                    <path
-                      :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
-                      :fill="getClipUpperTriColor(item, track)"
-                    />
-                    <path
-                      :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
-                      :fill="getClipLowerTriColor(item, track)"
-                    />
-                    <path
-                      :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.7)"
-                      stroke-width="2.5"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                  <template v-else>
-                    <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
-                    <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+                  <template v-if="!isCrossfadeTransitionIn(track, item as TimelineClipItem)">
+                    <svg
+                      v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
+                      class="w-full h-full"
+                      preserveAspectRatio="none"
+                      viewBox="0 0 100 100"
+                    >
+                      <path
+                        :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
+                        :fill="getClipUpperTriColor(item, track)"
+                      />
+                      <path
+                        :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
+                        :fill="getClipLowerTriColor(item, track)"
+                      />
+                      <path
+                        :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.7)"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <template v-else>
+                      <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
+                      <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+                    </template>
                   </template>
                   <div
                     v-if="hasTransitionInProblem(track, item)"
@@ -1006,6 +996,7 @@ function getTransitionForPanel() {
             <div
               v-if="item.kind === 'clip'"
               class="h-full relative transition-colors"
+              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs || 0)}px` }"
             >
               <template v-if="(item as any).transitionOut">
                 <button
