@@ -129,6 +129,44 @@ function applyZoomWithAnchor(params: {
   });
 }
 
+const isPanning = ref(false);
+const panStartX = ref(0);
+const panStartScrollLeft = ref(0);
+
+function onTimelinePointerDown(e: PointerEvent) {
+  if (e.button === 1) { // Middle click
+    const el = scrollEl.value;
+    if (!el) return;
+    
+    isPanning.value = true;
+    panStartX.value = e.clientX;
+    panStartScrollLeft.value = el.scrollLeft;
+    
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+}
+
+function onTimelinePointerMove(e: PointerEvent) {
+  if (!isPanning.value) return;
+  const el = scrollEl.value;
+  if (!el) return;
+  
+  const dx = e.clientX - panStartX.value;
+  // Move opposite to mouse direction for natural panning
+  el.scrollLeft = Math.max(0, panStartScrollLeft.value - dx);
+}
+
+function onTimelinePointerUp(e: PointerEvent) {
+  if (!isPanning.value) return;
+  isPanning.value = false;
+  try {
+    (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
+  } catch {
+    // ignore
+  }
+}
+
 function onTimelineWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
@@ -423,6 +461,10 @@ function formatTime(seconds: number): string {
           <div
             ref="scrollEl"
             class="w-full h-full overflow-x-auto overflow-y-hidden relative"
+            @pointerdown="onTimelinePointerDown"
+            @pointermove="onTimelinePointerMove"
+            @pointerup="onTimelinePointerUp"
+            @pointercancel="onTimelinePointerUp"
             @wheel="onTimelineWheel"
           >
             <TimelineRuler
