@@ -624,18 +624,6 @@ watch(
     try {
       const file = await (entry.handle as FileSystemFileHandle).getFile();
 
-      fileInfo.value = {
-        name: file.name,
-        kind: 'file',
-        size: file.size,
-        lastModified: file.lastModified,
-        metadata: entry.path
-          ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
-              forceRefresh: true,
-            })
-          : undefined,
-      };
-
       const ext = entry.name.split('.').pop()?.toLowerCase();
       const textExtensions = ['txt', 'md', 'json', 'yaml', 'yml'];
 
@@ -656,6 +644,19 @@ watch(
       } else {
         mediaType.value = 'unknown';
       }
+
+      fileInfo.value = {
+        name: file.name,
+        kind: 'file',
+        size: file.size,
+        lastModified: file.lastModified,
+        metadata:
+          entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
+            ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
+                forceRefresh: true,
+              })
+            : undefined,
+      };
 
       if (
         mediaType.value === 'image' ||

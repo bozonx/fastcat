@@ -75,6 +75,10 @@ export const useMediaStore = defineStore('media', () => {
     const file = await fileHandle.getFile();
     const cacheKey = projectRelativePath;
 
+    if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
+      return null;
+    }
+
     if (!options?.forceRefresh && mediaMetadata.value[cacheKey]) {
       const cached = mediaMetadata.value[cacheKey]!;
       if (cached.source.size === file.size && cached.source.lastModified === file.lastModified) {

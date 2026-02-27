@@ -77,12 +77,14 @@ async function handleCreateFolder(name: string) {
 async function openFileInfoModal(entry: FsEntry) {
   let size: number | undefined;
   let lastModified: number | undefined;
+  let fileType: string | undefined;
 
   if (entry.kind === 'file') {
     try {
       const file = await (entry.handle as FileSystemFileHandle).getFile();
       size = file.size;
       lastModified = file.lastModified;
+      fileType = file.type;
     } catch (e) {
       // ignore
     }
@@ -95,7 +97,10 @@ async function openFileInfoModal(entry: FsEntry) {
     lastModified,
     path: entry.path,
     metadata:
-      entry.kind === 'file' && entry.path
+      entry.kind === 'file' &&
+      entry.path &&
+      typeof fileType === 'string' &&
+      (fileType.startsWith('video/') || fileType.startsWith('audio/'))
         ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
             forceRefresh: true,
           })
