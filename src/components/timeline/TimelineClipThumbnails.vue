@@ -106,6 +106,16 @@ const pxPerThumbnail = computed(() => {
   return timeUsToPx(intervalUs, timelineStore.timelineZoom);
 });
 
+// Minimum readable width for a single thumbnail segment
+const MIN_THUMB_WIDTH_PX = 48;
+
+// Calculate how many base thumbnails to group into one visible thumbnail
+const thumbnailStep = computed(() => {
+  const px = pxPerThumbnail.value;
+  if (!Number.isFinite(px) || px <= 0) return 1;
+  return Math.max(1, Math.ceil(MIN_THUMB_WIDTH_PX / px));
+});
+
 // Offset for trim start
 const trimOffsetPx = computed(() => {
   return timeUsToPx(props.item.sourceRange.startUs, timelineStore.timelineZoom);
@@ -218,7 +228,10 @@ async function drawChunk(chunkIndex: number) {
   const px = pxPerThumbnail.value;
   if (!Number.isFinite(px) || px <= 0) return;
 
-  for (let i = 0; i < chunk.thumbsCount; i++) {
+  const step = thumbnailStep.value;
+
+  // We iterate through thumbnails, but only draw those aligned with the step
+  for (let i = 0; i < chunk.thumbsCount; i += step) {
     const thumbIndex = chunk.startThumbIndex + i;
     const secondKey = thumbIndex * intervalSeconds;
     const url = thumbnailsBySecond.value.get(secondKey);
@@ -227,7 +240,10 @@ async function drawChunk(chunkIndex: number) {
     try {
       const img = await loadImage(url);
       const xCss = i * px;
-      const wCss = px;
+      // Calculate width for this stepped chunk, clamped to remaining thumbs in chunk
+      const thumbsInThisStep = Math.min(step, chunk.thumbsCount - i);
+      const wCss = thumbsInThisStep * px;
+      
       drawImageCover(
         ctx, img,
         Math.round(xCss * dpr),
