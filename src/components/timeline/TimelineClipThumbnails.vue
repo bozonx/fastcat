@@ -65,8 +65,11 @@ const generate = () => {
 
       const idx = Math.floor(secondKey / intervalSeconds);
       const chunkIndex = getChunkIndexByThumbIndex(idx);
-      if (chunkIndex !== null && visibleChunks.value.has(chunkIndex)) {
-        void drawChunk(chunkIndex);
+      if (chunkIndex !== null) {
+        const canvas = chunkCanvases.value[chunkIndex];
+        if (canvas) {
+          void drawChunk(chunkIndex);
+        }
       }
     },
     onComplete: () => {
@@ -246,50 +249,72 @@ async function redrawVisibleChunks() {
   }
 }
 
-watch([chunks, pxPerThumbnail], () => {
-  void nextTick().then(() => {
-    chunkObserver?.disconnect();
-    visibleChunks.value.clear();
+async function redrawMountedChunks() {
+  await nextTick();
+  for (const chunk of chunks.value) {
+    const canvas = chunkCanvases.value[chunk.chunkIndex];
+    if (!canvas) continue;
+    await drawChunk(chunk.chunkIndex);
+  }
+}
 
-    chunkObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const el = entry.target as HTMLElement;
-          const idxRaw = el.dataset['chunkIndex'];
-          const idx = idxRaw ? Number(idxRaw) : NaN;
-          if (!Number.isFinite(idx)) continue;
+watch(
+  thumbnailsBySecond,
+  () => {
+    void redrawMountedChunks();
+  },
+  { flush: 'post' },
+);
 
-          if (entry.isIntersecting) {
-            visibleChunks.value.add(idx);
-            void drawChunk(idx);
-          } else {
-            visibleChunks.value.delete(idx);
+watch(
+  [chunks, pxPerThumbnail],
+  () => {
+    void nextTick().then(() => {
+      chunkObserver?.disconnect();
+      visibleChunks.value.clear();
+
+      chunkObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const el = entry.target as HTMLElement;
+            const idxRaw = el.dataset['chunkIndex'];
+            const idx = idxRaw ? Number(idxRaw) : NaN;
+            if (!Number.isFinite(idx)) continue;
+
+            if (entry.isIntersecting) {
+              visibleChunks.value.add(idx);
+              void drawChunk(idx);
+            } else {
+              visibleChunks.value.delete(idx);
+            }
           }
-        }
-      },
-      {
-        root: null,
-        rootMargin: '200px',
-        threshold: 0.01,
-      },
-    );
+        },
+        {
+          root: null,
+          rootMargin: '200px',
+          threshold: 0.01,
+        },
+      );
 
-    for (const chunk of chunks.value) {
-      const el = chunkEls.value[chunk.chunkIndex];
-      if (el) chunkObserver.observe(el);
-    }
+      for (const chunk of chunks.value) {
+        const el = chunkEls.value[chunk.chunkIndex];
+        if (el) chunkObserver.observe(el);
+      }
 
-    resizeObserver?.disconnect();
-    resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
-        void redrawVisibleChunks();
+      resizeObserver?.disconnect();
+      resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          void redrawVisibleChunks();
+        });
       });
+      if (rootEl.value) {
+        resizeObserver.observe(rootEl.value);
+      }
+      void redrawMountedChunks();
     });
-    if (rootEl.value) {
-      resizeObserver.observe(rootEl.value);
-    }
-  });
-});
+  },
+  { immediate: true, flush: 'post' },
+);
 
 </script>
 
