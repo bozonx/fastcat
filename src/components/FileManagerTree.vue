@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const proxyStore = useProxyStore();
 const uiStore = useUiStore();
+const selectionStore = useSelectionStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const isDragOver = ref<string | null>(null);
@@ -90,25 +92,33 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
 }
 
 function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
-  if (entry.kind === 'directory' && isDragOver.value === entry.path) {
+  if (entry.kind !== 'directory') return;
+  if (isDragOver.value !== entry.path) return;
+
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const relatedTarget = e.relatedTarget as Node | null;
+  if (!currentTarget?.contains(relatedTarget)) {
     isDragOver.value = null;
   }
 }
 
 async function onDropDir(e: DragEvent, entry: FsEntry) {
-  if (entry.kind === 'directory' && isDragOver.value === entry.path) {
-    isDragOver.value = null;
-    e.stopPropagation();
-    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-      const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-      const fm = useFileManager();
-      await fm.handleFiles(
-        e.dataTransfer.files,
-        entry.handle as FileSystemDirectoryHandle,
-        entry.path
-      );
-    }
-  }
+  if (entry.kind !== 'directory') return;
+  if (!e.dataTransfer?.files || e.dataTransfer.files.length === 0) return;
+
+  isDragOver.value = null;
+  e.stopPropagation();
+
+  uiStore.isGlobalDragging = false;
+  uiStore.isFileManagerDragging = false;
+
+  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
+  const fm = useFileManager();
+  await fm.handleFiles(
+    e.dataTransfer.files,
+    entry.handle as FileSystemDirectoryHandle,
+    entry.path,
+  );
 }
 
 function getContextMenuItems(entry: FsEntry) {
@@ -195,7 +205,10 @@ function getContextMenuItems(entry: FsEntry) {
           @dragleave.prevent="onDragLeaveDir($event, entry)"
           @drop.prevent="onDropDir($event, entry)"
           @click.stop="onEntryClick(entry)"
-          @pointerdown.stop="uiStore.selectedFsEntry = entry as any"
+          @pointerdown.stop="
+            uiStore.selectedFsEntry = entry as any;
+            selectionStore.selectFsEntry(entry as any);
+          "
         >
           <!-- Chevron for directories -->
           <UIcon

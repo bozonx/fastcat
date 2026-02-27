@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
@@ -11,6 +12,7 @@ import TimelineClipThumbnails from '~/components/timeline/TimelineClipThumbnails
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const { selectedTransition } = storeToRefs(timelineStore);
@@ -129,6 +131,7 @@ function selectTransition(
 ) {
   e.stopPropagation();
   timelineStore.selectTransition(input);
+  selectionStore.selectTimelineTransition(input.trackId, input.itemId, input.edge);
 }
 
 function transitionUsToPx(durationUs: number | undefined): number {
@@ -870,6 +873,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       onSelect: () => {
         if (hasIn) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: null });
+          selectionStore.clearSelection();
         } else {
           const transition = {
             type: 'dissolve',
@@ -879,6 +883,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           };
           timelineStore.updateClipTransition(track.id, item.id, { transitionIn: transition });
           timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'in' });
+          selectionStore.selectTimelineTransition(track.id, item.id, 'in');
         }
       },
     });
@@ -891,6 +896,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       onSelect: () => {
         if (hasOut) {
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: null });
+          selectionStore.clearSelection();
         } else {
           const transition = {
             type: 'dissolve',
@@ -900,6 +906,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           };
           timelineStore.updateClipTransition(track.id, item.id, { transitionOut: transition });
           timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'out' });
+          selectionStore.selectTimelineTransition(track.id, item.id, 'out');
         }
       },
     });
@@ -915,10 +922,11 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
 <template>
   <div
-    class="flex flex-col divide-y divide-ui-border"
+    class="flex flex-col divide-y divide-ui-border min-h-full"
     @mousedown="
       if ($event.button !== 1 && $event.target === $event.currentTarget) {
         timelineStore.clearSelection();
+        selectionStore.clearSelection();
         timelineStore.selectTrack(null);
       }
     "
@@ -974,7 +982,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       @mousedown="
         if ($event.button !== 1 && $event.target === $event.currentTarget) {
           timelineStore.clearSelection();
-          timelineStore.selectTrack(track.id);
+          selectionStore.clearSelection();
+          timelineStore.selectTrack(null);
         }
       "
     >
@@ -1038,6 +1047,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             if ($event.button !== 1) {
               $event.stopPropagation();
               emit('selectItem', $event, item.id);
+              selectionStore.selectTimelineClip(track.id, item.id);
             }
           "
         >

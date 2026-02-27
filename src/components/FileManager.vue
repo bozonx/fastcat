@@ -78,6 +78,7 @@ function onDragLeave(e: DragEvent) {
 function onDrop(e: DragEvent) {
   isDragging.value = false;
   uiStore.isFileManagerDragging = false;
+  uiStore.isGlobalDragging = false;
   
   if (e.dataTransfer?.files) {
     handleFiles(e.dataTransfer.files);

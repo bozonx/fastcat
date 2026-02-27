@@ -5,6 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
@@ -23,6 +24,7 @@ const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
+const selectionStore = useSelectionStore();
 
 const currentUrl = ref<string | null>(null);
 const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
@@ -38,18 +40,18 @@ const fileInfo = ref<{
 } | null>(null);
 
 const selectedClip = computed<TimelineClipItem | null>(() => {
-  if (timelineStore.selectedItemIds.length !== 1) return null;
-  const id = timelineStore.selectedItemIds[0];
-  for (const track of timelineStore.timelineDoc?.tracks ?? []) {
-    const item = track.items.find((it) => it.id === id);
-    if (item && item.kind === 'clip') {
-      return item as TimelineClipItem;
-    }
-  }
-  return null;
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
+  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === entity.trackId);
+  const item = track?.items.find((it) => it.id === entity.itemId);
+  return item && item.kind === 'clip' ? (item as TimelineClipItem) : null;
 });
 
-const selectedTransition = computed(() => timelineStore.selectedTransition);
+const selectedTransition = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'transition') return null;
+  return { trackId: entity.trackId, itemId: entity.itemId, edge: entity.edge };
+});
 
 const selectedTransitionClip = computed<TimelineClipItem | null>(() => {
   const sel = selectedTransition.value;
@@ -69,10 +71,10 @@ const selectedTransitionValue = computed<import('~/timeline/types').ClipTransiti
 );
 
 const selectedTrack = computed<TimelineTrack | null>(() => {
-  const trackId = timelineStore.selectedTrackId;
-  if (!trackId) return null;
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'track') return null;
   const tracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
-  return tracks.find((t) => t.id === trackId) ?? null;
+  return tracks.find((t) => t.id === entity.trackId) ?? null;
 });
 
 const trackAudioGain = computed({
@@ -427,14 +429,25 @@ const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>
   if (selectedTransitionClip.value && selectedTransitionValue.value) return 'transition';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
-  if (uiStore.selectedFsEntry && uiStore.selectedFsEntry.kind === 'file') return 'file';
+  
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source === 'fileManager' && entity.kind === 'file') return 'file';
+  
   return 'empty';
 });
 
+const selectedFileEntry = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source === 'fileManager' && entity.kind === 'file') {
+    return entity.entry;
+  }
+  return null;
+});
+
 const hasProxy = computed(() => {
-  if (displayMode.value !== 'file' || !uiStore.selectedFsEntry || !uiStore.selectedFsEntry.path)
+  if (displayMode.value !== 'file' || !selectedFileEntry.value || !selectedFileEntry.value.path)
     return false;
-  return proxyStore.existingProxies.has(uiStore.selectedFsEntry.path);
+  return proxyStore.existingProxies.has(selectedFileEntry.value.path);
 });
 
 const selectedClipTrack = computed<TimelineTrack | null>(() => {
@@ -577,7 +590,7 @@ async function loadPreviewMedia() {
     currentUrl.value = null;
   }
 
-  const entry = uiStore.selectedFsEntry;
+  const entry = selectedFileEntry.value;
   if (!entry || entry.kind !== 'file') return;
 
   try {
@@ -607,7 +620,7 @@ watch(previewMode, () => {
 });
 
 watch(
-  () => uiStore.selectedFsEntry,
+  () => selectedFileEntry.value,
   async (entry) => {
     // Revoke old URL
     if (currentUrl.value) {
@@ -807,10 +820,10 @@ function onPanelFocusOut() {
           {{ selectedTransitionClip?.name }}
         </span>
         <span
-          v-else-if="displayMode === 'file' && uiStore.selectedFsEntry"
+          v-else-if="displayMode === 'file' && selectedFileEntry"
           class="ml-2 text-xs text-ui-text-muted font-mono truncate"
         >
-          {{ uiStore.selectedFsEntry.name }}
+          {{ selectedFileEntry.name }}
         </span>
         <span
           v-else-if="displayMode === 'track' && selectedTrack"

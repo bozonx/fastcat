@@ -6,6 +6,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import FileManagerTree from '~/components/FileManagerTree.vue';
 import type { FsEntry } from '~/composables/fileManager/useFileManager';
 
@@ -15,6 +16,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
+const selectionStore = useSelectionStore();
 
 const props = defineProps<{
   isDragging: boolean;
@@ -68,8 +70,11 @@ async function onEntrySelect(entry: FsEntry) {
   <div class="flex-1 overflow-auto min-h-0 min-w-0 relative">
     <UContextMenu :items="rootContextMenuItems">
       <div
-        class="min-w-full w-max min-h-full flex flex-col"
-        @pointerdown="uiStore.selectedFsEntry = null"
+        class="min-w-full w-max min-h-full flex flex-col pb-12"
+        @pointerdown="
+          uiStore.selectedFsEntry = null;
+          selectionStore.clearSelection();
+        "
       >
         <!-- Dropzone Top Banner (visible when dragging anywhere in the app) -->
         <div
