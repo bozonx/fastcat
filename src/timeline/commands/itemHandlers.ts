@@ -1379,8 +1379,15 @@ export function updateClipTransition(
     const overlapUs = Math.min(
       requestedUs,
       leftTotalAvailableOverlapUs,
-      Math.max(0, Math.round(left.timelineRange.durationUs)),
-      Math.max(0, Math.round(right.timelineRange.durationUs)),
+      Math.max(
+        0,
+        Math.round(left.timelineRange.durationUs) - ((left as any).transitionIn?.durationUs ?? 0),
+      ),
+      Math.max(
+        0,
+        Math.round(right.timelineRange.durationUs) -
+          ((right as any).transitionOut?.durationUs ?? 0),
+      ),
     );
     return quantizeDeltaUsToFrames(overlapUs, fps, 'floor');
   }
@@ -1422,16 +1429,33 @@ export function updateClipTransition(
   }
 
   const patch: Record<string, unknown> = {};
+
+  let requestedIn = 'transitionIn' in cmd ? coerceTransition(cmd.transitionIn) : undefined;
+  if (requestedIn) {
+    const maxIn = Math.max(
+      0,
+      Math.round(item.timelineRange.durationUs) - ((item as any).transitionOut?.durationUs ?? 0),
+    );
+    requestedIn.durationUs = Math.min(requestedIn.durationUs, maxIn);
+  }
+
+  let requestedOut = 'transitionOut' in cmd ? coerceTransition(cmd.transitionOut) : undefined;
+  if (requestedOut) {
+    const maxOut = Math.max(
+      0,
+      Math.round(item.timelineRange.durationUs) - ((item as any).transitionIn?.durationUs ?? 0),
+    );
+    requestedOut.durationUs = Math.min(requestedOut.durationUs, maxOut);
+  }
+
   if ('transitionIn' in cmd) {
-    patch.transitionIn = cmd.transitionIn ?? undefined;
+    patch.transitionIn = requestedIn ?? undefined;
   }
   if ('transitionOut' in cmd) {
-    patch.transitionOut = cmd.transitionOut ?? undefined;
+    patch.transitionOut = requestedOut ?? undefined;
   }
 
   const adjacent = findAdjacentClips();
-  const requestedIn = 'transitionIn' in cmd ? coerceTransition(cmd.transitionIn) : null;
-  const requestedOut = 'transitionOut' in cmd ? coerceTransition(cmd.transitionOut) : null;
 
   const patchedItemsById = new Map<string, TimelineTrackItem>();
   patchedItemsById.set(item.id, { ...item, ...(patch as any) } as any);
@@ -1529,7 +1553,7 @@ export function updateClipTransition(
       patchCut({
         left: curr,
         right: next,
-        requested: requestedOut,
+        requested: requestedOut ?? null,
         clear: cmd.transitionOut === null,
       });
     }
@@ -1538,7 +1562,7 @@ export function updateClipTransition(
       patchCut({
         left: prev,
         right: curr,
-        requested: requestedIn,
+        requested: requestedIn ?? null,
         clear: cmd.transitionIn === null,
       });
     }

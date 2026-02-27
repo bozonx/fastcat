@@ -330,31 +330,40 @@ function computeMaxResizableTransitionDurationUs(input: {
   if (!resolved) return 10_000_000;
 
   const { clip, adjacent } = resolved;
-  if (!adjacent) return 10_000_000;
+  
+  const clipDuration = clip.timelineRange.durationUs;
+  const oppTransitionUs = input.edge === 'in' 
+    ? (clip as any).transitionOut?.durationUs ?? 0 
+    : (clip as any).transitionIn?.durationUs ?? 0;
+  const maxWithinClip = Math.max(0, clipDuration - oppTransitionUs);
+
+  let limitByHandle = 10_000_000;
 
   // Only enforce hard max for blend crossfades (needs overlap material)
   const mode = input.currentTransition.mode ?? 'blend';
-  if (mode !== 'blend') return 10_000_000;
-
-  if (input.edge === 'in') {
-    // We're resizing transitionIn of `clip` => crossfade uses previous clip tail handle.
-    const prev = adjacent;
-    const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
-    const prevMaxEnd = prev.clipType === 'media' ? (prev as any).sourceDurationUs ?? prevSourceEnd : Number.POSITIVE_INFINITY;
-    const prevTailHandleUs = Number.isFinite(prevMaxEnd)
-      ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
-      : 10_000_000;
-    return Math.max(0, Math.min(10_000_000, prevTailHandleUs + input.currentTransition.durationUs));
+  if (mode === 'blend' && adjacent) {
+    if (input.edge === 'in') {
+      // We're resizing transitionIn of `clip` => crossfade uses previous clip tail handle.
+      const prev = adjacent;
+      const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
+      const prevMaxEnd = prev.clipType === 'media' ? (prev as any).sourceDurationUs ?? prevSourceEnd : Number.POSITIVE_INFINITY;
+      const prevTailHandleUs = Number.isFinite(prevMaxEnd)
+        ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
+        : 10_000_000;
+      limitByHandle = Math.max(0, Math.min(10_000_000, prevTailHandleUs + input.currentTransition.durationUs));
+    } else {
+      // Resizing transitionOut of `clip` => uses this clip tail handle.
+      const curr = clip;
+      const currSourceEnd = (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
+      const currMaxEnd = curr.clipType === 'media' ? (curr as any).sourceDurationUs ?? currSourceEnd : Number.POSITIVE_INFINITY;
+      const currTailHandleUs = Number.isFinite(currMaxEnd)
+        ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
+        : 10_000_000;
+      limitByHandle = Math.max(0, Math.min(10_000_000, currTailHandleUs + input.currentTransition.durationUs));
+    }
   }
 
-  // Resizing transitionOut of `clip` => uses this clip tail handle.
-  const curr = clip;
-  const currSourceEnd = (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
-  const currMaxEnd = curr.clipType === 'media' ? (curr as any).sourceDurationUs ?? currSourceEnd : Number.POSITIVE_INFINITY;
-  const currTailHandleUs = Number.isFinite(currMaxEnd)
-    ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
-    : 10_000_000;
-  return Math.max(0, Math.min(10_000_000, currTailHandleUs + input.currentTransition.durationUs));
+  return Math.min(maxWithinClip, limitByHandle);
 }
 
 function startResizeTransition(
@@ -1033,6 +1042,12 @@ function getTransitionForPanel() {
             <div v-if="(item as any).audioFadeOutUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade Out">
               <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-gray-800" />
             </div>
+            <div v-if="(item as any).transitionIn" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition In">
+              <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-white" />
+            </div>
+            <div v-if="(item as any).transitionOut" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition Out">
+              <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-white" />
+            </div>
           </div>
 
           <!-- Volume Control Line -->
@@ -1074,161 +1089,160 @@ function getTransitionForPanel() {
             x{{ Number((item as any).speed ?? 1).toFixed(2) }}
           </div>
 
-          <!-- Main Content (3-column layout) -->
+          <!-- Main Content Layer -->
           <div class="flex-1 flex w-full min-h-0 relative z-20">
-            <!-- Left: Transition In Column -->
+            <!-- Title Block (lowest layer, bottom center) -->
             <div
-              v-if="item.kind === 'clip'"
-              class="h-full relative transition-colors"
-              :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs || 0)}px` }"
+              v-if="item.kind === 'clip' && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60"
+              class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-0 pointer-events-none"
             >
-              <template v-if="(item as any).transitionIn">
-                <button
-                  type="button"
-                  class="w-full h-full overflow-hidden group"
-                  :class="[
-                    selectedTransition?.itemId === item.id &&
-                    selectedTransition?.trackId === item.trackId &&
-                    selectedTransition?.edge === 'in'
-                      ? 'ring-2 ring-inset ring-amber-300 z-10'
-                      : hasTransitionInProblem(track, item)
-                        ? 'ring-2 ring-inset ring-orange-500 z-10'
-                        : '',
-                  ]"
-                  :title="
-                    hasTransitionInProblem(track, item) ??
-                    `Transition In: ${(item as any).transitionIn?.type}`
-                  "
-                  @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
-                  @pointerdown.stop
-                  @mousedown.stop
-                  @dblclick.stop="
-                    openTransitionPanel = {
-                      trackId: item.trackId,
-                      itemId: item.id,
-                      edge: 'in',
-                      anchorEl: $event.currentTarget as HTMLElement,
-                    }
-                  "
-                >
-                  <template v-if="!isCrossfadeTransitionIn(track, item as TimelineClipItem)">
-                    <svg
-                      v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
-                      class="w-full h-full block"
-                      preserveAspectRatio="none"
-                      viewBox="0 0 100 100"
-                    >
-                      <path
-                        :d="transitionSvgParts(100, 100, 'in')"
-                        :fill="getClipLowerTriColor(item, track)"
-                      />
-                    </svg>
-                    <template v-else>
-                      <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
-                      <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
-                    </template>
-                  </template>
-                  <!-- Problem indicator -->
-                  <div
-                    v-if="hasTransitionInProblem(track, item)"
-                    class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 pointer-events-none z-20"
-                  />
-                  <!-- Resize handle inside transition block -->
-                  <div
-                    v-if="!Boolean((item as any).locked)"
-                    class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover:bg-white/20 hover:bg-white/40! transition-colors z-40"
-                    @mousedown.stop="
-                      startResizeTransition(
-                        $event,
-                        item.trackId,
-                        item.id,
-                        'in',
-                        (item as any).transitionIn?.durationUs ?? 500_000,
-                      )
-                    "
-                  />
-                </button>
-              </template>
+              <span class="truncate text-[10px] leading-tight opacity-70" :title="item.name">
+                {{ item.name }}
+              </span>
             </div>
 
-            <!-- Middle: Title Block -->
-          <div class="flex-1 flex items-end justify-center px-1 min-w-0">
-            <span class="truncate" :title="item.kind === 'clip' ? item.name : ''">
-              {{ item.kind === 'clip' ? item.name : '' }}
-            </span>
-          </div>
-
-            <!-- Right: Transition Out Column -->
+            <!-- Transition In -->
             <div
-              v-if="item.kind === 'clip'"
-              class="h-full relative transition-colors"
-              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs || 0)}px` }"
+              v-if="item.kind === 'clip' && (item as any).transitionIn && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60"
+              class="absolute left-0 top-0 bottom-0 z-10 transition-colors"
+              :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs || 0)}px` }"
             >
-              <template v-if="(item as any).transitionOut">
-                <button
-                  type="button"
-                  class="w-full h-full overflow-hidden group"
-                  :class="[
-                    selectedTransition?.itemId === item.id &&
-                    selectedTransition?.trackId === item.trackId &&
-                    selectedTransition?.edge === 'out'
-                      ? 'ring-2 ring-inset ring-amber-300 z-10'
-                      : hasTransitionOutProblem(track, item)
-                        ? 'ring-2 ring-inset ring-orange-500 z-10'
-                        : '',
-                  ]"
-                  :title="
-                    hasTransitionOutProblem(track, item) ??
-                    `Transition Out: ${(item as any).transitionOut?.type}`
-                  "
-                  @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
-                  @pointerdown.stop
-                  @mousedown.stop
-                  @dblclick.stop="
-                    openTransitionPanel = {
-                      trackId: item.trackId,
-                      itemId: item.id,
-                      edge: 'out',
-                      anchorEl: $event.currentTarget as HTMLElement,
-                    }
-                  "
-                >
+              <button
+                type="button"
+                class="w-full h-full overflow-hidden group"
+                :class="[
+                  selectedTransition?.itemId === item.id &&
+                  selectedTransition?.trackId === item.trackId &&
+                  selectedTransition?.edge === 'in'
+                    ? 'ring-2 ring-inset ring-amber-300 z-10'
+                    : hasTransitionInProblem(track, item)
+                      ? 'ring-2 ring-inset ring-orange-500 z-10'
+                      : '',
+                ]"
+                :title="
+                  hasTransitionInProblem(track, item) ??
+                  `Transition In: ${(item as any).transitionIn?.type}`
+                "
+                @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
+                @pointerdown.stop
+                @mousedown.stop
+                @dblclick.stop="
+                  openTransitionPanel = {
+                    trackId: item.trackId,
+                    itemId: item.id,
+                    edge: 'in',
+                    anchorEl: $event.currentTarget as HTMLElement,
+                  }
+                "
+              >
+                <template v-if="!isCrossfadeTransitionIn(track, item as TimelineClipItem)">
                   <svg
-                    v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
+                    v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
                     class="w-full h-full block"
                     preserveAspectRatio="none"
                     viewBox="0 0 100 100"
                   >
                     <path
-                      :d="transitionSvgParts(100, 100, 'out')"
+                      :d="transitionSvgParts(100, 100, 'in')"
                       :fill="getClipLowerTriColor(item, track)"
                     />
                   </svg>
                   <template v-else>
-                    <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
+                    <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
                     <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
                   </template>
-                  <!-- Problem indicator -->
-                  <div
-                    v-if="hasTransitionOutProblem(track, item)"
-                    class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 pointer-events-none z-20"
+                </template>
+                <!-- Problem indicator -->
+                <div
+                  v-if="hasTransitionInProblem(track, item)"
+                  class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 pointer-events-none z-20"
+                />
+                <!-- Resize handle inside transition block -->
+                <div
+                  v-if="!Boolean((item as any).locked)"
+                  class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover:bg-white/20 hover:bg-white/40! transition-colors z-40"
+                  @mousedown.stop="
+                    startResizeTransition(
+                      $event,
+                      item.trackId,
+                      item.id,
+                      'in',
+                      (item as any).transitionIn?.durationUs ?? 500_000,
+                    )
+                  "
+                />
+              </button>
+            </div>
+
+            <!-- Transition Out -->
+            <div
+              v-if="item.kind === 'clip' && (item as any).transitionOut && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60"
+              class="absolute right-0 top-0 bottom-0 z-10 transition-colors"
+              :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs || 0)}px` }"
+            >
+              <button
+                type="button"
+                class="w-full h-full overflow-hidden group"
+                :class="[
+                  selectedTransition?.itemId === item.id &&
+                  selectedTransition?.trackId === item.trackId &&
+                  selectedTransition?.edge === 'out'
+                    ? 'ring-2 ring-inset ring-amber-300 z-10'
+                    : hasTransitionOutProblem(track, item)
+                      ? 'ring-2 ring-inset ring-orange-500 z-10'
+                      : '',
+                ]"
+                :title="
+                  hasTransitionOutProblem(track, item) ??
+                  `Transition Out: ${(item as any).transitionOut?.type}`
+                "
+                @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
+                @pointerdown.stop
+                @mousedown.stop
+                @dblclick.stop="
+                  openTransitionPanel = {
+                    trackId: item.trackId,
+                    itemId: item.id,
+                    edge: 'out',
+                    anchorEl: $event.currentTarget as HTMLElement,
+                  }
+                "
+              >
+                <svg
+                  v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
+                  class="w-full h-full block"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 100 100"
+                >
+                  <path
+                    :d="transitionSvgParts(100, 100, 'out')"
+                    :fill="getClipLowerTriColor(item, track)"
                   />
-                  <!-- Resize handle inside transition block -->
-                   <div
-                    v-if="!Boolean((item as any).locked)"
-                    class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover:bg-white/20 hover:bg-white/40! transition-colors z-40"
-                    @mousedown.stop="
-                      startResizeTransition(
-                        $event,
-                        item.trackId,
-                        item.id,
-                        'out',
-                        (item as any).transitionOut?.durationUs ?? 500_000,
-                      )
-                    "
-                  />
-                </button>
-              </template>
+                </svg>
+                <template v-else>
+                  <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
+                  <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+                </template>
+                <!-- Problem indicator -->
+                <div
+                  v-if="hasTransitionOutProblem(track, item)"
+                  class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 pointer-events-none z-20"
+                />
+                <!-- Resize handle inside transition block -->
+                 <div
+                  v-if="!Boolean((item as any).locked)"
+                  class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover:bg-white/20 hover:bg-white/40! transition-colors z-40"
+                  @mousedown.stop="
+                    startResizeTransition(
+                      $event,
+                      item.trackId,
+                      item.id,
+                      'out',
+                      (item as any).transitionOut?.durationUs ?? 500_000,
+                    )
+                  "
+                />
+              </button>
             </div>
           </div>
 
