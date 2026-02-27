@@ -322,6 +322,8 @@
       "audioTrack": "Audio Track"
     },
     "monitor": {
+      "title": "Monitor",
+      "snapshot": "Snapshot",
       "playBackward": "Play backward",
       "playForward": "Play forward",
       "audioVolumeDown": "Decrease volume",
@@ -397,7 +399,8 @@
         "curve": "Curve",
         "curveLinear": "Linear",
         "curveBezier": "Bezier",
-        "errorPrevClipTooShort": "Previous clip is too short for this transition (needs {need}s, has {have}s)"
+        "errorPrevClipTooShort": "Previous clip is too short for this transition (needs {need}s, has {have}s)",
+        "errorNoPreviousClip": "No previous clip found for transition"
       }
     },
     "textClip": {

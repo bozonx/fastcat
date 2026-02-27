@@ -203,9 +203,10 @@
         "modified": "По дате"
       },
       "history": {
-        "undo": "Отменить",
-        "redo": "Повторить",
-        "empty": "История пуста. Начните редактирование, чтобы записать действия."
+        "curveLinear": "Линейная",
+        "curveBezier": "Кривая Безье",
+        "errorPrevClipTooShort": "Предыдущий клип слишком короткий для этого перехода (нужно {need}с, есть {have}с)",
+        "errorNoPreviousClip": "Нет предыдущего клипа для перехода"
       },
       "actions": {
         "createFolder": "Создать папку",
@@ -322,7 +323,9 @@
       "audioTrack": "Аудиодорожка"
     },
     "monitor": {
-      "playBackward": "Воспроизвести назад",
+      "title": "Монитор",
+      "snapshot": "Снимок",
+      "playBackward": "Воспроизведение назад",
       "playForward": "Воспроизвести вперед",
       "audioVolumeDown": "Уменьшить громкость",
       "audioVolumeUp": "Увеличить громкость",
