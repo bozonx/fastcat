@@ -265,7 +265,10 @@ export function useFileManager() {
     }
   }
 
-  async function handleFiles(files: FileList | File[]) {
+  async function handleFiles(
+    files: FileList | File[],
+    targetDirHandle?: FileSystemDirectoryHandle,
+  ) {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
     error.value = null;
@@ -290,14 +293,19 @@ export function useFileManager() {
           }
         }
 
-        let targetDirName = 'video';
-        if (file.type.startsWith('audio/')) targetDirName = 'audio';
-        else if (file.type.startsWith('image/')) targetDirName = 'images';
-        else if (!file.type.startsWith('video/')) {
-          if (file.name.endsWith('.otio')) continue; // Skip project files
-        }
+        let targetDir = targetDirHandle;
+        let finalDirName = targetDirHandle?.name || 'unknown';
 
-        const targetDir = await sourcesDir.getDirectoryHandle(targetDirName, { create: true });
+        if (!targetDir) {
+          let targetDirName = 'video';
+          if (file.type.startsWith('audio/')) targetDirName = 'audio';
+          else if (file.type.startsWith('image/')) targetDirName = 'images';
+          else if (!file.type.startsWith('video/')) {
+            if (file.name.endsWith('.otio')) continue; // Skip project files
+          }
+          targetDir = await sourcesDir.getDirectoryHandle(targetDirName, { create: true });
+          finalDirName = targetDirName;
+        }
 
         try {
           await targetDir.getFileHandle(file.name);
@@ -316,7 +324,9 @@ export function useFileManager() {
         await writable.close();
 
         if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-          const projectRelativePath = `sources/${targetDirName}/${file.name}`;
+          const projectRelativePath = targetDirHandle
+            ? `sources/${finalDirName}/${file.name}` // Note: this might not be exactly correct for nested dirs, but standard for now
+            : `sources/${finalDirName}/${file.name}`;
           void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
         }
       }

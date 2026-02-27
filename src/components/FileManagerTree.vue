@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
@@ -38,6 +38,8 @@ const proxyStore = useProxyStore();
 const uiStore = useUiStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
+const isDragOver = ref<string | null>(null);
+
 function isVideo(entry: FsEntry) {
   return entry.kind === 'file' && entry.path?.startsWith(`${SOURCES_DIR_NAME}/video/`);
 }
@@ -69,17 +71,39 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
   const data = {
     name: entry.name,
     kind,
-    path: entry.path ?? '',
+    path: entry.path || '',
+    handle: entry.handle as FileSystemFileHandle,
   };
-  if (e.dataTransfer) {
-    e.dataTransfer.setData('application/json', JSON.stringify(data));
-    e.dataTransfer.effectAllowed = 'copy';
-  }
   setDraggedFile(data);
 }
 
 function onDragEnd() {
   clearDraggedFile();
+}
+
+function onDragOverDir(e: DragEvent, entry: FsEntry) {
+  // Only handle directory targets and external files
+  if (entry.kind === 'directory' && e.dataTransfer?.types.includes('Files')) {
+    isDragOver.value = entry.path || null;
+    e.dataTransfer.dropEffect = 'copy';
+  }
+}
+
+function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
+  if (entry.kind === 'directory' && isDragOver.value === entry.path) {
+    isDragOver.value = null;
+  }
+}
+
+async function onDropDir(e: DragEvent, entry: FsEntry) {
+  if (entry.kind === 'directory' && isDragOver.value === entry.path) {
+    isDragOver.value = null;
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const { useFileManager } = await import('~/composables/fileManager/useFileManager');
+      const fm = useFileManager();
+      await fm.handleFiles(e.dataTransfer.files, entry.handle as FileSystemDirectoryHandle);
+    }
+  }
 }
 
 function getContextMenuItems(entry: FsEntry) {
@@ -158,9 +182,13 @@ function getContextMenuItems(entry: FsEntry) {
         <div
           class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
           :style="{ paddingLeft: `${8 + depth * 14}px` }"
+          :class="{ 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1': isDragOver === entry.path }"
           :draggable="entry.kind === 'file'"
           @dragstart="onDragStart($event, entry)"
           @dragend="onDragEnd()"
+          @dragover.prevent="onDragOverDir($event, entry)"
+          @dragleave.prevent="onDragLeaveDir($event, entry)"
+          @drop.prevent="onDropDir($event, entry)"
           @click.stop="onEntryClick(entry)"
           @pointerdown.stop="uiStore.selectedFsEntry = entry as any"
         >
@@ -179,7 +207,7 @@ function getContextMenuItems(entry: FsEntry) {
             class="w-4 h-4 shrink-0 transition-colors"
             :class="[
               entry.kind === 'directory' ? 'text-ui-text-muted' : 'text-ui-text-muted',
-              hasProxy(entry) ? 'text-[color:var(--color-success)]!' : '',
+              hasProxy(entry) ? 'text-(--color-success)!' : '',
             ]"
           />
 
@@ -187,10 +215,10 @@ function getContextMenuItems(entry: FsEntry) {
           <span
             class="text-sm truncate transition-colors"
             :class="[
-              entry.kind === 'directory'
+              uiStore.selectedFsEntry?.handle.isSameEntry(entry.handle)
                 ? 'font-medium text-ui-text group-hover:text-ui-text'
                 : 'text-ui-text group-hover:text-ui-text',
-              hasProxy(entry) ? 'text-[color:var(--color-success)]!' : '',
+              hasProxy(entry) ? 'text-(--color-success)!' : '',
             ]"
           >
             {{ entry.name }}

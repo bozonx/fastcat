@@ -55,10 +55,29 @@ const currentFileInfo = ref<FileInfo | null>(null);
 const isDeleteConfirmModalOpen = ref(false);
 const deleteTarget = ref<FsEntry | null>(null);
 
+const uiStore = useUiStore();
+
 watch(() => projectStore.currentProjectName, loadProjectDirectory, { immediate: true });
+
+function onDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('Files')) {
+    isDragging.value = true;
+    uiStore.isFileManagerDragging = true;
+  }
+}
+
+function onDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const relatedTarget = e.relatedTarget as Node | null;
+  if (!currentTarget?.contains(relatedTarget)) {
+    isDragging.value = false;
+    uiStore.isFileManagerDragging = false;
+  }
+}
 
 function onDrop(e: DragEvent) {
   isDragging.value = false;
+  uiStore.isFileManagerDragging = false;
   if (e.dataTransfer?.files) {
     handleFiles(e.dataTransfer.files);
   }
@@ -178,8 +197,8 @@ function onFileSelect(e: Event) {
       'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('left'),
     }"
     @pointerdown.capture="focusStore.setTempFocus('left')"
-    @dragover.prevent="isDragging = true"
-    @dragleave.prevent="isDragging = false"
+    @dragover.prevent="onDragOver"
+    @dragleave.prevent="onDragLeave"
     @drop.prevent="onDrop"
   >
     <!-- Hidden file input -->

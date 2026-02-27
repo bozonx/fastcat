@@ -71,17 +71,19 @@ async function onEntrySelect(entry: FsEntry) {
         class="min-w-full w-max min-h-full flex flex-col"
         @pointerdown="uiStore.selectedFsEntry = null"
       >
-        <!-- Dropzone Overlay -->
+        <!-- Dropzone Top Banner (visible when dragging anywhere in the app) -->
         <div
-          v-if="isDragging"
-          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-ui-bg/80 backdrop-blur-sm border-2 border-dashed border-primary-500 m-2 rounded-lg pointer-events-none"
+          v-if="uiStore.isGlobalDragging"
+          class="flex flex-col items-center justify-center p-3 bg-primary-500/10 border-2 border-dashed border-primary-500/50 m-2 rounded-lg transition-colors pointer-events-none"
+          :class="{ 'bg-primary-500/20 border-primary-500': isDragging }"
         >
           <UIcon
             name="i-heroicons-arrow-down-tray"
-            class="w-12 h-12 text-primary-500 mb-2 animate-bounce"
+            class="w-6 h-6 text-primary-500 mb-1"
+            :class="{ 'animate-bounce': isDragging }"
           />
-          <p class="text-sm font-medium text-primary-400">
-            {{ t('videoEditor.fileManager.actions.dropFilesHere', 'Drop files here') }}
+          <p class="text-xs font-medium text-primary-400 text-center">
+            {{ t('videoEditor.fileManager.actions.dropFilesToFolder', 'Drop to specific folder below or release here') }}
           </p>
         </div>
 

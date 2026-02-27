@@ -29,6 +29,40 @@ const { currentTimelinePath } = storeToRefs(projectStore);
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
 
+const isGlobalDragging = ref(false);
+
+function onGlobalDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('Files')) {
+    isGlobalDragging.value = true;
+    uiStore.isGlobalDragging = true;
+  }
+}
+
+function onGlobalDragLeave(e: DragEvent) {
+  if (!e.relatedTarget) {
+    isGlobalDragging.value = false;
+    uiStore.isGlobalDragging = false;
+  }
+}
+
+async function onGlobalDrop(e: DragEvent) {
+  isGlobalDragging.value = false;
+  uiStore.isGlobalDragging = false;
+  
+  // if uiStore.isFileManagerDragging is true, filemanager itself will handle the drop
+  if (uiStore.isFileManagerDragging) return;
+
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+  
+  // Quick local reference to file manager composition handles to avoid duplicating too much logic here
+  // Ideally this would be unified into a dedicated store, but for simplicity here
+  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
+  const fm = useFileManager();
+  await fm.handleFiles(files);
+}
+
 let volumeHoldTimeout: number | null = null;
 let volumeHoldInterval: number | null = null;
 let volumeHoldKeyCode: string | null = null;
@@ -413,7 +447,12 @@ function leaveProject() {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen w-screen overflow-hidden bg-ui-bg text-ui-text">
+  <div 
+    class="flex flex-col h-screen w-screen overflow-hidden bg-ui-bg text-ui-text"
+    @dragover.prevent="onGlobalDragOver"
+    @dragleave.prevent="onGlobalDragLeave"
+    @drop.prevent="onGlobalDrop"
+  >
     <!-- Loading Screen -->
     <div v-if="isStartingUp" class="flex flex-col items-center justify-center flex-1 bg-ui-bg">
       <UIcon
@@ -689,6 +728,25 @@ function leaveProject() {
       <TimelineExportModal v-model:open="isExportModalOpen" @exported="() => {}" />
 
       <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
+
+      <!-- Global Drag & Drop Overlay -->
+      <div
+        v-if="isGlobalDragging && !uiStore.isFileManagerDragging"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md transition-opacity pointer-events-none"
+      >
+        <div class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/80 border border-primary-500/50 rounded-2xl shadow-2xl animate-pulse-slow">
+          <UIcon
+            name="i-heroicons-arrow-down-tray"
+            class="w-20 h-20 text-primary-500 mb-6"
+          />
+          <h2 class="text-3xl font-bold text-white mb-2 text-center">
+            {{ t('videoEditor.fileManager.actions.dropFilesHere', 'Drop files here') }}
+          </h2>
+          <p class="text-lg text-ui-text-muted text-center max-w-md">
+            {{ t('videoEditor.fileManager.actions.dropFilesGlobalDescription', 'Release files to automatically save them to the project sources folder') }}
+          </p>
+        </div>
+      </div>
     </template>
   </div>
 </template>

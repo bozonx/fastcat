@@ -211,6 +211,8 @@
         "uploadFiles": "Upload files",
         "createTimeline": "Create Timeline",
         "dropFilesHere": "Drop files here",
+        "dropFilesToFolder": "Drop to specific folder below or release here",
+        "dropFilesGlobalDescription": "Release files to automatically save them to the project sources folder",
         "createProxy": "Create proxy",
         "regenerateProxy": "Regenerate proxy",
         "deleteProxy": "Delete proxy",

@@ -88,6 +88,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
+  const hoveredTrackId = ref<string | null>(null);
   const selectedTransition = ref<{
     trackId: string;
     itemId: string;
@@ -1535,6 +1536,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineZoom,
     selectedItemIds,
     selectedTrackId,
+    hoveredTrackId,
     selectedTransition,
     loadTimeline,
     saveTimeline,

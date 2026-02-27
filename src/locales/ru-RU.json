@@ -212,6 +212,8 @@
         "uploadFiles": "Загрузить файлы",
         "createTimeline": "Создать таймлайн",
         "dropFilesHere": "Отпустите файлы здесь",
+        "dropFilesToFolder": "Отпустите в конкретную папку или сюда",
+        "dropFilesGlobalDescription": "Отпустите файлы, чтобы автоматически сохранить их в папку источников",
         "createProxy": "Создать прокси",
         "regenerateProxy": "Перегенерировать прокси",
         "deleteProxy": "Удалить прокси",

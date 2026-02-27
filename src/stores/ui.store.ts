@@ -40,6 +40,9 @@ export interface FsEntrySelection {
 export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
 
+  const isGlobalDragging = ref(false);
+  const isFileManagerDragging = ref(false);
+
   const fileTreeExpandedPaths = ref<Record<string, true>>({});
   const currentFileTreeProjectName = ref<string | null>(null);
 
@@ -166,6 +169,8 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     selectedFsEntry,
+    isGlobalDragging,
+    isFileManagerDragging,
     fileTreeExpandedPaths,
     restoreFileTreeStateOnce,
     isFileTreePathExpanded,
