@@ -12,6 +12,7 @@ import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 const { t } = useI18n();
@@ -58,6 +59,14 @@ const isDeleteConfirmModalOpen = ref(false);
 const deleteTarget = ref<FsEntry | null>(null);
 
 const uiStore = useUiStore();
+const selectionStore = useSelectionStore();
+
+watch(() => uiStore.pendingFsEntryDelete, (entry) => {
+  if (entry) {
+    openDeleteConfirmModal(entry);
+    uiStore.pendingFsEntryDelete = null;
+  }
+});
 
 watch(() => projectStore.currentProjectName, loadProjectDirectory, { immediate: true });
 
@@ -140,6 +149,18 @@ function openDeleteConfirmModal(entry: FsEntry) {
 async function handleDeleteConfirm() {
   if (!deleteTarget.value) return;
   await deleteEntry(deleteTarget.value);
+
+  if (uiStore.selectedFsEntry?.name === deleteTarget.value.name) {
+    uiStore.selectedFsEntry = null;
+  }
+  
+  if (
+    selectionStore.selectedEntity?.source === 'fileManager' &&
+    selectionStore.selectedEntity.name === deleteTarget.value.name
+  ) {
+    selectionStore.clearSelection();
+  }
+
   deleteTarget.value = null;
   isDeleteConfirmModalOpen.value = false;
 }

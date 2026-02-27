@@ -9,6 +9,7 @@ import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timel
 import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
 import AppModal from '~/components/ui/AppModal.vue';
 import TimelineClipThumbnails from '~/components/timeline/TimelineClipThumbnails.vue';
+import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWaveform.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -1288,9 +1289,14 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           <!-- Main Content Layer -->
           <div class="flex-1 flex w-full min-h-0 relative z-20">
             <TimelineClipThumbnails
-              v-if="item.kind === 'clip' && (item as any).clipType === 'media'"
+              v-if="item.kind === 'clip' && (item as any).clipType === 'media' && track.kind === 'video'"
               :item="item as any"
               :width="getClipWidthPx(item)"
+            />
+
+            <TimelineAudioWaveform
+              v-if="item.kind === 'clip' && (item as any).clipType === 'media' && track.kind === 'audio'"
+              :item="item as any"
             />
 
             <!-- Title Block (lowest layer, bottom center) -->

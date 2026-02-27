@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, toRaw, markRaw } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -175,14 +175,17 @@ export function useFileManager() {
       if (!iterator) return entries;
 
       for await (const value of iterator) {
-        const handle = (Array.isArray(value) ? value[1] : value) as
+        let handle = (Array.isArray(value) ? value[1] : value) as
           | FileSystemFileHandle
           | FileSystemDirectoryHandle;
+        handle = markRaw(toRaw(handle));
+        const rawParent = markRaw(toRaw(dirHandle));
+
         entries.push({
           name: handle.name,
           kind: handle.kind,
           handle,
-          parentHandle: dirHandle,
+          parentHandle: rawParent,
           children: undefined,
           expanded: false,
           path: basePath ? `${basePath}/${handle.name}` : handle.name,
@@ -480,7 +483,7 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
-      const parent = target.parentHandle;
+      const parent = target.parentHandle ? toRaw(target.parentHandle) : undefined;
       if (parent) {
         await parent.removeEntry(target.name, { recursive: true });
       }
@@ -513,7 +516,7 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
-      const parent = target.parentHandle;
+      const parent = toRaw(target.parentHandle);
 
       try {
         if (target.kind === 'file') {
@@ -577,19 +580,22 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
+      const targetDirHandleRaw = toRaw(params.targetDirHandle);
+      const sourceParentRaw = toRaw(params.source.parentHandle);
+      
       await assertEntryDoesNotExist({
-        targetDirHandle: params.targetDirHandle,
+        targetDirHandle: targetDirHandleRaw,
         entryName: params.source.name,
         kind: params.source.kind,
       });
 
       if (params.source.kind === 'file') {
         await copyFileToDirectory({
-          sourceHandle: params.source.handle as FileSystemFileHandle,
+          sourceHandle: toRaw(params.source.handle) as FileSystemFileHandle,
           fileName: params.source.name,
-          targetDirHandle: params.targetDirHandle,
+          targetDirHandle: targetDirHandleRaw,
         });
-        await params.source.parentHandle.removeEntry(params.source.name);
+        await sourceParentRaw.removeEntry(params.source.name);
 
         const oldPath = sourcePath;
         const newPath = targetDirPath
@@ -614,14 +620,14 @@ export function useFileManager() {
           }
         }
       } else {
-        const targetDir = await params.targetDirHandle.getDirectoryHandle(params.source.name, {
+        const targetDir = await targetDirHandleRaw.getDirectoryHandle(params.source.name, {
           create: true,
         });
         await copyDirectoryRecursive({
-          sourceDirHandle: params.source.handle as FileSystemDirectoryHandle,
+          sourceDirHandle: toRaw(params.source.handle) as FileSystemDirectoryHandle,
           targetDirHandle: targetDir,
         });
-        await params.source.parentHandle.removeEntry(params.source.name, { recursive: true });
+        await sourceParentRaw.removeEntry(params.source.name, { recursive: true });
 
         mediaStore.resetMediaState();
         proxyStore.existingProxies.clear();

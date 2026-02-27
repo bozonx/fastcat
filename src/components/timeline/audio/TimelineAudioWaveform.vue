@@ -4,7 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
-import { getAudioEngine } from '~/utils/video-editor/worker-client';
+import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import type { TimelineClipItem } from '~/timeline/types';
 
 const props = defineProps<{
@@ -44,8 +44,7 @@ const extractPeaks = async () => {
     const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
     if (!fileHandle) return;
 
-    const engine = await getAudioEngine();
-    if (!engine) return;
+    const engine = new AudioEngine();
 
     // Use a fixed max length that represents a reasonable resolution (e.g., 8000 samples per second of audio max, or just a fixed large number)
     // Actually, for a timeline, we need enough resolution for the maximum zoom level.
@@ -180,14 +179,16 @@ function drawChunk(chunkIndex: number) {
   ctx.moveTo(0, halfH);
   for (let i = 0; i < chunkPeaks.length; i++) {
     const x = i * step;
-    const y = halfH - (Math.abs(chunkPeaks[i]) * halfH);
+    const peak = chunkPeaks[i] ?? 0;
+    const y = halfH - (Math.abs(peak) * halfH);
     ctx.lineTo(x, y);
   }
   
   // Draw bottom half (mirrored)
   for (let i = chunkPeaks.length - 1; i >= 0; i--) {
     const x = i * step;
-    const y = halfH + (Math.abs(chunkPeaks[i]) * halfH);
+    const peak = chunkPeaks[i] ?? 0;
+    const y = halfH + (Math.abs(peak) * halfH);
     ctx.lineTo(x, y);
   }
   

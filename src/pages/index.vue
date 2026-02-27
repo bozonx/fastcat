@@ -202,12 +202,7 @@ async function onGlobalKeydown(e: KeyboardEvent) {
   if (cmd === 'general.delete') {
     const selected = selectionStore.selectedEntity;
     if (selected?.source === 'fileManager') {
-      const confirmText = t('common.confirmDelete', 'Are you sure you want to delete this?');
-      if (window.confirm(confirmText)) {
-        await fm.deleteEntry(selected.entry);
-        selectionStore.clearSelection();
-        uiStore.selectedFsEntry = null;
-      }
+      uiStore.pendingFsEntryDelete = selected.entry;
     } else if (selected?.source === 'timeline') {
       if (selected.kind === 'track') {
         timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });

@@ -46,6 +46,8 @@ export const useUiStore = defineStore('ui', () => {
   const fileTreeExpandedPaths = ref<Record<string, true>>({});
   const currentFileTreeProjectName = ref<string | null>(null);
 
+  const pendingFsEntryDelete = ref<any>(null);
+
   const isSavingFileTree = ref(false);
   let persistFileTreeTimeout: number | null = null;
   let fileTreeRevision = 0;
@@ -172,6 +174,7 @@ export const useUiStore = defineStore('ui', () => {
     isGlobalDragging,
     isFileManagerDragging,
     fileTreeExpandedPaths,
+    pendingFsEntryDelete,
     restoreFileTreeStateOnce,
     isFileTreePathExpanded,
     setFileTreePathExpanded,
