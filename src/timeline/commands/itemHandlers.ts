@@ -66,6 +66,7 @@ export function addClipToTrack(
     name: cmd.name,
     source: { path: cmd.path },
     sourceDurationUs,
+    isImage: cmd.isImage,
     timelineRange: { startUs, durationUs },
     sourceRange: { startUs: 0, durationUs },
   };
@@ -199,7 +200,7 @@ export function overlayTrimItem(
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
 
   const maxSourceDurationUs =
-    moved.clipType === 'media'
+    moved.clipType === 'media' && !moved.isImage
       ? Math.max(0, Math.round(moved.sourceDurationUs))
       : Number.POSITIVE_INFINITY;
 
@@ -1243,7 +1244,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
   const maxSourceDurationUs =
-    item.clipType === 'media'
+    item.clipType === 'media' && !item.isImage
       ? Math.max(0, Math.round(item.sourceDurationUs))
       : Number.POSITIVE_INFINITY;
 
@@ -1379,7 +1380,7 @@ export function updateClipTransition(
 
     const leftSourceEndUs = left.sourceRange.startUs + left.sourceRange.durationUs;
     const leftMaxEndUs =
-      left.clipType === 'media'
+      left.clipType === 'media' && !left.isImage
         ? Math.max(0, Math.round(left.sourceDurationUs))
         : Number.POSITIVE_INFINITY;
     const leftTailHandleUs = Number.isFinite(leftMaxEndUs)

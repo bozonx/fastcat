@@ -31,6 +31,7 @@ export interface AddClipToTrackCommand {
   clipType?: Extract<import('./types').TimelineClipType, 'media' | 'timeline'>;
   durationUs?: number;
   sourceDurationUs?: number;
+  isImage?: boolean;
   startUs?: number;
 }
 

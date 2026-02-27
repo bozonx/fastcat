@@ -414,7 +414,7 @@ function computeMaxResizableTransitionDurationUs(input: {
       const prev = adjacent;
       const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
       const prevMaxEnd =
-        prev.clipType === 'media'
+        prev.clipType === 'media' && !prev.isImage
           ? ((prev as any).sourceDurationUs ?? prevSourceEnd)
           : Number.POSITIVE_INFINITY;
       const prevTailHandleUs = Number.isFinite(prevMaxEnd)
@@ -426,7 +426,7 @@ function computeMaxResizableTransitionDurationUs(input: {
       const curr = clip;
       const currSourceEnd = (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
       const currMaxEnd =
-        curr.clipType === 'media'
+        curr.clipType === 'media' && !curr.isImage
           ? ((curr as any).sourceDurationUs ?? currSourceEnd)
           : Number.POSITIVE_INFINITY;
       const currTailHandleUs = Number.isFinite(currMaxEnd)

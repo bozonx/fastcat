@@ -113,6 +113,7 @@ interface TimelineClipBase {
   linkedVideoClipId?: string;
   lockToLinkedVideo?: boolean;
   freezeFrameSourceUs?: number;
+  isImage?: boolean;
   opacity?: number;
   effects?: ClipEffect[];
   transitionIn?: ClipTransition;

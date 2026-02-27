@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import AppModal from '~/components/ui/AppModal.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import MediaEncodingSettings, {
+  type FormatOption,
+} from '~/components/media/MediaEncodingSettings.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import {
+  BASE_VIDEO_CODEC_OPTIONS,
+  checkVideoCodecSupport,
+  resolveVideoCodecOptions,
+} from '~/utils/webcodecs';
 
 const props = defineProps<{
   open: boolean;
@@ -14,12 +25,55 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 const timelineStore = useTimelineStore();
 
 const isOpen = computed({
   get: () => props.open,
   set: (value) => emit('update:open', value),
 });
+
+const isClearProjectVardataConfirmOpen = ref(false);
+
+async function confirmClearProjectVardata() {
+  isClearProjectVardataConfirmOpen.value = false;
+  if (!projectStore.currentProjectId) return;
+  await workspaceStore.clearProjectVardata(projectStore.currentProjectId);
+}
+
+const formatOptions: readonly FormatOption[] = [
+  { value: 'mp4', label: 'MP4' },
+  { value: 'webm', label: 'WebM' },
+  { value: 'mkv', label: 'MKV' },
+];
+
+const videoCodecSupport = ref<Record<string, boolean>>({});
+const isLoadingCodecSupport = ref(false);
+
+const videoCodecOptions = computed(() =>
+  resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value),
+);
+
+async function loadCodecSupport() {
+  if (isLoadingCodecSupport.value) return;
+  isLoadingCodecSupport.value = true;
+  try {
+    videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
+    const selected = projectStore.projectSettings.export.encoding.videoCodec;
+    if (videoCodecSupport.value[selected] === false) {
+      const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find(
+        (opt) => videoCodecSupport.value[opt.value],
+      );
+      if (firstSupported)
+        projectStore.projectSettings.export.encoding.videoCodec = firstSupported.value;
+    }
+  } finally {
+    isLoadingCodecSupport.value = false;
+  }
+}
+
+// Load on mount
+loadCodecSupport();
 
 // Project settings form data
 const projectName = ref(projectStore.currentProjectName || '');
@@ -87,9 +141,31 @@ function getAllClipsCount(): number {
   <AppModal
     v-model:open="isOpen"
     :title="t('videoEditor.projectSettings.title', 'Project Settings')"
-    :ui="{ content: 'max-w-3xl' }"
+    :ui="{ content: 'max-w-3xl max-h-[90vh]', body: 'overflow-y-auto' }"
   >
+    <UiConfirmModal
+      v-model:open="isClearProjectVardataConfirmOpen"
+      :title="t('videoEditor.projectSettings.clearTempTitle', 'Clear temporary files')"
+      :description="
+        t(
+          'videoEditor.projectSettings.clearTempDescription',
+          'This will delete generated proxies, thumbnails and cached data for this project.',
+        )
+      "
+      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm', 'Clear')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-trash"
+      @confirm="confirmClearProjectVardata"
+    />
+
     <div class="space-y-6">
+      <div class="text-xs text-ui-text-muted">
+        {{
+          t('videoEditor.projectSettings.note', 'Settings are saved to .gran/project.settings.json')
+        }}
+      </div>
+
       <!-- Project Info -->
       <div class="space-y-4">
         <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.projectInfo', 'Project Information') }}</h3>
@@ -101,43 +177,6 @@ function getAllClipsCount(): number {
           
           <UFormField :label="t('videoEditor.projectSettings.timelineName', 'Timeline Name')">
             <UInput v-model="timelineName" disabled class="bg-ui-bg-muted" />
-          </UFormField>
-        </div>
-      </div>
-
-      <!-- Timeline Settings -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.timelineSettings', 'Timeline Settings') }}</h3>
-        
-        <UFormField :label="t('videoEditor.projectSettings.frameRate', 'Frame Rate')">
-          <USelectMenu
-            v-model="frameRate"
-            :items="availableFrameRates.map(rate => ({ value: rate, label: `${rate} fps` }))"
-            value-key="value"
-            label-key="label"
-            placeholder="Select frame rate"
-          />
-        </UFormField>
-
-        <UFormField :label="t('videoEditor.projectSettings.resolution', 'Resolution')">
-          <USelectMenu
-            :model-value="commonResolutions.find(res => res.width === resolutionWidth && res.height === resolutionHeight)?.label"
-            :items="commonResolutions.map(res => res.label)"
-            placeholder="Select resolution"
-            @update:model-value="(value) => {
-              const res = commonResolutions.find(r => r.label === value);
-              if (res) onResolutionChange(res);
-            }"
-          />
-        </UFormField>
-
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField :label="t('videoEditor.projectSettings.width', 'Width (pixels)')">
-            <UInput v-model.number="resolutionWidth" type="number" min="1" />
-          </UFormField>
-          
-          <UFormField :label="t('videoEditor.projectSettings.height', 'Height (pixels)')">
-            <UInput v-model.number="resolutionHeight" type="number" min="1" />
           </UFormField>
         </div>
       </div>
@@ -167,6 +206,69 @@ function getAllClipsCount(): number {
               <span class="text-ui-text">{{ timelineStore.getMarkers().length }}</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Export Settings -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.export', 'Export') }}</h3>
+        
+        <MediaResolutionSettings
+          v-model:width="projectStore.projectSettings.export.width"
+          v-model:height="projectStore.projectSettings.export.height"
+          v-model:fps="projectStore.projectSettings.export.fps"
+          v-model:resolution-format="projectStore.projectSettings.export.resolutionFormat"
+          v-model:orientation="projectStore.projectSettings.export.orientation"
+          v-model:aspect-ratio="projectStore.projectSettings.export.aspectRatio"
+          v-model:is-custom-resolution="projectStore.projectSettings.export.isCustomResolution"
+        />
+
+        <MediaEncodingSettings
+          v-model:output-format="projectStore.projectSettings.export.encoding.format"
+          v-model:video-codec="projectStore.projectSettings.export.encoding.videoCodec"
+          v-model:bitrate-mbps="projectStore.projectSettings.export.encoding.bitrateMbps"
+          v-model:exclude-audio="projectStore.projectSettings.export.encoding.excludeAudio"
+          v-model:audio-codec="projectStore.projectSettings.export.encoding.audioCodec"
+          v-model:audio-bitrate-kbps="projectStore.projectSettings.export.encoding.audioBitrateKbps"
+          :disabled="false"
+          :has-audio="true"
+          :is-loading-codec-support="isLoadingCodecSupport"
+          :format-options="formatOptions"
+          :video-codec-options="videoCodecOptions"
+        />
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Storage Settings -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.storage', 'Storage') }}</h3>
+
+        <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
+          <div class="flex flex-col gap-1 min-w-0">
+            <div class="text-sm font-medium text-ui-text">
+              {{ t('videoEditor.projectSettings.clearTemp', 'Clear temporary files') }}
+            </div>
+            <div class="text-xs text-ui-text-muted">
+              {{
+                t(
+                  'videoEditor.projectSettings.clearTempHint',
+                  'Removes all files from vardata for this project',
+                )
+              }}
+            </div>
+          </div>
+
+          <UButton
+            color="warning"
+            variant="soft"
+            icon="i-heroicons-trash"
+            :disabled="!projectStore.currentProjectId"
+            :label="t('videoEditor.projectSettings.clearTempAction', 'Clear')"
+            @click="isClearProjectVardataConfirmOpen = true"
+          />
         </div>
       </div>
     </div>

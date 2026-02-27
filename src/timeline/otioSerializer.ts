@@ -366,6 +366,7 @@ function parseClipItem(input: {
         : undefined,
     lockToLinkedVideo:
       granMeta?.lockToLinkedVideo !== undefined ? Boolean(granMeta.lockToLinkedVideo) : undefined,
+    isImage: granMeta?.isImage !== undefined ? Boolean(granMeta.isImage) : undefined,
     transform: coerceTransform(granMeta?.transform),
   };
 
@@ -569,6 +570,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
               item.clipType === 'background' ? (item as any).backgroundColor : undefined,
             text: item.clipType === 'text' ? (item as any).text : undefined,
             style: item.clipType === 'text' ? (item as any).style : undefined,
+            isImage: item.isImage,
             transform: item.transform,
           },
         },

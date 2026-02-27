@@ -1273,7 +1273,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     doc: TimelineDocument,
     cmd: TimelineCommand,
   ): TimelineDocument {
-    if (cmd.type !== 'trim_item') return doc;
+    if (cmd.type !== 'trim_item' && cmd.type !== 'overlay_trim_item') return doc;
 
     const track = doc.tracks.find((t) => t.id === cmd.trackId);
     if (!track) return doc;
@@ -1285,22 +1285,34 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!item.source?.path) return doc;
 
     const meta = mediaMetadata.value[item.source.path];
-    const durationS = Number(meta?.duration);
-    if (!Number.isFinite(durationS) || durationS <= 0) return doc;
-    const durationUs = Math.floor(durationS * 1_000_000);
-    if (!Number.isFinite(durationUs) || durationUs <= 0) return doc;
-    if (item.sourceDurationUs === durationUs) return doc;
+    if (!meta) return doc;
+
+    const hasVideo = Boolean(meta.video);
+    const hasAudio = Boolean(meta.audio);
+    const isImageLike = !hasVideo && !hasAudio;
+
+    const durationS = Number(meta.duration);
+    const durationUs = Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+
+    const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
+    const needsIsImagePatch = isImageLike && !item.isImage;
+
+    if (!needsSourceDurationPatch && !needsIsImagePatch) return doc;
 
     const nextTracks = doc.tracks.map((t) =>
       t.id !== track.id
         ? t
         : {
             ...t,
-            items: t.items.map((it) =>
-              it.id === item.id && it.kind === 'clip' && it.clipType === 'media'
-                ? { ...it, sourceDurationUs: durationUs }
-                : it,
-            ),
+            items: t.items.map((it) => {
+              if (it.id === item.id && it.kind === 'clip' && it.clipType === 'media') {
+                const patch: any = {};
+                if (needsSourceDurationPatch) patch.sourceDurationUs = durationUs;
+                if (needsIsImagePatch) patch.isImage = true;
+                return { ...it, ...patch };
+              }
+              return it;
+            }),
           },
     );
 
@@ -1464,6 +1476,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       clipType: 'media',
       durationUs,
       sourceDurationUs,
+      isImage: isImageLike,
       startUs: input.startUs,
     });
   }

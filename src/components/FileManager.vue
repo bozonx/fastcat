@@ -7,7 +7,6 @@ import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
 import FileInfoModal, { type FileInfo } from '~/components/common/FileInfoModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
-import FileManagerProject from '~/components/file-manager/FileManagerProject.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
@@ -214,15 +213,6 @@ function onFileSelect(e: Event) {
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
         :class="
-          activeTab === 'project' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-        "
-        @click="activeTab = 'project'"
-      >
-        {{ t('videoEditor.fileManager.tabs.project', 'Project') }}
-      </button>
-      <button
-        class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="
           activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
         "
         @click="activeTab = 'files'"
@@ -305,9 +295,8 @@ function onFileSelect(e: Event) {
     </div>
 
     <!-- Content -->
-    <FileManagerProject v-if="activeTab === 'project'" />
     <FileManagerFiles
-      v-else-if="activeTab === 'files'"
+      v-if="activeTab === 'files'"
       :is-dragging="isDragging"
       :is-loading="isLoading"
       :error="error"
