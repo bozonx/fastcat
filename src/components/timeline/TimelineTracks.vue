@@ -183,6 +183,68 @@ const resizeTransition = ref<{
   startDurationUs: number;
 } | null>(null);
 
+// --- Resize audio fade by dragging ---
+const resizeFade = ref<{
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  startX: number;
+  startFadeUs: number;
+} | null>(null);
+
+function startResizeFade(
+  e: MouseEvent,
+  trackId: string,
+  itemId: string,
+  edge: 'in' | 'out',
+  currentFadeUs: number,
+) {
+  e.stopPropagation();
+  e.preventDefault();
+  resizeFade.value = {
+    trackId,
+    itemId,
+    edge,
+    startX: e.clientX,
+    startFadeUs: currentFadeUs,
+  };
+
+  function onMouseMove(ev: MouseEvent) {
+    if (!resizeFade.value) return;
+    const dx = ev.clientX - resizeFade.value.startX;
+    // For 'in' edge: drag right = longer fade, drag left = shorter fade
+    // For 'out' edge: drag left = longer fade (towards start), drag right = shorter fade
+    const sign = edge === 'in' ? 1 : -1;
+    const deltaPx = dx * sign;
+    const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
+
+    const track = props.tracks.find((t) => t.id === trackId);
+    const item = track?.items.find((i) => i.id === itemId);
+    if (!item || item.kind !== 'clip') return;
+
+    const maxUs = item.timelineRange.durationUs;
+    let newFadeUs = resizeFade.value.startFadeUs + deltaUs;
+    newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
+
+    const propName = edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+    timelineStore.updateClipProperties(trackId, itemId, {
+      [propName]: Math.round(newFadeUs),
+    });
+  }
+
+  function onMouseUp() {
+    if (resizeFade.value) {
+      timelineStore.requestTimelineSave({ immediate: true });
+    }
+    resizeFade.value = null;
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  }
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
 function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
   const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
   return [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
@@ -824,10 +886,10 @@ function getTransitionForPanel() {
         :items="getClipContextMenuItems(track, item)"
       >
         <div
-          class="absolute inset-y-0 rounded overflow-hidden flex flex-col text-xs text-[color:var(--clip-text)] z-10 cursor-pointer select-none transition-shadow"
+          class="absolute inset-y-0 rounded overflow-hidden flex flex-col text-xs text-[color:var(--clip-text)] z-10 cursor-pointer select-none transition-shadow group/clip"
           :class="[
             timelineStore.selectedItemIds.includes(item.id)
-              ? 'ring-2 ring-[color:var(--selection-ring)] z-20 shadow-lg'
+              ? 'ring-2 ring-(--selection-ring) z-20 shadow-lg'
               : '',
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
               ? 'outline outline-2 outline-[color:var(--color-warning)]'
@@ -886,10 +948,31 @@ function getTransitionForPanel() {
             </svg>
           </div>
 
+          <!-- Fade Handles -->
+          <template v-if="item.kind === 'clip' && !Boolean((item as any).locked)">
+            <!-- Fade In Handle -->
+            <div
+              class="absolute top-0.5 w-6 h-6 -ml-3 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
+              :style="{ left: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
+              @mousedown.stop="startResizeFade($event, track.id, item.id, 'in', (item as any).audioFadeInUs || 0)"
+            >
+              <div class="w-2.5 h-2.5 rounded-full bg-white shadow-sm border border-black/30"></div>
+            </div>
+            
+            <!-- Fade Out Handle -->
+            <div
+              class="absolute top-0.5 w-6 h-6 -mr-3 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
+              :style="{ right: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
+              @mousedown.stop="startResizeFade($event, track.id, item.id, 'out', (item as any).audioFadeOutUs || 0)"
+            >
+              <div class="w-2.5 h-2.5 rounded-full bg-white shadow-sm border border-black/30"></div>
+            </div>
+          </template>
+
           <!-- Speed Indicator -->
           <div
             v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
-            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-[color:var(--overlay-bg)] text-[10px] leading-none font-mono z-40"
+            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-(--overlay-bg) text-[10px] leading-none font-mono z-40"
           >
             x{{ Number((item as any).speed ?? 1).toFixed(2) }}
           </div>
