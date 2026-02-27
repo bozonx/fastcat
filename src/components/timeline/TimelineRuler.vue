@@ -162,6 +162,7 @@ function draw() {
 
   canvas.width = w * dpr;
   canvas.height = h * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
   ctx.clearRect(0, 0, w, h);
@@ -217,7 +218,7 @@ function draw() {
       for (let f = 1; f < currentFps; f += frameStep) {
         const frameX =
           Math.round(
-            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
+            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx
           ) + 0.5;
         if (frameX >= 0 && frameX <= w) {
           ctx.moveTo(frameX, h - 4);
@@ -240,6 +241,7 @@ function draw() {
     }
   }
   ctx.stroke();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 </script>
 
