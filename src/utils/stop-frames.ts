@@ -37,7 +37,7 @@ export interface BuildStopFrameFilenameParams {
 }
 
 export function buildStopFrameFilename(params: BuildStopFrameFilenameParams): string {
-  const extension = (params.extension ?? 'png').replace(/^\.+/, '') || 'png';
+  const extension = (params.extension ?? 'webp').replace(/^\.+/, '') || 'webp';
   const safeTimeline = sanitizeBaseName(params.timelineName || 'timeline') || 'timeline';
   const tc = formatStopFrameTimecode({ timeUs: params.timeUs, fps: params.fps });
 

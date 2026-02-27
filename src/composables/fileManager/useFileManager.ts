@@ -5,6 +5,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { convertSvgToPng } from '~/utils/svg';
+import { SOURCES_DIR_NAME } from '~/utils/constants';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -104,7 +105,7 @@ export function useFileManager() {
     }
 
     const videoPaths = entries
-      .filter((e) => e.kind === 'file' && e.path?.startsWith('sources/video/'))
+      .filter((e) => e.kind === 'file' && e.path?.startsWith(`${SOURCES_DIR_NAME}/video/`))
       .map((e) => e.path!);
     if (videoPaths.length > 0) {
       await proxyStore.checkExistingProxies(videoPaths);

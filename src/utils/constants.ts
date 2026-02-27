@@ -1,5 +1,7 @@
 export const PROXY_DIR_NAME = 'proxies';
 
+export const SOURCES_DIR_NAME = 'sources';
+
 export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB
 
 export const STORAGE_LIMITS = {

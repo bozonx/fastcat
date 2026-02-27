@@ -4,6 +4,9 @@ import { normalizeHotkeyCombo } from './hotkeys/hotkeyUtils';
 
 export interface GranVideoEditorUserSettings {
   openLastProjectOnStart: boolean;
+  stopFrames: {
+    qualityPercent: number;
+  };
   hotkeys: {
     bindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>>;
   };
@@ -69,6 +72,9 @@ export interface GranVideoEditorWorkspaceSettings {
 
 export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   openLastProjectOnStart: true,
+  stopFrames: {
+    qualityPercent: 85,
+  },
   hotkeys: {
     bindings: {},
   },
@@ -163,6 +169,9 @@ export function createDefaultExportDefaults(): GranVideoEditorUserSettings['expo
 export function createDefaultUserSettings(): GranVideoEditorUserSettings {
   return {
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
+    stopFrames: {
+      qualityPercent: DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
+    },
     hotkeys: {
       bindings: {},
     },
@@ -269,6 +278,15 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         ? false
         : DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
+  const stopFramesInput = input.stopFrames ?? {};
+  const qualityPercentRaw =
+    stopFramesInput?.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
+  const qualityPercentParsed = Number(qualityPercentRaw);
+  const stopFramesQualityPercent =
+    Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
+      ? Math.round(Math.min(100, Math.max(1, qualityPercentParsed)))
+      : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+
   const optimizationInput = input.optimization ?? {};
   const proxyResolution = optimizationInput.proxyResolution;
   const proxyVideoBitrateMbps = Number(optimizationInput.proxyVideoBitrateMbps);
@@ -323,6 +341,9 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
 
   return {
     openLastProjectOnStart,
+    stopFrames: {
+      qualityPercent: stopFramesQualityPercent,
+    },
     hotkeys,
     optimization: {
       proxyResolution: ['360p', '480p', '720p', '1080p'].includes(proxyResolution)

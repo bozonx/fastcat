@@ -135,6 +135,8 @@
       "openLastProject": "Open last project",
       "showProjectPicker": "Show project picker",
       "openLastProjectOnStart": "Open last project on start",
+      "stopFramesQuality": "Stop frame quality",
+      "stopFramesQualityHint": "WebP quality (1-100)",
       "proxyLimit": "Proxy storage limit (GB)",
       "proxyLimitHelp": "Total limit for all proxy files in this workspace",
       "cacheLimit": "Cache storage limit (GB)",

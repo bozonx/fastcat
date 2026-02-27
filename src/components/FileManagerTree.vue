@@ -4,6 +4,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
+import { SOURCES_DIR_NAME } from '~/utils/constants';
 
 interface FsEntry {
   name: string;
@@ -38,7 +39,7 @@ const uiStore = useUiStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 function isVideo(entry: FsEntry) {
-  return entry.kind === 'file' && entry.path?.startsWith('sources/video/');
+  return entry.kind === 'file' && entry.path?.startsWith(`${SOURCES_DIR_NAME}/video/`);
 }
 
 function hasProxy(entry: FsEntry) {

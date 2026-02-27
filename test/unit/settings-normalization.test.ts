@@ -10,6 +10,18 @@ describe('settings normalization', () => {
     expect(normalized.hotkeys.bindings).toBeDefined();
   });
 
+  it('normalizes stopFrames quality percent', () => {
+    expect(
+      normalizeUserSettings({ stopFrames: { qualityPercent: 85 } }).stopFrames.qualityPercent,
+    ).toBe(85);
+    expect(
+      normalizeUserSettings({ stopFrames: { qualityPercent: 150 } }).stopFrames.qualityPercent,
+    ).toBe(100);
+    expect(
+      normalizeUserSettings({ stopFrames: { qualityPercent: 0 } }).stopFrames.qualityPercent,
+    ).toBe(85);
+  });
+
   it('uses exportDefaults fallback when missing', () => {
     const normalized = normalizeUserSettings({ openLastProjectOnStart: true });
     expect(normalized.exportDefaults.width).toBe(1920);

@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { PROXY_DIR_NAME } from '~/utils/constants';
+import { PROXY_DIR_NAME, SOURCES_DIR_NAME } from '~/utils/constants';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -34,7 +34,7 @@ export const useProxyStore = defineStore('proxy', () => {
     if (!dir) return;
 
     for (const path of paths) {
-      if (!path.startsWith('sources/video/')) continue;
+      if (!path.startsWith(`${SOURCES_DIR_NAME}/video/`)) continue;
       try {
         await dir.getFileHandle(getProxyFileName(path));
         existingProxies.value.add(path);
@@ -49,7 +49,7 @@ export const useProxyStore = defineStore('proxy', () => {
     projectRelativePath: string,
   ): Promise<void> {
     if (generatingProxies.value.has(projectRelativePath)) return;
-    if (!projectRelativePath.startsWith('sources/video/')) return;
+    if (!projectRelativePath.startsWith(`${SOURCES_DIR_NAME}/video/`)) return;
 
     const dir = await ensureProjectProxiesDir();
     if (!dir) throw new Error('Could not access proxies directory');

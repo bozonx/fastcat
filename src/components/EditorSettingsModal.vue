@@ -335,6 +335,19 @@ const thumbnailsLimitGb = computed({
             </span>
           </label>
 
+          <UFormField
+            :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
+            :help="t('videoEditor.settings.stopFramesQualityHint', 'WebP quality (1-100)')"
+          >
+            <UInput
+              v-model.number="workspaceStore.userSettings.stopFrames.qualityPercent"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+            />
+          </UFormField>
+
           <div class="text-xs text-ui-text-muted">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>

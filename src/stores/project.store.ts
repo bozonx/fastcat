@@ -6,6 +6,8 @@ import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument } from '~/timeline/otioSerializer';
 
+import { SOURCES_DIR_NAME } from '~/utils/constants';
+
 import { useWorkspaceStore } from './workspace.store';
 
 export interface GranVideoEditorProjectSettings {
@@ -555,7 +557,7 @@ export const useProjectStore = defineStore('project', () => {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(name, {
         create: true,
       });
-      const sourcesDir = await projectDir.getDirectoryHandle('sources', { create: true });
+      const sourcesDir = await projectDir.getDirectoryHandle(SOURCES_DIR_NAME, { create: true });
       await sourcesDir.getDirectoryHandle('video', { create: true });
       await sourcesDir.getDirectoryHandle('audio', { create: true });
       await sourcesDir.getDirectoryHandle('images', { create: true });

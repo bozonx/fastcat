@@ -135,6 +135,8 @@
       "openLastProject": "Открыть последний проект",
       "showProjectPicker": "Показать выбор проекта",
       "openLastProjectOnStart": "Открывать последний проект при запуске",
+      "stopFramesQuality": "Качество снимка кадра",
+      "stopFramesQualityHint": "Качество WebP (1-100)",
       "proxyLimit": "Лимит хранилища прокси (ГБ)",
       "proxyLimitHelp": "Общий лимит для всех прокси-файлов в этой рабочей области",
       "cacheLimit": "Лимит хранилища кэша (ГБ)",

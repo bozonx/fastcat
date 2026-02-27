@@ -17,7 +17,7 @@ describe('stop-frames', () => {
       suffix: 'v1',
     });
 
-    expect(filename).toBe('My_Timeline_00-00-01-00_v1.png');
+    expect(filename).toBe('My_Timeline_00-00-01-00_v1.webp');
   });
 
   it('defaults to timeline base name if empty', () => {
@@ -28,6 +28,6 @@ describe('stop-frames', () => {
       suffix: 'x',
     });
 
-    expect(filename).toBe('timeline_00-00-00-00_x.png');
+    expect(filename).toBe('timeline_00-00-00-00_x.webp');
   });
 });
