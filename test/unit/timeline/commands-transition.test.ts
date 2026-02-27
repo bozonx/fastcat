@@ -183,4 +183,50 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextRight.transitionIn.durationUs).toBeGreaterThan(0);
     expect(nextLeft.transitionOut.durationUs).toBe(nextRight.transitionIn.durationUs);
   });
+
+  it('grows an existing crossfade overlap when resize-dragging transition (simulates mousemove)', () => {
+    // State after initial 2s crossfade: left extended by 2s, source tail partially consumed.
+    // left: sourceDuration=10s, sourceRange={0..7s}, timelineRange={0..7s}, overlap=2s with right at 5s
+    const left = {
+      ...baseClip,
+      id: 'c1',
+      trackId: 'v1',
+      sourceDurationUs: 10_000_000,
+      sourceRange: { startUs: 0, durationUs: 7_000_000 },
+      timelineRange: { startUs: 0, durationUs: 7_000_000 },
+      transitionOut: { type: 'dissolve', durationUs: 2_000_000 },
+    };
+    const right = {
+      ...baseClip,
+      id: 'c2',
+      trackId: 'v1',
+      sourceDurationUs: 10_000_000,
+      sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
+      timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
+      transitionIn: { type: 'dissolve', durationUs: 2_000_000 },
+    };
+
+    const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
+
+    // Simulate dragging transitionIn of right clip to 3s (growing by 1s)
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_transition',
+      trackId: 'v1',
+      itemId: 'c2',
+      transitionIn: { type: 'dissolve', durationUs: 3_000_000 },
+    }).next;
+
+    const items = (next.tracks[0] as TimelineTrack).items as any[];
+    const nextLeft = items.find((it) => it.id === 'c1');
+    const nextRight = items.find((it) => it.id === 'c2');
+
+    // Overlap should grow from 2s to 3s
+    const overlapUs =
+      nextLeft.timelineRange.startUs +
+      nextLeft.timelineRange.durationUs -
+      nextRight.timelineRange.startUs;
+    expect(overlapUs).toBe(3_000_000);
+    expect(nextLeft.transitionOut.durationUs).toBe(3_000_000);
+    expect(nextRight.transitionIn.durationUs).toBe(3_000_000);
+  });
 });

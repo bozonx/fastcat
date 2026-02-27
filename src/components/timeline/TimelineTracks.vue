@@ -158,6 +158,21 @@ function transitionUsToPx(durationUs: number | undefined): number {
   return Math.max(8, timeUsToPx(Math.max(0, safeUs), timelineStore.timelineZoom));
 }
 
+/**
+ * Returns true if this clip's transitionIn is part of a blend crossfade where
+ * the previous clip overlaps this one. In that case we suppress rendering
+ * transitionIn here — the visual is already covered by the left clip's transitionOut.
+ */
+function isTransitionInRenderedByPrev(track: TimelineTrack, item: TimelineClipItem): boolean {
+  if (!item.transitionIn) return false;
+  const ordered = getOrderedClipsOnTrack(track);
+  const idx = ordered.findIndex((c) => c.id === item.id);
+  if (idx <= 0) return false;
+  const prev = ordered[idx - 1]!;
+  const overlapUs = (prev.timelineRange.startUs + prev.timelineRange.durationUs) - item.timelineRange.startUs;
+  return overlapUs > 0 && Boolean(prev.transitionOut);
+}
+
 // --- Resize transition by dragging ---
 const resizeTransition = ref<{
   trackId: string;
@@ -215,7 +230,14 @@ function computeMaxResizableTransitionDurationUs(input: {
     const prevTailHandleUs = Number.isFinite(prevMaxEnd)
       ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
       : 10_000_000;
-    return Math.max(0, Math.min(10_000_000, prevTailHandleUs + input.currentTransition.durationUs));
+    // Existing overlap is already consumed from the tail — add it back to get the real max.
+    const existingOverlapUs = Math.max(
+      0,
+      Math.round(
+        (prev.timelineRange.startUs + prev.timelineRange.durationUs) - clip.timelineRange.startUs,
+      ),
+    );
+    return Math.max(0, Math.min(10_000_000, prevTailHandleUs + existingOverlapUs));
   }
 
   // Resizing transitionOut of `clip` => uses this clip tail handle.
@@ -225,7 +247,13 @@ function computeMaxResizableTransitionDurationUs(input: {
   const currTailHandleUs = Number.isFinite(currMaxEnd)
     ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
     : 10_000_000;
-  return Math.max(0, Math.min(10_000_000, currTailHandleUs + input.currentTransition.durationUs));
+  const existingOutOverlapUs = Math.max(
+    0,
+    Math.round(
+      (curr.timelineRange.startUs + curr.timelineRange.durationUs) - (adjacent.timelineRange.startUs),
+    ),
+  );
+  return Math.max(0, Math.min(10_000_000, currTailHandleUs + existingOutOverlapUs));
 }
 
 function startResizeTransition(
@@ -891,7 +919,7 @@ function getTransitionForPanel() {
               class="h-full relative transition-colors"
               :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs || 0)}px` }"
             >
-              <template v-if="(item as any).transitionIn">
+              <template v-if="(item as any).transitionIn && !isTransitionInRenderedByPrev(track, item as TimelineClipItem)">
                 <button
                   type="button"
                   class="w-full h-full overflow-hidden"
