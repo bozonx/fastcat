@@ -25,7 +25,7 @@ const toast = useToast();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
-const { draggedFile } = useDraggedFile();
+const { draggedFile, clearDraggedFile } = useDraggedFile();
 
 const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v4', [10, 90]);
 
@@ -365,6 +365,7 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
 
 function onTrackDragLeave() {
   clearDragPreview();
+  clearDraggedFile();
 }
 
 async function onClipAction(payload: {
@@ -406,45 +407,71 @@ async function onClipAction(payload: {
 async function onDrop(e: DragEvent, trackId: string) {
   clearDragPreview();
   const startUs = getDropStartUs(e);
-  const raw = e.dataTransfer?.getData('application/json');
-  if (!raw) return;
 
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return;
+  let parsed: any = null;
+  const raw = e.dataTransfer?.getData('application/json');
+  if (raw) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!parsed && draggedFile.value) {
+    parsed = {
+      kind: draggedFile.value.kind,
+      name: draggedFile.value.name,
+      path: draggedFile.value.path,
+    };
   }
 
   const kind = typeof parsed?.kind === 'string' ? parsed.kind : undefined;
-  if (kind && kind !== 'file' && kind !== 'timeline') return;
+  if (kind && kind !== 'file' && kind !== 'timeline') {
+    clearDraggedFile();
+    return;
+  }
 
   const name = typeof parsed?.name === 'string' ? parsed.name : undefined;
   const path = typeof parsed?.path === 'string' ? parsed.path : undefined;
-  if (!name || !path) return;
-
-  if (kind === 'timeline') {
-    await timelineStore.addTimelineClipToTimelineFromPath({
-      trackId,
-      name,
-      path,
-      startUs: startUs ?? undefined,
-    });
-  } else {
-    await timelineStore.addClipToTimelineFromPath({
-      trackId,
-      name,
-      path,
-      startUs: startUs ?? undefined,
-    });
+  if (!name || !path) {
+    clearDraggedFile();
+    return;
   }
 
-  toast.add({
-    title: 'Clip Added',
-    description: `${name} added to track`,
-    icon: 'i-heroicons-check-circle',
-    color: 'success',
-  });
+  try {
+    if (kind === 'timeline') {
+      await timelineStore.addTimelineClipToTimelineFromPath({
+        trackId,
+        name,
+        path,
+        startUs: startUs ?? undefined,
+      });
+    } else {
+      await timelineStore.addClipToTimelineFromPath({
+        trackId,
+        name,
+        path,
+        startUs: startUs ?? undefined,
+      });
+    }
+
+    toast.add({
+      title: 'Clip Added',
+      description: `${name} added to track`,
+      icon: 'i-heroicons-check-circle',
+      color: 'success',
+    });
+  } catch (err: any) {
+    toast.add({
+      title: t('common.error', 'Error'),
+      description: String(err?.message ?? err ?? ''),
+      icon: 'i-heroicons-exclamation-triangle',
+      color: 'error',
+    });
+  } finally {
+    clearDraggedFile();
+  }
 }
 </script>
 
