@@ -1018,7 +1018,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <svg
               v-if="
                 (item as any).audioFadeInUs > 0 &&
-                (item as any).audioFadeInUs < item.timelineRange.durationUs
+                (item as any).audioFadeInUs <= item.timelineRange.durationUs
               "
               class="absolute left-0 top-0 h-full"
               preserveAspectRatio="none"
@@ -1045,7 +1045,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <svg
               v-if="
                 (item as any).audioFadeOutUs > 0 &&
-                (item as any).audioFadeOutUs < item.timelineRange.durationUs
+                (item as any).audioFadeOutUs <= item.timelineRange.durationUs
               "
               class="absolute right-0 top-0 h-full"
               preserveAspectRatio="none"

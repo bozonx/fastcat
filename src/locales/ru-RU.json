@@ -320,7 +320,11 @@
       "audioTrack": "Аудиодорожка"
     },
     "monitor": {
-      "title": "Монитор",
+      "playBackward": "Воспроизвести назад",
+      "playForward": "Воспроизвести вперед",
+      "audioVolumeDown": "Уменьшить громкость",
+      "audioVolumeUp": "Увеличить громкость",
+      "showSafeZones": "Показать безопасные зоны",
       "empty": "Нет выбранных клипов",
       "useProxy": "Использовать прокси",
       "rewind": "В начало",
@@ -333,7 +337,10 @@
       "audioVolume": "Громкость аудио"
     },
     "timeline": {
-      "dropClip": "Отпустите клип здесь",
+      "addMarker": "Добавить маркер",
+      "splitClips": "Разрезать клипы по курсору",
+      "rippleTrimLeft": "Обрезать слева со сдвигом",
+      "rippleTrimRight": "Обрезать справа со сдвигом",
       "addAdjustmentClip": "Добавить клип корректировки",
       "addBackgroundClip": "Добавить фон",
       "textClipDefaultName": "Текст",
@@ -355,6 +362,13 @@
       "renameTrackTitle": "Переименовать дорожку",
       "trackName": "Название дорожки",
       "clipMoveFailed": "Не удалось переместить клип",
+      "disableClip": "Отключить клип",
+      "enableClip": "Включить клип",
+      "lockClip": "Заблокировать клип",
+      "unlockClip": "Разблокировать клип",
+      "speed": "Скорость...",
+      "speedModalTitle": "Скорость клипа",
+      "speedModalDescription": "Изменить скорость воспроизведения выбранного клипа. Высота звука не изменяется.",
       "extractAudio": "Вынести аудио на аудио дорожку",
       "returnAudio": "Вернуть аудио в видео клип",
       "delete": "Удалить",

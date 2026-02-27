@@ -274,24 +274,23 @@ function draw() {
         </UTooltip>
       </div>
     </div>
+    <AppModal
+      v-if="editingMarker"
+      v-model:open="isMarkerEditOpen"
+      title="Marker"
+    >
+      <div class="flex flex-col gap-3">
+        <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
+      </div>
+
+      <template #footer>
+        <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
+          {{ t('common.cancel', 'Cancel') }}
+        </UButton>
+        <UButton color="primary" @click="saveMarkerText">
+          {{ t('common.save', 'Save') }}
+        </UButton>
+      </template>
+    </AppModal>
   </div>
-
-  <AppModal
-    v-if="editingMarker"
-    v-model:open="isMarkerEditOpen"
-    title="Marker"
-  >
-    <div class="flex flex-col gap-3">
-      <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
-    </div>
-
-    <template #footer>
-      <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
-        {{ t('common.cancel', 'Cancel') }}
-      </UButton>
-      <UButton color="primary" @click="saveMarkerText">
-        {{ t('common.save', 'Save') }}
-      </UButton>
-    </template>
-  </AppModal>
 </template>
