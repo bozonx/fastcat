@@ -65,7 +65,55 @@ class ThumbnailGenerator {
     }
   }
 
+  private async loadThumbnailsFromOPFS(task: ThumbnailTask): Promise<boolean> {
+    const workspaceStore = useWorkspaceStore();
+    if (!workspaceStore.workspaceHandle) return false;
+
+    try {
+      const thumbsDir = await workspaceStore.workspaceHandle.getDirectoryHandle('thumbs');
+      const clipThumbsDir = await thumbsDir.getDirectoryHandle(TIMELINE_CLIP_THUMBNAILS.DIR_NAME);
+      const hashDir = await clipThumbsDir.getDirectoryHandle(task.id);
+
+      const urls: string[] = [];
+      const totalFrames = Math.ceil(task.duration / TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS);
+      let framesProcessed = 0;
+
+      // We expect filenames to be "0.webp", "5.webp", "10.webp", etc.
+      for (let i = 0; i <= task.duration; i += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS) {
+        const fileName = `${Math.round(i)}.webp`;
+        try {
+          const fileHandle = await hashDir.getFileHandle(fileName);
+          const file = await fileHandle.getFile();
+          const url = URL.createObjectURL(file);
+          urls.push(url);
+          framesProcessed++;
+          task.onProgress?.(framesProcessed / totalFrames, url, i);
+        } catch (e: any) {
+          if (e?.name === 'NotFoundError') {
+            // If any frame is missing, we consider OPFS cache incomplete
+            return false;
+          }
+          throw e;
+        }
+      }
+
+      this.cache.set(task.id, urls);
+      task.onComplete?.();
+      return true;
+    } catch (e: any) {
+      if (e?.name !== 'NotFoundError') {
+        console.warn('Failed to load thumbnails from OPFS', task.id, e);
+      }
+      return false;
+    }
+  }
+
   private async generateThumbnails(task: ThumbnailTask): Promise<void> {
+    const isLoaded = await this.loadThumbnailsFromOPFS(task);
+    if (isLoaded) {
+      return Promise.resolve();
+    }
+
     return new Promise((resolve, reject) => {
       const workspaceStore = useWorkspaceStore();
       const projectStore = useProjectStore();
