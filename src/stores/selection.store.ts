@@ -37,8 +37,16 @@ export interface SelectedFsEntry extends SelectedEntityBase {
   entry: FsEntry;
 }
 
+export interface SelectedTimelineGap extends SelectedEntityBase {
+  source: 'timeline';
+  kind: 'gap';
+  trackId: string;
+  itemId: string;
+}
+
 export type SelectedEntity =
   | SelectedTimelineClip
+  | SelectedTimelineGap
   | SelectedTimelineTrack
   | SelectedTimelineTransition
   | SelectedFsEntry;
@@ -46,10 +54,10 @@ export type SelectedEntity =
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
 
-  function selectTimelineClip(trackId: string, itemId: string) {
+  function selectTimelineItem(trackId: string, itemId: string, kind: 'clip' | 'gap' = 'clip') {
     selectedEntity.value = {
       source: 'timeline',
-      kind: 'clip',
+      kind,
       trackId,
       itemId,
     };
@@ -89,7 +97,7 @@ export const useSelectionStore = defineStore('selection', () => {
 
   return {
     selectedEntity,
-    selectTimelineClip,
+    selectTimelineItem,
     selectTimelineTrack,
     selectTimelineTransition,
     selectFsEntry,

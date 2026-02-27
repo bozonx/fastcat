@@ -6,7 +6,6 @@ export type HotkeyCommandId =
   | 'general.delete'
   | 'general.undo'
   | 'general.redo'
-  | 'timeline.deleteClip'
   | 'timeline.zoomIn'
   | 'timeline.zoomOut'
   | 'timeline.zoomReset'
@@ -78,7 +77,6 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
     { id: 'playback.toggle', groupId: 'general', title: 'Play / pause (normal speed)' },
 
-    { id: 'timeline.deleteClip', groupId: 'timeline', title: 'Delete clip' },
     { id: 'timeline.zoomIn', groupId: 'timeline', title: 'Zoom in' },
     { id: 'timeline.zoomOut', groupId: 'timeline', title: 'Zoom out' },
     { id: 'timeline.zoomReset', groupId: 'timeline', title: 'Reset zoom' },
@@ -164,11 +162,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
   bindings: {
     'general.focus': ['Tab'],
     'general.deselect': ['Backspace'],
-    'general.delete': ['Delete'],
+    'general.delete': ['Delete', 'X'],
     'general.undo': ['Ctrl+Z'],
     'general.redo': ['Ctrl+Shift+Z'],
 
-    'timeline.deleteClip': ['Delete', 'X'],
     'timeline.zoomIn': ['='],
     'timeline.zoomOut': ['-'],
     'timeline.zoomReset': ['.'],
@@ -217,7 +214,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'playback.backward1': ['A'],
 
     'audio.mute': ['Q'],
-    'audio.volumeUp': ['X'],
+    'audio.volumeUp': ['Shift+X'],
     'audio.volumeDown': ['Z'],
   },
 };

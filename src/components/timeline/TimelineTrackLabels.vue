@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import AppModal from '~/components/ui/AppModal.vue';
+import { useSelectionStore } from '~/stores/selection.store';
 
 defineOptions({ inheritAttrs: false });
 
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>();
 
 const timelineStore = useTimelineStore();
+const selectionStore = useSelectionStore();
 const { t } = useI18n();
 
 const DEFAULT_TRACK_HEIGHT = 40;
@@ -58,6 +60,7 @@ const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 
 function onSelectTrack(trackId: string) {
   timelineStore.selectTrack(trackId);
+  selectionStore.selectTimelineTrack(trackId);
 }
 
 function toggleVideoHidden(track: TimelineTrack, e: MouseEvent) {

@@ -96,7 +96,7 @@ function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
   }, 350);
 }
 
-function onGlobalKeydown(e: KeyboardEvent) {
+async function onGlobalKeydown(e: KeyboardEvent) {
   if (e.defaultPrevented) return;
   if (e.repeat) return;
 
@@ -171,7 +171,25 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
 
   if (cmd === 'general.delete') {
-    timelineStore.deleteFirstSelectedItem();
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source === 'fileManager') {
+      const confirmText = t('common.confirmDelete', 'Are you sure you want to delete this?');
+      if (window.confirm(confirmText)) {
+        const { useFileManager } = await import('~/composables/fileManager/useFileManager');
+        const { deleteEntry } = useFileManager();
+        await deleteEntry(selected.entry);
+        selectionStore.clearSelection();
+      }
+    } else if (selected?.source === 'timeline') {
+      if (selected.kind === 'track') {
+        timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });
+        selectionStore.clearSelection();
+      } else {
+        timelineStore.deleteFirstSelectedItem();
+      }
+    } else {
+      timelineStore.deleteFirstSelectedItem();
+    }
     return;
   }
 
@@ -182,11 +200,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
-  if (cmd === 'timeline.deleteClip') {
-    if (!focusStore.canUseTimelineHotkeys) return;
-    timelineStore.deleteFirstSelectedItem();
-    return;
-  }
+
 
   if (cmd === 'timeline.trimToPlayheadLeft') {
     if (!focusStore.canUseTimelineHotkeys) return;

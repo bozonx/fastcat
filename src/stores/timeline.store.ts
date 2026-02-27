@@ -755,7 +755,13 @@ export const useTimelineStore = defineStore('timeline', () => {
       return;
     }
 
-    if (selectedItemIds.value.length === 0) return;
+    if (selectedItemIds.value.length === 0) {
+      if (selectedTrackId.value) {
+        deleteTrack(selectedTrackId.value, { allowNonEmpty: true });
+        selectTrack(null);
+      }
+      return;
+    }
 
     const selectedSet = new Set(selectedItemIds.value);
     for (const track of doc.tracks) {

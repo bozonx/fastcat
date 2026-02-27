@@ -838,6 +838,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       icon: 'i-heroicons-trash',
       disabled: item.kind === 'clip' && Boolean(item.locked),
       onSelect: () => {
+        selectionStore.clearSelection();
         timelineStore.applyTimeline({
           type: 'delete_items',
           trackId: track.id,
@@ -1047,7 +1048,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             if ($event.button !== 1) {
               $event.stopPropagation();
               emit('selectItem', $event, item.id);
-              selectionStore.selectTimelineClip(track.id, item.id);
+              selectionStore.selectTimelineItem(track.id, item.id, item.kind as 'clip' | 'gap');
             }
           "
         >
