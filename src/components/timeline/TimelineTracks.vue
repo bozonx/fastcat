@@ -7,6 +7,7 @@ import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
 import AppModal from '~/components/ui/AppModal.vue';
+import TimelineClipThumbnails from '~/components/timeline/TimelineClipThumbnails.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -1256,6 +1257,12 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
           <!-- Main Content Layer -->
           <div class="flex-1 flex w-full min-h-0 relative z-20">
+            <TimelineClipThumbnails
+              v-if="item.kind === 'clip' && (item as any).clipType === 'media'"
+              :item="item as any"
+              :width="getClipWidthPx(item)"
+            />
+
             <!-- Title Block (lowest layer, bottom center) -->
             <div
               v-if="item.kind === 'clip' && !shouldCollapseTransitions(item)"

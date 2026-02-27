@@ -6,6 +6,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { convertSvgToPng } from '~/utils/svg';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
+import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -360,6 +361,10 @@ export function useFileManager() {
       }
       if (target.path && target.kind === 'file') {
         await proxyStore.deleteProxy(target.path);
+
+        if (target.path.startsWith(`${SOURCES_DIR_NAME}/video/`)) {
+          await thumbnailGenerator.clearThumbnails(getClipThumbnailsHash(target.path));
+        }
       }
       await loadProjectDirectory();
     } catch (e: any) {
