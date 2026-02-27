@@ -324,6 +324,18 @@ function rewindToStart() {
   blurActiveElement();
 }
 
+function onPlaybackSpeedChange(v: any) {
+  if (!v) return;
+  const val = Number(v.value ?? v);
+  const isPlaying = timelineStore.isPlaying;
+  const currentSpeed = timelineStore.playbackSpeed;
+  const direction = currentSpeed < 0 ? -1 : 1;
+  timelineStore.setPlaybackSpeed(val * direction);
+  if (!isPlaying) {
+    // Only update speed state, don't start playback automatically when selecting speed
+  }
+}
+
 function toggleMute() {
   timelineStore.toggleAudioMuted();
   blurActiveElement();
