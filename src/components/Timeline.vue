@@ -436,7 +436,8 @@ async function onDrop(e: DragEvent, trackId: string) {
 
   const name = typeof parsed?.name === 'string' ? parsed.name : undefined;
   const path = typeof parsed?.path === 'string' ? parsed.path : undefined;
-  if (!name || !path) {
+  const isVirtual = kind === 'adjustment' || kind === 'background' || kind === 'text';
+  if (!name || (!isVirtual && !path)) {
     clearDraggedFile();
     return;
   }
@@ -450,6 +451,7 @@ async function onDrop(e: DragEvent, trackId: string) {
         name,
         text: kind === 'text' ? name : undefined,
       });
+      await timelineStore.requestTimelineSave({ immediate: true });
     } else if (kind === 'timeline') {
       await timelineStore.addTimelineClipToTimelineFromPath({
         trackId,
