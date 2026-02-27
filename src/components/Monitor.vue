@@ -445,7 +445,7 @@ function toggleMute() {
                   :width="renderWidth"
                   :height="renderHeight"
                   fill="none"
-                  stroke="#60a5fa"
+                  :stroke="'var(--selection-ring)'"
                   stroke-width="2"
                 />
               </svg>
@@ -455,7 +455,7 @@ function toggleMute() {
 
         <div
           v-if="videoItems.length === 0"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-700"
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
         >
           <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
           <p class="text-sm">
@@ -465,7 +465,7 @@ function toggleMute() {
 
         <div
           v-else-if="isLoading"
-          class="absolute inset-0 flex items-center justify-center text-gray-400"
+          class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
         >
           <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
         </div>

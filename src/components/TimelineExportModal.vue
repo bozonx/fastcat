@@ -292,7 +292,7 @@ async function handleConfirm() {
             :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
           />
         </UFormField>
-        <div class="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
+        <div class="text-xs text-ui-text-muted flex items-center gap-1.5 mt-1">
           <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
           <span class="leading-relaxed">
             {{
@@ -332,7 +332,7 @@ async function handleConfirm() {
 
       <div
         v-if="exportError"
-        class="p-3 text-sm text-red-400 bg-red-400/10 rounded-md border border-red-400/20"
+        class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
       >
         {{ exportError }}
       </div>
@@ -341,12 +341,12 @@ async function handleConfirm() {
     <template #footer>
       <div class="flex flex-col gap-3 w-full">
         <div v-if="isExporting" class="flex flex-col gap-2">
-          <div class="flex justify-between text-xs text-gray-400">
+          <div class="flex justify-between text-xs text-ui-text-muted">
             <span class="font-medium">{{ getPhaseLabel() }}</span>
             <span class="font-mono">{{ Math.round(exportProgress * 100) }}%</span>
           </div>
           <UProgress :value="exportProgress * 100" />
-          <p class="text-xs text-gray-500 text-center mt-1">
+          <p class="text-xs text-ui-text-muted text-center mt-1">
             {{
               t(
                 'videoEditor.export.doNotClose',

@@ -184,28 +184,28 @@ function onFileSelect(e: Event) {
     <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'project' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'"
+        :class="activeTab === 'project' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
         @click="activeTab = 'project'"
       >
         {{ t('videoEditor.fileManager.tabs.project', 'Project') }}
       </button>
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'files' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'"
+        :class="activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
         @click="activeTab = 'files'"
       >
         {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
       </button>
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'effects' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'"
+        :class="activeTab === 'effects' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
         @click="activeTab = 'effects'"
       >
         {{ t('videoEditor.fileManager.tabs.effects', 'Effects') }}
       </button>
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'history' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'"
+        :class="activeTab === 'history' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
         @click="activeTab = 'history'"
       >
         {{ t('videoEditor.fileManager.tabs.history', 'History') }}
@@ -298,7 +298,7 @@ function onFileSelect(e: Event) {
       icon="i-heroicons-exclamation-triangle"
       @confirm="handleDeleteConfirm"
     >
-      <div v-if="deleteTarget" class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+      <div v-if="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
         {{ deleteTarget.name }}
       </div>
     </UiConfirmModal>

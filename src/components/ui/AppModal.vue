@@ -72,26 +72,26 @@ function handleClose(close?: () => void) {
   >
     <template #content="{ close }">
       <div
-        class="bg-white dark:bg-gray-900 shadow-xl overflow-hidden sm:rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[90vh] min-h-0 w-full"
+        class="bg-ui-bg-elevated shadow-xl overflow-hidden sm:rounded-2xl border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full"
         :class="modalUi.content"
       >
         <!-- Header -->
         <div
           v-if="props.title || $slots.header || props.closeButton"
-          class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0"
+          class="px-6 py-4 border-b border-ui-border flex items-center justify-between shrink-0"
           :class="headerClass"
         >
           <div class="min-w-0 flex-1">
             <slot name="header">
               <DialogTitle
                 v-if="props.title"
-                class="text-lg font-semibold text-gray-900 dark:text-white truncate"
+                class="text-lg font-semibold text-ui-text truncate"
               >
                 {{ props.title }}
               </DialogTitle>
               <DialogDescription
                 :class="[
-                  props.description ? 'mt-1 text-sm text-gray-500 dark:text-gray-400' : 'sr-only',
+                  props.description ? 'mt-1 text-sm text-ui-text-muted' : 'sr-only',
                 ]"
               >
                 {{ props.description || props.title || 'Modal' }}
@@ -119,7 +119,7 @@ function handleClose(close?: () => void) {
         <!-- Footer -->
         <div
           v-if="$slots.footer"
-          class="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0"
+          class="px-6 py-4 bg-ui-bg border-t border-ui-border flex justify-end gap-3 shrink-0"
           :class="footerClass"
         >
           <slot name="footer" />
@@ -141,10 +141,11 @@ function handleClose(close?: () => void) {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-gray-200 dark:bg-gray-700 rounded-full;
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-300 dark:bg-gray-600;
+  background: var(--scrollbar-thumb-hover);
 }
 </style>

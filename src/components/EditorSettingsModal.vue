@@ -259,11 +259,11 @@ const thumbnailsLimitGb = computed({
 
     <div class="flex flex-1 min-h-0 w-full h-full">
       <div
-        class="w-56 shrink-0 p-6 bg-gray-50/50 dark:bg-gray-800/20 border-r border-gray-100 dark:border-gray-800 overflow-y-auto"
+        class="w-56 shrink-0 p-6 bg-ui-bg border-r border-ui-border overflow-y-auto"
       >
         <div class="flex flex-col gap-6">
           <div class="flex flex-col gap-2">
-            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
               {{ t('videoEditor.settings.userSection', 'User settings') }}
             </div>
             <UButton
@@ -301,7 +301,7 @@ const thumbnailsLimitGb = computed({
           </div>
 
           <div class="flex flex-col gap-2">
-            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
               {{ t('videoEditor.settings.workspaceSection', 'Workspace settings') }}
             </div>
             <UButton
@@ -318,28 +318,28 @@ const thumbnailsLimitGb = computed({
 
       <div class="flex-1 min-w-0 p-6 overflow-y-auto">
         <div v-if="activeSection === 'user.general'" class="flex flex-col gap-4">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+          <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.userGeneral', 'General') }}
           </div>
 
           <label class="flex items-center gap-3 cursor-pointer">
             <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
-            <span class="text-sm text-gray-700 dark:text-gray-200">
+            <span class="text-sm text-ui-text">
               {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
             </span>
           </label>
 
-          <div class="text-xs text-gray-500">
+          <div class="text-xs text-ui-text-muted">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>
         </div>
 
         <div v-else-if="activeSection === 'user.hotkeys'" class="flex flex-col gap-6">
           <div class="flex items-center justify-between gap-3">
-            <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+            <div class="text-sm font-medium text-ui-text">
               {{ t('videoEditor.settings.userHotkeys', 'Hotkeys') }}
             </div>
-            <div v-if="isCapturingHotkey" class="text-xs text-gray-500">
+            <div v-if="isCapturingHotkey" class="text-xs text-ui-text-muted">
               {{
                 t(
                   'videoEditor.settings.hotkeysCaptureHint',
@@ -351,7 +351,7 @@ const thumbnailsLimitGb = computed({
 
           <div class="flex flex-col gap-6">
             <div v-for="group in hotkeyGroups" :key="group.id" class="flex flex-col gap-3">
-              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
                 {{ group.title }}
               </div>
 
@@ -359,10 +359,10 @@ const thumbnailsLimitGb = computed({
                 <div
                   v-for="cmd in group.commands"
                   :key="cmd.id"
-                  class="p-3 rounded border border-gray-100 dark:border-gray-800"
+                  class="p-3 rounded border border-ui-border"
                 >
                   <div class="flex items-center justify-between gap-3">
-                    <div class="text-sm text-gray-900 dark:text-gray-200">
+                    <div class="text-sm text-ui-text">
                       {{ cmd.title }}
                     </div>
                     <UButton
@@ -383,9 +383,9 @@ const thumbnailsLimitGb = computed({
                     <div
                       v-for="combo in getCurrentBindings(cmd.id)"
                       :key="combo"
-                      class="inline-flex items-center gap-2 px-2 py-1 rounded bg-gray-100 dark:bg-gray-800"
+                      class="inline-flex items-center gap-2 px-2 py-1 rounded bg-ui-bg-accent"
                     >
-                      <span class="text-xs font-mono text-gray-800 dark:text-gray-200">{{
+                      <span class="text-xs font-mono text-ui-text">{{
                         combo
                       }}</span>
                       <UButton
@@ -400,7 +400,7 @@ const thumbnailsLimitGb = computed({
 
                     <div
                       v-if="getCurrentBindings(cmd.id).length === 0"
-                      class="text-xs text-gray-500"
+                      class="text-xs text-ui-text-muted"
                     >
                       {{ t('videoEditor.settings.hotkeysNotSet', 'Not set') }}
                     </div>
@@ -410,18 +410,18 @@ const thumbnailsLimitGb = computed({
             </div>
           </div>
 
-          <div class="text-xs text-gray-500">
+          <div class="text-xs text-ui-text-muted">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>
         </div>
 
         <div v-else-if="activeSection === 'user.optimization'" class="flex flex-col gap-6">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+          <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
           </div>
 
           <div
-            class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded text-sm"
+            class="p-3 bg-primary-950/40 text-primary-200 rounded text-sm border border-primary-800/30"
           >
             {{
               t(
@@ -484,7 +484,7 @@ const thumbnailsLimitGb = computed({
 
           <label class="flex items-center gap-3 cursor-pointer">
             <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
-            <span class="text-sm text-gray-700 dark:text-gray-200">
+            <span class="text-sm text-ui-text">
               {{
                 t(
                   'videoEditor.settings.proxyCopyOpusAudio',
@@ -494,13 +494,13 @@ const thumbnailsLimitGb = computed({
             </span>
           </label>
 
-          <div class="text-xs text-gray-500">
+          <div class="text-xs text-ui-text-muted">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>
         </div>
 
         <div v-else-if="activeSection === 'user.export'" class="flex flex-col gap-6">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+          <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.userExport', 'Export') }}
           </div>
 
@@ -533,13 +533,13 @@ const thumbnailsLimitGb = computed({
             :video-codec-options="videoCodecOptions"
           />
 
-          <div class="text-xs text-gray-500">
+          <div class="text-xs text-ui-text-muted">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>
         </div>
 
         <div v-else class="flex flex-col gap-4">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-200">
+          <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
           </div>
 
@@ -600,7 +600,7 @@ const thumbnailsLimitGb = computed({
             />
           </UFormField>
 
-          <div class="text-xs text-gray-500">
+          <div class="text-xs text-ui-text-muted">
             {{
               t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json')
             }}

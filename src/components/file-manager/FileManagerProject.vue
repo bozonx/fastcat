@@ -53,14 +53,14 @@ loadCodecSupport();
 <template>
   <div class="flex-1 overflow-y-auto min-h-0 min-w-0">
     <div class="flex flex-col gap-6 px-3 py-3">
-      <div class="text-xs text-gray-500">
+      <div class="text-xs text-ui-text-muted">
         {{
           t('videoEditor.projectSettings.note', 'Settings are saved to .gran/project.settings.json')
         }}
       </div>
 
       <div class="flex flex-col gap-3">
-        <div class="text-sm font-medium text-gray-200">
+        <div class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.projectSettings.export', 'Export') }}
         </div>
 
@@ -90,7 +90,7 @@ loadCodecSupport();
       </div>
 
       <div class="flex flex-col gap-3">
-        <div class="text-sm font-medium text-gray-200">
+        <div class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.projectSettings.proxy', 'Proxy') }}
         </div>
 

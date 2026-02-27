@@ -155,7 +155,7 @@ function getContextMenuItems(entry: FsEntry) {
       <!-- Row -->
       <UContextMenu :items="getContextMenuItems(entry)">
         <div
-          class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-gray-800 transition-colors group min-w-fit"
+          class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
           :style="{ paddingLeft: `${8 + depth * 14}px` }"
           :draggable="entry.kind === 'file'"
           @dragstart="onDragStart($event, entry)"
@@ -167,7 +167,7 @@ function getContextMenuItems(entry: FsEntry) {
           <UIcon
             v-if="entry.kind === 'directory'"
             name="i-heroicons-chevron-right"
-            class="w-3.5 h-3.5 text-gray-500 shrink-0 transition-transform duration-150"
+            class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
             :class="{ 'rotate-90': entry.expanded }"
           />
           <span v-else class="w-3.5 shrink-0" />
@@ -177,8 +177,8 @@ function getContextMenuItems(entry: FsEntry) {
             :name="getFileIcon(entry)"
             class="w-4 h-4 shrink-0 transition-colors"
             :class="[
-              entry.kind === 'directory' ? 'text-yellow-500' : 'text-gray-400',
-              hasProxy(entry) ? 'text-green-500!' : '',
+              entry.kind === 'directory' ? 'text-ui-text-muted' : 'text-ui-text-muted',
+              hasProxy(entry) ? 'text-[color:var(--color-success)]!' : '',
             ]"
           />
 
@@ -187,9 +187,9 @@ function getContextMenuItems(entry: FsEntry) {
             class="text-sm truncate transition-colors"
             :class="[
               entry.kind === 'directory'
-                ? 'font-medium text-gray-200 group-hover:text-white'
-                : 'text-gray-200 group-hover:text-white',
-              hasProxy(entry) ? 'text-green-400! group-hover:text-green-300!' : '',
+                ? 'font-medium text-ui-text group-hover:text-ui-text'
+                : 'text-ui-text group-hover:text-ui-text',
+              hasProxy(entry) ? 'text-[color:var(--color-success)]!' : '',
             ]"
           >
             {{ entry.name }}
@@ -198,10 +198,10 @@ function getContextMenuItems(entry: FsEntry) {
           <!-- Proxy indicators -->
           <template v-if="isVideo(entry)">
             <div v-if="isGeneratingProxy(entry)" class="flex items-center gap-1 ml-2">
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 text-blue-400 animate-spin" />
+              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 text-primary-400 animate-spin" />
               <span
                 v-if="proxyProgress(entry) !== undefined"
-                class="text-xs text-blue-400 font-mono"
+                class="text-xs text-primary-400 font-mono"
               >
                 {{ proxyProgress(entry) }}%
               </span>

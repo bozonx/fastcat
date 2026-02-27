@@ -1,9 +1,71 @@
 :root, .dark {
-  /* Professional Video Editor Dark Theme */
-  --ui-bg: #0a0a0a; /* Deeper black for main background */
-  --ui-bg-elevated: #1a1a1a; /* Slightly elevated panels */
-  --ui-bg-accent: #252525; /* Accent areas */
-  --ui-border: #2a2a2a; /* Subtle borders */
-  --ui-text: #e8e8e8; /* High contrast text */
-  --ui-text-muted: #8a8a8a; /* Muted text */
+  /* === Surface colors === */
+  --ui-bg: #0a0a0a;
+  --ui-bg-elevated: #1a1a1a;
+  --ui-bg-accent: #252525;
+  --ui-bg-hover: #2e2e2e;
+
+  /* === Border === */
+  --ui-border: #2a2a2a;
+
+  /* === Text === */
+  --ui-text: #e8e8e8;
+  --ui-text-muted: #8a8a8a;
+  --ui-text-disabled: #4a4a4a;
+
+  /* === Primary (blue/indigo) === */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+  --on-primary: #ffffff;
+
+  /* === Clip colors === */
+  --clip-text: #ffffff;
+  --clip-video-bg: rgba(99, 102, 241, 0.60);
+  --clip-video-border: rgba(99, 102, 241, 0.70);
+  --clip-video-bg-hover: rgba(99, 102, 241, 0.70);
+
+  --clip-audio-bg: rgba(20, 184, 166, 0.50);
+  --clip-audio-border: rgba(20, 184, 166, 0.70);
+  --clip-audio-bg-hover: rgba(20, 184, 166, 0.60);
+
+  --clip-background-bg: rgba(139, 92, 246, 0.40);
+  --clip-background-border: rgba(139, 92, 246, 0.60);
+  --clip-background-bg-hover: rgba(139, 92, 246, 0.50);
+
+  --clip-adjustment-bg: rgba(245, 158, 11, 0.40);
+  --clip-adjustment-border: rgba(245, 158, 11, 0.60);
+  --clip-adjustment-bg-hover: rgba(245, 158, 11, 0.50);
+
+  /* === Overlays / indicators === */
+  --overlay-bg: rgba(0, 0, 0, 0.40);
+  --clip-lower-tri: rgba(0, 0, 0, 0.35);
+
+  /* === Media === */
+  --media-bg: #000000;
+
+  /* === Scrollbar === */
+  --scrollbar-track: #111111;
+  --scrollbar-thumb: #2e2e2e;
+  --scrollbar-thumb-hover: #3e3e3e;
+  --scrollbar-thumb-active: #555555;
+
+  /* === Range input track === */
+  --range-track-bg: #2a2a2a;
+
+  /* === Selection ring (preview border) === */
+  --selection-ring: #818cf8;
+
+  /* === Status / semantic === */
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-success: #22c55e;
 }

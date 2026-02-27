@@ -32,7 +32,7 @@ function closeTab(path: string, event: Event) {
 </script>
 
 <template>
-  <div class="timeline-tabs flex items-center bg-gray-950 border-b border-gray-800 h-9 overflow-hidden select-none">
+  <div class="timeline-tabs flex items-center bg-ui-bg border-b border-ui-border h-9 overflow-hidden select-none">
     <VueDraggable
       v-model="openPaths"
       class="flex h-full min-w-0 overflow-x-auto no-scrollbar"
@@ -42,11 +42,11 @@ function closeTab(path: string, event: Event) {
       <div
         v-for="path in openPaths"
         :key="path"
-        class="group relative flex items-center h-full px-4 gap-2 border-r border-gray-800 cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200"
+        class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200"
         :class="[
-          isActive(path) 
-            ? 'bg-[#1a1a1a] text-primary-400 shadow-inner' 
-            : 'text-gray-500 hover:bg-gray-900 hover:text-gray-300'
+          isActive(path)
+            ? 'active-tab text-primary-400 shadow-inner'
+            : 'text-ui-text-muted hover:bg-ui-bg-elevated hover:text-ui-text'
         ]"
         @click="selectTab(path)"
       >
@@ -59,7 +59,7 @@ function closeTab(path: string, event: Event) {
         <UIcon 
           name="i-heroicons-film-20-solid" 
           class="w-4 h-4 shrink-0" 
-          :class="isActive(path) ? 'text-primary-500' : 'text-gray-600 group-hover:text-gray-400'"
+          :class="isActive(path) ? 'text-primary-500' : 'text-ui-text-disabled group-hover:text-ui-text-muted'"
         />
         
         <span class="text-[10px] truncate flex-1 font-bold tracking-widest uppercase">
@@ -102,7 +102,7 @@ function closeTab(path: string, event: Event) {
 }
 
 /* Glassmorphism subtle effect for active tab */
-.bg-\[\#1a1a1a\] {
-  background: linear-gradient(to bottom, #1e1e1e, #161616);
+.active-tab {
+  background: linear-gradient(to bottom, var(--ui-bg-elevated), var(--ui-bg));
 }
 </style>

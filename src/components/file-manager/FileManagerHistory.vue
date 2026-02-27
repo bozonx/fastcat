@@ -47,7 +47,7 @@ function formatTime(ts: number): string {
         :title="t('videoEditor.fileManager.history.redo', 'Redo') + ' (Ctrl+Shift+Z)'"
         @click="timelineStore.redoTimeline()"
       />
-      <span class="ml-auto text-xs text-gray-500">
+      <span class="ml-auto text-xs text-ui-text-muted">
         {{ past.length }} / {{ past.length + future.length }}
       </span>
     </div>
@@ -55,7 +55,7 @@ function formatTime(ts: number): string {
     <!-- Empty state -->
     <div
       v-if="!hasHistory"
-      class="flex flex-col items-center justify-center flex-1 gap-2 text-gray-500 px-4 text-center"
+      class="flex flex-col items-center justify-center flex-1 gap-2 text-ui-text-muted px-4 text-center"
     >
       <UIcon name="i-heroicons-clock" class="w-8 h-8 opacity-30" />
       <p class="text-xs">
@@ -69,15 +69,15 @@ function formatTime(ts: number): string {
         v-for="entry in entries"
         :key="entry.id"
         class="flex items-center gap-2 px-3 py-1.5 text-xs transition-colors"
-        :class="entry.isRedo ? 'opacity-40' : 'text-gray-200'"
+        :class="entry.isRedo ? 'opacity-40' : 'text-ui-text'"
       >
         <UIcon
           :name="entry.isRedo ? 'i-heroicons-arrow-uturn-right' : 'i-heroicons-check-circle'"
           class="w-3.5 h-3.5 shrink-0"
-          :class="entry.isRedo ? 'text-gray-500' : 'text-primary-400'"
+          :class="entry.isRedo ? 'text-ui-text-muted' : 'text-primary-400'"
         />
         <span class="flex-1 truncate font-medium">{{ entry.label }}</span>
-        <span class="text-gray-600 shrink-0 tabular-nums">{{ formatTime(entry.timestamp) }}</span>
+        <span class="text-ui-text-disabled shrink-0 tabular-nums">{{ formatTime(entry.timestamp) }}</span>
       </div>
     </div>
   </div>

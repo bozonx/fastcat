@@ -71,7 +71,7 @@ async function onEntrySelect(entry: FsEntry) {
         <!-- Dropzone Overlay -->
         <div
           v-if="isDragging"
-          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900/80 backdrop-blur-sm border-2 border-dashed border-primary-500 m-2 rounded-lg pointer-events-none"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-ui-bg/80 backdrop-blur-sm border-2 border-dashed border-primary-500 m-2 rounded-lg pointer-events-none"
         >
           <UIcon
             name="i-heroicons-arrow-down-tray"
@@ -82,14 +82,14 @@ async function onEntrySelect(entry: FsEntry) {
           </p>
         </div>
 
-        <div v-if="isLoading" class="px-3 py-4 text-sm text-gray-400">
+        <div v-if="isLoading" class="px-3 py-4 text-sm text-ui-text-muted">
           {{ t('common.loading', 'Loading...') }}
         </div>
 
         <!-- Empty state -->
         <div
           v-else-if="rootEntries.length === 0 && !error"
-          class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-gray-600 px-4 text-center min-h-50"
+          class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-ui-text-disabled px-4 text-center min-h-50"
         >
           <UIcon name="i-heroicons-folder-open" class="w-10 h-10" />
           <p class="text-sm">
@@ -105,7 +105,7 @@ async function onEntrySelect(entry: FsEntry) {
         </div>
 
         <!-- Error -->
-        <div v-else-if="error" class="px-3 py-4 text-sm text-red-500 bg-red-500/10 m-2 rounded">
+        <div v-else-if="error" class="px-3 py-4 text-sm text-error-500 bg-error-500/10 m-2 rounded">
           {{ error }}
         </div>
 

@@ -149,7 +149,7 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors text-xs"
-          :class="selectedMode === 'blend' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="selectedMode === 'blend' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedMode = 'blend'"
         >
           {{ t('granVideoEditor.timeline.transition.modeBlend') }}
@@ -157,7 +157,7 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
-          :class="selectedMode === 'composite' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="selectedMode === 'composite' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedMode = 'composite'"
         >
           {{ t('granVideoEditor.timeline.transition.modeComposite') }}
@@ -172,7 +172,7 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors text-xs"
-          :class="selectedCurve === 'linear' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="selectedCurve === 'linear' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedCurve = 'linear'"
         >
           {{ t('granVideoEditor.timeline.transition.curveLinear') }}
@@ -180,7 +180,7 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
-          :class="selectedCurve === 'bezier' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="selectedCurve === 'bezier' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedCurve = 'bezier'"
         >
           {{ t('granVideoEditor.timeline.transition.curveBezier') }}

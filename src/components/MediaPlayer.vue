@@ -77,7 +77,7 @@ watch(
 <template>
   <div class="flex flex-col w-full h-full">
     <!-- Media Element -->
-    <div class="flex-1 flex items-center justify-center min-h-0 bg-black relative">
+    <div class="flex-1 flex items-center justify-center min-h-0 bg-[color:var(--media-bg)] relative">
       <video
         v-if="type === 'video'"
         ref="mediaElement"
@@ -103,7 +103,7 @@ watch(
       ></audio>
       <div
         v-if="type === 'audio'"
-        class="flex flex-col items-center justify-center absolute inset-0 text-gray-400"
+        class="flex flex-col items-center justify-center absolute inset-0 text-ui-text-muted"
       >
         <UIcon name="i-heroicons-musical-note" class="w-20 h-20 mb-4 opacity-50" />
         <span class="text-sm">{{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}</span>
@@ -111,9 +111,9 @@ watch(
     </div>
 
     <!-- Controls -->
-    <div class="flex flex-col px-4 py-2 border-t border-gray-700 bg-gray-900 shrink-0 gap-2">
+    <div class="flex flex-col px-4 py-2 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
       <!-- Scrubber -->
-      <div class="h-2 bg-gray-700 rounded-full w-full cursor-pointer relative group" @click="seek">
+      <div class="h-2 bg-ui-bg-accent rounded-full w-full cursor-pointer relative group" @click="seek">
         <div
           class="absolute top-0 left-0 h-full bg-primary-500 rounded-full"
           :style="{ width: `${progress}%` }"
@@ -133,7 +133,7 @@ watch(
           :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
           @click="togglePlay"
         />
-        <span class="text-xs text-gray-400 font-mono">
+        <span class="text-xs text-ui-text-muted font-mono">
           {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
         </span>
       </div>

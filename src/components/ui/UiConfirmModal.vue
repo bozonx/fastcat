@@ -51,12 +51,12 @@ const handleClose = () => {
               'text-warning-500': color === 'warning',
               'text-success-500': color === 'success',
               'text-info-500': color === 'info',
-              'text-gray-500': color === 'neutral' || color === 'secondary',
+              'text-ui-text-muted': color === 'neutral' || color === 'secondary',
             }"
           />
         </div>
         <div v-if="description" class="flex-1">
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-ui-text-muted">
             {{ description }}
           </p>
         </div>

@@ -400,9 +400,9 @@ function leaveProject() {
     <div v-if="isStartingUp" class="flex flex-col items-center justify-center flex-1 bg-ui-bg">
       <UIcon
         name="i-heroicons-arrow-path"
-        class="w-10 h-10 text-indigo-500 shrink-0 animate-spin"
+        class="w-10 h-10 text-primary-500 shrink-0 animate-spin"
       />
-      <span class="mt-4 text-gray-400 font-medium tracking-wide animate-pulse">
+      <span class="mt-4 text-ui-text-muted font-medium tracking-wide animate-pulse">
         {{ t('common.loading', 'Loading...') }}
       </span>
     </div>
@@ -410,24 +410,24 @@ function leaveProject() {
     <!-- Welcome / Select Folder Screen -->
     <div
       v-else-if="!workspaceStore.workspaceHandle"
-      class="flex flex-col items-center justify-center flex-1 bg-linear-to-br from-indigo-900 via-ui-bg-elevated to-black p-6"
+      class="flex flex-col items-center justify-center flex-1 bg-linear-to-br from-primary-950 via-ui-bg-elevated to-black p-6"
     >
       <div
         class="max-w-md w-full text-center space-y-6 bg-ui-bg-elevated/50 p-8 rounded-2xl backdrop-blur-sm border border-ui-border/50 shadow-2xl"
       >
         <div
-          class="mx-auto w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-6"
+          class="mx-auto w-16 h-16 bg-primary-500/20 rounded-full flex items-center justify-center mb-6"
         >
-          <UIcon name="i-heroicons-film" class="w-8 h-8 text-indigo-400" />
+          <UIcon name="i-heroicons-film" class="w-8 h-8 text-primary-400" />
         </div>
 
         <h1
-          class="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-300 to-purple-300"
+          class="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary-300 to-primary-200"
         >
           Gran Video Editor
         </h1>
 
-        <p class="text-gray-400">
+        <p class="text-ui-text-muted">
           {{
             t(
               'granVideoEditor.welcome.selectFolder',
@@ -438,7 +438,7 @@ function leaveProject() {
 
         <div
           v-if="workspaceStore.error"
-          class="text-red-400 text-sm bg-red-400/10 p-3 rounded-lg border border-red-400/20"
+          class="text-error-400 text-sm bg-error-400/10 p-3 rounded-lg border border-error-400/20"
         >
           {{ workspaceStore.error }}
         </div>
@@ -473,10 +473,10 @@ function leaveProject() {
       <div class="max-w-5xl w-full mx-auto space-y-8 pb-12">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-white">
+            <h1 class="text-2xl font-bold text-ui-text">
               {{ t('granVideoEditor.projects.title', 'Projects') }}
             </h1>
-            <p class="text-gray-400 text-sm mt-1">
+            <p class="text-ui-text-muted text-sm mt-1">
               Workspace: {{ workspaceStore.workspaceHandle?.name }}
             </p>
           </div>
@@ -490,7 +490,7 @@ function leaveProject() {
           />
         </div>
 
-        <div v-if="workspaceStore.error" class="text-red-400 text-sm">
+        <div v-if="workspaceStore.error" class="text-error-400 text-sm">
           {{ workspaceStore.error }}
         </div>
 
@@ -500,18 +500,18 @@ function leaveProject() {
             workspaceStore.lastProjectName &&
             workspaceStore.projects.includes(workspaceStore.lastProjectName)
           "
-          class="bg-linear-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6"
+          class="bg-linear-to-r from-primary-950/80 to-primary-900/40 border border-primary-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6"
         >
           <div class="space-y-2">
-            <span class="text-indigo-400 text-xs font-bold uppercase tracking-widest">
+            <span class="text-primary-400 text-xs font-bold uppercase tracking-widest">
               {{ t('granVideoEditor.projects.continueWorking', 'Continue Working') }}
             </span>
-            <h2 class="text-3xl font-bold text-white">{{ workspaceStore.lastProjectName }}</h2>
+            <h2 class="text-3xl font-bold text-ui-text">{{ workspaceStore.lastProjectName }}</h2>
           </div>
           <UButton
             size="xl"
             color="primary"
-            class="px-8 shadow-lg shadow-indigo-500/20"
+            class="px-8 shadow-lg shadow-primary-500/20"
             icon="i-heroicons-play"
             :label="t('granVideoEditor.projects.openLast', 'Open Project')"
             @click="
@@ -533,7 +533,7 @@ function leaveProject() {
           <div
             class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col gap-4 shadow-xl"
           >
-            <h3 class="font-medium text-white">
+            <h3 class="font-medium text-ui-text">
               {{ t('granVideoEditor.projects.newProject', 'New Project') }}
             </h3>
             <UInput
@@ -556,7 +556,7 @@ function leaveProject() {
           <div
             v-for="project in workspaceStore.projects"
             :key="project"
-            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col hover:border-indigo-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg"
+            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg"
             @click="
               async () => {
                 leaveProject();
@@ -569,15 +569,15 @@ function leaveProject() {
           >
             <div class="flex items-center gap-3 mb-4">
               <div
-                class="w-10 h-10 rounded-lg bg-ui-bg-accent flex items-center justify-center group-hover:bg-indigo-500/10 transition-colors"
+                class="w-10 h-10 rounded-lg bg-ui-bg-accent flex items-center justify-center group-hover:bg-primary-500/10 transition-colors"
               >
                 <UIcon
                   name="i-heroicons-film"
-                  class="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors"
+                  class="w-5 h-5 text-ui-text-muted group-hover:text-primary-400 transition-colors"
                 />
               </div>
               <h3
-                class="font-medium text-white truncate group-hover:text-indigo-300 transition-colors"
+                class="font-medium text-ui-text truncate group-hover:text-primary-300 transition-colors"
               >
                 {{ project }}
               </h3>

@@ -447,7 +447,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
 
 /** Lower triangle: darker variant */
 function getClipLowerTriColor(_item: TimelineTrackItem, _track: TimelineTrack): string {
-  return 'rgba(0,0,0,0.35)';
+  return 'var(--clip-lower-tri)';
 }
 
 /** Get dynamic classes for clip background and border */
@@ -460,21 +460,36 @@ function getClipClass(item: TimelineTrackItem, track: TimelineTrack): string[] {
   const baseClasses = ['border', 'transition-colors'];
 
   if (clipItem.clipType === 'background') {
-    return [...baseClasses, 'bg-violet-500/40', 'border-violet-500/60', 'hover:bg-violet-500/50'];
+    return [
+      ...baseClasses,
+      'bg-[var(--clip-background-bg)]',
+      'border-[var(--clip-background-border)]',
+      'hover:bg-[var(--clip-background-bg-hover)]',
+    ];
   }
   if (clipItem.clipType === 'adjustment') {
-    return [...baseClasses, 'bg-amber-500/40', 'border-amber-500/60', 'hover:bg-amber-500/50'];
+    return [
+      ...baseClasses,
+      'bg-[var(--clip-adjustment-bg)]',
+      'border-[var(--clip-adjustment-border)]',
+      'hover:bg-[var(--clip-adjustment-bg-hover)]',
+    ];
   }
   if (track.kind === 'audio') {
-    return [...baseClasses, 'bg-teal-500/50', 'border-teal-500/70', 'hover:bg-teal-500/60'];
+    return [
+      ...baseClasses,
+      'bg-[var(--clip-audio-bg)]',
+      'border-[var(--clip-audio-border)]',
+      'hover:bg-[var(--clip-audio-bg-hover)]',
+    ];
   }
 
   // Default video clip: indigo/primary
   return [
     ...baseClasses,
-    'bg-primary-500/60',
-    'border-primary-500/70',
-    'hover:bg-primary-500/70',
+    'bg-[var(--clip-video-bg)]',
+    'border-[var(--clip-video-border)]',
+    'hover:bg-[var(--clip-video-bg-hover)]',
   ];
 }
 
@@ -734,10 +749,10 @@ function getTransitionForPanel() {
     >
       <div class="flex flex-col gap-3">
         <div class="flex items-center justify-between gap-3">
-          <span class="text-sm text-gray-700 dark:text-gray-200">
+          <span class="text-sm text-ui-text">
             {{ t('granVideoEditor.timeline.speedValue', 'Speed') }}
           </span>
-          <span class="text-sm font-mono text-gray-500">{{ Number(speedModalSpeed).toFixed(2) }}</span>
+          <span class="text-sm font-mono text-ui-text-muted">{{ Number(speedModalSpeed).toFixed(2) }}</span>
         </div>
 
         <UInput
@@ -778,7 +793,7 @@ function getTransitionForPanel() {
     >
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"
-        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-white z-30 pointer-events-none opacity-80"
+        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-[color:var(--clip-text)] z-30 pointer-events-none opacity-80"
         :class="
           dragPreview.kind === 'file'
             ? 'bg-primary-600 border border-primary-400'
@@ -794,7 +809,7 @@ function getTransitionForPanel() {
 
       <div
         v-if="movePreviewResolved && movePreviewResolved.trackId === track.id"
-        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-white z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
+        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-[color:var(--clip-text)] z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
         :style="{
           left: `${2 + timeUsToPx(movePreviewResolved.startUs, timelineStore.timelineZoom)}px`,
           width: `${Math.max(30, timeUsToPx(movePreviewResolved.durationUs, timelineStore.timelineZoom))}px`,
@@ -809,11 +824,13 @@ function getTransitionForPanel() {
         :items="getClipContextMenuItems(track, item)"
       >
         <div
-          class="absolute inset-y-0 rounded overflow-hidden flex flex-col text-xs text-white z-10 cursor-pointer select-none transition-shadow"
+          class="absolute inset-y-0 rounded overflow-hidden flex flex-col text-xs text-[color:var(--clip-text)] z-10 cursor-pointer select-none transition-shadow"
           :class="[
-            timelineStore.selectedItemIds.includes(item.id) ? 'ring-2 ring-white z-20 shadow-lg' : '',
+            timelineStore.selectedItemIds.includes(item.id)
+              ? 'ring-2 ring-[color:var(--selection-ring)] z-20 shadow-lg'
+              : '',
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
-              ? 'outline outline-2 outline-yellow-400/80'
+              ? 'outline outline-2 outline-[color:var(--color-warning)]'
               : '',
             item.kind === 'clip' && Boolean((item as any).disabled) ? 'opacity-40' : '',
             item.kind === 'clip' && Boolean((item as any).locked) ? 'cursor-not-allowed' : '',
@@ -847,7 +864,7 @@ function getTransitionForPanel() {
                 )}px`,
               }"
             >
-              <polygon points="0,0 100,0 0,100" fill="rgba(0,0,0,0.35)" />
+              <polygon points="0,0 100,0 0,100" :fill="getClipLowerTriColor(item, track)" />
             </svg>
 
             <svg
@@ -865,14 +882,14 @@ function getTransitionForPanel() {
                 )}px`,
               }"
             >
-              <polygon points="0,0 100,0 100,100" fill="rgba(0,0,0,0.35)" />
+              <polygon points="0,0 100,0 100,100" :fill="getClipLowerTriColor(item, track)" />
             </svg>
           </div>
 
           <!-- Speed Indicator -->
           <div
             v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
-            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-black/40 text-[10px] leading-none font-mono z-40"
+            class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-[color:var(--overlay-bg)] text-[10px] leading-none font-mono z-40"
           >
             x{{ Number((item as any).speed ?? 1).toFixed(2) }}
           </div>
