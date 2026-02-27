@@ -4,6 +4,9 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/composables/timeline/useTimelineInteraction';
 import { useResizeObserver } from '@vueuse/core';
+import AppModal from '~/components/ui/AppModal.vue';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   scrollEl: HTMLElement | null;
@@ -22,6 +25,8 @@ const projectStore = useProjectStore();
 const width = ref(0);
 const height = ref(0);
 const scrollLeft = ref(0);
+
+const markers = computed(() => timelineStore.getMarkers());
 
 let textColor = '#8a8a8a';
 let tickColor = '#4a4a4a';
@@ -50,15 +55,19 @@ function onScroll() {
   }
 }
 
-watch(() => props.scrollEl, (el, oldEl) => {
-  if (oldEl) {
-    oldEl.removeEventListener('scroll', onScroll);
-  }
-  if (el) {
-    el.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-  }
-}, { immediate: true });
+watch(
+  () => props.scrollEl,
+  (el, oldEl) => {
+    if (oldEl) {
+      oldEl.removeEventListener('scroll', onScroll);
+    }
+    if (el) {
+      el.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
+  },
+  { immediate: true },
+);
 
 onUnmounted(() => {
   if (props.scrollEl) {
@@ -71,6 +80,60 @@ const zoom = computed(() => timelineStore.timelineZoom);
 
 watch([fps, zoom, width, height, scrollLeft], () => {
   requestAnimationFrame(draw);
+});
+
+watch(markers, () => {
+  requestAnimationFrame(draw);
+});
+
+const isMarkerEditOpen = ref(false);
+const editingMarkerId = ref<string | null>(null);
+const markerTextDraft = ref('');
+
+const editingMarker = computed(() => {
+  const id = editingMarkerId.value;
+  if (!id) return null;
+  return markers.value.find((m) => m.id === id) ?? null;
+});
+
+function openEditMarker(markerId: string) {
+  const m = markers.value.find((x) => x.id === markerId) ?? null;
+  if (!m) return;
+  editingMarkerId.value = markerId;
+  markerTextDraft.value = m.text ?? '';
+  isMarkerEditOpen.value = true;
+}
+
+function saveMarkerText() {
+  const m = editingMarker.value;
+  if (!m) return;
+  timelineStore.updateMarker(m.id, { text: markerTextDraft.value });
+  isMarkerEditOpen.value = false;
+}
+
+function truncateForTooltip(text: string): string {
+  const t = String(text ?? '');
+  const singleLine = t.replace(/\s+/g, ' ').trim();
+  if (!singleLine) return '';
+  const max = 160;
+  return singleLine.length > max ? `${singleLine.slice(0, max)}…` : singleLine;
+}
+
+const markerPoints = computed(() => {
+  const currentZoom = zoom.value;
+  const startPx = scrollLeft.value;
+  const w = width.value;
+
+  return markers.value
+    .map((m) => {
+      const x = timeUsToPx(m.timeUs, currentZoom) - startPx;
+      return {
+        id: m.id,
+        x,
+        text: m.text ?? '',
+      };
+    })
+    .filter((p) => p.x >= -20 && p.x <= w + 20);
 });
 
 function formatTime(us: number, fpsValue: number): string {
@@ -94,7 +157,7 @@ function draw() {
   const dpr = window.devicePixelRatio || 1;
   const w = width.value;
   const h = height.value;
-  
+
   if (w === 0 || h === 0) return;
 
   canvas.width = w * dpr;
@@ -124,25 +187,25 @@ function draw() {
   }
 
   ctx.fillStyle = textColor;
-  ctx.strokeStyle = tickColor; 
+  ctx.strokeStyle = tickColor;
   ctx.lineWidth = 1;
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
-  const startS = Math.floor((startUs / 1_000_000) / mainStepS) * mainStepS;
+  const startS = Math.floor(startUs / 1_000_000 / mainStepS) * mainStepS;
   const endS = Math.ceil(endUs / 1_000_000);
 
   ctx.beginPath();
   for (let s = startS; s <= endS; s += mainStepS) {
     const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
-    
+
     if (x >= -50 && x <= w + 50) {
       ctx.moveTo(x, h - 8);
       ctx.lineTo(x, h);
       ctx.fillText(formatTime(s * 1_000_000, currentFps), x, 4);
     }
-    
+
     // Draw sub ticks
     if (mainStepS === 1) {
       const pxPerFrame = pxPerSec / currentFps;
@@ -150,9 +213,12 @@ function draw() {
       if (pxPerFrame < 5) {
         frameStep = Math.ceil(5 / pxPerFrame);
       }
-      
+
       for (let f = 1; f < currentFps; f += frameStep) {
-        const frameX = Math.round(timeUsToPx(s * 1_000_000 + (f * 1_000_000 / currentFps), currentZoom) - startPx) + 0.5;
+        const frameX =
+          Math.round(
+            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
+          ) + 0.5;
         if (frameX >= 0 && frameX <= w) {
           ctx.moveTo(frameX, h - 4);
           ctx.lineTo(frameX, h);
@@ -163,7 +229,7 @@ function draw() {
       if (mainStepS >= 60) subStepS = 10;
       else if (mainStepS >= 10) subStepS = 5;
       else if (mainStepS >= 5) subStepS = 1;
-      
+
       for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
         const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
         if (subX >= 0 && subX <= w) {
@@ -187,5 +253,43 @@ function draw() {
       ref="canvasRef" 
       class="absolute top-0 left-0 w-full h-full pointer-events-none" 
     />
+
+    <div class="absolute inset-0 pointer-events-none">
+      <div
+        v-for="p in markerPoints"
+        :key="p.id"
+        class="absolute bottom-0 pointer-events-auto"
+        :style="{ left: `${Math.round(p.x)}px` }"
+      >
+        <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+          <button
+            type="button"
+            class="w-2 h-3 -translate-x-1 bg-primary-500 rounded-sm shadow-sm"
+            :aria-label="'Marker'"
+            @dblclick.stop.prevent="openEditMarker(p.id)"
+            @mousedown.stop
+          />
+        </UTooltip>
+      </div>
+    </div>
   </div>
+
+  <AppModal
+    v-if="editingMarker"
+    v-model:open="isMarkerEditOpen"
+    title="Marker"
+  >
+    <div class="flex flex-col gap-3">
+      <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
+    </div>
+
+    <template #footer>
+      <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
+        {{ t('common.cancel', 'Cancel') }}
+      </UButton>
+      <UButton color="primary" @click="saveMarkerText">
+        {{ t('common.save', 'Save') }}
+      </UButton>
+    </template>
+  </AppModal>
 </template>

@@ -65,7 +65,7 @@ export function useMonitorTimeline() {
     for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (Boolean((item as any).disabled)) continue;
+        if ((item as any).disabled) continue;
 
         const clipType = (item as any).clipType ?? 'media';
 
@@ -300,8 +300,8 @@ export function useMonitorTimeline() {
     hash = mixHash(hash, hasSolo ? 1 : 0);
     for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
-      hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
-      hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
+      hash = mixHash(hash, track.audioMuted ? 1 : 0);
+      hash = mixHash(hash, track.audioSolo ? 1 : 0);
 
       hash = mixFloat(hash, mergeGain((track as any).audioGain, 1) ?? 1, 1000);
       hash = mixFloat(hash, mergeBalance((track as any).audioBalance, 0) ?? 0, 1000);
@@ -341,8 +341,8 @@ export function useMonitorTimeline() {
     hash = mixHash(hash, hasSolo ? 1 : 0);
     for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
-      hash = mixHash(hash, Boolean(track.audioMuted) ? 1 : 0);
-      hash = mixHash(hash, Boolean(track.audioSolo) ? 1 : 0);
+      hash = mixHash(hash, track.audioMuted ? 1 : 0);
+      hash = mixHash(hash, track.audioSolo ? 1 : 0);
     }
 
     for (const item of effectiveItems) {

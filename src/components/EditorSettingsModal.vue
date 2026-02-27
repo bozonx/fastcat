@@ -36,6 +36,7 @@ const workspaceStore = useWorkspaceStore();
 type SettingsSection =
   | 'user.general'
   | 'user.hotkeys'
+  | 'user.mouse'
   | 'user.optimization'
   | 'user.export'
   | 'workspace.storage';
@@ -54,8 +55,7 @@ function getCommandTitle(cmdId: HotkeyCommandId): string {
 
 function getCommandGroupTitle(groupId: string): string {
   if (groupId === 'general') return t('videoEditor.settings.hotkeysGroupGeneral', 'General');
-  if (groupId === 'playback')
-    return t('videoEditor.settings.hotkeysGroupPlayback', 'Playback');
+  if (groupId === 'playback') return t('videoEditor.settings.hotkeysGroupPlayback', 'Playback');
   if (groupId === 'timeline') return t('videoEditor.settings.hotkeysGroupTimeline', 'Timeline');
   return groupId;
 }
@@ -258,9 +258,7 @@ const thumbnailsLimitGb = computed({
     />
 
     <div class="flex flex-1 min-h-0 w-full h-full">
-      <div
-        class="w-56 shrink-0 p-6 bg-ui-bg border-r border-ui-border overflow-y-auto"
-      >
+      <div class="w-56 shrink-0 p-6 bg-ui-bg border-r border-ui-border overflow-y-auto">
         <div class="flex flex-col gap-6">
           <div class="flex flex-col gap-2">
             <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
@@ -281,6 +279,14 @@ const thumbnailsLimitGb = computed({
               :label="t('videoEditor.settings.userHotkeys', 'Hotkeys')"
               :disabled="activeSection === 'user.hotkeys'"
               @click="activeSection = 'user.hotkeys'"
+            />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userMouse', 'Mouse')"
+              :disabled="activeSection === 'user.mouse'"
+              @click="activeSection = 'user.mouse'"
             />
             <UButton
               variant="ghost"
@@ -385,9 +391,7 @@ const thumbnailsLimitGb = computed({
                       :key="combo"
                       class="inline-flex items-center gap-2 px-2 py-1 rounded bg-ui-bg-accent"
                     >
-                      <span class="text-xs font-mono text-ui-text">{{
-                        combo
-                      }}</span>
+                      <span class="text-xs font-mono text-ui-text">{{ combo }}</span>
                       <UButton
                         size="2xs"
                         color="neutral"
@@ -407,6 +411,257 @@ const thumbnailsLimitGb = computed({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div class="text-xs text-ui-text-muted">
+            {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+          </div>
+        </div>
+
+        <div v-else-if="activeSection === 'user.mouse'" class="flex flex-col gap-6">
+          <div class="text-sm font-medium text-ui-text">
+            {{ t('videoEditor.settings.userMouse', 'Mouse') }}
+          </div>
+
+          <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-4">
+              <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
+                {{ t('videoEditor.settings.mouseTimeline', 'Timeline') }}
+              </div>
+
+              <UFormField :label="t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel')">
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.timeline.wheel"
+                  :items="[
+                    {
+                      label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                      value: 'scroll_vertical',
+                    },
+                    {
+                      label: t(
+                        'videoEditor.settings.mouseActionScrollHorizontal',
+                        'Horizontal scroll',
+                      ),
+                      value: 'scroll_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                      value: 'zoom_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+                      value: 'zoom_vertical',
+                    },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) => (workspaceStore.userSettings.mouse.timeline.wheel = v?.value ?? v)
+                  "
+                />
+              </UFormField>
+
+              <UFormField
+                :label="t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift')"
+              >
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.timeline.wheelShift"
+                  :items="[
+                    {
+                      label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                      value: 'scroll_vertical',
+                    },
+                    {
+                      label: t(
+                        'videoEditor.settings.mouseActionScrollHorizontal',
+                        'Horizontal scroll',
+                      ),
+                      value: 'scroll_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                      value: 'zoom_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+                      value: 'zoom_vertical',
+                    },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) =>
+                      (workspaceStore.userSettings.mouse.timeline.wheelShift = v?.value ?? v)
+                  "
+                />
+              </UFormField>
+
+              <UFormField
+                :label="t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel')"
+              >
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondary"
+                  :items="[
+                    {
+                      label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                      value: 'scroll_vertical',
+                    },
+                    {
+                      label: t(
+                        'videoEditor.settings.mouseActionScrollHorizontal',
+                        'Horizontal scroll',
+                      ),
+                      value: 'scroll_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                      value: 'zoom_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+                      value: 'zoom_vertical',
+                    },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) =>
+                      (workspaceStore.userSettings.mouse.timeline.wheelSecondary = v?.value ?? v)
+                  "
+                />
+              </UFormField>
+
+              <UFormField
+                :label="
+                  t(
+                    'videoEditor.settings.mouseTimelineWheelSecondaryShift',
+                    'Secondary wheel + Shift',
+                  )
+                "
+              >
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift"
+                  :items="[
+                    {
+                      label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                      value: 'scroll_vertical',
+                    },
+                    {
+                      label: t(
+                        'videoEditor.settings.mouseActionScrollHorizontal',
+                        'Horizontal scroll',
+                      ),
+                      value: 'scroll_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                      value: 'zoom_horizontal',
+                    },
+                    {
+                      label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+                      value: 'zoom_vertical',
+                    },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) =>
+                      (workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift =
+                        v?.value ?? v)
+                  "
+                />
+              </UFormField>
+            </div>
+
+            <div class="flex flex-col gap-4">
+              <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
+                {{ t('videoEditor.settings.mouseMonitor', 'Monitor') }}
+              </div>
+
+              <UFormField :label="t('videoEditor.settings.mouseMonitorWheel', 'Wheel')">
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.monitor.wheel"
+                  :items="[
+                    { label: t('videoEditor.settings.mouseActionZoom', 'Zoom'), value: 'zoom' },
+                    {
+                      label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                      value: 'scroll_vertical',
+                    },
+                    {
+                      label: t(
+                        'videoEditor.settings.mouseActionScrollHorizontal',
+                        'Horizontal scroll',
+                      ),
+                      value: 'scroll_horizontal',
+                    },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) => (workspaceStore.userSettings.mouse.monitor.wheel = v?.value ?? v)
+                  "
+                />
+              </UFormField>
+
+              <UFormField
+                :label="t('videoEditor.settings.mouseMonitorWheelShift', 'Wheel + Shift')"
+              >
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.monitor.wheelShift"
+                  :items="[
+                    { label: t('videoEditor.settings.mouseActionZoom', 'Zoom'), value: 'zoom' },
+                    {
+                      label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                      value: 'scroll_vertical',
+                    },
+                    {
+                      label: t(
+                        'videoEditor.settings.mouseActionScrollHorizontal',
+                        'Horizontal scroll',
+                      ),
+                      value: 'scroll_horizontal',
+                    },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) =>
+                      (workspaceStore.userSettings.mouse.monitor.wheelShift = v?.value ?? v)
+                  "
+                />
+              </UFormField>
+
+              <UFormField
+                :label="t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle click')"
+              >
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.monitor.middleClick"
+                  :items="[
+                    { label: t('videoEditor.settings.mouseActionPan', 'Pan'), value: 'pan' },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) =>
+                      (workspaceStore.userSettings.mouse.monitor.middleClick = v?.value ?? v)
+                  "
+                />
+              </UFormField>
             </div>
           </div>
 

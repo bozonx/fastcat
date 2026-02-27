@@ -184,6 +184,25 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextLeft.transitionOut.durationUs).toBe(nextRight.transitionIn.durationUs);
   });
 
+  it('reduces opposite transition when adding a new transition to fit exactly within clip', () => {
+    const clip = {
+      ...baseClip,
+      transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
+    };
+    const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [clip] as any });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_transition',
+      trackId: 'v1',
+      itemId: 'c1',
+      transitionIn: { type: 'dissolve', durationUs: 4_000_000 },
+    }).next;
+
+    const nextClip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(nextClip.transitionIn.durationUs).toBe(4_000_000);
+    expect(nextClip.transitionOut.durationUs).toBe(1_000_000);
+  });
+
   it('grows an existing crossfade overlap when resize-dragging transition (simulates mousemove)', () => {
     // State after initial 2s crossfade: left extended by 2s, source tail partially consumed.
     // left: sourceDuration=10s, sourceRange={0..7s}, timelineRange={0..7s}, overlap=2s with right at 5s

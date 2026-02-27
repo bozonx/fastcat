@@ -14,7 +14,15 @@ export const blurManifest: EffectManifest<BlurParams> = {
     strength: 5,
   },
   controls: [
-    { kind: 'slider', key: 'strength', label: 'Сила', min: 0, max: 50, step: 1, format: (v) => `${v}px` },
+    {
+      kind: 'slider',
+      key: 'strength',
+      label: 'Сила',
+      min: 0,
+      max: 50,
+      step: 1,
+      format: (v) => `${v}px`,
+    },
   ],
   createFilter: () => new BlurFilter(5),
   updateFilter: (filter, values) => {

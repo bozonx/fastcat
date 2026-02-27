@@ -7,6 +7,7 @@ import {
   reorderTracks,
   updateTrackProperties,
 } from './commands/trackHandlers';
+import { addMarker, removeMarker, updateMarker } from './commands/markerHandlers';
 import {
   addClipToTrack,
   addVirtualClipToTrack,
@@ -200,6 +201,25 @@ export interface OverlayTrimItemCommand {
   deltaUs: number;
 }
 
+export interface AddMarkerCommand {
+  type: 'add_marker';
+  id: string;
+  timeUs: number;
+  text?: string;
+}
+
+export interface UpdateMarkerCommand {
+  type: 'update_marker';
+  id: string;
+  timeUs?: number;
+  text?: string;
+}
+
+export interface RemoveMarkerCommand {
+  type: 'remove_marker';
+  id: string;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -220,7 +240,10 @@ export type TimelineCommand =
   | UpdateTrackPropertiesCommand
   | UpdateClipTransitionCommand
   | OverlayPlaceItemCommand
-  | OverlayTrimItemCommand;
+  | OverlayTrimItemCommand
+  | AddMarkerCommand
+  | UpdateMarkerCommand
+  | RemoveMarkerCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -231,6 +254,12 @@ export function applyTimelineCommand(
   cmd: TimelineCommand,
 ): TimelineCommandResult {
   switch (cmd.type) {
+    case 'add_marker':
+      return addMarker(doc, cmd);
+    case 'update_marker':
+      return updateMarker(doc, cmd);
+    case 'remove_marker':
+      return removeMarker(doc, cmd);
     case 'extract_audio_to_track':
       return extractAudioToTrack(doc, cmd);
     case 'return_audio_to_video':

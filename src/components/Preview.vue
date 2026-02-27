@@ -5,12 +5,11 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
-import type { TimelineClipItem } from '~/timeline/types';
+import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
-import type { TimelineTrack } from '~/timeline/types';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
@@ -60,12 +59,14 @@ const selectedTransitionClip = computed<TimelineClipItem | null>(() => {
   return item && item.kind === 'clip' ? (item as TimelineClipItem) : null;
 });
 
-const selectedTransitionValue = computed<import('~/timeline/types').ClipTransition | undefined>(() => {
-  const sel = selectedTransition.value;
-  const clip = selectedTransitionClip.value as any;
-  if (!sel || !clip) return undefined;
-  return sel.edge === 'in' ? clip.transitionIn : clip.transitionOut;
-});
+const selectedTransitionValue = computed<import('~/timeline/types').ClipTransition | undefined>(
+  () => {
+    const sel = selectedTransition.value;
+    const clip = selectedTransitionClip.value as any;
+    if (!sel || !clip) return undefined;
+    return sel.edge === 'in' ? clip.transitionIn : clip.transitionOut;
+  },
+);
 
 const selectedTrack = computed<TimelineTrack | null>(() => {
   const trackId = timelineStore.selectedTrackId;
@@ -78,7 +79,9 @@ const trackAudioGain = computed({
   get: () => {
     const track = selectedTrack.value as any;
     const v =
-      typeof track?.audioGain === 'number' && Number.isFinite(track.audioGain) ? track.audioGain : 1;
+      typeof track?.audioGain === 'number' && Number.isFinite(track.audioGain)
+        ? track.audioGain
+        : 1;
     return Math.max(0, Math.min(2, v));
   },
   set: (val: number) => {
@@ -161,7 +164,8 @@ function handleUpdateText(val: string | undefined) {
 function handleUpdateTextStyle(patch: Partial<import('~/timeline/types').TextClipStyle>) {
   if (!selectedClip.value) return;
   if (selectedClip.value.clipType !== 'text') return;
-  const curr = ((selectedClip.value as any).style ?? {}) as import('~/timeline/types').TextClipStyle;
+  const curr = ((selectedClip.value as any).style ??
+    {}) as import('~/timeline/types').TextClipStyle;
   timelineStore.updateClipProperties(selectedClip.value.trackId, selectedClip.value.id, {
     style: {
       ...curr,
@@ -188,8 +192,10 @@ function getSafeTransform(clip: TimelineClipItem): import('~/timeline/types').Cl
   const linked = Boolean(scaleRaw.linked);
 
   const positionRaw = tr.position ?? {};
-  const posX = typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
-  const posY = typeof positionRaw.y === 'number' && Number.isFinite(positionRaw.y) ? positionRaw.y : 0;
+  const posX =
+    typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
+  const posY =
+    typeof positionRaw.y === 'number' && Number.isFinite(positionRaw.y) ? positionRaw.y : 0;
 
   const rotationDeg =
     typeof tr.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
@@ -204,8 +210,10 @@ function getSafeTransform(clip: TimelineClipItem): import('~/timeline/types').Cl
     anchorRaw.preset === 'custom'
       ? anchorRaw.preset
       : 'center';
-  const anchorX = typeof anchorRaw.x === 'number' && Number.isFinite(anchorRaw.x) ? anchorRaw.x : 0.5;
-  const anchorY = typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
+  const anchorX =
+    typeof anchorRaw.x === 'number' && Number.isFinite(anchorRaw.x) ? anchorRaw.x : 0.5;
+  const anchorY =
+    typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
 
   return {
     scale: {
@@ -293,7 +301,7 @@ const transformScaleX = computed({
     const current = getSafeTransform(selectedClip.value);
     const linked = Boolean(current.scale?.linked);
     const x = clampNumber(val, 0.001, 1000);
-    const y = linked ? x : current.scale?.y ?? 1;
+    const y = linked ? x : (current.scale?.y ?? 1);
     updateSelectedClipTransform({ scale: { x, y, linked } });
   },
 });
@@ -308,7 +316,7 @@ const transformScaleY = computed({
     const current = getSafeTransform(selectedClip.value);
     const linked = Boolean(current.scale?.linked);
     const y = clampNumber(val, 0.001, 1000);
-    const x = linked ? y : current.scale?.x ?? 1;
+    const x = linked ? y : (current.scale?.x ?? 1);
     updateSelectedClipTransform({ scale: { x, y, linked } });
   },
 });
@@ -432,7 +440,11 @@ const hasProxy = computed(() => {
 const selectedClipTrack = computed<TimelineTrack | null>(() => {
   const clip = selectedClip.value;
   if (!clip) return null;
-  return (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find((t) => t.id === clip.trackId) ?? null;
+  return (
+    (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
+      (t) => t.id === clip.trackId,
+    ) ?? null
+  );
 });
 
 const canEditAudioFades = computed(() => {
@@ -446,14 +458,14 @@ const canEditAudioGain = computed(() => {
   const clip = selectedClip.value;
   if (!clip) return false;
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
-  const track = timelineStore.timelineDoc?.tracks.find(t => t.id === clip.trackId);
+  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === clip.trackId);
   if (track?.kind === 'video' && (clip as any).audioFromVideoDisabled) return false;
-  
+
   if (clip.source?.path) {
     const meta = mediaStore.mediaMetadata[clip.source.path];
     if (!meta?.audio) return false;
   }
-  
+
   return true;
 });
 
@@ -464,7 +476,8 @@ const canEditAudioBalance = computed(() => {
 const audioGain = computed({
   get: () => {
     const clip = selectedClip.value as any;
-    const v = typeof clip?.audioGain === 'number' && Number.isFinite(clip.audioGain) ? clip.audioGain : 1;
+    const v =
+      typeof clip?.audioGain === 'number' && Number.isFinite(clip.audioGain) ? clip.audioGain : 1;
     return Math.max(0, Math.min(2, v));
   },
   set: (val: number) => {
@@ -501,7 +514,10 @@ const clipDurationSec = computed(() => {
 const audioFadeInSec = computed({
   get: () => {
     const clip = selectedClip.value as any;
-    const v = typeof clip?.audioFadeInUs === 'number' && Number.isFinite(clip.audioFadeInUs) ? clip.audioFadeInUs : 0;
+    const v =
+      typeof clip?.audioFadeInUs === 'number' && Number.isFinite(clip.audioFadeInUs)
+        ? clip.audioFadeInUs
+        : 0;
     return Math.max(0, v / 1_000_000);
   },
   set: (val: number) => {
@@ -515,7 +531,10 @@ const audioFadeInSec = computed({
 const audioFadeOutSec = computed({
   get: () => {
     const clip = selectedClip.value as any;
-    const v = typeof clip?.audioFadeOutUs === 'number' && Number.isFinite(clip.audioFadeOutUs) ? clip.audioFadeOutUs : 0;
+    const v =
+      typeof clip?.audioFadeOutUs === 'number' && Number.isFinite(clip.audioFadeOutUs)
+        ? clip.audioFadeOutUs
+        : 0;
     return Math.max(0, v / 1_000_000);
   },
   set: (val: number) => {
@@ -526,9 +545,25 @@ const audioFadeOutSec = computed({
   },
 });
 
-const audioFadeMaxSec = computed(() => Math.max(0, Math.min(10, clipDurationSec.value)));
+const audioFadeInMaxSec = computed(() => {
+  const clip = selectedClip.value as any;
+  if (!clip) return 0;
+  const opp =
+    typeof clip.audioFadeOutUs === 'number' && Number.isFinite(clip.audioFadeOutUs)
+      ? clip.audioFadeOutUs
+      : 0;
+  return Math.max(0, (Number(clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
+});
 
-const audioFadeUiMaxSec = computed(() => Math.min(3, audioFadeMaxSec.value));
+const audioFadeOutMaxSec = computed(() => {
+  const clip = selectedClip.value as any;
+  if (!clip) return 0;
+  const opp =
+    typeof clip.audioFadeInUs === 'number' && Number.isFinite(clip.audioFadeInUs)
+      ? clip.audioFadeInUs
+      : 0;
+  return Math.max(0, (Number(clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
+});
 
 watch(hasProxy, (val) => {
   if (!val && previewMode.value === 'proxy') {
@@ -682,9 +717,13 @@ function handleTransitionUpdate(payload: {
   transition: import('~/timeline/types').ClipTransition | null;
 }) {
   if (payload.edge === 'in') {
-    timelineStore.updateClipTransition(payload.trackId, payload.itemId, { transitionIn: payload.transition });
+    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
+      transitionIn: payload.transition,
+    });
   } else {
-    timelineStore.updateClipTransition(payload.trackId, payload.itemId, { transitionOut: payload.transition });
+    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
+      transitionOut: payload.transition,
+    });
   }
 }
 
@@ -712,7 +751,9 @@ function toggleTransition(edge: 'in' | 'out') {
 function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
   if (!selectedClip.value) return;
   const clip = selectedClip.value;
-  const current = (edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut) as import('~/timeline/types').ClipTransition;
+  const current = (
+    edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut
+  ) as import('~/timeline/types').ClipTransition;
   if (!current) return;
 
   handleTransitionUpdate({
@@ -739,7 +780,9 @@ function onPanelFocusOut() {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
-    :class="{ 'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('right') }"
+    :class="{
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('right'),
+    }"
     @pointerdown.capture="focusStore.setTempFocus('right')"
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"
@@ -750,7 +793,10 @@ function onPanelFocusOut() {
       class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0"
     >
       <div class="flex items-center overflow-hidden min-w-0">
-        <span v-if="displayMode === 'clip'" class="ml-2 text-xs text-ui-text-muted font-mono truncate">
+        <span
+          v-if="displayMode === 'clip'"
+          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+        >
           {{ selectedClip?.name }}
         </span>
         <span
@@ -833,7 +879,9 @@ function onPanelFocusOut() {
             v-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
             class="w-full flex flex-col gap-2 text-ui-text"
           >
-            <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+            <div
+              class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+            >
               {{ selectedTransition.edge === 'in' ? 'Transition In' : 'Transition Out' }}
             </div>
 
@@ -851,7 +899,9 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'clip' && selectedClip"
             class="w-full flex flex-col gap-2 text-ui-text"
           >
-            <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+            <div
+              class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+            >
               {{ selectedClip.name }}
             </div>
 
@@ -860,7 +910,9 @@ function onPanelFocusOut() {
                 v-if="selectedClip.clipType === 'media'"
                 class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
               >
-                <span class="text-ui-text-muted text-xs">{{ t('common.source', 'Source File') }}</span>
+                <span class="text-ui-text-muted text-xs">{{
+                  t('common.source', 'Source File')
+                }}</span>
                 <span class="font-medium break-all text-xs">{{ selectedClip.source.path }}</span>
               </div>
               <div
@@ -869,7 +921,9 @@ function onPanelFocusOut() {
               >
                 <span class="text-ui-text-muted text-xs">{{ t('common.color', 'Color') }}</span>
                 <div class="flex items-center justify-between gap-3">
-                  <span class="font-mono text-xs text-ui-text">{{ selectedClip.backgroundColor }}</span>
+                  <span class="font-mono text-xs text-ui-text">{{
+                    selectedClip.backgroundColor
+                  }}</span>
                   <UColorPicker
                     :model-value="selectedClip.backgroundColor"
                     format="hex"
@@ -882,7 +936,9 @@ function onPanelFocusOut() {
                 v-else-if="selectedClip.clipType === 'text'"
                 class="flex flex-col gap-1.5 border-b border-ui-border pb-1.5"
               >
-                <span class="text-ui-text-muted text-xs">{{ t('granVideoEditor.textClip.text', 'Text') }}</span>
+                <span class="text-ui-text-muted text-xs">{{
+                  t('granVideoEditor.textClip.text', 'Text')
+                }}</span>
                 <UTextarea
                   :model-value="(selectedClip as any).text"
                   size="sm"
@@ -892,19 +948,23 @@ function onPanelFocusOut() {
 
                 <div class="grid grid-cols-2 gap-2">
                   <div class="flex flex-col gap-0.5">
-                    <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.fontSize', 'Font size') }}</span>
+                    <span class="text-xs text-ui-text-muted">{{
+                      t('granVideoEditor.textClip.fontSize', 'Font size')
+                    }}</span>
                     <UInput
-                      :model-value="Number(((selectedClip as any).style?.fontSize ?? 64))"
+                      :model-value="Number((selectedClip as any).style?.fontSize ?? 64)"
                       size="sm"
                       type="number"
                       step="1"
-                      @update:model-value="(v: any) => handleUpdateTextStyle({ fontSize: Number(v) })"
+                      @update:model-value="
+                        (v: any) => handleUpdateTextStyle({ fontSize: Number(v) })
+                      "
                     />
                   </div>
                   <div class="flex flex-col gap-0.5">
                     <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
                     <UColorPicker
-                      :model-value="String(((selectedClip as any).style?.color ?? '#ffffff'))"
+                      :model-value="String((selectedClip as any).style?.color ?? '#ffffff')"
                       format="hex"
                       size="sm"
                       @update:model-value="(v: any) => handleUpdateTextStyle({ color: String(v) })"
@@ -913,9 +973,11 @@ function onPanelFocusOut() {
                 </div>
 
                 <div class="flex flex-col gap-0.5">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.align', 'Align') }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.textClip.align', 'Align')
+                  }}</span>
                   <USelect
-                    :model-value="String(((selectedClip as any).style?.align ?? 'center'))"
+                    :model-value="String((selectedClip as any).style?.align ?? 'center')"
                     :options="[
                       { value: 'left', label: 'Left' },
                       { value: 'center', label: 'Center' },
@@ -927,9 +989,11 @@ function onPanelFocusOut() {
                 </div>
 
                 <div class="flex flex-col gap-0.5">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.verticalAlign', 'Vertical align') }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.textClip.verticalAlign', 'Vertical align')
+                  }}</span>
                   <USelect
-                    :model-value="String(((selectedClip as any).style?.verticalAlign ?? 'middle'))"
+                    :model-value="String((selectedClip as any).style?.verticalAlign ?? 'middle')"
                     :options="[
                       { value: 'top', label: 'Top' },
                       { value: 'middle', label: 'Middle' },
@@ -942,41 +1006,55 @@ function onPanelFocusOut() {
 
                 <div class="grid grid-cols-2 gap-2">
                   <div class="flex flex-col gap-0.5">
-                    <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.lineHeight', 'Line height') }}</span>
+                    <span class="text-xs text-ui-text-muted">{{
+                      t('granVideoEditor.textClip.lineHeight', 'Line height')
+                    }}</span>
                     <UInput
-                      :model-value="Number(((selectedClip as any).style?.lineHeight ?? 1.2))"
+                      :model-value="Number((selectedClip as any).style?.lineHeight ?? 1.2)"
                       size="sm"
                       type="number"
                       step="0.1"
-                      @update:model-value="(v: any) => handleUpdateTextStyle({ lineHeight: Number(v) })"
+                      @update:model-value="
+                        (v: any) => handleUpdateTextStyle({ lineHeight: Number(v) })
+                      "
                     />
                   </div>
                   <div class="flex flex-col gap-0.5">
-                    <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.letterSpacing', 'Letter spacing') }}</span>
+                    <span class="text-xs text-ui-text-muted">{{
+                      t('granVideoEditor.textClip.letterSpacing', 'Letter spacing')
+                    }}</span>
                     <UInput
-                      :model-value="Number(((selectedClip as any).style?.letterSpacing ?? 0))"
+                      :model-value="Number((selectedClip as any).style?.letterSpacing ?? 0)"
                       size="sm"
                       type="number"
                       step="1"
-                      @update:model-value="(v: any) => handleUpdateTextStyle({ letterSpacing: Number(v) })"
+                      @update:model-value="
+                        (v: any) => handleUpdateTextStyle({ letterSpacing: Number(v) })
+                      "
                     />
                   </div>
                 </div>
 
                 <div class="flex flex-col gap-0.5">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.backgroundColor', 'Background') }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.textClip.backgroundColor', 'Background')
+                  }}</span>
                   <UColorPicker
-                    :model-value="String(((selectedClip as any).style?.backgroundColor ?? ''))"
+                    :model-value="String((selectedClip as any).style?.backgroundColor ?? '')"
                     format="hex"
                     size="sm"
-                    @update:model-value="(v: any) => handleUpdateTextStyle({ backgroundColor: String(v) })"
+                    @update:model-value="
+                      (v: any) => handleUpdateTextStyle({ backgroundColor: String(v) })
+                    "
                   />
                 </div>
 
                 <div class="flex flex-col gap-0.5">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.textClip.padding', 'Padding') }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.textClip.padding', 'Padding')
+                  }}</span>
                   <UInput
-                    :model-value="Number(((selectedClip as any).style?.padding ?? 60))"
+                    :model-value="Number((selectedClip as any).style?.padding ?? 60)"
                     size="sm"
                     type="number"
                     step="1"
@@ -985,11 +1063,17 @@ function onPanelFocusOut() {
                 </div>
               </div>
               <div class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
-                <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
-                <span class="font-mono text-xs">{{ formatTime(selectedClip.timelineRange.startUs) }}</span>
+                <span class="text-xs text-ui-text-muted">{{
+                  t('common.start', 'Start Time')
+                }}</span>
+                <span class="font-mono text-xs">{{
+                  formatTime(selectedClip.timelineRange.startUs)
+                }}</span>
               </div>
               <div class="flex flex-col gap-0.5 pb-1.5">
-                <span class="text-xs text-ui-text-muted">{{ t('common.duration', 'Duration') }}</span>
+                <span class="text-xs text-ui-text-muted">{{
+                  t('common.duration', 'Duration')
+                }}</span>
                 <span class="font-mono text-xs">{{
                   formatTime(selectedClip.timelineRange.durationUs)
                 }}</span>
@@ -1001,7 +1085,9 @@ function onPanelFocusOut() {
               v-if="selectedClip.trackId.startsWith('v')"
               class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              <div
+                class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+              >
                 {{ t('granVideoEditor.timeline.transitions', 'Transitions') }}
               </div>
 
@@ -1013,18 +1099,31 @@ function onPanelFocusOut() {
                     size="xs"
                     :color="(selectedClip as any).transitionIn ? 'red' : 'primary'"
                     variant="ghost"
-                    :icon="(selectedClip as any).transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+                    :icon="
+                      (selectedClip as any).transitionIn
+                        ? 'i-heroicons-trash'
+                        : 'i-heroicons-plus-circle'
+                    "
                     @click="toggleTransition('in')"
                   />
                 </div>
-                <div v-if="(selectedClip as any).transitionIn" class="space-y-1.5 pl-2 border-l-2 border-primary-500/40">
+                <div
+                  v-if="(selectedClip as any).transitionIn"
+                  class="space-y-1.5 pl-2 border-l-2 border-primary-500/40"
+                >
                   <div class="flex items-center justify-between">
                     <UButton
                       variant="link"
                       color="primary"
                       size="xs"
                       class="p-0 h-auto font-mono text-[10px]"
-                      @click="timelineStore.selectTransition({ trackId: selectedClip.trackId, itemId: selectedClip.id, edge: 'in' })"
+                      @click="
+                        timelineStore.selectTransition({
+                          trackId: selectedClip.trackId,
+                          itemId: selectedClip.id,
+                          edge: 'in',
+                        })
+                      "
                     >
                       {{ (selectedClip as any).transitionIn.type }}
                     </UButton>
@@ -1035,7 +1134,14 @@ function onPanelFocusOut() {
                   <DurationSliderInput
                     :model-value="(selectedClip as any).transitionIn.durationUs / 1_000_000"
                     :min="0.1"
-                    :max="Math.min(3, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
+                    :max="
+                      Math.max(
+                        0.1,
+                        (selectedClip.timelineRange.durationUs -
+                          ((selectedClip as any).transitionOut?.durationUs ?? 0)) /
+                          1_000_000,
+                      )
+                    "
                     :step="0.01"
                     unit="s"
                     :decimals="2"
@@ -1052,18 +1158,31 @@ function onPanelFocusOut() {
                     size="xs"
                     :color="(selectedClip as any).transitionOut ? 'red' : 'primary'"
                     variant="ghost"
-                    :icon="(selectedClip as any).transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+                    :icon="
+                      (selectedClip as any).transitionOut
+                        ? 'i-heroicons-trash'
+                        : 'i-heroicons-plus-circle'
+                    "
                     @click="toggleTransition('out')"
                   />
                 </div>
-                <div v-if="(selectedClip as any).transitionOut" class="space-y-1.5 pl-2 border-l-2 border-primary-500/40">
+                <div
+                  v-if="(selectedClip as any).transitionOut"
+                  class="space-y-1.5 pl-2 border-l-2 border-primary-500/40"
+                >
                   <div class="flex items-center justify-between">
                     <UButton
                       variant="link"
                       color="primary"
                       size="xs"
                       class="p-0 h-auto font-mono text-[10px]"
-                      @click="timelineStore.selectTransition({ trackId: selectedClip.trackId, itemId: selectedClip.id, edge: 'out' })"
+                      @click="
+                        timelineStore.selectTransition({
+                          trackId: selectedClip.trackId,
+                          itemId: selectedClip.id,
+                          edge: 'out',
+                        })
+                      "
                     >
                       {{ (selectedClip as any).transitionOut.type }}
                     </UButton>
@@ -1074,7 +1193,14 @@ function onPanelFocusOut() {
                   <DurationSliderInput
                     :model-value="(selectedClip as any).transitionOut.durationUs / 1_000_000"
                     :min="0.1"
-                    :max="Math.min(3, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
+                    :max="
+                      Math.max(
+                        0.1,
+                        (selectedClip.timelineRange.durationUs -
+                          ((selectedClip as any).transitionIn?.durationUs ?? 0)) /
+                          1_000_000,
+                      )
+                    "
                     :step="0.01"
                     unit="s"
                     :decimals="2"
@@ -1090,8 +1216,12 @@ function onPanelFocusOut() {
               class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
               <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">Прозрачность</span>
-                <span class="text-xs font-mono text-ui-text-muted">{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span>
+                <span class="text-xs font-semibold text-ui-text uppercase tracking-wide"
+                  >Прозрачность</span
+                >
+                <span class="text-xs font-mono text-ui-text-muted"
+                  >{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span
+                >
               </div>
               <USlider
                 :model-value="selectedClip.opacity ?? 1"
@@ -1111,17 +1241,26 @@ function onPanelFocusOut() {
             />
 
             <div
-              v-if="canEditAudioFades && (selectedClipTrack?.kind === 'audio' || selectedClipTrack?.kind === 'video')"
+              v-if="
+                canEditAudioFades &&
+                (selectedClipTrack?.kind === 'audio' || selectedClipTrack?.kind === 'video')
+              "
               class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              <div
+                class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+              >
                 {{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}
               </div>
 
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audio.volume', 'Volume') }}</span>
-                  <span class="text-xs font-mono text-ui-text-muted">{{ audioGain.toFixed(3) }}x</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.clip.audio.volume', 'Volume')
+                  }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted"
+                    >{{ audioGain.toFixed(3) }}x</span
+                  >
                 </div>
                 <USlider
                   :model-value="audioGain"
@@ -1134,8 +1273,12 @@ function onPanelFocusOut() {
 
               <div v-if="canEditAudioBalance" class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audio.balance', 'Balance') }}</span>
-                  <span class="text-xs font-mono text-ui-text-muted">{{ audioBalance.toFixed(2) }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.clip.audio.balance', 'Balance')
+                  }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{
+                    audioBalance.toFixed(2)
+                  }}</span>
                 </div>
                 <USlider
                   :model-value="audioBalance"
@@ -1148,12 +1291,14 @@ function onPanelFocusOut() {
 
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.fadeIn', 'Fade in') }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.clip.audioFade.fadeIn', 'Fade in')
+                  }}</span>
                 </div>
                 <DurationSliderInput
                   v-model="audioFadeInSec"
                   :min="0"
-                  :max="audioFadeUiMaxSec"
+                  :max="audioFadeInMaxSec"
                   :step="0.01"
                   unit="s"
                   :decimals="2"
@@ -1162,12 +1307,14 @@ function onPanelFocusOut() {
 
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.fadeOut', 'Fade out') }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.clip.audioFade.fadeOut', 'Fade out')
+                  }}</span>
                 </div>
                 <DurationSliderInput
                   v-model="audioFadeOutSec"
                   :min="0"
-                  :max="audioFadeUiMaxSec"
+                  :max="audioFadeOutMaxSec"
                   :step="0.01"
                   unit="s"
                   :decimals="2"
@@ -1179,7 +1326,9 @@ function onPanelFocusOut() {
               v-if="canEditTransform"
               class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              <div
+                class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+              >
                 Transform
               </div>
 
@@ -1233,8 +1382,13 @@ function onPanelFocusOut() {
             </div>
           </div>
 
-          <div v-else-if="displayMode === 'track' && selectedTrack" class="w-full flex flex-col gap-2">
-            <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+          <div
+            v-else-if="displayMode === 'track' && selectedTrack"
+            class="w-full flex flex-col gap-2"
+          >
+            <div
+              class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+            >
               {{ selectedTrack.name }}
             </div>
 
@@ -1242,24 +1396,46 @@ function onPanelFocusOut() {
               v-if="selectedTrack.kind === 'audio' || selectedTrack.kind === 'video'"
               class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
             >
-              <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+              <div
+                class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+              >
                 {{ t('granVideoEditor.track.audio.title', 'Track audio') }}
               </div>
 
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.track.audio.volume', 'Volume') }}</span>
-                  <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioGain.toFixed(3) }}x</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.track.audio.volume', 'Volume')
+                  }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted"
+                    >{{ trackAudioGain.toFixed(3) }}x</span
+                  >
                 </div>
-                <USlider :model-value="trackAudioGain" :min="0" :max="2" :step="0.001" @update:model-value="(v: any) => (trackAudioGain = Number(v))" />
+                <USlider
+                  :model-value="trackAudioGain"
+                  :min="0"
+                  :max="2"
+                  :step="0.001"
+                  @update:model-value="(v: any) => (trackAudioGain = Number(v))"
+                />
               </div>
 
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.track.audio.balance', 'Balance') }}</span>
-                  <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioBalance.toFixed(2) }}</span>
+                  <span class="text-xs text-ui-text-muted">{{
+                    t('granVideoEditor.track.audio.balance', 'Balance')
+                  }}</span>
+                  <span class="text-xs font-mono text-ui-text-muted">{{
+                    trackAudioBalance.toFixed(2)
+                  }}</span>
                 </div>
-                <USlider :model-value="trackAudioBalance" :min="-1" :max="1" :step="0.01" @update:model-value="(v: any) => (trackAudioBalance = Number(v))" />
+                <USlider
+                  :model-value="trackAudioBalance"
+                  :min="-1"
+                  :max="1"
+                  :step="0.01"
+                  @update:model-value="(v: any) => (trackAudioBalance = Number(v))"
+                />
               </div>
             </div>
 
@@ -1332,7 +1508,9 @@ function onPanelFocusOut() {
                 class="flex flex-col gap-0.5 pb-1.5"
                 :class="{ 'border-b border-ui-border': metadataYaml }"
               >
-                <span class="text-xs text-ui-text-muted">{{ t('common.modified', 'Modified') }}</span>
+                <span class="text-xs text-ui-text-muted">{{
+                  t('common.modified', 'Modified')
+                }}</span>
                 <span class="font-medium text-ui-text">{{
                   new Date(fileInfo.lastModified).toLocaleString()
                 }}</span>

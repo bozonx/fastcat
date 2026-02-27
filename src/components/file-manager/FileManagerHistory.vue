@@ -59,7 +59,12 @@ function formatTime(ts: number): string {
     >
       <UIcon name="i-heroicons-clock" class="w-8 h-8 opacity-30" />
       <p class="text-xs">
-        {{ t('videoEditor.fileManager.history.empty', 'No history yet. Start editing to record actions.') }}
+        {{
+          t(
+            'videoEditor.fileManager.history.empty',
+            'No history yet. Start editing to record actions.',
+          )
+        }}
       </p>
     </div>
 
@@ -77,7 +82,9 @@ function formatTime(ts: number): string {
           :class="entry.isRedo ? 'text-ui-text-muted' : 'text-primary-400'"
         />
         <span class="flex-1 truncate font-medium">{{ entry.label }}</span>
-        <span class="text-ui-text-disabled shrink-0 tabular-nums">{{ formatTime(entry.timestamp) }}</span>
+        <span class="text-ui-text-disabled shrink-0 tabular-nums">{{
+          formatTime(entry.timestamp)
+        }}</span>
       </div>
     </div>
   </div>

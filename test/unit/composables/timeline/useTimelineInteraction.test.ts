@@ -30,14 +30,16 @@ describe('useTimelineInteraction', () => {
 
   it('computeAnchoredScrollLeft should keep anchor time at same viewport position', () => {
     // At zoom 50, 1s => BASE_PX_PER_SECOND.
-    // We want time=2s to stay at viewportX=100.
+    // We want time=10s to stay at viewportX=100.
     const prevZoom = 50;
     const nextZoom = 60;
     const viewportWidth = 300;
-    const prevScrollLeft = 0;
 
-    const anchorTimeUs = 2_000_000;
+    const anchorTimeUs = 10_000_000;
     const anchorViewportX = 100;
+
+    const anchorPxAtPrevZoom = timeUsToPx(anchorTimeUs, prevZoom);
+    const prevScrollLeft = Math.max(0, anchorPxAtPrevZoom - anchorViewportX);
 
     const nextScrollLeft = computeAnchoredScrollLeft({
       prevZoom,

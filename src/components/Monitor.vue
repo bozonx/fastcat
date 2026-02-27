@@ -29,7 +29,9 @@ const playbackSpeedOptions = [
   { label: '5x', value: 5 },
 ];
 
-const playbackDirection = computed(() => (timelineStore.playbackSpeed < 0 ? 'backward' : 'forward'));
+const playbackDirection = computed(() =>
+  timelineStore.playbackSpeed < 0 ? 'backward' : 'forward',
+);
 
 const selectedPlaybackSpeedOption = computed(() => {
   const abs = Math.abs(timelineStore.playbackSpeed);
@@ -188,12 +190,20 @@ function onPreviewPointerDown(event: PointerEvent) {
 }
 
 function onViewportPointerDown(event: PointerEvent) {
-  if (event.button !== 1) return;
-  isPanning.value = true;
-  panStart.value = { x: event.clientX, y: event.clientY };
-  panOrigin.value = { x: panX.value, y: panY.value };
-  (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
-  event.preventDefault();
+  const workspaceStore = useWorkspaceStore();
+  const settings = workspaceStore.userSettings?.mouse?.monitor;
+
+  // Middle click (button 1)
+  if (event.button === 1) {
+    if (settings?.middleClick === 'pan') {
+      isPanning.value = true;
+      panStart.value = { x: event.clientX, y: event.clientY };
+      panOrigin.value = { x: panX.value, y: panY.value };
+      (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+    return;
+  }
 }
 
 function onViewportPointerMove(event: PointerEvent) {
@@ -228,6 +238,48 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerup', onWindowPointerUp);
   clearVolumeHoldTimers();
 });
+
+function onViewportWheel(e: WheelEvent) {
+  if (e.defaultPrevented) return;
+
+  const isShift = e.shiftKey;
+  const workspaceStore = useWorkspaceStore();
+  const settings = workspaceStore.userSettings?.mouse?.monitor;
+  if (!settings) return;
+
+  const action = isShift ? settings.wheelShift : settings.wheel;
+
+  if (action === 'none') {
+    e.preventDefault();
+    return;
+  }
+
+  // Calculate delta amount based on event
+  // Some browsers use deltaX for shift+wheel, some keep deltaY but set shiftKey
+  const isHorizontalScroll = e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY);
+  const delta = isHorizontalScroll ? e.deltaX : e.deltaY;
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  if (action === 'zoom') {
+    e.preventDefault();
+    // Use pan properties to implement zoom later if needed,
+    // currently just center map as fallback
+    // TODO: implement actual zoom
+    return;
+  }
+
+  if (action === 'scroll_vertical') {
+    e.preventDefault();
+    panY.value -= delta;
+    return;
+  }
+
+  if (action === 'scroll_horizontal') {
+    e.preventDefault();
+    panX.value -= delta;
+    return;
+  }
+}
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds)) return '00:00';
@@ -337,7 +389,10 @@ function toggleMute() {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 min-h-0"
-    :class="{ 'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('monitor') }"
+    :class="{
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+        focusStore.isPanelFocused('monitor'),
+    }"
     @pointerdown="focusStore.setMainFocus('monitor')"
   >
     <!-- Header -->
@@ -500,7 +555,9 @@ function toggleMute() {
         icon="i-heroicons-backward"
         :aria-label="t('granVideoEditor.monitor.playBackward', 'Play backward')"
         :disabled="!canInteractPlayback"
-        @click="setPlayback({ direction: 'backward', speed: (selectedPlaybackSpeedOption?.value ?? 1) })"
+        @click="
+          setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
+        "
       />
 
       <UButton
@@ -510,7 +567,9 @@ function toggleMute() {
         :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
         :aria-label="t('granVideoEditor.monitor.play', 'Play')"
         :disabled="!canInteractPlayback"
-        @click="setPlayback({ direction: 'forward', speed: (selectedPlaybackSpeedOption?.value ?? 1) })"
+        @click="
+          setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
+        "
       />
 
       <div class="w-24">

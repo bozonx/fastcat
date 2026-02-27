@@ -210,9 +210,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         class="text-sm text-ui-text-muted font-medium bg-ui-bg-accent p-3 rounded flex justify-between items-center"
       >
         <span>{{ t('videoEditor.resolution.finalResolution', 'Final Resolution:') }}</span>
-        <span class="font-mono text-ui-text"
-          >{{ localWidth }} &times; {{ localHeight }}</span
-        >
+        <span class="font-mono text-ui-text">{{ localWidth }} &times; {{ localHeight }}</span>
       </div>
     </template>
 

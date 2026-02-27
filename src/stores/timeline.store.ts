@@ -2,7 +2,7 @@ import { defineStore, storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import PQueue from 'p-queue';
 
-import type { TimelineDocument } from '~/timeline/types';
+import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
@@ -88,6 +88,37 @@ export const useTimelineStore = defineStore('timeline', () => {
     itemId: string;
     edge: 'in' | 'out';
   } | null>(null);
+
+  function getMarkers(): TimelineMarker[] {
+    const raw = (timelineDoc.value as any)?.metadata?.gran?.markers;
+    return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
+  }
+
+  function generateMarkerId(): string {
+    return `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function addMarkerAtPlayhead() {
+    applyTimeline({
+      type: 'add_marker',
+      id: generateMarkerId(),
+      timeUs: currentTime.value,
+      text: '',
+    });
+  }
+
+  function updateMarker(markerId: string, patch: { timeUs?: number; text?: string }) {
+    applyTimeline({
+      type: 'update_marker',
+      id: markerId,
+      timeUs: patch.timeUs,
+      text: patch.text,
+    });
+  }
+
+  function removeMarker(markerId: string) {
+    applyTimeline({ type: 'remove_marker', id: markerId });
+  }
 
   let persistTimelineTimeout: number | null = null;
   let loadTimelineRequestId = 0;
@@ -621,7 +652,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
 
-    updateClipProperties(target.trackId, target.itemId, { disabled: !Boolean(item.disabled) });
+    updateClipProperties(target.trackId, target.itemId, { disabled: !item.disabled });
     await requestTimelineSave({ immediate: true });
   }
 
@@ -890,19 +921,19 @@ export const useTimelineStore = defineStore('timeline', () => {
   function toggleVideoHidden(trackId: string) {
     const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
     if (!track || track.kind !== 'video') return;
-    updateTrackProperties(trackId, { videoHidden: !Boolean(track.videoHidden) });
+    updateTrackProperties(trackId, { videoHidden: !track.videoHidden });
   }
 
   function toggleTrackAudioMuted(trackId: string) {
     const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
     if (!track) return;
-    updateTrackProperties(trackId, { audioMuted: !Boolean(track.audioMuted) });
+    updateTrackProperties(trackId, { audioMuted: !track.audioMuted });
   }
 
   function toggleTrackAudioSolo(trackId: string) {
     const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
     if (!track) return;
-    updateTrackProperties(trackId, { audioSolo: !Boolean(track.audioSolo) });
+    updateTrackProperties(trackId, { audioSolo: !track.audioSolo });
   }
 
   function renameItem(trackId: string, itemId: string, name: string) {
@@ -1477,6 +1508,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   return {
     timelineDoc,
+    getMarkers,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
@@ -1514,6 +1546,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     setPlaybackGestureHandler,
     togglePlayback,
     stopPlayback,
+    addMarkerAtPlayhead,
+    updateMarker,
+    removeMarker,
     addTrack,
     addAdjustmentClipAtPlayhead,
     addBackgroundClipAtPlayhead,

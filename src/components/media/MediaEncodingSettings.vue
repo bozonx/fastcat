@@ -113,7 +113,12 @@ const audioCodecOptions = [
         class="w-full"
       />
       <span class="text-xs text-ui-text-muted">
-        {{ t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file') }}
+        {{
+          t(
+            'videoEditor.export.videoBitrateHelp',
+            'Higher bitrate = better quality and larger file',
+          )
+        }}
       </span>
     </div>
 
@@ -135,7 +140,9 @@ const audioCodecOptions = [
           :disabled="props.disabled"
         />
       </div>
-      <div v-else class="text-sm text-ui-text font-medium bg-ui-bg-accent px-3 py-2 rounded">Opus</div>
+      <div v-else class="text-sm text-ui-text font-medium bg-ui-bg-accent px-3 py-2 rounded">
+        Opus
+      </div>
     </div>
 
     <div v-if="!excludeAudio" class="flex flex-col gap-2">
@@ -153,7 +160,12 @@ const audioCodecOptions = [
         class="w-full"
       />
       <span class="text-xs text-ui-text-muted">
-        {{ t('videoEditor.export.audioBitrateHelp', 'Higher bitrate = better quality and larger file') }}
+        {{
+          t(
+            'videoEditor.export.audioBitrateHelp',
+            'Higher bitrate = better quality and larger file',
+          )
+        }}
       </span>
     </div>
   </div>

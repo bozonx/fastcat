@@ -67,12 +67,6 @@ function onInputUpdate(value: unknown) {
       <span class="font-mono text-[10px]">{{ displayValue }}{{ unit }}</span>
     </div>
 
-    <USlider
-      v-model="clampedValue"
-      :min="min"
-      :max="max"
-      :step="step"
-      :class="sliderClass"
-    />
+    <USlider v-model="clampedValue" :min="min" :max="max" :step="step" :class="sliderClass" />
   </div>
 </template>

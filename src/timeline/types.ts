@@ -176,10 +176,28 @@ export interface TimelineTrack {
   items: TimelineTrackItem[];
 }
 
+export interface TimelineMarker {
+  id: string;
+  timeUs: number;
+  text: string;
+}
+
+export interface TimelineGranMetadata {
+  docId?: string;
+  timebase?: TimelineTimebase;
+  markers?: TimelineMarker[];
+}
+
+export interface TimelineMetadata {
+  gran?: TimelineGranMetadata;
+  [key: string]: unknown;
+}
+
 export interface TimelineDocument {
   OTIO_SCHEMA: 'Timeline.1';
   id: string;
   name: string;
   timebase: TimelineTimebase;
   tracks: TimelineTrack[];
+  metadata?: TimelineMetadata;
 }

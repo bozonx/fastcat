@@ -1,5 +1,6 @@
 import { safeDispose } from './utils';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
+import type { Filter } from 'pixi.js';
 import {
   Application,
   Sprite,
@@ -8,7 +9,6 @@ import {
   ImageSource,
   DOMAdapter,
   WebWorkerAdapter,
-  Filter,
   RenderTexture,
   Container,
 } from 'pixi.js';
@@ -778,7 +778,7 @@ export class VideoCompositor {
       return this.canvas;
     }
 
-    let updatedClips: CompositorClip[] = [];
+    const updatedClips: CompositorClip[] = [];
     try {
       const { activeClips: active, activeChanged } = this.activeTracker.update({
         clips: this.clips,

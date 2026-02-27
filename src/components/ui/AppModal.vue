@@ -83,16 +83,11 @@ function handleClose(close?: () => void) {
         >
           <div class="min-w-0 flex-1">
             <slot name="header">
-              <DialogTitle
-                v-if="props.title"
-                class="text-lg font-semibold text-ui-text truncate"
-              >
+              <DialogTitle v-if="props.title" class="text-lg font-semibold text-ui-text truncate">
                 {{ props.title }}
               </DialogTitle>
               <DialogDescription
-                :class="[
-                  props.description ? 'mt-1 text-sm text-ui-text-muted' : 'sr-only',
-                ]"
+                :class="[props.description ? 'mt-1 text-sm text-ui-text-muted' : 'sr-only']"
               >
                 {{ props.description || props.title || 'Modal' }}
               </DialogDescription>

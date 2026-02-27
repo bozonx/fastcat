@@ -36,11 +36,5 @@ const value = computed({
 </script>
 
 <template>
-  <USlider
-    v-model="value"
-    :min="min"
-    :max="max"
-    :step="step"
-    :class="sliderClass"
-  />
+  <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
 </template>

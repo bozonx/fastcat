@@ -41,6 +41,10 @@ function addTextClip() {
   timelineStore.addTextClipAtPlayhead({ name: defaultName, text: defaultText });
 }
 
+function addMarker() {
+  timelineStore.addMarkerAtPlayhead();
+}
+
 async function splitClips() {
   await timelineStore.splitClipsAtPlayhead();
 }
@@ -86,7 +90,9 @@ function toggleClipSnapMode() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2 px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated h-10">
+  <div
+    class="flex items-center gap-2 px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated h-10"
+  >
     <div class="ml-2 flex items-center gap-1.5">
       <UButton
         size="sm"
@@ -111,6 +117,15 @@ function toggleClipSnapMode() {
         icon="i-heroicons-chat-bubble-bottom-center-text"
         :aria-label="t('granVideoEditor.timeline.addTextClip', 'Add text clip')"
         @click="addTextClip"
+      />
+
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-bookmark"
+        :aria-label="t('granVideoEditor.timeline.addMarker', 'Add marker')"
+        @click="addMarker"
       />
 
       <div class="w-px h-5 bg-ui-border mx-1.5" />

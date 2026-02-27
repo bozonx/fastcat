@@ -17,7 +17,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   (
     e: 'update',
-    payload: { trackId: string; itemId: string; edge: 'in' | 'out'; transition: ClipTransition | null },
+    payload: {
+      trackId: string;
+      itemId: string;
+      edge: 'in' | 'out';
+      transition: ClipTransition | null;
+    },
   ): void;
 }>();
 
@@ -42,12 +47,16 @@ watch(
       selectedCurve.value = t.curve ?? 'linear';
     }
     // Reset flag after Vue processes reactivity
-    void Promise.resolve().then(() => { isSyncingFromProps = false; });
+    void Promise.resolve().then(() => {
+      isSyncingFromProps = false;
+    });
   },
 );
 
 const edgeIcon = computed(() =>
-  props.edge === 'in' ? 'i-heroicons-arrow-left-end-on-rectangle' : 'i-heroicons-arrow-right-end-on-rectangle',
+  props.edge === 'in'
+    ? 'i-heroicons-arrow-left-end-on-rectangle'
+    : 'i-heroicons-arrow-right-end-on-rectangle',
 );
 
 function emitUpdate() {
@@ -88,7 +97,9 @@ const durationStep = 0.05;
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3 bg-ui-bg-elevated border border-ui-border rounded-lg text-xs text-ui-text min-w-56 shadow-lg">
+  <div
+    class="flex flex-col gap-3 p-3 bg-ui-bg-elevated border border-ui-border rounded-lg text-xs text-ui-text min-w-56 shadow-lg"
+  >
     <!-- Header with edge icon -->
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2 font-semibold">
@@ -151,7 +162,11 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors text-xs"
-          :class="selectedMode === 'blend' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="
+            selectedMode === 'blend'
+              ? 'bg-primary-500 text-[color:var(--on-primary)]'
+              : 'bg-ui-bg hover:bg-ui-bg-hover'
+          "
           @click="selectedMode = 'blend'"
         >
           {{ t('granVideoEditor.timeline.transition.modeBlend') }}
@@ -159,7 +174,11 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
-          :class="selectedMode === 'composite' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="
+            selectedMode === 'composite'
+              ? 'bg-primary-500 text-[color:var(--on-primary)]'
+              : 'bg-ui-bg hover:bg-ui-bg-hover'
+          "
           @click="selectedMode = 'composite'"
         >
           {{ t('granVideoEditor.timeline.transition.modeComposite') }}
@@ -174,7 +193,11 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors text-xs"
-          :class="selectedCurve === 'linear' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="
+            selectedCurve === 'linear'
+              ? 'bg-primary-500 text-[color:var(--on-primary)]'
+              : 'bg-ui-bg hover:bg-ui-bg-hover'
+          "
           @click="selectedCurve = 'linear'"
         >
           {{ t('granVideoEditor.timeline.transition.curveLinear') }}
@@ -182,7 +205,11 @@ const durationStep = 0.05;
         <button
           type="button"
           class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
-          :class="selectedCurve === 'bezier' ? 'bg-primary-500 text-[color:var(--on-primary)]' : 'bg-ui-bg hover:bg-ui-bg-hover'"
+          :class="
+            selectedCurve === 'bezier'
+              ? 'bg-primary-500 text-[color:var(--on-primary)]'
+              : 'bg-ui-bg hover:bg-ui-bg-hover'
+          "
           @click="selectedCurve = 'bezier'"
         >
           {{ t('granVideoEditor.timeline.transition.curveBezier') }}

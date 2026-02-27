@@ -196,8 +196,13 @@ function addAudioTrack() {
 </script>
 
 <template>
-  <div class="h-full w-full shrink-0 border-r border-ui-border flex flex-col bg-ui-bg" v-bind="$attrs">
-    <div class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5">
+  <div
+    class="h-full w-full shrink-0 border-r border-ui-border flex flex-col bg-ui-bg"
+    v-bind="$attrs"
+  >
+    <div
+      class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+    >
       <UTooltip :text="t('granVideoEditor.timeline.addVideoTrack', 'Add video track')">
         <UButton
           size="xs"
@@ -216,7 +221,7 @@ function addAudioTrack() {
           @click="addAudioTrack"
         />
       </UTooltip>
-      
+
       <div v-if="selectedTrack" class="flex items-center gap-0.5 ml-auto">
         <UTooltip :text="t('granVideoEditor.timeline.renameTrack', 'Rename track')">
           <UButton
@@ -268,7 +273,9 @@ function addAudioTrack() {
               variant="ghost"
               color="neutral"
               :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-              :aria-label="t('granVideoEditor.timeline.toggleTrackVisibility', 'Toggle track visibility')"
+              :aria-label="
+                t('granVideoEditor.timeline.toggleTrackVisibility', 'Toggle track visibility')
+              "
               @pointerdown.prevent.stop
               @mousedown.prevent.stop
               @click="toggleVideoHidden(track, $event)"

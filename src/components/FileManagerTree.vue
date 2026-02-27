@@ -198,7 +198,10 @@ function getContextMenuItems(entry: FsEntry) {
           <!-- Proxy indicators -->
           <template v-if="isVideo(entry)">
             <div v-if="isGeneratingProxy(entry)" class="flex items-center gap-1 ml-2">
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 text-primary-400 animate-spin" />
+              <UIcon
+                name="i-heroicons-arrow-path"
+                class="w-3.5 h-3.5 text-primary-400 animate-spin"
+              />
               <span
                 v-if="proxyProgress(entry) !== undefined"
                 class="text-xs text-primary-400 font-mono"

@@ -38,9 +38,9 @@ describe('WorkspaceStore', () => {
     const store = useWorkspaceStore();
     store.projects = ['p1', 'p2'];
     store.error = 'some error';
-    
+
     store.resetWorkspace();
-    
+
     expect(store.workspaceHandle).toBeNull();
     expect(store.projects).toEqual([]);
     expect(store.error).toBeNull();
@@ -48,7 +48,7 @@ describe('WorkspaceStore', () => {
 
   it('setupWorkspace creates required directories', async () => {
     const store = useWorkspaceStore();
-    
+
     const mockDirectoryHandle = {
       getDirectoryHandle: vi.fn().mockResolvedValue({}),
       name: 'root',
@@ -57,7 +57,9 @@ describe('WorkspaceStore', () => {
 
     await store.setupWorkspace(mockDirectoryHandle);
 
-    expect(mockDirectoryHandle.getDirectoryHandle).toHaveBeenCalledWith('projects', { create: true });
+    expect(mockDirectoryHandle.getDirectoryHandle).toHaveBeenCalledWith('projects', {
+      create: true,
+    });
     expect(mockDirectoryHandle.getDirectoryHandle).toHaveBeenCalledWith('cache', { create: true });
     expect(store.workspaceHandle).toStrictEqual(mockDirectoryHandle);
   });

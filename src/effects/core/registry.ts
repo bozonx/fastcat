@@ -14,7 +14,15 @@ export interface EffectManifest<T = Record<string, any>> {
 }
 
 export type EffectControl<T> =
-  | { kind: 'slider'; key: keyof T; label: string; min: number; max: number; step: number; format?: (v: number) => string }
+  | {
+      kind: 'slider';
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      format?: (v: number) => string;
+    }
   | { kind: 'toggle'; key: keyof T; label: string };
 
 export interface BaseClipEffect {

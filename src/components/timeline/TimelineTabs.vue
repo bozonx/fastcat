@@ -32,7 +32,9 @@ function closeTab(path: string, event: Event) {
 </script>
 
 <template>
-  <div class="timeline-tabs flex items-center bg-ui-bg border-b border-ui-border h-9 overflow-hidden select-none">
+  <div
+    class="timeline-tabs flex items-center bg-ui-bg border-b border-ui-border h-9 overflow-hidden select-none"
+  >
     <VueDraggable
       v-model="openPaths"
       class="flex h-full min-w-0 overflow-x-auto no-scrollbar"
@@ -46,22 +48,23 @@ function closeTab(path: string, event: Event) {
         :class="[
           isActive(path)
             ? 'active-tab text-primary-400 shadow-inner'
-            : 'text-ui-text-muted hover:bg-ui-bg-elevated hover:text-ui-text'
+            : 'text-ui-text-muted hover:bg-ui-bg-elevated hover:text-ui-text',
         ]"
         @click="selectTab(path)"
       >
         <!-- Active Indicator Line -->
-        <div 
-          v-if="isActive(path)"
-          class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500"
+        <div v-if="isActive(path)" class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500" />
+
+        <UIcon
+          name="i-heroicons-film-20-solid"
+          class="w-4 h-4 shrink-0"
+          :class="
+            isActive(path)
+              ? 'text-primary-500'
+              : 'text-ui-text-disabled group-hover:text-ui-text-muted'
+          "
         />
 
-        <UIcon 
-          name="i-heroicons-film-20-solid" 
-          class="w-4 h-4 shrink-0" 
-          :class="isActive(path) ? 'text-primary-500' : 'text-ui-text-disabled group-hover:text-ui-text-muted'"
-        />
-        
         <span class="text-[10px] truncate flex-1 font-bold tracking-widest uppercase">
           {{ getFileName(path) }}
         </span>

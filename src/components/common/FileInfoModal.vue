@@ -54,9 +54,7 @@ function formatMegabytes(bytes: number, decimals = 2): string {
       <div class="flex flex-col gap-2">
         <div class="flex flex-col gap-1 border-b border-ui-border pb-2">
           <span class="text-sm text-ui-text-muted">{{ t('common.name', 'Name') }}</span>
-          <span class="font-medium text-ui-text break-all">{{
-            info.name
-          }}</span>
+          <span class="font-medium text-ui-text break-all">{{ info.name }}</span>
         </div>
         <div class="flex flex-col gap-1 border-b border-ui-border pb-2">
           <span class="text-sm text-ui-text-muted">{{ t('common.type', 'Type') }}</span>
@@ -71,9 +69,7 @@ function formatMegabytes(bytes: number, decimals = 2): string {
           class="flex flex-col gap-1 border-b border-ui-border pb-2"
         >
           <span class="text-sm text-ui-text-muted">{{ t('common.size', 'Size') }}</span>
-          <span class="font-medium text-ui-text">{{
-            formatMegabytes(info.size)
-          }}</span>
+          <span class="font-medium text-ui-text">{{ formatMegabytes(info.size) }}</span>
         </div>
         <div v-if="info.lastModified" class="flex flex-col gap-1 pb-2">
           <span class="text-sm text-ui-text-muted">{{ t('common.modified', 'Modified') }}</span>
@@ -81,10 +77,7 @@ function formatMegabytes(bytes: number, decimals = 2): string {
             new Date(info.lastModified).toLocaleString()
           }}</span>
         </div>
-        <div
-          v-if="metadataYaml"
-          class="flex flex-col gap-1 border-t border-ui-border pt-2 pb-2"
-        >
+        <div v-if="metadataYaml" class="flex flex-col gap-1 border-t border-ui-border pt-2 pb-2">
           <span class="text-sm text-ui-text-muted">{{
             t('videoEditor.fileManager.info.metadata', 'Metadata')
           }}</span>

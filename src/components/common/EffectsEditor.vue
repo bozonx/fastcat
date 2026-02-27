@@ -19,12 +19,8 @@ const { t } = useI18n();
 
 const isEffectModalOpen = ref(false);
 
-const safeTitle = computed(
-  () => props.title ?? t('granVideoEditor.effects.title', 'Effects'),
-);
-const safeAddLabel = computed(
-  () => props.addLabel ?? t('granVideoEditor.effects.add', 'Add'),
-);
+const safeTitle = computed(() => props.title ?? t('granVideoEditor.effects.title', 'Effects'));
+const safeAddLabel = computed(() => props.addLabel ?? t('granVideoEditor.effects.add', 'Add'));
 const safeEmptyLabel = computed(
   () => props.emptyLabel ?? t('granVideoEditor.effects.empty', 'No effects'),
 );
@@ -93,7 +89,9 @@ function handleRemoveEffect(effectId: string) {
               size="sm"
               @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
             />
-            <span class="font-medium">{{ getEffectManifest(effect.type)?.name || effect.type }}</span>
+            <span class="font-medium">{{
+              getEffectManifest(effect.type)?.name || effect.type
+            }}</span>
           </div>
           <UButton
             size="xs"

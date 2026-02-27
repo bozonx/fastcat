@@ -890,7 +890,10 @@ export function updateClipProperties(
   // Fade values are stored in timeline microseconds.
   // Clamp to the current clip duration to avoid invalid envelopes.
   if ('audioFadeInUs' in nextProps) {
-    const safe = clampAudioFadeUs((nextProps as any).audioFadeInUs, item.timelineRange.durationUs);
+    const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+    const oppFadeUs = Math.max(0, Math.round((item as any).audioFadeOutUs ?? 0));
+    const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
+    const safe = clampAudioFadeUs((nextProps as any).audioFadeInUs, maxUs);
     if (safe === undefined) {
       delete (nextProps as any).audioFadeInUs;
     } else {
@@ -898,7 +901,10 @@ export function updateClipProperties(
     }
   }
   if ('audioFadeOutUs' in nextProps) {
-    const safe = clampAudioFadeUs((nextProps as any).audioFadeOutUs, item.timelineRange.durationUs);
+    const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+    const oppFadeUs = Math.max(0, Math.round((item as any).audioFadeInUs ?? 0));
+    const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
+    const safe = clampAudioFadeUs((nextProps as any).audioFadeOutUs, maxUs);
     if (safe === undefined) {
       delete (nextProps as any).audioFadeOutUs;
     } else {
@@ -920,10 +926,18 @@ export function updateClipProperties(
                 updated.audioBalance = clampNumber(updated.audioBalance, -1, 1);
               }
               if (typeof updated.audioFadeInUs === 'number') {
-                updated.audioFadeInUs = clampNumber(updated.audioFadeInUs, 0, durationUs);
+                updated.audioFadeInUs = clampNumber(
+                  updated.audioFadeInUs,
+                  0,
+                  Math.max(0, durationUs - (Number(updated.audioFadeOutUs) || 0)),
+                );
               }
               if (typeof updated.audioFadeOutUs === 'number') {
-                updated.audioFadeOutUs = clampNumber(updated.audioFadeOutUs, 0, durationUs);
+                updated.audioFadeOutUs = clampNumber(
+                  updated.audioFadeOutUs,
+                  0,
+                  Math.max(0, durationUs - (Number(updated.audioFadeInUs) || 0)),
+                );
               }
               return updated;
             })()
@@ -1430,22 +1444,59 @@ export function updateClipTransition(
 
   const patch: Record<string, unknown> = {};
 
+  const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+
+  function clampTransitionUs(input: {
+    edge: 'in' | 'out';
+    requested: { type: string; durationUs: number; mode?: any; curve?: any };
+  }): { type: string; durationUs: number; mode?: any; curve?: any } {
+    const maxUs = Math.max(0, clipDurationUs);
+    return {
+      ...input.requested,
+      durationUs: Math.min(Math.max(0, Math.round(input.requested.durationUs)), maxUs),
+    };
+  }
+
   let requestedIn = 'transitionIn' in cmd ? coerceTransition(cmd.transitionIn) : undefined;
   if (requestedIn) {
-    const maxIn = Math.max(
-      0,
-      Math.round(item.timelineRange.durationUs) - ((item as any).transitionOut?.durationUs ?? 0),
-    );
-    requestedIn.durationUs = Math.min(requestedIn.durationUs, maxIn);
+    requestedIn = clampTransitionUs({
+      edge: 'in',
+      requested: requestedIn,
+    });
   }
 
   let requestedOut = 'transitionOut' in cmd ? coerceTransition(cmd.transitionOut) : undefined;
   if (requestedOut) {
-    const maxOut = Math.max(
-      0,
-      Math.round(item.timelineRange.durationUs) - ((item as any).transitionIn?.durationUs ?? 0),
-    );
-    requestedOut.durationUs = Math.min(requestedOut.durationUs, maxOut);
+    requestedOut = clampTransitionUs({
+      edge: 'out',
+      requested: requestedOut,
+    });
+  }
+
+  if ('transitionIn' in cmd && 'transitionOut' in cmd && requestedIn && requestedOut) {
+    const maxOutUs = Math.max(0, clipDurationUs - requestedIn.durationUs);
+    if (requestedOut.durationUs > maxOutUs) {
+      requestedOut = { ...requestedOut, durationUs: maxOutUs };
+    }
+  }
+
+  // If we are setting one edge and the opposite edge exists, ensure they fit exactly.
+  // When the requested edge grows and would hit the opposite transition, we reduce the opposite.
+  if ('transitionIn' in cmd && requestedIn && (item as any).transitionOut) {
+    const out = (item as any).transitionOut;
+    const maxOppUs = Math.max(0, clipDurationUs - requestedIn.durationUs);
+    const nextOppUs = Math.min(Math.max(0, Math.round(out.durationUs ?? 0)), maxOppUs);
+    if (nextOppUs !== out.durationUs) {
+      patch.transitionOut = nextOppUs <= 0 ? undefined : { ...out, durationUs: nextOppUs };
+    }
+  }
+  if ('transitionOut' in cmd && requestedOut && (item as any).transitionIn) {
+    const inn = (item as any).transitionIn;
+    const maxOppUs = Math.max(0, clipDurationUs - requestedOut.durationUs);
+    const nextOppUs = Math.min(Math.max(0, Math.round(inn.durationUs ?? 0)), maxOppUs);
+    if (nextOppUs !== inn.durationUs) {
+      patch.transitionIn = nextOppUs <= 0 ? undefined : { ...inn, durationUs: nextOppUs };
+    }
   }
 
   if ('transitionIn' in cmd) {

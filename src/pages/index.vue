@@ -355,13 +355,13 @@ const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split-v4', [20,
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {
   if (Array.isArray(event?.panes)) {
-    mainSplitSizes.value = event.panes.map(p => p.size);
+    mainSplitSizes.value = event.panes.map((p) => p.size);
   }
 }
 
 function onTopSplitResize(event: { panes: { size: number }[] }) {
   if (Array.isArray(event?.panes)) {
-    topSplitSizes.value = event.panes.map(p => p.size);
+    topSplitSizes.value = event.panes.map((p) => p.size);
   }
 }
 
@@ -662,7 +662,11 @@ function leaveProject() {
       </div>
 
       <ClientOnly>
-        <Splitpanes class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
+        <Splitpanes
+          class="flex-1 min-h-0 editor-splitpanes"
+          horizontal
+          @resized="onMainSplitResize"
+        >
           <Pane :size="mainSplitSizes[0]" min-size="10">
             <Splitpanes class="editor-splitpanes" @resized="onTopSplitResize">
               <Pane :size="topSplitSizes[0]" min-size="5">

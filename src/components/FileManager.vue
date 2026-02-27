@@ -184,28 +184,36 @@ function onFileSelect(e: Event) {
     <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'project' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
+        :class="
+          activeTab === 'project' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+        "
         @click="activeTab = 'project'"
       >
         {{ t('videoEditor.fileManager.tabs.project', 'Project') }}
       </button>
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
+        :class="
+          activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+        "
         @click="activeTab = 'files'"
       >
         {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
       </button>
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'effects' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
+        :class="
+          activeTab === 'effects' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+        "
         @click="activeTab = 'effects'"
       >
         {{ t('videoEditor.fileManager.tabs.effects', 'Effects') }}
       </button>
       <button
         class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="activeTab === 'history' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'"
+        :class="
+          activeTab === 'history' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+        "
         @click="activeTab = 'history'"
       >
         {{ t('videoEditor.fileManager.tabs.history', 'History') }}

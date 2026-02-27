@@ -2,6 +2,7 @@ import type {
   TimelineClipItem,
   TimelineDocument,
   TimelineGapItem,
+  TimelineMarker,
   TimelineRange,
   TimelineTimebase,
   TimelineTrack,
@@ -465,7 +466,30 @@ export function createDefaultTimelineDocument(params: {
       { id: 'a1', kind: 'audio', name: 'Audio 1', audioMuted: false, audioSolo: false, items: [] },
       { id: 'a2', kind: 'audio', name: 'Audio 2', audioMuted: false, audioSolo: false, items: [] },
     ],
+    metadata: {
+      gran: {
+        docId: params.id,
+        timebase: { fps: params.fps },
+        markers: [],
+      },
+    },
   };
+}
+
+function coerceMarkers(raw: unknown): TimelineMarker[] {
+  if (!Array.isArray(raw)) return [];
+  const result: TimelineMarker[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const id = typeof (item as any).id === 'string' ? String((item as any).id).trim() : '';
+    const timeUs = Number((item as any).timeUs);
+    const text = typeof (item as any).text === 'string' ? String((item as any).text) : '';
+    if (!id) continue;
+    if (!Number.isFinite(timeUs)) continue;
+    result.push({ id, timeUs: Math.max(0, Math.round(timeUs)), text });
+  }
+  result.sort((a, b) => a.timeUs - b.timeUs);
+  return result;
 }
 
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
@@ -585,6 +609,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       gran: {
         docId: doc.id,
         timebase: doc.timebase,
+        markers: coerceMarkers((doc as any)?.metadata?.gran?.markers),
       },
     },
   };
@@ -697,9 +722,20 @@ export function parseTimelineFromOtio(
 
   const docId = coerceId(granMeta?.docId, fallback.id);
   const name = coerceName(parsed.name, fallback.name);
+  const markers = coerceMarkers(granMeta?.markers);
 
   if (tracks.length === 0) {
-    return createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
+    const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
+    base.metadata = {
+      ...(base.metadata ?? {}),
+      gran: {
+        ...(base.metadata?.gran ?? {}),
+        docId,
+        timebase,
+        markers,
+      },
+    };
+    return base;
   }
 
   return {
@@ -708,5 +744,12 @@ export function parseTimelineFromOtio(
     name,
     timebase,
     tracks,
+    metadata: {
+      gran: {
+        docId,
+        timebase,
+        markers,
+      },
+    },
   };
 }

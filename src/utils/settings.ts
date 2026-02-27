@@ -30,6 +30,34 @@ export interface GranVideoEditorUserSettings {
       audioBitrateKbps: number;
     };
   };
+  mouse: {
+    timeline: {
+      wheel: 'scroll_vertical' | 'scroll_horizontal' | 'zoom_horizontal' | 'zoom_vertical' | 'none';
+      wheelShift:
+        | 'scroll_vertical'
+        | 'scroll_horizontal'
+        | 'zoom_horizontal'
+        | 'zoom_vertical'
+        | 'none';
+      wheelSecondary:
+        | 'scroll_vertical'
+        | 'scroll_horizontal'
+        | 'zoom_horizontal'
+        | 'zoom_vertical'
+        | 'none';
+      wheelSecondaryShift:
+        | 'scroll_vertical'
+        | 'scroll_horizontal'
+        | 'zoom_horizontal'
+        | 'zoom_vertical'
+        | 'none';
+    };
+    monitor: {
+      wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
+      wheelShift: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
+      middleClick: 'pan' | 'none';
+    };
+  };
 }
 
 export interface GranVideoEditorWorkspaceSettings {
@@ -64,6 +92,19 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       excludeAudio: false,
       audioCodec: 'aac',
       audioBitrateKbps: 128,
+    },
+  },
+  mouse: {
+    timeline: {
+      wheel: 'scroll_vertical',
+      wheelShift: 'scroll_horizontal',
+      wheelSecondary: 'scroll_horizontal',
+      wheelSecondaryShift: 'zoom_vertical',
+    },
+    monitor: {
+      wheel: 'zoom',
+      wheelShift: 'scroll_horizontal',
+      middleClick: 'pan',
     },
   },
 };
@@ -125,6 +166,10 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
     },
     optimization: { ...DEFAULT_USER_SETTINGS.optimization },
     exportDefaults: createDefaultExportDefaults(),
+    mouse: {
+      timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
+      monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
+    },
   };
 }
 
@@ -230,6 +275,45 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
+  const rawMouse = (raw as any).mouse;
+  const normalizedMouse: GranVideoEditorUserSettings['mouse'] = {
+    timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
+    monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
+  };
+
+  if (rawMouse && typeof rawMouse === 'object') {
+    const rawTimeline = (rawMouse as any).timeline;
+    if (rawTimeline && typeof rawTimeline === 'object') {
+      const validTimelineActions = [
+        'scroll_vertical',
+        'scroll_horizontal',
+        'zoom_horizontal',
+        'zoom_vertical',
+        'none',
+      ];
+      for (const k of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
+        if (validTimelineActions.includes(rawTimeline[k])) {
+          (normalizedMouse.timeline as any)[k] = rawTimeline[k];
+        }
+      }
+    }
+
+    const rawMonitor = (rawMouse as any).monitor;
+    if (rawMonitor && typeof rawMonitor === 'object') {
+      const validMonitorActions = ['zoom', 'scroll_vertical', 'scroll_horizontal', 'none'];
+      for (const k of ['wheel', 'wheelShift']) {
+        if (validMonitorActions.includes(rawMonitor[k])) {
+          (normalizedMouse.monitor as any)[k] = rawMonitor[k];
+        }
+      }
+
+      const validMiddleClickActions = ['pan', 'none'];
+      if (validMiddleClickActions.includes(rawMonitor.middleClick)) {
+        normalizedMouse.monitor.middleClick = rawMonitor.middleClick;
+      }
+    }
+  }
+
   return {
     openLastProjectOnStart,
     hotkeys,
@@ -280,6 +364,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
       },
     },
+    mouse: normalizedMouse,
   };
 }
 

@@ -34,7 +34,7 @@ const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split
 
 function onTimelineSplitResize(event: { panes: { size: number }[] }) {
   if (Array.isArray(event?.panes)) {
-    timelineSplitSizes.value = event.panes.map(p => p.size);
+    timelineSplitSizes.value = event.panes.map((p) => p.size);
   }
 }
 
@@ -50,7 +50,9 @@ const tracks = computed(
 
 const scrollEl = ref<HTMLElement | null>(null);
 
-const pendingZoomAnchor = ref<import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor | null>(null);
+const pendingZoomAnchor = ref<
+  import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor | null
+>(null);
 
 const dragPreview = ref<{
   trackId: string;
@@ -78,7 +80,9 @@ function getViewportWidth(): number {
   return scrollEl.value?.clientWidth ?? 0;
 }
 
-function makePlayheadAnchor(params: { zoom: number }): import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor {
+function makePlayheadAnchor(params: {
+  zoom: number;
+}): import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor {
   const viewportWidth = getViewportWidth();
   const prevScrollLeft = scrollEl.value?.scrollLeft ?? 0;
   const playheadPx = timeUsToPx(timelineStore.currentTime, params.zoom);
@@ -129,29 +133,91 @@ function onTimelineWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
-  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-  if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return;
+  const isShift = e.shiftKey;
+  const isSecondary =
+    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
 
-  e.preventDefault();
+  const workspaceStore = useWorkspaceStore();
+  const settings = workspaceStore.userSettings?.mouse?.timeline;
+  if (!settings) return; // Fallback will be handled by default browser behavior if settings are missing
 
-  const prevZoom = timelineStore.timelineZoom;
-  const dir = e.deltaY < 0 ? 1 : -1;
-  const step = 3;
-  const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
+  let action = settings.wheel;
+  if (isSecondary && isShift) action = settings.wheelSecondaryShift;
+  else if (isSecondary) action = settings.wheelSecondary;
+  else if (isShift) action = settings.wheelShift;
 
-  const rect = el.getBoundingClientRect();
-  const viewportX = e.clientX - rect.left;
-  const prevScrollLeft = el.scrollLeft;
-  const anchorPx = prevScrollLeft + viewportX;
-  const anchorTimeUs = pxToTimeUs(anchorPx, prevZoom);
+  if (action === 'none') {
+    e.preventDefault();
+    return;
+  }
 
-  applyZoomWithAnchor({
-    nextZoom,
-    anchor: {
-      anchorTimeUs,
-      anchorViewportX: viewportX,
-    },
-  });
+  // Calculate delta amount based on event
+  const delta = isSecondary ? e.deltaX : e.deltaY;
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  if (action === 'scroll_vertical') {
+    // Let browser handle vertical scrolling natively if it's the primary action without modifiers
+    // This allows smooth scrolling and proper trackpad support
+    if (!isShift && !isSecondary) return;
+
+    e.preventDefault();
+    // Use the Splitpanes content element for vertical scrolling
+    const splitpanesEl = document.querySelector('.editor-splitpanes') as HTMLElement;
+    if (splitpanesEl) {
+      splitpanesEl.scrollTop += delta;
+    }
+    return;
+  }
+
+  if (action === 'scroll_horizontal') {
+    // If browser is already scrolling horizontally (like trackpad swipe), let it handle it
+    if (isSecondary && !isShift) return;
+
+    e.preventDefault();
+    el.scrollLeft += delta;
+    return;
+  }
+
+  if (action === 'zoom_horizontal') {
+    e.preventDefault();
+
+    const prevZoom = timelineStore.timelineZoom;
+    const dir = delta < 0 ? 1 : -1;
+    const step = 3;
+    const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
+
+    const rect = el.getBoundingClientRect();
+    const viewportX = e.clientX - rect.left;
+    const prevScrollLeft = el.scrollLeft;
+    const anchorPx = prevScrollLeft + viewportX;
+    const anchorTimeUs = pxToTimeUs(anchorPx, prevZoom);
+
+    applyZoomWithAnchor({
+      nextZoom,
+      anchor: {
+        anchorTimeUs,
+        anchorViewportX: viewportX,
+      },
+    });
+    return;
+  }
+
+  if (action === 'zoom_vertical') {
+    e.preventDefault();
+
+    const dir = delta < 0 ? 1 : -1;
+    const step = 10;
+
+    const docTracks = timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined;
+    if (!docTracks) return;
+
+    for (const track of docTracks) {
+      const currentHeight = trackHeights.value[track.id] ?? 40; // DEFAULT_TRACK_HEIGHT
+      const nextHeight = Math.max(32, Math.min(300, currentHeight + dir * step)); // MIN/MAX from labels
+      updateTrackHeight(track.id, nextHeight);
+    }
+    return;
+  }
 }
 
 watch(
@@ -323,16 +389,28 @@ function formatTime(seconds: number): string {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg border-t border-ui-border"
-    :class="{ 'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('timeline') }"
+    :class="{
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+        focusStore.isPanelFocused('timeline'),
+    }"
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <!-- Toolbar -->
     <TimelineToolbar
-      @update:zoom="(v) => applyZoomWithAnchor({ nextZoom: v, anchor: makePlayheadAnchor({ zoom: timelineStore.timelineZoom }) })"
+      @update:zoom="
+        (v) =>
+          applyZoomWithAnchor({
+            nextZoom: v,
+            anchor: makePlayheadAnchor({ zoom: timelineStore.timelineZoom }),
+          })
+      "
     />
 
     <ClientOnly>
-      <Splitpanes class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
+      <Splitpanes
+        class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes"
+        @resized="onTimelineSplitResize"
+      >
         <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
           <TimelineTrackLabels
             :tracks="tracks"
@@ -342,7 +420,11 @@ function formatTime(seconds: number): string {
           />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
-          <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative" @wheel="onTimelineWheel">
+          <div
+            ref="scrollEl"
+            class="w-full h-full overflow-x-auto overflow-y-hidden relative"
+            @wheel="onTimelineWheel"
+          >
             <TimelineRuler
               class="h-7 border-b border-ui-border bg-ui-bg-elevated sticky top-0 z-10 cursor-pointer"
               :scroll-el="scrollEl"

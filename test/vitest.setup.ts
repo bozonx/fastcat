@@ -4,6 +4,8 @@
 // In unit tests (jsdom/happy-dom), that helper may be missing or incomplete.
 // Provide a minimal implementation to avoid unhandled rejections during mount.
 
+import { vi } from 'vitest';
+
 const globalName = '__NUXT_COLOR_MODE__';
 
 const w = globalThis as unknown as { window?: any };
@@ -17,8 +19,6 @@ if (w.window) {
   helper.addColorScheme ??= () => {};
   helper.removeColorScheme ??= () => {};
 }
-
-import { vi } from 'vitest';
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
