@@ -154,16 +154,15 @@
       "proxyResolution": "Proxy resolution",
       "proxyVideoBitrate": "Video bitrate (Mbps)",
       "proxyVideoBitrateHelp": "Higher bitrate means better quality but larger file size",
-      "userOptimization": "Optimization"
+      "userOptimization": "Optimization",
+      "autoCreateProxies": "Automatically create proxies when adding media to the timeline"
     },
     "projectSettings": {
       "note": "Settings are saved to .gran/project.settings.json",
       "export": "Export",
       "exportWidth": "Width",
       "exportHeight": "Height",
-      "exportFps": "FPS",
-      "proxy": "Proxy",
-      "proxyHeight": "Height"
+      "exportFps": "FPS"
     },
     "resolution": {
       "customResolution": "Custom Resolution",

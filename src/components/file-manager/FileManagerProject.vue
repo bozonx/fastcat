@@ -146,22 +146,7 @@ loadCodecSupport();
         />
       </div>
 
-      <div class="flex flex-col gap-3">
-        <div class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.projectSettings.proxy', 'Proxy') }}
-        </div>
-
-        <UFormField :label="t('videoEditor.projectSettings.proxyHeight', 'Height')">
-          <UInput
-            v-model.number="projectStore.projectSettings.proxy.height"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            step="1"
-            class="w-full"
-          />
-        </UFormField>
-      </div>
+      
     </div>
   </div>
 </template>

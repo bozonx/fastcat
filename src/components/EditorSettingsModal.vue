@@ -804,6 +804,18 @@ const thumbnailsLimitGb = computed({
             </span>
           </label>
 
+          <label class="flex items-center gap-3 cursor-pointer">
+            <UCheckbox v-model="workspaceStore.userSettings.optimization.autoCreateProxies" />
+            <span class="text-sm text-ui-text">
+              {{
+                t(
+                  'videoEditor.settings.autoCreateProxies',
+                  'Automatically create proxies when adding media to the timeline',
+                )
+              }}
+            </span>
+          </label>
+
           <div class="text-xs text-ui-text-muted">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>

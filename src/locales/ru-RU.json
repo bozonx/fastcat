@@ -154,16 +154,15 @@
       "proxyResolution": "Разрешение прокси",
       "proxyVideoBitrate": "Битрейт видео (Мбит/с)",
       "proxyVideoBitrateHelp": "Более высокий битрейт означает лучшее качество, но больший размер файла",
-      "userOptimization": "Оптимизация"
+      "userOptimization": "Оптимизация",
+      "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн"
     },
     "projectSettings": {
       "note": "Настройки сохраняются в .gran/project.settings.json",
       "export": "Экспорт",
       "exportWidth": "Ширина",
       "exportHeight": "Высота",
-      "exportFps": "FPS",
-      "proxy": "Прокси",
-      "proxyHeight": "Высота"
+      "exportFps": "FPS"
     },
     "resolution": {
       "customResolution": "Точное разрешение",

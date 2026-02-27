@@ -318,10 +318,6 @@ export function useFileManager() {
         if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
           const projectRelativePath = `sources/${targetDirName}/${file.name}`;
           void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
-
-          if (file.type.startsWith('video/')) {
-            void proxyStore.generateProxy(fileHandle as FileSystemFileHandle, projectRelativePath);
-          }
         }
       }
 

@@ -8,15 +8,20 @@ import { applyTimelineCommand } from '~/timeline/commands';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timeline/commands/utils';
+import { SOURCES_DIR_NAME } from '~/utils/constants';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
 import { useHistoryStore } from './history.store';
+import { useWorkspaceStore } from './workspace.store';
+import { useProxyStore } from './proxy.store';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
   const historyStore = useHistoryStore();
+  const workspaceStore = useWorkspaceStore();
+  const proxyStore = useProxyStore();
 
   const pendingDebouncedHistory = ref<{
     snapshot: TimelineDocument;
@@ -1422,6 +1427,16 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     const targetTrack = timelineDoc.value.tracks.find((t) => t.id === input.trackId);
     if (!targetTrack) throw new Error('Track not found');
+
+    const shouldAutoCreateProxy =
+      workspaceStore.userSettings.optimization.autoCreateProxies &&
+      hasVideo &&
+      input.path.startsWith(`${SOURCES_DIR_NAME}/video/`) &&
+      !proxyStore.existingProxies.has(input.path);
+
+    if (shouldAutoCreateProxy) {
+      void proxyStore.generateProxy(handle, input.path);
+    }
 
     applyTimeline({
       type: 'add_clip_to_track',

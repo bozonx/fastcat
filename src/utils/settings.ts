@@ -15,6 +15,7 @@ export interface GranVideoEditorUserSettings {
     proxyVideoBitrateMbps: number;
     proxyAudioBitrateKbps: number;
     proxyCopyOpusAudio: boolean;
+    autoCreateProxies: boolean;
   };
   exportDefaults: {
     width: number;
@@ -83,6 +84,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     proxyVideoBitrateMbps: 2,
     proxyAudioBitrateKbps: 128,
     proxyCopyOpusAudio: true,
+    autoCreateProxies: true,
   },
   exportDefaults: {
     width: 1920,
@@ -292,6 +294,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const proxyVideoBitrateMbps = Number(optimizationInput.proxyVideoBitrateMbps);
   const proxyAudioBitrateKbps = Number(optimizationInput.proxyAudioBitrateKbps);
   const proxyCopyOpusAudio = optimizationInput.proxyCopyOpusAudio;
+  const autoCreateProxies = optimizationInput.autoCreateProxies;
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
@@ -361,6 +364,10 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         typeof proxyCopyOpusAudio === 'boolean'
           ? proxyCopyOpusAudio
           : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
+      autoCreateProxies:
+        typeof autoCreateProxies === 'boolean'
+          ? autoCreateProxies
+          : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
     },
     exportDefaults: {
       width: normalizedWidth,

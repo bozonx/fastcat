@@ -39,9 +39,6 @@ export interface GranVideoEditorProjectSettings {
       audioBitrateKbps: number;
     };
   };
-  proxy: {
-    height: number;
-  };
   monitor: {
     previewResolution: number;
     useProxy: boolean;
@@ -67,9 +64,6 @@ const DEFAULT_PROJECT_SETTINGS = {
       audioCodec: 'aac' as const,
       audioBitrateKbps: 128,
     },
-  },
-  proxy: {
-    height: 720,
   },
   monitor: {
     previewResolution: 480,
@@ -166,9 +160,6 @@ function createDefaultProjectSettings(userExportDefaults: {
 }): GranVideoEditorProjectSettings {
   return {
     export: getDefaultExportFromUserDefaults(userExportDefaults),
-    proxy: {
-      height: DEFAULT_PROJECT_SETTINGS.proxy.height,
-    },
     monitor: {
       previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy: DEFAULT_PROJECT_SETTINGS.monitor.useProxy,
@@ -212,7 +203,6 @@ function normalizeProjectSettings(
   const input = raw as Record<string, any>;
   const exportInput = input.export ?? {};
   const encodingInput = exportInput.encoding ?? {};
-  const proxyInput = input.proxy ?? {};
   const monitorInput = input.monitor ?? {};
   const transitionsInput = input.transitions ?? {};
 
@@ -222,7 +212,6 @@ function normalizeProjectSettings(
   const height = Number(exportInput.height);
   const bitrateMbps = Number(encodingInput.bitrateMbps);
   const audioBitrateKbps = Number(encodingInput.audioBitrateKbps);
-  const proxyHeight = Number(proxyInput.height);
   const fps = Number(exportInput.fps);
   const format = encodingInput.format;
   const previewResolution = Number(monitorInput.previewResolution);
@@ -293,12 +282,6 @@ function normalizeProjectSettings(
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_PROJECT_SETTINGS.export.encoding.audioBitrateKbps,
       },
-    },
-    proxy: {
-      height:
-        Number.isFinite(proxyHeight) && proxyHeight > 0
-          ? Math.round(proxyHeight)
-          : DEFAULT_PROJECT_SETTINGS.proxy.height,
     },
     monitor: {
       previewResolution:
