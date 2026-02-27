@@ -193,6 +193,30 @@ function addAudioTrack() {
   const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
+function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
+  const isSecondary =
+    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
+
+  // Only handle primary vertical scroll without shift
+  if (isSecondary || e.shiftKey) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const delta = e.deltaY;
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  const dir = delta < 0 ? 1 : -1;
+  const step = 10; // Use a moderate step for track resizing
+
+  const currentHeight = props.trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT;
+  const nextHeight = Math.max(
+    MIN_TRACK_HEIGHT,
+    Math.min(MAX_TRACK_HEIGHT, currentHeight + dir * step),
+  );
+
+  emit('update:trackHeight', track.id, nextHeight);
+}
 </script>
 
 <template>
@@ -263,6 +287,7 @@ function addAudioTrack() {
           @drop.prevent="onDrop($event, track)"
           @click="onSelectTrack(track.id)"
           @contextmenu="onSelectTrack(track.id)"
+          @wheel="onTrackWheel($event, track)"
         >
           <span class="truncate" :title="track.name">{{ track.name }}</span>
 

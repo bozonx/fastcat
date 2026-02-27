@@ -38,6 +38,16 @@ function makeDoc(): TimelineDocument {
         ],
       },
     ],
+    metadata: {
+      gran: {
+        docId: 'doc1',
+        timebase: { fps: 30 },
+        markers: [
+          { id: 'm1', timeUs: 1_000_000, text: 'Hello world' },
+          { id: 'm2', timeUs: 500_000, text: 'Second' },
+        ],
+      },
+    },
   };
 }
 
@@ -55,6 +65,11 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.audioGain).toBe(1.25);
     expect(clip.audioFadeInUs).toBe(200_000);
     expect(clip.audioFadeOutUs).toBe(400_000);
+
+    expect((parsed.metadata as any)?.gran?.markers).toEqual([
+      { id: 'm2', timeUs: 500_000, text: 'Second' },
+      { id: 'm1', timeUs: 1_000_000, text: 'Hello world' },
+    ]);
   });
 
   it('omits transitions when not set', () => {
