@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -36,5 +37,11 @@ const value = computed({
 </script>
 
 <template>
-  <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
+  <WheelSlider
+    v-model="value"
+    :min="min"
+    :max="max"
+    :step="step"
+    :slider-class="sliderClass"
+  />
 </template>
