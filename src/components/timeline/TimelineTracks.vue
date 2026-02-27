@@ -296,6 +296,58 @@ function startResizeFade(
   window.addEventListener('mouseup', onMouseUp);
 }
 
+// --- Collapse Logic for Transitions and Fades ---
+function shouldCollapseTransitions(item: TimelineClipItem): boolean {
+  const inUs = (item as any).transitionIn?.durationUs ?? 0;
+  const outUs = (item as any).transitionOut?.durationUs ?? 0;
+  if (inUs === 0 && outUs === 0) return false;
+
+  const clipDurationUs = item.timelineRange.durationUs;
+  const hitEachOther = (inUs + outUs) >= clipDurationUs - 1000; // 1ms tolerance
+  
+  const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
+  const clipWidth = Math.max(30, clipUnstretchedPx);
+
+  // Collapse if they hit each other in time, but the clip is artificially stretched
+  // so they can no longer visually show the correct proportional sizes (a gap would appear).
+  if (hitEachOther && clipWidth > clipUnstretchedPx + 1) {
+    return true;
+  }
+  
+  // Also collapse if their minimum pixel size forces them to visually overlap in the clip box
+  const inPx = inUs > 0 ? transitionUsToPx(inUs) : 0;
+  const outPx = outUs > 0 ? transitionUsToPx(outUs) : 0;
+  if (inPx + outPx > clipWidth - 2) {
+    return true;
+  }
+
+  return false;
+}
+
+function shouldCollapseFades(item: TimelineClipItem): boolean {
+  const inUs = (item as any).audioFadeInUs ?? 0;
+  const outUs = (item as any).audioFadeOutUs ?? 0;
+  if (inUs === 0 && outUs === 0) return false;
+
+  const clipDurationUs = item.timelineRange.durationUs;
+  const hitEachOther = (inUs + outUs) >= clipDurationUs - 1000;
+  
+  const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
+  const clipWidth = Math.max(30, clipUnstretchedPx);
+
+  if (hitEachOther && clipWidth > clipUnstretchedPx + 1) {
+    return true;
+  }
+  
+  const inPx = timeUsToPx(inUs, timelineStore.timelineZoom);
+  const outPx = timeUsToPx(outUs, timelineStore.timelineZoom);
+  if (inPx + outPx > clipWidth - 2) {
+    return true;
+  }
+
+  return false;
+}
+
 function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
   const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
   return [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
@@ -970,7 +1022,7 @@ function getTransitionForPanel() {
           @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
           <!-- Audio Fade Layer (Triangles below transitions/title) -->
-          <div v-if="item.kind === 'clip' && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
+          <div v-if="item.kind === 'clip' && !shouldCollapseFades(item)" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
             <svg
               v-if="(item as any).audioFadeInUs > 0 && (item as any).audioFadeInUs < item.timelineRange.durationUs"
               class="absolute left-0 top-0 h-full"
@@ -1009,7 +1061,7 @@ function getTransitionForPanel() {
           </div>
 
           <!-- Fade Handles -->
-          <template v-if="item.kind === 'clip' && !Boolean((item as any).locked) && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60">
+          <template v-if="item.kind === 'clip' && !Boolean((item as any).locked) && !shouldCollapseFades(item)">
             <!-- Fade In Handle -->
             <div
               v-if="(item as any).audioFadeInUs < item.timelineRange.durationUs"
@@ -1033,19 +1085,19 @@ function getTransitionForPanel() {
 
           <!-- Collapsed Indicators for Small Clips -->
           <div
-            v-if="item.kind === 'clip' && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) < 60 && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 20"
+            v-if="item.kind === 'clip' && (shouldCollapseTransitions(item) || shouldCollapseFades(item))"
             class="absolute top-0.5 left-0.5 flex flex-col gap-0.5 z-40 pointer-events-none"
           >
-            <div v-if="(item as any).audioFadeInUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade In">
+            <div v-if="shouldCollapseFades(item) && (item as any).audioFadeInUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade In">
               <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-gray-800" />
             </div>
-            <div v-if="(item as any).audioFadeOutUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade Out">
+            <div v-if="shouldCollapseFades(item) && (item as any).audioFadeOutUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade Out">
               <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-gray-800" />
             </div>
-            <div v-if="(item as any).transitionIn" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition In">
+            <div v-if="shouldCollapseTransitions(item) && (item as any).transitionIn" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition In">
               <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-white" />
             </div>
-            <div v-if="(item as any).transitionOut" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition Out">
+            <div v-if="shouldCollapseTransitions(item) && (item as any).transitionOut" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition Out">
               <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-white" />
             </div>
           </div>
@@ -1093,7 +1145,7 @@ function getTransitionForPanel() {
           <div class="flex-1 flex w-full min-h-0 relative z-20">
             <!-- Title Block (lowest layer, bottom center) -->
             <div
-              v-if="item.kind === 'clip' && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60"
+              v-if="item.kind === 'clip' && !shouldCollapseTransitions(item)"
               class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-0 pointer-events-none"
             >
               <span class="truncate text-[10px] leading-tight opacity-70" :title="item.name">
@@ -1103,7 +1155,7 @@ function getTransitionForPanel() {
 
             <!-- Transition In -->
             <div
-              v-if="item.kind === 'clip' && (item as any).transitionIn && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60"
+              v-if="item.kind === 'clip' && (item as any).transitionIn && !shouldCollapseTransitions(item)"
               class="absolute left-0 top-0 bottom-0 z-10 transition-colors"
               :style="{ width: `${transitionUsToPx((item as any).transitionIn?.durationUs || 0)}px` }"
             >
@@ -1176,7 +1228,7 @@ function getTransitionForPanel() {
 
             <!-- Transition Out -->
             <div
-              v-if="item.kind === 'clip' && (item as any).transitionOut && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60"
+              v-if="item.kind === 'clip' && (item as any).transitionOut && !shouldCollapseTransitions(item)"
               class="absolute right-0 top-0 bottom-0 z-10 transition-colors"
               :style="{ width: `${transitionUsToPx((item as any).transitionOut?.durationUs || 0)}px` }"
             >

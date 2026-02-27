@@ -20,6 +20,7 @@ import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
+import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -229,18 +230,11 @@ function formatTime(seconds: number): string {
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
-            <div
-              class="h-7 border-b border-ui-border bg-ui-bg-elevated sticky top-0 flex items-end px-2 gap-16 text-xs text-ui-text-muted font-mono select-none cursor-pointer"
+            <TimelineRuler
+              class="h-7 border-b border-ui-border bg-ui-bg-elevated sticky top-0 z-10 cursor-pointer"
+              :scroll-el="scrollEl"
               @mousedown="onTimeRulerMouseDown"
-            >
-              <span
-                v-for="n in 10"
-                :key="n"
-                :style="{ marginLeft: n === 1 ? '0px' : `${Math.max(0, pxPerSecond * 10 - 64)}px` }"
-              >
-                {{ formatTime((n - 1) * 10) }}
-              </span>
-            </div>
+            />
 
             <!-- Tracks -->
             <TimelineTracks
