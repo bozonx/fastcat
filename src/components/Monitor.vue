@@ -241,7 +241,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointerup', onWindowPointerUp);
-  clearVolumeHoldTimers();
 });
 
 function onViewportWheel(e: WheelEvent) {
@@ -286,13 +285,6 @@ function onViewportWheel(e: WheelEvent) {
   }
 }
 
-function formatTime(seconds: number): string {
-  if (isNaN(seconds)) return '00:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
 function togglePlayback() {
   if (isLoading.value) return;
 
@@ -326,63 +318,9 @@ function setPlayback(params: { direction: 'forward' | 'backward'; speed: number 
   blurActiveElement();
 }
 
-function onPlaybackSpeedChange(next: { value: number } | number | null) {
-  const nextValue = typeof next === 'number' ? next : next?.value;
-  if (typeof nextValue !== 'number' || !Number.isFinite(nextValue)) return;
-
-  const sign = playbackDirection.value === 'backward' ? -1 : 1;
-  timelineStore.setPlaybackSpeed(sign * nextValue);
-
-  void nextTick(() => {
-    blurActiveElement();
-  });
-}
-
 function rewindToStart() {
   timelineStore.currentTime = 0;
   blurActiveElement();
-}
-
-let volumeHoldTimeout: number | null = null;
-let volumeHoldInterval: number | null = null;
-
-function clearVolumeHoldTimers() {
-  if (volumeHoldTimeout !== null) {
-    window.clearTimeout(volumeHoldTimeout);
-    volumeHoldTimeout = null;
-  }
-  if (volumeHoldInterval !== null) {
-    window.clearInterval(volumeHoldInterval);
-    volumeHoldInterval = null;
-  }
-}
-
-function applyVolumeStep(step: number) {
-  timelineStore.setAudioVolume(timelineStore.audioVolume + step);
-}
-
-function startVolumeHold(step: number) {
-  if (isLoading.value) return;
-  clearVolumeHoldTimers();
-
-  applyVolumeStep(step);
-
-  blurActiveElement();
-
-  volumeHoldTimeout = window.setTimeout(() => {
-    volumeHoldInterval = window.setInterval(() => {
-      applyVolumeStep(step);
-    }, 60);
-  }, 350);
-}
-
-function stopVolumeHold() {
-  clearVolumeHoldTimers();
-}
-
-function onVolumeInput(event: Event) {
-  const target = event.target as HTMLInputElement | null;
-  timelineStore.setAudioVolume(Number(target?.value ?? 1));
 }
 
 function toggleMute() {
@@ -758,46 +696,22 @@ async function createStopFrameSnapshot() {
           @click="toggleMute"
         />
 
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-minus"
-          :aria-label="t('granVideoEditor.monitor.audioVolumeDown', 'Volume down')"
-          @pointerdown.prevent="startVolumeHold(-0.05)"
-          @pointerup="stopVolumeHold"
-          @pointercancel="stopVolumeHold"
-          @pointerleave="stopVolumeHold"
-        />
-
         <USlider
           :min="0"
           :max="1"
           :step="0.05"
           :model-value="audioMuted ? 0 : audioVolume"
-          class="w-28"
+          class="w-20"
           :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
           @update:model-value="(v) => timelineStore.setAudioVolume(Number(v ?? 1))"
-        />
-
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-plus"
-          :aria-label="t('granVideoEditor.monitor.audioVolumeUp', 'Volume up')"
-          @pointerdown.prevent="startVolumeHold(0.05)"
-          @pointerup="stopVolumeHold"
-          @pointercancel="stopVolumeHold"
-          @pointerleave="stopVolumeHold"
         />
 
         <span class="text-sm text-ui-text-muted tabular-nums min-w-12">
           {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%
         </span>
       </div>
-      <span ref="timecodeEl" class="text-sm text-ui-text-muted ml-2 font-mono">
-        {{ formatTime(uiCurrentTimeUs / 1e6) }} / {{ formatTime(timelineStore.duration / 1e6) }}
+      <span ref="timecodeEl" class="text-xs text-ui-text-muted ml-2 font-mono tabular-nums">
+        00:00:00:00 / 00:00:00:00
       </span>
     </div>
   </div>

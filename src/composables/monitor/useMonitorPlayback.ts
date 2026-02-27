@@ -59,18 +59,35 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     updateTimecodeUi(localCurrentTimeUs);
   }
 
-  function formatTime(seconds: number): string {
-    if (isNaN(seconds)) return '00:00';
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-
   function updateTimecodeUi(timeUs: number) {
     const el = timecodeEl;
     if (!el) return;
-    const current = formatTime(timeUs / 1e6);
-    const total = formatTime(normalizeTimeUs(duration.value) / 1e6);
+    const fps = sanitizeFps(getFps());
+
+    function formatTimecode(valueUs: number): string {
+      if (!Number.isFinite(valueUs) || valueUs <= 0) {
+        return '00:00:00:00';
+      }
+
+      const totalFrames = Math.max(0, Math.floor((valueUs / 1e6) * fps));
+      const framesPerHour = 3600 * fps;
+      const framesPerMinute = 60 * fps;
+
+      const hours = Math.floor(totalFrames / framesPerHour);
+      const minutes = Math.floor((totalFrames % framesPerHour) / framesPerMinute);
+      const seconds = Math.floor((totalFrames % framesPerMinute) / fps);
+      const frames = totalFrames % fps;
+
+      const hh = String(hours).padStart(2, '0');
+      const mm = String(minutes).padStart(2, '0');
+      const ss = String(seconds).padStart(2, '0');
+      const ff = String(frames).padStart(2, '0');
+
+      return `${hh}:${mm}:${ss}:${ff}`;
+    }
+
+    const current = formatTimecode(timeUs);
+    const total = formatTimecode(normalizeTimeUs(duration.value));
     const nextText = `${current} / ${total}`;
     if (el.textContent !== nextText) {
       el.textContent = nextText;
