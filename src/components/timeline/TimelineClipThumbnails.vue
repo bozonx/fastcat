@@ -22,6 +22,9 @@ const intervalUs = intervalSeconds * 1_000_000;
 const thumbnailsBySecond = ref(new Map<number, string>());
 const imagePromisesByUrl = new Map<string, Promise<HTMLImageElement>>();
 
+// Aspect ratio of the source thumbnails (width/height), resolved from the first loaded image
+const thumbAspectRatio = ref(16 / 9);
+
 const chunkEls = ref<(HTMLElement | null)[]>([]);
 const chunkCanvases = ref<(HTMLCanvasElement | null)[]>([]);
 const visibleChunks = ref(new Set<number>());
@@ -106,15 +109,9 @@ const pxPerThumbnail = computed(() => {
   return timeUsToPx(intervalUs, timelineStore.timelineZoom);
 });
 
-// Minimum readable width for a single thumbnail segment
-const MIN_THUMB_WIDTH_PX = 48;
-
-// Calculate how many base thumbnails to group into one visible thumbnail
-const thumbnailStep = computed(() => {
-  const px = pxPerThumbnail.value;
-  if (!Number.isFinite(px) || px <= 0) return 1;
-  return Math.max(1, Math.ceil(MIN_THUMB_WIDTH_PX / px));
-});
+// Exposes zoom as reactive dependency so watches re-trigger redraws when zoom changes.
+// Actual per-tile step is computed inside drawChunk using real container height.
+const thumbnailStep = computed(() => pxPerThumbnail.value);
 
 // Offset for trim start
 const trimOffsetPx = computed(() => {
@@ -187,18 +184,19 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   return p;
 }
 
-function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+function drawImageFit(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  // Draw image preserving its aspect ratio, no cropping (contain)
   const imgRatio = img.width / img.height;
   const targetRatio = w / h;
-  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  let dx = x, dy = y, dw = w, dh = h;
   if (imgRatio > targetRatio) {
-    sw = img.height * targetRatio;
-    sx = (img.width - sw) / 2;
+    dh = w / imgRatio;
+    dy = y + (h - dh) / 2;
   } else {
-    sh = img.width / targetRatio;
-    sy = (img.height - sh) / 2;
+    dw = h * imgRatio;
+    dx = x + (w - dw) / 2;
   }
-  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  ctx.drawImage(img, dx, dy, dw, dh);
 }
 
 async function drawChunk(chunkIndex: number) {
@@ -228,32 +226,48 @@ async function drawChunk(chunkIndex: number) {
   const px = pxPerThumbnail.value;
   if (!Number.isFinite(px) || px <= 0) return;
 
-  const step = thumbnailStep.value;
+  // Fixed tile width = container height * aspect ratio (contain, no crop)
+  const tileWidthCss = Math.max(4, cssHeight * thumbAspectRatio.value);
+  const tileWidthPx = Math.round(tileWidthCss * dpr);
 
-  // We iterate through thumbnails, but only draw those aligned with the step
+  // How many base-interval slots one tile spans on the timeline
+  const step = Math.max(1, Math.ceil(tileWidthCss / px));
+
+  // Current draw cursor inside this chunk (css pixels, relative to chunk start)
+  let cursorX = 0;
+
   for (let i = 0; i < chunk.thumbsCount; i += step) {
+    const chunkWidthCss = chunk.widthPx;
+    if (cursorX >= chunkWidthCss) break;
+
     const thumbIndex = chunk.startThumbIndex + i;
     const secondKey = thumbIndex * intervalSeconds;
     const url = thumbnailsBySecond.value.get(secondKey);
-    if (!url) continue;
+    if (!url) {
+      cursorX += tileWidthCss;
+      continue;
+    }
 
     try {
       const img = await loadImage(url);
-      const xCss = i * px;
-      // Calculate width for this stepped chunk, clamped to remaining thumbs in chunk
-      const thumbsInThisStep = Math.min(step, chunk.thumbsCount - i);
-      const wCss = thumbsInThisStep * px;
-      
-      drawImageCover(
+
+      // Update aspect ratio from actual image dimensions
+      if (img.width > 0 && img.height > 0) {
+        thumbAspectRatio.value = img.width / img.height;
+      }
+
+      drawImageFit(
         ctx, img,
-        Math.round(xCss * dpr),
+        Math.round(cursorX * dpr),
         0,
-        Math.max(1, Math.round(wCss * dpr)),
+        tileWidthPx,
         canvas.height
       );
     } catch {
       // ignore
     }
+
+    cursorX += tileWidthCss;
   }
 }
 
@@ -283,7 +297,7 @@ watch(
 );
 
 watch(
-  [chunks, pxPerThumbnail],
+  [chunks, pxPerThumbnail, thumbAspectRatio],
   () => {
     void nextTick().then(() => {
       chunkObserver?.disconnect();
