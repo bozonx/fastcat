@@ -871,6 +871,36 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
   }
 
+  function addVirtualClipToTrack(input: {
+    trackId: string;
+    startUs: number;
+    clipType: Extract<
+      import('~/timeline/types').TimelineClipType,
+      'adjustment' | 'background' | 'text'
+    >;
+    name: string;
+    durationUs?: number;
+    backgroundColor?: string;
+    text?: string;
+    style?: import('~/timeline/types').TextClipStyle;
+  }) {
+    if (!timelineDoc.value) {
+      timelineDoc.value = projectStore.createFallbackTimelineDoc();
+    }
+
+    applyTimeline({
+      type: 'add_virtual_clip_to_track',
+      trackId: input.trackId,
+      clipType: input.clipType,
+      name: input.name,
+      durationUs: input.durationUs,
+      backgroundColor: input.backgroundColor,
+      text: input.text,
+      style: input.style,
+      startUs: input.startUs,
+    });
+  }
+
   function addAdjustmentClipAtPlayhead(options?: { durationUs?: number; name?: string }) {
     addVirtualClipAtPlayhead({
       clipType: 'adjustment',
@@ -1604,6 +1634,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     removeMarker,
     addTrack,
     addAdjustmentClipAtPlayhead,
+    addVirtualClipAtPlayhead,
+    addVirtualClipToTrack,
     addBackgroundClipAtPlayhead,
     addTextClipAtPlayhead,
     renameTrack,

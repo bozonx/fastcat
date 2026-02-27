@@ -4,10 +4,35 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TimelineZoomLogSlider from '~/components/ui/TimelineZoomLogSlider.vue';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
+
+function onDragStart(e: DragEvent, kind: 'adjustment' | 'background' | 'text') {
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('application/json', JSON.stringify({ kind, name: t(`granVideoEditor.timeline.${kind}ClipDefaultName`, kind), path: '' }));
+  }
+  
+  const labels: Record<string, string> = {
+    adjustment: t('granVideoEditor.timeline.adjustmentClipDefaultName', 'Adjustment'),
+    background: t('granVideoEditor.timeline.backgroundClipDefaultName', 'Background'),
+    text: t('granVideoEditor.timeline.textClipDefaultName', 'Text'),
+  };
+
+  setDraggedFile({
+    kind,
+    name: labels[kind] ?? kind,
+    path: '',
+  });
+}
+
+function onDragEnd() {
+  clearDraggedFile();
+}
 
 const emit = defineEmits<{
   (e: 'update:zoom', value: number): void;
@@ -94,30 +119,51 @@ function toggleClipSnapMode() {
     class="flex items-center gap-2 px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated h-10"
   >
     <div class="ml-2 flex items-center gap-1.5">
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-adjustments-horizontal"
-        :aria-label="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
-        @click="addAdjustmentClip"
-      />
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-swatch"
-        :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
-        @click="addBackgroundClip"
-      />
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-chat-bubble-bottom-center-text"
-        :aria-label="t('granVideoEditor.timeline.addTextClip', 'Add text clip')"
-        @click="addTextClip"
-      />
+      <div
+        draggable="true"
+        class="cursor-grab active:cursor-grabbing"
+        @dragstart="onDragStart($event, 'adjustment')"
+        @dragend="onDragEnd"
+      >
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-adjustments-horizontal"
+          :aria-label="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
+          @click="addAdjustmentClip"
+        />
+      </div>
+      <div
+        draggable="true"
+        class="cursor-grab active:cursor-grabbing"
+        @dragstart="onDragStart($event, 'background')"
+        @dragend="onDragEnd"
+      >
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-swatch"
+          :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
+          @click="addBackgroundClip"
+        />
+      </div>
+      <div
+        draggable="true"
+        class="cursor-grab active:cursor-grabbing"
+        @dragstart="onDragStart($event, 'text')"
+        @dragend="onDragEnd"
+      >
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-chat-bubble-bottom-center-text"
+          :aria-label="t('granVideoEditor.timeline.addTextClip', 'Add text clip')"
+          @click="addTextClip"
+        />
+      </div>
 
       <UButton
         size="sm"

@@ -337,7 +337,9 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
   }
 
   let durationUs = 2_000_000;
-  if (file.kind !== 'timeline') {
+  if (file.kind === 'adjustment' || file.kind === 'background' || file.kind === 'text') {
+    durationUs = 5_000_000;
+  } else if (file.kind !== 'timeline') {
     const metadata = mediaStore.mediaMetadata[file.path];
     if (metadata) {
       const hasVideo = Boolean(metadata.video);
@@ -359,7 +361,7 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
     startUs,
     label: file.name,
     durationUs,
-    kind: file.kind === 'timeline' ? 'timeline-clip' : 'file',
+    kind: file.kind === 'file' ? 'file' : 'timeline-clip',
   };
 }
 
@@ -427,7 +429,7 @@ async function onDrop(e: DragEvent, trackId: string) {
   }
 
   const kind = typeof parsed?.kind === 'string' ? parsed.kind : undefined;
-  if (kind && kind !== 'file' && kind !== 'timeline') {
+  if (kind && kind !== 'file' && kind !== 'timeline' && kind !== 'adjustment' && kind !== 'background' && kind !== 'text') {
     clearDraggedFile();
     return;
   }
@@ -440,7 +442,15 @@ async function onDrop(e: DragEvent, trackId: string) {
   }
 
   try {
-    if (kind === 'timeline') {
+    if (kind === 'adjustment' || kind === 'background' || kind === 'text') {
+      timelineStore.addVirtualClipToTrack({
+        trackId,
+        startUs: startUs ?? timelineStore.currentTime,
+        clipType: kind,
+        name,
+        text: kind === 'text' ? name : undefined,
+      });
+    } else if (kind === 'timeline') {
       await timelineStore.addTimelineClipToTimelineFromPath({
         trackId,
         name,
