@@ -10,6 +10,7 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
@@ -694,12 +695,12 @@ async function createStopFrameSnapshot() {
           @click="toggleMute"
         />
 
-        <USlider
+        <WheelSlider
           :min="0"
           :max="1"
           :step="0.05"
           :model-value="audioMuted ? 0 : audioVolume"
-          class="w-20"
+          slider-class="w-20"
           :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
           @update:model-value="(v) => timelineStore.setAudioVolume(Number(v ?? 1))"
         />

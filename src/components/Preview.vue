@@ -11,6 +11,7 @@ import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
@@ -1243,7 +1244,7 @@ function onPanelFocusOut() {
                   >{{ Math.round((selectedClip.opacity ?? 1) * 100) }}%</span
                 >
               </div>
-              <USlider
+              <WheelSlider
                 :model-value="selectedClip.opacity ?? 1"
                 :min="0"
                 :max="1"
@@ -1282,7 +1283,7 @@ function onPanelFocusOut() {
                     >{{ audioGain.toFixed(3) }}x</span
                   >
                 </div>
-                <USlider
+                <WheelSlider
                   :model-value="audioGain"
                   :min="0"
                   :max="2"
@@ -1300,7 +1301,7 @@ function onPanelFocusOut() {
                     audioBalance.toFixed(2)
                   }}</span>
                 </div>
-                <USlider
+                <WheelSlider
                   :model-value="audioBalance"
                   :min="-1"
                   :max="1"
@@ -1431,7 +1432,7 @@ function onPanelFocusOut() {
                     >{{ trackAudioGain.toFixed(3) }}x</span
                   >
                 </div>
-                <USlider
+                <WheelSlider
                   :model-value="trackAudioGain"
                   :min="0"
                   :max="2"
@@ -1449,7 +1450,7 @@ function onPanelFocusOut() {
                     trackAudioBalance.toFixed(2)
                   }}</span>
                 </div>
-                <USlider
+                <WheelSlider
                   :model-value="trackAudioBalance"
                   :min="-1"
                   :max="1"

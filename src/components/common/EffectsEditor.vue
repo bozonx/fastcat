@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
 import { getEffectManifest } from '~/effects';
 import type { ClipEffect } from '~/timeline/types';
 
@@ -118,7 +119,7 @@ function handleRemoveEffect(effectId: string) {
                   }}
                 </span>
               </div>
-              <USlider
+              <WheelSlider
                 :model-value="(effect as any)[control.key]"
                 :min="control.min"
                 :max="control.max"

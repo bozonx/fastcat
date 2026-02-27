@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import PQueue from 'p-queue';
 
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
@@ -68,7 +68,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       : ref((mediaStore as any)?.mediaMetadata ?? {});
 
   const DEFAULT_IMAGE_DURATION_US = 5_000_000;
-  const DEFAULT_IMAGE_SOURCE_DURATION_US = Number.MAX_SAFE_INTEGER;
+  const DEFAULT_IMAGE_SOURCE_DURATION_US = DEFAULT_IMAGE_DURATION_US;
 
   const timelineDoc = ref<TimelineDocument | null>(null);
 
@@ -85,17 +85,6 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(50);
-
-  watch(
-    currentTime,
-    (newVal, oldVal) => {
-      if (newVal === oldVal) return;
-      if (!timelineDoc.value) return;
-      markTimelineAsDirty();
-      void requestTimelineSave();
-    },
-    { flush: 'sync' },
-  );
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
