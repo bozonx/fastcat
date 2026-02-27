@@ -87,25 +87,26 @@ const durationStep = 0.05;
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 p-3 bg-gray-800 border border-gray-700 rounded text-xs text-gray-200 min-w-52">
+  <div class="flex flex-col gap-3 p-3 bg-ui-bg-elevated border border-ui-border rounded-lg text-xs text-ui-text min-w-56 shadow-lg">
     <!-- Header with edge icon -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 font-semibold text-gray-100">
-        <span :class="edgeIcon" class="w-4 h-4 shrink-0 text-indigo-400" />
+      <div class="flex items-center gap-2 font-semibold">
+        <UIcon :name="edgeIcon" class="w-4 h-4 shrink-0 text-primary-400" />
         <span>{{ t('granVideoEditor.timeline.transition.title') }}</span>
       </div>
-      <button
+      <UButton
         v-if="transition"
-        class="px-1.5 py-0.5 rounded bg-gray-700 hover:bg-red-800 text-gray-400 hover:text-white transition-colors"
+        color="red"
+        variant="ghost"
+        size="xs"
+        icon="i-heroicons-trash"
         :title="
           edge === 'in'
             ? t('granVideoEditor.timeline.removeTransitionIn')
             : t('granVideoEditor.timeline.removeTransitionOut')
         "
         @click="remove"
-      >
-        <span class="i-heroicons-trash w-3.5 h-3.5" />
-      </button>
+      />
     </div>
 
     <!-- Transition type picker -->
@@ -117,47 +118,46 @@ const durationStep = 0.05;
         class="flex items-center gap-2 px-2 py-1.5 rounded border transition-colors"
         :class="
           selectedType === manifest.type
-            ? 'bg-indigo-600 border-indigo-400 text-white'
-            : 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+            ? 'bg-primary-500/20 border-primary-500 text-primary-400'
+            : 'bg-ui-bg border-ui-border hover:bg-ui-bg-hover'
         "
         @click="selectedType = manifest.type"
       >
-        <span :class="manifest.icon" class="w-4 h-4 shrink-0" />
+        <UIcon :name="manifest.icon" class="w-4 h-4 shrink-0" />
         <span>{{ manifest.name }}</span>
       </button>
     </div>
 
     <!-- Duration slider -->
     <div class="flex flex-col gap-1">
-      <label class="text-gray-400">
-        {{ t('granVideoEditor.timeline.transition.duration') }}: {{ durationSec.toFixed(2) }}s
-      </label>
-      <input
-        v-model.number="durationSec"
-        type="range"
+      <div class="flex justify-between text-ui-text-muted">
+        <span>{{ t('granVideoEditor.timeline.transition.duration') }}</span>
+        <span class="font-mono">{{ durationSec.toFixed(2) }}s</span>
+      </div>
+      <USlider
+        v-model="durationSec"
         :min="durationMin"
         :max="durationMax"
         :step="durationStep"
-        class="w-full accent-indigo-500"
       />
     </div>
 
     <!-- Mode toggle -->
     <div class="flex flex-col gap-1">
-      <span class="text-gray-400">{{ t('granVideoEditor.timeline.transition.mode') }}</span>
-      <div class="flex rounded overflow-hidden border border-gray-600">
+      <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.mode') }}</span>
+      <div class="flex rounded overflow-hidden border border-ui-border">
         <button
           type="button"
-          class="flex-1 py-1 text-center transition-colors"
-          :class="selectedMode === 'blend' ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'"
+          class="flex-1 py-1 text-center transition-colors text-xs"
+          :class="selectedMode === 'blend' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedMode = 'blend'"
         >
           {{ t('granVideoEditor.timeline.transition.modeBlend') }}
         </button>
         <button
           type="button"
-          class="flex-1 py-1 text-center transition-colors border-l border-gray-600"
-          :class="selectedMode === 'composite' ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'"
+          class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
+          :class="selectedMode === 'composite' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedMode = 'composite'"
         >
           {{ t('granVideoEditor.timeline.transition.modeComposite') }}
@@ -167,20 +167,20 @@ const durationStep = 0.05;
 
     <!-- Curve toggle -->
     <div class="flex flex-col gap-1">
-      <span class="text-gray-400">{{ t('granVideoEditor.timeline.transition.curve') }}</span>
-      <div class="flex rounded overflow-hidden border border-gray-600">
+      <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.curve') }}</span>
+      <div class="flex rounded overflow-hidden border border-ui-border">
         <button
           type="button"
-          class="flex-1 py-1 text-center transition-colors"
-          :class="selectedCurve === 'linear' ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'"
+          class="flex-1 py-1 text-center transition-colors text-xs"
+          :class="selectedCurve === 'linear' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedCurve = 'linear'"
         >
           {{ t('granVideoEditor.timeline.transition.curveLinear') }}
         </button>
         <button
           type="button"
-          class="flex-1 py-1 text-center transition-colors border-l border-gray-600"
-          :class="selectedCurve === 'bezier' ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'"
+          class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
+          :class="selectedCurve === 'bezier' ? 'bg-primary-500 text-white' : 'bg-ui-bg hover:bg-ui-bg-hover'"
           @click="selectedCurve = 'bezier'"
         >
           {{ t('granVideoEditor.timeline.transition.curveBezier') }}

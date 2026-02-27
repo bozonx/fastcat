@@ -888,14 +888,13 @@ function getTransitionForPanel() {
               <template v-if="(item as any).transitionIn">
                 <button
                   type="button"
-                  class="w-full h-full overflow-hidden"
+                  class="w-full h-full overflow-hidden group"
                   :class="[
                     selectedTransition?.itemId === item.id &&
                     selectedTransition?.trackId === item.trackId &&
                     selectedTransition?.edge === 'in'
-                      ? 'ring-2 ring-amber-300'
+                      ? 'ring-2 ring-inset ring-amber-300 z-10'
                       : '',
-                    hasTransitionInProblem(track, item) ? 'ring-2 ring-orange-500' : '',
                   ]"
                   :title="
                     hasTransitionInProblem(track, item) ??
@@ -916,7 +915,7 @@ function getTransitionForPanel() {
                   <template v-if="!isCrossfadeTransitionIn(track, item as TimelineClipItem)">
                     <svg
                       v-if="((item as any).transitionIn?.mode ?? 'blend') === 'blend'"
-                      class="w-full h-full"
+                      class="w-full h-full block"
                       preserveAspectRatio="none"
                       viewBox="0 0 100 100"
                     >
@@ -930,14 +929,15 @@ function getTransitionForPanel() {
                       <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
                     </template>
                   </template>
+                  <!-- Problem indicator border -->
                   <div
                     v-if="hasTransitionInProblem(track, item)"
-                    class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500"
+                    class="absolute inset-0 border-2 border-orange-500 pointer-events-none"
                   />
                   <!-- Resize handle inside transition block -->
                   <div
                     v-if="!Boolean((item as any).locked)"
-                    class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-40"
+                    class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover:bg-white/20 hover:bg-white/40! transition-colors z-40"
                     @mousedown.stop="
                       startResizeTransition(
                         $event,
@@ -968,14 +968,13 @@ function getTransitionForPanel() {
               <template v-if="(item as any).transitionOut">
                 <button
                   type="button"
-                  class="w-full h-full overflow-hidden"
+                  class="w-full h-full overflow-hidden group"
                   :class="[
                     selectedTransition?.itemId === item.id &&
                     selectedTransition?.trackId === item.trackId &&
                     selectedTransition?.edge === 'out'
-                      ? 'ring-2 ring-amber-300'
+                      ? 'ring-2 ring-inset ring-amber-300 z-10'
                       : '',
-                    hasTransitionOutProblem(track, item) ? 'ring-2 ring-orange-500' : '',
                   ]"
                   :title="
                     hasTransitionOutProblem(track, item) ??
@@ -995,7 +994,7 @@ function getTransitionForPanel() {
                 >
                   <svg
                     v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
-                    class="w-full h-full"
+                    class="w-full h-full block"
                     preserveAspectRatio="none"
                     viewBox="0 0 100 100"
                   >
@@ -1008,10 +1007,15 @@ function getTransitionForPanel() {
                     <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
                     <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
                   </template>
+                  <!-- Problem indicator border -->
+                  <div
+                    v-if="hasTransitionOutProblem(track, item)"
+                    class="absolute inset-0 border-2 border-orange-500 pointer-events-none"
+                  />
                   <!-- Resize handle inside transition block -->
                    <div
                     v-if="!Boolean((item as any).locked)"
-                    class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-40"
+                    class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover:bg-white/20 hover:bg-white/40! transition-colors z-40"
                     @mousedown.stop="
                       startResizeTransition(
                         $event,
