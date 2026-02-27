@@ -30,9 +30,12 @@ const fileUrl = computed(() => {
   return '';
 });
 
-// Audio peaks caching
-// peaks[channel][sample]
-const audioPeaks = ref<number[][] | null>(null);
+const audioPeaks = computed(() => {
+  if (!fileUrl.value) return null;
+  const meta = mediaStore.mediaMetadata[fileUrl.value];
+  return meta?.audioPeaks || null;
+});
+
 const isExtracting = ref(false);
 
 const extractPeaks = async () => {
@@ -58,8 +61,10 @@ const extractPeaks = async () => {
       precision: 10000,
     });
 
+    engine.destroy();
+
     if (peaks) {
-      audioPeaks.value = peaks;
+      mediaStore.setAudioPeaks(fileUrl.value, peaks);
       void redrawMountedChunks();
     }
   } catch (err) {
@@ -69,10 +74,15 @@ const extractPeaks = async () => {
   }
 };
 
-watch(fileUrl, () => {
-  audioPeaks.value = null;
-  void extractPeaks();
-}, { immediate: true });
+watch(
+  fileUrl,
+  () => {
+    if (!audioPeaks.value) {
+      void extractPeaks();
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   void extractPeaks();
@@ -127,7 +137,6 @@ function setChunkCanvas(el: unknown, chunkIndex: number) {
 }
 
 const waveColor = '#3b82f6'; // Tailwind blue-500
-const progressColor = '#2563eb'; // Tailwind blue-600
 
 function drawChunk(chunkIndex: number) {
   const chunk = chunks.value.find((c) => c.chunkIndex === chunkIndex);
@@ -143,7 +152,7 @@ function drawChunk(chunkIndex: number) {
   const dpr = window.devicePixelRatio || 1;
   const targetWidth = Math.max(1, Math.round(cssWidth * dpr));
   const targetHeight = Math.max(1, Math.round(cssHeight * dpr));
-  
+
   if (canvas.width !== targetWidth) canvas.width = targetWidth;
   if (canvas.height !== targetHeight) canvas.height = targetHeight;
   canvas.style.width = `${cssWidth}px`;
@@ -151,21 +160,21 @@ function drawChunk(chunkIndex: number) {
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const peaks = audioPeaks.value[0]; // Just use first channel for now
   if (!peaks || peaks.length === 0) return;
 
   const totalW = totalWidthPx.value;
-  
+
   // Calculate which portion of the peaks array falls into this chunk
   const startRatio = chunk.startPx / totalW;
   const endRatio = (chunk.startPx + chunk.widthPx) / totalW;
-  
+
   const startIndex = Math.floor(startRatio * peaks.length);
   const endIndex = Math.min(peaks.length, Math.ceil(endRatio * peaks.length));
-  
+
   const chunkPeaks = peaks.slice(startIndex, endIndex);
   if (chunkPeaks.length === 0) return;
 
@@ -174,24 +183,24 @@ function drawChunk(chunkIndex: number) {
 
   ctx.fillStyle = waveColor;
   ctx.beginPath();
-  
+
   // Draw top half
   ctx.moveTo(0, halfH);
   for (let i = 0; i < chunkPeaks.length; i++) {
     const x = i * step;
     const peak = chunkPeaks[i] ?? 0;
-    const y = halfH - (Math.abs(peak) * halfH);
+    const y = halfH - Math.abs(peak) * halfH;
     ctx.lineTo(x, y);
   }
-  
+
   // Draw bottom half (mirrored)
   for (let i = chunkPeaks.length - 1; i >= 0; i--) {
     const x = i * step;
     const peak = chunkPeaks[i] ?? 0;
-    const y = halfH + (Math.abs(peak) * halfH);
+    const y = halfH + Math.abs(peak) * halfH;
     ctx.lineTo(x, y);
   }
-  
+
   ctx.closePath();
   ctx.fill();
 }
@@ -254,17 +263,16 @@ watch(
           void redrawVisibleChunks();
         });
       });
-      
+
       if (rootEl.value) {
         resizeObserver.observe(rootEl.value);
       }
-      
+
       void redrawMountedChunks();
     });
   },
   { immediate: true, flush: 'post' },
 );
-
 </script>
 
 <template>
@@ -272,10 +280,15 @@ watch(
     ref="rootEl"
     class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-10"
   >
-    <div v-if="isExtracting && !audioPeaks" class="absolute inset-0 flex items-center justify-center">
-      <div class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+    <div
+      v-if="isExtracting && !audioPeaks"
+      class="absolute inset-0 flex items-center justify-center"
+    >
+      <div
+        class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"
+      ></div>
     </div>
-    
+
     <div
       v-else-if="audioPeaks"
       class="absolute inset-y-0 h-full flex"

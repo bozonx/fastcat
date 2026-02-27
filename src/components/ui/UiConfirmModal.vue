@@ -29,7 +29,11 @@ const isOpen = defineModel<boolean>('open', { required: true });
 const { t } = useI18n();
 
 const handleConfirm = () => {
-  emit('confirm');
+  // Use a slight delay to allow the active button click event to run to completion
+  // before the parent component tears down the modal DOM. This prevents "Cannot read properties of null (reading nextSibling)"
+  setTimeout(() => {
+    emit('confirm');
+  }, 0);
 };
 
 const handleClose = () => {

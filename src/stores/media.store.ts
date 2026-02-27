@@ -29,6 +29,7 @@ export interface MediaMetadata {
     sampleRate: number;
     channels: number;
   };
+  audioPeaks?: number[][];
 }
 
 export const useMediaStore = defineStore('media', () => {
@@ -160,10 +161,17 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  function setAudioPeaks(projectRelativePath: string, peaks: number[][]) {
+    if (mediaMetadata.value[projectRelativePath]) {
+      mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+    }
+  }
+
   return {
     mediaMetadata,
     getOrFetchMetadataByPath,
     getOrFetchMetadata,
     resetMediaState,
+    setAudioPeaks,
   };
 });

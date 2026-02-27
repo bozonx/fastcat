@@ -161,8 +161,17 @@ async function handleDeleteConfirm() {
     selectionStore.clearSelection();
   }
 
-  deleteTarget.value = null;
-  isDeleteConfirmModalOpen.value = false;
+  // Delay closing the modal for a tick to allow the click event loop to finish
+  // This prevents Nuxt UI / Vue from crashing when trying to find nextSibling of the clicked button
+  // during the modal's unmount phase
+  setTimeout(() => {
+    isDeleteConfirmModalOpen.value = false;
+    
+    // Wait for the modal transition to finish before clearing the reference
+    setTimeout(() => {
+      deleteTarget.value = null;
+    }, 300);
+  }, 0);
 }
 
 async function handleRename(newName: string) {
@@ -357,8 +366,10 @@ function onFileSelect(e: Event) {
       icon="i-heroicons-exclamation-triangle"
       @confirm="handleDeleteConfirm"
     >
-      <div v-if="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
-        {{ deleteTarget.name }}
+      <div>
+        <div v-show="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTarget?.name }}
+        </div>
       </div>
     </UiConfirmModal>
   </div>
