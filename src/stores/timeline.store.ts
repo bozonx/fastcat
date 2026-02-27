@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import PQueue from 'p-queue';
 
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
@@ -85,6 +85,17 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(50);
+
+  watch(
+    currentTime,
+    (newVal, oldVal) => {
+      if (newVal === oldVal) return;
+      if (!timelineDoc.value) return;
+      markTimelineAsDirty();
+      void requestTimelineSave();
+    },
+    { flush: 'sync' },
+  );
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
@@ -1154,7 +1165,17 @@ export const useTimelineStore = defineStore('timeline', () => {
     isSavingTimeline.value = true;
     timelineSaveError.value = null;
 
-    const snapshot = timelineDoc.value;
+    // Inject the current playhead position before saving
+    const snapshot: TimelineDocument = {
+      ...timelineDoc.value,
+      metadata: {
+        ...(timelineDoc.value.metadata ?? {}),
+        gran: {
+          ...(timelineDoc.value.metadata?.gran ?? {}),
+          playheadUs: currentTime.value,
+        },
+      },
+    };
     const revisionToSave = timelineRevision;
 
     try {
@@ -1235,6 +1256,13 @@ export const useTimelineStore = defineStore('timeline', () => {
       });
       if (requestId !== loadTimelineRequestId) return;
       timelineDoc.value = parsed;
+
+      if (
+        typeof parsed.metadata?.gran?.playheadUs === 'number' &&
+        Number.isFinite(parsed.metadata.gran.playheadUs)
+      ) {
+        currentTime.value = parsed.metadata.gran.playheadUs;
+      }
     } catch (e: any) {
       console.warn('Failed to load timeline file, fallback to default', e);
       if (requestId !== loadTimelineRequestId) return;

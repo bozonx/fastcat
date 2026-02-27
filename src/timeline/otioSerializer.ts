@@ -610,6 +610,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         docId: doc.id,
         timebase: doc.timebase,
         markers: coerceMarkers((doc as any)?.metadata?.gran?.markers),
+        playheadUs: (doc as any)?.metadata?.gran?.playheadUs,
       },
     },
   };
@@ -723,6 +724,10 @@ export function parseTimelineFromOtio(
   const docId = coerceId(granMeta?.docId, fallback.id);
   const name = coerceName(parsed.name, fallback.name);
   const markers = coerceMarkers(granMeta?.markers);
+  const playheadUs =
+    typeof granMeta?.playheadUs === 'number' && Number.isFinite(granMeta.playheadUs)
+      ? Math.max(0, Math.round(granMeta.playheadUs))
+      : undefined;
 
   if (tracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
@@ -733,6 +738,7 @@ export function parseTimelineFromOtio(
         docId,
         timebase,
         markers,
+        playheadUs,
       },
     };
     return base;
@@ -749,6 +755,7 @@ export function parseTimelineFromOtio(
         docId,
         timebase,
         markers,
+        playheadUs,
       },
     },
   };

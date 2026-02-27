@@ -278,7 +278,9 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
           :class="
             selectedTrackId === track.id
               ? 'text-ui-text bg-ui-bg-accent'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated'
+              : timelineStore.hoveredTrackId === track.id
+                ? 'text-ui-text bg-ui-bg-elevated/80'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated'
           "
           :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
           draggable="true"
@@ -288,6 +290,8 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
           @click="onSelectTrack(track.id)"
           @contextmenu="onSelectTrack(track.id)"
           @wheel="onTrackWheel($event, track)"
+          @mouseenter="timelineStore.hoveredTrackId = track.id"
+          @mouseleave="timelineStore.hoveredTrackId = null"
         >
           <span class="truncate" :title="track.name">{{ track.name }}</span>
 

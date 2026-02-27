@@ -639,7 +639,15 @@ function getClipWidthPx(item: TimelineTrackItem): number {
 /** Get dynamic classes for clip background and border */
 function getClipClass(item: TimelineTrackItem, track: TimelineTrack): string[] {
   if (item.kind === 'gap') {
-    return ['bg-ui-bg-elevated/40', 'border-ui-border', 'text-ui-text-muted', 'opacity-70'];
+    return [
+      'border',
+      'border-dashed',
+      'border-ui-border/50',
+      'bg-ui-bg-elevated/20',
+      'hover:bg-ui-bg-elevated/40',
+      'text-ui-text-muted',
+      'transition-colors',
+    ];
   }
 
   const clipItem = item as TimelineClipItem;
@@ -909,7 +917,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   <div
     class="flex flex-col divide-y divide-ui-border"
     @mousedown="
-      if ($event.button !== 1) {
+      if ($event.button !== 1 && $event.target === $event.currentTarget) {
         timelineStore.clearSelection();
         timelineStore.selectTrack(null);
       }
@@ -952,12 +960,23 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       v-for="track in tracks"
       :key="track.id"
       :data-track-id="track.id"
-      class="flex items-center px-2 relative"
-      :class="timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : ''"
+      class="flex items-center px-2 relative transition-colors"
+      :class="[
+        timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : '',
+        timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id ? 'bg-ui-bg-elevated/50' : ''
+      ]"
       :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
       @dragover.prevent="emit('dragover', $event, track.id)"
       @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"
+      @mouseenter="timelineStore.hoveredTrackId = track.id"
+      @mouseleave="timelineStore.hoveredTrackId = null"
+      @mousedown="
+        if ($event.button !== 1 && $event.target === $event.currentTarget) {
+          timelineStore.clearSelection();
+          timelineStore.selectTrack(track.id);
+        }
+      "
     >
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"

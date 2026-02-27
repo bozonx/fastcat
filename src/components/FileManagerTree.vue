@@ -98,10 +98,15 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
 async function onDropDir(e: DragEvent, entry: FsEntry) {
   if (entry.kind === 'directory' && isDragOver.value === entry.path) {
     isDragOver.value = null;
+    e.stopPropagation();
     if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
       const { useFileManager } = await import('~/composables/fileManager/useFileManager');
       const fm = useFileManager();
-      await fm.handleFiles(e.dataTransfer.files, entry.handle as FileSystemDirectoryHandle);
+      await fm.handleFiles(
+        e.dataTransfer.files,
+        entry.handle as FileSystemDirectoryHandle,
+        entry.path
+      );
     }
   }
 }

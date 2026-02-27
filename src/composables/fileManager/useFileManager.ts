@@ -268,6 +268,7 @@ export function useFileManager() {
   async function handleFiles(
     files: FileList | File[],
     targetDirHandle?: FileSystemDirectoryHandle,
+    targetDirPath?: string,
   ) {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
@@ -294,7 +295,7 @@ export function useFileManager() {
         }
 
         let targetDir = targetDirHandle;
-        let finalDirName = targetDirHandle?.name || 'unknown';
+        let finalRelativePathBase = targetDirPath || 'sources';
 
         if (!targetDir) {
           let targetDirName = 'video';
@@ -304,7 +305,7 @@ export function useFileManager() {
             if (file.name.endsWith('.otio')) continue; // Skip project files
           }
           targetDir = await sourcesDir.getDirectoryHandle(targetDirName, { create: true });
-          finalDirName = targetDirName;
+          finalRelativePathBase = `sources/${targetDirName}`;
         }
 
         try {
@@ -324,9 +325,9 @@ export function useFileManager() {
         await writable.close();
 
         if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-          const projectRelativePath = targetDirHandle
-            ? `sources/${finalDirName}/${file.name}` // Note: this might not be exactly correct for nested dirs, but standard for now
-            : `sources/${finalDirName}/${file.name}`;
+          // If we drop inside a folder, we need the path relative to the project root
+          // targetDirPath gives us something like "sources/video/my_folder"
+          const projectRelativePath = `${finalRelativePathBase}/${file.name}`;
           void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
         }
       }

@@ -186,6 +186,7 @@ export interface TimelineGranMetadata {
   docId?: string;
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];
+  playheadUs?: number;
 }
 
 export interface TimelineMetadata {
