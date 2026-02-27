@@ -217,7 +217,7 @@ function computeMaxResizableTransitionDurationUs(input: {
   if (!resolved) return 10_000_000;
 
   const { clip, adjacent } = resolved;
-  if (!adjacent) return 0;
+  if (!adjacent) return 10_000_000;
 
   // Only enforce hard max for blend crossfades (needs overlap material)
   const mode = input.currentTransition.mode ?? 'blend';
@@ -281,12 +281,15 @@ function startResizeTransition(
         : (item as TimelineClipItem).transitionOut;
     if (!current) return;
 
-    const maxUs = computeMaxResizableTransitionDurationUs({
+    const maxUsRaw = computeMaxResizableTransitionDurationUs({
       trackId,
       itemId,
       edge,
       currentTransition: current,
     });
+
+    if (maxUsRaw <= 0) return;
+    const maxUs = Math.max(minUs, maxUsRaw);
 
     const newDurationUs = Math.min(
       maxUs,
