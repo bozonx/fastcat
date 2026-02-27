@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition } from '~/timeline/types';
+import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 
 const { t } = useI18n();
 
@@ -82,7 +83,7 @@ function remove() {
 }
 
 const durationMin = 0.1;
-const durationMax = 5;
+const durationMax = 3;
 const durationStep = 0.05;
 </script>
 
@@ -132,13 +133,14 @@ const durationStep = 0.05;
     <div class="flex flex-col gap-1">
       <div class="flex justify-between text-ui-text-muted">
         <span>{{ t('granVideoEditor.timeline.transition.duration') }}</span>
-        <span class="font-mono">{{ durationSec.toFixed(2) }}s</span>
       </div>
-      <USlider
+      <DurationSliderInput
         v-model="durationSec"
         :min="durationMin"
         :max="durationMax"
         :step="durationStep"
+        unit="s"
+        :decimals="2"
       />
     </div>
 

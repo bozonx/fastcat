@@ -101,13 +101,13 @@ describe('TimelineStore', () => {
     const store = useTimelineStore();
     store.isPlaying = true;
     store.currentTime = 100;
-    store.timelineZoom = 150;
+    store.timelineZoom = 80;
 
     store.resetTimelineState();
 
     expect(store.isPlaying).toBe(false);
     expect(store.currentTime).toBe(0);
-    expect(store.timelineZoom).toBe(100);
+    expect(store.timelineZoom).toBe(50);
   });
 
   it('sets freeze frame from playhead when playhead is inside clip', () => {

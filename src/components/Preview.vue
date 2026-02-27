@@ -9,6 +9,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
+import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import type { TimelineTrack } from '~/timeline/types';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
@@ -527,6 +528,8 @@ const audioFadeOutSec = computed({
 
 const audioFadeMaxSec = computed(() => Math.max(0, Math.min(10, clipDurationSec.value)));
 
+const audioFadeUiMaxSec = computed(() => Math.min(3, audioFadeMaxSec.value));
+
 watch(hasProxy, (val) => {
   if (!val && previewMode.value === 'proxy') {
     previewMode.value = 'original';
@@ -1029,12 +1032,14 @@ function onPanelFocusOut() {
                       {{ formatTime((selectedClip as any).transitionIn.durationUs) }}
                     </span>
                   </div>
-                  <USlider
+                  <DurationSliderInput
                     :model-value="(selectedClip as any).transitionIn.durationUs / 1_000_000"
                     :min="0.1"
-                    :max="Math.min(5, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
+                    :max="Math.min(3, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
                     :step="0.01"
-                    @update:model-value="(v: any) => updateTransitionDuration('in', Number(v))"
+                    unit="s"
+                    :decimals="2"
+                    @update:model-value="(v: number) => updateTransitionDuration('in', v)"
                   />
                 </div>
               </div>
@@ -1066,12 +1071,14 @@ function onPanelFocusOut() {
                       {{ formatTime((selectedClip as any).transitionOut.durationUs) }}
                     </span>
                   </div>
-                  <USlider
+                  <DurationSliderInput
                     :model-value="(selectedClip as any).transitionOut.durationUs / 1_000_000"
                     :min="0.1"
-                    :max="Math.min(5, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
+                    :max="Math.min(3, (selectedClip.timelineRange.durationUs / 1_000_000) * 0.5)"
                     :step="0.01"
-                    @update:model-value="(v: any) => updateTransitionDuration('out', Number(v))"
+                    unit="s"
+                    :decimals="2"
+                    @update:model-value="(v: number) => updateTransitionDuration('out', v)"
                   />
                 </div>
               </div>
@@ -1142,28 +1149,28 @@ function onPanelFocusOut() {
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
                   <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.fadeIn', 'Fade in') }}</span>
-                  <span class="text-xs font-mono text-ui-text-muted">{{ audioFadeInSec.toFixed(2) }}s</span>
                 </div>
-                <USlider
-                  :model-value="audioFadeInSec"
+                <DurationSliderInput
+                  v-model="audioFadeInSec"
                   :min="0"
-                  :max="audioFadeMaxSec"
+                  :max="audioFadeUiMaxSec"
                   :step="0.01"
-                  @update:model-value="(v: any) => (audioFadeInSec = Number(v))"
+                  unit="s"
+                  :decimals="2"
                 />
               </div>
 
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
                   <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.fadeOut', 'Fade out') }}</span>
-                  <span class="text-xs font-mono text-ui-text-muted">{{ audioFadeOutSec.toFixed(2) }}s</span>
                 </div>
-                <USlider
-                  :model-value="audioFadeOutSec"
+                <DurationSliderInput
+                  v-model="audioFadeOutSec"
                   :min="0"
-                  :max="audioFadeMaxSec"
+                  :max="audioFadeUiMaxSec"
                   :step="0.01"
-                  @update:model-value="(v: any) => (audioFadeOutSec = Number(v))"
+                  unit="s"
+                  :decimals="2"
                 />
               </div>
             </div>

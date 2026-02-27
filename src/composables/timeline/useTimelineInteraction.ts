@@ -11,8 +11,14 @@ export const BASE_PX_PER_SECOND = 10;
 
 export function zoomToPxPerSecond(zoom: number) {
   const parsed = Number(zoom);
-  const safeZoom = Number.isFinite(parsed) ? parsed : 100;
-  return (BASE_PX_PER_SECOND * safeZoom) / 100;
+  const safePos = Number.isFinite(parsed) ? parsed : 50;
+  const pos = Math.min(100, Math.max(0, safePos));
+
+  // Logarithmic scale where 50 => 1x. Each 10 points ~= 2x change.
+  // pxPerSecond = BASE * 2 ^ ((pos - 50) / 10)
+  const exponent = (pos - 50) / 10;
+  const factor = Math.pow(2, exponent);
+  return BASE_PX_PER_SECOND * factor;
 }
 
 export function timeUsToPx(timeUs: number, zoom = 100) {

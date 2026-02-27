@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
+import TimelineZoomLogSlider from '~/components/ui/TimelineZoomLogSlider.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -64,7 +65,7 @@ function stop() {
 
 function onZoomInput(e: Event) {
   const target = e.target as HTMLInputElement | null;
-  timelineStore.setTimelineZoom(Number(target?.value ?? 100));
+  timelineStore.setTimelineZoom(Number(target?.value ?? 50));
 }
 
 function toggleOverlapMode() {
@@ -202,13 +203,14 @@ function toggleClipSnapMode() {
 
     <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted">
       <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4" />
-      <USlider
-        :min="10"
-        :max="200"
+      <TimelineZoomLogSlider
         :model-value="timelineStore.timelineZoom"
-        class="w-28"
+        :min="0"
+        :max="100"
+        :step="1"
+        slider-class="w-28"
         :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
-        @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 100)"
+        @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
       />
       <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
     </div>

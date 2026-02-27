@@ -79,7 +79,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const audioMuted = ref(false);
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
-  const timelineZoom = ref(100);
+  const timelineZoom = ref(50);
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
@@ -743,7 +743,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   function setTimelineZoom(next: number) {
     const parsed = Math.round(Number(next));
     if (!Number.isFinite(parsed)) return;
-    timelineZoom.value = Math.min(200, Math.max(10, parsed));
+    timelineZoom.value = Math.min(100, Math.max(0, parsed));
   }
 
   function setAudioVolume(next: number) {
@@ -1082,7 +1082,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration.value = 0;
     audioVolume.value = 1;
     audioMuted.value = false;
-    timelineZoom.value = 100;
+    timelineZoom.value = 50;
     clearSelection();
     selectTrack(null);
     timelineRevision = 0;
