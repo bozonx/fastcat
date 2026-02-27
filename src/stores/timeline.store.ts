@@ -707,6 +707,17 @@ export const useTimelineStore = defineStore('timeline', () => {
   function deleteFirstSelectedItem() {
     const doc = timelineDoc.value;
     if (!doc) return;
+
+    if (selectedTransition.value) {
+      updateClipTransition(
+        selectedTransition.value.trackId,
+        selectedTransition.value.itemId,
+        selectedTransition.value.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+      );
+      clearSelectedTransition();
+      return;
+    }
+
     if (selectedItemIds.value.length === 0) return;
 
     const selectedSet = new Set(selectedItemIds.value);

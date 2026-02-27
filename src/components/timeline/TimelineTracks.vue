@@ -30,6 +30,8 @@ const props = defineProps<{
     trackId: string;
     startUs: number;
   } | null;
+  draggingMode?: 'move' | 'trim_start' | 'trim_end' | null;
+  draggingItemId?: string | null;
 }>();
 
 const DEFAULT_TRACK_HEIGHT = 40;
@@ -1121,7 +1123,7 @@ function getTransitionForPanel() {
               ((item as any).audioGain !== undefined && Math.abs((item as any).audioGain - 1) > 0.001)
                 ? 'opacity-100' 
                 : (timelineStore.selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'),
-              resizeVolume?.itemId === item.id || props.movePreview?.itemId === item.id ? 'opacity-0! pointer-events-none' : ''
+              ((props.draggingMode && props.draggingItemId === item.id) || props.movePreview?.itemId === item.id) && resizeVolume?.itemId !== item.id ? 'opacity-0! pointer-events-none' : ''
             ]"
             :style="{
               top: `${100 - (((item as any).audioGain ?? 1) / 2) * 100}%`,
@@ -1187,14 +1189,6 @@ function getTransitionForPanel() {
                   `Transition In: ${(item as any).transitionIn?.type}`
                 "
                 @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
-                @dblclick.stop="
-                  openTransitionPanel = {
-                    trackId: item.trackId,
-                    itemId: item.id,
-                    edge: 'in',
-                    anchorEl: $event.currentTarget as HTMLElement,
-                  }
-                "
               >
                 <template v-if="!isCrossfadeTransitionIn(track, item as TimelineClipItem)">
                   <svg

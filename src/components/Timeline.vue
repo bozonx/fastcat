@@ -59,6 +59,8 @@ const dragPreview = ref<{
 
 const {
   isDraggingPlayhead,
+  draggingMode,
+  draggingItemId,
   movePreview,
   onTimeRulerMouseDown,
   startPlayheadDrag,
@@ -238,10 +240,13 @@ function formatTime(seconds: number): string {
 
             <!-- Tracks -->
             <TimelineTracks
+              ref="timelineTracksRef"
               :tracks="tracks"
               :track-heights="trackHeights"
               :drag-preview="dragPreview"
               :move-preview="movePreview"
+              :dragging-mode="draggingMode"
+              :dragging-item-id="draggingItemId"
               @drop="onDrop"
               @dragover="onTrackDragOver"
               @dragleave="onTrackDragLeave"

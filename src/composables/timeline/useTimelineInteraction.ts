@@ -621,6 +621,8 @@ export function useTimelineInteraction(
 
   return {
     isDraggingPlayhead,
+    draggingMode,
+    draggingItemId,
     movePreview,
     onTimeRulerMouseDown,
     startPlayheadDrag,
