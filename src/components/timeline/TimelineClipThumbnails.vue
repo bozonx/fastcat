@@ -109,10 +109,6 @@ const pxPerThumbnail = computed(() => {
   return timeUsToPx(intervalUs, timelineStore.timelineZoom);
 });
 
-// Exposes zoom as reactive dependency so watches re-trigger redraws when zoom changes.
-// Actual per-tile step is computed inside drawChunk using real container height.
-const thumbnailStep = computed(() => pxPerThumbnail.value);
-
 // Offset for trim start
 const trimOffsetPx = computed(() => {
   return timeUsToPx(props.item.sourceRange.startUs, timelineStore.timelineZoom);
@@ -239,29 +235,22 @@ async function drawChunk(chunkIndex: number) {
   // This ensures tiles always go sequentially and are never visually squashed.
   const baseTileWidthCss = Math.max(4, cssHeight * thumbAspectRatio.value);
 
-  // When zoomed in, we allow the tile to expand to match the timeline scale.
-  // This keeps the "zoom in => bigger thumbnails" behavior.
-  const tileWidthCss = Math.max(baseTileWidthCss, px);
-  const tileWidthPx = Math.round(tileWidthCss * dpr);
-
   // How many base-interval slots one tile spans on the timeline.
   // When zoomed out, this becomes > 1 and we naturally skip thumbnails.
-  const step = Math.max(1, Math.ceil(tileWidthCss / px));
-
-  // Current draw cursor inside this chunk (css pixels, relative to chunk start)
-  let cursorX = 0;
+  const step = Math.max(1, Math.ceil(baseTileWidthCss / px));
 
   for (let i = 0; i < chunk.thumbsCount; i += step) {
-    const chunkWidthCss = chunk.widthPx;
-    if (cursorX >= chunkWidthCss) break;
-
     const thumbIndex = chunk.startThumbIndex + i;
     const secondKey = thumbIndex * intervalSeconds;
     const url = thumbnailsBySecond.value.get(secondKey);
-    if (!url) {
-      cursorX += tileWidthCss;
-      continue;
-    }
+
+    const thumbsInThisStep = Math.min(step, chunk.thumbsCount - i);
+    const xCss = i * px;
+    const wCss = thumbsInThisStep * px;
+    const xPx = Math.round(xCss * dpr);
+    const wPx = Math.max(1, Math.round(wCss * dpr));
+
+    if (!url) continue;
 
     try {
       const img = await loadImage(url);
@@ -274,16 +263,14 @@ async function drawChunk(chunkIndex: number) {
       drawImageFitWidthCropHeight(
         ctx,
         img,
-        Math.round(cursorX * dpr),
+        xPx,
         0,
-        tileWidthPx,
+        wPx,
         canvas.height
       );
     } catch {
       // ignore
     }
-
-    cursorX += tileWidthCss;
   }
 }
 
