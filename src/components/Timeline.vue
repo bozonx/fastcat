@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from '#imports';
 import {
   useTimelineInteraction,
+  computeAnchoredScrollLeft,
   timeUsToPx,
   pxToTimeUs,
   zoomToPxPerSecond,
@@ -49,6 +50,8 @@ const tracks = computed(
 
 const scrollEl = ref<HTMLElement | null>(null);
 
+const pendingZoomAnchor = ref<import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor | null>(null);
+
 const dragPreview = ref<{
   trackId: string;
   startUs: number;
@@ -70,6 +73,112 @@ const {
 } = useTimelineInteraction(scrollEl, tracks);
 
 const pxPerSecond = computed(() => zoomToPxPerSecond(timelineStore.timelineZoom));
+
+function getViewportWidth(): number {
+  return scrollEl.value?.clientWidth ?? 0;
+}
+
+function makePlayheadAnchor(params: { zoom: number }): import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor {
+  const viewportWidth = getViewportWidth();
+  const prevScrollLeft = scrollEl.value?.scrollLeft ?? 0;
+  const playheadPx = timeUsToPx(timelineStore.currentTime, params.zoom);
+  const isVisible = playheadPx >= prevScrollLeft && playheadPx <= prevScrollLeft + viewportWidth;
+  return {
+    anchorTimeUs: timelineStore.currentTime,
+    anchorViewportX: isVisible ? playheadPx - prevScrollLeft : viewportWidth / 2,
+  };
+}
+
+function applyZoomWithAnchor(params: {
+  nextZoom: number;
+  anchor: import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor;
+}) {
+  const el = scrollEl.value;
+  if (!el) {
+    timelineStore.setTimelineZoom(params.nextZoom);
+    return;
+  }
+
+  const prevZoom = timelineStore.timelineZoom;
+  const nextZoom = params.nextZoom;
+  if (nextZoom === prevZoom) return;
+
+  const prevScrollLeft = el.scrollLeft;
+  const viewportWidth = el.clientWidth;
+
+  pendingZoomAnchor.value = params.anchor;
+  timelineStore.setTimelineZoom(nextZoom);
+
+  requestAnimationFrame(() => {
+    const anchor = pendingZoomAnchor.value;
+    if (!anchor) return;
+    pendingZoomAnchor.value = null;
+
+    const nextScrollLeft = computeAnchoredScrollLeft({
+      prevZoom,
+      nextZoom,
+      prevScrollLeft,
+      viewportWidth,
+      anchor,
+    });
+    el.scrollLeft = nextScrollLeft;
+  });
+}
+
+function onTimelineWheel(e: WheelEvent) {
+  const el = scrollEl.value;
+  if (!el) return;
+
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return;
+
+  e.preventDefault();
+
+  const prevZoom = timelineStore.timelineZoom;
+  const dir = e.deltaY < 0 ? 1 : -1;
+  const step = 3;
+  const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
+
+  const rect = el.getBoundingClientRect();
+  const viewportX = e.clientX - rect.left;
+  const prevScrollLeft = el.scrollLeft;
+  const anchorPx = prevScrollLeft + viewportX;
+  const anchorTimeUs = pxToTimeUs(anchorPx, prevZoom);
+
+  applyZoomWithAnchor({
+    nextZoom,
+    anchor: {
+      anchorTimeUs,
+      anchorViewportX: viewportX,
+    },
+  });
+}
+
+watch(
+  () => timelineStore.timelineZoom,
+  (nextZoom, prevZoom) => {
+    const el = scrollEl.value;
+    if (!el) return;
+    if (!Number.isFinite(prevZoom)) return;
+    if (nextZoom === prevZoom) return;
+
+    const prevScrollLeft = el.scrollLeft;
+    const viewportWidth = el.clientWidth;
+    const anchor = pendingZoomAnchor.value ?? makePlayheadAnchor({ zoom: prevZoom });
+    pendingZoomAnchor.value = null;
+
+    requestAnimationFrame(() => {
+      const nextScrollLeft = computeAnchoredScrollLeft({
+        prevZoom,
+        nextZoom,
+        prevScrollLeft,
+        viewportWidth,
+        anchor,
+      });
+      el.scrollLeft = nextScrollLeft;
+    });
+  },
+);
 
 function clearDragPreview() {
   dragPreview.value = null;
@@ -218,7 +327,9 @@ function formatTime(seconds: number): string {
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <!-- Toolbar -->
-    <TimelineToolbar />
+    <TimelineToolbar
+      @update:zoom="(v) => applyZoomWithAnchor({ nextZoom: v, anchor: makePlayheadAnchor({ zoom: timelineStore.timelineZoom }) })"
+    />
 
     <ClientOnly>
       <Splitpanes class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes" @resized="onTimelineSplitResize">
@@ -231,7 +342,7 @@ function formatTime(seconds: number): string {
           />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
-          <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative">
+          <div ref="scrollEl" class="w-full h-full overflow-x-auto overflow-y-hidden relative" @wheel="onTimelineWheel">
             <TimelineRuler
               class="h-7 border-b border-ui-border bg-ui-bg-elevated sticky top-0 z-10 cursor-pointer"
               :scroll-el="scrollEl"

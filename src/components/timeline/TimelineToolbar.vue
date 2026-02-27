@@ -9,6 +9,10 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 
+const emit = defineEmits<{
+  (e: 'update:zoom', value: number): void;
+}>();
+
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
@@ -210,7 +214,7 @@ function toggleClipSnapMode() {
         :step="1"
         slider-class="w-28"
         :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
-        @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
+        @update:model-value="(v) => emit('update:zoom', v ?? 50)"
       />
       <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
     </div>

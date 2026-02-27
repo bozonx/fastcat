@@ -204,6 +204,24 @@ function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
+  if (cmd === 'timeline.zoomIn') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.setTimelineZoom(timelineStore.timelineZoom + 3);
+    return;
+  }
+
+  if (cmd === 'timeline.zoomOut') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.setTimelineZoom(timelineStore.timelineZoom - 3);
+    return;
+  }
+
+  if (cmd === 'timeline.zoomReset') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.setTimelineZoom(50);
+    return;
+  }
+
   if (cmd === 'timeline.toggleDisableClip') {
     if (!focusStore.canUseTimelineHotkeys) return;
     void timelineStore.toggleDisableTargetClip();

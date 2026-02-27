@@ -6,6 +6,9 @@ export type HotkeyCommandId =
   | 'general.undo'
   | 'general.redo'
   | 'timeline.deleteClip'
+  | 'timeline.zoomIn'
+  | 'timeline.zoomOut'
+  | 'timeline.zoomReset'
   | 'timeline.trimToPlayheadLeft'
   | 'timeline.trimToPlayheadRight'
   | 'timeline.rippleTrimLeft'
@@ -74,6 +77,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'playback.toggle', groupId: 'general', title: 'Play / pause (normal speed)' },
 
     { id: 'timeline.deleteClip', groupId: 'timeline', title: 'Delete clip' },
+    { id: 'timeline.zoomIn', groupId: 'timeline', title: 'Zoom in' },
+    { id: 'timeline.zoomOut', groupId: 'timeline', title: 'Zoom out' },
+    { id: 'timeline.zoomReset', groupId: 'timeline', title: 'Reset zoom' },
     {
       id: 'timeline.trimToPlayheadLeft',
       groupId: 'timeline',
@@ -160,6 +166,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.redo': ['Ctrl+Shift+Z'],
 
     'timeline.deleteClip': ['Delete', 'X'],
+    'timeline.zoomIn': ['='],
+    'timeline.zoomOut': ['-'],
+    'timeline.zoomReset': ['.'],
     'timeline.trimToPlayheadLeft': ['V'],
     'timeline.trimToPlayheadRight': ['C'],
     'timeline.rippleTrimLeft': ['D'],

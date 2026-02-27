@@ -36,6 +36,38 @@ export function pxToDeltaUs(px: number, zoom = 100) {
   return Math.round((px / pxPerSecond) * 1e6);
 }
 
+export interface TimelineZoomAnchor {
+  anchorTimeUs: number;
+  anchorViewportX: number;
+}
+
+export function computeAnchoredScrollLeft(params: {
+  prevZoom: number;
+  nextZoom: number;
+  prevScrollLeft: number;
+  viewportWidth: number;
+  anchor: TimelineZoomAnchor;
+}): number {
+  const { nextZoom, prevScrollLeft, viewportWidth, anchor } = params;
+
+  const safeViewportWidth = Number.isFinite(viewportWidth) ? Math.max(0, viewportWidth) : 0;
+  const safePrevScrollLeft = Number.isFinite(prevScrollLeft) ? Math.max(0, prevScrollLeft) : 0;
+
+  const anchorTimeUs = Number.isFinite(anchor.anchorTimeUs)
+    ? Math.max(0, Math.round(anchor.anchorTimeUs))
+    : 0;
+  const anchorViewportXRaw = Number.isFinite(anchor.anchorViewportX)
+    ? anchor.anchorViewportX
+    : safeViewportWidth / 2;
+  const anchorViewportX = Math.min(safeViewportWidth, Math.max(0, anchorViewportXRaw));
+
+  const anchorPxAtNextZoom = timeUsToPx(anchorTimeUs, nextZoom);
+  const nextScrollLeft = anchorPxAtNextZoom - anchorViewportX;
+
+  if (!Number.isFinite(nextScrollLeft)) return safePrevScrollLeft;
+  return Math.max(0, nextScrollLeft);
+}
+
 function sanitizeFps(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 30;
