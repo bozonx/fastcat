@@ -75,9 +75,42 @@ export const useMediaStore = defineStore('media', () => {
     const file = await fileHandle.getFile();
     const cacheKey = projectRelativePath;
 
-    if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
-      return null;
-    }
+    const fileType = typeof file.type === 'string' ? file.type : '';
+    const isKnownMediaByMime =
+      fileType.startsWith('video/') ||
+      fileType.startsWith('audio/') ||
+      fileType.startsWith('image/');
+    const isKnownMediaByExt = (() => {
+      const ext = projectRelativePath.split('.').pop()?.toLowerCase() ?? '';
+      if (!ext) return false;
+      return [
+        // Video
+        'mp4',
+        'mov',
+        'mkv',
+        'webm',
+        'm4v',
+        'avi',
+        // Audio
+        'mp3',
+        'wav',
+        'ogg',
+        'm4a',
+        'aac',
+        'flac',
+        // Images
+        'png',
+        'jpg',
+        'jpeg',
+        'webp',
+        'bmp',
+        'gif',
+        'tiff',
+        'tif',
+      ].includes(ext);
+    })();
+
+    if (!isKnownMediaByMime && !isKnownMediaByExt) return null;
 
     if (!options?.forceRefresh && mediaMetadata.value[cacheKey]) {
       const cached = mediaMetadata.value[cacheKey]!;

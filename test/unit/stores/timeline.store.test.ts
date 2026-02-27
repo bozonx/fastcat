@@ -30,6 +30,7 @@ vi.mock('../../../src/stores/project.store', () => ({
 const mediaStoreMock = {
   mediaMetadata: { value: {} },
   getOrFetchMetadataByPath: vi.fn(),
+  getOrFetchMetadata: vi.fn(),
 };
 
 vi.mock('../../../src/stores/media.store', () => ({
@@ -40,6 +41,8 @@ describe('TimelineStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     projectStoreMock.getFileHandleByPath.mockReset();
+    mediaStoreMock.getOrFetchMetadataByPath.mockReset();
+    mediaStoreMock.getOrFetchMetadata.mockReset();
   });
 
   it('initializes with default state', () => {
@@ -502,6 +505,106 @@ describe('TimelineStore', () => {
     await store.toggleMuteTargetClip();
     clip = (store.timelineDoc as any).tracks[0].items.find((it: any) => it.id === 'c1');
     expect(clip.audioGain).toBe(1);
+  });
+
+  it('adds image source to video track with default image duration', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [],
+        },
+      ],
+    } as any;
+
+    projectStoreMock.getFileHandleByPath.mockResolvedValue({
+      getFile: vi.fn(async () => ({
+        type: 'image/png',
+        size: 123,
+        lastModified: 1,
+      })),
+    });
+
+    mediaStoreMock.getOrFetchMetadata.mockResolvedValue({
+      source: { size: 123, lastModified: 1 },
+      duration: 0,
+    });
+
+    await store.addClipToTimelineFromPath({
+      trackId: 'v1',
+      name: 'image.png',
+      path: 'sources/images/image.png',
+      startUs: 0,
+    });
+
+    const track = (store.timelineDoc as any).tracks.find((t: any) => t.id === 'v1');
+    expect(track.items).toHaveLength(1);
+
+    const clip = track.items[0];
+    expect(clip.clipType).toBe('media');
+    expect(clip.timelineRange.durationUs).toBe(5_000_000);
+    expect(clip.sourceDurationUs).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it('adds audio source to audio track using metadata duration', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'a1',
+          kind: 'audio',
+          name: 'Audio 1',
+          items: [],
+        },
+      ],
+    } as any;
+
+    projectStoreMock.getFileHandleByPath.mockResolvedValue({
+      getFile: vi.fn(async () => ({
+        type: 'audio/mpeg',
+        size: 123,
+        lastModified: 1,
+      })),
+    });
+
+    mediaStoreMock.getOrFetchMetadata.mockResolvedValue({
+      source: { size: 123, lastModified: 1 },
+      duration: 3,
+      audio: {
+        codec: 'mp3',
+        parsedCodec: 'mp3',
+        sampleRate: 44100,
+        channels: 2,
+      },
+    });
+
+    await store.addClipToTimelineFromPath({
+      trackId: 'a1',
+      name: 'audio.mp3',
+      path: 'sources/audio/audio.mp3',
+      startUs: 0,
+    });
+
+    const track = (store.timelineDoc as any).tracks.find((t: any) => t.id === 'a1');
+    expect(track.items).toHaveLength(1);
+
+    const clip = track.items[0];
+    expect(clip.clipType).toBe('media');
+    expect(clip.timelineRange.durationUs).toBe(3_000_000);
+    expect(clip.sourceDurationUs).toBe(3_000_000);
   });
 
   it('adds nested timeline clip from .otio path and blocks self-drop', async () => {

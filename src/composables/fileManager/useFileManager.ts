@@ -30,6 +30,25 @@ export interface FsEntry {
 
 type FileTreeSortMode = 'name' | 'modified';
 
+export function isMoveAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
+  const source = params.sourcePath
+    .split('/')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join('/');
+  const target = params.targetDirPath
+    .split('/')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join('/');
+
+  if (!source) return false;
+  if (!target) return true;
+  if (target === source) return false;
+  if (target.startsWith(`${source}/`)) return false;
+  return true;
+}
+
 export function useFileManager() {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
@@ -44,6 +63,80 @@ export function useFileManager() {
   const sortMode = ref<FileTreeSortMode>('name');
 
   const isApiSupported = workspaceStore.isApiSupported;
+
+  async function getProjectRootDirHandle(): Promise<FileSystemDirectoryHandle | null> {
+    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
+    return await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName);
+  }
+
+  async function assertEntryDoesNotExist(params: {
+    targetDirHandle: FileSystemDirectoryHandle;
+    entryName: string;
+    kind: 'file' | 'directory';
+  }) {
+    try {
+      if (params.kind === 'file') {
+        await params.targetDirHandle.getFileHandle(params.entryName);
+      } else {
+        await params.targetDirHandle.getDirectoryHandle(params.entryName);
+      }
+      throw new Error(`Target already exists: ${params.entryName}`);
+    } catch (e: any) {
+      if (e?.name !== 'NotFoundError') throw e;
+    }
+  }
+
+  async function copyFileToDirectory(params: {
+    sourceHandle: FileSystemFileHandle;
+    fileName: string;
+    targetDirHandle: FileSystemDirectoryHandle;
+  }) {
+    const file = await params.sourceHandle.getFile();
+    const targetHandle = await params.targetDirHandle.getFileHandle(params.fileName, {
+      create: true,
+    });
+
+    const createWritable = (targetHandle as FileSystemFileHandle).createWritable;
+    if (typeof createWritable !== 'function') {
+      throw new Error('Failed to move file: createWritable is not available');
+    }
+
+    const writable = await (targetHandle as FileSystemFileHandle).createWritable();
+    await writable.write(file);
+    await writable.close();
+  }
+
+  async function copyDirectoryRecursive(params: {
+    sourceDirHandle: FileSystemDirectoryHandle;
+    targetDirHandle: FileSystemDirectoryHandle;
+  }): Promise<void> {
+    const iterator =
+      (params.sourceDirHandle as FsDirectoryHandleWithIteration).values?.() ??
+      (params.sourceDirHandle as FsDirectoryHandleWithIteration).entries?.();
+    if (!iterator) return;
+
+    for await (const value of iterator) {
+      const handle = (Array.isArray(value) ? value[1] : value) as
+        | FileSystemFileHandle
+        | FileSystemDirectoryHandle;
+
+      if (handle.kind === 'file') {
+        await copyFileToDirectory({
+          sourceHandle: handle as FileSystemFileHandle,
+          fileName: handle.name,
+          targetDirHandle: params.targetDirHandle,
+        });
+      } else {
+        const nextTargetDir = await params.targetDirHandle.getDirectoryHandle(handle.name, {
+          create: true,
+        });
+        await copyDirectoryRecursive({
+          sourceDirHandle: handle as FileSystemDirectoryHandle,
+          targetDirHandle: nextTargetDir,
+        });
+      }
+    }
+  }
 
   async function attachLastModified(entries: FsEntry[]): Promise<void> {
     const files = entries.filter((e) => e.kind === 'file') as FsEntry[];
@@ -138,6 +231,32 @@ export function useFileManager() {
     }
 
     return next;
+  }
+
+  function findEntryByPath(path: string): FsEntry | null {
+    const normalized = path
+      .split('/')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .join('/');
+    if (!normalized) return null;
+
+    function walk(list: FsEntry[]): FsEntry | null {
+      for (const entry of list) {
+        if (entry.path === normalized) return entry;
+        if (
+          entry.kind === 'directory' &&
+          Array.isArray(entry.children) &&
+          entry.children.length > 0
+        ) {
+          const found = walk(entry.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    return walk(rootEntries.value);
   }
 
   async function refreshExpandedChildren(entries: FsEntry[]): Promise<void> {
@@ -439,6 +558,85 @@ export function useFileManager() {
     }
   }
 
+  async function moveEntry(params: {
+    source: FsEntry;
+    targetDirHandle: FileSystemDirectoryHandle;
+    targetDirPath: string;
+  }) {
+    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+    if (!params.source.parentHandle) return;
+
+    const sourcePath = params.source.path ?? '';
+    const targetDirPath = params.targetDirPath ?? '';
+    if (!sourcePath) return;
+
+    const sourceParentPath = sourcePath.split('/').slice(0, -1).join('/');
+    if (sourceParentPath === targetDirPath) return;
+
+    if (!isMoveAllowed({ sourcePath, targetDirPath })) return;
+
+    error.value = null;
+    isLoading.value = true;
+    try {
+      await assertEntryDoesNotExist({
+        targetDirHandle: params.targetDirHandle,
+        entryName: params.source.name,
+        kind: params.source.kind,
+      });
+
+      if (params.source.kind === 'file') {
+        await copyFileToDirectory({
+          sourceHandle: params.source.handle as FileSystemFileHandle,
+          fileName: params.source.name,
+          targetDirHandle: params.targetDirHandle,
+        });
+        await params.source.parentHandle.removeEntry(params.source.name);
+
+        const oldPath = sourcePath;
+        const newPath = targetDirPath
+          ? `${targetDirPath}/${params.source.name}`
+          : params.source.name;
+
+        delete mediaStore.mediaMetadata[oldPath];
+        delete mediaStore.mediaMetadata[newPath];
+
+        if (oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)) {
+          await proxyStore.deleteProxy(oldPath);
+          proxyStore.existingProxies.clear();
+
+          if (projectStore.currentProjectId) {
+            await thumbnailGenerator.clearThumbnails({
+              projectId: projectStore.currentProjectId,
+              hash: getClipThumbnailsHash({
+                projectId: projectStore.currentProjectId,
+                projectRelativePath: oldPath,
+              }),
+            });
+          }
+        }
+      } else {
+        const targetDir = await params.targetDirHandle.getDirectoryHandle(params.source.name, {
+          create: true,
+        });
+        await copyDirectoryRecursive({
+          sourceDirHandle: params.source.handle as FileSystemDirectoryHandle,
+          targetDirHandle: targetDir,
+        });
+        await params.source.parentHandle.removeEntry(params.source.name, { recursive: true });
+
+        mediaStore.resetMediaState();
+        proxyStore.existingProxies.clear();
+      }
+
+      await loadProjectDirectory();
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to move';
+      throw e;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   async function createTimeline() {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
@@ -506,6 +704,7 @@ export function useFileManager() {
     isLoading,
     error,
     isApiSupported,
+    getProjectRootDirHandle,
     sortMode,
     setSortMode: (v: FileTreeSortMode) => {
       sortMode.value = v;
@@ -516,6 +715,8 @@ export function useFileManager() {
     createFolder,
     deleteEntry,
     renameEntry,
+    findEntryByPath,
+    moveEntry,
     createTimeline,
     getFileIcon,
   };
