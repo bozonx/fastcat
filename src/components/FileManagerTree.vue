@@ -3,7 +3,11 @@ import { computed, ref } from 'vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useDraggedFile, INTERNAL_DRAG_TYPE } from '~/composables/useDraggedFile';
+import {
+  useDraggedFile,
+  INTERNAL_DRAG_TYPE,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
 
@@ -20,6 +24,12 @@ interface Props {
   entries: FsEntry[];
   depth: number;
   getFileIcon: (entry: FsEntry) => string;
+  findEntryByPath: (path: string) => FsEntry | null;
+  moveEntry: (params: {
+    source: FsEntry;
+    targetDirHandle: FileSystemDirectoryHandle;
+    targetDirPath: string;
+  }) => Promise<void>;
 }
 
 const props = defineProps<Props>();
@@ -67,19 +77,30 @@ function onEntryClick(entry: FsEntry) {
 }
 
 function onDragStart(e: DragEvent, entry: FsEntry) {
+  if (!entry.path) return;
+
+  const movePayload = {
+    name: entry.name,
+    kind: entry.kind,
+    path: entry.path,
+  };
+  e.dataTransfer?.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
+
+  // Mark this as an internal drag so the global drop overlay is not shown
+  e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
+
   if (entry.kind !== 'file') return;
+
   const isTimeline = entry.name.toLowerCase().endsWith('.otio');
   const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
   const data = {
     name: entry.name,
     kind,
-    path: entry.path || '',
+    path: entry.path,
     handle: entry.handle as FileSystemFileHandle,
   };
   setDraggedFile(data);
   e.dataTransfer?.setData('application/json', JSON.stringify(data));
-  // Mark this as an internal drag so the global drop overlay is not shown
-  e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 }
 
 function onDragEnd() {
@@ -87,8 +108,19 @@ function onDragEnd() {
 }
 
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
-  // Only handle directory targets and external files
-  if (entry.kind === 'directory' && e.dataTransfer?.types.includes('Files')) {
+  if (entry.kind !== 'directory') return;
+
+  const types = e.dataTransfer?.types;
+  if (!types) return;
+
+  if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) {
+    isDragOver.value = entry.path || null;
+    e.dataTransfer.dropEffect = 'move';
+    return;
+  }
+
+  // External files import
+  if (types.includes('Files')) {
     isDragOver.value = entry.path || null;
     e.dataTransfer.dropEffect = 'copy';
   }
@@ -113,6 +145,29 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   isDragOver.value = null;
   uiStore.isGlobalDragging = false;
   uiStore.isFileManagerDragging = false;
+
+  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+  if (moveRaw) {
+    let parsed: any;
+    try {
+      parsed = JSON.parse(moveRaw);
+    } catch {
+      return;
+    }
+
+    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
+    if (!sourcePath) return;
+
+    const source = props.findEntryByPath(sourcePath);
+    if (!source) return;
+
+    await props.moveEntry({
+      source,
+      targetDirHandle: entry.handle as FileSystemDirectoryHandle,
+      targetDirPath: entry.path ?? '',
+    });
+    return;
+  }
 
   const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
   const files =
@@ -210,7 +265,7 @@ function getContextMenuItems(entry: FsEntry) {
           class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
           :style="{ paddingLeft: `${8 + depth * 14}px` }"
           :class="{ 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1': isDragOver === entry.path }"
-          :draggable="entry.kind === 'file'"
+          :draggable="true"
           @dragstart="onDragStart($event, entry)"
           @dragend="onDragEnd()"
           @dragover.prevent="onDragOverDir($event, entry)"
@@ -278,6 +333,8 @@ function getContextMenuItems(entry: FsEntry) {
           :entries="entry.children"
           :depth="depth + 1"
           :get-file-icon="getFileIcon"
+          :find-entry-by-path="findEntryByPath"
+          :move-entry="moveEntry"
           @toggle="emit('toggle', $event)"
           @select="emit('select', $event)"
           @action="(a, e) => emit('action', a, e)"

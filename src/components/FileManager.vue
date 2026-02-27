@@ -26,12 +26,15 @@ const {
   isLoading,
   error,
   isApiSupported,
+  getProjectRootDirHandle,
   loadProjectDirectory,
   toggleDirectory,
   handleFiles,
   createFolder,
   deleteEntry,
   renameEntry,
+  findEntryByPath,
+  moveEntry,
   createTimeline,
   getFileIcon,
   sortMode,
@@ -311,6 +314,9 @@ function onFileSelect(e: Event) {
       :is-api-supported="isApiSupported"
       :root-entries="rootEntries"
       :get-file-icon="getFileIcon"
+      :find-entry-by-path="findEntryByPath"
+      :move-entry="moveEntry"
+      :get-project-root-dir-handle="getProjectRootDirHandle"
       @toggle="toggleDirectory"
       @action="onFileAction"
       @create-folder="openCreateFolderModal"

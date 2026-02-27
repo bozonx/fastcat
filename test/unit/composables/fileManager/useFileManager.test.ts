@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager, isMoveAllowed } from '~/composables/fileManager/useFileManager';
 
 describe('useFileManager', () => {
   beforeEach(() => {
@@ -61,5 +61,21 @@ describe('useFileManager', () => {
         handle: {} as unknown as FileSystemFileHandle,
       }),
     ).toBe('i-heroicons-document');
+  });
+
+  it('isMoveAllowed should prevent moving directory into itself or descendant', () => {
+    expect(isMoveAllowed({ sourcePath: 'sources/video', targetDirPath: 'sources/video' })).toBe(
+      false,
+    );
+    expect(isMoveAllowed({ sourcePath: 'sources/video', targetDirPath: 'sources/video/sub' })).toBe(
+      false,
+    );
+    expect(isMoveAllowed({ sourcePath: 'sources/video/sub', targetDirPath: 'sources/video' })).toBe(
+      true,
+    );
+  });
+
+  it('isMoveAllowed should allow moving into root', () => {
+    expect(isMoveAllowed({ sourcePath: 'a/b', targetDirPath: '' })).toBe(true);
   });
 });

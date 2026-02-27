@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileManagerTree from '~/components/FileManagerTree.vue';
 import type { FsEntry } from '~/composables/fileManager/useFileManager';
+import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
-const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
@@ -25,6 +23,13 @@ const props = defineProps<{
   isApiSupported: boolean;
   rootEntries: FsEntry[];
   getFileIcon: (entry: FsEntry) => string;
+  findEntryByPath: (path: string) => FsEntry | null;
+  moveEntry: (params: {
+    source: FsEntry;
+    targetDirHandle: FileSystemDirectoryHandle;
+    targetDirPath: string;
+  }) => Promise<void>;
+  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
 }>();
 
 const emit = defineEmits<{
@@ -49,6 +54,54 @@ const rootContextMenuItems = computed(() => {
     ],
   ];
 });
+
+const isRootDropOver = ref(false);
+
+function onRootDragOver(e: DragEvent) {
+  const types = e.dataTransfer?.types;
+  if (!types) return;
+  if (!types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) return;
+
+  isRootDropOver.value = true;
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onRootDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const relatedTarget = e.relatedTarget as Node | null;
+  if (!currentTarget?.contains(relatedTarget)) {
+    isRootDropOver.value = false;
+  }
+}
+
+async function onRootDrop(e: DragEvent) {
+  isRootDropOver.value = false;
+
+  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+  if (!moveRaw) return;
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(moveRaw);
+  } catch {
+    return;
+  }
+
+  const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
+  if (!sourcePath) return;
+
+  const source = props.findEntryByPath(sourcePath);
+  if (!source) return;
+
+  const rootHandle = await props.getProjectRootDirHandle();
+  if (!rootHandle) return;
+
+  await props.moveEntry({
+    source,
+    targetDirHandle: rootHandle,
+    targetDirPath: '',
+  });
+}
 
 async function onEntrySelect(entry: FsEntry) {
   uiStore.selectedFsEntry = entry as any;
@@ -125,9 +178,19 @@ async function onEntrySelect(entry: FsEntry) {
           :entries="rootEntries"
           :depth="0"
           :get-file-icon="getFileIcon"
+          :find-entry-by-path="findEntryByPath"
+          :move-entry="moveEntry"
           @toggle="emit('toggle', $event)"
           @select="onEntrySelect"
           @action="(action, entry) => emit('action', action, entry)"
+        />
+
+        <div
+          class="h-12 shrink-0"
+          :class="{ 'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver }"
+          @dragover.prevent="onRootDragOver"
+          @dragleave.prevent="onRootDragLeave"
+          @drop.prevent="onRootDrop"
         />
       </div>
     </UContextMenu>
