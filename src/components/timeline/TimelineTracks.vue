@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ClipTransitionPanel from './ClipTransitionPanel.vue';
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -79,14 +78,6 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-// --- Transition panel popup ---
-const openTransitionPanel = ref<{
-  trackId: string;
-  itemId: string;
-  edge: 'in' | 'out';
-  anchorEl: HTMLElement | null;
-} | null>(null);
-
 const speedModal = ref<{
   open: boolean;
   trackId: string;
@@ -129,24 +120,6 @@ async function saveSpeedModal() {
   });
   speedModal.value.open = false;
   await timelineStore.requestTimelineSave({ immediate: true });
-}
-
-function handleTransitionUpdate(payload: {
-  trackId: string;
-  itemId: string;
-  edge: 'in' | 'out';
-  transition: import('~/timeline/types').ClipTransition | null;
-}) {
-  if (payload.edge === 'in') {
-    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
-      transitionIn: payload.transition,
-    });
-  } else {
-    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
-      transitionOut: payload.transition,
-    });
-  }
-  openTransitionPanel.value = null;
 }
 
 function selectTransition(
@@ -907,16 +880,6 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
   return result;
 }
-
-function getTransitionForPanel() {
-  if (!openTransitionPanel.value) return undefined;
-  const track = props.tracks.find((t) => t.id === openTransitionPanel.value!.trackId);
-  const item = track?.items.find((i) => i.id === openTransitionPanel.value!.itemId);
-  if (!item || item.kind !== 'clip') return undefined;
-  return openTransitionPanel.value!.edge === 'in'
-    ? (item as TimelineClipItem).transitionIn
-    : (item as TimelineClipItem).transitionOut;
-}
 </script>
 
 <template>
@@ -1252,14 +1215,6 @@ function getTransitionForPanel() {
                   `Transition Out: ${(item as any).transitionOut?.type}`
                 "
                 @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
-                @dblclick.stop="
-                  openTransitionPanel = {
-                    trackId: item.trackId,
-                    itemId: item.id,
-                    edge: 'out',
-                    anchorEl: $event.currentTarget as HTMLElement,
-                  }
-                "
               >
                 <svg
                   v-if="((item as any).transitionOut?.mode ?? 'blend') === 'blend'"
@@ -1329,20 +1284,4 @@ function getTransitionForPanel() {
     </div>
   </div>
 
-  <!-- Transition panel popup (double-click to open, click outside to close) -->
-  <div
-    v-if="openTransitionPanel"
-    class="fixed inset-0 z-50"
-    @mousedown.self="openTransitionPanel = null"
-  >
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shadow-xl">
-      <ClipTransitionPanel
-        :edge="openTransitionPanel.edge"
-        :track-id="openTransitionPanel.trackId"
-        :item-id="openTransitionPanel.itemId"
-        :transition="getTransitionForPanel()"
-        @update="handleTransitionUpdate"
-      />
-    </div>
-  </div>
 </template>
