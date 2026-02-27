@@ -296,7 +296,7 @@ function shouldCollapseTransitions(item: TimelineClipItem): boolean {
   if (inUs === 0 && outUs === 0) return false;
 
   const clipDurationUs = item.timelineRange.durationUs;
-  const hitEachOther = inUs + outUs > clipDurationUs - 1000; // 1ms tolerance
+  const hitEachOther = inUs + outUs > clipDurationUs + 1000; // 1ms tolerance
 
   const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
   const clipWidth = Math.max(30, clipUnstretchedPx);
