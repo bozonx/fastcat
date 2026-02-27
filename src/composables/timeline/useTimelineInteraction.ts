@@ -221,6 +221,7 @@ export function useTimelineInteraction(
 
   const dragStartSnapshot = ref<import('~/timeline/types').TimelineDocument | null>(null);
   const lastDragAppliedCmd = ref<import('~/timeline/commands').TimelineCommand | null>(null);
+  const dragCancelRequested = ref(false);
 
   let dragRafId: number | null = null;
 
@@ -248,6 +249,7 @@ export function useTimelineInteraction(
     isDraggingPlayhead.value = true;
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
+    window.addEventListener('keydown', onGlobalKeyDown);
   }
 
   function selectItem(e: MouseEvent, itemId: string) {
@@ -295,6 +297,7 @@ export function useTimelineInteraction(
 
     dragStartSnapshot.value = timelineStore.timelineDoc;
     lastDragAppliedCmd.value = null;
+    dragCancelRequested.value = false;
 
     movePreview.value = {
       itemId,
@@ -303,11 +306,9 @@ export function useTimelineInteraction(
     };
     pendingMoveCommit.value = null;
 
-    dragStartSnapshot.value = timelineStore.timelineDoc;
-    lastDragAppliedCmd.value = null;
-
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
+    window.addEventListener('keydown', onGlobalKeyDown);
   }
 
   function startTrimItem(
@@ -348,8 +349,22 @@ export function useTimelineInteraction(
       includePlayheadUs: timelineStore.currentTime,
     });
 
+    dragCancelRequested.value = false;
+
     window.addEventListener('mousemove', onGlobalMouseMove);
     window.addEventListener('mouseup', onGlobalMouseUp);
+    window.addEventListener('keydown', onGlobalKeyDown);
+  }
+
+  function onGlobalKeyDown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+
+    const hasActiveDrag = Boolean(draggingMode.value) || isDraggingPlayhead.value;
+    if (!hasActiveDrag) return;
+
+    dragCancelRequested.value = true;
+    e.preventDefault();
+    onGlobalMouseUp();
   }
 
   function applyDragFromPendingClientX() {
@@ -498,6 +513,10 @@ export function useTimelineInteraction(
 
   function onGlobalMouseMove(e: MouseEvent) {
     if (isDraggingPlayhead.value) {
+      if (e.buttons === 0) {
+        onGlobalMouseUp();
+        return;
+      }
       const scrollerRect = scrollEl.value?.getBoundingClientRect();
       if (!scrollerRect) return;
       const scrollX = scrollEl.value?.scrollLeft ?? 0;
@@ -511,17 +530,28 @@ export function useTimelineInteraction(
     const itemId = draggingItemId.value;
     if (!mode || !trackId || !itemId) return;
 
+    if (e.buttons === 0) {
+      onGlobalMouseUp();
+      return;
+    }
+
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
     scheduleDragApply();
   }
 
   function onGlobalMouseUp() {
+    const cancel = dragCancelRequested.value;
+    dragCancelRequested.value = false;
+
     if (dragRafId !== null) {
       cancelAnimationFrame(dragRafId);
       dragRafId = null;
     }
-    applyDragFromPendingClientX();
+
+    if (!cancel) {
+      applyDragFromPendingClientX();
+    }
 
     if (!cancel && draggingMode.value === 'move' && settingsStore.overlapMode === 'pseudo') {
       const commit = pendingMoveCommit.value;
@@ -550,9 +580,7 @@ export function useTimelineInteraction(
 
     if (cancel && snapshot) {
       timelineStore.timelineDoc = snapshot as any;
-      if (snapshot) {
-        timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
-      }
+      timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
     }
 
     if (!cancel && hasPendingTimelinePersist.value) {
@@ -576,6 +604,7 @@ export function useTimelineInteraction(
 
     window.removeEventListener('mousemove', onGlobalMouseMove);
     window.removeEventListener('mouseup', onGlobalMouseUp);
+    window.removeEventListener('keydown', onGlobalKeyDown);
   }
 
   onMounted(() => {});
@@ -587,6 +616,7 @@ export function useTimelineInteraction(
     }
     window.removeEventListener('mousemove', onGlobalMouseMove);
     window.removeEventListener('mouseup', onGlobalMouseUp);
+    window.removeEventListener('keydown', onGlobalKeyDown);
   });
 
   return {

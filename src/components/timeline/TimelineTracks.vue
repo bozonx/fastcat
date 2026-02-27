@@ -836,8 +836,8 @@ function getTransitionForPanel() {
           "
           @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
-          <!-- Audio Fade Layer (Triangles on top) -->
-          <div v-if="item.kind === 'clip'" class="absolute inset-0 pointer-events-none z-30">
+          <!-- Audio Fade Layer (Triangles below transitions/title) -->
+          <div v-if="item.kind === 'clip'" class="absolute inset-0 pointer-events-none z-10">
             <svg
               v-if="(item as any).audioFadeInUs > 0"
               class="absolute left-0 top-0 h-full"
@@ -884,7 +884,7 @@ function getTransitionForPanel() {
           </div>
 
           <!-- Main Content (3-column layout) -->
-          <div class="flex-1 flex w-full min-h-0 relative z-10">
+          <div class="flex-1 flex w-full min-h-0 relative z-20">
             <!-- Left: Transition In Column -->
             <div
               v-if="item.kind === 'clip'"
