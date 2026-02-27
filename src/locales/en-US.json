@@ -120,7 +120,9 @@
     "size": "Size",
     "source": "Source",
     "start": "Start",
-    "video": "Video"
+    "video": "Video",
+    "undo": "Undo",
+    "redo": "Redo"
   },
   "videoEditor": {
     "settings": {

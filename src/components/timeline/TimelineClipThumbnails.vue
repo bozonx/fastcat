@@ -4,6 +4,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 
@@ -14,6 +15,7 @@ const props = defineProps<{
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const mediaStore = useMediaStore();
 const isGenerating = ref(false);
 
 const rootEl = ref<HTMLElement | null>(null);
@@ -41,6 +43,43 @@ const fileUrl = computed(() => {
   return '';
 });
 
+const isImage = computed(() => {
+  if (!fileUrl.value) return false;
+  const meta = mediaStore.mediaMetadata[fileUrl.value];
+  if (meta) {
+    return !meta.video && !meta.audio;
+  }
+  // Fallback to extension check if metadata is not loaded yet
+  const ext = fileUrl.value.split('.').pop()?.toLowerCase();
+  return ext ? ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff', 'tif'].includes(ext) : false;
+});
+
+const imageUrl = ref('');
+
+watch(
+  [isImage, fileUrl],
+  async ([imageFlag, path]) => {
+    if (imageFlag && path) {
+      try {
+        const handle = await projectStore.getFileHandleByPath(path);
+        if (handle) {
+          const file = await handle.getFile();
+          if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
+          imageUrl.value = URL.createObjectURL(file);
+        }
+      } catch (e) {
+        console.error('Failed to load image for thumbnail:', e);
+      }
+    } else {
+      if (imageUrl.value) {
+        URL.revokeObjectURL(imageUrl.value);
+        imageUrl.value = '';
+      }
+    }
+  },
+  { immediate: true },
+);
+
 // Duration in seconds
 const duration = computed(() => {
   return (props.item.sourceDurationUs || 0) / 1000000;
@@ -58,6 +97,7 @@ const clipHash = computed(() => {
 const generate = () => {
   if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
   if (!projectStore.currentProjectId) return;
+  if (isImage.value) return;
 
   isGenerating.value = true;
 
@@ -89,12 +129,12 @@ const generate = () => {
     onError: (err) => {
       console.error('Thumbnail generation error:', err);
       isGenerating.value = false;
-    }
+    },
   });
 };
 
 onMounted(() => {
-  if (props.item.clipType === 'media') {
+  if (props.item.clipType === 'media' && !isImage.value) {
     generate();
   }
 });
@@ -109,7 +149,9 @@ onBeforeUnmount(() => {
 
 watch(fileUrl, () => {
   thumbnailsBySecond.value = new Map();
-  generate();
+  if (!isImage.value) {
+    generate();
+  }
 });
 
 // Calculate thumbnail width based on current zoom
@@ -136,6 +178,7 @@ const thumbsPerChunk = computed(() => {
 });
 
 const chunks = computed(() => {
+  if (isImage.value) return [];
   const total = totalThumbs.value;
   const perChunk = thumbsPerChunk.value;
   const px = pxPerThumbnail.value;
@@ -165,10 +208,12 @@ function getChunkIndexByThumbIndex(thumbIndex: number): number | null {
 }
 
 function setChunkEl(el: unknown, chunkIndex: number) {
+  if (!chunkEls.value) chunkEls.value = [];
   chunkEls.value[chunkIndex] = el instanceof HTMLElement ? el : null;
 }
 
 function setChunkCanvas(el: unknown, chunkIndex: number) {
+  if (!chunkCanvases.value) chunkCanvases.value = [];
   chunkCanvases.value[chunkIndex] = el instanceof HTMLCanvasElement ? el : null;
 }
 
@@ -273,14 +318,7 @@ async function drawChunk(chunkIndex: number) {
         thumbAspectRatio.value = img.width / img.height;
       }
 
-      drawImageFitWidthCropHeight(
-        ctx,
-        img,
-        xPx,
-        0,
-        wPx,
-        canvas.height
-      );
+      drawImageFitWidthCropHeight(ctx, img, xPx, 0, wPx, canvas.height);
     } catch {
       // ignore
     }
@@ -361,32 +399,47 @@ watch(
   },
   { immediate: true, flush: 'post' },
 );
-
 </script>
 
 <template>
-  <div 
-    class="absolute inset-0 overflow-hidden rounded opacity-60 pointer-events-none select-none flex"
-    v-if="item.clipType === 'media' && fileUrl"
+  <div
     ref="rootEl"
+    class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-10"
   >
-    <div 
-      class="flex h-full relative"
-      :style="{ transform: `translateX(-${trimOffsetPx}px)` }"
+    <!-- Video clips: Chunked canvases -->
+    <div
+      class="absolute inset-y-0 h-full flex"
+      :class="{ 'hidden': isImage }"
+      :style="{
+        left: `${-trimOffsetPx}px`,
+        width: `${chunks.reduce((sum, c) => sum + c.widthPx, 0)}px`,
+      }"
     >
       <div
         v-for="chunk in chunks"
         :key="chunk.chunkIndex"
-        class="h-full shrink-0 relative"
-        :style="{ width: `${chunk.widthPx}px` }"
-        :data-chunk-index="chunk.chunkIndex"
         :ref="(el) => setChunkEl(el, chunk.chunkIndex)"
+        class="relative h-full flex-none overflow-hidden"
+        :data-chunk-index="chunk.chunkIndex"
+        :style="{
+          width: `${chunk.widthPx}px`,
+        }"
       >
         <canvas
-          class="absolute inset-0"
           :ref="(el) => setChunkCanvas(el, chunk.chunkIndex)"
-        />
+          class="absolute top-0 left-0 h-full max-w-none"
+        ></canvas>
       </div>
+    </div>
+
+    <!-- Image clips: Centered image taking full height -->
+    <div v-if="isImage" class="absolute inset-0 flex items-center justify-center overflow-hidden">
+      <img
+        v-if="imageUrl"
+        :src="imageUrl"
+        alt="clip thumbnail"
+        class="h-full w-full object-cover object-center"
+      />
     </div>
   </div>
 </template>

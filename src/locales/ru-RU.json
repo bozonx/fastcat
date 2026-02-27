@@ -120,7 +120,9 @@
     "size": "Размер",
     "source": "Источник",
     "start": "Начало",
-    "video": "Видео"
+    "video": "Видео",
+    "undo": "Отменить",
+    "redo": "Вернуть"
   },
   "videoEditor": {
     "settings": {

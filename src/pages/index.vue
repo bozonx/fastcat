@@ -5,6 +5,7 @@ import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage } from '@vueuse/core';
 import TimelineExportModal from '~/components/TimelineExportModal.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
+import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -30,6 +31,7 @@ const { currentTimelinePath } = storeToRefs(projectStore);
 
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
+const isProjectSettingsOpen = ref(false);
 
 function onGlobalDragOver(e: DragEvent) {
   const types = e.dataTransfer?.types;
@@ -684,10 +686,39 @@ function leaveProject() {
               <UIcon name="i-heroicons-document" class="w-4 h-4 text-ui-text-muted" />
               {{ projectStore.currentFileName }}
             </span>
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-cog-8-tooth"
+              :title="t('videoEditor.projectSettings.title', 'Project settings')"
+              @click="isProjectSettingsOpen = true"
+            />
           </div>
         </div>
 
         <div class="flex items-center gap-2">
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-arrow-uturn-left"
+            :disabled="!timelineStore.historyStore.canUndo"
+            :title="t('common.undo') + ' (Ctrl+Z)'"
+            @click="timelineStore.undoTimeline()"
+          />
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-arrow-uturn-right"
+            :disabled="!timelineStore.historyStore.canRedo"
+            :title="t('common.redo') + ' (Ctrl+Shift+Z)'"
+            @click="timelineStore.redoTimeline()"
+          />
+
+          <div class="w-px h-4 bg-ui-border mx-1" />
+
           <UButton
             size="sm"
             variant="ghost"
@@ -736,6 +767,8 @@ function leaveProject() {
       <TimelineExportModal v-model:open="isExportModalOpen" @exported="() => {}" />
 
       <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
+
+      <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
 
       <!-- Global Drag & Drop Overlay -->
       <div

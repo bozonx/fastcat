@@ -436,10 +436,10 @@ const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>
   if (selectedTransitionClip.value && selectedTransitionValue.value) return 'transition';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
-  
+
   const entity = selectionStore.selectedEntity;
   if (entity?.source === 'fileManager' && entity.kind === 'file') return 'file';
-  
+
   return 'empty';
 });
 
@@ -672,9 +672,13 @@ watch(
         lastModified: file.lastModified,
         metadata:
           entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
-            ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
-                forceRefresh: true,
-              })
+            ? await mediaStore.getOrFetchMetadata(
+                entry.handle as FileSystemFileHandle,
+                entry.path,
+                {
+                  forceRefresh: true,
+                },
+              )
             : undefined,
       };
 
@@ -847,38 +851,38 @@ function onPanelFocusOut() {
           icon="i-heroicons-x-mark"
           @click="clearAllSelection"
         />
-        <template v-if="displayMode === 'clip'">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-pencil"
-          @click="isRenameModalOpen = true"
-        />
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="red"
-          icon="i-heroicons-trash"
-          @click="handleDeleteClip"
-        />
-        </template>
-        <template v-else-if="displayMode === 'file' && hasProxy">
-        <UFieldGroup size="xs">
+        <div v-if="displayMode === 'clip'" class="flex gap-1">
           <UButton
-            :color="previewMode === 'original' ? 'primary' : 'neutral'"
-            :variant="previewMode === 'original' ? 'soft' : 'ghost'"
-            :label="t('videoEditor.fileManager.preview.original', 'Original')"
-            @click="previewMode = 'original'"
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-pencil"
+            @click="isRenameModalOpen = true"
           />
           <UButton
-            :color="previewMode === 'proxy' ? 'primary' : 'neutral'"
-            :variant="previewMode === 'proxy' ? 'soft' : 'ghost'"
-            :label="t('videoEditor.fileManager.preview.proxy', 'Proxy')"
-            @click="previewMode = 'proxy'"
+            size="xs"
+            variant="ghost"
+            color="red"
+            icon="i-heroicons-trash"
+            @click="handleDeleteClip"
           />
-        </UFieldGroup>
-        </template>
+        </div>
+        <div v-else-if="displayMode === 'file' && hasProxy" class="flex gap-1">
+          <UFieldGroup size="xs">
+            <UButton
+              :color="previewMode === 'original' ? 'primary' : 'neutral'"
+              :variant="previewMode === 'original' ? 'soft' : 'ghost'"
+              :label="t('videoEditor.fileManager.preview.original', 'Original')"
+              @click="previewMode = 'original'"
+            />
+            <UButton
+              :color="previewMode === 'proxy' ? 'primary' : 'neutral'"
+              :variant="previewMode === 'proxy' ? 'soft' : 'ghost'"
+              :label="t('videoEditor.fileManager.preview.proxy', 'Proxy')"
+              @click="previewMode = 'proxy'"
+            />
+          </UFieldGroup>
+        </div>
       </div>
     </div>
 
@@ -888,6 +892,7 @@ function onPanelFocusOut() {
         <div class="flex flex-col p-2 items-start w-full">
           <div
             v-if="displayMode === 'empty'"
+            key="empty"
             class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
           >
             <p class="text-xs">
@@ -897,7 +902,8 @@ function onPanelFocusOut() {
 
           <!-- Transition Properties -->
           <div
-            v-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
+            v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
+            key="transition"
             class="w-full flex flex-col gap-2 text-ui-text"
           >
             <div
@@ -918,6 +924,7 @@ function onPanelFocusOut() {
           <!-- Clip Properties -->
           <div
             v-else-if="displayMode === 'clip' && selectedClip"
+            key="clip"
             class="w-full flex flex-col gap-2 text-ui-text"
           >
             <div
@@ -1405,6 +1412,7 @@ function onPanelFocusOut() {
 
           <div
             v-else-if="displayMode === 'track' && selectedTrack"
+            key="track"
             class="w-full flex flex-col gap-2"
           >
             <div
@@ -1470,12 +1478,12 @@ function onPanelFocusOut() {
           </div>
 
           <!-- File Preview & Properties -->
-          <div v-else-if="displayMode === 'file'" class="w-full flex flex-col gap-4">
+          <div v-else-if="displayMode === 'file'" key="file" class="w-full flex flex-col gap-4">
             <!-- Preview Box -->
             <div
-              class="w-full bg-ui-bg rounded border border-ui-border flex items-center justify-center min-h-50 overflow-hidden shrink-0"
+              class="w-full bg-ui-bg rounded border border-ui-border flex flex-col items-center justify-center min-h-50 overflow-hidden shrink-0"
             >
-              <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-ui-text-muted p-8">
+              <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center">
                 <UIcon name="i-heroicons-document" class="w-16 h-16" />
                 <p class="text-sm text-center">
                   {{
@@ -1487,11 +1495,11 @@ function onPanelFocusOut() {
                 </p>
               </div>
 
-              <template v-else-if="currentUrl">
+              <div v-else-if="currentUrl" class="w-full h-full flex flex-col">
                 <img
                   v-if="mediaType === 'image'"
                   :src="currentUrl"
-                  class="max-w-full max-h-64 object-contain"
+                  class="max-w-full max-h-64 object-contain mx-auto my-auto"
                 />
                 <MediaPlayer
                   v-else-if="mediaType === 'video' || mediaType === 'audio'"
@@ -1499,7 +1507,7 @@ function onPanelFocusOut() {
                   :type="mediaType"
                   class="w-full h-64"
                 />
-              </template>
+              </div>
 
               <pre
                 v-else-if="mediaType === 'text'"
