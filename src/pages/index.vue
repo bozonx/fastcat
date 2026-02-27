@@ -11,6 +11,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { storeToRefs } from 'pinia';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
@@ -23,13 +24,12 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
+const selectionStore = useSelectionStore();
 
 const { currentTimelinePath } = storeToRefs(projectStore);
 
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
-
-const isGlobalDragging = ref(false);
 
 function onGlobalDragOver(e: DragEvent) {
   const types = e.dataTransfer?.types;
@@ -37,20 +37,17 @@ function onGlobalDragOver(e: DragEvent) {
   // Ignore internal drags (files dragged within the app from the file manager)
   if (types.includes('application/gran-internal-file')) return;
   if (types.includes('Files')) {
-    isGlobalDragging.value = true;
     uiStore.isGlobalDragging = true;
   }
 }
 
 function onGlobalDragLeave(e: DragEvent) {
   if (!e.relatedTarget) {
-    isGlobalDragging.value = false;
     uiStore.isGlobalDragging = false;
   }
 }
 
 async function onGlobalDrop(e: DragEvent) {
-  isGlobalDragging.value = false;
   uiStore.isGlobalDragging = false;
   
   // if uiStore.isFileManagerDragging is true, filemanager itself will handle the drop
@@ -108,6 +105,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
 
   if (isEditableTarget(e.target)) return;
+  if (isEditableTarget(document.activeElement)) return;
 
   const combo = hotkeyFromKeyboardEvent(e);
   if (!combo) return;
@@ -172,6 +170,13 @@ function onGlobalKeydown(e: KeyboardEvent) {
 
   if (cmd === 'general.delete') {
     timelineStore.deleteFirstSelectedItem();
+    return;
+  }
+
+  if (cmd === 'general.deselect') {
+    selectionStore.clearSelection();
+    timelineStore.clearSelection();
+    timelineStore.selectTrack(null);
     return;
   }
 
@@ -734,7 +739,7 @@ function leaveProject() {
 
       <!-- Global Drag & Drop Overlay -->
       <div
-        v-if="isGlobalDragging && !uiStore.isFileManagerDragging"
+        v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md transition-opacity pointer-events-none"
       >
         <div class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/80 border border-primary-500/50 rounded-2xl shadow-2xl animate-pulse-slow">

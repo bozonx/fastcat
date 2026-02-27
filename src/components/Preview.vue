@@ -26,6 +26,12 @@ const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 
+function clearAllSelection() {
+  selectionStore.clearSelection();
+  timelineStore.clearSelection();
+  timelineStore.selectTrack(null);
+}
+
 const currentUrl = ref<string | null>(null);
 const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
 const textContent = ref<string>('');
@@ -832,7 +838,15 @@ function onPanelFocusOut() {
           {{ selectedTrack.name }}
         </span>
       </div>
-      <div v-if="displayMode === 'clip'" class="flex gap-1 shrink-0 ml-2">
+      <div class="flex gap-1 shrink-0 ml-2">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-x-mark"
+          @click="clearAllSelection"
+        />
+        <template v-if="displayMode === 'clip'">
         <UButton
           size="xs"
           variant="ghost"
@@ -847,17 +861,8 @@ function onPanelFocusOut() {
           icon="i-heroicons-trash"
           @click="handleDeleteClip"
         />
-      </div>
-      <div v-else-if="displayMode === 'transition'" class="flex gap-1 shrink-0 ml-2">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-x-mark"
-          @click="timelineStore.clearSelectedTransition()"
-        />
-      </div>
-      <div v-else-if="displayMode === 'file' && hasProxy" class="flex gap-1 shrink-0 ml-2">
+        </template>
+        <template v-else-if="displayMode === 'file' && hasProxy">
         <UFieldGroup size="xs">
           <UButton
             :color="previewMode === 'original' ? 'primary' : 'neutral'"
@@ -872,6 +877,7 @@ function onPanelFocusOut() {
             @click="previewMode = 'proxy'"
           />
         </UFieldGroup>
+        </template>
       </div>
     </div>
 

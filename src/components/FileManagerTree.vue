@@ -77,6 +77,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     handle: entry.handle as FileSystemFileHandle,
   };
   setDraggedFile(data);
+  e.dataTransfer?.setData('application/json', JSON.stringify(data));
   // Mark this as an internal drag so the global drop overlay is not shown
   e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 }
@@ -106,16 +107,22 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
 
 async function onDropDir(e: DragEvent, entry: FsEntry) {
   if (entry.kind !== 'directory') return;
-  if (!e.dataTransfer?.files || e.dataTransfer.files.length === 0) return;
 
-  // Snapshot files synchronously — dataTransfer.files becomes empty after any await
-  const files = Array.from(e.dataTransfer.files);
-
-  isDragOver.value = null;
   e.stopPropagation();
 
+  isDragOver.value = null;
   uiStore.isGlobalDragging = false;
   uiStore.isFileManagerDragging = false;
+
+  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+  const files =
+    droppedFiles.length > 0
+      ? droppedFiles
+      : Array.from(e.dataTransfer?.items ?? [])
+          .map((item) => item.getAsFile())
+          .filter((file): file is File => file instanceof File);
+
+  if (files.length === 0) return;
 
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
   const fm = useFileManager();

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { normalizeUserSettings, normalizeWorkspaceSettings } from '../../src/utils/settings';
+import { DEFAULT_HOTKEYS } from '../../src/utils/hotkeys/defaultHotkeys';
 
 describe('settings normalization', () => {
   it('migrates openBehavior to openLastProjectOnStart', () => {
@@ -27,6 +28,7 @@ describe('settings normalization', () => {
     expect(normalized.exportDefaults.width).toBe(1920);
     expect(normalized.exportDefaults.encoding.format).toBe('mp4');
     expect(normalized.hotkeys.bindings).toEqual({});
+    expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Backspace']);
   });
 
   it('normalizes workspace limits', () => {
