@@ -10,7 +10,7 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
-import { buildStopFrameBaseName } from '~/utils/stop-frames';
+import { buildStopFrameBaseName, renderExportFrameBlob } from '~/utils/stop-frames';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
 
 const { t } = useI18n();
@@ -364,38 +364,6 @@ async function createStopFrameSnapshot() {
     return;
   }
 
-  const exportWidth = Math.round(Number(projectStore.projectSettings?.export?.width ?? 0));
-  const exportHeight = Math.round(Number(projectStore.projectSettings?.export?.height ?? 0));
-  if (!Number.isFinite(exportWidth) || exportWidth <= 0 || !Number.isFinite(exportHeight) || exportHeight <= 0) {
-    toast.add({
-      color: 'red',
-      title: 'Snapshot failed',
-      description: 'Invalid export resolution',
-    });
-    return;
-  }
-
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = exportWidth;
-  exportCanvas.height = exportHeight;
-  const ctx = exportCanvas.getContext('2d');
-  if (!ctx) {
-    toast.add({
-      color: 'red',
-      title: 'Snapshot failed',
-      description: 'Canvas context is not available',
-    });
-    return;
-  }
-
-  ctx.imageSmoothingEnabled = true;
-  try {
-    (ctx as any).imageSmoothingQuality = 'high';
-  } catch {
-    // ignore
-  }
-  ctx.drawImage(canvas, 0, 0, exportWidth, exportHeight);
-
   const timelineName =
     projectStore.currentFileName ||
     projectStore.currentTimelinePath ||
@@ -434,7 +402,15 @@ async function createStopFrameSnapshot() {
 
   isSavingStopFrame.value = true;
   try {
-    const blob = await canvasToWebpBlob(exportCanvas, quality);
+    const exportWidth = Math.round(Number(projectStore.projectSettings?.export?.width ?? 0));
+    const exportHeight = Math.round(Number(projectStore.projectSettings?.export?.height ?? 0));
+    const blob = await renderExportFrameBlob({
+      sourceCanvas: canvas,
+      exportWidth,
+      exportHeight,
+      quality,
+      mimeType: 'image/webp',
+    });
     const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
       relativePath: `${SOURCES_DIR_NAME}/images/stop_frames/${filename}`,
       create: true,
