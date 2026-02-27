@@ -445,16 +445,6 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
 
 // --- Transition visual helpers ---
 
-/** Upper triangle color based on clip type (same as clip bg) */
-function getClipUpperTriColor(item: TimelineTrackItem, track: TimelineTrack): string {
-  if (item.kind !== 'clip') return 'rgba(255,255,255,0.35)';
-  const clipItem = item as TimelineClipItem;
-  if (clipItem.clipType === 'background') return 'rgba(167,139,250,0.45)'; // purple
-  if (clipItem.clipType === 'adjustment') return 'rgba(251,191,36,0.45)';  // amber
-  if (track.kind === 'audio') return 'rgba(20,184,166,0.5)';              // teal
-  return 'rgba(99,102,241,0.5)';                                           // indigo
-}
-
 /** Lower triangle: darker variant */
 function getClipLowerTriColor(_item: TimelineTrackItem, _track: TimelineTrack): string {
   return 'rgba(0,0,0,0.35)';
@@ -492,31 +482,16 @@ function transitionSvgParts(
   w: number,
   h: number,
   edge: 'in' | 'out',
-  curve: 'linear' | 'bezier',
-): { tri1: string; tri2: string; midLine: string } {
+): string {
   const m = h / 2;
   if (edge === 'in') {
-    // Upper tri: apex left-center, base on right (previous clip recedes right)
-    // Lower tri: apex right-center, base on left (current clip grows in)
-    return {
-      tri1: `M0,${m} L${w},0 L${w},${h} Z`,
-      tri2: `M${w},${m} L0,0 L0,${h} Z`,
-      midLine:
-        curve === 'bezier'
-          ? `M0,${m} C${w * 0.35},${m * 0.1} ${w * 0.65},${m * 1.9} ${w},${m}`
-          : `M0,${m} L${w},${m}`,
-    };
+    // Current clip absorbs previous (previous recedes right)
+    // Dark triangle base on left, apex right.
+    return `M0,0 L${w},${m} L0,${h} Z`;
   } else {
-    // Upper tri: apex right-center, base on left (current clip leaves to left)
-    // Lower tri: apex left-center, base on right (next clip coming)
-    return {
-      tri1: `M${w},${m} L0,0 L0,${h} Z`,
-      tri2: `M0,${m} L${w},0 L${w},${h} Z`,
-      midLine:
-        curve === 'bezier'
-          ? `M0,${m} C${w * 0.35},${m * 1.9} ${w * 0.65},${m * 0.1} ${w},${m}`
-          : `M0,${m} L${w},${m}`,
-    };
+    // Next clip absorbs current. Body of current clip ends in a point.
+    // We draw two dark triangles at the top-right and bottom-right corners.
+    return `M0,0 L${w},0 L${w},${m} Z M0,${h} L${w},${h} L${w},${m} Z`;
   }
 }
 
@@ -946,19 +921,8 @@ function getTransitionForPanel() {
                       viewBox="0 0 100 100"
                     >
                       <path
-                        :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri1"
-                        :fill="getClipUpperTriColor(item, track)"
-                      />
-                      <path
-                        :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').tri2"
+                        :d="transitionSvgParts(100, 100, 'in')"
                         :fill="getClipLowerTriColor(item, track)"
-                      />
-                      <path
-                        :d="transitionSvgParts(100, 100, 'in', (item as any).transitionIn?.curve ?? 'linear').midLine"
-                        fill="none"
-                        stroke="rgba(255,255,255,0.7)"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
                       />
                     </svg>
                     <template v-else>
@@ -1036,19 +1000,8 @@ function getTransitionForPanel() {
                     viewBox="0 0 100 100"
                   >
                     <path
-                      :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri1"
-                      :fill="getClipUpperTriColor(item, track)"
-                    />
-                    <path
-                      :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').tri2"
+                      :d="transitionSvgParts(100, 100, 'out')"
                       :fill="getClipLowerTriColor(item, track)"
-                    />
-                    <path
-                      :d="transitionSvgParts(100, 100, 'out', (item as any).transitionOut?.curve ?? 'linear').midLine"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.7)"
-                      stroke-width="2.5"
-                      stroke-linecap="round"
                     />
                   </svg>
                   <template v-else>
