@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
 import AppModal from '~/components/ui/AppModal.vue';
@@ -11,6 +12,7 @@ import AppModal from '~/components/ui/AppModal.vue';
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const mediaStore = useMediaStore();
 const { selectedTransition } = storeToRefs(timelineStore);
 
 const props = defineProps<{
@@ -297,6 +299,14 @@ function startResizeFade(
 }
 
 // --- Collapse Logic for Transitions and Fades ---
+function clipHasAudio(item: TimelineClipItem, track: TimelineTrack): boolean {
+  if (track.kind === 'video' && item.audioFromVideoDisabled) return false;
+  if (item.clipType !== 'media' && item.clipType !== 'timeline') return false;
+  if (!item.source?.path) return false;
+  const meta = mediaStore.mediaMetadata[item.source.path];
+  return Boolean(meta?.audio);
+}
+
 function shouldCollapseTransitions(item: TimelineClipItem): boolean {
   const inUs = (item as any).transitionIn?.durationUs ?? 0;
   const outUs = (item as any).transitionOut?.durationUs ?? 0;
@@ -1022,7 +1032,7 @@ function getTransitionForPanel() {
           @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
           <!-- Audio Fade Layer (Triangles below transitions/title) -->
-          <div v-if="item.kind === 'clip' && !shouldCollapseFades(item)" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
+          <div v-if="item.kind === 'clip' && clipHasAudio(item, track) && !shouldCollapseFades(item)" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
             <svg
               v-if="(item as any).audioFadeInUs > 0 && (item as any).audioFadeInUs < item.timelineRange.durationUs"
               class="absolute left-0 top-0 h-full"
@@ -1061,10 +1071,10 @@ function getTransitionForPanel() {
           </div>
 
           <!-- Fade Handles -->
-          <template v-if="item.kind === 'clip' && !Boolean((item as any).locked) && !shouldCollapseFades(item)">
+          <template v-if="item.kind === 'clip' && clipHasAudio(item, track) && !Boolean((item as any).locked) && !shouldCollapseFades(item)">
             <!-- Fade In Handle -->
             <div
-              v-if="(item as any).audioFadeInUs < item.timelineRange.durationUs"
+              v-if="((item as any).audioFadeInUs || 0) < item.timelineRange.durationUs"
               class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{ left: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
               @mousedown.stop="startResizeFade($event, track.id, item.id, 'in', (item as any).audioFadeInUs || 0)"
@@ -1074,7 +1084,7 @@ function getTransitionForPanel() {
             
             <!-- Fade Out Handle -->
             <div
-              v-if="(item as any).audioFadeOutUs < item.timelineRange.durationUs"
+              v-if="((item as any).audioFadeOutUs || 0) < item.timelineRange.durationUs"
               class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{ right: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
               @mousedown.stop="startResizeFade($event, track.id, item.id, 'out', (item as any).audioFadeOutUs || 0)"
@@ -1085,13 +1095,13 @@ function getTransitionForPanel() {
 
           <!-- Collapsed Indicators for Small Clips -->
           <div
-            v-if="item.kind === 'clip' && (shouldCollapseTransitions(item) || shouldCollapseFades(item))"
+            v-if="item.kind === 'clip' && (shouldCollapseTransitions(item) || (clipHasAudio(item, track) && shouldCollapseFades(item)))"
             class="absolute top-0.5 left-0.5 flex flex-col gap-0.5 z-40 pointer-events-none"
           >
-            <div v-if="shouldCollapseFades(item) && (item as any).audioFadeInUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade In">
+            <div v-if="clipHasAudio(item, track) && shouldCollapseFades(item) && (item as any).audioFadeInUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade In">
               <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-gray-800" />
             </div>
-            <div v-if="shouldCollapseFades(item) && (item as any).audioFadeOutUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade Out">
+            <div v-if="clipHasAudio(item, track) && shouldCollapseFades(item) && (item as any).audioFadeOutUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade Out">
               <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-gray-800" />
             </div>
             <div v-if="shouldCollapseTransitions(item) && (item as any).transitionIn" class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm" title="Transition In">
@@ -1104,13 +1114,14 @@ function getTransitionForPanel() {
 
           <!-- Volume Control Line -->
           <div
-            v-if="item.kind === 'clip' && ((item as any).clipType === 'media' || (item as any).clipType === 'timeline') && !(track.kind === 'video' && (item as any).audioFromVideoDisabled)"
+            v-if="item.kind === 'clip' && clipHasAudio(item, track)"
             class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center"
             :class="[
               !Boolean((item as any).locked) ? 'cursor-ns-resize' : '',
               ((item as any).audioGain !== undefined && Math.abs((item as any).audioGain - 1) > 0.001)
                 ? 'opacity-100' 
-                : (timelineStore.selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100')
+                : (timelineStore.selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'),
+              resizeVolume?.itemId === item.id || props.movePreview?.itemId === item.id ? 'opacity-0! pointer-events-none' : ''
             ]"
             :style="{
               top: `${100 - (((item as any).audioGain ?? 1) / 2) * 100}%`,
@@ -1176,8 +1187,6 @@ function getTransitionForPanel() {
                   `Transition In: ${(item as any).transitionIn?.type}`
                 "
                 @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
-                @pointerdown.stop
-                @mousedown.stop
                 @dblclick.stop="
                   openTransitionPanel = {
                     trackId: item.trackId,
@@ -1249,8 +1258,6 @@ function getTransitionForPanel() {
                   `Transition Out: ${(item as any).transitionOut?.type}`
                 "
                 @click.stop="selectTransition($event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
-                @pointerdown.stop
-                @mousedown.stop
                 @dblclick.stop="
                   openTransitionPanel = {
                     trackId: item.trackId,

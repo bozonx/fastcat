@@ -445,14 +445,19 @@ const canEditAudioGain = computed(() => {
   const clip = selectedClip.value;
   if (!clip) return false;
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
+  const track = timelineStore.timelineDoc?.tracks.find(t => t.id === clip.trackId);
+  if (track?.kind === 'video' && (clip as any).audioFromVideoDisabled) return false;
+  
+  if (clip.source?.path) {
+    const meta = mediaStore.mediaMetadata[clip.source.path];
+    if (!meta?.audio) return false;
+  }
+  
   return true;
 });
 
 const canEditAudioBalance = computed(() => {
-  const clip = selectedClip.value;
-  if (!clip) return false;
-  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return false;
-  return true;
+  return canEditAudioGain.value;
 });
 
 const audioGain = computed({
