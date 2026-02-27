@@ -43,6 +43,21 @@ pnpm build
 - `src/utils/dev-logger.ts`: Dev-only logger for verbose diagnostics (disabled in production).
 - `src/workers`: Web Workers for heavy lifting (video decoding/encoding).
 
+## Workspace data
+
+The editor stores temporary/generated files inside the selected workspace folder under `vardata/`.
+
+Layout:
+
+- `vardata/projects/<projectId>/proxies` — generated proxy media for the project
+- `vardata/projects/<projectId>/thumbnails` — generated thumbnails for the project
+- `vardata/projects/<projectId>/cache` — cached metadata and other project-scoped data
+
+You can clear temporary files from the UI:
+
+- **Workspace settings → Storage → Clear temporary files** — deletes `vardata/`
+- **Project settings → Storage → Clear temporary files** — deletes `vardata/projects/<projectId>`
+
 ## License
 
 MIT

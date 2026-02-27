@@ -363,7 +363,15 @@ export function useFileManager() {
         await proxyStore.deleteProxy(target.path);
 
         if (target.path.startsWith(`${SOURCES_DIR_NAME}/video/`)) {
-          await thumbnailGenerator.clearThumbnails(getClipThumbnailsHash(target.path));
+          if (projectStore.currentProjectName) {
+            await thumbnailGenerator.clearThumbnails({
+              projectId: projectStore.currentProjectName,
+              hash: getClipThumbnailsHash({
+                projectId: projectStore.currentProjectName,
+                projectRelativePath: target.path,
+              }),
+            });
+          }
         }
       }
       await loadProjectDirectory();

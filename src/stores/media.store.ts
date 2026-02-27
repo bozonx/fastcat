@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';
 import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
+import { getProjectCacheSegments } from '~/utils/vardata-paths';
 
 export interface MediaMetadata {
   source: {
@@ -46,10 +47,12 @@ export const useMediaStore = defineStore('media', () => {
 
   async function ensureCacheDir(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.workspaceHandle || !projectStore.currentProjectName) return null;
-    const cacheDir = await workspaceStore.workspaceHandle.getDirectoryHandle('cache', {
-      create: true,
-    });
-    return await cacheDir.getDirectoryHandle(projectStore.currentProjectName, { create: true });
+    const parts = getProjectCacheSegments(projectStore.currentProjectName);
+    let dir = workspaceStore.workspaceHandle;
+    for (const segment of parts) {
+      dir = await dir.getDirectoryHandle(segment, { create: true });
+    }
+    return dir;
   }
 
   async function ensureFilesMetaDir(): Promise<FileSystemDirectoryHandle | null> {

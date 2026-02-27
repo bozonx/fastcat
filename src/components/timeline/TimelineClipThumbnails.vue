@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
 import type { TimelineClipItem } from '~/timeline/types';
 import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 
@@ -12,6 +13,7 @@ const props = defineProps<{
 }>();
 
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const isGenerating = ref(false);
 
 const rootEl = ref<HTMLElement | null>(null);
@@ -46,16 +48,22 @@ const duration = computed(() => {
 
 // Hash for this clip's source
 const clipHash = computed(() => {
-  return fileUrl.value ? getClipThumbnailsHash(fileUrl.value) : '';
+  if (!fileUrl.value || !projectStore.currentProjectName) return '';
+  return getClipThumbnailsHash({
+    projectId: projectStore.currentProjectName,
+    projectRelativePath: fileUrl.value,
+  });
 });
 
 const generate = () => {
   if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
+  if (!projectStore.currentProjectName) return;
 
   isGenerating.value = true;
 
   thumbnailGenerator.addTask({
     id: clipHash.value,
+    projectId: projectStore.currentProjectName,
     projectRelativePath: fileUrl.value,
     duration: duration.value,
     onProgress: (progress, path, time) => {

@@ -3,7 +3,8 @@ import { defineStore } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { PROXY_DIR_NAME, SOURCES_DIR_NAME } from '~/utils/constants';
+import { SOURCES_DIR_NAME } from '~/utils/constants';
+import { getProjectProxiesSegments } from '~/utils/vardata-paths';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -20,10 +21,12 @@ export const useProxyStore = defineStore('proxy', () => {
   async function ensureProjectProxiesDir(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.workspaceHandle || !projectStore.currentProjectName) return null;
     try {
-      const proxiesDir = await workspaceStore.workspaceHandle.getDirectoryHandle(PROXY_DIR_NAME, {
-        create: true,
-      });
-      return await proxiesDir.getDirectoryHandle(projectStore.currentProjectName, { create: true });
+      const parts = getProjectProxiesSegments(projectStore.currentProjectName);
+      let dir = workspaceStore.workspaceHandle;
+      for (const segment of parts) {
+        dir = await dir.getDirectoryHandle(segment, { create: true });
+      }
+      return dir;
     } catch {
       return null;
     }

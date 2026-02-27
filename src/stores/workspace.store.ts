@@ -2,7 +2,11 @@ import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import PQueue from 'p-queue';
 import { useDebounceFn } from '@vueuse/core';
-import { PROXY_DIR_NAME } from '~/utils/constants';
+import {
+  VARDATA_DIR_NAME,
+  VARDATA_PROJECTS_DIR_NAME,
+  getProjectVardataSegments,
+} from '~/utils/vardata-paths';
 import {
   type GranVideoEditorUserSettings,
   type GranVideoEditorWorkspaceSettings,
@@ -276,13 +280,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
 
-    const folders = [PROXY_DIR_NAME, 'thumbs', 'cache', 'projects'];
+    const folders = ['projects', VARDATA_DIR_NAME];
     for (const folder of folders) {
       if (folder === 'projects') {
         projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });
       } else {
         await handle.getDirectoryHandle(folder, { create: true });
       }
+    }
+
+    try {
+      const vardataDir = await handle.getDirectoryHandle(VARDATA_DIR_NAME, { create: true });
+      await vardataDir.getDirectoryHandle(VARDATA_PROJECTS_DIR_NAME, { create: true });
+    } catch {
+      // ignore
     }
 
     await loadProjects();
@@ -359,5 +370,36 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     setupWorkspace,
     loadProjects,
     isInitializing,
+    clearVardata: async () => {
+      if (!workspaceHandle.value) return;
+      try {
+        await workspaceHandle.value.removeEntry(VARDATA_DIR_NAME, { recursive: true });
+      } catch (e: any) {
+        if (e?.name !== 'NotFoundError') {
+          console.warn('Failed to clear vardata', e);
+        }
+      }
+      try {
+        const vardataDir = await workspaceHandle.value.getDirectoryHandle(VARDATA_DIR_NAME, {
+          create: true,
+        });
+        await vardataDir.getDirectoryHandle(VARDATA_PROJECTS_DIR_NAME, { create: true });
+      } catch {
+        // ignore
+      }
+    },
+    clearProjectVardata: async (projectId: string) => {
+      if (!workspaceHandle.value) return;
+      const parts = getProjectVardataSegments(projectId);
+      try {
+        const vardataDir = await workspaceHandle.value.getDirectoryHandle(parts[0]!);
+        const projectsDir = await vardataDir.getDirectoryHandle(parts[1]!);
+        await projectsDir.removeEntry(parts[2]!, { recursive: true });
+      } catch (e: any) {
+        if (e?.name !== 'NotFoundError') {
+          console.warn('Failed to clear project vardata', projectId, e);
+        }
+      }
+    },
   };
 });

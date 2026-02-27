@@ -1,5 +1,6 @@
 export interface ThumbnailTask {
   id: string; // usually clip hash
+  projectId: string;
   projectRelativePath: string;
   duration: number; // video duration in seconds
   onProgress?: (progress: number, url: string, time: number) => void;
@@ -10,6 +11,7 @@ export interface ThumbnailTask {
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
+import { getProjectThumbnailsSegments } from '~/utils/vardata-paths';
 
 function hashString(input: string): string {
   let hash = 2166136261;
@@ -20,8 +22,11 @@ function hashString(input: string): string {
   return `h${(hash >>> 0).toString(16)}`;
 }
 
-export function getClipThumbnailsHash(projectRelativePath: string): string {
-  return hashString(projectRelativePath);
+export function getClipThumbnailsHash(input: {
+  projectId: string;
+  projectRelativePath: string;
+}): string {
+  return hashString(`${input.projectId}:${input.projectRelativePath}`);
 }
 
 class ThumbnailGenerator {
@@ -70,9 +75,18 @@ class ThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return false;
 
     try {
-      const thumbsDir = await workspaceStore.workspaceHandle.getDirectoryHandle('thumbs');
-      const clipThumbsDir = await thumbsDir.getDirectoryHandle(TIMELINE_CLIP_THUMBNAILS.DIR_NAME);
-      const hashDir = await clipThumbsDir.getDirectoryHandle(task.id);
+      const parts = [
+        ...getProjectThumbnailsSegments(task.projectId),
+        TIMELINE_CLIP_THUMBNAILS.DIR_NAME,
+        task.id,
+      ];
+
+      let dir = workspaceStore.workspaceHandle;
+      for (const segment of parts) {
+        dir = await dir.getDirectoryHandle(segment);
+      }
+
+      const hashDir = dir;
 
       const urls: string[] = [];
       const totalFrames = Math.ceil(task.duration / TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS);
@@ -144,16 +158,17 @@ class ThumbnailGenerator {
       let sourceObjectUrl: string | null = null;
 
       const ensureTargetDir = async () => {
-        const thumbsDir = await workspaceStore.workspaceHandle!.getDirectoryHandle('thumbs', {
-          create: true,
-        });
-        const clipThumbsDir = await thumbsDir.getDirectoryHandle(
+        const parts = [
+          ...getProjectThumbnailsSegments(task.projectId),
           TIMELINE_CLIP_THUMBNAILS.DIR_NAME,
-          {
-            create: true,
-          },
-        );
-        return await clipThumbsDir.getDirectoryHandle(task.id, { create: true });
+          task.id,
+        ];
+
+        let dir = workspaceStore.workspaceHandle!;
+        for (const segment of parts) {
+          dir = await dir.getDirectoryHandle(segment, { create: true });
+        }
+        return dir;
       };
 
       const ensureSourceUrl = async () => {
@@ -236,29 +251,33 @@ class ThumbnailGenerator {
     });
   }
 
-  async clearThumbnails(hash: string) {
-    const urls = this.cache.get(hash);
+  async clearThumbnails(input: { projectId: string; hash: string }) {
+    const urls = this.cache.get(input.hash);
     if (urls) {
       for (const url of urls) {
         URL.revokeObjectURL(url);
       }
     }
-    this.cache.delete(hash);
+    this.cache.delete(input.hash);
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const thumbsDir = await workspaceStore.workspaceHandle.getDirectoryHandle('thumbs', {
-        create: true,
-      });
-      const clipThumbsDir = await thumbsDir.getDirectoryHandle(TIMELINE_CLIP_THUMBNAILS.DIR_NAME, {
-        create: true,
-      });
-      await clipThumbsDir.removeEntry(hash, { recursive: true });
+      const parts = [
+        ...getProjectThumbnailsSegments(input.projectId),
+        TIMELINE_CLIP_THUMBNAILS.DIR_NAME,
+      ];
+
+      let dir = workspaceStore.workspaceHandle;
+      for (const segment of parts) {
+        dir = await dir.getDirectoryHandle(segment, { create: true });
+      }
+
+      await dir.removeEntry(input.hash, { recursive: true });
     } catch (e: any) {
       if (e?.name !== 'NotFoundError') {
-        console.warn('Failed to clear thumbnails for', hash, e);
+        console.warn('Failed to clear thumbnails for', input.hash, e);
       }
     }
   }

@@ -49,6 +49,13 @@ const capturedCombo = ref<string | null>(null);
 const isDuplicateConfirmOpen = ref(false);
 const duplicateWarningText = ref('');
 
+const isClearWorkspaceVardataConfirmOpen = ref(false);
+
+async function confirmClearWorkspaceVardata() {
+  isClearWorkspaceVardataConfirmOpen.value = false;
+  await workspaceStore.clearVardata();
+}
+
 function getCommandTitle(cmdId: HotkeyCommandId): string {
   return DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
 }
@@ -255,6 +262,22 @@ const thumbnailsLimitGb = computed({
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmAddDuplicate"
+    />
+
+    <UiConfirmModal
+      v-model:open="isClearWorkspaceVardataConfirmOpen"
+      :title="t('videoEditor.settings.clearTempWorkspaceTitle', 'Clear temporary files')"
+      :description="
+        t(
+          'videoEditor.settings.clearTempWorkspaceDescription',
+          'This will delete all generated proxies, thumbnails and cached data in this workspace.',
+        )
+      "
+      :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm', 'Clear')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-trash"
+      @confirm="confirmClearWorkspaceVardata"
     />
 
     <div class="flex flex-1 min-h-0 w-full h-full">
@@ -828,6 +851,30 @@ const thumbnailsLimitGb = computed({
         <div v-else class="flex flex-col gap-4">
           <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
+          </div>
+
+          <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
+            <div class="flex flex-col gap-1 min-w-0">
+              <div class="text-sm font-medium text-ui-text">
+                {{ t('videoEditor.settings.clearTempWorkspace', 'Clear temporary files') }}
+              </div>
+              <div class="text-xs text-ui-text-muted">
+                {{
+                  t(
+                    'videoEditor.settings.clearTempWorkspaceHint',
+                    'Removes all files from vardata in this workspace',
+                  )
+                }}
+              </div>
+            </div>
+
+            <UButton
+              color="warning"
+              variant="soft"
+              icon="i-heroicons-trash"
+              :label="t('videoEditor.settings.clearTempWorkspaceAction', 'Clear')"
+              @click="isClearWorkspaceVardataConfirmOpen = true"
+            />
           </div>
 
           <UFormField
