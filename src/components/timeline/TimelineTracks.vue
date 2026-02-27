@@ -894,7 +894,9 @@ function getTransitionForPanel() {
                     selectedTransition?.trackId === item.trackId &&
                     selectedTransition?.edge === 'in'
                       ? 'ring-2 ring-inset ring-amber-300 z-10'
-                      : '',
+                      : hasTransitionInProblem(track, item)
+                        ? 'ring-2 ring-inset ring-orange-500 z-10'
+                        : '',
                   ]"
                   :title="
                     hasTransitionInProblem(track, item) ??
@@ -929,10 +931,10 @@ function getTransitionForPanel() {
                       <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
                     </template>
                   </template>
-                  <!-- Problem indicator border -->
+                  <!-- Problem indicator -->
                   <div
                     v-if="hasTransitionInProblem(track, item)"
-                    class="absolute inset-0 border-2 border-orange-500 pointer-events-none"
+                    class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 pointer-events-none z-20"
                   />
                   <!-- Resize handle inside transition block -->
                   <div
@@ -974,7 +976,9 @@ function getTransitionForPanel() {
                     selectedTransition?.trackId === item.trackId &&
                     selectedTransition?.edge === 'out'
                       ? 'ring-2 ring-inset ring-amber-300 z-10'
-                      : '',
+                      : hasTransitionOutProblem(track, item)
+                        ? 'ring-2 ring-inset ring-orange-500 z-10'
+                        : '',
                   ]"
                   :title="
                     hasTransitionOutProblem(track, item) ??
@@ -1007,10 +1011,10 @@ function getTransitionForPanel() {
                     <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
                     <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
                   </template>
-                  <!-- Problem indicator border -->
+                  <!-- Problem indicator -->
                   <div
                     v-if="hasTransitionOutProblem(track, item)"
-                    class="absolute inset-0 border-2 border-orange-500 pointer-events-none"
+                    class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 pointer-events-none z-20"
                   />
                   <!-- Resize handle inside transition block -->
                    <div
