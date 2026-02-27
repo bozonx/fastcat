@@ -212,7 +212,23 @@ async function drawChunk(chunkIndex: number) {
   if (!canvas || !root) return;
 
   const cssHeight = Math.max(1, canvas.parentElement?.clientHeight || root.clientHeight);
-  const cssWidth = Math.max(1, Math.round(chunk.widthPx));
+  const chunkCssWidth = Math.max(1, Math.round(chunk.widthPx));
+
+  const px = pxPerThumbnail.value;
+  if (!Number.isFinite(px) || px <= 0) return;
+
+  // Base tile width derived from clip height and thumbnail aspect ratio.
+  // This ensures tiles always go sequentially and are never visually squashed.
+  const baseTileWidthCss = Math.max(4, cssHeight * thumbAspectRatio.value);
+
+  // How many base-interval slots one tile spans on the timeline.
+  // When zoomed out, this becomes > 1 and we naturally skip thumbnails.
+  const step = Math.max(1, Math.ceil(baseTileWidthCss / px));
+
+  // Extend canvas width by one full tile so the last tile draws completely.
+  // The parent div + root overflow:hidden will clip the visible area.
+  const tileCssWidth = step * px;
+  const cssWidth = chunkCssWidth + tileCssWidth;
 
   const dpr = window.devicePixelRatio || 1;
   const targetWidth = Math.max(1, Math.round(cssWidth * dpr));
@@ -228,25 +244,14 @@ async function drawChunk(chunkIndex: number) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const px = pxPerThumbnail.value;
-  if (!Number.isFinite(px) || px <= 0) return;
-
-  // Base tile width derived from clip height and thumbnail aspect ratio.
-  // This ensures tiles always go sequentially and are never visually squashed.
-  const baseTileWidthCss = Math.max(4, cssHeight * thumbAspectRatio.value);
-
-  // How many base-interval slots one tile spans on the timeline.
-  // When zoomed out, this becomes > 1 and we naturally skip thumbnails.
-  const step = Math.max(1, Math.ceil(baseTileWidthCss / px));
-
   for (let i = 0; i < chunk.thumbsCount; i += step) {
     const thumbIndex = chunk.startThumbIndex + i;
     const secondKey = thumbIndex * intervalSeconds;
     const url = thumbnailsBySecond.value.get(secondKey);
 
-    const thumbsInThisStep = Math.min(step, chunk.thumbsCount - i);
     const xCss = i * px;
-    const wCss = thumbsInThisStep * px;
+    // Always use full step width — the last tile will be clipped by parent overflow:hidden
+    const wCss = step * px;
     const xPx = Math.round(xCss * dpr);
     const wPx = Math.max(1, Math.round(wCss * dpr));
 
