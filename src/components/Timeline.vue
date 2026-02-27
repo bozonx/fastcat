@@ -127,6 +127,36 @@ const isPanning = ref(false);
 const panStartX = ref(0);
 const panStartScrollLeft = ref(0);
 
+const clickStartX = ref(0);
+const clickStartY = ref(0);
+
+function onTimelinePointerDownCapture(e: PointerEvent) {
+  if (e.button === 0) {
+    clickStartX.value = e.clientX;
+    clickStartY.value = e.clientY;
+  }
+}
+
+function onTimelineClick(e: MouseEvent) {
+  if (e.button !== 0) return;
+  const dx = Math.abs(e.clientX - clickStartX.value);
+  const dy = Math.abs(e.clientY - clickStartY.value);
+  if (dx > 3 || dy > 3) return; // Ignore drag
+
+  const target = e.target as HTMLElement | null;
+  if (target?.closest('button')) return;
+  if (target?.closest('.cursor-ew-resize')) return;
+  if (target?.closest('.cursor-ns-resize')) return;
+
+  const el = scrollEl.value;
+  if (!el) return;
+  const scrollerRect = el.getBoundingClientRect();
+  const scrollX = el.scrollLeft;
+  const x = e.clientX - scrollerRect.left + scrollX;
+
+  timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
+}
+
 function onTimelinePointerDown(e: PointerEvent) {
   if (e.button === 1) {
     // Middle click
@@ -461,10 +491,12 @@ async function onDrop(e: DragEvent, trackId: string) {
             <div
               ref="scrollEl"
               class="w-full flex-1 overflow-x-auto overflow-y-hidden relative"
+              @pointerdown.capture="onTimelinePointerDownCapture"
               @pointerdown="onTimelinePointerDown"
               @pointermove="onTimelinePointerMove"
               @pointerup="onTimelinePointerUp"
               @pointercancel="onTimelinePointerUp"
+              @click="onTimelineClick"
               @wheel="onTimelineWheel"
             >
               <!-- Tracks -->
