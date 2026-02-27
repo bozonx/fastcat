@@ -886,7 +886,7 @@ function getTransitionForPanel() {
         :items="getClipContextMenuItems(track, item)"
       >
         <div
-          class="absolute inset-y-0 rounded overflow-hidden flex flex-col text-xs text-[color:var(--clip-text)] z-10 cursor-pointer select-none transition-shadow group/clip"
+          class="absolute inset-y-0 rounded flex flex-col text-xs text-[color:var(--clip-text)] z-10 cursor-pointer select-none transition-shadow group/clip"
           :class="[
             timelineStore.selectedItemIds.includes(item.id)
               ? 'ring-2 ring-(--selection-ring) z-20 shadow-lg'
@@ -910,7 +910,7 @@ function getTransitionForPanel() {
           @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
           <!-- Audio Fade Layer (Triangles below transitions/title) -->
-          <div v-if="item.kind === 'clip'" class="absolute inset-0 pointer-events-none z-10">
+          <div v-if="item.kind === 'clip'" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
             <svg
               v-if="(item as any).audioFadeInUs > 0"
               class="absolute left-0 top-0 h-full"
@@ -952,7 +952,7 @@ function getTransitionForPanel() {
           <template v-if="item.kind === 'clip' && !Boolean((item as any).locked)">
             <!-- Fade In Handle -->
             <div
-              class="absolute top-0.5 w-6 h-6 -ml-3 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
+              class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{ left: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
               @mousedown.stop="startResizeFade($event, track.id, item.id, 'in', (item as any).audioFadeInUs || 0)"
             >
@@ -961,7 +961,7 @@ function getTransitionForPanel() {
             
             <!-- Fade Out Handle -->
             <div
-              class="absolute top-0.5 w-6 h-6 -mr-3 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
+              class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{ right: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
               @mousedown.stop="startResizeFade($event, track.id, item.id, 'out', (item as any).audioFadeOutUs || 0)"
             >
