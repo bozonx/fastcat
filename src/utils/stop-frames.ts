@@ -28,26 +28,14 @@ export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): 
   return `${String(hh).padStart(2, '0')}-${String(mm).padStart(2, '0')}-${String(ss).padStart(2, '0')}-${String(ff).padStart(2, '0')}`;
 }
 
-export interface BuildStopFrameFilenameParams {
+export interface BuildStopFrameBaseNameParams {
   timelineName: string;
   timeUs: number;
   fps: number;
-  suffix?: string;
-  extension?: string;
 }
 
-export function buildStopFrameFilename(params: BuildStopFrameFilenameParams): string {
-  const extension = (params.extension ?? 'webp').replace(/^\.+/, '') || 'webp';
+export function buildStopFrameBaseName(params: BuildStopFrameBaseNameParams): string {
   const safeTimeline = sanitizeBaseName(params.timelineName || 'timeline') || 'timeline';
   const tc = formatStopFrameTimecode({ timeUs: params.timeUs, fps: params.fps });
-
-  const suffix =
-    (typeof params.suffix === 'string' && params.suffix.trim().length > 0
-      ? params.suffix.trim()
-      : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`) ||
-    Date.now().toString(36);
-
-  const safeSuffix = suffix.replace(/[^a-zA-Z0-9._-]+/g, '_');
-
-  return `${safeTimeline}_${tc}_${safeSuffix}.${extension}`;
+  return `${safeTimeline}_${tc}`;
 }
