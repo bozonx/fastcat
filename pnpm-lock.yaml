@@ -59,6 +59,9 @@ importers:
       vue-draggable-plus:
         specifier: ^0.6.1
         version: 0.6.1(@types/sortablejs@1.15.9)
+      wavesurfer.js:
+        specifier: ^7.12.1
+        version: 7.12.1
       webm-muxer:
         specifier: ^5.1.4
         version: 5.1.4
@@ -5840,6 +5843,9 @@ packages:
   wave-resampler@1.0.0:
     resolution: {integrity: sha512-bE3rbpZXuKAV52Cd8/BeJvy82ZqEHK8pPWHrZ9JioaVVTBlmWbDC+u4p9blhFcf0Skepb4hlOAHc25XfqLC48g==}
     engines: {node: '>=8'}
+
+  wavesurfer.js@7.12.1:
+    resolution: {integrity: sha512-NswPjVHxk0Q1F/VMRemCPUzSojjuHHisQrBqQiRXg7MVbe3f5vQ6r0rTTXA/a/neC/4hnOEC4YpXca4LpH0SUg==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -12103,6 +12109,8 @@ snapshots:
   w3c-keyname@2.2.8: {}
 
   wave-resampler@1.0.0: {}
+
+  wavesurfer.js@7.12.1: {}
 
   webidl-conversions@3.0.1: {}
 

@@ -24,10 +24,14 @@ export interface AudioEngineClip {
 }
 
 interface DecodeRequest {
-  type: 'decode';
+  type: 'decode' | 'extract-peaks';
   id: number;
   sourceKey: string;
   arrayBuffer: ArrayBuffer;
+  options?: {
+    maxLength?: number;
+    precision?: number;
+  };
 }
 
 interface DecodeResponse {
@@ -39,6 +43,7 @@ interface DecodeResponse {
     sampleRate: number;
     numberOfChannels: number;
     channelBuffers: ArrayBuffer[];
+    peaks?: number[][];
   };
 }
 
@@ -100,6 +105,20 @@ export class AudioEngine {
     return worker;
   }
 
+  private extractPeaksInWorker(
+    arrayBuffer: ArrayBuffer,
+    sourceKey: string,
+    options?: { maxLength?: number; precision?: number },
+  ) {
+    const worker = this.ensureDecodeWorker();
+    return new Promise<DecodeResponse['result']>((resolve, reject) => {
+      const id = ++this.decodeCallId;
+      this.decodePending.set(id, { resolve, reject });
+      const req: DecodeRequest = { type: 'extract-peaks', id, sourceKey, arrayBuffer, options };
+      worker.postMessage(req, [arrayBuffer]);
+    });
+  }
+
   private decodeInWorker(arrayBuffer: ArrayBuffer, sourceKey: string) {
     const worker = this.ensureDecodeWorker();
     return new Promise<DecodeResponse['result']>((resolve, reject) => {
@@ -122,6 +141,32 @@ export class AudioEngine {
       const next = this.decodeQueue.shift();
       if (next) next();
     }
+  }
+
+  public async extractPeaks(
+    fileHandle: FileSystemFileHandle,
+    sourceKey: string,
+    options?: { maxLength?: number; precision?: number },
+  ): Promise<number[][] | null> {
+    const task = this.withDecodeSlot(async () => {
+      try {
+        const file = await fileHandle.getFile();
+        const arrayBuffer = await file.arrayBuffer();
+
+        const decoded = await this.extractPeaksInWorker(arrayBuffer, sourceKey, options);
+        if (!decoded || !decoded.peaks) {
+          console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`);
+          return null;
+        }
+
+        return decoded.peaks;
+      } catch (err) {
+        console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`, err);
+        return null;
+      }
+    });
+
+    return task;
   }
 
   async init() {

@@ -69,6 +69,10 @@ let volumeHoldTimeout: number | null = null;
 let volumeHoldInterval: number | null = null;
 let volumeHoldKeyCode: string | null = null;
 
+let zoomHoldTimeout: number | null = null;
+let zoomHoldInterval: number | null = null;
+let zoomHoldKeyCode: string | null = null;
+
 const suppressedKeyupCodes = new Set<string>();
 
 function clearVolumeHoldTimers() {
@@ -83,6 +87,18 @@ function clearVolumeHoldTimers() {
   volumeHoldKeyCode = null;
 }
 
+function clearZoomHoldTimers() {
+  if (zoomHoldTimeout !== null) {
+    window.clearTimeout(zoomHoldTimeout);
+    zoomHoldTimeout = null;
+  }
+  if (zoomHoldInterval !== null) {
+    window.clearInterval(zoomHoldInterval);
+    zoomHoldInterval = null;
+  }
+  zoomHoldKeyCode = null;
+}
+
 function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
   clearVolumeHoldTimers();
   volumeHoldKeyCode = params.keyCode;
@@ -92,6 +108,19 @@ function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
   volumeHoldTimeout = window.setTimeout(() => {
     volumeHoldInterval = window.setInterval(() => {
       timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
+    }, 60);
+  }, 350);
+}
+
+function startZoomHotkeyHold(params: { step: number; keyCode: string }) {
+  clearZoomHoldTimers();
+  zoomHoldKeyCode = params.keyCode;
+
+  timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
+
+  zoomHoldTimeout = window.setTimeout(() => {
+    zoomHoldInterval = window.setInterval(() => {
+      timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
     }, 60);
   }, 350);
 }
@@ -263,13 +292,13 @@ async function onGlobalKeydown(e: KeyboardEvent) {
 
   if (cmd === 'timeline.zoomIn') {
     if (!focusStore.canUseTimelineHotkeys) return;
-    timelineStore.setTimelineZoom(timelineStore.timelineZoom + 3);
+    startZoomHotkeyHold({ step: 3, keyCode: e.code });
     return;
   }
 
   if (cmd === 'timeline.zoomOut') {
     if (!focusStore.canUseTimelineHotkeys) return;
-    timelineStore.setTimelineZoom(timelineStore.timelineZoom - 3);
+    startZoomHotkeyHold({ step: -3, keyCode: e.code });
     return;
   }
 
@@ -380,14 +409,18 @@ function onGlobalKeyup(e: KeyboardEvent) {
     suppressedKeyupCodes.delete(e.code);
   }
 
-  if (!volumeHoldKeyCode) return;
-  if (e.code !== volumeHoldKeyCode) return;
-  clearVolumeHoldTimers();
+  if (volumeHoldKeyCode && e.code === volumeHoldKeyCode) {
+    clearVolumeHoldTimers();
+  }
+  if (zoomHoldKeyCode && e.code === zoomHoldKeyCode) {
+    clearZoomHoldTimers();
+  }
 }
 
 function onGlobalBlur() {
   suppressedKeyupCodes.clear();
   clearVolumeHoldTimers();
+  clearZoomHoldTimers();
 }
 
 onMounted(() => {
@@ -401,6 +434,7 @@ onUnmounted(() => {
   window.removeEventListener('keyup', onGlobalKeyup, true);
   window.removeEventListener('blur', onGlobalBlur);
   clearVolumeHoldTimers();
+  clearZoomHoldTimers();
 });
 
 useHead({

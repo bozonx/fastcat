@@ -1,10 +1,14 @@
 import { AudioSampleSink, BlobSource, Input, ALL_FORMATS } from 'mediabunny';
 
 interface DecodeRequest {
-  type: 'decode';
+  type: 'decode' | 'extract-peaks';
   id: number;
   sourceKey: string;
   arrayBuffer: ArrayBuffer;
+  options?: {
+    maxLength?: number;
+    precision?: number;
+  };
 }
 
 interface DecodeResponse {
@@ -16,6 +20,7 @@ interface DecodeResponse {
     sampleRate: number;
     numberOfChannels: number;
     channelBuffers: ArrayBuffer[];
+    peaks?: number[][];
   };
 }
 
@@ -101,9 +106,41 @@ async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
   }
 }
 
+function extractPeaks(
+  channelBuffers: ArrayBuffer[],
+  options?: { maxLength?: number; precision?: number },
+): number[][] {
+  const maxLength = options?.maxLength || 8000;
+  const precision = options?.precision || 10000;
+  const peaks: number[][] = [];
+
+  for (const buffer of channelBuffers) {
+    const channel = new Float32Array(buffer);
+    const data: number[] = [];
+    const sampleSize = channel.length / maxLength;
+
+    for (let j = 0; j < maxLength; j++) {
+      const start = Math.floor(j * sampleSize);
+      const end = Math.ceil((j + 1) * sampleSize);
+      let max = 0;
+
+      for (let x = start; x < end && x < channel.length; x++) {
+        const n = channel[x];
+        if (n !== undefined && Math.abs(n) > Math.abs(max)) {
+          max = n;
+        }
+      }
+      data.push(Math.round(max * precision) / precision);
+    }
+    peaks.push(data);
+  }
+
+  return peaks;
+}
+
 self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
   const data = event.data;
-  if (!data || data.type !== 'decode') return;
+  if (!data || (data.type !== 'decode' && data.type !== 'extract-peaks')) return;
 
   const response: DecodeResponse = {
     type: 'decode-result',
@@ -113,8 +150,17 @@ self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
 
   try {
     const result = await decodeToFloat32Channels(data.arrayBuffer);
+
+    let peaks: number[][] | undefined;
+    if (data.type === 'extract-peaks') {
+      peaks = extractPeaks(result.channelBuffers, data.options);
+    }
+
     response.ok = true;
-    response.result = result;
+    response.result = {
+      ...result,
+      peaks,
+    };
 
     (self as any).postMessage(response, [...result.channelBuffers]);
   } catch (err: any) {
