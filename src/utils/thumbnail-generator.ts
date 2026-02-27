@@ -36,6 +36,11 @@ class ThumbnailGenerator {
 
     // Check if we already generated it
     if (this.cache.has(task.id)) {
+      const urls = this.cache.get(task.id)!;
+      urls.forEach((url, index) => {
+        const time = index * TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
+        task.onProgress?.((index + 1) / urls.length, url, time);
+      });
       task.onComplete?.();
       return;
     }

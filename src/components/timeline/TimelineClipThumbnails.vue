@@ -4,6 +4,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 
 const props = defineProps<{
   item: TimelineClipItem;
@@ -70,9 +71,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  for (const t of thumbnails.value) {
-    URL.revokeObjectURL(t.url);
-  }
+  // Мы больше не удаляем ObjectURL здесь, так как они кэшируются в thumbnailGenerator
+  // и могут быть переиспользованы, если компонент будет снова смонтирован.
+  // Очистку должен делать стор при удалении клипа из проекта.
 });
 
 watch(fileUrl, () => {
@@ -82,7 +83,7 @@ watch(fileUrl, () => {
 
 // Calculate thumbnail width based on current zoom
 const pxPerThumbnail = computed(() => {
-  return timeUsToPx(2 * 1000000, timelineStore.timelineZoom);
+  return timeUsToPx(TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS * 1000000, timelineStore.timelineZoom);
 });
 
 // Offset for trim start
