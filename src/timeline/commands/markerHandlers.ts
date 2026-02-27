@@ -56,10 +56,7 @@ export function updateMarker(
 
   const nextMarker: TimelineMarker = {
     ...prev,
-    timeUs:
-      cmd.timeUs !== undefined
-        ? Math.max(0, Math.round(Number(cmd.timeUs)))
-        : prev.timeUs,
+    timeUs: cmd.timeUs !== undefined ? Math.max(0, Math.round(Number(cmd.timeUs))) : prev.timeUs,
     text: cmd.text !== undefined ? String(cmd.text) : prev.text,
   };
 

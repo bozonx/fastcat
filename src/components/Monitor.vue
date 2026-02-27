@@ -9,8 +9,10 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
+import { buildStopFrameFilename } from '~/utils/stop-frames';
 
 const { t } = useI18n();
+const toast = useToast();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
@@ -384,6 +386,95 @@ function toggleMute() {
   timelineStore.toggleAudioMuted();
   blurActiveElement();
 }
+
+const isSavingStopFrame = ref(false);
+
+function getCanvasFromContainer(): HTMLCanvasElement | null {
+  const container = containerEl.value;
+  if (!container) return null;
+  const canvas = container.querySelector('canvas');
+  return canvas instanceof HTMLCanvasElement ? canvas : null;
+}
+
+async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Failed to create snapshot blob'));
+          return;
+        }
+        resolve(blob);
+      },
+      'image/png',
+      1,
+    );
+  });
+}
+
+async function createStopFrameSnapshot() {
+  if (isSavingStopFrame.value) return;
+  if (isLoading.value) return;
+  if (loadError.value) return;
+
+  const canvas = getCanvasFromContainer();
+  if (!canvas) {
+    toast.add({ color: 'red', title: 'Snapshot failed', description: 'Canvas is not ready' });
+    return;
+  }
+
+  const timelineName =
+    projectStore.currentFileName ||
+    projectStore.currentTimelinePath ||
+    timelineStore.timelineDoc?.name ||
+    'timeline';
+
+  const fps = projectStore.projectSettings?.export?.fps ?? 30;
+  const timeUs = uiCurrentTimeUs.value;
+
+  const filename = buildStopFrameFilename({
+    timelineName,
+    timeUs,
+    fps,
+  });
+
+  isSavingStopFrame.value = true;
+  try {
+    const blob = await canvasToPngBlob(canvas);
+    const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
+      relativePath: `source/images/stop_frames/${filename}`,
+      create: true,
+    });
+
+    if (!fileHandle) {
+      toast.add({
+        color: 'red',
+        title: 'Snapshot failed',
+        description: 'Could not access project folder for writing',
+      });
+      return;
+    }
+
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+
+    toast.add({
+      color: 'primary',
+      title: 'Snapshot created',
+      description: `Saved to source/images/stop_frames/${filename}`,
+    });
+  } catch (err) {
+    console.error('[Monitor] Failed to create stop frame snapshot', err);
+    toast.add({
+      color: 'red',
+      title: 'Snapshot failed',
+      description: err instanceof Error ? err.message : 'Unknown error',
+    });
+  } finally {
+    isSavingStopFrame.value = false;
+  }
+}
 </script>
 
 <template>
@@ -403,6 +494,18 @@ function toggleMute() {
         {{ t('granVideoEditor.monitor.title', 'Monitor') }}
       </span>
       <div class="flex items-center gap-2 shrink-0">
+        <UTooltip :text="t('granVideoEditor.monitor.snapshot', 'Create snapshot')">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-camera"
+            :loading="isSavingStopFrame"
+            :disabled="isSavingStopFrame || isLoading || Boolean(loadError)"
+            @click="createStopFrameSnapshot"
+          />
+        </UTooltip>
+
         <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
           <UButton
             size="xs"

@@ -333,7 +333,7 @@ function shouldCollapseFades(item: TimelineClipItem): boolean {
   if (inUs === 0 && outUs === 0) return false;
 
   const clipDurationUs = item.timelineRange.durationUs;
-  const hitEachOther = inUs > 0 && outUs > 0 && inUs + outUs > clipDurationUs - 1000;
+  const hitEachOther = inUs > 0 && outUs > 0 && (inUs + outUs) > clipDurationUs - 1000;
 
   const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
   const clipWidth = Math.max(2, clipUnstretchedPx);
@@ -908,10 +908,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
   <div
     class="flex flex-col divide-y divide-ui-border"
     @mousedown="
-      if ($event.button !== 1) {
-        timelineStore.clearSelection();
-        timelineStore.selectTrack(null);
-      }
+      timelineStore.clearSelection();
+      timelineStore.selectTrack(null);
     "
   >
     <AppModal
@@ -1014,12 +1012,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             !Boolean((item as any).locked) &&
             emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
           "
-          @pointerdown="
-            if ($event.button !== 1) {
-              $event.stopPropagation();
-              emit('selectItem', $event, item.id);
-            }
-          "
+          @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
           <!-- Audio Fade Layer (Triangles below transitions/title) -->
           <div
@@ -1093,19 +1086,11 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <!-- Fade In Handle -->
             <div
               v-if="clipHasAudio(item, track) && !shouldCollapseFades(item)"
-              class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center"
-              :class="
-                getClipWidthPx(item) >= 30
-                  ? 'cursor-ew-resize opacity-0 group-hover/clip:opacity-100'
-                  : 'hidden pointer-events-none'
-              "
+              class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{
                 left: `${clampHandlePx(
                   Math.min(
-                    Math.max(
-                      0,
-                      timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom),
-                    ),
+                    Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)),
                     timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
                   ),
                   timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
@@ -1121,19 +1106,11 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <!-- Fade Out Handle -->
             <div
               v-if="clipHasAudio(item, track) && !shouldCollapseFades(item)"
-              class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center"
-              :class="
-                getClipWidthPx(item) >= 30
-                  ? 'cursor-ew-resize opacity-0 group-hover/clip:opacity-100'
-                  : 'hidden pointer-events-none'
-              "
+              class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{
                 right: `${clampHandlePx(
                   Math.min(
-                    Math.max(
-                      0,
-                      timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom),
-                    ),
+                    Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)),
                     timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
                   ),
                   timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
@@ -1234,11 +1211,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <div
               class="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity"
               :class="[
-                getClipWidthPx(item) < 30
-                  ? 'hidden'
-                  : resizeVolume?.itemId === item.id
-                    ? 'opacity-100 z-50'
-                    : 'opacity-0 group-hover/clip:opacity-100',
+                getClipWidthPx(item) < 30 ? 'hidden' : resizeVolume?.itemId === item.id
+                  ? 'opacity-100 z-50'
+                  : 'opacity-0 group-hover/clip:opacity-100',
                 ((item as any).audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',
               ]"
             >

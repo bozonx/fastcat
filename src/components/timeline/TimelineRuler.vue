@@ -2,7 +2,11 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
-import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/composables/timeline/useTimelineInteraction';
+import {
+  pxToTimeUs,
+  timeUsToPx,
+  zoomToPxPerSecond,
+} from '~/composables/timeline/useTimelineInteraction';
 import { useResizeObserver } from '@vueuse/core';
 import AppModal from '~/components/ui/AppModal.vue';
 
@@ -218,7 +222,7 @@ function draw() {
       for (let f = 1; f < currentFps; f += frameStep) {
         const frameX =
           Math.round(
-            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx
+            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
           ) + 0.5;
         if (frameX >= 0 && frameX <= w) {
           ctx.moveTo(frameX, h - 4);
@@ -246,15 +250,12 @@ function draw() {
 </script>
 
 <template>
-  <div 
-    ref="containerRef" 
+  <div
+    ref="containerRef"
     class="relative w-full overflow-hidden"
     @mousedown="$emit('mousedown', $event)"
   >
-    <canvas 
-      ref="canvasRef" 
-      class="absolute top-0 left-0 w-full h-full pointer-events-none" 
-    />
+    <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
 
     <div class="absolute inset-0 pointer-events-none">
       <div
@@ -274,11 +275,7 @@ function draw() {
         </UTooltip>
       </div>
     </div>
-    <AppModal
-      v-if="editingMarker"
-      v-model:open="isMarkerEditOpen"
-      title="Marker"
-    >
+    <AppModal v-if="editingMarker" v-model:open="isMarkerEditOpen" title="Marker">
       <div class="flex flex-col gap-3">
         <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
       </div>

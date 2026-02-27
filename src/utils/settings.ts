@@ -51,6 +51,7 @@ export interface GranVideoEditorUserSettings {
         | 'zoom_horizontal'
         | 'zoom_vertical'
         | 'none';
+      middleClick: 'pan' | 'none';
     };
     monitor: {
       wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
@@ -100,6 +101,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
+      middleClick: 'pan',
     },
     monitor: {
       wheel: 'zoom',
@@ -295,6 +297,11 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         if (validTimelineActions.includes(rawTimeline[k])) {
           (normalizedMouse.timeline as any)[k] = rawTimeline[k];
         }
+      }
+
+      const validMiddleClickActions = ['pan', 'none'];
+      if (validMiddleClickActions.includes(rawTimeline.middleClick)) {
+        normalizedMouse.timeline.middleClick = rawTimeline.middleClick;
       }
     }
 

@@ -580,6 +580,25 @@ const thumbnailsLimitGb = computed({
                   "
                 />
               </UFormField>
+
+              <UFormField
+                :label="t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle click')"
+              >
+                <USelectMenu
+                  v-model="workspaceStore.userSettings.mouse.timeline.middleClick"
+                  :items="[
+                    { label: t('videoEditor.settings.mouseActionPan', 'Pan'), value: 'pan' },
+                    { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
+                  ]"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  @update:model-value="
+                    (v: any) =>
+                      (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
+                  "
+                />
+              </UFormField>
             </div>
 
             <div class="flex flex-col gap-4">

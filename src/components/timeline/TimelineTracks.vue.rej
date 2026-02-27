@@ -1,0 +1,18 @@
+--- src/components/timeline/TimelineTracks.vue
++++ src/components/timeline/TimelineTracks.vue
+@@ -1391,14 +1393,14 @@
+           <div
+             v-if="
+               item.kind === 'clip' &&
+               !Boolean((item as any).locked) &&
+-              (!props.draggingMode || props.draggingItemId !== item.id)
++              (!props.draggingMode || props.draggingItemId !== item.id) && getClipWidthPx(item) >= 30
+             "
+             class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group"
+             @mousedown.stop="startResizeItem($event, track.id, item.id, 'start')"
+           ></div>
+           <!-- Resize Handle Right -->
+           <div
+             v-if="
+               item.kind === 'clip' &&
+               !Boolean((item as any).locked) &&
