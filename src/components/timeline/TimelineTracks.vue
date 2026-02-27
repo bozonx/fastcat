@@ -192,6 +192,57 @@ const resizeFade = ref<{
   startFadeUs: number;
 } | null>(null);
 
+// --- Resize volume by dragging ---
+const resizeVolume = ref<{
+  trackId: string;
+  itemId: string;
+  startY: number;
+  startVolume: number;
+  height: number;
+} | null>(null);
+
+function startResizeVolume(
+  e: MouseEvent,
+  trackId: string,
+  itemId: string,
+  currentVolume: number,
+  clipHeight: number
+) {
+  e.stopPropagation();
+  e.preventDefault();
+  resizeVolume.value = {
+    trackId,
+    itemId,
+    startY: e.clientY,
+    startVolume: currentVolume,
+    height: clipHeight,
+  };
+
+  function onMouseMove(ev: MouseEvent) {
+    if (!resizeVolume.value) return;
+    const dy = ev.clientY - resizeVolume.value.startY;
+    const deltaVol = -(dy / resizeVolume.value.height) * 2;
+    let newVol = resizeVolume.value.startVolume + deltaVol;
+    newVol = Math.max(0, Math.min(2, newVol));
+
+    timelineStore.updateClipProperties(trackId, itemId, {
+      audioGain: newVol,
+    });
+  }
+
+  function onMouseUp() {
+    if (resizeVolume.value) {
+      timelineStore.requestTimelineSave({ immediate: true });
+    }
+    resizeVolume.value = null;
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  }
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
 function startResizeFade(
   e: MouseEvent,
   trackId: string,
@@ -968,6 +1019,37 @@ function getTransitionForPanel() {
               <div class="w-2.5 h-2.5 rounded-full bg-white shadow-sm border border-black/30"></div>
             </div>
           </template>
+
+          <!-- Volume Control Line -->
+          <div
+            v-if="item.kind === 'clip' && ((item as any).clipType === 'media' || (item as any).clipType === 'timeline') && !(track.kind === 'video' && (item as any).audioFromVideoDisabled)"
+            class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center"
+            :class="[
+              !Boolean((item as any).locked) ? 'cursor-ns-resize' : '',
+              ((item as any).audioGain !== undefined && Math.abs((item as any).audioGain - 1) > 0.001)
+                ? 'opacity-100' 
+                : (timelineStore.selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100')
+            ]"
+            :style="{
+              top: `${100 - (((item as any).audioGain ?? 1) / 2) * 100}%`,
+            }"
+            @mousedown.stop="
+              !Boolean((item as any).locked) &&
+              startResizeVolume($event, track.id, item.id, (item as any).audioGain ?? 1, trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT)
+            "
+          >
+            <div class="w-full h-[1.5px] bg-yellow-400 pointer-events-none opacity-80 group-hover/clip:opacity-100"></div>
+            
+            <div 
+              class="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity"
+              :class="[
+                resizeVolume?.itemId === item.id ? 'opacity-100 z-50' : 'opacity-0 group-hover/clip:opacity-100',
+                (((item as any).audioGain ?? 1) > 1) ? 'top-full mt-0.5' : 'bottom-full mb-0.5'
+              ]"
+            >
+              {{ Math.round(((item as any).audioGain ?? 1) * 100) }}%
+            </div>
+          </div>
 
           <!-- Speed Indicator -->
           <div
