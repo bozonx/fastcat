@@ -21,8 +21,8 @@ const isClearProjectVardataConfirmOpen = ref(false);
 
 async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
-  if (!projectStore.currentProjectName) return;
-  await workspaceStore.clearProjectVardata(projectStore.currentProjectName);
+  if (!projectStore.currentProjectId) return;
+  await workspaceStore.clearProjectVardata(projectStore.currentProjectId);
 }
 
 const formatOptions: readonly FormatOption[] = [
@@ -109,7 +109,7 @@ loadCodecSupport();
             color="warning"
             variant="soft"
             icon="i-heroicons-trash"
-            :disabled="!projectStore.currentProjectName"
+            :disabled="!projectStore.currentProjectId"
             :label="t('videoEditor.projectSettings.clearTempAction', 'Clear')"
             @click="isClearProjectVardataConfirmOpen = true"
           />

@@ -10,6 +10,17 @@ import { SOURCES_DIR_NAME } from '~/utils/constants';
 
 import { useWorkspaceStore } from './workspace.store';
 
+interface ProjectMeta {
+  id: string;
+}
+
+function createProjectId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
+
 export interface GranVideoEditorProjectSettings {
   export: {
     width: number;
@@ -319,6 +330,7 @@ export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
 
   const currentProjectName = ref<string | null>(null);
+  const currentProjectId = ref<string | null>(null);
   const currentTimelinePath = ref<string | null>(null);
   const currentFileName = ref<string | null>(null);
 
@@ -344,6 +356,7 @@ export const useProjectStore = defineStore('project', () => {
   function closeProject() {
     clearPersistProjectSettingsTimeout();
     currentProjectName.value = null;
+    currentProjectId.value = null;
     currentTimelinePath.value = null;
     currentFileName.value = null;
     isLoadingProjectSettings.value = false;
@@ -418,6 +431,57 @@ export const useProjectStore = defineStore('project', () => {
     return await granDir.getFileHandle('project.settings.json', {
       create: options?.create ?? false,
     });
+  }
+
+  async function ensureProjectMetaFile(options?: {
+    create?: boolean;
+  }): Promise<FileSystemFileHandle | null> {
+    if (!workspaceStore.projectsHandle || !currentProjectName.value) return null;
+
+    const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
+      currentProjectName.value,
+    );
+    const granDir = await projectDir.getDirectoryHandle('.gran', {
+      create: options?.create ?? false,
+    });
+
+    return await granDir.getFileHandle('project.meta.json', {
+      create: options?.create ?? false,
+    });
+  }
+
+  async function loadProjectMeta() {
+    if (!workspaceStore.projectsHandle || !currentProjectName.value) return;
+
+    try {
+      const metaHandle = await ensureProjectMetaFile({ create: false });
+      if (metaHandle) {
+        const file = await metaHandle.getFile();
+        const text = await file.text();
+        if (text.trim()) {
+          const parsed = JSON.parse(text) as ProjectMeta;
+          if (parsed?.id && typeof parsed.id === 'string') {
+            currentProjectId.value = parsed.id;
+            return;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const nextId = createProjectId();
+    currentProjectId.value = nextId;
+
+    try {
+      const metaHandle = await ensureProjectMetaFile({ create: true });
+      if (!metaHandle) return;
+      const writable = await (metaHandle as any).createWritable();
+      await writable.write(`${JSON.stringify({ id: nextId } satisfies ProjectMeta, null, 2)}\n`);
+      await writable.close();
+    } catch (e) {
+      console.warn('Failed to write project meta file', e);
+    }
   }
 
   function applyWorkspaceDefaultsToProjectSettings(input: GranVideoEditorProjectSettings) {
@@ -567,6 +631,16 @@ export const useProjectStore = defineStore('project', () => {
 
       try {
         const granDir = await projectDir.getDirectoryHandle('.gran', { create: true });
+        try {
+          const metaHandle = await granDir.getFileHandle('project.meta.json', { create: true });
+          const id = createProjectId();
+          const writableMeta = await (metaHandle as any).createWritable();
+          await writableMeta.write(`${JSON.stringify({ id } satisfies ProjectMeta, null, 2)}\n`);
+          await writableMeta.close();
+        } catch (e) {
+          console.warn('Failed to create project meta file', e);
+        }
+
         const settingsHandle = await granDir.getFileHandle('project.settings.json', {
           create: true,
         });
@@ -590,6 +664,7 @@ export const useProjectStore = defineStore('project', () => {
       await writable.close();
 
       currentProjectName.value = name;
+      await loadProjectMeta();
       const initialTimeline = otioFileName;
       currentTimelinePath.value = initialTimeline;
       currentFileName.value = initialTimeline;
@@ -618,6 +693,8 @@ export const useProjectStore = defineStore('project', () => {
 
     currentProjectName.value = name;
     workspaceStore.lastProjectName = name;
+
+    await loadProjectMeta();
 
     await loadProjectSettings();
 
@@ -694,6 +771,7 @@ export const useProjectStore = defineStore('project', () => {
 
   return {
     currentProjectName,
+    currentProjectId,
     currentTimelinePath,
     currentFileName,
     projectSettings,

@@ -19,9 +19,9 @@ export const useProxyStore = defineStore('proxy', () => {
   }
 
   async function ensureProjectProxiesDir(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.workspaceHandle || !projectStore.currentProjectName) return null;
+    if (!workspaceStore.workspaceHandle || !projectStore.currentProjectId) return null;
     try {
-      const parts = getProjectProxiesSegments(projectStore.currentProjectName);
+      const parts = getProjectProxiesSegments(projectStore.currentProjectId);
       let dir = workspaceStore.workspaceHandle;
       for (const segment of parts) {
         dir = await dir.getDirectoryHandle(segment, { create: true });

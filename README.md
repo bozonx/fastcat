@@ -47,6 +47,9 @@ pnpm build
 
 The editor stores temporary/generated files inside the selected workspace folder under `vardata/`.
 
+Each project has a stable `projectId` stored in `projects/<projectName>/.gran/project.meta.json`.
+This ID is used as the folder key for project-scoped temporary data.
+
 Layout:
 
 - `vardata/projects/<projectId>/proxies` — generated proxy media for the project

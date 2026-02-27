@@ -46,8 +46,8 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   async function ensureCacheDir(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.workspaceHandle || !projectStore.currentProjectName) return null;
-    const parts = getProjectCacheSegments(projectStore.currentProjectName);
+    if (!workspaceStore.workspaceHandle || !projectStore.currentProjectId) return null;
+    const parts = getProjectCacheSegments(projectStore.currentProjectId);
     let dir = workspaceStore.workspaceHandle;
     for (const segment of parts) {
       dir = await dir.getDirectoryHandle(segment, { create: true });

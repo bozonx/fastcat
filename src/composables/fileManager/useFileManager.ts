@@ -363,11 +363,11 @@ export function useFileManager() {
         await proxyStore.deleteProxy(target.path);
 
         if (target.path.startsWith(`${SOURCES_DIR_NAME}/video/`)) {
-          if (projectStore.currentProjectName) {
+          if (projectStore.currentProjectId) {
             await thumbnailGenerator.clearThumbnails({
-              projectId: projectStore.currentProjectName,
+              projectId: projectStore.currentProjectId,
               hash: getClipThumbnailsHash({
-                projectId: projectStore.currentProjectName,
+                projectId: projectStore.currentProjectId,
                 projectRelativePath: target.path,
               }),
             });

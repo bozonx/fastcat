@@ -48,22 +48,22 @@ const duration = computed(() => {
 
 // Hash for this clip's source
 const clipHash = computed(() => {
-  if (!fileUrl.value || !projectStore.currentProjectName) return '';
+  if (!fileUrl.value || !projectStore.currentProjectId) return '';
   return getClipThumbnailsHash({
-    projectId: projectStore.currentProjectName,
+    projectId: projectStore.currentProjectId,
     projectRelativePath: fileUrl.value,
   });
 });
 
 const generate = () => {
   if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
-  if (!projectStore.currentProjectName) return;
+  if (!projectStore.currentProjectId) return;
 
   isGenerating.value = true;
 
   thumbnailGenerator.addTask({
     id: clipHash.value,
-    projectId: projectStore.currentProjectName,
+    projectId: projectStore.currentProjectId,
     projectRelativePath: fileUrl.value,
     duration: duration.value,
     onProgress: (progress, path, time) => {
