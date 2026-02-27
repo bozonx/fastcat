@@ -184,19 +184,28 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   return p;
 }
 
-function drawImageFit(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  // Draw image preserving its aspect ratio, no cropping (contain)
+function drawImageFitWidthCropHeight(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  // Always fill the target width. If the resulting height is larger than the target,
+  // crop vertically. This guarantees no horizontal cropping.
   const imgRatio = img.width / img.height;
-  const targetRatio = w / h;
-  let dx = x, dy = y, dw = w, dh = h;
-  if (imgRatio > targetRatio) {
-    dh = w / imgRatio;
-    dy = y + (h - dh) / 2;
-  } else {
-    dw = h * imgRatio;
-    dx = x + (w - dw) / 2;
+  const scaledHeight = w / imgRatio;
+
+  if (scaledHeight <= h) {
+    const dy = y + (h - scaledHeight) / 2;
+    ctx.drawImage(img, x, dy, w, scaledHeight);
+    return;
   }
-  ctx.drawImage(img, dx, dy, dw, dh);
+
+  const visibleHeightInSource = img.width / (w / h);
+  const sy = (img.height - visibleHeightInSource) / 2;
+  ctx.drawImage(img, 0, sy, img.width, visibleHeightInSource, x, y, w, h);
 }
 
 async function drawChunk(chunkIndex: number) {
@@ -226,11 +235,17 @@ async function drawChunk(chunkIndex: number) {
   const px = pxPerThumbnail.value;
   if (!Number.isFinite(px) || px <= 0) return;
 
-  // Fixed tile width = container height * aspect ratio (contain, no crop)
-  const tileWidthCss = Math.max(4, cssHeight * thumbAspectRatio.value);
+  // Base tile width derived from clip height and thumbnail aspect ratio.
+  // This ensures tiles always go sequentially and are never visually squashed.
+  const baseTileWidthCss = Math.max(4, cssHeight * thumbAspectRatio.value);
+
+  // When zoomed in, we allow the tile to expand to match the timeline scale.
+  // This keeps the "zoom in => bigger thumbnails" behavior.
+  const tileWidthCss = Math.max(baseTileWidthCss, px);
   const tileWidthPx = Math.round(tileWidthCss * dpr);
 
-  // How many base-interval slots one tile spans on the timeline
+  // How many base-interval slots one tile spans on the timeline.
+  // When zoomed out, this becomes > 1 and we naturally skip thumbnails.
   const step = Math.max(1, Math.ceil(tileWidthCss / px));
 
   // Current draw cursor inside this chunk (css pixels, relative to chunk start)
@@ -256,8 +271,9 @@ async function drawChunk(chunkIndex: number) {
         thumbAspectRatio.value = img.width / img.height;
       }
 
-      drawImageFit(
-        ctx, img,
+      drawImageFitWidthCropHeight(
+        ctx,
+        img,
         Math.round(cursorX * dpr),
         0,
         tileWidthPx,
