@@ -32,7 +32,11 @@ const isEditorSettingsOpen = ref(false);
 const isGlobalDragging = ref(false);
 
 function onGlobalDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('Files')) {
+  const types = e.dataTransfer?.types;
+  if (!types) return;
+  // Ignore internal drags (files dragged within the app from the file manager)
+  if (types.includes('application/gran-internal-file')) return;
+  if (types.includes('Files')) {
     isGlobalDragging.value = true;
     uiStore.isGlobalDragging = true;
   }
@@ -52,12 +56,11 @@ async function onGlobalDrop(e: DragEvent) {
   // if uiStore.isFileManagerDragging is true, filemanager itself will handle the drop
   if (uiStore.isFileManagerDragging) return;
 
-  const files = e.dataTransfer?.files;
-  if (!files || files.length === 0) return;
+  // Snapshot files synchronously — dataTransfer.files becomes empty after any await
+  const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+  if (files.length === 0) return;
   if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
   
-  // Quick local reference to file manager composition handles to avoid duplicating too much logic here
-  // Ideally this would be unified into a dedicated store, but for simplicity here
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
   const fm = useFileManager();
   await fm.handleFiles(files);

@@ -210,6 +210,8 @@
       "actions": {
         "createFolder": "Создать папку",
         "uploadFiles": "Загрузить файлы",
+        "syncTree": "Синхронизировать",
+        "syncTreeTooltip": "Обновить дерево файлов",
         "createTimeline": "Создать таймлайн",
         "dropFilesHere": "Отпустите файлы здесь",
         "dropFilesToFolder": "Отпустите в конкретную папку или сюда",

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useDraggedFile } from '~/composables/useDraggedFile';
+import { useDraggedFile, INTERNAL_DRAG_TYPE } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
 
@@ -77,6 +77,8 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     handle: entry.handle as FileSystemFileHandle,
   };
   setDraggedFile(data);
+  // Mark this as an internal drag so the global drop overlay is not shown
+  e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 }
 
 function onDragEnd() {
@@ -106,6 +108,9 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   if (entry.kind !== 'directory') return;
   if (!e.dataTransfer?.files || e.dataTransfer.files.length === 0) return;
 
+  // Snapshot files synchronously — dataTransfer.files becomes empty after any await
+  const files = Array.from(e.dataTransfer.files);
+
   isDragOver.value = null;
   e.stopPropagation();
 
@@ -115,7 +120,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
   const fm = useFileManager();
   await fm.handleFiles(
-    e.dataTransfer.files,
+    files,
     entry.handle as FileSystemDirectoryHandle,
     entry.path,
   );

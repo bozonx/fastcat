@@ -268,6 +268,15 @@ function onFileSelect(e: Event) {
         @click="triggerFileUpload"
       />
       <UButton
+        icon="i-heroicons-arrow-path"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
+        :disabled="isLoading || !projectStore.currentProjectName"
+        @click="loadProjectDirectory"
+      />
+      <UButton
         icon="i-heroicons-document-plus"
         variant="ghost"
         color="neutral"

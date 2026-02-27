@@ -8,6 +8,8 @@ export interface DraggedFileData {
 
 const draggedFile = ref<DraggedFileData | null>(null);
 
+export const INTERNAL_DRAG_TYPE = 'application/gran-internal-file';
+
 export function useDraggedFile() {
   function setDraggedFile(data: DraggedFileData) {
     draggedFile.value = data;

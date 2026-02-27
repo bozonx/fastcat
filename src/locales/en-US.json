@@ -209,6 +209,8 @@
       "actions": {
         "createFolder": "Create folder",
         "uploadFiles": "Upload files",
+        "syncTree": "Sync",
+        "syncTreeTooltip": "Refresh file tree",
         "createTimeline": "Create Timeline",
         "dropFilesHere": "Drop files here",
         "dropFilesToFolder": "Drop to specific folder below or release here",
