@@ -49,18 +49,17 @@ export function isMoveAllowed(params: { sourcePath: string; targetDirPath: strin
   return true;
 }
 
+const rootEntries = ref<FsEntry[]>([]);
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+const sortMode = ref<FileTreeSortMode>('name');
+
 export function useFileManager() {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const mediaStore = useMediaStore();
   const proxyStore = useProxyStore();
-
-  const rootEntries = ref<FsEntry[]>([]);
-  const isLoading = ref(false);
-  const error = ref<string | null>(null);
-
-  const sortMode = ref<FileTreeSortMode>('name');
 
   const isApiSupported = workspaceStore.isApiSupported;
 

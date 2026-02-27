@@ -11,9 +11,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useFocusStore } from '~/stores/focus.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { storeToRefs } from 'pinia';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -26,6 +25,7 @@ const uiStore = useUiStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
+const fm = useFileManager();
 
 const { currentTimelinePath } = storeToRefs(projectStore);
 
@@ -175,10 +175,9 @@ async function onGlobalKeydown(e: KeyboardEvent) {
     if (selected?.source === 'fileManager') {
       const confirmText = t('common.confirmDelete', 'Are you sure you want to delete this?');
       if (window.confirm(confirmText)) {
-        const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-        const { deleteEntry } = useFileManager();
-        await deleteEntry(selected.entry);
+        await fm.deleteEntry(selected.entry);
         selectionStore.clearSelection();
+        uiStore.selectedFsEntry = null;
       }
     } else if (selected?.source === 'timeline') {
       if (selected.kind === 'track') {
@@ -187,7 +186,7 @@ async function onGlobalKeydown(e: KeyboardEvent) {
       } else {
         timelineStore.deleteFirstSelectedItem();
       }
-    } else {
+    } else if (timelineStore.selectedItemIds.length > 0) {
       timelineStore.deleteFirstSelectedItem();
     }
     return;
