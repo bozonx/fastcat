@@ -961,9 +961,9 @@ function getTransitionForPanel() {
           @pointerdown.stop="emit('selectItem', $event, item.id)"
         >
           <!-- Audio Fade Layer (Triangles below transitions/title) -->
-          <div v-if="item.kind === 'clip'" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
+          <div v-if="item.kind === 'clip' && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60" class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded">
             <svg
-              v-if="(item as any).audioFadeInUs > 0"
+              v-if="(item as any).audioFadeInUs > 0 && (item as any).audioFadeInUs < item.timelineRange.durationUs"
               class="absolute left-0 top-0 h-full"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"
@@ -981,7 +981,7 @@ function getTransitionForPanel() {
             </svg>
 
             <svg
-              v-if="(item as any).audioFadeOutUs > 0"
+              v-if="(item as any).audioFadeOutUs > 0 && (item as any).audioFadeOutUs < item.timelineRange.durationUs"
               class="absolute right-0 top-0 h-full"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"
@@ -1000,9 +1000,10 @@ function getTransitionForPanel() {
           </div>
 
           <!-- Fade Handles -->
-          <template v-if="item.kind === 'clip' && !Boolean((item as any).locked)">
+          <template v-if="item.kind === 'clip' && !Boolean((item as any).locked) && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 60">
             <!-- Fade In Handle -->
             <div
+              v-if="(item as any).audioFadeInUs < item.timelineRange.durationUs"
               class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{ left: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
               @mousedown.stop="startResizeFade($event, track.id, item.id, 'in', (item as any).audioFadeInUs || 0)"
@@ -1012,6 +1013,7 @@ function getTransitionForPanel() {
             
             <!-- Fade Out Handle -->
             <div
+              v-if="(item as any).audioFadeOutUs < item.timelineRange.durationUs"
               class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{ right: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px` }"
               @mousedown.stop="startResizeFade($event, track.id, item.id, 'out', (item as any).audioFadeOutUs || 0)"
@@ -1019,6 +1021,19 @@ function getTransitionForPanel() {
               <div class="w-2.5 h-2.5 rounded-full bg-white shadow-sm border border-black/30"></div>
             </div>
           </template>
+
+          <!-- Collapsed Indicators for Small Clips -->
+          <div
+            v-if="item.kind === 'clip' && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) < 60 && timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom) >= 20"
+            class="absolute top-0.5 left-0.5 flex flex-col gap-0.5 z-40 pointer-events-none"
+          >
+            <div v-if="(item as any).audioFadeInUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade In">
+              <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-gray-800" />
+            </div>
+            <div v-if="(item as any).audioFadeOutUs > 0" class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm" title="Fade Out">
+              <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-gray-800" />
+            </div>
+          </div>
 
           <!-- Volume Control Line -->
           <div
