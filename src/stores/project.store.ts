@@ -391,8 +391,10 @@ export const useProjectStore = defineStore('project', () => {
       return await currentDir.getFileHandle(fileName, {
         create: input.create ?? false,
       });
-    } catch (e) {
-      console.error('Failed to get project file handle by path:', input.relativePath, e);
+    } catch (e: any) {
+      if (e.name !== 'NotFoundError') {
+        console.error('Failed to get project file handle by path:', input.relativePath, e);
+      }
       return null;
     }
   }

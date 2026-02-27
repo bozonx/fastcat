@@ -26,6 +26,14 @@ export interface VideoCoreWorkerAPI {
   ): Promise<void>;
 
   cancelExport(): Promise<void>;
+
+  extractFrameToBlob(
+    timeUs: number,
+    width: number,
+    height: number,
+    timelineClips: any[],
+    quality: number,
+  ): Promise<Blob | null>;
 }
 
 export type WorkerCallbacks = {

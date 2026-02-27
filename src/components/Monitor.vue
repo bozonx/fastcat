@@ -10,7 +10,8 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
-import { buildStopFrameBaseName, renderExportFrameBlob } from '~/utils/stop-frames';
+import { buildStopFrameBaseName } from '~/utils/stop-frames';
+import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { SOURCES_DIR_NAME } from '~/utils/constants';
 
 const { t } = useI18n();
@@ -358,12 +359,6 @@ async function createStopFrameSnapshot() {
   if (isLoading.value) return;
   if (loadError.value) return;
 
-  const canvas = getCanvasFromContainer();
-  if (!canvas) {
-    toast.add({ color: 'red', title: 'Snapshot failed', description: 'Canvas is not ready' });
-    return;
-  }
-
   const timelineName =
     projectStore.currentFileName ||
     projectStore.currentTimelinePath ||
@@ -404,13 +399,28 @@ async function createStopFrameSnapshot() {
   try {
     const exportWidth = Math.round(Number(projectStore.projectSettings?.export?.width ?? 0));
     const exportHeight = Math.round(Number(projectStore.projectSettings?.export?.height ?? 0));
-    const blob = await renderExportFrameBlob({
-      sourceCanvas: canvas,
+
+    // Request export worker to render a high quality frame directly
+    const { client } = getExportWorkerClient();
+    setExportHostApi({
+      getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
+      onExportProgress: () => {},
+    });
+
+    const clipsPayload = JSON.parse(JSON.stringify(rawWorkerTimelineClips.value ?? workerTimelineClips.value));
+    
+    const blob = await client.extractFrameToBlob(
+      timeUs,
       exportWidth,
       exportHeight,
+      clipsPayload,
       quality,
-      mimeType: 'image/webp',
-    });
+    );
+
+    if (!blob) {
+      throw new Error('Worker returned empty blob');
+    }
+
     const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
       relativePath: `${SOURCES_DIR_NAME}/images/stop_frames/${filename}`,
       create: true,

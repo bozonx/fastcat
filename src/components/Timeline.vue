@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
-import { useI18n } from 'vue-i18n';
-import { useToast } from '#imports';
 import {
   useTimelineInteraction,
   computeAnchoredScrollLeft,
   timeUsToPx,
   pxToTimeUs,
-  zoomToPxPerSecond,
 } from '~/composables/timeline/useTimelineInteraction';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { Splitpanes, Pane } from 'splitpanes';
@@ -63,7 +60,6 @@ const dragPreview = ref<{
 } | null>(null);
 
 const {
-  isDraggingPlayhead,
   draggingMode,
   draggingItemId,
   movePreview,
@@ -73,8 +69,6 @@ const {
   startMoveItem,
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
-
-const pxPerSecond = computed(() => zoomToPxPerSecond(timelineStore.timelineZoom));
 
 function getViewportWidth(): number {
   return scrollEl.value?.clientWidth ?? 0;
@@ -416,17 +410,11 @@ async function onDrop(e: DragEvent, trackId: string) {
   }
 
   toast.add({
-    title: t('granVideoEditor.timeline.clipAdded', 'Clip Added'),
+    title: 'Clip Added',
     description: `${name} added to track`,
     icon: 'i-heroicons-check-circle',
     color: 'success',
   });
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 </script>
 
@@ -464,50 +452,47 @@ function formatTime(seconds: number): string {
           />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
-          <div
-            ref="scrollEl"
-            class="w-full h-full overflow-x-auto overflow-y-hidden relative"
-            @pointerdown="onTimelinePointerDown"
-            @pointermove="onTimelinePointerMove"
-            @pointerup="onTimelinePointerUp"
-            @pointercancel="onTimelinePointerUp"
-            @wheel="onTimelineWheel"
-          >
+          <div class="flex flex-col h-full w-full relative">
             <TimelineRuler
-              class="h-7 border-b border-ui-border bg-ui-bg-elevated sticky top-0 z-10 cursor-pointer"
+              class="h-7 border-b border-ui-border bg-ui-bg-elevated z-10 cursor-pointer shrink-0"
               :scroll-el="scrollEl"
               @mousedown="onTimeRulerMouseDown"
             />
-
-            <!-- Tracks -->
-            <TimelineTracks
-              ref="timelineTracksRef"
-              :tracks="tracks"
-              :track-heights="trackHeights"
-              :drag-preview="dragPreview"
-              :move-preview="movePreview"
-              :dragging-mode="draggingMode"
-              :dragging-item-id="draggingItemId"
-              @drop="onDrop"
-              @dragover="onTrackDragOver"
-              @dragleave="onTrackDragLeave"
-              @start-move-item="startMoveItem"
-              @select-item="selectItem"
-              @start-trim-item="startTrimItem"
-              @clip-action="onClipAction"
-            />
-
-            <!-- Playhead -->
             <div
-              class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-none"
-              :style="{
-                left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
-              }"
+              ref="scrollEl"
+              class="w-full flex-1 overflow-x-auto overflow-y-hidden relative"
+              @pointerdown="onTimelinePointerDown"
+              @pointermove="onTimelinePointerMove"
+              @pointerup="onTimelinePointerUp"
+              @pointercancel="onTimelinePointerUp"
+              @wheel="onTimelineWheel"
             >
-              <div
-                class="w-2.5 h-2.5 bg-primary-500 rounded-full -translate-x-1/2 mt-0.5 pointer-events-auto"
-                @mousedown="startPlayheadDrag"
+              <!-- Tracks -->
+              <TimelineTracks
+                ref="timelineTracksRef"
+                :tracks="tracks"
+                :track-heights="trackHeights"
+                :drag-preview="dragPreview"
+                :move-preview="movePreview"
+                :dragging-mode="draggingMode"
+                :dragging-item-id="draggingItemId"
+                @drop="onDrop"
+                @dragover="onTrackDragOver"
+                @dragleave="onTrackDragLeave"
+                @start-move-item="startMoveItem"
+                @select-item="selectItem"
+                @start-trim-item="startTrimItem"
+                @clip-action="onClipAction"
               />
+
+              <!-- Playhead -->
+              <div
+                class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-auto"
+                :style="{
+                  left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
+                }"
+                @mousedown="startPlayheadDrag"
+              ></div>
             </div>
           </div>
         </Pane>

@@ -106,6 +106,41 @@ const api: any = {
   async cancelExport() {
     cancelExportRequested = true;
   },
+
+  async extractFrameToBlob(
+    timeUs: number,
+    width: number,
+    height: number,
+    timelineClips: any[],
+    quality: number,
+  ) {
+    const localCompositor = new VideoCompositor();
+    await localCompositor.init(width, height, '#000', true);
+
+    try {
+      await localCompositor.loadTimeline(
+        timelineClips,
+        async (path) => {
+          if (!hostClient) return null;
+          return hostClient.getFileHandleByPath(path);
+        },
+        () => false,
+      );
+
+      const canvas = await localCompositor.renderFrame(timeUs);
+      if (!canvas) {
+        throw new Error('Failed to render frame');
+      }
+
+      const blob = await (canvas as OffscreenCanvas).convertToBlob({
+        type: 'image/webp',
+        quality: Math.max(0.01, Math.min(1, quality)),
+      });
+      return blob;
+    } finally {
+      localCompositor.destroy();
+    }
+  },
 };
 
 let callIdCounter = 0;

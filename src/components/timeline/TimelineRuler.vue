@@ -46,9 +46,11 @@ onMounted(() => {
 useResizeObserver(containerRef, (entries) => {
   const entry = entries[0];
   if (entry) {
-    width.value = entry.contentRect.width;
     height.value = entry.contentRect.height;
-    draw();
+    if (!props.scrollEl) {
+      width.value = entry.contentRect.width;
+      draw();
+    }
   }
 });
 
@@ -73,6 +75,14 @@ watch(
   { immediate: true },
 );
 
+useResizeObserver(() => props.scrollEl, (entries) => {
+  const entry = entries[0];
+  if (entry) {
+    width.value = entry.contentRect.width;
+    draw();
+  }
+});
+
 onUnmounted(() => {
   if (props.scrollEl) {
     props.scrollEl.removeEventListener('scroll', onScroll);
@@ -81,8 +91,9 @@ onUnmounted(() => {
 
 const fps = computed(() => projectStore.projectSettings.export.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
+const currentTime = computed(() => timelineStore.currentTime);
 
-watch([fps, zoom, width, height, scrollLeft], () => {
+watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
   requestAnimationFrame(draw);
 });
 
@@ -175,6 +186,8 @@ function draw() {
   const currentFps = fps.value;
   const pxPerSec = zoomToPxPerSecond(currentZoom);
 
+  // When zooming, we want the timeline ticks to stay anchored appropriately
+  // and maintain their spacing relative to the tracks
   const startPx = scrollLeft.value;
   const endPx = startPx + w;
   const startUs = pxToTimeUs(startPx, currentZoom);
@@ -191,9 +204,10 @@ function draw() {
     }
   }
 
+  // Increase line visibility by adjusting stroke style
   ctx.fillStyle = textColor;
   ctx.strokeStyle = tickColor;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5; // Thicker lines for visibility
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -203,10 +217,12 @@ function draw() {
 
   ctx.beginPath();
   for (let s = startS; s <= endS; s += mainStepS) {
+    // Exact position in pixels from timeline start, minus scroll offset
+    // This perfectly matches timeUsToPx which the tracks use
     const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
 
     if (x >= -50 && x <= w + 50) {
-      ctx.moveTo(x, h - 8);
+      ctx.moveTo(x, h - 12); // Taller main ticks
       ctx.lineTo(x, h);
       ctx.fillText(formatTime(s * 1_000_000, currentFps), x, 4);
     }
@@ -224,8 +240,8 @@ function draw() {
           Math.round(
             timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
           ) + 0.5;
-        if (frameX >= 0 && frameX <= w) {
-          ctx.moveTo(frameX, h - 4);
+        if (frameX >= -50 && frameX <= w + 50) {
+          ctx.moveTo(frameX, h - 5); // Taller sub ticks
           ctx.lineTo(frameX, h);
         }
       }
@@ -237,14 +253,43 @@ function draw() {
 
       for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
         const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
-        if (subX >= 0 && subX <= w) {
-          ctx.moveTo(subX, h - 4);
+        if (subX >= -50 && subX <= w + 50) {
+          ctx.moveTo(subX, h - 5); // Taller sub ticks
           ctx.lineTo(subX, h);
         }
       }
     }
   }
   ctx.stroke();
+
+  // Draw playhead head in the ruler for better visual continuity
+  const playheadPx = Math.round(timeUsToPx(currentTime.value, currentZoom) - startPx) + 0.5;
+  if (playheadPx >= -10 && playheadPx <= w + 10) {
+    // Determine the exact color of primary-500 if possible, or use a fallback
+    const styles = window.getComputedStyle(document.documentElement);
+    const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
+    
+    ctx.beginPath();
+    ctx.fillStyle = primaryColor;
+    
+    // Draw an inverted triangle for the playhead
+    const pw = 10; // width
+    const ph = 10; // height
+    
+    ctx.moveTo(playheadPx - pw/2, h - ph);
+    ctx.lineTo(playheadPx + pw/2, h - ph);
+    ctx.lineTo(playheadPx, h);
+    ctx.fill();
+    
+    // Playhead line through the remaining bottom part of the ruler
+    ctx.beginPath();
+    ctx.strokeStyle = primaryColor;
+    ctx.lineWidth = 1;
+    ctx.moveTo(playheadPx, h);
+    ctx.lineTo(playheadPx, h);
+    ctx.stroke();
+  }
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 </script>
