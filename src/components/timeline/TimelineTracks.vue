@@ -317,13 +317,23 @@ function shouldCollapseTransitions(item: TimelineClipItem): boolean {
   return false;
 }
 
+function clampHandlePx(px: number, clipPx: number): number {
+  const safePx = Number.isFinite(px) ? px : 0;
+  const safeClipPx = Number.isFinite(clipPx) ? Math.max(0, clipPx) : 0;
+  const padPx = 3;
+  if (safeClipPx <= padPx * 2) {
+    return safeClipPx / 2;
+  }
+  return Math.max(padPx, Math.min(safeClipPx - padPx, safePx));
+}
+
 function shouldCollapseFades(item: TimelineClipItem): boolean {
   const inUs = (item as any).audioFadeInUs ?? 0;
   const outUs = (item as any).audioFadeOutUs ?? 0;
   if (inUs === 0 && outUs === 0) return false;
 
   const clipDurationUs = item.timelineRange.durationUs;
-  const hitEachOther = inUs + outUs > clipDurationUs - 1000;
+  const hitEachOther = inUs > 0 && outUs > 0 && (inUs + outUs) > clipDurationUs - 1000;
 
   const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
   const clipWidth = Math.max(30, clipUnstretchedPx);
@@ -1074,7 +1084,13 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
               v-if="clipHasAudio(item, track) && !shouldCollapseFades(item)"
               class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{
-                left: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
+                left: `${clampHandlePx(
+                  Math.min(
+                    Math.max(0, timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom)),
+                    timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
+                  ),
+                  timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
+                )}px`,
               }"
               @mousedown.stop="
                 startResizeFade($event, track.id, item.id, 'in', (item as any).audioFadeInUs || 0)
@@ -1088,7 +1104,13 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
               v-if="clipHasAudio(item, track) && !shouldCollapseFades(item)"
               class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 cursor-ew-resize opacity-0 group-hover/clip:opacity-100 transition-opacity z-60 flex items-center justify-center"
               :style="{
-                right: `${Math.min(Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)), timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
+                right: `${clampHandlePx(
+                  Math.min(
+                    Math.max(0, timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom)),
+                    timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
+                  ),
+                  timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom),
+                )}px`,
               }"
               @mousedown.stop="
                 startResizeFade($event, track.id, item.id, 'out', (item as any).audioFadeOutUs || 0)
