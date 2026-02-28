@@ -826,21 +826,46 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!doc) return;
 
     const cutUs = computeCutUs(doc, currentTime.value);
-    const targets: Array<{ trackId: string; itemId: string }> = [];
+    const cmds: TimelineCommand[] = [];
     for (const track of doc.tracks) {
       for (const it of track.items) {
         if (it.kind !== 'clip') continue;
-        targets.push({ trackId: track.id, itemId: it.id });
+        cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs: cutUs });
       }
     }
-    if (targets.length === 0) return;
+    if (cmds.length === 0) return;
 
-    for (const t of targets) {
-      applyTimeline(
-        { type: 'split_item', trackId: t.trackId, itemId: t.itemId, atUs: cutUs },
-        { saveMode: 'none' },
-      );
+    batchApplyTimeline(cmds, {
+      label: 'Split all clips',
+      saveMode: 'immediate',
+    });
+  }
+
+  async function toggleDisableTargetTrack() {
+    const trackId = getSelectedOrActiveTrackId();
+    if (!trackId) return;
+    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
+    if (!track) return;
+
+    if (track.kind === 'video') {
+      updateTrackProperties(trackId, { videoHidden: !track.videoHidden });
+    } else {
+      updateTrackProperties(trackId, { audioMuted: !track.audioMuted });
     }
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function toggleMuteTargetTrack() {
+    const trackId = getSelectedOrActiveTrackId();
+    if (!trackId) return;
+    toggleTrackAudioMuted(trackId);
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function toggleSoloTargetTrack() {
+    const trackId = getSelectedOrActiveTrackId();
+    if (!trackId) return;
+    toggleTrackAudioSolo(trackId);
     await requestTimelineSave({ immediate: true });
   }
 
@@ -1663,6 +1688,45 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  function batchApplyTimeline(
+    cmds: TimelineCommand[],
+    options?: {
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      skipHistory?: boolean;
+      label?: string;
+    },
+  ) {
+    if (cmds.length === 0) return;
+    if (!timelineDoc.value) {
+      timelineDoc.value = projectStore.createFallbackTimelineDoc();
+    }
+
+    const prev = timelineDoc.value;
+    let current = prev;
+    for (const cmd of cmds) {
+      const hydrated = hydrateClipSourceDuration(current, cmd);
+      const { next } = applyTimelineCommand(hydrated, cmd);
+      current = next;
+    }
+
+    if (current === prev) return;
+
+    if (!options?.skipHistory) {
+      historyStore.push(cmds[0]!, prev, options?.label);
+    }
+
+    timelineDoc.value = current;
+    duration.value = selectTimelineDurationUs(current);
+    markTimelineAsDirty();
+
+    const saveMode = options?.saveMode ?? 'debounced';
+    if (saveMode === 'immediate') {
+      void requestTimelineSave({ immediate: true });
+    } else if (saveMode === 'debounced') {
+      void requestTimelineSave();
+    }
+  }
+
   function undoTimeline() {
     if (!timelineDoc.value || !historyStore.canUndo) return;
     const restored = historyStore.undo(timelineDoc.value);
@@ -1908,6 +1972,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     resetTimelineState,
     undoTimeline,
     redoTimeline,
+    toggleDisableTargetTrack,
+    toggleMuteTargetTrack,
+    toggleSoloTargetTrack,
+    batchApplyTimeline,
     historyStore,
   };
 });

@@ -122,7 +122,8 @@
     "start": "Start",
     "video": "Video",
     "undo": "Undo",
-    "redo": "Redo"
+    "redo": "Redo",
+    "toggleMute": "Toggle Mute"
   },
   "videoEditor": {
     "settings": {

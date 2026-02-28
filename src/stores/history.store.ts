@@ -63,10 +63,10 @@ export const useHistoryStore = defineStore('history', () => {
    * Records a snapshot before a command is applied.
    * Should be called BEFORE mutating the timeline document.
    */
-  function push(cmd: TimelineCommand, snapshot: TimelineDocument) {
+  function push(cmd: TimelineCommand, snapshot: TimelineDocument, label?: string) {
     const entry: HistoryEntry = {
       id: ++entryIdCounter,
-      label: getCommandLabel(cmd.type),
+      label: label ?? getCommandLabel(cmd.type),
       commandType: cmd.type,
       snapshot,
       timestamp: Date.now(),

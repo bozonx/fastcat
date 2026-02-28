@@ -122,7 +122,8 @@
     "start": "Начало",
     "video": "Видео",
     "undo": "Отменить",
-    "redo": "Вернуть"
+    "redo": "Вернуть",
+    "toggleMute": "Вкл/выкл звук"
   },
   "videoEditor": {
     "settings": {

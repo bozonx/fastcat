@@ -158,15 +158,14 @@ async function onGlobalKeydown(e: KeyboardEvent) {
 
     const timeline = matched.filter((c) => c.startsWith('timeline.'));
     const playback = matched.filter((c) => c.startsWith('playback.'));
-    const audio = matched.filter((c) => c.startsWith('audio.'));
     const general = matched.filter((c) => c.startsWith('general.'));
 
     if (focusStore.canUseTimelineHotkeys) {
-      order.push(...timeline, ...general, ...playback, ...audio);
+      order.push(...timeline, ...general, ...playback);
     } else if (focusStore.canUsePlaybackHotkeys) {
-      order.push(...playback, ...general, ...timeline, ...audio);
+      order.push(...playback, ...general, ...timeline);
     } else {
-      order.push(...general, ...timeline, ...playback, ...audio);
+      order.push(...general, ...timeline, ...playback);
     }
 
     return order[0] ?? matched[0]!;
@@ -372,46 +371,43 @@ async function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
-  const playbackSpeedMatch = cmd.match(/^playback\.(forward|backward)([\d_]+)$/);
-  if (playbackSpeedMatch && focusStore.canUsePlaybackHotkeys) {
-    const direction = playbackSpeedMatch[1];
-    const speedStr = playbackSpeedMatch[2]?.replace('_', '.');
-    if (speedStr) {
-      const speed = parseFloat(speedStr);
-      if (!isNaN(speed)) {
-        const finalSpeed = direction === 'backward' ? -speed : speed;
-        if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
-          timelineStore.togglePlayback();
-          return;
-        }
-
-        timelineStore.setPlaybackSpeed(finalSpeed);
-        if (!timelineStore.isPlaying) {
-          timelineStore.togglePlayback();
-        }
-      }
-    }
-    return;
-  }
-
-  // --- Audio ---
-  if (cmd === 'audio.mute') {
+  if (cmd === 'general.mute') {
     if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.toggleAudioMuted();
     return;
   }
 
-  if (cmd === 'audio.volumeUp') {
+  if (cmd === 'general.volumeUp') {
     if (!focusStore.canUsePlaybackHotkeys) return;
     startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
     return;
   }
 
-  if (cmd === 'audio.volumeDown') {
+  if (cmd === 'general.volumeDown') {
     if (!focusStore.canUsePlaybackHotkeys) return;
     startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
     return;
   }
+
+  if (cmd === 'timeline.toggleDisableTrack') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.toggleDisableTargetTrack();
+    return;
+  }
+
+  if (cmd === 'timeline.toggleMuteTrack') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.toggleMuteTargetTrack();
+    return;
+  }
+
+  if (cmd === 'timeline.toggleSoloTrack') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.toggleSoloTargetTrack();
+    return;
+  }
+
+  const playbackSpeedMatch = cmd.match(/^playback\.(forward|backward)([\d_]+)$/);
 }
 
 function onGlobalKeyup(e: KeyboardEvent) {
