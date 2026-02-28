@@ -869,9 +869,68 @@ const thumbnailsLimitGb = computed({
           </div>
         </div>
 
-        <div v-else class="flex flex-col gap-4">
+        <div v-else class="flex flex-col gap-6">
           <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
+          </div>
+
+          <div class="grid grid-cols-3 gap-4">
+            <UFormField
+              :label="t('videoEditor.settings.proxyLimit', 'Proxy storage limit (GB)')"
+              :help="
+                t(
+                  'videoEditor.settings.proxyLimitHelp',
+                  'Total limit for all proxy files in this workspace',
+                )
+              "
+            >
+              <UInput
+                v-model.number="proxyLimitGb"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField
+              :label="t('videoEditor.settings.cacheLimit', 'Cache storage limit (GB)')"
+              :help="
+                t(
+                  'videoEditor.settings.cacheLimitHelp',
+                  'Total limit for cached data in this workspace',
+                )
+              "
+            >
+              <UInput
+                v-model.number="cacheLimitGb"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField
+              :label="t('videoEditor.settings.thumbnailsLimit', 'Thumbnails storage limit (GB)')"
+              :help="
+                t(
+                  'videoEditor.settings.thumbnailsLimitHelp',
+                  'Total limit for generated thumbnails in this workspace',
+                )
+              "
+            >
+              <UInput
+                v-model.number="thumbnailsLimitGb"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                class="w-full"
+              />
+            </UFormField>
           </div>
 
           <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
@@ -897,63 +956,6 @@ const thumbnailsLimitGb = computed({
               @click="isClearWorkspaceVardataConfirmOpen = true"
             />
           </div>
-
-          <UFormField
-            :label="t('videoEditor.settings.proxyLimit', 'Proxy storage limit (GB)')"
-            :help="
-              t(
-                'videoEditor.settings.proxyLimitHelp',
-                'Total limit for all proxy files in this workspace',
-              )
-            "
-          >
-            <UInput
-              v-model.number="proxyLimitGb"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField
-            :label="t('videoEditor.settings.cacheLimit', 'Cache storage limit (GB)')"
-            :help="
-              t(
-                'videoEditor.settings.cacheLimitHelp',
-                'Total limit for cached data in this workspace',
-              )
-            "
-          >
-            <UInput
-              v-model.number="cacheLimitGb"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField
-            :label="t('videoEditor.settings.thumbnailsLimit', 'Thumbnails storage limit (GB)')"
-            :help="
-              t(
-                'videoEditor.settings.thumbnailsLimitHelp',
-                'Total limit for generated thumbnails in this workspace',
-              )
-            "
-          >
-            <UInput
-              v-model.number="thumbnailsLimitGb"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              step="1"
-              class="w-full"
-            />
-          </UFormField>
 
           <div class="text-xs text-ui-text-muted">
             {{
