@@ -129,6 +129,8 @@ async function onGlobalKeydown(e: KeyboardEvent) {
   if (e.defaultPrevented) return;
   if (e.repeat) return;
 
+  if (document.querySelector('[role="dialog"]')) return;
+
   if (e.key === 'Tab' && focusStore.tempFocus !== 'none') {
     e.preventDefault();
     focusStore.handleFocusHotkey();
