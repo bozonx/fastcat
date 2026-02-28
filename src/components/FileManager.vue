@@ -184,8 +184,6 @@ async function onCreateTimeline() {
   const createdPath = await createTimeline();
   if (!createdPath) return;
 
-  void timelineMediaUsageStore.refreshUsage();
-
   await projectStore.openTimelineFile(createdPath);
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
@@ -249,8 +247,6 @@ async function handleDeleteConfirm() {
   if (!deleteTarget.value) return;
   const deletePath = deleteTarget.value.path;
   await deleteEntry(deleteTarget.value);
-
-  void timelineMediaUsageStore.refreshUsage();
 
   if (deletePath && uiStore.selectedFsEntry?.path === deletePath) {
     uiStore.selectedFsEntry = null;
@@ -316,7 +312,6 @@ async function handleRename(newName: string) {
   }
 
   await renameEntry(renameTarget.value, trimmed);
-  void timelineMediaUsageStore.refreshUsage();
   renameTarget.value = null;
 }
 

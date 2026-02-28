@@ -139,14 +139,6 @@ const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
-watch(
-  () => projectStore.currentProjectName,
-  () => {
-    void timelineMediaUsageStore.refreshUsage();
-  },
-  { immediate: true },
-);
-
 function getEntryMeta(entry: FsEntry): {
   hasProxy: boolean;
   generatingProxy: boolean;
@@ -176,8 +168,6 @@ async function onRequestMove(params: {
     targetDirHandle: params.targetDirHandle,
     targetDirPath: params.targetDirPath,
   });
-
-  void timelineMediaUsageStore.refreshUsage();
 }
 
 async function onRequestUpload(params: {

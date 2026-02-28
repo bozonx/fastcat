@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useProjectStore } from './project.store';
 import { useWorkspaceStore } from './workspace.store';
@@ -147,13 +147,6 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       isLoading.value = false;
     }
   }
-
-  watch(
-    () => projectStore.currentProjectName,
-    () => {
-      void refreshUsage();
-    },
-  );
 
   return {
     mediaPathToTimelines,

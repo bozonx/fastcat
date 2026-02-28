@@ -6,6 +6,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { convertSvgToPng } from '~/utils/svg';
 import {
   VIDEO_DIR_NAME,
@@ -116,6 +117,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const runWithUiFeedback = createUiActionRunner({ isLoading, error }, { toast: deps.toast });
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   const service = createFileManagerService({
     rootEntries: deps.rootEntries,
@@ -177,6 +179,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const projectDir = await deps.getProjectDirHandle();
     if (!projectDir) {
       deps.rootEntries.value = [];
+      void timelineMediaUsageStore.refreshUsage();
       return;
     }
 
@@ -189,6 +192,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       toastDescription: () => error.value || 'Failed to open project folder',
       ignoreError: (e: any) => e?.name === 'AbortError',
     });
+
+    void timelineMediaUsageStore.refreshUsage();
   }
 
   async function handleFiles(
