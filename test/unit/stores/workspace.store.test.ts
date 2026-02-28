@@ -20,7 +20,8 @@ describe('WorkspaceStore', () => {
     const store = useWorkspaceStore();
     expect(store.workspaceHandle).toBeNull();
     expect(store.projects).toEqual([]);
-    expect(store.userSettings.exportDefaults.width).toBe(1920);
+    expect(store.userSettings.projectDefaults.width).toBe(1920);
+    expect(store.userSettings.exportDefaults.encoding.format).toBe('mp4');
   });
 
   it('updates lastProjectName in localStorage', async () => {

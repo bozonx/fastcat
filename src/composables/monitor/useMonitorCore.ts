@@ -606,9 +606,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   watch(
     () => [
-      projectStore.projectSettings.project.width,
-      projectStore.projectSettings.project.height,
-      projectStore.projectSettings.monitor?.previewResolution,
+      projectStore.projectSettings?.project?.width ?? 0,
+      projectStore.projectSettings?.project?.height ?? 0,
+      projectStore.projectSettings?.monitor?.previewResolution ?? 0,
     ],
     () => {
       updateCanvasDisplaySize();

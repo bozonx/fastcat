@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, ref } from 'vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
 export interface FormatOption {
@@ -55,9 +55,36 @@ const filteredVideoCodecOptions = computed(() => {
   });
 });
 
+const isBitrateModeTouched = ref(false);
+
+function getDefaultBitrateModeByCodec(codec: string): 'constant' | 'variable' {
+  const value = String(codec || '').toLowerCase();
+  if (value.startsWith('avc1')) return 'constant';
+  return 'variable';
+}
+
+function getEffectiveVideoCodec(): string {
+  if (outputFormat.value === 'webm') return 'vp09.00.10.08';
+  if (outputFormat.value === 'mkv') return 'av01.0.05M.08';
+  return String(videoCodec.value || '');
+}
+
 watch(outputFormat, (fmt) => {
   if (fmt === 'mp4') {
     audioCodec.value = 'aac';
+  }
+
+  isBitrateModeTouched.value = false;
+  if (!props.disabled) {
+    bitrateMode.value = getDefaultBitrateModeByCodec(getEffectiveVideoCodec());
+  }
+});
+
+watch(videoCodec, () => {
+  if (outputFormat.value !== 'mp4') return;
+  if (isBitrateModeTouched.value) return;
+  if (!props.disabled) {
+    bitrateMode.value = getDefaultBitrateModeByCodec(getEffectiveVideoCodec());
   }
 });
 
@@ -215,6 +242,9 @@ watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBit
         v-model="bitrateMode"
         :options="bitrateModeOptions"
         :disabled="props.disabled"
+        @change="() => {
+          isBitrateModeTouched = true;
+        }"
       />
     </div>
 

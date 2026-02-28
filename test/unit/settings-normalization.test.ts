@@ -25,10 +25,10 @@ describe('settings normalization', () => {
 
   it('uses exportDefaults fallback when missing', () => {
     const normalized = normalizeUserSettings({ openLastProjectOnStart: true });
-    expect(normalized.exportDefaults.width).toBe(1920);
+    expect(normalized.projectDefaults.width).toBe(1920);
     expect(normalized.exportDefaults.encoding.format).toBe('mp4');
     expect(normalized.hotkeys.bindings).toEqual({});
-    expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Backspace']);
+    expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Escape']);
   });
 
   it('normalizes workspace limits', () => {

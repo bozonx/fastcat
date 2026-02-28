@@ -39,7 +39,7 @@ export function isMoveAllowed(params: { sourcePath: string; targetDirPath: strin
     .filter(Boolean)
     .join('/');
 
-  if (!source) return false;
+  if (!source) return true;
   if (!target) return true;
   if (target === source) return false;
   if (target.startsWith(`${source}/`)) return false;

@@ -17,8 +17,8 @@ describe('useMonitorDisplay', () => {
 
   it('respects valid project settings', () => {
     const projectStore = useProjectStore();
-    projectStore.projectSettings.export.width = 1280;
-    projectStore.projectSettings.export.height = 720;
+    projectStore.projectSettings.project.width = 1280;
+    projectStore.projectSettings.project.height = 720;
 
     const { exportWidth, exportHeight, aspectRatio } = useMonitorDisplay();
     expect(exportWidth.value).toBe(1280);
@@ -30,16 +30,16 @@ describe('useMonitorDisplay', () => {
     const projectStore = useProjectStore();
 
     // Test minimum limits
-    projectStore.projectSettings.export.width = 5;
-    projectStore.projectSettings.export.height = -10;
+    projectStore.projectSettings.project.width = 5;
+    projectStore.projectSettings.project.height = -10;
 
     const { exportWidth, exportHeight } = useMonitorDisplay();
     expect(exportWidth.value).toBe(16); // MIN_CANVAS_DIMENSION
     expect(exportHeight.value).toBe(1080); // defaults to 1080 if <= 0
 
     // Test maximum limits
-    projectStore.projectSettings.export.width = 10000;
-    projectStore.projectSettings.export.height = 8000;
+    projectStore.projectSettings.project.width = 10000;
+    projectStore.projectSettings.project.height = 8000;
 
     expect(exportWidth.value).toBe(7680); // MAX_CANVAS_DIMENSION
     expect(exportHeight.value).toBe(7680); // MAX_CANVAS_DIMENSION
@@ -47,8 +47,8 @@ describe('useMonitorDisplay', () => {
 
   it('generates correct wrapper styles', () => {
     const projectStore = useProjectStore();
-    projectStore.projectSettings.export.width = 1920;
-    projectStore.projectSettings.export.height = 1080;
+    projectStore.projectSettings.project.width = 1920;
+    projectStore.projectSettings.project.height = 1080;
     projectStore.projectSettings.monitor.previewResolution = 480;
 
     const { getCanvasWrapperStyle, renderWidth, renderHeight } = useMonitorDisplay();
@@ -63,8 +63,8 @@ describe('useMonitorDisplay', () => {
 
   it('generates correct inner styles', () => {
     const projectStore = useProjectStore();
-    projectStore.projectSettings.export.width = 1920;
-    projectStore.projectSettings.export.height = 1080;
+    projectStore.projectSettings.project.width = 1920;
+    projectStore.projectSettings.project.height = 1080;
     projectStore.projectSettings.monitor.previewResolution = 480;
 
     const { getCanvasInnerStyle, renderWidth, renderHeight } = useMonitorDisplay();
@@ -81,8 +81,8 @@ describe('useMonitorDisplay', () => {
 
   it('updateCanvasDisplaySize is a no-op for fixed preview resolution sizing', () => {
     const projectStore = useProjectStore();
-    projectStore.projectSettings.export.width = 1920;
-    projectStore.projectSettings.export.height = 1080;
+    projectStore.projectSettings.project.width = 1920;
+    projectStore.projectSettings.project.height = 1080;
     projectStore.projectSettings.monitor.previewResolution = 480;
 
     const { updateCanvasDisplaySize, viewportEl, renderWidth, renderHeight } = useMonitorDisplay();

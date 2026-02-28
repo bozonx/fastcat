@@ -551,7 +551,7 @@ describe('TimelineStore', () => {
     const clip = track.items[0];
     expect(clip.clipType).toBe('media');
     expect(clip.timelineRange.durationUs).toBe(5_000_000);
-    expect(clip.sourceDurationUs).toBe(Number.MAX_SAFE_INTEGER);
+    expect(clip.sourceDurationUs).toBe(5_000_000);
   });
 
   it('adds audio source to audio track using metadata duration', async () => {

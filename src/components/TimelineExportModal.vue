@@ -82,8 +82,8 @@ const isOpen = computed({
 function getFormatOptions(): readonly FormatOption[] {
   return [
     { value: 'mp4', label: 'MP4' },
-    { value: 'webm', label: 'WebM' },
-    { value: 'mkv', label: 'MKV' },
+    { value: 'webm', label: 'WebM (VP9/OPUS)' },
+    { value: 'mkv', label: 'MKV (AV1|OPUS)' },
   ];
 }
 

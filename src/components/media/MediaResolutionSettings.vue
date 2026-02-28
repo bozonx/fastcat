@@ -41,8 +41,8 @@ const formatOptions = [
 ];
 
 const audioChannelsOptions = [
-  { value: 'stereo', label: t('videoEditor.audio.stereo', 'Stereo') },
-  { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
+  { value: 'stereo', label: t('videoEditor.audio.stereo', 'stereo') },
+  { value: 'mono', label: t('videoEditor.audio.mono', 'mono') },
 ];
 
 const sampleRateOptions = [
@@ -51,8 +51,16 @@ const sampleRateOptions = [
 ];
 
 const orientationOptions = [
-  { value: 'landscape', label: t('videoEditor.resolution.landscape', 'Landscape') },
-  { value: 'portrait', label: t('videoEditor.resolution.portrait', 'Portrait') },
+  {
+    value: 'landscape',
+    icon: 'i-heroicons-computer-desktop',
+    title: t('videoEditor.resolution.landscape', 'Landscape'),
+  },
+  {
+    value: 'portrait',
+    icon: 'i-heroicons-device-phone-mobile',
+    title: t('videoEditor.resolution.portrait', 'Portrait'),
+  },
 ];
 
 const aspectRatioOptions = [
@@ -185,31 +193,14 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
       <div class="grid grid-cols-3 gap-4">
         <div class="flex flex-col gap-2">
           <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.resolution.format', 'Format') }}
-          </label>
-          <USelect
-            v-model="localFormat"
-            :items="formatOptions"
-            :disabled="disabled"
-            size="sm"
-            class="w-full"
-            value-key="value"
-            label-key="label"
-          />
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.orientation', 'Orientation') }}
           </label>
-          <USelect
+          <UiAppButtonGroup
             v-model="localOrientation"
-            :items="orientationOptions"
+            :options="orientationOptions as any"
             :disabled="disabled"
-            size="sm"
+            :ui="{ base: 'px-2' }"
             class="w-full"
-            value-key="value"
-            label-key="label"
           />
         </div>
 
@@ -220,6 +211,21 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <USelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
+            :disabled="disabled"
+            size="sm"
+            class="w-full"
+            value-key="value"
+            label-key="label"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.resolution.format', 'Format') }}
+          </label>
+          <USelect
+            v-model="localFormat"
+            :items="formatOptions"
             :disabled="disabled"
             size="sm"
             class="w-full"
@@ -309,14 +315,11 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.audio.channels', 'Channels') }}
         </label>
-        <USelect
+        <UiAppButtonGroup
           v-model="localAudioChannels"
-          :items="audioChannelsOptions"
+          :options="audioChannelsOptions as any"
           :disabled="disabled"
-          size="sm"
           class="w-full"
-          value-key="value"
-          label-key="label"
         />
       </div>
 

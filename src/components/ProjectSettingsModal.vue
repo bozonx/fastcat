@@ -51,8 +51,8 @@ async function confirmDeleteProject() {
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
-  { value: 'webm', label: 'WebM' },
-  { value: 'mkv', label: 'MKV' },
+  { value: 'webm', label: 'WebM (VP9/OPUS)' },
+  { value: 'mkv', label: 'MKV (AV1|OPUS)' },
 ];
 
 const videoCodecSupport = ref<Record<string, boolean>>({});
@@ -124,7 +124,7 @@ function resetToDefaults() {
   <AppModal
     v-model:open="isOpen"
     :title="t('videoEditor.projectSettings.title', 'Project Settings') + (projectStore.currentProjectName ? ': ' + projectStore.currentProjectName : '')"
-    :ui="{ content: 'max-w-3xl max-h-[90vh]', body: 'overflow-y-auto' }"
+    :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <UiConfirmModal
       v-model:open="isClearProjectVardataConfirmOpen"
