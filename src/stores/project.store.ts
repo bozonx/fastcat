@@ -7,6 +7,12 @@ import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument } from '~/timeline/otioSerializer';
 
 import {
+  createDefaultProjectSettings,
+  normalizeProjectSettings,
+  type GranVideoEditorProjectSettings,
+} from '~/utils/project-settings';
+
+import {
   SOURCES_DIR_NAME,
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
@@ -14,6 +20,11 @@ import {
   TIMELINES_DIR_NAME,
   EXPORT_DIR_NAME,
 } from '~/utils/constants';
+
+import {
+  createProjectSettingsRepository,
+  type ProjectSettingsRepository,
+} from '~/repositories/project-settings.repository';
 
 import { useWorkspaceStore } from './workspace.store';
 
@@ -28,397 +39,10 @@ function createProjectId(): string {
   return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 }
 
-export interface GranVideoEditorProjectSettings {
-  project: {
-    width: number;
-    height: number;
-    fps: number;
-    resolutionFormat: string;
-    orientation: 'landscape' | 'portrait';
-    aspectRatio: string;
-    isCustomResolution: boolean;
-    audioChannels: 'stereo' | 'mono';
-    sampleRate: number;
-  };
-  exportDefaults: {
-    encoding: {
-      format: 'mp4' | 'webm' | 'mkv';
-      videoCodec: string;
-      bitrateMbps: number;
-      excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus';
-      audioBitrateKbps: number;
-      bitrateMode: 'constant' | 'variable';
-      keyframeIntervalSec: number;
-      exportAlpha: boolean;
-      metadata: {
-        title: string;
-        author: string;
-        tags: string;
-      };
-    };
-  };
-  monitor: {
-    previewResolution: number;
-    useProxy: boolean;
-    panX: number;
-    panY: number;
-  };
-  timelines: {
-    openPaths: string[];
-    lastOpenedPath: string | null;
-  };
-  transitions: {
-    defaultDurationUs: number;
-  };
-}
-
-const DEFAULT_PROJECT_SETTINGS = {
-  project: {
-    width: 1920,
-    height: 1080,
-    fps: 25,
-    resolutionFormat: '1080p',
-    aspectRatio: '16:9',
-    isCustomResolution: false,
-    audioChannels: 'stereo' as const,
-    sampleRate: 48000,
-  },
-  exportDefaults: {
-    encoding: {
-      format: 'mp4' as const,
-      videoCodec: 'avc1.640032',
-      bitrateMbps: 5,
-      excludeAudio: false,
-      audioCodec: 'aac' as const,
-      audioBitrateKbps: 128,
-      bitrateMode: 'variable' as const,
-      keyframeIntervalSec: 2,
-      exportAlpha: false,
-      metadata: {
-        title: '',
-        author: '',
-        tags: '',
-      },
-    },
-  },
-  monitor: {
-    previewResolution: 480,
-    useProxy: true,
-    panX: 0,
-    panY: 0,
-  },
-  timelines: {
-    openPaths: [],
-    lastOpenedPath: null,
-  },
-  transitions: {
-    defaultDurationUs: 2_000_000,
-  },
-};
-
-function getProjectSettingsFromUserDefaults(userSettings: {
-  projectDefaults: {
-    width: number;
-    height: number;
-    fps: number;
-    resolutionFormat: string;
-    orientation: 'landscape' | 'portrait';
-    aspectRatio: string;
-    isCustomResolution: boolean;
-    audioChannels: 'stereo' | 'mono';
-    sampleRate: number;
-  };
-  exportDefaults: {
-    encoding: {
-      format: 'mp4' | 'webm' | 'mkv';
-      videoCodec: string;
-      bitrateMbps: number;
-      excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus';
-      audioBitrateKbps: number;
-      bitrateMode: 'constant' | 'variable';
-      keyframeIntervalSec: number;
-      exportAlpha: boolean;
-    };
-  };
-}): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
-  return {
-    project: {
-      width: userSettings.projectDefaults.width,
-      height: userSettings.projectDefaults.height,
-      fps: userSettings.projectDefaults.fps,
-      resolutionFormat: userSettings.projectDefaults.resolutionFormat,
-      orientation: userSettings.projectDefaults.orientation,
-      aspectRatio: userSettings.projectDefaults.aspectRatio,
-      isCustomResolution: userSettings.projectDefaults.isCustomResolution,
-      audioChannels: userSettings.projectDefaults.audioChannels,
-      sampleRate: userSettings.projectDefaults.sampleRate,
-    },
-    exportDefaults: {
-      encoding: {
-        format: userSettings.exportDefaults.encoding.format,
-        videoCodec: userSettings.exportDefaults.encoding.videoCodec,
-        bitrateMbps: userSettings.exportDefaults.encoding.bitrateMbps,
-        excludeAudio: userSettings.exportDefaults.encoding.excludeAudio,
-        audioCodec: userSettings.exportDefaults.encoding.audioCodec,
-        audioBitrateKbps: userSettings.exportDefaults.encoding.audioBitrateKbps,
-        bitrateMode: userSettings.exportDefaults.encoding.bitrateMode,
-        keyframeIntervalSec: userSettings.exportDefaults.encoding.keyframeIntervalSec,
-        exportAlpha: userSettings.exportDefaults.encoding.exportAlpha,
-        metadata: {
-          title: '',
-          author: '',
-          tags: '',
-        },
-      },
-    },
-  };
-}
-
-function getResolutionPreset(width: number, height: number) {
-  const isPortrait = height > width;
-  const w = isPortrait ? height : width;
-  const h = isPortrait ? width : height;
-
-  let format = '';
-  if (w === 1280 && h === 720) format = '720p';
-  else if (w === 1920 && h === 1080) format = '1080p';
-  else if (w === 2560 && h === 1440) format = '2.7k';
-  else if (w === 3840 && h === 2160) format = '4k';
-
-  let aspectRatio = '16:9';
-  if (Math.abs(w / h - 16 / 9) < 0.01) aspectRatio = '16:9';
-  else if (Math.abs(w / h - 4 / 3) < 0.01) aspectRatio = '4:3';
-  else if (Math.abs(w / h - 1) < 0.01) aspectRatio = '1:1';
-  else if (Math.abs(w / h - 21 / 9) < 0.01) aspectRatio = '21:9';
-
-  return {
-    isCustomResolution: !format,
-    resolutionFormat: format || '1080p',
-    orientation: isPortrait ? 'portrait' : 'landscape',
-    aspectRatio,
-  };
-}
-
-function createDefaultProjectSettings(userSettings: {
-  projectDefaults: {
-    width: number;
-    height: number;
-    fps: number;
-    resolutionFormat: string;
-    orientation: 'landscape' | 'portrait';
-    aspectRatio: string;
-    isCustomResolution: boolean;
-    audioChannels: 'stereo' | 'mono';
-    sampleRate: number;
-  };
-  exportDefaults: {
-    encoding: {
-      format: 'mp4' | 'webm' | 'mkv';
-      videoCodec: string;
-      bitrateMbps: number;
-      excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus';
-      audioBitrateKbps: number;
-      bitrateMode: 'constant' | 'variable';
-      keyframeIntervalSec: number;
-      exportAlpha: boolean;
-    };
-  };
-}): GranVideoEditorProjectSettings {
-  const base = getProjectSettingsFromUserDefaults(userSettings);
-  return {
-    ...base,
-    monitor: {
-      previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
-      useProxy: DEFAULT_PROJECT_SETTINGS.monitor.useProxy,
-      panX: DEFAULT_PROJECT_SETTINGS.monitor.panX,
-      panY: DEFAULT_PROJECT_SETTINGS.monitor.panY,
-    },
-    timelines: {
-      openPaths: [],
-      lastOpenedPath: null,
-    },
-    transitions: {
-      defaultDurationUs: DEFAULT_PROJECT_SETTINGS.transitions.defaultDurationUs,
-    },
-  };
-}
-
-function normalizeProjectSettings(
-  raw: unknown,
-  userSettings: {
-    projectDefaults: {
-      width: number;
-      height: number;
-      fps: number;
-      resolutionFormat: string;
-      orientation: 'landscape' | 'portrait';
-      aspectRatio: string;
-      isCustomResolution: boolean;
-      audioChannels: 'stereo' | 'mono';
-      sampleRate: number;
-    };
-    exportDefaults: {
-      encoding: {
-        format: 'mp4' | 'webm' | 'mkv';
-        videoCodec: string;
-        bitrateMbps: number;
-        excludeAudio: boolean;
-        audioCodec: 'aac' | 'opus';
-        audioBitrateKbps: number;
-        bitrateMode: 'constant' | 'variable';
-        keyframeIntervalSec: number;
-        exportAlpha: boolean;
-      };
-    };
-  },
-): GranVideoEditorProjectSettings {
-  if (!raw || typeof raw !== 'object') {
-    return createDefaultProjectSettings(userSettings);
-  }
-
-  const input = raw as Record<string, any>;
-
-  // Migration: move resolution/fps from legacy export section to project section
-  // Also handle rename of 'export' to 'exportDefaults'
-  const legacyExportInput = input.exportDefaults ?? input.export ?? {};
-  const projectInput = input.project ?? (input.export ? input.export : {}) ?? {};
-  const encodingInput = legacyExportInput?.encoding ?? {};
-
-  const monitorInput = input.monitor ?? {};
-  const transitionsInput = input.transitions ?? {};
-
-  const defaultSettings = createDefaultProjectSettings(userSettings);
-
-  const width = Number(projectInput.width);
-  const height = Number(projectInput.height);
-  const fps = Number(projectInput.fps);
-
-  const bitrateMbps = Number(encodingInput.bitrateMbps);
-  const audioBitrateKbps = Number(encodingInput.audioBitrateKbps);
-  const format = encodingInput.format;
-
-  const audioChannels = projectInput.audioChannels === 'mono' ? 'mono' : 'stereo';
-  const sampleRateRaw = Number(projectInput.sampleRate);
-  const sampleRate = Number.isFinite(sampleRateRaw) && sampleRateRaw > 0 ? sampleRateRaw : defaultSettings.project.sampleRate;
-
-  const previewResolution = Number(monitorInput.previewResolution);
-  const useProxy = monitorInput.useProxy;
-  const panX = Number(monitorInput.panX);
-  const panY = Number(monitorInput.panY);
-  const defaultTransitionDurationUs = Number(transitionsInput.defaultDurationUs);
-
-  const finalWidth =
-    Number.isFinite(width) && width > 0 ? Math.round(width) : defaultSettings.project.width;
-  const finalHeight =
-    Number.isFinite(height) && height > 0 ? Math.round(height) : defaultSettings.project.height;
-
-  const isWidthHeightCustom =
-    finalWidth !== defaultSettings.project.width || finalHeight !== defaultSettings.project.height;
-
-  const preset = isWidthHeightCustom
-    ? getResolutionPreset(finalWidth, finalHeight)
-    : {
-        resolutionFormat: projectInput.resolutionFormat || defaultSettings.project.resolutionFormat,
-        orientation: projectInput.orientation || defaultSettings.project.orientation,
-        aspectRatio: projectInput.aspectRatio || defaultSettings.project.aspectRatio,
-        isCustomResolution:
-          projectInput.isCustomResolution !== undefined
-            ? projectInput.isCustomResolution
-            : defaultSettings.project.isCustomResolution,
-      };
-
-  return {
-    project: {
-      width: finalWidth,
-      height: finalHeight,
-      fps:
-        Number.isFinite(fps) && fps > 0
-          ? Math.round(Math.min(240, Math.max(1, fps)))
-          : defaultSettings.project.fps,
-      resolutionFormat:
-        typeof projectInput.resolutionFormat === 'string' &&
-        projectInput.resolutionFormat &&
-        !isWidthHeightCustom
-          ? projectInput.resolutionFormat
-          : preset.resolutionFormat,
-      orientation:
-        (projectInput.orientation === 'portrait' || projectInput.orientation === 'landscape') &&
-        !isWidthHeightCustom
-          ? projectInput.orientation
-          : (preset.orientation as 'landscape' | 'portrait'),
-      aspectRatio:
-        typeof projectInput.aspectRatio === 'string' &&
-        projectInput.aspectRatio &&
-        !isWidthHeightCustom
-          ? projectInput.aspectRatio
-          : preset.aspectRatio,
-      isCustomResolution:
-          projectInput.isCustomResolution !== undefined && !isWidthHeightCustom
-            ? Boolean(projectInput.isCustomResolution)
-            : preset.isCustomResolution,
-        audioChannels,
-        sampleRate,
-      },
-      exportDefaults: {
-      encoding: {
-        format: format === 'webm' || format === 'mkv' ? format : 'mp4',
-        videoCodec:
-          typeof encodingInput.videoCodec === 'string' && encodingInput.videoCodec.trim().length > 0
-            ? encodingInput.videoCodec
-            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.videoCodec,
-        bitrateMbps:
-          Number.isFinite(bitrateMbps) && bitrateMbps > 0
-            ? Math.min(200, Math.max(0.2, bitrateMbps))
-            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.bitrateMbps,
-        excludeAudio: Boolean(encodingInput.excludeAudio),
-        audioCodec: encodingInput.audioCodec === 'opus' ? 'opus' : 'aac',
-        audioBitrateKbps:
-          Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
-            ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
-            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
-        bitrateMode: encodingInput.bitrateMode === 'constant' ? 'constant' : 'variable',
-        keyframeIntervalSec: Number.isFinite(Number(encodingInput.keyframeIntervalSec))
-          ? Number(encodingInput.keyframeIntervalSec)
-          : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
-        exportAlpha: Boolean(encodingInput.exportAlpha),
-        metadata: {
-          title: typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',
-          author: typeof encodingInput.metadata?.author === 'string' ? encodingInput.metadata.author : '',
-          tags: typeof encodingInput.metadata?.tags === 'string' ? encodingInput.metadata.tags : '',
-        },
-      },
-    },
-    monitor: {
-      previewResolution:
-        Number.isFinite(previewResolution) && previewResolution > 0
-          ? Math.round(previewResolution)
-          : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
-      useProxy:
-        useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
-      panX: Number.isFinite(panX) ? panX : DEFAULT_PROJECT_SETTINGS.monitor.panX,
-      panY: Number.isFinite(panY) ? panY : DEFAULT_PROJECT_SETTINGS.monitor.panY,
-    },
-    timelines: {
-      openPaths: Array.isArray(input.timelines?.openPaths)
-        ? input.timelines.openPaths.filter((p: any) => typeof p === 'string')
-        : [],
-      lastOpenedPath:
-        typeof input.timelines?.lastOpenedPath === 'string' ? input.timelines.lastOpenedPath : null,
-    },
-    transitions: {
-      defaultDurationUs:
-        Number.isFinite(defaultTransitionDurationUs) && defaultTransitionDurationUs > 0
-          ? Math.round(defaultTransitionDurationUs)
-          : defaultSettings.transitions.defaultDurationUs,
-    },
-  };
-}
-
 export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
+
+  const projectSettingsRepo = ref<ProjectSettingsRepository | null>(null);
 
   const currentProjectName = ref<string | null>(null);
   const currentProjectId = ref<string | null>(null);
@@ -507,21 +131,13 @@ export const useProjectStore = defineStore('project', () => {
     return await getProjectFileHandleByRelativePath({ relativePath: path, create: false });
   }
 
-  async function ensureProjectSettingsFile(options?: {
-    create?: boolean;
-  }): Promise<FileSystemFileHandle | null> {
+  async function getProjectDirHandle(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.projectsHandle || !currentProjectName.value) return null;
-
-    const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-      currentProjectName.value,
-    );
-    const granDir = await projectDir.getDirectoryHandle('.gran', {
-      create: options?.create ?? false,
-    });
-
-    return await granDir.getFileHandle('project.settings.json', {
-      create: options?.create ?? false,
-    });
+    try {
+      return await workspaceStore.projectsHandle.getDirectoryHandle(currentProjectName.value);
+    } catch {
+      return null;
+    }
   }
 
   async function ensureProjectMetaFile(options?: {
@@ -584,41 +200,27 @@ export const useProjectStore = defineStore('project', () => {
   async function loadProjectSettings() {
     isLoadingProjectSettings.value = true;
 
+    const dir = await getProjectDirHandle();
+    projectSettingsRepo.value = dir
+      ? createProjectSettingsRepository({ projectDir: dir as any })
+      : null;
+
     try {
-      const settingsFileHandle = await ensureProjectSettingsFile({ create: false });
-      if (!settingsFileHandle) {
-        projectSettings.value = createDefaultProjectSettings(
-          workspaceStore.userSettings,
-        );
+      if (!projectSettingsRepo.value) {
+        projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
         return;
       }
 
-      const settingsFile = await settingsFileHandle.getFile();
-      const text = await settingsFile.text();
-      if (!text.trim()) {
-        projectSettings.value = createDefaultProjectSettings(
-          workspaceStore.userSettings,
-        );
-        return;
-      }
-
-      const parsed = JSON.parse(text);
-      projectSettings.value = normalizeProjectSettings(
-        parsed,
-        workspaceStore.userSettings,
-      );
+      const raw = await projectSettingsRepo.value.load();
+      projectSettings.value = normalizeProjectSettings(raw, workspaceStore.userSettings);
     } catch (e: any) {
       if (e?.name === 'NotFoundError') {
-        projectSettings.value = createDefaultProjectSettings(
-          workspaceStore.userSettings,
-        );
+        projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
         return;
       }
 
       console.warn('Failed to load project settings, fallback to defaults', e);
-      projectSettings.value = createDefaultProjectSettings(
-        workspaceStore.userSettings,
-      );
+      projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
     } finally {
       isLoadingProjectSettings.value = false;
       projectSettingsRevision = 0;
@@ -641,11 +243,16 @@ export const useProjectStore = defineStore('project', () => {
     const revisionToSave = projectSettingsRevision;
 
     try {
-      const settingsFileHandle = await ensureProjectSettingsFile({ create: true });
-      if (!settingsFileHandle) return;
-      const writable = await (settingsFileHandle as any).createWritable();
-      await writable.write(`${JSON.stringify(projectSettings.value, null, 2)}\n`);
-      await writable.close();
+      if (!projectSettingsRepo.value) {
+        const dir = await getProjectDirHandle();
+        projectSettingsRepo.value = dir
+          ? createProjectSettingsRepository({ projectDir: dir as any })
+          : null;
+      }
+
+      if (!projectSettingsRepo.value) return;
+
+      await projectSettingsRepo.value.save(projectSettings.value);
 
       if (savedProjectSettingsRevision < revisionToSave) {
         savedProjectSettingsRevision = revisionToSave;
@@ -732,22 +339,22 @@ export const useProjectStore = defineStore('project', () => {
           console.warn('Failed to create project meta file', e);
         }
 
-        const settingsHandle = await granDir.getFileHandle('project.settings.json', {
-          create: true,
+        projectSettingsRepo.value = createProjectSettingsRepository({
+          projectDir: projectDir as any,
         });
 
         const initial = createDefaultProjectSettings(workspaceStore.userSettings);
-        // seeded is essentially redundant now but kept for backwards compatibility in structure
-        const seeded = applyWorkspaceDefaultsToProjectSettings(initial);
-        const writableSettings = await (settingsHandle as any).createWritable();
-        await writableSettings.write(`${JSON.stringify(seeded, null, 2)}\n`);
-        await writableSettings.close();
+        projectSettings.value = initial;
+
+        await projectSettingsRepo.value.save(projectSettings.value);
       } catch (e) {
         console.warn('Failed to create project settings file', e);
       }
 
       const otioFileName = `${name}_001.otio`;
-      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, { create: true });
+      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, {
+        create: true,
+      });
       const otioFile = await timelinesDir.getFileHandle(otioFileName, { create: true });
       const writable = await (otioFile as any).createWritable();
       await writable.write(
@@ -761,9 +368,7 @@ export const useProjectStore = defineStore('project', () => {
       currentTimelinePath.value = initialTimeline;
       currentFileName.value = initialTimeline;
 
-      const initialSettings = createDefaultProjectSettings(
-        workspaceStore.userSettings,
-      );
+      const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
       initialSettings.timelines.openPaths = [initialTimeline];
       initialSettings.timelines.lastOpenedPath = initialTimeline;
       projectSettings.value = initialSettings;
@@ -863,7 +468,10 @@ export const useProjectStore = defineStore('project', () => {
 
   async function deleteCurrentProject() {
     if (!currentProjectName.value) return;
-    await workspaceStore.deleteProject(currentProjectName.value, currentProjectId.value ?? undefined);
+    await workspaceStore.deleteProject(
+      currentProjectName.value,
+      currentProjectId.value ?? undefined,
+    );
     closeProject();
   }
 

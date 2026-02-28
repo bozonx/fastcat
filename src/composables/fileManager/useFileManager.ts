@@ -15,6 +15,17 @@ import {
 } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import type { FsEntry } from '~/types/fs';
+import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
+import {
+  findEntryByPath as findEntryByPathCore,
+  mergeEntries as mergeEntriesCore,
+} from '~/file-manager/core/tree';
+import {
+  assertEntryDoesNotExist,
+  copyDirectoryRecursive,
+  copyFileToDirectory,
+  renameDirectoryFallback,
+} from '~/file-manager/fs/ops';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -28,22 +39,7 @@ type FsFileHandleWithMove = FileSystemFileHandle & {
 type FileTreeSortMode = 'name' | 'modified';
 
 export function isMoveAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
-  const source = params.sourcePath
-    .split('/')
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .join('/');
-  const target = params.targetDirPath
-    .split('/')
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .join('/');
-
-  if (!source) return true;
-  if (!target) return true;
-  if (target === source) return false;
-  if (target.startsWith(`${source}/`)) return false;
-  return true;
+  return isMoveAllowedCore(params);
 }
 
 const rootEntries = ref<FsEntry[]>([]);
@@ -72,91 +68,6 @@ export function useFileManager() {
   async function getProjectRootDirHandle(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
     return await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName);
-  }
-
-  async function assertEntryDoesNotExist(params: {
-    targetDirHandle: FileSystemDirectoryHandle;
-    entryName: string;
-    kind: 'file' | 'directory';
-  }) {
-    try {
-      if (params.kind === 'file') {
-        await params.targetDirHandle.getFileHandle(params.entryName);
-      } else {
-        await params.targetDirHandle.getDirectoryHandle(params.entryName);
-      }
-      throw new Error(`Target already exists: ${params.entryName}`);
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') throw e;
-    }
-  }
-
-  async function renameDirectoryFallback(params: {
-    sourceDirHandle: FileSystemDirectoryHandle;
-    sourceName: string;
-    parentDirHandle: FileSystemDirectoryHandle;
-    newName: string;
-  }): Promise<void> {
-    const nextDir = await params.parentDirHandle.getDirectoryHandle(params.newName, {
-      create: true,
-    });
-    await copyDirectoryRecursive({
-      sourceDirHandle: params.sourceDirHandle,
-      targetDirHandle: nextDir,
-    });
-    await params.parentDirHandle.removeEntry(params.sourceName, { recursive: true });
-  }
-
-  async function copyFileToDirectory(params: {
-    sourceHandle: FileSystemFileHandle;
-    fileName: string;
-    targetDirHandle: FileSystemDirectoryHandle;
-  }) {
-    const file = await params.sourceHandle.getFile();
-    const targetHandle = await params.targetDirHandle.getFileHandle(params.fileName, {
-      create: true,
-    });
-
-    const createWritable = (targetHandle as FileSystemFileHandle).createWritable;
-    if (typeof createWritable !== 'function') {
-      throw new Error('Failed to move file: createWritable is not available');
-    }
-
-    const writable = await (targetHandle as FileSystemFileHandle).createWritable();
-    await writable.write(file);
-    await writable.close();
-  }
-
-  async function copyDirectoryRecursive(params: {
-    sourceDirHandle: FileSystemDirectoryHandle;
-    targetDirHandle: FileSystemDirectoryHandle;
-  }): Promise<void> {
-    const iterator =
-      (params.sourceDirHandle as FsDirectoryHandleWithIteration).values?.() ??
-      (params.sourceDirHandle as FsDirectoryHandleWithIteration).entries?.();
-    if (!iterator) return;
-
-    for await (const value of iterator) {
-      const handle = (Array.isArray(value) ? value[1] : value) as
-        | FileSystemFileHandle
-        | FileSystemDirectoryHandle;
-
-      if (handle.kind === 'file') {
-        await copyFileToDirectory({
-          sourceHandle: handle as FileSystemFileHandle,
-          fileName: handle.name,
-          targetDirHandle: params.targetDirHandle,
-        });
-      } else {
-        const nextTargetDir = await params.targetDirHandle.getDirectoryHandle(handle.name, {
-          create: true,
-        });
-        await copyDirectoryRecursive({
-          sourceDirHandle: handle as FileSystemDirectoryHandle,
-          targetDirHandle: nextTargetDir,
-        });
-      }
-    }
   }
 
   async function attachLastModified(entries: FsEntry[]): Promise<void> {
@@ -235,60 +146,13 @@ export function useFileManager() {
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
-    if (!prev || prev.length === 0) return next;
-
-    const prevByPath = new Map<string, FsEntry>();
-    for (const p of prev) {
-      if (p.path) prevByPath.set(p.path, p);
-    }
-
-    for (const n of next) {
-      if (!n.path) continue;
-      const p = prevByPath.get(n.path);
-
-      if (p) {
-        // Preserve current in-memory expanded state (user's latest action)
-        n.expanded = p.expanded;
-        if (n.kind === 'directory') {
-          n.children = p.children;
-        }
-        if (n.kind === 'file') {
-          n.lastModified = p.lastModified;
-        }
-      } else {
-        // Only for NEW entries not in prev, apply persisted state
-        const isPersistedExpanded = uiStore.isFileTreePathExpanded(n.path);
-        n.expanded = n.kind === 'directory' ? isPersistedExpanded : false;
-      }
-    }
-
-    return next;
+    return mergeEntriesCore(prev, next, {
+      isPathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
+    });
   }
 
   function findEntryByPath(path: string): FsEntry | null {
-    const normalized = path
-      .split('/')
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .join('/');
-    if (!normalized) return null;
-
-    function walk(list: FsEntry[]): FsEntry | null {
-      for (const entry of list) {
-        if (entry.path === normalized) return entry;
-        if (
-          entry.kind === 'directory' &&
-          Array.isArray(entry.children) &&
-          entry.children.length > 0
-        ) {
-          const found = walk(entry.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    return walk(rootEntries.value);
+    return findEntryByPathCore(rootEntries.value, path);
   }
 
   async function refreshExpandedChildren(entries: FsEntry[]): Promise<void> {

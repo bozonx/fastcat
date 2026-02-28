@@ -16,6 +16,10 @@ import {
   normalizeWorkspaceSettings,
 } from '~/utils/settings';
 import {
+  createWorkspaceSettingsRepository,
+  type WorkspaceSettingsRepository,
+} from '~/repositories/workspace-settings.repository';
+import {
   saveWorkspaceHandleToIndexedDB,
   getWorkspaceHandleFromIndexedDB,
   clearWorkspaceHandleFromIndexedDB,
@@ -24,6 +28,7 @@ import {
 export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
+  const settingsRepo = ref<WorkspaceSettingsRepository | null>(null);
 
   const projects = ref<string[]>([]);
   const isLoading = ref(false);
@@ -77,19 +82,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   });
 
   async function persistUserSettingsNow() {
-    if (!workspaceHandle.value) return;
+    if (!settingsRepo.value) return;
     if (savedUserSettingsRevision >= userSettingsRevision) return;
 
     isSavingUserSettings.value = true;
     const revisionToSave = userSettingsRevision;
 
     try {
-      const handle = await ensureUserSettingsFile({ create: true });
-      if (!handle) return;
-
-      const writable = await (handle as any).createWritable();
-      await writable.write(`${JSON.stringify(userSettings.value, null, 2)}\n`);
-      await writable.close();
+      await settingsRepo.value.saveUserSettings(userSettings.value);
 
       if (savedUserSettingsRevision < revisionToSave) {
         savedUserSettingsRevision = revisionToSave;
@@ -98,22 +98,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       console.warn('Failed to save user settings', e);
     } finally {
       isSavingUserSettings.value = false;
-    }
-  }
-
-  async function ensureUserSettingsFile(options?: {
-    create?: boolean;
-  }): Promise<FileSystemFileHandle | null> {
-    if (!workspaceHandle.value) return null;
-    try {
-      const granDir = await workspaceHandle.value.getDirectoryHandle('.gran', {
-        create: options?.create ?? false,
-      });
-      return await granDir.getFileHandle('user.settings.json', {
-        create: options?.create ?? false,
-      });
-    } catch {
-      return null;
     }
   }
 
@@ -141,18 +125,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   );
 
   async function persistWorkspaceSettingsNow() {
-    if (!workspaceHandle.value) return;
+    if (!settingsRepo.value) return;
     if (savedWorkspaceSettingsRevision >= workspaceSettingsRevision) return;
 
     isSavingWorkspaceSettings.value = true;
     const revisionToSave = workspaceSettingsRevision;
 
     try {
-      const handle = await ensureWorkspaceSettingsFile({ create: true });
-      if (!handle) return;
-      const writable = await (handle as any).createWritable();
-      await writable.write(`${JSON.stringify(workspaceSettings.value, null, 2)}\n`);
-      await writable.close();
+      await settingsRepo.value.saveWorkspaceSettings(workspaceSettings.value);
 
       if (savedWorkspaceSettingsRevision < revisionToSave) {
         savedWorkspaceSettingsRevision = revisionToSave;
@@ -211,35 +191,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  async function ensureWorkspaceSettingsFile(options?: {
-    create?: boolean;
-  }): Promise<FileSystemFileHandle | null> {
-    if (!workspaceHandle.value) return null;
-    try {
-      const granDir = await workspaceHandle.value.getDirectoryHandle('.gran', {
-        create: options?.create ?? false,
-      });
-      return await granDir.getFileHandle('workspace.settings.json', {
-        create: options?.create ?? false,
-      });
-    } catch (e) {
-      return null;
-    }
-  }
-
   async function loadWorkspaceSettingsFromDisk() {
-    if (!workspaceHandle.value) return;
+    if (!settingsRepo.value) return;
 
     try {
-      const handle = await ensureWorkspaceSettingsFile({ create: false });
-      if (!handle) {
-        workspaceSettings.value = normalizeWorkspaceSettings(null);
-        return;
-      }
-
-      const file = await handle.getFile();
-      const text = await file.text();
-      workspaceSettings.value = normalizeWorkspaceSettings(text.trim() ? JSON.parse(text) : null);
+      const raw = await settingsRepo.value.loadWorkspaceSettings();
+      workspaceSettings.value = normalizeWorkspaceSettings(raw);
     } catch {
       workspaceSettings.value = normalizeWorkspaceSettings(null);
     } finally {
@@ -249,18 +206,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function loadUserSettingsFromDisk() {
-    if (!workspaceHandle.value) return;
+    if (!settingsRepo.value) return;
 
     try {
-      const handle = await ensureUserSettingsFile({ create: false });
-      if (!handle) {
-        userSettings.value = normalizeUserSettings(null);
-        return;
-      }
-
-      const file = await handle.getFile();
-      const text = await file.text();
-      userSettings.value = normalizeUserSettings(text.trim() ? JSON.parse(text) : null);
+      const raw = await settingsRepo.value.loadUserSettings();
+      userSettings.value = normalizeUserSettings(raw);
     } catch {
       userSettings.value = normalizeUserSettings(null);
     } finally {
@@ -279,6 +229,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
+    settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle as any });
 
     const folders = ['projects', VARDATA_DIR_NAME];
     for (const folder of folders) {
@@ -324,6 +275,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function resetWorkspace() {
     workspaceHandle.value = null;
     projectsHandle.value = null;
+    settingsRepo.value = null;
     projects.value = [];
     error.value = null;
 
