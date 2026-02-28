@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFileManager, isMoveAllowed } from '~/composables/fileManager/useFileManager';
+import type { FsEntry } from '~/types/fs';
 
 describe('useFileManager', () => {
   beforeEach(() => {
@@ -13,7 +14,6 @@ describe('useFileManager', () => {
     expect(rootEntries.value).toEqual([]);
     expect(isLoading.value).toBe(false);
     expect(error.value).toBeNull();
-    // isApiSupported depends on the environment, we can't strict check it easily without mocking
   });
 
   it('getFileIcon should return correct icon for different extensions', () => {
@@ -77,5 +77,31 @@ describe('useFileManager', () => {
 
   it('isMoveAllowed should allow moving into root', () => {
     expect(isMoveAllowed({ sourcePath: 'a/b', targetDirPath: '' })).toBe(true);
+  });
+
+  it('isMoveAllowed should handle edge cases', () => {
+    expect(isMoveAllowed({ sourcePath: '', targetDirPath: 'a' })).toBe(true);
+    expect(isMoveAllowed({ sourcePath: 'a', targetDirPath: '' })).toBe(true);
+    expect(isMoveAllowed({ sourcePath: 'a/b/c', targetDirPath: 'a' })).toBe(true);
+    expect(isMoveAllowed({ sourcePath: 'a', targetDirPath: 'a/b' })).toBe(false);
+  });
+
+  it('should have sortMode with default value', () => {
+    const { sortMode } = useFileManager();
+    expect(sortMode.value).toBe('name');
+  });
+
+  it('FsEntry type should match expected structure', () => {
+    const entry: FsEntry = {
+      name: 'test',
+      kind: 'file',
+      handle: {} as unknown as FileSystemFileHandle,
+      path: 'test/path',
+      lastModified: Date.now(),
+    };
+
+    expect(entry.name).toBe('test');
+    expect(entry.kind).toBe('file');
+    expect(entry.path).toBe('test/path');
   });
 });

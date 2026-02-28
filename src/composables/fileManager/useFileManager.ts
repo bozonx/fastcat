@@ -14,6 +14,7 @@ import {
   TIMELINES_DIR_NAME,
 } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
+import type { FsEntry } from '~/types/fs';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -23,17 +24,6 @@ interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
 type FsFileHandleWithMove = FileSystemFileHandle & {
   move?: (name: string) => Promise<void>;
 };
-
-export interface FsEntry {
-  name: string;
-  kind: 'file' | 'directory';
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle;
-  parentHandle?: FileSystemDirectoryHandle;
-  children?: FsEntry[];
-  expanded?: boolean;
-  path?: string;
-  lastModified?: number;
-}
 
 type FileTreeSortMode = 'name' | 'modified';
 
@@ -62,6 +52,7 @@ const error = ref<string | null>(null);
 const sortMode = ref<FileTreeSortMode>('name');
 
 export function useFileManager() {
+  const { t } = useI18n();
   const toast = useToast();
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
@@ -477,7 +468,17 @@ export function useFileManager() {
           if (file.type.startsWith('audio/')) targetDirName = AUDIO_DIR_NAME;
           else if (file.type.startsWith('image/')) targetDirName = IMAGES_DIR_NAME;
           else if (file.type.startsWith('video/')) targetDirName = VIDEO_DIR_NAME;
-          else if (file.name.endsWith('.otio')) continue; // Skip project files
+          else if (file.name.endsWith('.otio')) {
+            toast.add({
+              color: 'neutral',
+              title: t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
+              description: t(
+                'videoEditor.fileManager.skipOtio.description',
+                `${file.name} is a project file and cannot be imported this way. Use Create Timeline instead.`,
+              ),
+            });
+            continue;
+          }
 
           targetDir = await projectDir.getDirectoryHandle(targetDirName, { create: true });
           finalRelativePathBase = targetDirName;

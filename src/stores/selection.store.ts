@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { FsEntry } from '~/composables/fileManager/useFileManager';
+import type { FsEntry } from '~/types/fs';
 
 export type SelectionSource = 'timeline' | 'fileManager';
 

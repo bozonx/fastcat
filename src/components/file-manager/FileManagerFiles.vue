@@ -5,8 +5,8 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import FileManagerTree from '~/components/FileManagerTree.vue';
-import type { FsEntry } from '~/composables/fileManager/useFileManager';
+import FileManagerTree from '~/components/file-manager/FileManagerTree.vue';
+import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
@@ -280,7 +280,7 @@ async function onEntrySelect(entry: FsEntry) {
             :move-entry="moveEntry"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
-            @action="(action, entry) => emit('action', action, entry)"
+            @action="emit('action', $event.action, $event.entry)"
           />
           <div v-if="isLoading" class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50">
             <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />

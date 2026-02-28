@@ -2,7 +2,8 @@
 import { ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useFileManager, type FsEntry } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+import type { FsEntry } from '~/types/fs';
 import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
 import FileInfoModal, { type FileInfo } from '~/components/common/FileInfoModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';

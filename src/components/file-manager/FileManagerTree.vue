@@ -10,15 +10,7 @@ import {
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { SOURCES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
-
-interface FsEntry {
-  name: string;
-  kind: 'file' | 'directory';
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle;
-  children?: FsEntry[];
-  expanded?: boolean;
-  path?: string;
-}
+import type { FsEntry } from '~/types/fs';
 
 interface Props {
   entries: FsEntry[];
@@ -333,6 +325,13 @@ function getContextMenuItems(entry: FsEntry) {
             isSelected(entry) ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1' : '',
           ]"
           :draggable="true"
+          :aria-selected="isSelected(entry)"
+          :aria-expanded="entry.kind === 'directory' ? entry.expanded : undefined"
+          :aria-level="depth + 1"
+          role="treeitem"
+          tabindex="0"
+          @keydown.enter="onEntryClick(entry)"
+          @keydown.space.prevent="onEntryClick(entry)"
           @dragstart="onDragStart($event, entry)"
           @dragend="onDragEnd()"
           @dragover.prevent="onDragOverDir($event, entry)"
@@ -346,6 +345,7 @@ function getContextMenuItems(entry: FsEntry) {
             name="i-heroicons-chevron-right"
             class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
             :class="{ 'rotate-90': entry.expanded }"
+            :aria-hidden="true"
             @click="onCaretClick($event, entry)"
           />
           <span v-else class="w-3.5 shrink-0" />
@@ -400,7 +400,7 @@ function getContextMenuItems(entry: FsEntry) {
           :move-entry="moveEntry"
           @toggle="emit('toggle', $event)"
           @select="emit('select', $event)"
-          @action="(a, e) => emit('action', a, e)"
+          @action="emit('action', ($event as any), $event as any)"
         />
       </div>
     </li>

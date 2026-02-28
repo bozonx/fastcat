@@ -15,11 +15,16 @@ export const useProxyStore = defineStore('proxy', () => {
   const existingProxies = ref<Set<string>>(new Set());
   const proxyProgress = ref<Record<string, number>>({});
 
-  const proxyQueue = ref(markRaw(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency })));
+  const proxyQueue = ref(
+    markRaw(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency })),
+  );
 
-  watch(() => workspaceStore.userSettings.optimization.proxyConcurrency, (val) => {
-    proxyQueue.value.concurrency = val;
-  });
+  watch(
+    () => workspaceStore.userSettings.optimization.proxyConcurrency,
+    (val) => {
+      proxyQueue.value.concurrency = val;
+    },
+  );
 
   function getProxyFileName(projectRelativePath: string): string {
     return `${encodeURIComponent(projectRelativePath)}.webm`;
@@ -62,6 +67,7 @@ export const useProxyStore = defineStore('proxy', () => {
   async function generateProxy(
     fileHandle: FileSystemFileHandle,
     projectRelativePath: string,
+    options?: { signal?: AbortSignal },
   ): Promise<void> {
     if (generatingProxies.value.has(projectRelativePath)) return;
     if (
@@ -80,6 +86,10 @@ export const useProxyStore = defineStore('proxy', () => {
     try {
       await proxyQueue.value.add(async () => {
         try {
+          if (options?.signal?.aborted) {
+            throw new Error('Proxy generation cancelled');
+          }
+
           const proxyFilename = getProxyFileName(projectRelativePath);
           const targetHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
@@ -140,7 +150,7 @@ export const useProxyStore = defineStore('proxy', () => {
             typeof meta.audio?.codec === 'string' &&
             meta.audio.codec.toLowerCase().startsWith('opus');
 
-          const options = {
+          const exportOptions = {
             format: 'webm',
             videoCodec: 'vp09.00.10.08',
             bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
@@ -153,7 +163,7 @@ export const useProxyStore = defineStore('proxy', () => {
             fps: meta.video?.fps || 30,
           };
 
-          await (client as any).exportTimeline(targetHandle, options, videoClips, audioClips);
+          await (client as any).exportTimeline(targetHandle, exportOptions, videoClips, audioClips);
 
           existingProxies.value.add(projectRelativePath);
         } finally {
@@ -165,6 +175,13 @@ export const useProxyStore = defineStore('proxy', () => {
       generatingProxies.value.delete(projectRelativePath);
       delete proxyProgress.value[projectRelativePath];
       throw e;
+    }
+  }
+
+  async function cancelProxyGeneration(projectRelativePath: string) {
+    if (generatingProxies.value.has(projectRelativePath)) {
+      generatingProxies.value.delete(projectRelativePath);
+      delete proxyProgress.value[projectRelativePath];
     }
   }
 
@@ -231,6 +248,7 @@ export const useProxyStore = defineStore('proxy', () => {
     proxyProgress,
     checkExistingProxies,
     generateProxy,
+    cancelProxyGeneration,
     deleteProxy,
     getProxyFileHandle,
     getProxyFile,
