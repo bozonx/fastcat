@@ -18,6 +18,11 @@ import type { FsEntry } from '~/types/fs';
 import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
+  createFolderCommand,
+  handleFilesCommand,
+  resolveDefaultTargetDir,
+} from '~/file-manager/application/fileManagerCommands';
+import {
   assertEntryDoesNotExist,
   copyDirectoryRecursive,
   copyFileToDirectory,
@@ -147,19 +152,25 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
-      const targetDirHandleRaw = targetDirHandle ? toRaw(targetDirHandle) : undefined;
-
-      for (let file of Array.from(files)) {
-        if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
-          try {
-            file = await convertSvgToPng(file, {
+      await handleFilesCommand(
+        files,
+        {
+          targetDirHandle: targetDirHandle ? toRaw(targetDirHandle) : undefined,
+          targetDirPath,
+        },
+        {
+          getProjectDirHandle: async () =>
+            await workspaceStore.projectsHandle!.getDirectoryHandle(
+              projectStore.currentProjectName!,
+            ),
+          getTargetDirHandle: async ({ projectDir, file }) =>
+            await resolveDefaultTargetDir({ projectDir, file }),
+          convertSvgToPng: async (file) =>
+            await convertSvgToPng(file, {
               maxWidth: projectStore.projectSettings.project.width,
               maxHeight: projectStore.projectSettings.project.height,
-            });
-          } catch (e) {
+            }),
+          onSvgConvertError: ({ file, error: e }) => {
             console.warn('Failed to convert SVG to PNG', e);
             error.value = `Failed to import SVG: ${file.name}`;
             toast.add({
@@ -167,19 +178,8 @@ export function useFileManager() {
               title: 'SVG Import Error',
               description: error.value,
             });
-            continue;
-          }
-        }
-
-        let targetDir = targetDirHandleRaw;
-        let finalRelativePathBase = targetDirPath || '';
-
-        if (!targetDir) {
-          let targetDirName = FILES_DIR_NAME;
-          if (file.type.startsWith('audio/')) targetDirName = AUDIO_DIR_NAME;
-          else if (file.type.startsWith('image/')) targetDirName = IMAGES_DIR_NAME;
-          else if (file.type.startsWith('video/')) targetDirName = VIDEO_DIR_NAME;
-          else if (file.name.endsWith('.otio')) {
+          },
+          onSkipProjectFile: ({ file }) => {
             toast.add({
               color: 'neutral',
               title: t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
@@ -188,38 +188,12 @@ export function useFileManager() {
                 `${file.name} is a project file and cannot be imported this way. Use Create Timeline instead.`,
               ),
             });
-            continue;
-          }
-
-          targetDir = await projectDir.getDirectoryHandle(targetDirName, { create: true });
-          finalRelativePathBase = targetDirName;
-        }
-
-        try {
-          await targetDir.getFileHandle(file.name);
-          throw new Error(`File already exists: ${file.name}`);
-        } catch (e: any) {
-          if (e?.name !== 'NotFoundError') throw e;
-        }
-
-        const fileHandle = await targetDir.getFileHandle(file.name, { create: true });
-        if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
-          throw new Error('Failed to write file: createWritable is not available');
-        }
-
-        const writable = await (fileHandle as FileSystemFileHandle).createWritable();
-        await writable.write(file);
-        await writable.close();
-
-        if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-          // If we drop inside a folder, we need the path relative to the project root
-          // targetDirPath gives us something like "sources/video/my_folder"
-          const projectRelativePath = finalRelativePathBase
-            ? `${finalRelativePathBase}/${file.name}`
-            : file.name;
-          void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
-        }
-      }
+          },
+          onMediaImported: ({ fileHandle, projectRelativePath }) => {
+            void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
+          },
+        },
+      );
 
       await loadProjectDirectory();
     } catch (e: any) {
@@ -243,7 +217,7 @@ export function useFileManager() {
       const baseDir =
         targetEntry ||
         (await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName));
-      await baseDir.getDirectoryHandle(name, { create: true });
+      await createFolderCommand({ name, baseDir });
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to create folder';

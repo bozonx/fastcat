@@ -20,15 +20,19 @@ import {
   type WorkspaceSettingsRepository,
 } from '~/repositories/workspace-settings.repository';
 import {
-  saveWorkspaceHandleToIndexedDB,
-  getWorkspaceHandleFromIndexedDB,
-  clearWorkspaceHandleFromIndexedDB,
-} from '~/utils/indexedDB';
+  createIndexedDbWorkspaceHandleStorage,
+  type WorkspaceHandleStorage,
+} from '~/repositories/workspace-handle.repository';
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
   const settingsRepo = ref<WorkspaceSettingsRepository | null>(null);
+  const workspaceHandleStorage = ref<WorkspaceHandleStorage<FileSystemDirectoryHandle> | null>(
+    typeof window === 'undefined'
+      ? null
+      : createIndexedDbWorkspaceHandleStorage({ indexedDB: window.indexedDB }),
+  );
 
   const projects = ref<string[]>([]);
   const isLoading = ref(false);
@@ -262,7 +266,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
       await setupWorkspace(handle);
-      await saveWorkspaceHandleToIndexedDB(handle);
+      await workspaceHandleStorage.value?.set(handle);
     } catch (e: any) {
       if (e?.name !== 'AbortError') {
         error.value = e?.message ?? 'Failed to open workspace folder';
@@ -279,7 +283,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projects.value = [];
     error.value = null;
 
-    clearWorkspaceHandleFromIndexedDB().catch(console.warn);
+    workspaceHandleStorage.value?.clear().catch(console.warn);
   }
 
   async function init() {
@@ -289,7 +293,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     try {
-      const handle = await getWorkspaceHandleFromIndexedDB();
+      const handle = await workspaceHandleStorage.value?.get();
       if (!handle) {
         isInitializing.value = false;
         return;
