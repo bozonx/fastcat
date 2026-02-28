@@ -1058,7 +1058,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   function setAudioVolume(next: number) {
     const parsed = Number(next);
     if (!Number.isFinite(parsed)) return;
-    audioVolume.value = Math.min(1, Math.max(0, parsed));
+    audioVolume.value = Math.min(2, Math.max(0, parsed));
     if (audioVolume.value > 0 && audioMuted.value) {
       audioMuted.value = false;
     }
