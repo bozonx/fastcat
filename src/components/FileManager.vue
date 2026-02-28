@@ -67,6 +67,8 @@ const directoryUploadInput = ref<HTMLInputElement | null>(null);
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
 
+const toast = useToast();
+
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
@@ -191,13 +193,21 @@ async function openFileInfoModal(entry: FsEntry) {
       lastModified = file.lastModified;
       fileType = file.type;
     } catch (e) {
-      // ignore
+      toast.add({
+        color: 'red',
+        title: t('videoEditor.fileManager.info.error', 'Information error'),
+        description: String((e as any)?.message ?? e),
+      });
     }
   } else {
     try {
       size = await computeDirectorySize(entry.handle as FileSystemDirectoryHandle);
-    } catch {
-      // ignore
+    } catch (e) {
+      toast.add({
+        color: 'red',
+        title: t('videoEditor.fileManager.info.error', 'Information error'),
+        description: String((e as any)?.message ?? e),
+      });
     }
   }
 
@@ -227,15 +237,18 @@ function openDeleteConfirmModal(entry: FsEntry) {
 
 async function handleDeleteConfirm() {
   if (!deleteTarget.value) return;
+  const deletePath = deleteTarget.value.path;
   await deleteEntry(deleteTarget.value);
 
-  if (uiStore.selectedFsEntry?.name === deleteTarget.value.name) {
+  if (deletePath && uiStore.selectedFsEntry?.path === deletePath) {
     uiStore.selectedFsEntry = null;
   }
   
   if (
     selectionStore.selectedEntity?.source === 'fileManager' &&
-    selectionStore.selectedEntity.name === deleteTarget.value.name
+    (selectionStore.selectedEntity.path
+      ? selectionStore.selectedEntity.path === deletePath
+      : selectionStore.selectedEntity.name === deleteTarget.value.name)
   ) {
     selectionStore.clearSelection();
   }
@@ -255,7 +268,42 @@ async function handleDeleteConfirm() {
 
 async function handleRename(newName: string) {
   if (!renameTarget.value) return;
-  await renameEntry(renameTarget.value, newName);
+
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    toast.add({
+      color: 'red',
+      title: t('common.rename', 'Rename'),
+      description: t('common.validation.required', 'Name is required.'),
+    });
+    return;
+  }
+
+  if (trimmed.includes('/')) {
+    toast.add({
+      color: 'red',
+      title: t('common.rename', 'Rename'),
+      description: t(
+        'common.validation.invalidName',
+        'Name contains invalid characters.',
+      ),
+    });
+    return;
+  }
+
+  if (trimmed === '.' || trimmed === '..') {
+    toast.add({
+      color: 'red',
+      title: t('common.rename', 'Rename'),
+      description: t(
+        'common.validation.invalidName',
+        'Name contains invalid characters.',
+      ),
+    });
+    return;
+  }
+
+  await renameEntry(renameTarget.value, trimmed);
   renameTarget.value = null;
 }
 
@@ -355,7 +403,12 @@ function triggerFileUpload() {
 
 function onSortModeChange(v: 'name' | 'modified') {
   setSortMode(v);
-  void loadProjectDirectory();
+  const selectedPath = uiStore.selectedFsEntry?.path;
+  void loadProjectDirectory().then(() => {
+    if (!selectedPath) return;
+    if (uiStore.selectedFsEntry?.path !== selectedPath) return;
+    focusStore.setTempFocus('left');
+  });
 }
 
 function onFileSelect(e: Event) {
@@ -543,6 +596,11 @@ async function onDirectoryFileSelect(e: Event) {
       <div>
         <div v-show="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
           {{ deleteTarget?.name }}
+        </div>
+        <div v-if="deleteTarget?.path" class="mt-1 text-xs text-ui-text-muted break-all">
+          {{ deleteTarget.kind === 'directory' ? t('common.folder', 'Folder') : t('common.file', 'File') }}
+          ·
+          {{ deleteTarget.path }}
         </div>
       </div>
     </UiConfirmModal>

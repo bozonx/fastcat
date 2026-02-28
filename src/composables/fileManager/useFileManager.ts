@@ -91,7 +91,7 @@ export function useFileManager() {
     sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
     sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
     checkExistingProxies: (videoPaths) => proxyStore.checkExistingProxies(videoPaths),
-    onError: (params) => {
+    onError: (params: { title?: string; message: string; error?: unknown }) => {
       const description = params.error
         ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
         : params.message;
@@ -127,8 +127,6 @@ export function useFileManager() {
 
   async function toggleDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
-
-    const prevExpanded = Boolean(entry.expanded);
     await runWithUiFeedback({
       action: async () => {
         await service.toggleDirectory(entry);
@@ -138,14 +136,6 @@ export function useFileManager() {
       toastDescription: () => error.value || 'Failed to read folder',
       ignoreError: () => false,
     });
-
-    if (error.value) {
-      entry.expanded = prevExpanded;
-      const projectName = projectStore.currentProjectName;
-      if (projectName && entry.path) {
-        uiStore.setFileTreePathExpanded(projectName, entry.path, prevExpanded);
-      }
-    }
   }
 
   async function loadProjectDirectory() {

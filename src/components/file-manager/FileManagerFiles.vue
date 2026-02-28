@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -41,6 +41,10 @@ function stopAutoScroll() {
     isWheelListenerAttached = false;
   }
 }
+
+onUnmounted(() => {
+  stopAutoScroll();
+});
 
 function onWindowWheel(e: WheelEvent) {
   const el = scrollEl.value;
@@ -259,7 +263,12 @@ async function onRootDrop(e: DragEvent) {
 }
 
 async function onEntrySelect(entry: FsEntry) {
-  uiStore.selectedFsEntry = entry as any;
+  uiStore.selectedFsEntry = {
+    kind: entry.kind,
+    name: entry.name,
+    path: entry.path,
+    handle: entry.handle,
+  };
 
   if (entry.kind === 'file') {
     focusStore.setTempFocus('left');

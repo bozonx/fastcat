@@ -33,24 +33,66 @@ export function mergeEntries(
     if (p.path) prevByPath.set(p.path, p);
   }
 
-  for (const n of next) {
-    if (!n.path) continue;
+  return next.map((n) => {
+    if (!n.path) return { ...n };
     const p = prevByPath.get(n.path);
 
     if (p) {
-      n.expanded = p.expanded;
       if (n.kind === 'directory') {
-        n.children = p.children;
+        return {
+          ...n,
+          expanded: Boolean(p.expanded),
+          children: p.children,
+        };
       }
-      if (n.kind === 'file') {
-        n.lastModified = p.lastModified;
-      }
-      continue;
+
+      return {
+        ...n,
+        expanded: Boolean(p.expanded),
+        lastModified: p.lastModified,
+      };
     }
 
     const isPersistedExpanded = deps.isPathExpanded(n.path);
-    n.expanded = n.kind === 'directory' ? isPersistedExpanded : false;
+    return {
+      ...n,
+      expanded: n.kind === 'directory' ? isPersistedExpanded : false,
+    };
+  });
+}
+
+export function updateEntryByPath(
+  entries: FsEntry[],
+  path: string,
+  updater: (entry: FsEntry) => FsEntry,
+): FsEntry[] {
+  const normalized = normalizeFsPath(path);
+  if (!normalized) return entries;
+
+  function walk(list: FsEntry[]): { next: FsEntry[]; changed: boolean } {
+    let changed = false;
+    const next = list.map((entry) => {
+      if (entry.path === normalized) {
+        changed = true;
+        return updater(entry);
+      }
+
+      if (
+        entry.kind === 'directory' &&
+        Array.isArray(entry.children) &&
+        entry.children.length > 0
+      ) {
+        const r = walk(entry.children);
+        if (r.changed) {
+          changed = true;
+          return { ...entry, children: r.next };
+        }
+      }
+
+      return entry;
+    });
+    return { next: changed ? next : list, changed };
   }
 
-  return next;
+  return walk(entries).next;
 }

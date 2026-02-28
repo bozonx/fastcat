@@ -3,6 +3,7 @@ import type { FsEntry } from '~/types/fs';
 import {
   findEntryByPath as findEntryByPathCore,
   mergeEntries as mergeEntriesCore,
+  updateEntryByPath,
 } from '~/file-manager/core/tree';
 import { AUDIO_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
 
@@ -35,18 +36,19 @@ export interface FileManagerService {
 }
 
 export function createFileManagerService(deps: FileManagerServiceDeps): FileManagerService {
-  async function attachLastModified(entries: FsEntry[]): Promise<void> {
-    const files = entries.filter((e) => e.kind === 'file') as FsEntry[];
-    await Promise.all(
-      files.map(async (entry) => {
+  async function attachLastModified(entries: FsEntry[]): Promise<FsEntry[]> {
+    const next = await Promise.all(
+      entries.map(async (entry) => {
+        if (entry.kind !== 'file') return entry;
         try {
           const file = await (entry.handle as FileSystemFileHandle).getFile();
-          entry.lastModified = file.lastModified;
+          return { ...entry, lastModified: file.lastModified };
         } catch {
-          entry.lastModified = undefined;
+          return { ...entry, lastModified: undefined };
         }
       }),
     );
+    return next;
   }
 
   function compareEntries(a: FsEntry, b: FsEntry): number {
@@ -109,18 +111,17 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       return entries;
     }
 
-    if (deps.sortMode.value === 'modified') {
-      await attachLastModified(entries);
-    }
+    const entriesWithModified =
+      deps.sortMode.value === 'modified' ? await attachLastModified(entries) : entries;
 
-    const videoPaths = entries
+    const videoPaths = entriesWithModified
       .filter((e) => e.kind === 'file' && e.path?.startsWith(`${VIDEO_DIR_NAME}/`))
       .map((e) => e.path!);
     if (videoPaths.length > 0) {
       await deps.checkExistingProxies(videoPaths);
     }
 
-    return entries.sort(compareEntries);
+    return [...entriesWithModified].sort(compareEntries);
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
@@ -136,14 +137,46 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
   async function toggleDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
 
-    entry.expanded = !entry.expanded;
+    const path = entry.path;
+    if (!path) return;
 
-    if (entry.path) {
-      deps.setPathExpanded(entry.path, Boolean(entry.expanded));
+    const current = findEntryByPathCore(deps.rootEntries.value, path);
+    if (!current || current.kind !== 'directory') return;
+
+    const nextExpanded = !Boolean(current.expanded);
+
+    const applyExpandedState = (expanded: boolean) => {
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+        ...e,
+        expanded,
+      }));
+      deps.setPathExpanded(path, expanded);
+    };
+
+    if (!nextExpanded) {
+      applyExpandedState(false);
+      return;
     }
 
-    if (entry.expanded && entry.children === undefined) {
-      entry.children = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
+    applyExpandedState(true);
+
+    const afterExpand = findEntryByPathCore(deps.rootEntries.value, path);
+    if (!afterExpand || afterExpand.kind !== 'directory') return;
+    if (afterExpand.children !== undefined) return;
+
+    try {
+      const children = await readDirectory(afterExpand.handle as FileSystemDirectoryHandle, path);
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+        ...e,
+        children,
+      }));
+    } catch (e) {
+      applyExpandedState(false);
+      deps.onError?.({
+        title: 'File manager error',
+        message: `Failed to read folder: ${path}`,
+        error: e,
+      });
     }
   }
 
@@ -158,7 +191,13 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
           entry.handle as FileSystemDirectoryHandle,
           entry.path,
         );
-        entry.children = mergeEntries(entry.children, nextChildren);
+        if (entry.path) {
+          const merged = mergeEntries(entry.children, nextChildren);
+          deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
+            ...e,
+            children: merged,
+          }));
+        }
       } catch (e) {
         deps.onError?.({
           title: 'File manager error',

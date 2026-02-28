@@ -103,7 +103,7 @@ describe('fileManagerService', () => {
     expect(checkExistingProxies).toHaveBeenCalledWith([`${VIDEO_DIR_NAME}/a.mp4`]);
   });
 
-  it('toggleDirectory sets expanded state, persists path, and lazy-loads children', async () => {
+  it('toggleDirectory updates rootEntries expanded state, persists path, and lazy-loads children', async () => {
     const rootEntries = ref<FsEntry[]>([]);
     const sortMode = ref<'name' | 'modified'>('name');
 
@@ -134,11 +134,42 @@ describe('fileManagerService', () => {
       children: undefined,
     };
 
+    rootEntries.value = [entry];
+
     await service.toggleDirectory(entry);
 
-    expect(entry.expanded).toBe(true);
+    const updated = rootEntries.value[0];
+    expect(updated?.expanded).toBe(true);
     expect(setPathExpanded).toHaveBeenCalledWith('folder', true);
-    expect(entry.children?.map((e) => e.name)).toEqual(['child.txt']);
+    expect(updated?.children?.map((e) => e.name)).toEqual(['child.txt']);
+  });
+
+  it('readDirectory reports error via onError when iteration is not available', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const onError = vi.fn();
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies: vi.fn(async () => undefined),
+      onError,
+    });
+
+    const noIter: any = { kind: 'directory', name: 'root', values: undefined, entries: undefined };
+    const result = await service.readDirectory(noIter as FileSystemDirectoryHandle);
+
+    expect(result).toEqual([]);
+    expect(onError).toHaveBeenCalledWith({
+      title: 'File manager error',
+      message: 'Failed to read directory: iteration is not available',
+    });
   });
 
   it('loadProjectDirectory merges entries and auto-expands media dirs', async () => {
