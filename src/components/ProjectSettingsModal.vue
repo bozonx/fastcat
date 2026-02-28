@@ -34,11 +34,19 @@ const isOpen = computed({
 });
 
 const isClearProjectVardataConfirmOpen = ref(false);
+const isDeleteProjectConfirmOpen = ref(false);
 
 async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
   if (!projectStore.currentProjectId) return;
   await workspaceStore.clearProjectVardata(projectStore.currentProjectId);
+}
+
+async function confirmDeleteProject() {
+  isDeleteProjectConfirmOpen.value = false;
+  await projectStore.deleteCurrentProject();
+  // Closing the current project will automatically return the user to the projects list
+  // because projectStore.currentProjectName becomes null and the view switches in index.vue
 }
 
 const formatOptions: readonly FormatOption[] = [
@@ -131,6 +139,22 @@ function resetToDefaults() {
       @confirm="confirmClearProjectVardata"
     />
 
+    <UiConfirmModal
+      v-model:open="isDeleteProjectConfirmOpen"
+      :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle', 'Delete Project?')"
+      :description="
+        t(
+          'videoEditor.projectSettings.deleteProjectConfirmDescription',
+          'This will permanently delete the project folder and all its contents. This action cannot be undone.',
+        )
+      "
+      :confirm-text="t('videoEditor.projectSettings.deleteProjectAction', 'Delete')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="error"
+      icon="i-heroicons-trash"
+      @confirm="confirmDeleteProject"
+    />
+
     <div class="space-y-6">
       <div class="text-xs text-ui-text-muted">
         {{
@@ -181,29 +205,57 @@ function resetToDefaults() {
       <div class="space-y-4">
         <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.storage', 'Storage') }}</h3>
 
-        <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
-          <div class="flex flex-col gap-1 min-w-0">
-            <div class="text-sm font-medium text-ui-text">
-              {{ t('videoEditor.projectSettings.clearTemp', 'Clear temporary files') }}
+        <div class="space-y-3">
+          <!-- Clear Vardata -->
+          <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
+            <div class="flex flex-col gap-1 min-w-0">
+              <div class="text-sm font-medium text-ui-text">
+                {{ t('videoEditor.projectSettings.clearTemp', 'Clear temporary files') }}
+              </div>
+              <div class="text-xs text-ui-text-muted">
+                {{
+                  t(
+                    'videoEditor.projectSettings.clearTempHint',
+                    'Removes all files from vardata for this project',
+                  )
+                }}
+              </div>
             </div>
-            <div class="text-xs text-ui-text-muted">
-              {{
-                t(
-                  'videoEditor.projectSettings.clearTempHint',
-                  'Removes all files from vardata for this project',
-                )
-              }}
-            </div>
+
+            <UButton
+              color="warning"
+              variant="soft"
+              icon="i-heroicons-trash"
+              :disabled="!projectStore.currentProjectId"
+              :label="t('videoEditor.projectSettings.clearTempAction', 'Clear')"
+              @click="isClearProjectVardataConfirmOpen = true"
+            />
           </div>
 
-          <UButton
-            color="warning"
-            variant="soft"
-            icon="i-heroicons-trash"
-            :disabled="!projectStore.currentProjectId"
-            :label="t('videoEditor.projectSettings.clearTempAction', 'Clear')"
-            @click="isClearProjectVardataConfirmOpen = true"
-          />
+          <!-- Delete Project -->
+          <div class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5">
+            <div class="flex flex-col gap-1 min-w-0">
+              <div class="text-sm font-medium text-error-400">
+                {{ t('videoEditor.projectSettings.deleteProject', 'Delete Project') }}
+              </div>
+              <div class="text-xs text-error-400/70">
+                {{
+                  t(
+                    'videoEditor.projectSettings.deleteProjectConfirmDescription',
+                    'Permanently delete project folder and all its content',
+                  )
+                }}
+              </div>
+            </div>
+
+            <UButton
+              color="error"
+              variant="solid"
+              icon="i-heroicons-trash"
+              :label="t('videoEditor.projectSettings.deleteProjectAction', 'Delete')"
+              @click="isDeleteProjectConfirmOpen = true"
+            />
+          </div>
         </div>
       </div>
     </div>

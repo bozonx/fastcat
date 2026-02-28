@@ -166,7 +166,11 @@
       "export": "Export defaults",
       "exportWidth": "Width",
       "exportHeight": "Height",
-      "exportFps": "FPS"
+      "exportFps": "FPS",
+      "deleteProject": "Delete Project",
+      "deleteProjectConfirmTitle": "Delete Project?",
+      "deleteProjectConfirmDescription": "This will permanently delete the project folder and all its contents. This action cannot be undone.",
+      "deleteProjectAction": "Delete"
     },
     "resolution": {
       "customResolution": "Custom Resolution",

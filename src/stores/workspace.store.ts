@@ -389,15 +389,40 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
     },
     clearProjectVardata: async (projectId: string) => {
-      if (!workspaceHandle.value) return;
       const parts = getProjectVardataSegments(projectId);
       try {
-        const vardataDir = await workspaceHandle.value.getDirectoryHandle(parts[0]!);
-        const projectsDir = await vardataDir.getDirectoryHandle(parts[1]!);
-        await projectsDir.removeEntry(parts[2]!, { recursive: true });
+        const vardataDir = await workspaceHandle.value?.getDirectoryHandle(parts[0]!);
+        const projectsDir = await vardataDir?.getDirectoryHandle(parts[1]!);
+        await projectsDir?.removeEntry(parts[2]!, { recursive: true });
+      } catch {
+        // ignore
+      }
+    },
+    deleteProject: async (name: string, projectId?: string) => {
+      if (!projectsHandle.value) return;
+
+      try {
+        if (projectId) {
+          const parts = getProjectVardataSegments(projectId);
+          try {
+            const vardataDir = await workspaceHandle.value?.getDirectoryHandle(parts[0]!);
+            const projectsDir = await vardataDir?.getDirectoryHandle(parts[1]!);
+            await projectsDir?.removeEntry(parts[2]!, { recursive: true });
+          } catch {
+            // ignore
+          }
+        }
+
+        await projectsHandle.value.removeEntry(name, { recursive: true });
+        await loadProjects();
+
+        if (lastProjectName.value === name) {
+          lastProjectName.value = null;
+        }
       } catch (e: any) {
         if (e?.name !== 'NotFoundError') {
-          console.warn('Failed to clear project vardata', projectId, e);
+          console.warn('Failed to delete project', name, e);
+          throw e;
         }
       }
     },

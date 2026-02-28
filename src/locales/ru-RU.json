@@ -166,7 +166,11 @@
       "export": "Экспорт по умолчанию",
       "exportWidth": "Ширина",
       "exportHeight": "Высота",
-      "exportFps": "FPS"
+      "exportFps": "FPS",
+      "deleteProject": "Удалить проект",
+      "deleteProjectConfirmTitle": "Удалить проект?",
+      "deleteProjectConfirmDescription": "Это навсегда удалит папку проекта и все её содержимое. Это действие нельзя отменить.",
+      "deleteProjectAction": "Удалить"
     },
     "resolution": {
       "customResolution": "Точное разрешение",

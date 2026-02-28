@@ -793,6 +793,12 @@ export const useProjectStore = defineStore('project', () => {
     });
   }
 
+  async function deleteCurrentProject() {
+    if (!currentProjectName.value) return;
+    await workspaceStore.deleteProject(currentProjectName.value, currentProjectId.value ?? undefined);
+    closeProject();
+  }
+
   return {
     currentProjectName,
     currentProjectId,
@@ -811,5 +817,6 @@ export const useProjectStore = defineStore('project', () => {
     createFallbackTimelineDoc,
     loadProjectSettings,
     saveProjectSettings,
+    deleteCurrentProject,
   };
 });
