@@ -61,6 +61,7 @@ const error = ref<string | null>(null);
 const sortMode = ref<FileTreeSortMode>('name');
 
 export function useFileManager() {
+  const toast = useToast();
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
@@ -325,6 +326,11 @@ export function useFileManager() {
         entry.children = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
       } catch (e: any) {
         error.value = e?.message ?? 'Failed to read folder';
+        toast.add({
+          color: 'red',
+          title: 'Folder error',
+          description: error.value || 'Failed to read folder',
+        });
         entry.expanded = false;
 
         if (entry.path) {
@@ -407,6 +413,11 @@ export function useFileManager() {
     } catch (e: any) {
       if (e?.name !== 'AbortError') {
         error.value = e?.message ?? 'Failed to open project folder';
+        toast.add({
+          color: 'red',
+          title: 'Project error',
+          description: error.value || 'Failed to open project folder',
+        });
       }
     } finally {
       isLoading.value = false;
@@ -438,6 +449,11 @@ export function useFileManager() {
           } catch (e) {
             console.warn('Failed to convert SVG to PNG', e);
             error.value = `Failed to import SVG: ${file.name}`;
+            toast.add({
+              color: 'red',
+              title: 'SVG Import Error',
+              description: error.value,
+            });
             continue;
           }
         }
@@ -483,6 +499,11 @@ export function useFileManager() {
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to upload files';
+      toast.add({
+        color: 'red',
+        title: 'Upload error',
+        description: error.value || 'Failed to upload files',
+      });
     } finally {
       isLoading.value = false;
     }
@@ -501,6 +522,11 @@ export function useFileManager() {
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to create folder';
+      toast.add({
+        color: 'red',
+        title: 'Folder error',
+        description: error.value || 'Failed to create folder',
+      });
     } finally {
       isLoading.value = false;
     }
@@ -535,6 +561,11 @@ export function useFileManager() {
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to delete';
+      toast.add({
+        color: 'red',
+        title: 'Delete error',
+        description: error.value || 'Failed to delete',
+      });
     } finally {
       isLoading.value = false;
     }
@@ -591,6 +622,11 @@ export function useFileManager() {
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to rename';
+      toast.add({
+        color: 'red',
+        title: 'Rename error',
+        description: error.value || 'Failed to rename',
+      });
     } finally {
       isLoading.value = false;
     }
@@ -675,6 +711,11 @@ export function useFileManager() {
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to move';
+      toast.add({
+        color: 'red',
+        title: 'Move error',
+        description: error.value || 'Failed to move',
+      });
       throw e;
     } finally {
       isLoading.value = false;
@@ -729,6 +770,11 @@ export function useFileManager() {
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to create timeline';
+      toast.add({
+        color: 'red',
+        title: 'Timeline error',
+        description: error.value || 'Failed to create timeline',
+      });
     } finally {
       isLoading.value = false;
     }

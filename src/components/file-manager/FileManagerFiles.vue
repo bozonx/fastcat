@@ -110,7 +110,6 @@ function onContainerDragLeave(e: DragEvent) {
 const props = defineProps<{
   isDragging: boolean;
   isLoading: boolean;
-  error: string | null;
   isApiSupported: boolean;
   rootEntries: FsEntry[];
   getFileIcon: (entry: FsEntry) => string;
@@ -248,7 +247,7 @@ async function onEntrySelect(entry: FsEntry) {
 
         <!-- Empty state -->
         <div
-          v-else-if="rootEntries.length === 0 && !error"
+          v-else-if="rootEntries.length === 0"
           class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-ui-text-disabled px-4 text-center min-h-50"
         >
           <UIcon name="i-heroicons-folder-open" class="w-10 h-10" />
@@ -262,11 +261,6 @@ async function onEntrySelect(entry: FsEntry) {
                   )
             }}
           </p>
-        </div>
-
-        <!-- Error -->
-        <div v-else-if="error" class="px-3 py-4 text-sm text-error-500 bg-error-500/10 m-2 rounded">
-          {{ error }}
         </div>
 
         <!-- File tree -->

@@ -414,7 +414,6 @@ async function onDirectoryFileSelect(e: Event) {
       v-if="activeTab === 'files'"
       :is-dragging="isDragging"
       :is-loading="isLoading"
-      :error="error"
       :is-api-supported="isApiSupported"
       :root-entries="rootEntries"
       :get-file-icon="getFileIcon"
