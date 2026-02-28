@@ -431,7 +431,7 @@ const thumbnailsLimitGb = computed({
                             color="neutral"
                             variant="subtle"
                             icon="i-heroicons-plus"
-                            class="h-6 w-6 p-0! rounded-full shrink-0"
+                             class="h-6 w-6 rounded-full shrink-0 justify-center"
                             :disabled="isCapturingHotkey"
                             :loading="isCapturingHotkey && captureTargetCommandId === cmd.id"
                             @click="startCapture(cmd.id)"

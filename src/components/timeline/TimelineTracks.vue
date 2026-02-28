@@ -1032,7 +1032,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
               ? 'outline outline-2 outline-[color:var(--color-warning)]'
               : '',
-            item.kind === 'clip' && Boolean((item as any).disabled) ? 'opacity-40' : '',
+            item.kind === 'clip' && (Boolean((item as any).disabled) || Boolean(track.videoHidden))
+              ? 'opacity-40'
+              : '',
             item.kind === 'clip' && Boolean((item as any).locked) ? 'cursor-not-allowed' : '',
             ...getClipClass(item, track),
           ]"

@@ -848,7 +848,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!track) return;
 
     if (track.kind === 'video') {
-      updateTrackProperties(trackId, { videoHidden: !track.videoHidden });
+      const nextHidden = !track.videoHidden;
+      updateTrackProperties(trackId, { 
+        videoHidden: nextHidden,
+        // Auto-mute if becoming hidden, but don't force unmute when becoming visible
+        audioMuted: nextHidden ? true : track.audioMuted
+      });
     }
     await requestTimelineSave({ immediate: true });
   }
