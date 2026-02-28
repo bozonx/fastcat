@@ -2,6 +2,14 @@ import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import {
+  EXPORT_DIR_NAME,
+  SOURCES_DIR_NAME,
+  VIDEO_DIR_NAME,
+  AUDIO_DIR_NAME,
+  IMAGES_DIR_NAME,
+  TIMELINES_DIR_NAME,
+} from '~/utils/constants';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import {
   getExportWorkerClient,
@@ -151,7 +159,16 @@ export async function toWorkerTimelineClips(
     if (!mediaPath) return mediaPath;
     if (mediaPath.startsWith('/')) return mediaPath;
     if (isProbablyUrlLike(mediaPath)) return mediaPath;
-    if (mediaPath.startsWith('sources/') || mediaPath.startsWith('timelines/')) return mediaPath;
+    if (
+      mediaPath.startsWith('sources/') ||
+      mediaPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
+      mediaPath.startsWith(`${AUDIO_DIR_NAME}/`) ||
+      mediaPath.startsWith(`${IMAGES_DIR_NAME}/`) ||
+      mediaPath.startsWith('timelines/') ||
+      mediaPath.startsWith(`${TIMELINES_DIR_NAME}/`)
+    ) {
+      return mediaPath;
+    }
     const baseDir = getDirname(params.nestedTimelinePath);
     if (!baseDir) return mediaPath;
     return joinPaths(baseDir, mediaPath);
@@ -559,7 +576,7 @@ export function useTimelineExport() {
     const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
       projectStore.currentProjectName,
     );
-    cachedExportDir = await projectDir.getDirectoryHandle('export', { create: true });
+    cachedExportDir = await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
     cachedProjectName = projectStore.currentProjectName;
     cachedProjectsHandle = workspaceStore.projectsHandle;
     cachedExportFilenames = null;

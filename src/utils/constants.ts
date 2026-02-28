@@ -1,6 +1,10 @@
 export const PROXY_DIR_NAME = 'proxies';
-
-export const SOURCES_DIR_NAME = 'sources';
+export const VIDEO_DIR_NAME = '_video';
+export const AUDIO_DIR_NAME = '_audio';
+export const IMAGES_DIR_NAME = '_images';
+export const EXPORT_DIR_NAME = '_export';
+export const TIMELINES_DIR_NAME = '_timelines';
+export const SOURCES_DIR_NAME = 'sources'; // Keeping for migration/compatibility if needed
 
 export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB
 

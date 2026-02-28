@@ -13,7 +13,7 @@ import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { SOURCES_DIR_NAME } from '~/utils/constants';
+import { SOURCES_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -397,7 +397,7 @@ async function createStopFrameSnapshot() {
   const MAX_ATTEMPTS = 10_000;
   while (attempt < MAX_ATTEMPTS) {
     const existingHandle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: `${SOURCES_DIR_NAME}/images/stop_frames/${filename}`,
+      relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
       create: false,
     });
     if (!existingHandle) {
@@ -435,7 +435,7 @@ async function createStopFrameSnapshot() {
     }
 
     const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: `${SOURCES_DIR_NAME}/images/stop_frames/${filename}`,
+      relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
       create: true,
     });
 
@@ -455,7 +455,7 @@ async function createStopFrameSnapshot() {
     toast.add({
       color: 'primary',
       title: 'Snapshot created',
-      description: `Saved to ${SOURCES_DIR_NAME}/images/stop_frames/${filename}`,
+      description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
     });
   } catch (err) {
     console.error('[Monitor] Failed to create stop frame snapshot', err);

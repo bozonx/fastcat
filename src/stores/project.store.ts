@@ -6,7 +6,14 @@ import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument } from '~/timeline/otioSerializer';
 
-import { SOURCES_DIR_NAME } from '~/utils/constants';
+import {
+  SOURCES_DIR_NAME,
+  VIDEO_DIR_NAME,
+  AUDIO_DIR_NAME,
+  IMAGES_DIR_NAME,
+  TIMELINES_DIR_NAME,
+  EXPORT_DIR_NAME,
+} from '~/utils/constants';
 
 import { useWorkspaceStore } from './workspace.store';
 
@@ -707,11 +714,11 @@ export const useProjectStore = defineStore('project', () => {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(name, {
         create: true,
       });
-      const sourcesDir = await projectDir.getDirectoryHandle(SOURCES_DIR_NAME, { create: true });
-      await sourcesDir.getDirectoryHandle('video', { create: true });
-      await sourcesDir.getDirectoryHandle('audio', { create: true });
-      await sourcesDir.getDirectoryHandle('images', { create: true });
-      await sourcesDir.getDirectoryHandle('timelines', { create: true });
+      await projectDir.getDirectoryHandle(VIDEO_DIR_NAME, { create: true });
+      await projectDir.getDirectoryHandle(AUDIO_DIR_NAME, { create: true });
+      await projectDir.getDirectoryHandle(IMAGES_DIR_NAME, { create: true });
+      await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, { create: true });
+      await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
 
       try {
         const granDir = await projectDir.getDirectoryHandle('.gran', { create: true });
@@ -740,7 +747,8 @@ export const useProjectStore = defineStore('project', () => {
       }
 
       const otioFileName = `${name}_001.otio`;
-      const otioFile = await projectDir.getFileHandle(otioFileName, { create: true });
+      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, { create: true });
+      const otioFile = await timelinesDir.getFileHandle(otioFileName, { create: true });
       const writable = await (otioFile as any).createWritable();
       await writable.write(
         `{\n  \"OTIO_SCHEMA\": \"Timeline.1\",\n  \"name\": \"${name}\",\n  \"tracks\": {\n    \"OTIO_SCHEMA\": \"Stack.1\",\n    \"children\": [],\n    \"name\": \"tracks\"\n  }\n}\n`,
@@ -749,7 +757,7 @@ export const useProjectStore = defineStore('project', () => {
 
       currentProjectName.value = name;
       await loadProjectMeta();
-      const initialTimeline = otioFileName;
+      const initialTimeline = `${TIMELINES_DIR_NAME}/${otioFileName}`;
       currentTimelinePath.value = initialTimeline;
       currentFileName.value = initialTimeline;
 
@@ -784,7 +792,7 @@ export const useProjectStore = defineStore('project', () => {
 
     // If no timelines are open, open the default one
     if (projectSettings.value.timelines.openPaths.length === 0) {
-      const defaultTimeline = `${name}_001.otio`;
+      const defaultTimeline = `${TIMELINES_DIR_NAME}/${name}_001.otio`;
       projectSettings.value.timelines.openPaths = [defaultTimeline];
     }
 

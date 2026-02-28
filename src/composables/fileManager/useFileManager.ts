@@ -5,7 +5,13 @@ import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { convertSvgToPng } from '~/utils/svg';
-import { SOURCES_DIR_NAME } from '~/utils/constants';
+import {
+  SOURCES_DIR_NAME,
+  VIDEO_DIR_NAME,
+  AUDIO_DIR_NAME,
+  IMAGES_DIR_NAME,
+  TIMELINES_DIR_NAME,
+} from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
@@ -217,7 +223,7 @@ export function useFileManager() {
     }
 
     const videoPaths = entries
-      .filter((e) => e.kind === 'file' && e.path?.startsWith(`${SOURCES_DIR_NAME}/video/`))
+      .filter((e) => e.kind === 'file' && e.path?.startsWith(`${VIDEO_DIR_NAME}/`))
       .map((e) => e.path!);
     if (videoPaths.length > 0) {
       await proxyStore.checkExistingProxies(videoPaths);
@@ -387,9 +393,14 @@ export function useFileManager() {
 
       await expandPersistedDirectories();
 
-      // Automatically expand the sources directory if present
+      // Automatically expand the media directories if present
       for (const entry of rootEntries.value) {
-        if (entry.kind === 'directory' && entry.name === 'sources') {
+        if (
+          entry.kind === 'directory' &&
+          (entry.name === VIDEO_DIR_NAME ||
+            entry.name === AUDIO_DIR_NAME ||
+            entry.name === IMAGES_DIR_NAME)
+        ) {
           if (!entry.expanded) await toggleDirectory(entry);
         }
       }
@@ -415,8 +426,6 @@ export function useFileManager() {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
         projectStore.currentProjectName,
       );
-      const sourcesDir = await projectDir.getDirectoryHandle('sources', { create: true });
-
       const targetDirHandleRaw = targetDirHandle ? toRaw(targetDirHandle) : undefined;
 
       for (let file of Array.from(files)) {
@@ -434,17 +443,17 @@ export function useFileManager() {
         }
 
         let targetDir = targetDirHandleRaw;
-        let finalRelativePathBase = targetDirPath || 'sources';
+        let finalRelativePathBase = targetDirPath || '';
 
         if (!targetDir) {
-          let targetDirName = 'video';
-          if (file.type.startsWith('audio/')) targetDirName = 'audio';
-          else if (file.type.startsWith('image/')) targetDirName = 'images';
+          let targetDirName = VIDEO_DIR_NAME;
+          if (file.type.startsWith('audio/')) targetDirName = AUDIO_DIR_NAME;
+          else if (file.type.startsWith('image/')) targetDirName = IMAGES_DIR_NAME;
           else if (!file.type.startsWith('video/')) {
             if (file.name.endsWith('.otio')) continue; // Skip project files
           }
-          targetDir = await sourcesDir.getDirectoryHandle(targetDirName, { create: true });
-          finalRelativePathBase = `sources/${targetDirName}`;
+          targetDir = await projectDir.getDirectoryHandle(targetDirName, { create: true });
+          finalRelativePathBase = targetDirName;
         }
 
         try {
@@ -508,7 +517,10 @@ export function useFileManager() {
       if (target.path && target.kind === 'file') {
         await proxyStore.deleteProxy(target.path);
 
-        if (target.path.startsWith(`${SOURCES_DIR_NAME}/video/`)) {
+        if (
+          target.path.startsWith(`${VIDEO_DIR_NAME}/`) ||
+          target.path.startsWith(`${SOURCES_DIR_NAME}/video/`)
+        ) {
           if (projectStore.currentProjectId) {
             await thumbnailGenerator.clearThumbnails({
               projectId: projectStore.currentProjectId,
@@ -629,7 +641,10 @@ export function useFileManager() {
         delete mediaStore.mediaMetadata[oldPath];
         delete mediaStore.mediaMetadata[newPath];
 
-        if (oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)) {
+        if (
+          oldPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
+          oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)
+        ) {
           await proxyStore.deleteProxy(oldPath);
           proxyStore.existingProxies.clear();
 
@@ -675,8 +690,9 @@ export function useFileManager() {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
         projectStore.currentProjectName,
       );
-      const sourcesDir = await projectDir.getDirectoryHandle('sources', { create: true });
-      const timelinesDir = await sourcesDir.getDirectoryHandle('timelines', { create: true });
+      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, {
+        create: true,
+      });
 
       // Find unique filename
       let index = 1;

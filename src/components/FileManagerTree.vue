@@ -9,7 +9,7 @@ import {
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { SOURCES_DIR_NAME } from '~/utils/constants';
+import { SOURCES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
 
 interface FsEntry {
   name: string;
@@ -76,7 +76,11 @@ function getEntryIconClass(entry: FsEntry): string {
 }
 
 function isVideo(entry: FsEntry) {
-  return entry.kind === 'file' && entry.path?.startsWith(`${SOURCES_DIR_NAME}/video/`);
+  return (
+    entry.kind === 'file' &&
+    (entry.path?.startsWith(`${VIDEO_DIR_NAME}/`) ||
+      entry.path?.startsWith(`${SOURCES_DIR_NAME}/video/`))
+  );
 }
 
 function hasProxy(entry: FsEntry) {

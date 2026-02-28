@@ -15,6 +15,7 @@ import { storeToRefs } from 'pinia';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 const { t } = useI18n();
@@ -724,32 +725,28 @@ function leaveProject() {
       <div
         class="flex items-center justify-between px-4 py-2.5 bg-ui-bg-elevated border-b border-ui-border"
       >
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 h-full flex-1 min-w-0">
           <UButton
             size="sm"
             variant="ghost"
             color="neutral"
             icon="i-heroicons-arrow-left"
+            class="shrink-0"
             @click="leaveProject"
           />
-          <div class="flex items-center gap-2">
-            <span class="text-ui-text-muted font-medium text-sm">{{
-              projectStore.currentProjectName
-            }}</span>
-            <span class="text-ui-border">/</span>
-            <span class="text-ui-text font-medium text-sm flex items-center gap-1">
-              <UIcon name="i-heroicons-document" class="w-4 h-4 text-ui-text-muted" />
-              {{ projectStore.currentFileName }}
+          
+          <div 
+            class="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-ui-bg-accent cursor-pointer transition-colors shrink-0"
+            @click="isProjectSettingsOpen = true"
+          >
+            <span class="text-ui-text font-bold text-sm truncate max-w-[200px]">
+              {{ projectStore.currentProjectName }}
             </span>
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-cog-8-tooth"
-              :title="t('videoEditor.projectSettings.title', 'Project settings')"
-              @click="isProjectSettingsOpen = true"
-            />
+            <UIcon name="i-heroicons-pencil-square-20-solid" class="w-4 h-4 text-ui-text-muted" />
           </div>
+
+          <!-- Timeline Tabs relocated from bottom -->
+          <TimelineTabs />
         </div>
 
         <div class="flex items-center gap-2">
