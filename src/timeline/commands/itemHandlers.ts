@@ -389,7 +389,9 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || item.kind !== 'clip') return { next: doc };
 
-  assertClipNotLocked(item, 'split');
+  if (!cmd.ignoreLocks) {
+    assertClipNotLocked(item, 'split');
+  }
 
   if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
     throw new Error('Locked audio clip');
@@ -1015,7 +1017,7 @@ export function removeItems(
     const item = nextItems[idx];
     if (!item) continue;
 
-    if (item.kind === 'clip' && item.locked) {
+    if (item.kind === 'clip' && item.locked && !cmd.ignoreLocks) {
       continue;
     }
     itemsRemoved = true;
@@ -1055,7 +1057,9 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || !item.timelineRange) return { next: doc };
 
-  assertClipNotLocked(item, 'move');
+  if (!cmd.ignoreLocks) {
+    assertClipNotLocked(item, 'move');
+  }
 
   if (
     item.kind === 'clip' &&

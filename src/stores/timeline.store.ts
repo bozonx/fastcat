@@ -534,6 +534,202 @@ export const useTimelineStore = defineStore('timeline', () => {
     await requestTimelineSave({ immediate: true });
   }
 
+  async function advancedRippleTrimRight() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    if (selectedItemIds.value.length !== 1) return;
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const startUs = item.timelineRange.startUs;
+    const endUs = startUs + item.timelineRange.durationUs;
+
+    // Check if playhead is within the target clip
+    if (!(cutUs > startUs && cutUs < endUs)) return;
+
+    const deltaUs = endUs - cutUs;
+    if (deltaUs <= 0) return;
+
+    const allTrackIds = doc.tracks.map((t) => t.id);
+
+    // 1. Split all tracks at cutUs and endUs
+    const splitAt = (atUs: number) => {
+      for (const t of doc.tracks) {
+        for (const it of t.items) {
+          if (it.kind !== 'clip') continue;
+          const itStart = it.timelineRange.startUs;
+          const itEnd = itStart + it.timelineRange.durationUs;
+          if (atUs > itStart && atUs < itEnd) {
+            applyTimeline(
+              { type: 'split_item', trackId: t.id, itemId: it.id, atUs, ignoreLocks: true },
+              { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+            );
+          }
+        }
+      }
+    };
+
+    splitAt(endUs);
+    splitAt(cutUs);
+
+    const updated = timelineDoc.value;
+    if (!updated) return;
+
+    // 2. Delete all items in the cut range (cutUs to endUs) on all tracks
+    for (const t of updated.tracks) {
+      const toDelete: string[] = [];
+      for (const it of t.items) {
+        if (it.kind !== 'clip') continue;
+        const itStart = it.timelineRange.startUs;
+        const center = itStart + it.timelineRange.durationUs / 2;
+
+        if (center >= cutUs && center <= endUs) {
+          toDelete.push(it.id);
+        }
+      }
+
+      if (toDelete.length > 0) {
+        applyTimeline(
+          { type: 'delete_items', trackId: t.id, itemIds: toDelete, ignoreLocks: true },
+          { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+        );
+      }
+    }
+
+    const afterDelete = timelineDoc.value;
+    if (!afterDelete) return;
+
+    const EPSILON = 10;
+    // 3. Shift all remaining clips that start at or after endUs to the left by deltaUs
+    for (const t of afterDelete.tracks) {
+      const clips = t.items
+        .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+        .slice()
+        .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+      for (const clip of clips) {
+        const clipStart = clip.timelineRange.startUs;
+        if (clipStart >= endUs - EPSILON) {
+          applyTimeline(
+            {
+              type: 'move_item',
+              trackId: t.id,
+              itemId: clip.id,
+              startUs: Math.max(0, clipStart - deltaUs),
+              ignoreLocks: true,
+            },
+            { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+          );
+        }
+      }
+    }
+
+    await requestTimelineSave({ immediate: true });
+  }
+
+  async function advancedRippleTrimLeft() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    if (selectedItemIds.value.length !== 1) return;
+    const target = getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    const cutUs = computeCutUs(doc, currentTime.value);
+    const startUs = item.timelineRange.startUs;
+    const endUs = startUs + item.timelineRange.durationUs;
+
+    // Check if playhead is within the target clip
+    if (!(cutUs > startUs && cutUs < endUs)) return;
+
+    const deltaUs = cutUs - startUs;
+    if (deltaUs <= 0) return;
+
+    // 1. Split all tracks at startUs and cutUs
+    const splitAt = (atUs: number) => {
+      for (const t of doc.tracks) {
+        for (const it of t.items) {
+          if (it.kind !== 'clip') continue;
+          const itStart = it.timelineRange.startUs;
+          const itEnd = itStart + it.timelineRange.durationUs;
+          if (atUs > itStart && atUs < itEnd) {
+            applyTimeline(
+              { type: 'split_item', trackId: t.id, itemId: it.id, atUs, ignoreLocks: true },
+              { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+            );
+          }
+        }
+      }
+    };
+
+    splitAt(cutUs);
+    splitAt(startUs);
+
+    const updated = timelineDoc.value;
+    if (!updated) return;
+
+    // 2. Delete all items in the cut range (startUs to cutUs) on all tracks
+    for (const t of updated.tracks) {
+      const toDelete: string[] = [];
+      for (const it of t.items) {
+        if (it.kind !== 'clip') continue;
+        const itStart = it.timelineRange.startUs;
+        const center = itStart + it.timelineRange.durationUs / 2;
+
+        if (center >= startUs && center <= cutUs) {
+          toDelete.push(it.id);
+        }
+      }
+
+      if (toDelete.length > 0) {
+        applyTimeline(
+          { type: 'delete_items', trackId: t.id, itemIds: toDelete, ignoreLocks: true },
+          { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+        );
+      }
+    }
+
+    const afterDelete = timelineDoc.value;
+    if (!afterDelete) return;
+
+    const EPSILON = 10;
+    // 3. Shift all remaining clips that start at or after cutUs to the left by deltaUs
+    for (const t of afterDelete.tracks) {
+      const clips = t.items
+        .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+        .slice()
+        .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+      for (const clip of clips) {
+        const clipStart = clip.timelineRange.startUs;
+        if (clipStart >= cutUs - EPSILON) {
+          applyTimeline(
+            {
+              type: 'move_item',
+              trackId: t.id,
+              itemId: clip.id,
+              startUs: Math.max(0, clipStart - deltaUs),
+              ignoreLocks: true,
+            },
+            { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+          );
+        }
+      }
+    }
+
+    await requestTimelineSave({ immediate: true });
+  }
+
   function getBoundaryTimesUs(trackFilter: ((trackId: string) => boolean) | null): number[] {
     const doc = timelineDoc.value;
     if (!doc) return [];
@@ -1653,6 +1849,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     trimToPlayheadRightNoRipple,
     rippleTrimLeft,
     rippleTrimRight,
+    advancedRippleTrimLeft,
+    advancedRippleTrimRight,
     jumpToPrevClipBoundary,
     jumpToNextClipBoundary,
     splitClipAtPlayhead,

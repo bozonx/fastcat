@@ -249,6 +249,18 @@ async function onGlobalKeydown(e: KeyboardEvent) {
     return;
   }
 
+  if (cmd === 'timeline.advancedRippleTrimLeft') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.advancedRippleTrimLeft();
+    return;
+  }
+
+  if (cmd === 'timeline.advancedRippleTrimRight') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    void timelineStore.advancedRippleTrimRight();
+    return;
+  }
+
   if (cmd === 'timeline.jumpPrevBoundary') {
     if (!focusStore.canUseTimelineHotkeys) return;
     timelineStore.jumpToPrevClipBoundary();

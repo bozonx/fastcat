@@ -51,6 +51,7 @@ export interface RemoveItemCommand {
   type: 'remove_item';
   trackId: string;
   itemId: string;
+  ignoreLocks?: boolean;
 }
 
 export interface MoveItemCommand {
@@ -58,6 +59,7 @@ export interface MoveItemCommand {
   trackId: string;
   itemId: string;
   startUs: number;
+  ignoreLocks?: boolean;
 }
 
 export interface TrimItemCommand {
@@ -73,12 +75,14 @@ export interface SplitItemCommand {
   trackId: string;
   itemId: string;
   atUs: number;
+  ignoreLocks?: boolean;
 }
 
 export interface DeleteItemsCommand {
   type: 'delete_items';
   trackId: string;
   itemIds: string[];
+  ignoreLocks?: boolean;
 }
 
 export interface AddTrackCommand {
