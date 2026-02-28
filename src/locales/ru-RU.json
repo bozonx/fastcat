@@ -219,11 +219,12 @@
       "actions": {
         "createFolder": "Создать папку",
         "uploadFiles": "Загрузить файлы",
-        "syncTree": "Синхронизировать",
+        "syncTree": "Синх",
         "syncTreeTooltip": "Обновить дерево файлов",
         "createTimeline": "Создать таймлайн",
         "dropFilesHere": "Отпустите файлы здесь",
         "dropFilesToFolder": "Отпустите в конкретную папку или сюда",
+        "dropToRootHint": "Отпустите — файл будет загружен в корень",
         "dropFilesGlobalDescription": "Отпустите файлы, чтобы автоматически сохранить их в папку источников",
         "createProxy": "Создать прокси",
         "regenerateProxy": "Перегенерировать прокси",

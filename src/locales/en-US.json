@@ -223,6 +223,7 @@
         "createTimeline": "Create Timeline",
         "dropFilesHere": "Drop files here",
         "dropFilesToFolder": "Drop to specific folder below or release here",
+        "dropToRootHint": "Release to upload into the project root",
         "dropFilesGlobalDescription": "Release files to automatically save them to the project sources folder",
         "createProxy": "Create proxy",
         "regenerateProxy": "Regenerate proxy",

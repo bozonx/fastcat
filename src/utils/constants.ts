@@ -2,6 +2,7 @@ export const PROXY_DIR_NAME = 'proxies';
 export const VIDEO_DIR_NAME = '_video';
 export const AUDIO_DIR_NAME = '_audio';
 export const IMAGES_DIR_NAME = '_images';
+export const FILES_DIR_NAME = '_files';
 export const EXPORT_DIR_NAME = '_export';
 export const TIMELINES_DIR_NAME = '_timelines';
 export const SOURCES_DIR_NAME = 'sources'; // Keeping for migration/compatibility if needed

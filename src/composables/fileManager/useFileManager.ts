@@ -10,6 +10,7 @@ import {
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
   IMAGES_DIR_NAME,
+  FILES_DIR_NAME,
   TIMELINES_DIR_NAME,
 } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
@@ -70,9 +71,12 @@ export function useFileManager() {
 
   const isApiSupported = workspaceStore.isApiSupported;
 
-  watch(() => uiStore.showHiddenFiles, () => {
-    void loadProjectDirectory();
-  });
+  watch(
+    () => uiStore.showHiddenFiles,
+    () => {
+      void loadProjectDirectory();
+    },
+  );
 
   async function getProjectRootDirHandle(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
@@ -411,6 +415,7 @@ export function useFileManager() {
           entry.kind === 'directory' &&
           (entry.name === VIDEO_DIR_NAME ||
             entry.name === AUDIO_DIR_NAME ||
+            entry.name === FILES_DIR_NAME ||
             entry.name === IMAGES_DIR_NAME)
         ) {
           if (!entry.expanded) await toggleDirectory(entry);
@@ -468,12 +473,12 @@ export function useFileManager() {
         let finalRelativePathBase = targetDirPath || '';
 
         if (!targetDir) {
-          let targetDirName = VIDEO_DIR_NAME;
+          let targetDirName = FILES_DIR_NAME;
           if (file.type.startsWith('audio/')) targetDirName = AUDIO_DIR_NAME;
           else if (file.type.startsWith('image/')) targetDirName = IMAGES_DIR_NAME;
-          else if (!file.type.startsWith('video/')) {
-            if (file.name.endsWith('.otio')) continue; // Skip project files
-          }
+          else if (file.type.startsWith('video/')) targetDirName = VIDEO_DIR_NAME;
+          else if (file.name.endsWith('.otio')) continue; // Skip project files
+
           targetDir = await projectDir.getDirectoryHandle(targetDirName, { create: true });
           finalRelativePathBase = targetDirName;
         }
@@ -497,7 +502,9 @@ export function useFileManager() {
         if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
           // If we drop inside a folder, we need the path relative to the project root
           // targetDirPath gives us something like "sources/video/my_folder"
-          const projectRelativePath = `${finalRelativePathBase}/${file.name}`;
+          const projectRelativePath = finalRelativePathBase
+            ? `${finalRelativePathBase}/${file.name}`
+            : file.name;
           void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
         }
       }

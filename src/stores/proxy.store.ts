@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue';
+import { ref, watch, markRaw } from 'vue';
 import { defineStore } from 'pinia';
 import PQueue from 'p-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -15,7 +15,7 @@ export const useProxyStore = defineStore('proxy', () => {
   const existingProxies = ref<Set<string>>(new Set());
   const proxyProgress = ref<Record<string, number>>({});
 
-  const proxyQueue = ref(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency }));
+  const proxyQueue = ref(markRaw(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency })));
 
   watch(() => workspaceStore.userSettings.optimization.proxyConcurrency, (val) => {
     proxyQueue.value.concurrency = val;

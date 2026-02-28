@@ -163,6 +163,8 @@ const isRootDropOver = ref(false);
 function onRootDragOver(e: DragEvent) {
   if (!isRelevantDrag(e)) return;
 
+  e.stopPropagation();
+
   isRootDropOver.value = true;
   e.dataTransfer!.dropEffect = e.dataTransfer?.types.includes('Files') ? 'copy' : 'move';
 }
@@ -176,6 +178,7 @@ function onRootDragLeave(e: DragEvent) {
 }
 
 async function onRootDrop(e: DragEvent) {
+  e.stopPropagation();
   isRootDropOver.value = false;
 
   const rootHandle = await props.getProjectRootDirHandle();
@@ -300,12 +303,23 @@ async function onEntrySelect(entry: FsEntry) {
         </div>
 
         <div
-          class="h-12 shrink-0"
-          :class="{ 'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver }"
+          class="h-12 shrink-0 w-full min-w-full flex items-center justify-center"
+          :class="{
+            'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver,
+          }"
           @dragover.prevent="onRootDragOver"
           @dragleave.prevent="onRootDragLeave"
           @drop.prevent="onRootDrop"
-        />
+        >
+          <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400 text-center">
+            {{
+              t(
+                'videoEditor.fileManager.actions.dropToRootHint',
+                'Release to upload into the project root',
+              )
+            }}
+          </p>
+        </div>
       </div>
     </UContextMenu>
   </div>
