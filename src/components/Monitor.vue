@@ -477,7 +477,7 @@ async function createStopFrameSnapshot() {
       'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
         focusStore.isPanelFocused('monitor'),
     }"
-    @pointerdown="focusStore.setMainFocus('monitor')"
+    @pointerdown.capture="focusStore.setMainFocus('monitor')"
   >
     <!-- Header -->
     <div
