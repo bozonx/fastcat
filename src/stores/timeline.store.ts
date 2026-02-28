@@ -1,6 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia';
 import { ref } from 'vue';
-import PQueue from 'p-queue';
 
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
@@ -9,6 +8,10 @@ import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioS
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timeline/commands/utils';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
+
+import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
+import { createTimelineMarkers } from '~/stores/timeline/timelineMarkers';
+import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -95,57 +98,40 @@ export const useTimelineStore = defineStore('timeline', () => {
     edge: 'in' | 'out';
   } | null>(null);
 
-  function getMarkers(): TimelineMarker[] {
-    const raw = (timelineDoc.value as any)?.metadata?.gran?.markers;
-    return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
-  }
-
-  function generateMarkerId(): string {
-    return `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  function addMarkerAtPlayhead() {
-    applyTimeline({
-      type: 'add_marker',
-      id: generateMarkerId(),
-      timeUs: currentTime.value,
-      text: '',
-    });
-  }
-
-  function updateMarker(markerId: string, patch: { timeUs?: number; text?: string }) {
-    applyTimeline({
-      type: 'update_marker',
-      id: markerId,
-      timeUs: patch.timeUs,
-      text: patch.text,
-    });
-  }
-
-  function removeMarker(markerId: string) {
-    applyTimeline({ type: 'remove_marker', id: markerId });
-  }
-
-  let persistTimelineTimeout: number | null = null;
-  let loadTimelineRequestId = 0;
-  let timelineRevision = 0;
-  let savedTimelineRevision = 0;
-
-  const timelineSaveQueue = new PQueue({ concurrency: 1 });
+  const selection = createTimelineSelection({
+    timelineDoc,
+    currentTime,
+    selectedItemIds,
+    selectedTrackId,
+    selectedTransition,
+  });
 
   function clearSelection() {
-    selectedItemIds.value = [];
-    selectedTransition.value = null;
+    selection.clearSelection();
   }
 
   function clearSelectedTransition() {
-    selectedTransition.value = null;
+    selection.clearSelectedTransition();
   }
 
   function selectTransition(input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) {
-    selectedTrackId.value = null;
-    selectedItemIds.value = [];
-    selectedTransition.value = input;
+    selection.selectTransition(input);
+  }
+
+  function selectTrack(trackId: string | null) {
+    selection.selectTrack(trackId);
+  }
+
+  function toggleSelection(itemId: string, options?: { multi?: boolean }) {
+    selection.toggleSelection(itemId, options);
+  }
+
+  function getHotkeyTargetClip(): { trackId: string; itemId: string } | null {
+    return selection.getHotkeyTargetClip();
+  }
+
+  function getSelectedOrActiveTrackId(): string | null {
+    return selection.getSelectedOrActiveTrackId();
   }
 
   function setPlaybackSpeed(speed: number) {
@@ -188,63 +174,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: undefined });
   }
 
-  function selectTrack(trackId: string | null) {
-    selectedTrackId.value = trackId;
-    if (trackId) {
-      selectedTransition.value = null;
-      selectedItemIds.value = [];
-    }
-  }
+  const markers = createTimelineMarkers({
+    timelineDoc,
+    currentTime,
+    applyTimeline,
+  });
 
-  function getHotkeyTargetClip(): { trackId: string; itemId: string } | null {
-    const doc = timelineDoc.value;
-    if (!doc) return null;
-
-    const selectedId = selectedItemIds.value[0];
-    if (selectedId) {
-      for (const track of doc.tracks) {
-        for (const it of track.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.id !== selectedId) continue;
-          return { trackId: track.id, itemId: it.id };
-        }
-      }
-    }
-
-    const trackId = selectedTrackId.value;
-    if (!trackId) return null;
-    const track = doc.tracks.find((t) => t.id === trackId) ?? null;
-    if (!track) return null;
-
-    const atUs = currentTime.value;
-    for (const it of track.items) {
-      if (it.kind !== 'clip') continue;
-      const startUs = it.timelineRange.startUs;
-      const endUs = startUs + it.timelineRange.durationUs;
-      if (atUs >= startUs && atUs < endUs) {
-        return { trackId: track.id, itemId: it.id };
-      }
-    }
-
-    return null;
-  }
-
-  function getSelectedOrActiveTrackId(): string | null {
-    const doc = timelineDoc.value;
-    if (!doc) return null;
-
-    const selectedId = selectedItemIds.value[0];
-    if (selectedId) {
-      for (const track of doc.tracks) {
-        for (const it of track.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.id === selectedId) return track.id;
-        }
-      }
-    }
-
-    return selectedTrackId.value;
-  }
+  // selection helpers are wired above as wrapper functions to preserve store API
 
   function computeCutUs(doc: TimelineDocument, atUs: number): number {
     const fps = getDocFps(doc);
@@ -942,19 +878,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     await requestTimelineSave({ immediate: true });
   }
 
-  function toggleSelection(itemId: string, options?: { multi?: boolean }) {
-    selectedTransition.value = null;
-    if (options?.multi) {
-      if (selectedItemIds.value.includes(itemId)) {
-        selectedItemIds.value = selectedItemIds.value.filter((id) => id !== itemId);
-      } else {
-        selectedItemIds.value.push(itemId);
-      }
-    } else {
-      selectedItemIds.value = [itemId];
-    }
-  }
-
   function deleteSelectedItems(trackId: string) {
     if (selectedItemIds.value.length === 0) return;
     applyTimeline({
@@ -1402,16 +1325,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({ type: 'return_audio_to_video', videoItemId: input.videoItemId });
   }
 
-  function clearPersistTimelineTimeout() {
-    if (typeof window === 'undefined') return;
-    if (persistTimelineTimeout === null) return;
-    window.clearTimeout(persistTimelineTimeout);
-    persistTimelineTimeout = null;
-  }
-
   function resetTimelineState() {
-    clearPersistTimelineTimeout();
-    loadTimelineRequestId += 1;
+    persistence.resetPersistenceState();
     timelineDoc.value = null;
     isTimelineDirty.value = false;
     isSavingTimeline.value = false;
@@ -1424,20 +1339,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineZoom.value = 50;
     clearSelection();
     selectTrack(null);
-    timelineRevision = 0;
-    savedTimelineRevision = 0;
     historyStore.clear();
     clearPendingDebouncedHistory();
   }
 
   function markTimelineAsCleanForCurrentRevision() {
-    savedTimelineRevision = timelineRevision;
-    isTimelineDirty.value = false;
+    persistence.markCleanForCurrentRevision();
   }
 
   function markTimelineAsDirty() {
-    timelineRevision += 1;
-    isTimelineDirty.value = true;
+    persistence.markDirty();
   }
 
   async function ensureTimelineFileHandle(options?: {
@@ -1450,77 +1361,31 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
   }
 
-  async function persistTimelineNow() {
-    if (!timelineDoc.value || !isTimelineDirty.value) return;
+  const persistence = createTimelinePersistence({
+    timelineDoc,
+    currentTime,
+    duration,
 
-    isSavingTimeline.value = true;
-    timelineSaveError.value = null;
+    isTimelineDirty,
+    isSavingTimeline,
+    timelineSaveError,
 
-    // Inject the current playhead position before saving
-    const snapshot: TimelineDocument = {
-      ...timelineDoc.value,
-      metadata: {
-        ...(timelineDoc.value.metadata ?? {}),
-        gran: {
-          ...(timelineDoc.value.metadata?.gran ?? {}),
-          playheadUs: currentTime.value,
-        },
-      },
-    };
-    const revisionToSave = timelineRevision;
+    currentProjectName,
+    currentTimelinePath,
 
-    try {
-      const handle = await ensureTimelineFileHandle({ create: true });
-      if (!handle) return;
+    ensureTimelineFileHandle,
+    createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
 
-      const writable = await (handle as any).createWritable();
-      await writable.write(serializeTimelineToOtio(snapshot));
-      await writable.close();
-
-      if (savedTimelineRevision < revisionToSave) {
-        savedTimelineRevision = revisionToSave;
-      }
-    } catch (e: any) {
-      timelineSaveError.value = e?.message ?? 'Failed to save timeline file';
-      console.warn('Failed to save timeline file', e);
-    } finally {
-      isSavingTimeline.value = false;
-      isTimelineDirty.value = savedTimelineRevision < timelineRevision;
-    }
-  }
-
-  async function enqueueTimelineSave() {
-    await timelineSaveQueue.add(async () => {
-      await persistTimelineNow();
-    });
-  }
+    parseTimelineFromOtio,
+    serializeTimelineToOtio,
+    selectTimelineDurationUs,
+  });
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {
-    if (!timelineDoc.value) return;
-
-    if (options?.immediate) {
-      clearPersistTimelineTimeout();
-      await enqueueTimelineSave();
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      await enqueueTimelineSave();
-      return;
-    }
-
-    clearPersistTimelineTimeout();
-    persistTimelineTimeout = window.setTimeout(() => {
-      persistTimelineTimeout = null;
-      void enqueueTimelineSave();
-    }, 500);
+    await persistence.requestTimelineSave(options);
   }
 
   async function loadTimeline() {
-    if (!currentProjectName.value || !currentTimelinePath.value) return;
-
-    const requestId = ++loadTimelineRequestId;
-    clearPersistTimelineTimeout();
     clearSelection();
     selectTrack(null);
     isPlaying.value = false;
@@ -1528,47 +1393,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     historyStore.clear();
     clearPendingDebouncedHistory();
 
-    const fallback = projectStore.createFallbackTimelineDoc();
-
-    try {
-      const handle = await ensureTimelineFileHandle({ create: false });
-      if (!handle) {
-        if (requestId !== loadTimelineRequestId) return;
-        timelineDoc.value = fallback;
-        return;
-      }
-
-      const file = await handle.getFile();
-      const text = await file.text();
-      const parsed = parseTimelineFromOtio(text, {
-        id: fallback.id,
-        name: fallback.name,
-        fps: fallback.timebase.fps,
-      });
-      if (requestId !== loadTimelineRequestId) return;
-      timelineDoc.value = parsed;
-
-      if (
-        typeof parsed.metadata?.gran?.playheadUs === 'number' &&
-        Number.isFinite(parsed.metadata.gran.playheadUs)
-      ) {
-        currentTime.value = parsed.metadata.gran.playheadUs;
-      }
-    } catch (e: any) {
-      console.warn('Failed to load timeline file, fallback to default', e);
-      if (requestId !== loadTimelineRequestId) return;
-      timelineDoc.value = fallback;
-    } finally {
-      if (requestId !== loadTimelineRequestId) return;
-      duration.value = timelineDoc.value ? selectTimelineDurationUs(timelineDoc.value) : 0;
-      timelineRevision = 0;
-      markTimelineAsCleanForCurrentRevision();
-      timelineSaveError.value = null;
-    }
+    await persistence.loadTimeline();
   }
 
   async function saveTimeline() {
-    await requestTimelineSave({ immediate: true });
+    await persistence.saveTimeline();
   }
 
   function hydrateClipSourceDuration(
@@ -1876,7 +1705,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   async function loadTimelineMetadata() {
     if (!timelineDoc.value) return;
 
-    const requestId = loadTimelineRequestId;
+    const requestId = persistence.getLoadRequestId();
     const timelinePathSnapshot = currentTimelinePath.value;
 
     const items: { path: string }[] = [];
@@ -1888,7 +1717,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     }
 
-    if (requestId !== loadTimelineRequestId) return;
+    if (requestId !== persistence.getLoadRequestId()) return;
     if (timelinePathSnapshot !== currentTimelinePath.value) return;
 
     await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
@@ -1896,7 +1725,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   return {
     timelineDoc,
-    getMarkers,
+    getMarkers: markers.getMarkers,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
@@ -1936,9 +1765,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     setPlaybackGestureHandler,
     togglePlayback,
     stopPlayback,
-    addMarkerAtPlayhead,
-    updateMarker,
-    removeMarker,
+    addMarkerAtPlayhead: markers.addMarkerAtPlayhead,
+    updateMarker: markers.updateMarker,
+    removeMarker: markers.removeMarker,
     addTrack,
     addAdjustmentClipAtPlayhead,
     addVirtualClipAtPlayhead,
