@@ -449,6 +449,27 @@ export function sanitizeBaseName(name: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
+export function resolveNextAvailableFilename(
+  existingNames: ReadonlySet<string>,
+  base: string,
+  ext: string,
+): string {
+  const normalizedBase = sanitizeBaseName(base);
+  const normalizedExt = String(ext).replace(/^\.+/, '').toLowerCase();
+
+  const direct = `${normalizedBase}.${normalizedExt}`;
+  if (normalizedBase && normalizedExt && !existingNames.has(direct)) return direct;
+
+  let index = 1;
+  while (index < 1000) {
+    const candidate = `${normalizedBase}_${String(index).padStart(3, '0')}.${normalizedExt}`;
+    if (!existingNames.has(candidate)) return candidate;
+    index++;
+  }
+
+  throw new Error('Failed to generate a unique filename');
+}
+
 export function resolveExportCodecs(
   format: 'mp4' | 'webm' | 'mkv',
   selectedVideoCodec: string,
@@ -636,13 +657,8 @@ export function useTimelineExport() {
 
   async function getNextAvailableFilename(base: string, ext: string) {
     const names = await loadExportFilenames();
-    let index = 1;
-    while (index < 1000) {
-      const candidate = `${base}_${String(index).padStart(3, '0')}.${ext}`;
-      if (!names.has(candidate)) return candidate;
-      index++;
-    }
-    throw new Error('Failed to generate a unique filename');
+
+    return resolveNextAvailableFilename(names, base, ext);
   }
 
   async function validateFilename() {

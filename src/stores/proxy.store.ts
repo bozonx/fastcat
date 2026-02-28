@@ -15,6 +15,8 @@ export const useProxyStore = defineStore('proxy', () => {
   const existingProxies = ref<Set<string>>(new Set());
   const proxyProgress = ref<Record<string, number>>({});
   const proxyAbortControllers = ref<Record<string, AbortController>>({});
+  // Tracks paths currently executing in worker (not just queued)
+  const activeWorkerPaths = ref<Set<string>>(new Set());
 
   const proxyQueue = ref(
     markRaw(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency })),
@@ -113,6 +115,9 @@ export const useProxyStore = defineStore('proxy', () => {
             throw abortErr;
           }
 
+          // Mark as actively executing in worker
+          activeWorkerPaths.value.add(projectRelativePath);
+
           const proxyFilename = getProxyFileName(projectRelativePath);
           const targetHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
@@ -190,6 +195,7 @@ export const useProxyStore = defineStore('proxy', () => {
 
           existingProxies.value.add(projectRelativePath);
         } finally {
+          activeWorkerPaths.value.delete(projectRelativePath);
           generatingProxies.value.delete(projectRelativePath);
           delete proxyProgress.value[projectRelativePath];
 
@@ -218,11 +224,14 @@ export const useProxyStore = defineStore('proxy', () => {
       controller.abort();
     }
 
-    try {
-      const { client } = getExportWorkerClient();
-      await client.cancelExport();
-    } catch {
-      // ignore
+    // If this path is actively running in worker, cancel via worker API
+    if (activeWorkerPaths.value.has(projectRelativePath)) {
+      try {
+        const { client } = getExportWorkerClient();
+        await client.cancelExport();
+      } catch {
+        // ignore
+      }
     }
   }
 

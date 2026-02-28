@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getExt,
   sanitizeBaseName,
+  resolveNextAvailableFilename,
   resolveExportCodecs,
   toWorkerTimelineClips,
 } from '../../../../src/composables/timeline/useTimelineExport';
@@ -37,6 +38,16 @@ describe('useTimelineExport pure functions', () => {
     expect(sanitizeBaseName('special!@#$%^&*()chars')).toBe('special_chars');
     expect(sanitizeBaseName('___leading_and_trailing___')).toBe('leading_and_trailing');
     expect(sanitizeBaseName('multiple___underscores')).toBe('multiple_underscores');
+  });
+
+  it('resolveNextAvailableFilename should prefer base.ext and fallback to _001', () => {
+    expect(resolveNextAvailableFilename(new Set(), 'video', 'mp4')).toBe('video.mp4');
+    expect(resolveNextAvailableFilename(new Set(['video.mp4']), 'video', 'mp4')).toBe(
+      'video_001.mp4',
+    );
+    expect(
+      resolveNextAvailableFilename(new Set(['video.mp4', 'video_001.mp4']), 'video', '.mp4'),
+    ).toBe('video_002.mp4');
   });
 
   it('resolveExportCodecs should force codecs for webm and mkv', () => {

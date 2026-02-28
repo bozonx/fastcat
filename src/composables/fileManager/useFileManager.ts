@@ -246,9 +246,9 @@ export function useFileManager() {
       if (!n.path) continue;
       const p = prevByPath.get(n.path);
 
-      const isPersistedExpanded = uiStore.isFileTreePathExpanded(n.path);
       if (p) {
-        n.expanded = p.expanded || isPersistedExpanded;
+        // Preserve current in-memory expanded state (user's latest action)
+        n.expanded = p.expanded;
         if (n.kind === 'directory') {
           n.children = p.children;
         }
@@ -256,6 +256,8 @@ export function useFileManager() {
           n.lastModified = p.lastModified;
         }
       } else {
+        // Only for NEW entries not in prev, apply persisted state
+        const isPersistedExpanded = uiStore.isFileTreePathExpanded(n.path);
         n.expanded = n.kind === 'directory' ? isPersistedExpanded : false;
       }
     }
