@@ -1258,6 +1258,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     generateProxy: (handle, path) => proxyStore.generateProxy(handle, path),
     defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
     defaultImageSourceDurationUs: DEFAULT_IMAGE_SOURCE_DURATION_US,
+    parseTimelineFromOtio,
+    selectTimelineDurationUs,
   });
 
   async function moveItemToTrack(input: {
@@ -1553,45 +1555,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (currentTimelinePath.value && input.path === currentTimelinePath.value) {
       throw new Error('Cannot insert the currently opened timeline into itself');
     }
-
-    const handle = await projectStore.getFileHandleByPath(input.path);
-    if (!handle) throw new Error('Failed to access file handle');
-
-    const resolvedTrackKind = timelineDoc.value?.tracks.find((t) => t.id === input.trackId)?.kind;
-    const trackKind =
-      resolvedTrackKind === 'audio' || resolvedTrackKind === 'video' ? resolvedTrackKind : null;
-    if (!trackKind) throw new Error('Track not found');
-
-    let durationUs = 2_000_000;
-    try {
-      const file = await handle.getFile();
-      const text = await file.text();
-      const nested = parseTimelineFromOtio(text, { id: 'nested', name: input.name, fps: 25 });
-      const nestedDurationUs = selectTimelineDurationUs(nested);
-      if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {
-        durationUs = Math.max(1, Math.round(nestedDurationUs));
-      }
-    } catch {
-      // keep fallback duration
-    }
-
-    if (!timelineDoc.value) {
-      timelineDoc.value = projectStore.createFallbackTimelineDoc();
-    }
-
-    const targetTrack = timelineDoc.value.tracks.find((t) => t.id === input.trackId);
-    if (!targetTrack) throw new Error('Track not found');
-
-    applyTimeline({
-      type: 'add_clip_to_track',
-      trackId: targetTrack.id,
-      name: input.name,
-      path: input.path,
-      clipType: 'timeline',
-      durationUs,
-      sourceDurationUs: durationUs,
-      startUs: input.startUs,
-    });
+    await commandService.addTimelineClipFromPath(input);
   }
 
   async function loadTimelineMetadata() {

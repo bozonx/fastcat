@@ -33,6 +33,8 @@ export interface TimelineCommandServiceDeps {
   generateProxy: (handle: FileSystemFileHandle, path: string) => Promise<void>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
+  parseTimelineFromOtio: typeof import('~/timeline/otioSerializer').parseTimelineFromOtio;
+  selectTimelineDurationUs: typeof import('~/timeline/selectors').selectTimelineDurationUs;
 }
 
 export interface AddClipToTimelineFromPathInput {
@@ -52,6 +54,13 @@ export interface MoveItemToTrackInput {
 export interface ExtractAudioToTrackInput {
   videoTrackId: string;
   videoItemId: string;
+}
+
+export interface AddTimelineClipFromPathInput {
+  trackId: string;
+  name: string;
+  path: string;
+  startUs?: number;
 }
 
 export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
@@ -196,9 +205,47 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     });
   }
 
+  async function addTimelineClipFromPath(input: AddTimelineClipFromPathInput) {
+    const handle = await deps.getFileHandleByPath(input.path);
+    if (!handle) throw new Error('Failed to access file handle');
+
+    const track = deps.getTrackById(input.trackId);
+    if (!track) throw new Error('Track not found');
+
+    let durationUs = 2_000_000;
+    try {
+      const file = await handle.getFile();
+      const text = await file.text();
+      const nested = deps.parseTimelineFromOtio(text, { id: 'nested', name: input.name, fps: 25 });
+      const nestedDurationUs = deps.selectTimelineDurationUs(nested);
+      if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {
+        durationUs = Math.max(1, Math.round(nestedDurationUs));
+      }
+    } catch {
+      // keep fallback duration
+    }
+
+    deps.ensureTimelineDoc();
+
+    const targetTrack = deps.getTrackById(input.trackId);
+    if (!targetTrack) throw new Error('Track not found');
+
+    deps.applyTimeline({
+      type: 'add_clip_to_track',
+      trackId: targetTrack.id,
+      name: input.name,
+      path: input.path,
+      clipType: 'timeline',
+      durationUs,
+      sourceDurationUs: durationUs,
+      startUs: input.startUs,
+    });
+  }
+
   return {
     addClipToTimelineFromPath,
     moveItemToTrack,
     extractAudioToTrack,
+    addTimelineClipFromPath,
   };
 }
