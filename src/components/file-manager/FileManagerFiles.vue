@@ -181,16 +181,15 @@ async function onRootDrop(e: DragEvent) {
   e.stopPropagation();
   isRootDropOver.value = false;
 
-  // Snapshot files synchronously - dataTransfer.files becomes empty after any await
+  // Snapshot data synchronously - dataTransfer becomes empty after any await
   const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+  const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
 
   const rootHandle = await props.getProjectRootDirHandle();
   if (!rootHandle) return;
 
-  if (e.dataTransfer?.types.includes('Files')) {
-    if (droppedFiles.length > 0) {
-      await props.handleFiles(droppedFiles, rootHandle, '');
-    }
+  if (hasFiles && droppedFiles.length > 0) {
+    await props.handleFiles(droppedFiles, rootHandle, '');
     return;
   }
 
@@ -249,22 +248,6 @@ async function onEntrySelect(entry: FsEntry) {
           selectionStore.clearSelection();
         "
       >
-        <!-- Dropzone Top Banner (visible when dragging anywhere in the app) -->
-        <div
-          v-if="uiStore.isGlobalDragging"
-          class="flex flex-col items-center justify-center p-3 bg-primary-500/10 border-2 border-dashed border-primary-500/50 m-2 rounded-lg transition-colors pointer-events-none"
-          :class="{ 'bg-primary-500/20 border-primary-500': isDragging }"
-        >
-          <UIcon
-            name="i-heroicons-arrow-down-tray"
-            class="w-6 h-6 text-primary-500 mb-1"
-            :class="{ 'animate-bounce': isDragging }"
-          />
-          <p class="text-xs font-medium text-primary-400 text-center">
-            {{ t('videoEditor.fileManager.actions.dropFilesToFolder', 'Drop to specific folder below or release here') }}
-          </p>
-        </div>
-
         <div v-if="isLoading && rootEntries.length === 0" class="px-3 py-4 text-sm text-ui-text-muted">
           {{ t('common.loading', 'Loading...') }}
         </div>
