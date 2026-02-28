@@ -181,13 +181,15 @@ async function onRootDrop(e: DragEvent) {
   e.stopPropagation();
   isRootDropOver.value = false;
 
+  // Snapshot files synchronously - dataTransfer.files becomes empty after any await
+  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+
   const rootHandle = await props.getProjectRootDirHandle();
   if (!rootHandle) return;
 
   if (e.dataTransfer?.types.includes('Files')) {
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      await props.handleFiles(files, rootHandle, '');
+    if (droppedFiles.length > 0) {
+      await props.handleFiles(droppedFiles, rootHandle, '');
     }
     return;
   }
@@ -241,7 +243,7 @@ async function onEntrySelect(entry: FsEntry) {
   >
     <UContextMenu :items="rootContextMenuItems">
       <div
-        class="min-w-full w-max min-h-full flex flex-col pb-12"
+        class="min-w-full w-max min-h-full flex flex-col"
         @pointerdown="
           uiStore.selectedFsEntry = null;
           selectionStore.clearSelection();
@@ -303,7 +305,7 @@ async function onEntrySelect(entry: FsEntry) {
         </div>
 
         <div
-          class="h-12 shrink-0 w-full min-w-full flex items-center justify-center"
+          class="flex-1 w-full min-w-full flex items-center justify-center min-h-12"
           :class="{
             'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver,
           }"
