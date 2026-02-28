@@ -6,6 +6,8 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import yaml from 'js-yaml';
 import RenameModal from '~/components/common/RenameModal.vue';
@@ -21,11 +23,13 @@ defineOptions({
 
 const { t } = useI18n();
 const uiStore = useUiStore();
+const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
 function clearAllSelection() {
   selectionStore.clearSelection();
@@ -521,6 +525,18 @@ const selectedFsEntry = computed(() => {
   }
   return null;
 });
+
+const timelinesUsingSelectedFile = computed(() => {
+  const entry = selectedFsEntry.value;
+  if (!entry || entry.kind !== 'file' || !entry.path) return [];
+  return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
+});
+
+async function openTimelineFromUsage(path: string) {
+  await projectStore.openTimelineFile(path);
+  await timelineStore.loadTimeline();
+  void timelineStore.loadTimelineMetadata();
+}
 
 const hasProxy = computed(() => {
   if (displayMode.value !== 'file' || !selectedFsEntry.value || !selectedFsEntry.value.path)
@@ -1654,6 +1670,32 @@ function onPanelFocusOut() {
                   class="bg-ui-bg p-2 rounded text-[10px] font-mono overflow-auto max-h-40 whitespace-pre text-ui-text-muted"
                   >{{ metadataYaml }}</pre
                 >
+              </div>
+            </div>
+
+            <div
+              v-if="selectedFsEntry?.kind === 'file' && timelinesUsingSelectedFile.length > 0"
+              class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border text-xs w-full"
+            >
+              <div class="flex flex-col gap-0.5">
+                <span class="text-xs text-ui-text-muted">{{ t('common.usedIn', 'Used in') }}</span>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <button
+                  v-for="tl in timelinesUsingSelectedFile"
+                  :key="tl.timelinePath"
+                  type="button"
+                  class="text-left px-2 py-1 rounded hover:bg-ui-bg-hover transition-colors"
+                  @click="openTimelineFromUsage(tl.timelinePath)"
+                >
+                  <div class="text-xs font-medium text-ui-text break-all">
+                    {{ tl.timelineName }}
+                  </div>
+                  <div class="text-[10px] text-ui-text-muted break-all">
+                    {{ tl.timelinePath }}
+                  </div>
+                </button>
               </div>
             </div>
           </div>

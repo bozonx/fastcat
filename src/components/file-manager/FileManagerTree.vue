@@ -18,6 +18,7 @@ interface Props {
     hasProxy: boolean;
     generatingProxy: boolean;
     proxyProgress?: number;
+    isUsedInTimeline?: boolean;
   };
 }
 
@@ -355,14 +356,23 @@ function getContextMenuItems(entry: FsEntry) {
           <span v-else class="w-3.5 shrink-0" />
 
           <!-- File / folder icon -->
-          <UIcon
-            :name="getFileIcon(entry)"
-            class="w-4 h-4 shrink-0 transition-colors"
-            :class="[
-              getEntryIconClass(entry),
-              props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
-            ]"
-          />
+          <div class="w-4 shrink-0 flex items-center justify-center">
+            <div
+              class="h-4 flex items-center justify-center"
+              :class="[
+                props.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
+              ]"
+            >
+              <UIcon
+                :name="getFileIcon(entry)"
+                class="w-4 h-4 shrink-0 transition-colors"
+                :class="[
+                  getEntryIconClass(entry),
+                  props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+                ]"
+              />
+            </div>
+          </div>
 
           <!-- Name -->
           <span

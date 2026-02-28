@@ -15,6 +15,7 @@ import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 const { t } = useI18n();
@@ -22,6 +23,7 @@ const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
 const fileManager = useFileManager();
 const {
@@ -66,6 +68,12 @@ const directoryUploadInput = ref<HTMLInputElement | null>(null);
 
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
+
+const timelinesUsingDeleteTarget = computed(() => {
+  const entry = deleteTarget.value;
+  if (!entry || entry.kind !== 'file' || !entry.path) return [];
+  return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
+});
 
 const toast = useToast();
 
@@ -176,6 +184,8 @@ async function onCreateTimeline() {
   const createdPath = await createTimeline();
   if (!createdPath) return;
 
+  void timelineMediaUsageStore.refreshUsage();
+
   await projectStore.openTimelineFile(createdPath);
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
@@ -239,6 +249,8 @@ async function handleDeleteConfirm() {
   if (!deleteTarget.value) return;
   const deletePath = deleteTarget.value.path;
   await deleteEntry(deleteTarget.value);
+
+  void timelineMediaUsageStore.refreshUsage();
 
   if (deletePath && uiStore.selectedFsEntry?.path === deletePath) {
     uiStore.selectedFsEntry = null;
@@ -304,6 +316,7 @@ async function handleRename(newName: string) {
   }
 
   await renameEntry(renameTarget.value, trimmed);
+  void timelineMediaUsageStore.refreshUsage();
   renameTarget.value = null;
 }
 
@@ -601,6 +614,25 @@ async function onDirectoryFileSelect(e: Event) {
           {{ deleteTarget.kind === 'directory' ? t('common.folder', 'Folder') : t('common.file', 'File') }}
           ·
           {{ deleteTarget.path }}
+        </div>
+
+        <div
+          v-if="deleteTarget?.kind === 'file' && timelinesUsingDeleteTarget.length > 0"
+          class="mt-3 p-2 rounded border border-red-500/40 bg-red-500/10"
+        >
+          <div class="text-xs font-semibold text-red-400">
+            {{ t('videoEditor.fileManager.delete.usedWarning', 'This file is used in timelines:') }}
+          </div>
+          <div class="mt-1 flex flex-col gap-1">
+            <div
+              v-for="tl in timelinesUsingDeleteTarget"
+              :key="tl.timelinePath"
+              class="text-xs text-ui-text break-all"
+            >
+              {{ tl.timelineName }}
+              <span class="text-[10px] text-ui-text-muted">({{ tl.timelinePath }})</span>
+            </div>
+          </div>
         </div>
       </div>
     </UiConfirmModal>

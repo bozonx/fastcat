@@ -1,4 +1,5 @@
-:root, .dark {
+:root,
+.dark {
   /* === Surface colors === */
   --ui-bg: #0a0a0a;
   --ui-bg-elevated: #1a1a1a;
@@ -14,17 +15,17 @@
   --ui-text-disabled: #4a4a4a;
 
   /* === Primary (blue/indigo) === */
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
-  --color-primary-950: #1e1b4b;
+  --theme-primary-50: #eef2ff;
+  --theme-primary-100: #e0e7ff;
+  --theme-primary-200: #c7d2fe;
+  --theme-primary-300: #a5b4fc;
+  --theme-primary-400: #818cf8;
+  --theme-primary-500: #6366f1;
+  --theme-primary-600: #4f46e5;
+  --theme-primary-700: #4338ca;
+  --theme-primary-800: #3730a3;
+  --theme-primary-900: #312e81;
+  --theme-primary-950: #1e1b4b;
   --on-primary: #ffffff;
 
   /* === Clip colors === */

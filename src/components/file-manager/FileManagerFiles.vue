@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
@@ -17,6 +18,7 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
 const lastDragEvent = ref<DragEvent | null>(null);
@@ -135,10 +137,21 @@ const props = defineProps<{
 
 const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
 
+const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
+
+watch(
+  () => projectStore.currentProjectName,
+  () => {
+    void timelineMediaUsageStore.refreshUsage();
+  },
+  { immediate: true },
+);
+
 function getEntryMeta(entry: FsEntry): {
   hasProxy: boolean;
   generatingProxy: boolean;
   proxyProgress?: number;
+  isUsedInTimeline?: boolean;
 } {
   if (entry.kind !== 'file' || !entry.path) {
     return { hasProxy: false, generatingProxy: false };
@@ -147,7 +160,8 @@ function getEntryMeta(entry: FsEntry): {
   const hasProxy = proxyStore.existingProxies.has(entry.path);
   const generatingProxy = proxyStore.generatingProxies.has(entry.path);
   const proxyProgress = proxyStore.proxyProgress[entry.path];
-  return { hasProxy, generatingProxy, proxyProgress };
+  const isUsedInTimeline = Boolean(mediaUsageMap.value[entry.path]?.length);
+  return { hasProxy, generatingProxy, proxyProgress, isUsedInTimeline };
 }
 
 async function onRequestMove(params: {
@@ -162,6 +176,8 @@ async function onRequestMove(params: {
     targetDirHandle: params.targetDirHandle,
     targetDirPath: params.targetDirPath,
   });
+
+  void timelineMediaUsageStore.refreshUsage();
 }
 
 async function onRequestUpload(params: {
