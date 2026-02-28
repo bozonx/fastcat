@@ -113,7 +113,10 @@ function resetToDefaults() {
 
   // Reset export encoding settings to workspace defaults
   const eDefaults = workspaceStore.userSettings.exportDefaults.encoding;
-  projectStore.projectSettings.exportDefaults.encoding = { ...eDefaults };
+  projectStore.projectSettings.exportDefaults.encoding = {
+    ...eDefaults,
+    metadata: { title: '', author: '', tags: '' }
+  };
 }
 </script>
 
@@ -175,6 +178,8 @@ function resetToDefaults() {
           v-model:orientation="projectStore.projectSettings.project.orientation"
           v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
           v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
+          v-model:audio-channels="projectStore.projectSettings.project.audioChannels"
+          v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
         />
       </div>
 
@@ -191,6 +196,14 @@ function resetToDefaults() {
           v-model:exclude-audio="projectStore.projectSettings.exportDefaults.encoding.excludeAudio"
           v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
           v-model:audio-bitrate-kbps="projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps"
+          v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
+          v-model:keyframe-interval-sec="projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec"
+          v-model:multipass-encoding="projectStore.projectSettings.exportDefaults.encoding.multipassEncoding"
+          v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
+          v-model:metadata-title="projectStore.projectSettings.exportDefaults.encoding.metadata.title"
+          v-model:metadata-author="projectStore.projectSettings.exportDefaults.encoding.metadata.author"
+          v-model:metadata-tags="projectStore.projectSettings.exportDefaults.encoding.metadata.tags"
+          :show-metadata="true"
           :disabled="false"
           :has-audio="true"
           :is-loading-codec-support="isLoadingCodecSupport"

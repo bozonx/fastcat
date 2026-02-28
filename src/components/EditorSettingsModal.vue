@@ -854,6 +854,8 @@ const thumbnailsLimitGb = computed({
             v-model:is-custom-resolution="
               workspaceStore.userSettings.projectDefaults.isCustomResolution
             "
+            v-model:audio-channels="workspaceStore.userSettings.projectDefaults.audioChannels"
+            v-model:sample-rate="workspaceStore.userSettings.projectDefaults.sampleRate"
             :disabled="false"
           />
 
@@ -876,7 +878,12 @@ const thumbnailsLimitGb = computed({
             v-model:audio-bitrate-kbps="
               workspaceStore.userSettings.exportDefaults.encoding.audioBitrateKbps
             "
+            v-model:bitrate-mode="workspaceStore.userSettings.exportDefaults.encoding.bitrateMode"
+            v-model:keyframe-interval-sec="workspaceStore.userSettings.exportDefaults.encoding.keyframeIntervalSec"
+            v-model:multipass-encoding="workspaceStore.userSettings.exportDefaults.encoding.multipassEncoding"
+            v-model:export-alpha="workspaceStore.userSettings.exportDefaults.encoding.exportAlpha"
             :disabled="false"
+            :show-metadata="false"
             :has-audio="true"
             :is-loading-codec-support="isLoadingCodecSupport"
             :format-options="formatOptions"

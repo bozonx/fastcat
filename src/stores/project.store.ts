@@ -30,6 +30,8 @@ export interface GranVideoEditorProjectSettings {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+    audioChannels: 'stereo' | 'mono';
+    sampleRate: number;
   };
   exportDefaults: {
     encoding: {
@@ -39,6 +41,15 @@ export interface GranVideoEditorProjectSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
+      bitrateMode: 'cbr' | 'vbr';
+      keyframeIntervalSec: number;
+      multipassEncoding: boolean;
+      exportAlpha: boolean;
+      metadata: {
+        title: string;
+        author: string;
+        tags: string;
+      };
     };
   };
   monitor: {
@@ -62,9 +73,10 @@ const DEFAULT_PROJECT_SETTINGS = {
     height: 1080,
     fps: 25,
     resolutionFormat: '1080p',
-    orientation: 'landscape' as const,
     aspectRatio: '16:9',
     isCustomResolution: false,
+    audioChannels: 'stereo' as const,
+    sampleRate: 48000,
   },
   exportDefaults: {
     encoding: {
@@ -74,6 +86,15 @@ const DEFAULT_PROJECT_SETTINGS = {
       excludeAudio: false,
       audioCodec: 'aac' as const,
       audioBitrateKbps: 128,
+      bitrateMode: 'vbr' as const,
+      keyframeIntervalSec: 2,
+      multipassEncoding: false,
+      exportAlpha: false,
+      metadata: {
+        title: '',
+        author: '',
+        tags: '',
+      },
     },
   },
   monitor: {
@@ -100,6 +121,8 @@ function getProjectSettingsFromUserDefaults(userSettings: {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+    audioChannels: 'stereo' | 'mono';
+    sampleRate: number;
   };
   exportDefaults: {
     encoding: {
@@ -109,6 +132,10 @@ function getProjectSettingsFromUserDefaults(userSettings: {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
+      bitrateMode: 'cbr' | 'vbr';
+      keyframeIntervalSec: number;
+      multipassEncoding: boolean;
+      exportAlpha: boolean;
     };
   };
 }): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
@@ -121,6 +148,8 @@ function getProjectSettingsFromUserDefaults(userSettings: {
       orientation: userSettings.projectDefaults.orientation,
       aspectRatio: userSettings.projectDefaults.aspectRatio,
       isCustomResolution: userSettings.projectDefaults.isCustomResolution,
+      audioChannels: userSettings.projectDefaults.audioChannels,
+      sampleRate: userSettings.projectDefaults.sampleRate,
     },
     exportDefaults: {
       encoding: {
@@ -130,6 +159,15 @@ function getProjectSettingsFromUserDefaults(userSettings: {
         excludeAudio: userSettings.exportDefaults.encoding.excludeAudio,
         audioCodec: userSettings.exportDefaults.encoding.audioCodec,
         audioBitrateKbps: userSettings.exportDefaults.encoding.audioBitrateKbps,
+        bitrateMode: userSettings.exportDefaults.encoding.bitrateMode,
+        keyframeIntervalSec: userSettings.exportDefaults.encoding.keyframeIntervalSec,
+        multipassEncoding: userSettings.exportDefaults.encoding.multipassEncoding,
+        exportAlpha: userSettings.exportDefaults.encoding.exportAlpha,
+        metadata: {
+          title: '',
+          author: '',
+          tags: '',
+        },
       },
     },
   };
@@ -169,6 +207,8 @@ function createDefaultProjectSettings(userSettings: {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+    audioChannels: 'stereo' | 'mono';
+    sampleRate: number;
   };
   exportDefaults: {
     encoding: {
@@ -178,6 +218,10 @@ function createDefaultProjectSettings(userSettings: {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
+      bitrateMode: 'cbr' | 'vbr';
+      keyframeIntervalSec: number;
+      multipassEncoding: boolean;
+      exportAlpha: boolean;
     };
   };
 }): GranVideoEditorProjectSettings {
@@ -211,6 +255,8 @@ function normalizeProjectSettings(
       orientation: 'landscape' | 'portrait';
       aspectRatio: string;
       isCustomResolution: boolean;
+      audioChannels: 'stereo' | 'mono';
+      sampleRate: number;
     };
     exportDefaults: {
       encoding: {
@@ -220,6 +266,10 @@ function normalizeProjectSettings(
         excludeAudio: boolean;
         audioCodec: 'aac' | 'opus';
         audioBitrateKbps: number;
+        bitrateMode: 'cbr' | 'vbr';
+        keyframeIntervalSec: number;
+        multipassEncoding: boolean;
+        exportAlpha: boolean;
       };
     };
   },
@@ -248,6 +298,10 @@ function normalizeProjectSettings(
   const bitrateMbps = Number(encodingInput.bitrateMbps);
   const audioBitrateKbps = Number(encodingInput.audioBitrateKbps);
   const format = encodingInput.format;
+
+  const audioChannels = projectInput.audioChannels === 'mono' ? 'mono' : 'stereo';
+  const sampleRateRaw = Number(projectInput.sampleRate);
+  const sampleRate = Number.isFinite(sampleRateRaw) && sampleRateRaw > 0 ? sampleRateRaw : defaultSettings.project.sampleRate;
 
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
@@ -301,11 +355,13 @@ function normalizeProjectSettings(
           ? projectInput.aspectRatio
           : preset.aspectRatio,
       isCustomResolution:
-        projectInput.isCustomResolution !== undefined && !isWidthHeightCustom
-          ? Boolean(projectInput.isCustomResolution)
-          : preset.isCustomResolution,
-    },
-    exportDefaults: {
+          projectInput.isCustomResolution !== undefined && !isWidthHeightCustom
+            ? Boolean(projectInput.isCustomResolution)
+            : preset.isCustomResolution,
+        audioChannels,
+        sampleRate,
+      },
+      exportDefaults: {
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:
@@ -322,6 +378,17 @@ function normalizeProjectSettings(
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
+        bitrateMode: encodingInput.bitrateMode === 'cbr' ? 'cbr' : 'vbr',
+        keyframeIntervalSec: Number.isFinite(Number(encodingInput.keyframeIntervalSec))
+          ? Number(encodingInput.keyframeIntervalSec)
+          : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
+        multipassEncoding: Boolean(encodingInput.multipassEncoding),
+        exportAlpha: Boolean(encodingInput.exportAlpha),
+        metadata: {
+          title: typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',
+          author: typeof encodingInput.metadata?.author === 'string' ? encodingInput.metadata.author : '',
+          tags: typeof encodingInput.metadata?.tags === 'string' ? encodingInput.metadata.tags : '',
+        },
       },
     },
     monitor: {

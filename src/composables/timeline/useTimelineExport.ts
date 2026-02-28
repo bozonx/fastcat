@@ -23,6 +23,15 @@ export interface ExportOptions {
   format: 'mp4' | 'webm' | 'mkv';
   videoCodec: string;
   bitrate: number;
+  bitrateMode?: 'cbr' | 'vbr';
+  keyframeIntervalSec?: number;
+  multipassEncoding?: boolean;
+  exportAlpha?: boolean;
+  metadata?: {
+    title: string;
+    author: string;
+    tags: string;
+  };
   audioBitrate: number;
   audio: boolean;
   audioCodec?: string;
@@ -483,6 +492,14 @@ export function useTimelineExport() {
   const aspectRatio = ref<string>('16:9');
   const isCustomResolution = ref<boolean>(false);
 
+  const bitrateMode = ref<'cbr' | 'vbr'>('vbr');
+  const keyframeIntervalSec = ref<number>(2);
+  const multipassEncoding = ref<boolean>(false);
+  const exportAlpha = ref<boolean>(false);
+  const metadataTitle = ref<string>('');
+  const metadataAuthor = ref<string>('');
+  const metadataTags = ref<string>('');
+
   const videoCodecSupport = ref<Record<string, boolean>>({});
   const isLoadingCodecSupport = ref(false);
 
@@ -786,6 +803,13 @@ export function useTimelineExport() {
     orientation,
     aspectRatio,
     isCustomResolution,
+    bitrateMode,
+    keyframeIntervalSec,
+    multipassEncoding,
+    exportAlpha,
+    metadataTitle,
+    metadataAuthor,
+    metadataTags,
     videoCodecSupport,
     isLoadingCodecSupport,
     ext,

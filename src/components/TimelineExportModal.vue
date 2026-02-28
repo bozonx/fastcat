@@ -13,8 +13,6 @@ import {
   resolveExportCodecs,
   getExt,
 } from '~/composables/timeline/useTimelineExport';
-import { useI18n } from 'vue-i18n';
-import { useToast } from '#imports';
 
 interface Props {
   open: boolean;
@@ -53,6 +51,13 @@ const {
   orientation,
   aspectRatio,
   isCustomResolution,
+  bitrateMode,
+  keyframeIntervalSec,
+  multipassEncoding,
+  exportAlpha,
+  metadataTitle,
+  metadataAuthor,
+  metadataTags,
   videoCodecSupport,
   isLoadingCodecSupport,
   bitrateBps,
@@ -114,6 +119,13 @@ watch(
     excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
     audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
+    bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
+    keyframeIntervalSec.value = projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
+    multipassEncoding.value = projectStore.projectSettings.exportDefaults.encoding.multipassEncoding;
+    exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+    metadataTitle.value = projectStore.projectSettings.exportDefaults.encoding.metadata.title;
+    metadataAuthor.value = projectStore.projectSettings.exportDefaults.encoding.metadata.author;
+    metadataTags.value = projectStore.projectSettings.exportDefaults.encoding.metadata.tags;
     exportWidth.value = projectStore.projectSettings.project.width;
     exportHeight.value = projectStore.projectSettings.project.height;
     exportFps.value = projectStore.projectSettings.project.fps;
@@ -218,6 +230,13 @@ async function handleConfirm() {
       projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
       projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
       projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
+      projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
+      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec = keyframeIntervalSec.value;
+      projectStore.projectSettings.exportDefaults.encoding.multipassEncoding = multipassEncoding.value;
+      projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
+      projectStore.projectSettings.exportDefaults.encoding.metadata.title = metadataTitle.value;
+      projectStore.projectSettings.exportDefaults.encoding.metadata.author = metadataAuthor.value;
+      projectStore.projectSettings.exportDefaults.encoding.metadata.tags = metadataTags.value;
       await projectStore.saveProjectSettings();
     }
 
@@ -233,6 +252,15 @@ async function handleConfirm() {
         width: normalizedExportWidth.value,
         height: normalizedExportHeight.value,
         fps: normalizedExportFps.value,
+        bitrateMode: bitrateMode.value,
+        keyframeIntervalSec: keyframeIntervalSec.value,
+        multipassEncoding: multipassEncoding.value,
+        exportAlpha: exportAlpha.value,
+        metadata: {
+          title: metadataTitle.value,
+          author: metadataAuthor.value,
+          tags: metadataTags.value,
+        }
       },
       fileHandle,
       (progress) => {
@@ -327,6 +355,14 @@ async function handleConfirm() {
         v-model:exclude-audio="excludeAudio"
         v-model:audio-codec="audioCodec"
         v-model:audio-bitrate-kbps="audioBitrateKbps"
+        v-model:bitrate-mode="bitrateMode"
+        v-model:keyframe-interval-sec="keyframeIntervalSec"
+        v-model:multipass-encoding="multipassEncoding"
+        v-model:export-alpha="exportAlpha"
+        v-model:metadata-title="metadataTitle"
+        v-model:metadata-author="metadataAuthor"
+        v-model:metadata-tags="metadataTags"
+        :show-metadata="true"
         :disabled="isExporting"
         :has-audio="true"
         :is-loading-codec-support="isLoadingCodecSupport"

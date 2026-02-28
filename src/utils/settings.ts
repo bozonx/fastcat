@@ -25,6 +25,8 @@ export interface GranVideoEditorUserSettings {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+    audioChannels: 'stereo' | 'mono';
+    sampleRate: number;
   };
   exportDefaults: {
     encoding: {
@@ -34,6 +36,10 @@ export interface GranVideoEditorUserSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
+      bitrateMode: 'cbr' | 'vbr';
+      keyframeIntervalSec: number;
+      multipassEncoding: boolean;
+      exportAlpha: boolean;
     };
   };
   mouse: {
@@ -96,6 +102,8 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     orientation: 'landscape',
     aspectRatio: '16:9',
     isCustomResolution: false,
+    audioChannels: 'stereo',
+    sampleRate: 48000,
   },
   exportDefaults: {
     encoding: {
@@ -105,6 +113,10 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       excludeAudio: false,
       audioCodec: 'aac',
       audioBitrateKbps: 128,
+      bitrateMode: 'vbr',
+      keyframeIntervalSec: 2,
+      multipassEncoding: false,
+      exportAlpha: false,
     },
   },
   mouse: {
@@ -168,6 +180,8 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
     orientation: preset.orientation as 'landscape' | 'portrait',
     aspectRatio: preset.aspectRatio,
     isCustomResolution: preset.isCustomResolution,
+    audioChannels: DEFAULT_USER_SETTINGS.projectDefaults.audioChannels,
+    sampleRate: DEFAULT_USER_SETTINGS.projectDefaults.sampleRate,
   };
 }
 
@@ -280,6 +294,10 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
           ? Boolean(projectInput.isCustomResolution)
           : preset.isCustomResolution;
 
+  const audioChannels = projectInput?.audioChannels === 'mono' ? 'mono' : 'stereo';
+  const sampleRateRaw = Number(projectInput?.sampleRate);
+  const sampleRate = Number.isFinite(sampleRateRaw) && sampleRateRaw > 0 ? sampleRateRaw : DEFAULT_USER_SETTINGS.projectDefaults.sampleRate;
+
   const openLastProjectOnStartRaw = input.openLastProjectOnStart;
   const openBehavior = input.openBehavior;
   const openLastProjectOnStart =
@@ -378,7 +396,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
               ? autoCreateProxies
               : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
     },
-    projectDefaults: {
+      projectDefaults: {
       width: normalizedWidth,
       height: normalizedHeight,
       fps:
@@ -389,6 +407,8 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       orientation,
       aspectRatio,
       isCustomResolution,
+      audioChannels,
+      sampleRate,
     },
     exportDefaults: {
       encoding: {
@@ -408,6 +428,12 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
             Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
                 ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
                 : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
+        bitrateMode: exportEncodingInput?.bitrateMode === 'cbr' ? 'cbr' : 'vbr',
+        keyframeIntervalSec: Number.isFinite(Number(exportEncodingInput?.keyframeIntervalSec))
+          ? Number(exportEncodingInput.keyframeIntervalSec)
+          : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
+        multipassEncoding: Boolean(exportEncodingInput?.multipassEncoding),
+        exportAlpha: Boolean(exportEncodingInput?.exportAlpha),
       },
     },
     mouse: normalizedMouse,

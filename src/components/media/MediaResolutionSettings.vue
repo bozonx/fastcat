@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -11,6 +10,8 @@ const props = withDefaults(
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+    audioChannels?: 'stereo' | 'mono';
+    sampleRate?: number;
     disabled?: boolean;
   }>(),
   {
@@ -26,6 +27,8 @@ const emit = defineEmits<{
   'update:orientation': [value: 'landscape' | 'portrait'];
   'update:aspectRatio': [value: string];
   'update:isCustomResolution': [value: boolean];
+  'update:audioChannels': [value: 'stereo' | 'mono'];
+  'update:sampleRate': [value: number];
 }>();
 
 const { t } = useI18n();
@@ -35,6 +38,16 @@ const formatOptions = [
   { value: '1080p', label: t('videoEditor.resolution.preset.1080p', '1080p (FHD)') },
   { value: '2.7k', label: t('videoEditor.resolution.preset.2.7k', '2.7K (QHD)') },
   { value: '4k', label: t('videoEditor.resolution.preset.4k', '4K (UHD)') },
+];
+
+const audioChannelsOptions = [
+  { value: 'stereo', label: t('videoEditor.audio.stereo', 'Stereo') },
+  { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
+];
+
+const sampleRateOptions = [
+  { value: 44100, label: '44.1 kHz' },
+  { value: 48000, label: '48 kHz' },
 ];
 
 const orientationOptions = [
@@ -96,6 +109,16 @@ const localHeight = computed({
 const localFps = computed({
   get: () => props.fps,
   set: (val) => emit('update:fps', val),
+});
+
+const localAudioChannels = computed({
+  get: () => props.audioChannels ?? 'stereo',
+  set: (val) => emit('update:audioChannels', val),
+});
+
+const localSampleRate = computed({
+  get: () => props.sampleRate ?? 48000,
+  set: (val) => emit('update:sampleRate', val),
 });
 
 function calculateDimensions(format: string, orientation: string, ratioStr: string) {
@@ -273,6 +296,44 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         class="w-full"
         :disabled="disabled"
       />
+    </div>
+
+    <div class="h-px bg-ui-border my-2"></div>
+
+    <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
+      {{ t('videoEditor.audio.audioSettings', 'Audio settings') }}
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.audio.channels', 'Channels') }}
+        </label>
+        <USelect
+          v-model="localAudioChannels"
+          :items="audioChannelsOptions"
+          :disabled="disabled"
+          size="sm"
+          class="w-full"
+          value-key="value"
+          label-key="label"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
+        </label>
+        <USelect
+          v-model.number="localSampleRate"
+          :items="sampleRateOptions"
+          :disabled="disabled"
+          size="sm"
+          class="w-full"
+          value-key="value"
+          label-key="label"
+        />
+      </div>
     </div>
   </div>
 </template>
