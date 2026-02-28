@@ -2,16 +2,9 @@
 import yaml from 'js-yaml';
 import AppModal from '~/components/ui/AppModal.vue';
 
-const isOpen = defineModel<boolean>('open', { required: true });
+import type { FileInfo } from '~/types/fileManager';
 
-export interface FileInfo {
-  name: string;
-  kind: 'file' | 'directory';
-  size?: number;
-  lastModified?: number;
-  path?: string;
-  metadata?: any;
-}
+const isOpen = defineModel<boolean>('open', { required: true });
 
 const props = defineProps<{
   info: FileInfo | null;

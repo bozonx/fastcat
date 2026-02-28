@@ -1,13 +1,11 @@
 import { ref, computed, type Ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useToast } from '#imports';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FsEntry } from '~/types/fs';
-import type { FileInfo } from '~/components/common/FileInfoModal.vue';
+import type { FileInfo } from '~/types/fileManager';
 
 interface FileManagerActions {
   createFolder: (name: string, target?: FileSystemDirectoryHandle | null) => Promise<void>;

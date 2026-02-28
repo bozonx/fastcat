@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
 import type { 
   TimelineTrack, 
   TimelineTrackItem, 
@@ -9,12 +8,15 @@ import type {
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
+const mediaStore = useMediaStore();
+
 
 interface Props {
   track: TimelineTrack;
@@ -53,9 +55,13 @@ function isAudio(item: TimelineTrackItem): item is TimelineClipItem {
 }
 
 function clipHasAudio(item: TimelineTrackItem, track: TimelineTrack): boolean {
-  if (track.kind === 'audio') return true;
   if (item.kind !== 'clip') return false;
-  return Boolean((item as TimelineClipItem).audioGain !== undefined || (item as any).hasAudio);
+  const clip = item as TimelineClipItem;
+  if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
+  if (!clip.source?.path) return track.kind === 'audio';
+  const meta = mediaStore.mediaMetadata[clip.source.path];
+  return Boolean(meta?.audio) || track.kind === 'audio';
 }
 
 function getClipClass(item: TimelineTrackItem, track: TimelineTrack): string[] {
@@ -113,23 +119,60 @@ function getClipLowerTriColor(_item: TimelineTrackItem, _track: TimelineTrack): 
 
 function shouldCollapseTransitions(item: TimelineTrackItem): boolean {
   if (item.kind !== 'clip') return false;
-  return clipWidthPx.value < 60;
+  const clip = item as TimelineClipItem;
+  const inUs = clip.transitionIn?.durationUs ?? 0;
+  const outUs = clip.transitionOut?.durationUs ?? 0;
+  if (inUs === 0 && outUs === 0) return false;
+
+  const clipDurationUs = clip.timelineRange.durationUs;
+  const hitEachOther = inUs + outUs > clipDurationUs + 1000;
+
+  const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
+  const clipWidth = Math.max(2, clipUnstretchedPx);
+
+  if (hitEachOther && clipWidth > clipUnstretchedPx + 1) return true;
+
+  const inPx = inUs > 0 ? transitionUsToPx(inUs) : 0;
+  const outPx = outUs > 0 ? transitionUsToPx(outUs) : 0;
+  if (inPx + outPx > clipWidth) return true;
+
+  return false;
 }
 
-function shouldCollapseFades(item: TimelineTrackItem): boolean {
-  if (item.kind !== 'clip') return false;
-  return clipWidthPx.value < 40;
-}
-
-function clampHandlePx(px: number, maxPx: number): number {
-  const minSafe = 6;
-  const maxSafe = maxPx - 6;
-  if (maxSafe < minSafe) return px;
-  return Math.min(maxSafe, Math.max(minSafe, px));
+function clampHandlePx(px: number, clipPx: number): number {
+  const safePx = Number.isFinite(px) ? px : 0;
+  const safeClipPx = Number.isFinite(clipPx) ? Math.max(0, clipPx) : 0;
+  const padPx = 3;
+  if (safeClipPx <= padPx * 2) {
+    return safeClipPx / 2;
+  }
+  return Math.max(padPx, Math.min(safeClipPx - padPx, safePx));
 }
 
 function transitionUsToPx(us: number) {
   return timeUsToPx(us, timelineStore.timelineZoom);
+}
+
+function shouldCollapseFades(item: TimelineTrackItem): boolean {
+  if (item.kind !== 'clip') return false;
+  const clip = item as TimelineClipItem;
+  const inUs = clip.audioFadeInUs ?? 0;
+  const outUs = clip.audioFadeOutUs ?? 0;
+  if (inUs === 0 && outUs === 0) return false;
+
+  const clipDurationUs = clip.timelineRange.durationUs;
+  const hitEachOther = inUs > 0 && outUs > 0 && inUs + outUs > clipDurationUs - 1000;
+
+  const clipUnstretchedPx = timeUsToPx(clipDurationUs, timelineStore.timelineZoom);
+  const clipWidth = Math.max(2, clipUnstretchedPx);
+
+  if (hitEachOther && clipWidth > clipUnstretchedPx + 1) return true;
+
+  const inPx = timeUsToPx(inUs, timelineStore.timelineZoom);
+  const outPx = timeUsToPx(outUs, timelineStore.timelineZoom);
+  if (inPx + outPx > clipWidth) return true;
+
+  return false;
 }
 
 function transitionSvgParts(w: number, h: number, edge: 'in' | 'out'): string {
