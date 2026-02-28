@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();

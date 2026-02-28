@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 

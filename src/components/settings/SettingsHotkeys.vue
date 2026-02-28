@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';

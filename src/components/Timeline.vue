@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { TimelineTrack } from '~/timeline/types';
 import {
   useTimelineInteraction,
@@ -24,6 +25,7 @@ const toast = useToast();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const { draggedFile, clearDraggedFile } = useDraggedFile();
 
 const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v4', [10, 90]);
@@ -477,6 +479,8 @@ async function onDrop(e: DragEvent, trackId: string) {
       icon: 'i-heroicons-check-circle',
       color: 'success',
     });
+
+    void timelineMediaUsageStore.refreshUsage();
   } catch (err: any) {
     toast.add({
       title: t('common.error', 'Error'),
