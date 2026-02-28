@@ -85,6 +85,22 @@ export function useFileManager() {
     }
   }
 
+  async function renameDirectoryFallback(params: {
+    sourceDirHandle: FileSystemDirectoryHandle;
+    sourceName: string;
+    parentDirHandle: FileSystemDirectoryHandle;
+    newName: string;
+  }): Promise<void> {
+    const nextDir = await params.parentDirHandle.getDirectoryHandle(params.newName, {
+      create: true,
+    });
+    await copyDirectoryRecursive({
+      sourceDirHandle: params.sourceDirHandle,
+      targetDirHandle: nextDir,
+    });
+    await params.parentDirHandle.removeEntry(params.sourceName, { recursive: true });
+  }
+
   async function copyFileToDirectory(params: {
     sourceHandle: FileSystemFileHandle;
     fileName: string;
@@ -546,10 +562,16 @@ export function useFileManager() {
         }
       } else {
         const dirHandle = target.handle as unknown as { move?: (name: string) => Promise<void> };
-        if (typeof dirHandle.move !== 'function') {
-          throw new Error('Rename directory is not supported in this browser');
+        if (typeof dirHandle.move === 'function') {
+          await dirHandle.move(newName);
+        } else {
+          await renameDirectoryFallback({
+            sourceDirHandle: target.handle as FileSystemDirectoryHandle,
+            sourceName: target.name,
+            parentDirHandle: parent,
+            newName,
+          });
         }
-        await dirHandle.move(newName);
       }
 
       await loadProjectDirectory();
@@ -582,7 +604,7 @@ export function useFileManager() {
     try {
       const targetDirHandleRaw = toRaw(params.targetDirHandle);
       const sourceParentRaw = toRaw(params.source.parentHandle);
-      
+
       await assertEntryDoesNotExist({
         targetDirHandle: targetDirHandleRaw,
         entryName: params.source.name,
@@ -699,7 +721,8 @@ export function useFileManager() {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
     if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'i-heroicons-film';
     if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) return 'i-heroicons-musical-note';
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'i-heroicons-photo';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext))
+      return 'i-heroicons-photo';
     if (ext === 'otio') return 'i-heroicons-document-text';
     return 'i-heroicons-document';
   }

@@ -367,7 +367,6 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
 
 function onTrackDragLeave() {
   clearDragPreview();
-  clearDraggedFile();
 }
 
 async function onClipAction(payload: {

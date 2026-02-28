@@ -52,6 +52,29 @@ const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const isDragOver = ref<string | null>(null);
 
+function isDotEntry(entry: FsEntry): boolean {
+  return entry.name.startsWith('.');
+}
+
+function isSelected(entry: FsEntry): boolean {
+  const selected = uiStore.selectedFsEntry;
+  if (!selected) return false;
+  if (!entry.path || !selected.path) return false;
+  return selected.path === entry.path;
+}
+
+function getEntryIconClass(entry: FsEntry): string {
+  if (isDotEntry(entry)) return 'opacity-30';
+  if (entry.kind === 'directory') return 'text-ui-text-muted/80';
+
+  const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'text-violet-400/90';
+  if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) return 'text-emerald-400/90';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext)) return 'text-sky-400/90';
+  if (['otio', 'txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) return 'text-amber-400/90';
+  return 'text-ui-text-muted';
+}
+
 function isVideo(entry: FsEntry) {
   return entry.kind === 'file' && entry.path?.startsWith(`${SOURCES_DIR_NAME}/video/`);
 }
@@ -264,7 +287,10 @@ function getContextMenuItems(entry: FsEntry) {
         <div
           class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
           :style="{ paddingLeft: `${8 + depth * 14}px` }"
-          :class="{ 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1': isDragOver === entry.path }"
+          :class="[
+            isDragOver === entry.path ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1' : '',
+            isSelected(entry) ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1' : '',
+          ]"
           :draggable="true"
           @dragstart="onDragStart($event, entry)"
           @dragend="onDragEnd()"
@@ -291,7 +317,7 @@ function getContextMenuItems(entry: FsEntry) {
             :name="getFileIcon(entry)"
             class="w-4 h-4 shrink-0 transition-colors"
             :class="[
-              entry.kind === 'directory' ? 'text-ui-text-muted' : 'text-ui-text-muted',
+              getEntryIconClass(entry),
               hasProxy(entry) ? 'text-(--color-success)!' : '',
             ]"
           />
@@ -300,9 +326,8 @@ function getContextMenuItems(entry: FsEntry) {
           <span
             class="text-sm truncate transition-colors"
             :class="[
-              uiStore.selectedFsEntry?.handle.isSameEntry(entry.handle)
-                ? 'font-medium text-ui-text group-hover:text-ui-text'
-                : 'text-ui-text group-hover:text-ui-text',
+              isSelected(entry) ? 'font-medium text-ui-text group-hover:text-ui-text' : 'text-ui-text group-hover:text-ui-text',
+              isDotEntry(entry) ? 'opacity-30' : '',
               hasProxy(entry) ? 'text-(--color-success)!' : '',
             ]"
           >
