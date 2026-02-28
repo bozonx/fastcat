@@ -226,9 +226,9 @@ function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] 
 
     const combos = Array.isArray(combosRaw) ? combosRaw : [];
     const normalizedCombos = combos
-        .filter((c): c is string => typeof c === 'string')
-        .map((c) => normalizeHotkeyCombo(c))
-        .filter((c): c is string => Boolean(c));
+      .filter((c): c is string => typeof c === 'string')
+      .map((c) => normalizeHotkeyCombo(c))
+      .filter((c): c is string => Boolean(c));
 
     if (normalizedCombos.length > 0) {
       normalizedBindings[cmdId] = Array.from(new Set(normalizedCombos));
@@ -259,62 +259,68 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const bitrateMbps = Number(exportEncodingInput?.bitrateMbps);
   const audioBitrateKbps = Number(exportEncodingInput?.audioBitrateKbps);
   const format = exportEncodingInput?.format;
+  const keyframeIntervalSecRaw = Number(exportEncodingInput?.keyframeIntervalSec);
 
   const normalizedWidth =
-      Number.isFinite(width) && width > 0
-          ? Math.round(width)
-          : DEFAULT_USER_SETTINGS.projectDefaults.width;
+    Number.isFinite(width) && width > 0
+      ? Math.round(width)
+      : DEFAULT_USER_SETTINGS.projectDefaults.width;
   const normalizedHeight =
-      Number.isFinite(height) && height > 0
-          ? Math.round(height)
-          : DEFAULT_USER_SETTINGS.projectDefaults.height;
+    Number.isFinite(height) && height > 0
+      ? Math.round(height)
+      : DEFAULT_USER_SETTINGS.projectDefaults.height;
 
   const preset = getResolutionPreset(normalizedWidth, normalizedHeight);
   const isWidthHeightCustom =
-      normalizedWidth !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
-      normalizedHeight !== DEFAULT_USER_SETTINGS.projectDefaults.height;
+    normalizedWidth !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
+    normalizedHeight !== DEFAULT_USER_SETTINGS.projectDefaults.height;
 
   const resolutionFormat =
-      typeof projectInput?.resolutionFormat === 'string' &&
-      projectInput.resolutionFormat &&
-      !isWidthHeightCustom
-          ? projectInput.resolutionFormat
-          : preset.resolutionFormat;
+    typeof projectInput?.resolutionFormat === 'string' &&
+    projectInput.resolutionFormat &&
+    !isWidthHeightCustom
+      ? projectInput.resolutionFormat
+      : preset.resolutionFormat;
   const orientation =
-      (projectInput?.orientation === 'portrait' || projectInput?.orientation === 'landscape') &&
-      !isWidthHeightCustom
-          ? projectInput.orientation
-          : (preset.orientation as 'landscape' | 'portrait');
+    (projectInput?.orientation === 'portrait' || projectInput?.orientation === 'landscape') &&
+    !isWidthHeightCustom
+      ? projectInput.orientation
+      : (preset.orientation as 'landscape' | 'portrait');
   const aspectRatio =
-      typeof projectInput?.aspectRatio === 'string' && projectInput.aspectRatio && !isWidthHeightCustom
-          ? projectInput.aspectRatio
-          : preset.aspectRatio;
+    typeof projectInput?.aspectRatio === 'string' &&
+    projectInput.aspectRatio &&
+    !isWidthHeightCustom
+      ? projectInput.aspectRatio
+      : preset.aspectRatio;
   const isCustomResolution =
-      projectInput?.isCustomResolution !== undefined && !isWidthHeightCustom
-          ? Boolean(projectInput.isCustomResolution)
-          : preset.isCustomResolution;
+    projectInput?.isCustomResolution !== undefined && !isWidthHeightCustom
+      ? Boolean(projectInput.isCustomResolution)
+      : preset.isCustomResolution;
 
   const audioChannels = projectInput?.audioChannels === 'mono' ? 'mono' : 'stereo';
   const sampleRateRaw = Number(projectInput?.sampleRate);
-  const sampleRate = Number.isFinite(sampleRateRaw) && sampleRateRaw > 0 ? sampleRateRaw : DEFAULT_USER_SETTINGS.projectDefaults.sampleRate;
+  const sampleRate =
+    Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
+      ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
+      : DEFAULT_USER_SETTINGS.projectDefaults.sampleRate;
 
   const openLastProjectOnStartRaw = input.openLastProjectOnStart;
   const openBehavior = input.openBehavior;
   const openLastProjectOnStart =
-      typeof openLastProjectOnStartRaw === 'boolean'
-          ? openLastProjectOnStartRaw
-          : openBehavior === 'show_project_picker'
-              ? false
-              : DEFAULT_USER_SETTINGS.openLastProjectOnStart;
+    typeof openLastProjectOnStartRaw === 'boolean'
+      ? openLastProjectOnStartRaw
+      : openBehavior === 'show_project_picker'
+        ? false
+        : DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
   const stopFramesInput = input.stopFrames ?? {};
   const qualityPercentRaw =
-      stopFramesInput?.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
+    stopFramesInput?.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
   const qualityPercentParsed = Number(qualityPercentRaw);
   const stopFramesQualityPercent =
-      Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
-          ? Math.round(Math.min(100, Math.max(1, qualityPercentParsed)))
-          : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+    Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
+      ? Math.round(Math.min(100, Math.max(1, qualityPercentParsed)))
+      : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
 
   const optimizationInput = input.optimization ?? {};
   const proxyResolution = optimizationInput.proxyResolution;
@@ -378,36 +384,36 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     hotkeys,
     optimization: {
       proxyResolution: ['360p', '480p', '720p', '1080p'].includes(proxyResolution)
-          ? proxyResolution
-          : DEFAULT_USER_SETTINGS.optimization.proxyResolution,
+        ? proxyResolution
+        : DEFAULT_USER_SETTINGS.optimization.proxyResolution,
       proxyVideoBitrateMbps:
-          Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
-              ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
-              : DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps,
+        Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
+          ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
+          : DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps,
       proxyAudioBitrateKbps:
-          Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
-              ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
-              : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
+        Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
+          ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
+          : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
       proxyCopyOpusAudio:
-          typeof proxyCopyOpusAudio === 'boolean'
-              ? proxyCopyOpusAudio
-              : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
+        typeof proxyCopyOpusAudio === 'boolean'
+          ? proxyCopyOpusAudio
+          : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
       autoCreateProxies:
-          typeof autoCreateProxies === 'boolean'
-              ? autoCreateProxies
-              : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
+        typeof autoCreateProxies === 'boolean'
+          ? autoCreateProxies
+          : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
       proxyConcurrency:
-          Number.isFinite(proxyConcurrency) && proxyConcurrency > 0
-              ? Math.min(16, Math.max(1, Math.round(proxyConcurrency)))
-              : DEFAULT_USER_SETTINGS.optimization.proxyConcurrency,
+        Number.isFinite(proxyConcurrency) && proxyConcurrency > 0
+          ? Math.min(16, Math.max(1, Math.round(proxyConcurrency)))
+          : DEFAULT_USER_SETTINGS.optimization.proxyConcurrency,
     },
-      projectDefaults: {
+    projectDefaults: {
       width: normalizedWidth,
       height: normalizedHeight,
       fps:
-          Number.isFinite(fps) && fps > 0
-              ? Math.round(Math.min(240, Math.max(1, fps)))
-              : DEFAULT_USER_SETTINGS.projectDefaults.fps,
+        Number.isFinite(fps) && fps > 0
+          ? Math.round(Math.min(240, Math.max(1, fps)))
+          : DEFAULT_USER_SETTINGS.projectDefaults.fps,
       resolutionFormat,
       orientation,
       aspectRatio,
@@ -419,24 +425,25 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:
-            typeof exportEncodingInput?.videoCodec === 'string' &&
-            exportEncodingInput.videoCodec.trim().length > 0
-                ? exportEncodingInput.videoCodec
-                : DEFAULT_USER_SETTINGS.exportDefaults.encoding.videoCodec,
+          typeof exportEncodingInput?.videoCodec === 'string' &&
+          exportEncodingInput.videoCodec.trim().length > 0
+            ? exportEncodingInput.videoCodec
+            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.videoCodec,
         bitrateMbps:
-            Number.isFinite(bitrateMbps) && bitrateMbps > 0
-                ? Math.min(200, Math.max(0.2, bitrateMbps))
-                : DEFAULT_USER_SETTINGS.exportDefaults.encoding.bitrateMbps,
+          Number.isFinite(bitrateMbps) && bitrateMbps > 0
+            ? Math.min(200, Math.max(0.2, bitrateMbps))
+            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.bitrateMbps,
         excludeAudio: Boolean(exportEncodingInput?.excludeAudio),
         audioCodec: exportEncodingInput?.audioCodec === 'opus' ? 'opus' : 'aac',
         audioBitrateKbps:
-            Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
-                ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
-                : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
+          Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
+            ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
+            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
         bitrateMode: exportEncodingInput?.bitrateMode === 'constant' ? 'constant' : 'variable',
-        keyframeIntervalSec: Number.isFinite(Number(exportEncodingInput?.keyframeIntervalSec))
-          ? Number(exportEncodingInput.keyframeIntervalSec)
-          : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
+        keyframeIntervalSec:
+          Number.isFinite(keyframeIntervalSecRaw) && keyframeIntervalSecRaw > 0
+            ? Math.round(Math.min(60, Math.max(1, keyframeIntervalSecRaw)))
+            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
         exportAlpha: Boolean(exportEncodingInput?.exportAlpha),
       },
     },
@@ -461,18 +468,20 @@ export function normalizeWorkspaceSettings(raw: unknown): GranVideoEditorWorkspa
   const cacheStorageLimitBytes = Number(input.cacheStorageLimitBytes);
   const thumbnailsStorageLimitBytes = Number(input.thumbnailsStorageLimitBytes);
 
+  const MAX_LIMIT_BYTES = 1024 * 1024 * 1024 * 1024;
+
   return {
     proxyStorageLimitBytes:
       Number.isFinite(proxyStorageLimitBytes) && proxyStorageLimitBytes > 0
-        ? Math.round(proxyStorageLimitBytes)
+        ? Math.round(Math.min(MAX_LIMIT_BYTES, proxyStorageLimitBytes))
         : DEFAULT_WORKSPACE_SETTINGS.proxyStorageLimitBytes,
     cacheStorageLimitBytes:
       Number.isFinite(cacheStorageLimitBytes) && cacheStorageLimitBytes > 0
-        ? Math.round(cacheStorageLimitBytes)
+        ? Math.round(Math.min(MAX_LIMIT_BYTES, cacheStorageLimitBytes))
         : DEFAULT_WORKSPACE_SETTINGS.cacheStorageLimitBytes,
     thumbnailsStorageLimitBytes:
       Number.isFinite(thumbnailsStorageLimitBytes) && thumbnailsStorageLimitBytes > 0
-        ? Math.round(thumbnailsStorageLimitBytes)
+        ? Math.round(Math.min(MAX_LIMIT_BYTES, thumbnailsStorageLimitBytes))
         : DEFAULT_WORKSPACE_SETTINGS.thumbnailsStorageLimitBytes,
   };
 }

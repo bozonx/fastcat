@@ -90,10 +90,9 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
   },
 };
 
-function getProjectSettingsFromUserDefaults(userSettings: Pick<
-  GranVideoEditorUserSettings,
-  'projectDefaults' | 'exportDefaults'
->): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
+function getProjectSettingsFromUserDefaults(
+  userSettings: Pick<GranVideoEditorUserSettings, 'projectDefaults' | 'exportDefaults'>,
+): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
   return {
     project: {
       width: userSettings.projectDefaults.width,
@@ -175,7 +174,7 @@ export function normalizeProjectSettings(
   const sampleRateRaw = Number(projectInput.sampleRate);
   const sampleRate =
     Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
-      ? sampleRateRaw
+      ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
       : defaultSettings.project.sampleRate;
 
   const previewResolution = Number(monitorInput.previewResolution);
@@ -254,12 +253,17 @@ export function normalizeProjectSettings(
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
         bitrateMode: encodingInput.bitrateMode === 'constant' ? 'constant' : 'variable',
-        keyframeIntervalSec: Number.isFinite(Number(encodingInput.keyframeIntervalSec))
-          ? Number(encodingInput.keyframeIntervalSec)
-          : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
+        keyframeIntervalSec: (() => {
+          const v = Number(encodingInput.keyframeIntervalSec);
+          if (!Number.isFinite(v) || v <= 0) {
+            return DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.keyframeIntervalSec;
+          }
+          return Math.round(Math.min(60, Math.max(1, v)));
+        })(),
         exportAlpha: Boolean(encodingInput.exportAlpha),
         metadata: {
-          title: typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',
+          title:
+            typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',
           author:
             typeof encodingInput.metadata?.author === 'string' ? encodingInput.metadata.author : '',
           tags: typeof encodingInput.metadata?.tags === 'string' ? encodingInput.metadata.tags : '',
@@ -269,9 +273,10 @@ export function normalizeProjectSettings(
     monitor: {
       previewResolution:
         Number.isFinite(previewResolution) && previewResolution > 0
-          ? Math.round(previewResolution)
+          ? Math.round(Math.min(4320, Math.max(1, previewResolution)))
           : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
-      useProxy: useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
+      useProxy:
+        useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
       panX: Number.isFinite(panX) ? panX : DEFAULT_PROJECT_SETTINGS.monitor.panX,
       panY: Number.isFinite(panY) ? panY : DEFAULT_PROJECT_SETTINGS.monitor.panY,
     },

@@ -289,6 +289,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await requestUserSettingsSave({ immediate: true });
   }
 
+  async function flushSettingsSaves() {
+    await Promise.all([saveUserSettingsToDisk(), saveWorkspaceSettingsToDisk()]);
+  }
+
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
     settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
@@ -397,6 +401,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     workspaceSettingsSaveError,
     batchUpdateUserSettings,
     batchUpdateWorkspaceSettings,
+    flushSettingsSaves,
     init,
     openWorkspace,
     resetWorkspace,

@@ -717,17 +717,15 @@ export function useTimelineExport() {
 
       videoCodecSupport.value = videoSupport;
 
-      if (videoCodecSupport.value[videoCodec.value] === false) {
-        const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find(
-          (opt) => videoCodecSupport.value[opt.value],
-        );
-        if (firstSupported) videoCodec.value = firstSupported.value;
-      }
-
-      if (audioSupport.aac === false && audioSupport.opus !== false) {
-        audioCodec.value = 'opus';
-      } else {
-        audioCodec.value = 'aac';
+      if (typeof window !== 'undefined') {
+        const stored = window.localStorage.getItem('gran-audio-codec-support');
+        if (stored) {
+          try {
+            audioCodec.value = 'aac';
+          } catch (e) {
+            console.error('Failed to load stored audio codec support', e);
+          }
+        }
       }
     } finally {
       isLoadingCodecSupport.value = false;

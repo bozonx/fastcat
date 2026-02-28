@@ -67,14 +67,6 @@ async function loadCodecSupport() {
   isLoadingCodecSupport.value = true;
   try {
     videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
-    const selected = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
-    if (videoCodecSupport.value[selected] === false) {
-      const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find(
-        (opt) => videoCodecSupport.value[opt.value],
-      );
-      if (firstSupported)
-        projectStore.projectSettings.exportDefaults.encoding.videoCodec = firstSupported.value;
-    }
   } finally {
     isLoadingCodecSupport.value = false;
   }
@@ -84,11 +76,13 @@ async function loadCodecSupport() {
 loadCodecSupport();
 
 // Project settings form data
-function applySettings() {
+async function applySettings() {
   // Settings are already bound via v-model and saved automatically in projectStore
 
   // Close modal
   isOpen.value = false;
+
+  await projectStore.saveProjectSettings();
 
   // Show success message
   const toast = useToast();
@@ -98,7 +92,7 @@ function applySettings() {
   });
 }
 
-function resetToDefaults() {
+async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
 
   // Reset project resolution and FPS to workspace defaults
@@ -115,8 +109,10 @@ function resetToDefaults() {
   const eDefaults = workspaceStore.userSettings.exportDefaults.encoding;
   projectStore.projectSettings.exportDefaults.encoding = {
     ...eDefaults,
-    metadata: { title: '', author: '', tags: '' }
+    metadata: { title: '', author: '', tags: '' },
   };
+
+  await projectStore.saveProjectSettings();
 }
 </script>
 
@@ -285,7 +281,7 @@ function resetToDefaults() {
             variant="ghost"
             color="neutral"
             :label="t('common.cancel', 'Cancel')"
-            @click="isOpen = false"
+            @click="(isOpen = false) && projectStore.saveProjectSettings()"
           />
           <UButton
             variant="solid"

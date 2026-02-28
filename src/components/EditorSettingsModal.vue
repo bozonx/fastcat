@@ -55,6 +55,10 @@ let captureKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
 const isClearWorkspaceVardataConfirmOpen = ref(false);
 
+const isResetAllHotkeysConfirmOpen = ref(false);
+const resetCommandConfirmTarget = ref<HotkeyCommandId | null>(null);
+const isResetCommandConfirmOpen = ref(false);
+
 async function confirmClearWorkspaceVardata() {
   isClearWorkspaceVardataConfirmOpen.value = false;
   await workspaceStore.clearVardata();
@@ -96,18 +100,32 @@ function removeBinding(cmdId: HotkeyCommandId, combo: string) {
 }
 
 function resetCommandBindings(cmdId: HotkeyCommandId) {
+  resetCommandConfirmTarget.value = cmdId;
+  isResetCommandConfirmOpen.value = true;
+}
+
+function resetAllHotkeys() {
+  isResetAllHotkeysConfirmOpen.value = true;
+}
+
+function confirmResetAllHotkeys() {
+  isResetAllHotkeysConfirmOpen.value = false;
   void workspaceStore.batchUpdateUserSettings(
     (draft) => {
-      delete draft.hotkeys.bindings[cmdId];
+      draft.hotkeys.bindings = {};
     },
     { immediate: true },
   );
 }
 
-function resetAllHotkeys() {
+function confirmResetCommandHotkeys() {
+  const cmdId = resetCommandConfirmTarget.value;
+  isResetCommandConfirmOpen.value = false;
+  resetCommandConfirmTarget.value = null;
+  if (!cmdId) return;
   void workspaceStore.batchUpdateUserSettings(
     (draft) => {
-      draft.hotkeys.bindings = {};
+      delete draft.hotkeys.bindings[cmdId];
     },
     { immediate: true },
   );
@@ -276,14 +294,6 @@ async function loadCodecSupport() {
   isLoadingCodecSupport.value = true;
   try {
     videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
-    const selected = workspaceStore.userSettings.exportDefaults.encoding.videoCodec;
-    if (videoCodecSupport.value[selected] === false) {
-      const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find(
-        (opt) => videoCodecSupport.value[opt.value],
-      );
-      if (firstSupported)
-        workspaceStore.userSettings.exportDefaults.encoding.videoCodec = firstSupported.value;
-    }
   } finally {
     isLoadingCodecSupport.value = false;
   }
@@ -295,6 +305,35 @@ const isOpen = computed({
   get: () => props.open,
   set: (v) => emit('update:open', v),
 });
+
+watch(
+  () => props.open,
+  async (v, prev) => {
+    if (prev && !v) {
+      await workspaceStore.flushSettingsSaves();
+    }
+  },
+);
+
+watch(
+  () => activeSection.value,
+  (section) => {
+    if (section !== 'user.export') return;
+    const selected = workspaceStore.userSettings.exportDefaults.encoding.videoCodec;
+    if (videoCodecSupport.value[selected] === false) {
+      const toast = useToast();
+      toast.add({
+        title: t('videoEditor.settings.codecUnsupportedTitle', 'Unsupported codec'),
+        description: t(
+          'videoEditor.settings.codecUnsupportedDesc',
+          'Selected video codec is not supported by your browser. Please choose another codec.',
+        ),
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
+  },
+);
 
 watch(
   () => props.open,
@@ -380,6 +419,40 @@ const thumbnailsLimitGb = computed({
       color="warning"
       icon="i-heroicons-trash"
       @confirm="confirmClearWorkspaceVardata"
+    />
+
+    <UiConfirmModal
+      v-model:open="isResetAllHotkeysConfirmOpen"
+      :title="t('videoEditor.settings.hotkeysResetAllConfirmTitle', 'Reset all hotkeys?')"
+      :description="
+        t(
+          'videoEditor.settings.hotkeysResetAllConfirmDesc',
+          'This will remove all custom hotkeys and restore defaults. This action cannot be undone.',
+        )
+      "
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="confirmResetAllHotkeys"
+    />
+
+    <UiConfirmModal
+      v-model:open="isResetCommandConfirmOpen"
+      :title="t('videoEditor.settings.hotkeysResetCommandConfirmTitle', 'Reset hotkey?')"
+      :description="
+        resetCommandConfirmTarget
+          ? t('videoEditor.settings.hotkeysResetCommandConfirmDesc', {
+              cmd: getCommandTitle(resetCommandConfirmTarget as HotkeyCommandId),
+            })
+          : ''
+      "
+      :confirm-text="t('videoEditor.settings.hotkeysResetCommandConfirmAction', 'Reset')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="confirmResetCommandHotkeys"
+      @update:open="(v: boolean) => { if (!v) resetCommandConfirmTarget = null }"
     />
 
     <div class="flex flex-1 min-h-0 w-full h-full">
