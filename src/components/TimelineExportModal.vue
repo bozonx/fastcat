@@ -53,7 +53,6 @@ const {
   isCustomResolution,
   bitrateMode,
   keyframeIntervalSec,
-  multipassEncoding,
   exportAlpha,
   metadataTitle,
   metadataAuthor,
@@ -121,7 +120,6 @@ watch(
     audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
     bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value = projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
-    multipassEncoding.value = projectStore.projectSettings.exportDefaults.encoding.multipassEncoding;
     exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
     metadataTitle.value = projectStore.projectSettings.exportDefaults.encoding.metadata.title;
     metadataAuthor.value = projectStore.projectSettings.exportDefaults.encoding.metadata.author;
@@ -232,7 +230,6 @@ async function handleConfirm() {
       projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
       projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
       projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec = keyframeIntervalSec.value;
-      projectStore.projectSettings.exportDefaults.encoding.multipassEncoding = multipassEncoding.value;
       projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
       projectStore.projectSettings.exportDefaults.encoding.metadata.title = metadataTitle.value;
       projectStore.projectSettings.exportDefaults.encoding.metadata.author = metadataAuthor.value;
@@ -254,7 +251,6 @@ async function handleConfirm() {
         fps: normalizedExportFps.value,
         bitrateMode: bitrateMode.value,
         keyframeIntervalSec: keyframeIntervalSec.value,
-        multipassEncoding: multipassEncoding.value,
         exportAlpha: exportAlpha.value,
         metadata: {
           title: metadataTitle.value,
@@ -280,7 +276,7 @@ async function handleConfirm() {
 
     toast.add({
       title: t('videoEditor.export.successTitle', 'Export successful'),
-      description: t('videoEditor.export.successDesc', 'Timeline exported to {file}', {
+      description: t('videoEditor.export.successDesc', {
         file: outputFilename.value,
       }),
       color: 'success',
@@ -357,7 +353,6 @@ async function handleConfirm() {
         v-model:audio-bitrate-kbps="audioBitrateKbps"
         v-model:bitrate-mode="bitrateMode"
         v-model:keyframe-interval-sec="keyframeIntervalSec"
-        v-model:multipass-encoding="multipassEncoding"
         v-model:export-alpha="exportAlpha"
         v-model:metadata-title="metadataTitle"
         v-model:metadata-author="metadataAuthor"

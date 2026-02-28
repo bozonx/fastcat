@@ -32,9 +32,8 @@ const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', { default: 'custom' });
-const bitrateMode = defineModel<'cbr' | 'vbr'>('bitrateMode', { default: 'vbr' });
+const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
-const multipassEncoding = defineModel<boolean>('multipassEncoding', { default: false });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
 const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
@@ -76,8 +75,8 @@ const presetOptions = [
 ];
 
 const bitrateModeOptions = [
-  { value: 'vbr', label: 'VBR' },
-  { value: 'cbr', label: 'CBR' },
+  { value: 'variable', label: 'VBR' },
+  { value: 'constant', label: 'CBR' },
 ];
 
 let isPresetApplying = false;
@@ -86,45 +85,41 @@ function onPresetChange(newPreset: string) {
   isPresetApplying = true;
   if (newPreset === 'optimal') {
     outputFormat.value = 'mkv';
-    bitrateMode.value = 'vbr';
+    bitrateMode.value = 'variable';
     bitrateMbps.value = 5;
     audioCodec.value = 'opus';
     audioBitrateKbps.value = 128;
     keyframeIntervalSec.value = 2;
-    multipassEncoding.value = false;
     exportAlpha.value = false;
   } else if (newPreset === 'social') {
     outputFormat.value = 'mp4';
-    bitrateMode.value = 'vbr';
+    bitrateMode.value = 'variable';
     bitrateMbps.value = 8;
     audioCodec.value = 'aac';
     audioBitrateKbps.value = 128;
     keyframeIntervalSec.value = 2;
-    multipassEncoding.value = false;
     exportAlpha.value = false;
   } else if (newPreset === 'high') {
     outputFormat.value = 'mkv';
-    bitrateMode.value = 'vbr';
+    bitrateMode.value = 'variable';
     bitrateMbps.value = 20;
     audioCodec.value = 'opus';
     audioBitrateKbps.value = 192;
     keyframeIntervalSec.value = 2;
-    multipassEncoding.value = true;
   } else if (newPreset === 'lossless') {
     outputFormat.value = 'mkv';
-    bitrateMode.value = 'cbr';
+    bitrateMode.value = 'constant';
     bitrateMbps.value = 50;
     audioCodec.value = 'opus';
     audioBitrateKbps.value = 320;
     keyframeIntervalSec.value = 1;
-    multipassEncoding.value = false;
   }
   setTimeout(() => {
     isPresetApplying = false;
   }, 50);
 }
 
-watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBitrateKbps, bitrateMode, keyframeIntervalSec, multipassEncoding, exportAlpha], () => {
+watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBitrateKbps, bitrateMode, keyframeIntervalSec, exportAlpha], () => {
   if (!isPresetApplying) {
     preset.value = 'custom';
   }
@@ -240,12 +235,6 @@ watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBit
       />
     </div>
 
-    <label class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox v-model="multipassEncoding" :disabled="props.disabled" />
-      <span class="text-sm text-ui-text">{{
-        t('videoEditor.export.multipassEncoding', 'Multipass Encoding')
-      }}</span>
-    </label>
 
     <label v-if="outputFormat === 'webm'" class="flex items-center gap-3 cursor-pointer">
       <UCheckbox v-model="exportAlpha" :disabled="props.disabled" />

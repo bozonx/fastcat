@@ -36,9 +36,8 @@ export interface GranVideoEditorUserSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
-      bitrateMode: 'cbr' | 'vbr';
+      bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
-      multipassEncoding: boolean;
       exportAlpha: boolean;
     };
   };
@@ -113,9 +112,8 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       excludeAudio: false,
       audioCodec: 'aac',
       audioBitrateKbps: 128,
-      bitrateMode: 'vbr',
+      bitrateMode: 'variable',
       keyframeIntervalSec: 2,
-      multipassEncoding: false,
       exportAlpha: false,
     },
   },
@@ -428,11 +426,10 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
             Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
                 ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
                 : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
-        bitrateMode: exportEncodingInput?.bitrateMode === 'cbr' ? 'cbr' : 'vbr',
+        bitrateMode: exportEncodingInput?.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyframeIntervalSec: Number.isFinite(Number(exportEncodingInput?.keyframeIntervalSec))
           ? Number(exportEncodingInput.keyframeIntervalSec)
           : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
-        multipassEncoding: Boolean(exportEncodingInput?.multipassEncoding),
         exportAlpha: Boolean(exportEncodingInput?.exportAlpha),
       },
     },

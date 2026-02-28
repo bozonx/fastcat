@@ -198,7 +198,6 @@ function resetToDefaults() {
           v-model:audio-bitrate-kbps="projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps"
           v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
           v-model:keyframe-interval-sec="projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec"
-          v-model:multipass-encoding="projectStore.projectSettings.exportDefaults.encoding.multipassEncoding"
           v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
           v-model:metadata-title="projectStore.projectSettings.exportDefaults.encoding.metadata.title"
           v-model:metadata-author="projectStore.projectSettings.exportDefaults.encoding.metadata.author"

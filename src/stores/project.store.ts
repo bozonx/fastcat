@@ -41,9 +41,8 @@ export interface GranVideoEditorProjectSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
-      bitrateMode: 'cbr' | 'vbr';
+      bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
-      multipassEncoding: boolean;
       exportAlpha: boolean;
       metadata: {
         title: string;
@@ -86,9 +85,8 @@ const DEFAULT_PROJECT_SETTINGS = {
       excludeAudio: false,
       audioCodec: 'aac' as const,
       audioBitrateKbps: 128,
-      bitrateMode: 'vbr' as const,
+      bitrateMode: 'variable' as const,
       keyframeIntervalSec: 2,
-      multipassEncoding: false,
       exportAlpha: false,
       metadata: {
         title: '',
@@ -132,9 +130,8 @@ function getProjectSettingsFromUserDefaults(userSettings: {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
-      bitrateMode: 'cbr' | 'vbr';
+      bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
-      multipassEncoding: boolean;
       exportAlpha: boolean;
     };
   };
@@ -161,7 +158,6 @@ function getProjectSettingsFromUserDefaults(userSettings: {
         audioBitrateKbps: userSettings.exportDefaults.encoding.audioBitrateKbps,
         bitrateMode: userSettings.exportDefaults.encoding.bitrateMode,
         keyframeIntervalSec: userSettings.exportDefaults.encoding.keyframeIntervalSec,
-        multipassEncoding: userSettings.exportDefaults.encoding.multipassEncoding,
         exportAlpha: userSettings.exportDefaults.encoding.exportAlpha,
         metadata: {
           title: '',
@@ -218,9 +214,8 @@ function createDefaultProjectSettings(userSettings: {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
-      bitrateMode: 'cbr' | 'vbr';
+      bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
-      multipassEncoding: boolean;
       exportAlpha: boolean;
     };
   };
@@ -266,9 +261,8 @@ function normalizeProjectSettings(
         excludeAudio: boolean;
         audioCodec: 'aac' | 'opus';
         audioBitrateKbps: number;
-        bitrateMode: 'cbr' | 'vbr';
+        bitrateMode: 'constant' | 'variable';
         keyframeIntervalSec: number;
-        multipassEncoding: boolean;
         exportAlpha: boolean;
       };
     };
@@ -378,11 +372,10 @@ function normalizeProjectSettings(
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
-        bitrateMode: encodingInput.bitrateMode === 'cbr' ? 'cbr' : 'vbr',
+        bitrateMode: encodingInput.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyframeIntervalSec: Number.isFinite(Number(encodingInput.keyframeIntervalSec))
           ? Number(encodingInput.keyframeIntervalSec)
           : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
-        multipassEncoding: Boolean(encodingInput.multipassEncoding),
         exportAlpha: Boolean(encodingInput.exportAlpha),
         metadata: {
           title: typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',

@@ -23,9 +23,8 @@ export interface ExportOptions {
   format: 'mp4' | 'webm' | 'mkv';
   videoCodec: string;
   bitrate: number;
-  bitrateMode?: 'cbr' | 'vbr';
+  bitrateMode?: 'constant' | 'variable';
   keyframeIntervalSec?: number;
-  multipassEncoding?: boolean;
   exportAlpha?: boolean;
   metadata?: {
     title: string;
@@ -492,9 +491,8 @@ export function useTimelineExport() {
   const aspectRatio = ref<string>('16:9');
   const isCustomResolution = ref<boolean>(false);
 
-  const bitrateMode = ref<'cbr' | 'vbr'>('vbr');
+  const bitrateMode = ref<'constant' | 'variable'>('variable');
   const keyframeIntervalSec = ref<number>(2);
-  const multipassEncoding = ref<boolean>(false);
   const exportAlpha = ref<boolean>(false);
   const metadataTitle = ref<string>('');
   const metadataAuthor = ref<string>('');
@@ -805,7 +803,6 @@ export function useTimelineExport() {
     isCustomResolution,
     bitrateMode,
     keyframeIntervalSec,
-    multipassEncoding,
     exportAlpha,
     metadataTitle,
     metadataAuthor,

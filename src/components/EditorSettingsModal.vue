@@ -880,7 +880,6 @@ const thumbnailsLimitGb = computed({
             "
             v-model:bitrate-mode="workspaceStore.userSettings.exportDefaults.encoding.bitrateMode"
             v-model:keyframe-interval-sec="workspaceStore.userSettings.exportDefaults.encoding.keyframeIntervalSec"
-            v-model:multipass-encoding="workspaceStore.userSettings.exportDefaults.encoding.multipassEncoding"
             v-model:export-alpha="workspaceStore.userSettings.exportDefaults.encoding.exportAlpha"
             :disabled="false"
             :show-metadata="false"
