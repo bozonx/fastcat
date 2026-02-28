@@ -275,36 +275,49 @@ function onFileAction(
     }
   } else if (action === 'createProxyForFolder') {
     const proxyStore = useProxyStore();
-    if (entry.kind === 'directory') {
-      const videos: Array<{ handle: FileSystemFileHandle; path: string }> = [];
+    if (entry.kind === 'directory' && entry.path !== undefined) {
+      const dirPath = entry.path;
+      const dirHandle = entry.handle as FileSystemDirectoryHandle;
 
-      const collect = (list: FsEntry[]) => {
-        for (const child of list) {
-          if (child.kind === 'file') {
-            const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
-            if (
-              ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext) &&
-              child.path &&
-              !proxyStore.existingProxies.has(child.path)
-            ) {
-              videos.push({
-                handle: child.handle as FileSystemFileHandle,
-                path: child.path,
-              });
+      (async () => {
+        const collect = async (dir: FileSystemDirectoryHandle, bPath: string) => {
+          const iterator =
+            (dir as FsDirectoryHandleWithIteration).values?.() ??
+            (dir as FsDirectoryHandleWithIteration).entries?.();
+          if (!iterator) return;
+
+          for await (const value of iterator) {
+            const handle = (Array.isArray(value) ? value[1] : value) as
+              | FileSystemFileHandle
+              | FileSystemDirectoryHandle;
+
+            const fullPath = bPath ? `${bPath}/${handle.name}` : handle.name;
+
+            if (handle.kind === 'file') {
+              const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
+              if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+                if (
+                  !proxyStore.existingProxies.has(fullPath) &&
+                  !proxyStore.generatingProxies.has(fullPath)
+                ) {
+                  void proxyStore.generateProxy(handle as FileSystemFileHandle, fullPath);
+                }
+              }
+            } else if (handle.kind === 'directory') {
+              await collect(handle as FileSystemDirectoryHandle, fullPath);
             }
-          } else if (child.kind === 'directory' && child.children) {
-            collect(child.children);
           }
+        };
+
+        try {
+          // If tree children are already loaded, we can skip existing/generating even faster
+          // but walking handles is more accurate if the tree is not fully expanded.
+          // We walk handles starting from the current directory
+          await collect(dirHandle, dirPath);
+        } catch (e) {
+          console.error('Failed to walk folder for proxy creation', e);
         }
-      };
-
-      if (entry.children) {
-        collect(entry.children);
-      }
-
-      for (const v of videos) {
-        void proxyStore.generateProxy(v.handle, v.path);
-      }
+      })();
     }
   }
 }
