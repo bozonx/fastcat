@@ -65,6 +65,7 @@ export class AudioEngine {
   private decodeQueue: Array<() => void> = [];
   private decodeInFlightCount = 0;
   private readonly maxDecodeConcurrency = 2;
+  private currentVolume = 1;
 
   constructor() {}
 
@@ -182,6 +183,7 @@ export class AudioEngine {
     if (!this.ctx) {
       this.ctx = new AudioContext({ sampleRate });
       this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.currentVolume;
       this.masterGain.connect(this.ctx.destination);
       if (this.ctx.destination) {
         this.ctx.destination.channelCount = channelCount;
@@ -379,8 +381,9 @@ export class AudioEngine {
   }
 
   setVolume(volume: number) {
+    this.currentVolume = Math.max(0, Math.min(2, volume));
     if (this.masterGain) {
-      this.masterGain.gain.value = Math.max(0, Math.min(1, volume));
+      this.masterGain.gain.value = this.currentVolume;
     }
   }
 
