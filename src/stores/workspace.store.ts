@@ -37,6 +37,15 @@ function isAbortError(e: unknown): boolean {
   return (e as { name?: unknown }).name === 'AbortError';
 }
 
+function readLocalStorageString(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
@@ -54,9 +63,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isInitializing = ref(true);
   const error = ref<string | null>(null);
 
-  const lastProjectName = ref<string | null>(
-    typeof window === 'undefined' ? null : window.localStorage.getItem('gran-editor-last-project'),
-  );
+  const lastProjectName = ref<string | null>(readLocalStorageString('gran-editor-last-project'));
 
   const userSettings = ref<GranVideoEditorUserSettings>(createDefaultUserSettings());
 
@@ -100,8 +107,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   watch(lastProjectName, (v) => {
     if (typeof window === 'undefined') return;
-    if (v === null) window.localStorage.removeItem('gran-editor-last-project');
-    else window.localStorage.setItem('gran-editor-last-project', v);
+    try {
+      if (v === null) window.localStorage.removeItem('gran-editor-last-project');
+      else window.localStorage.setItem('gran-editor-last-project', v);
+    } catch {
+      // ignore
+    }
   });
 
   async function persistUserSettingsNow() {

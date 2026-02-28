@@ -50,8 +50,9 @@ export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
   const showHiddenFiles = ref(readLocalStorageJson('gran-video-editor:show-hidden-files', false));
 
-  watch(showHiddenFiles, (val) =>
-    writeLocalStorageJson('gran-video-editor:show-hidden-files', val),
+  watch(
+    () => showHiddenFiles.value,
+    (val) => writeLocalStorageJson('gran-video-editor:show-hidden-files', val),
   );
 
   const isGlobalDragging = ref(false);
@@ -60,7 +61,7 @@ export const useUiStore = defineStore('ui', () => {
   const fileTreeExpandedPaths = ref<Record<string, true>>({});
   const currentFileTreeProjectName = ref<string | null>(null);
 
-  const pendingFsEntryDelete = ref<any>(null);
+  const pendingFsEntryDelete = ref<unknown>(null);
 
   const isSavingFileTree = ref(false);
   let persistFileTreeTimeout: number | null = null;
@@ -184,14 +185,6 @@ export const useUiStore = defineStore('ui', () => {
     markFileTreeAsDirty();
     void requestFileTreeSave(projectName);
   }
-
-  watch(
-    selectedFsEntry,
-    () => {
-      // keep
-    },
-    { deep: true },
-  );
 
   return {
     selectedFsEntry,

@@ -25,6 +25,23 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     DEFAULT_SNAP_SETTINGS.snapThresholdPx,
   );
 
+  if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
+    overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;
+  }
+
+  if (frameSnapMode.value !== 'free' && frameSnapMode.value !== 'frames') {
+    frameSnapMode.value = DEFAULT_SNAP_SETTINGS.frameSnapMode;
+  }
+
+  if (clipSnapMode.value !== 'none' && clipSnapMode.value !== 'clips') {
+    clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
+  }
+
+  if (!Number.isFinite(Number(snapThresholdPx.value))) {
+    snapThresholdPx.value = DEFAULT_SNAP_SETTINGS.snapThresholdPx;
+  }
+  snapThresholdPx.value = Math.max(1, Math.round(Number(snapThresholdPx.value)));
+
   function setOverlapMode(mode: OverlapMode) {
     overlapMode.value = mode;
   }

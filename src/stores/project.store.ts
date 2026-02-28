@@ -83,8 +83,13 @@ export const useProjectStore = defineStore('project', () => {
     currentTimelinePath.value = null;
     currentFileName.value = null;
     isLoadingProjectSettings.value = false;
+    isSavingProjectSettings.value = false;
     projectSettingsRepo.value = null;
     projectMetaRepo.value = null;
+
+    projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
+    projectSettingsRevision = 0;
+    savedProjectSettingsRevision = 0;
   }
 
   function markProjectSettingsAsDirty() {
