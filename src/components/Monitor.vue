@@ -112,7 +112,7 @@ function blurActiveElement() {
 }
 
 const previewResolutions = computed(() => {
-  const projectHeight = projectStore.projectSettings.export.height;
+  const projectHeight = projectStore.projectSettings.project.height;
   const baseResolutions = [
     { label: '2160p', value: 2160 },
     { label: '1440p', value: 1440 },
@@ -138,7 +138,7 @@ const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl } = useMonitorPlay
   currentTime,
   duration,
   safeDurationUs,
-  getFps: () => projectStore.projectSettings?.export?.fps,
+  getFps: () => projectStore.projectSettings?.project?.fps,
   clampToTimeline,
   updateStoreTime,
   scheduleRender,
@@ -378,7 +378,7 @@ async function createStopFrameSnapshot() {
     timelineStore.timelineDoc?.name ||
     'timeline';
 
-  const fps = projectStore.projectSettings?.export?.fps ?? 30;
+  const fps = projectStore.projectSettings?.project?.fps ?? 30;
   const timeUs = uiCurrentTimeUs.value;
 
   const qualityPercent = workspaceStore.userSettings.stopFrames?.qualityPercent ?? 85;
@@ -410,8 +410,8 @@ async function createStopFrameSnapshot() {
 
   isSavingStopFrame.value = true;
   try {
-    const exportWidth = Math.round(Number(projectStore.projectSettings?.export?.width ?? 0));
-    const exportHeight = Math.round(Number(projectStore.projectSettings?.export?.height ?? 0));
+    const exportWidth = Math.round(Number(projectStore.projectSettings?.project?.width ?? 0));
+    const exportHeight = Math.round(Number(projectStore.projectSettings?.project?.height ?? 0));
 
     // Request export worker to render a high quality frame directly
     const { client } = getExportWorkerClient();

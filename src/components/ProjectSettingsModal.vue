@@ -59,13 +59,13 @@ async function loadCodecSupport() {
   isLoadingCodecSupport.value = true;
   try {
     videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
-    const selected = projectStore.projectSettings.export.encoding.videoCodec;
+    const selected = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
     if (videoCodecSupport.value[selected] === false) {
       const firstSupported = BASE_VIDEO_CODEC_OPTIONS.find(
         (opt) => videoCodecSupport.value[opt.value],
       );
       if (firstSupported)
-        projectStore.projectSettings.export.encoding.videoCodec = firstSupported.value;
+        projectStore.projectSettings.exportDefaults.encoding.videoCodec = firstSupported.value;
     }
   } finally {
     isLoadingCodecSupport.value = false;
@@ -233,12 +233,12 @@ function getAllClipsCount(): number {
         <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.export', 'Export Defaults') }}</h3>
         
         <MediaEncodingSettings
-          v-model:output-format="projectStore.projectSettings.export.encoding.format"
-          v-model:video-codec="projectStore.projectSettings.export.encoding.videoCodec"
-          v-model:bitrate-mbps="projectStore.projectSettings.export.encoding.bitrateMbps"
-          v-model:exclude-audio="projectStore.projectSettings.export.encoding.excludeAudio"
-          v-model:audio-codec="projectStore.projectSettings.export.encoding.audioCodec"
-          v-model:audio-bitrate-kbps="projectStore.projectSettings.export.encoding.audioBitrateKbps"
+          v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
+          v-model:video-codec="projectStore.projectSettings.exportDefaults.encoding.videoCodec"
+          v-model:bitrate-mbps="projectStore.projectSettings.exportDefaults.encoding.bitrateMbps"
+          v-model:exclude-audio="projectStore.projectSettings.exportDefaults.encoding.excludeAudio"
+          v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
+          v-model:audio-bitrate-kbps="projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps"
           :disabled="false"
           :has-audio="true"
           :is-loading-codec-support="isLoadingCodecSupport"

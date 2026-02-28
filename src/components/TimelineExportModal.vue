@@ -106,12 +106,12 @@ watch(
 
     await loadCodecSupport();
 
-    outputFormat.value = projectStore.projectSettings.export.encoding.format;
-    videoCodec.value = projectStore.projectSettings.export.encoding.videoCodec;
-    bitrateMbps.value = projectStore.projectSettings.export.encoding.bitrateMbps;
-    excludeAudio.value = projectStore.projectSettings.export.encoding.excludeAudio;
-    audioCodec.value = projectStore.projectSettings.export.encoding.audioCodec;
-    audioBitrateKbps.value = projectStore.projectSettings.export.encoding.audioBitrateKbps;
+    outputFormat.value = projectStore.projectSettings.exportDefaults.encoding.format;
+    videoCodec.value = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
+    bitrateMbps.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
+    excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
+    audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
+    audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
     exportWidth.value = projectStore.projectSettings.project.width;
     exportHeight.value = projectStore.projectSettings.project.height;
     exportFps.value = projectStore.projectSettings.project.fps;
@@ -209,12 +209,12 @@ async function handleConfirm() {
     projectStore.projectSettings.project.orientation = orientation.value;
     projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
     projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
-    projectStore.projectSettings.export.encoding.format = outputFormat.value;
-    projectStore.projectSettings.export.encoding.videoCodec = resolvedCodecs.videoCodec;
-    projectStore.projectSettings.export.encoding.bitrateMbps = bitrateMbps.value;
-    projectStore.projectSettings.export.encoding.excludeAudio = excludeAudio.value;
-    projectStore.projectSettings.export.encoding.audioCodec = resolvedCodecs.audioCodec;
-    projectStore.projectSettings.export.encoding.audioBitrateKbps = audioBitrateKbps.value;
+    projectStore.projectSettings.exportDefaults.encoding.format = outputFormat.value;
+    projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
+    projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
+    projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
+    projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
+    projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
     await projectStore.saveProjectSettings();
 
     exportPhase.value = 'encoding';

@@ -31,7 +31,7 @@ export interface GranVideoEditorProjectSettings {
     aspectRatio: string;
     isCustomResolution: boolean;
   };
-  export: {
+  exportDefaults: {
     encoding: {
       format: 'mp4' | 'webm' | 'mkv';
       videoCodec: string;
@@ -66,7 +66,7 @@ const DEFAULT_PROJECT_SETTINGS = {
     aspectRatio: '16:9',
     isCustomResolution: false,
   },
-  export: {
+  exportDefaults: {
     encoding: {
       format: 'mp4' as const,
       videoCodec: 'avc1.640032',
@@ -111,7 +111,7 @@ function getProjectSettingsFromUserDefaults(userSettings: {
       audioBitrateKbps: number;
     };
   };
-}): Pick<GranVideoEditorProjectSettings, 'project' | 'export'> {
+}): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
   return {
     project: {
       width: userSettings.projectDefaults.width,
@@ -122,7 +122,7 @@ function getProjectSettingsFromUserDefaults(userSettings: {
       aspectRatio: userSettings.projectDefaults.aspectRatio,
       isCustomResolution: userSettings.projectDefaults.isCustomResolution,
     },
-    export: {
+    exportDefaults: {
       encoding: {
         format: userSettings.exportDefaults.encoding.format,
         videoCodec: userSettings.exportDefaults.encoding.videoCodec,
@@ -231,9 +231,10 @@ function normalizeProjectSettings(
   const input = raw as Record<string, any>;
 
   // Migration: move resolution/fps from legacy export section to project section
-  const legacyExportInput = input.export ?? {};
-  const projectInput = input.project ?? legacyExportInput ?? {};
-  const encodingInput = input.export?.encoding ?? legacyExportInput?.encoding ?? {};
+  // Also handle rename of 'export' to 'exportDefaults'
+  const legacyExportInput = input.exportDefaults ?? input.export ?? {};
+  const projectInput = input.project ?? (input.export ? input.export : {}) ?? {};
+  const encodingInput = legacyExportInput?.encoding ?? {};
 
   const monitorInput = input.monitor ?? {};
   const transitionsInput = input.transitions ?? {};
@@ -304,23 +305,23 @@ function normalizeProjectSettings(
           ? Boolean(projectInput.isCustomResolution)
           : preset.isCustomResolution,
     },
-    export: {
+    exportDefaults: {
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:
           typeof encodingInput.videoCodec === 'string' && encodingInput.videoCodec.trim().length > 0
             ? encodingInput.videoCodec
-            : DEFAULT_PROJECT_SETTINGS.export.encoding.videoCodec,
+            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.videoCodec,
         bitrateMbps:
           Number.isFinite(bitrateMbps) && bitrateMbps > 0
             ? Math.min(200, Math.max(0.2, bitrateMbps))
-            : DEFAULT_PROJECT_SETTINGS.export.encoding.bitrateMbps,
+            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.bitrateMbps,
         excludeAudio: Boolean(encodingInput.excludeAudio),
         audioCodec: encodingInput.audioCodec === 'opus' ? 'opus' : 'aac',
         audioBitrateKbps:
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
-            : DEFAULT_PROJECT_SETTINGS.export.encoding.audioBitrateKbps,
+            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
       },
     },
     monitor: {
