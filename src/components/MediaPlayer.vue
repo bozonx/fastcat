@@ -77,13 +77,13 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col w-full h-full">
-    <!-- Media Element -->
+  <div class="flex flex-col w-full h-full overflow-hidden rounded">
+    <!-- Video -->
     <div
-      class="flex-1 flex items-center justify-center min-h-0 bg-[color:var(--media-bg)] relative"
+      v-if="type === 'video'"
+      class="flex-1 flex items-center justify-center min-h-0 bg-(--media-bg) relative"
     >
       <video
-        v-if="type === 'video'"
         ref="mediaElement"
         :src="src"
         class="max-w-full max-h-full object-contain"
@@ -94,8 +94,11 @@ watch(
         @ended="onPause"
         @click="togglePlay"
       ></video>
+    </div>
+
+    <!-- Audio -->
+    <div v-else class="flex-1 flex flex-col min-h-0 bg-ui-bg">
       <audio
-        v-else-if="type === 'audio'"
         ref="mediaElement"
         :src="src"
         class="hidden"
@@ -105,22 +108,25 @@ watch(
         @pause="onPause"
         @ended="onPause"
       ></audio>
+
       <div
-        v-if="type === 'audio'"
-        class="flex flex-col items-center justify-center absolute inset-0 text-ui-text-muted"
+        class="flex-1 min-h-0 flex items-center justify-center bg-(--media-bg) relative"
       >
-        <UIcon name="i-heroicons-musical-note" class="w-20 h-20 mb-4 opacity-50" />
-        <span class="text-sm">{{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}</span>
+        <div class="absolute inset-0 opacity-30" style="background: radial-gradient(circle at 30% 30%, rgba(34,197,94,.35), transparent 60%), radial-gradient(circle at 80% 70%, rgba(59,130,246,.25), transparent 55%);" />
+        <div class="relative flex flex-col items-center justify-center text-ui-text-muted px-6">
+          <div class="w-32 h-32 rounded-2xl bg-ui-bg-elevated/60 border border-ui-border flex items-center justify-center">
+            <UIcon name="i-heroicons-musical-note" class="w-16 h-16 opacity-70" />
+          </div>
+          <div class="mt-4 text-xs uppercase tracking-wider opacity-70">
+            {{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Controls -->
-    <div class="flex flex-col px-4 py-2 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
-      <!-- Scrubber -->
-      <div
-        class="h-2 bg-ui-bg-accent rounded-full w-full cursor-pointer relative group"
-        @click="seek"
-      >
+    <div class="flex flex-col px-4 py-3 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
+      <div class="h-2 bg-ui-bg-accent rounded-full w-full cursor-pointer relative group" @click="seek">
         <div
           class="absolute top-0 left-0 h-full bg-primary-500 rounded-full"
           :style="{ width: `${progress}%` }"
@@ -131,8 +137,7 @@ watch(
         ></div>
       </div>
 
-      <!-- Buttons -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center justify-between gap-3">
         <UButton
           size="sm"
           variant="solid"

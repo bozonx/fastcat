@@ -39,7 +39,7 @@ const emit = defineEmits<{
   (e: 'select', entry: FsEntry): void;
   (
     e: 'action',
-    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy',
+    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload',
     entry: FsEntry,
   ): void;
 }>();
@@ -91,12 +91,20 @@ function proxyProgress(entry: FsEntry) {
   return isVideo(entry) && entry.path ? proxyStore.proxyProgress[entry.path] : undefined;
 }
 
+function selectEntry(entry: FsEntry) {
+  uiStore.selectedFsEntry = entry as any;
+  selectionStore.selectFsEntry(entry as any);
+  emit('select', entry);
+}
+
 function onEntryClick(entry: FsEntry) {
-  if (entry.kind === 'directory') {
-    emit('toggle', entry);
-  } else {
-    emit('select', entry);
-  }
+  selectEntry(entry);
+}
+
+function onCaretClick(e: MouseEvent, entry: FsEntry) {
+  e.stopPropagation();
+  if (entry.kind !== 'directory') return;
+  emit('toggle', entry);
 }
 
 function onDragStart(e: DragEvent, entry: FsEntry) {
@@ -221,6 +229,11 @@ function getContextMenuItems(entry: FsEntry) {
         icon: 'i-heroicons-folder-plus',
         onSelect: () => emit('action', 'createFolder', entry),
       },
+      {
+        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+        icon: 'i-heroicons-arrow-up-tray',
+        onSelect: () => emit('action', 'upload', entry),
+      },
     ]);
   }
 
@@ -297,11 +310,7 @@ function getContextMenuItems(entry: FsEntry) {
           @dragover.prevent="onDragOverDir($event, entry)"
           @dragleave.prevent="onDragLeaveDir($event, entry)"
           @drop.prevent="onDropDir($event, entry)"
-          @click.stop="onEntryClick(entry)"
-          @pointerdown.stop="
-            uiStore.selectedFsEntry = entry as any;
-            selectionStore.selectFsEntry(entry as any);
-          "
+          @click="onEntryClick(entry)"
         >
           <!-- Chevron for directories -->
           <UIcon
@@ -309,6 +318,7 @@ function getContextMenuItems(entry: FsEntry) {
             name="i-heroicons-chevron-right"
             class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
             :class="{ 'rotate-90': entry.expanded }"
+            @click="onCaretClick($event, entry)"
           />
           <span v-else class="w-3.5 shrink-0" />
 

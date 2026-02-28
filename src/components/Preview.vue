@@ -33,6 +33,26 @@ function clearAllSelection() {
   timelineStore.selectTrack(null);
 }
 
+const uploadInputRef = ref<HTMLInputElement | null>(null);
+
+function triggerDirectoryUpload() {
+  uploadInputRef.value?.click();
+}
+
+async function onDirectoryFileSelect(e: Event) {
+  const entry = selectedFsEntry.value;
+  if (!entry || entry.kind !== 'directory') return;
+
+  const input = e.target as HTMLInputElement;
+  const files = input.files;
+  input.value = '';
+  if (!files || files.length === 0) return;
+
+  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
+  const fm = useFileManager();
+  await fm.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+}
+
 const currentUrl = ref<string | null>(null);
 const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
 const textContent = ref<string>('');
@@ -1538,8 +1558,17 @@ function onPanelFocusOut() {
 
           <!-- File Preview & Properties -->
           <div v-else-if="displayMode === 'file'" key="file" class="w-full flex flex-col gap-4">
-            <!-- Preview Box -->
+            <input
+              ref="uploadInputRef"
+              type="file"
+              multiple
+              class="hidden"
+              @change="onDirectoryFileSelect"
+            />
+
+            <!-- Preview Box (only for files) -->
             <div
+              v-if="selectedFsEntry?.kind === 'file'"
               class="w-full bg-ui-bg rounded border border-ui-border flex flex-col items-center justify-center min-h-50 overflow-hidden shrink-0"
             >
               <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center">
@@ -1583,6 +1612,19 @@ function onPanelFocusOut() {
               <div class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
                 <span class="text-xs text-ui-text-muted">{{ t('common.name', 'Name') }}</span>
                 <span class="font-medium text-ui-text break-all">{{ fileInfo.name }}</span>
+              </div>
+
+              <div v-if="selectedFsEntry?.kind === 'directory'" class="flex">
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="soft"
+                  icon="i-heroicons-arrow-up-tray"
+                  class="w-full"
+                  @click="triggerDirectoryUpload"
+                >
+                  {{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload files') }}
+                </UButton>
               </div>
               <div
                 v-if="fileInfo.size !== undefined"

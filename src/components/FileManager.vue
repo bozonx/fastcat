@@ -58,6 +58,9 @@ const currentFileInfo = ref<FileInfo | null>(null);
 const isDeleteConfirmModalOpen = ref(false);
 const deleteTarget = ref<FsEntry | null>(null);
 
+const directoryUploadTarget = ref<FsEntry | null>(null);
+const directoryUploadInput = ref<HTMLInputElement | null>(null);
+
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
 
@@ -236,11 +239,15 @@ async function handleRename(newName: string) {
 }
 
 function onFileAction(
-  action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy',
+  action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload',
   entry: FsEntry,
 ) {
   if (action === 'createFolder') {
     openCreateFolderModal(entry);
+  } else if (action === 'upload') {
+    if (entry.kind !== 'directory') return;
+    directoryUploadTarget.value = entry;
+    directoryUploadInput.value?.click();
   } else if (action === 'rename') {
     renameTarget.value = entry;
     isRenameModalOpen.value = true;
@@ -276,6 +283,19 @@ function onFileSelect(e: Event) {
     handleFiles(target.files);
   }
 }
+
+async function onDirectoryFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const files = input.files;
+  input.value = '';
+
+  const entry = directoryUploadTarget.value;
+  directoryUploadTarget.value = null;
+  if (!entry || entry.kind !== 'directory') return;
+  if (!files || files.length === 0) return;
+
+  await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+}
 </script>
 
 <template>
@@ -292,6 +312,13 @@ function onFileSelect(e: Event) {
   >
     <!-- Hidden file input -->
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
+    <input
+      ref="directoryUploadInput"
+      type="file"
+      multiple
+      class="hidden"
+      @change="onDirectoryFileSelect"
+    />
 
     <!-- Header / Tabs -->
     <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
@@ -363,7 +390,7 @@ function onFileSelect(e: Event) {
         @click="createTimeline"
       />
 
-      <div class="ml-auto w-40">
+      <div class="ml-auto w-20">
         <USelectMenu
           :model-value="sortMode"
           :items="[
