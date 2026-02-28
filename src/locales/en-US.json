@@ -278,6 +278,7 @@
       "fps": "FPS",
       "height": "Height",
       "saveLocationNote": "File will be saved to the export/ folder in your project directory",
+      "saveAsDefault": "Save as project settings",
       "startExport": "Export",
       "successDesc": "Timeline exported to {file}",
       "successTitle": "Export successful",

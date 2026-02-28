@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import MediaEncodingSettings, {
   type FormatOption,
@@ -30,6 +30,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const toast = useToast();
 const projectStore = useProjectStore();
+const saveAsDefaults = ref(false);
 
 const {
   isExporting,
@@ -103,6 +104,7 @@ watch(
     exportProgress.value = 0;
     exportPhase.value = null;
     isExporting.value = false;
+    saveAsDefaults.value = false;
 
     await loadCodecSupport();
 
@@ -202,20 +204,22 @@ async function handleConfirm() {
       audioCodec.value as 'aac' | 'opus',
     );
 
-    projectStore.projectSettings.project.width = normalizedExportWidth.value;
-    projectStore.projectSettings.project.height = normalizedExportHeight.value;
-    projectStore.projectSettings.project.fps = normalizedExportFps.value;
-    projectStore.projectSettings.project.resolutionFormat = resolutionFormat.value;
-    projectStore.projectSettings.project.orientation = orientation.value;
-    projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
-    projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
-    projectStore.projectSettings.exportDefaults.encoding.format = outputFormat.value;
-    projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
-    projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
-    projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
-    projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
-    projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
-    await projectStore.saveProjectSettings();
+    if (saveAsDefaults.value) {
+      projectStore.projectSettings.project.width = normalizedExportWidth.value;
+      projectStore.projectSettings.project.height = normalizedExportHeight.value;
+      projectStore.projectSettings.project.fps = normalizedExportFps.value;
+      projectStore.projectSettings.project.resolutionFormat = resolutionFormat.value;
+      projectStore.projectSettings.project.orientation = orientation.value;
+      projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
+      projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
+      projectStore.projectSettings.exportDefaults.encoding.format = outputFormat.value;
+      projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
+      projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
+      projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
+      projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
+      projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
+      await projectStore.saveProjectSettings();
+    }
 
     exportPhase.value = 'encoding';
     await exportTimelineToFile(
@@ -329,6 +333,13 @@ async function handleConfirm() {
         :format-options="getFormatOptions()"
         :video-codec-options="getVideoCodecOptions()"
       />
+
+      <label class="flex items-center gap-3 cursor-pointer mt-2">
+        <UCheckbox v-model="saveAsDefaults" :disabled="isExporting" />
+        <span class="text-sm text-ui-text">{{
+          t('videoEditor.export.saveAsDefault', 'Save as project settings')
+        }}</span>
+      </label>
 
       <div
         v-if="exportError"
