@@ -14,6 +14,7 @@ export const useProxyStore = defineStore('proxy', () => {
   const generatingProxies = ref<Set<string>>(new Set());
   const existingProxies = ref<Set<string>>(new Set());
   const proxyProgress = ref<Record<string, number>>({});
+  const proxyAbortControllers = ref<Record<string, AbortController>>({});
 
   const proxyQueue = ref(
     markRaw(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency })),
@@ -83,11 +84,33 @@ export const useProxyStore = defineStore('proxy', () => {
     generatingProxies.value.add(projectRelativePath);
     proxyProgress.value[projectRelativePath] = 0;
 
+    const controller = new AbortController();
+    proxyAbortControllers.value = {
+      ...proxyAbortControllers.value,
+      [projectRelativePath]: controller,
+    };
+
+    const signal = options?.signal;
+    if (signal) {
+      if (signal.aborted) controller.abort();
+      else {
+        signal.addEventListener(
+          'abort',
+          () => {
+            controller.abort();
+          },
+          { once: true },
+        );
+      }
+    }
+
     try {
       await proxyQueue.value.add(async () => {
         try {
-          if (options?.signal?.aborted) {
-            throw new Error('Proxy generation cancelled');
+          if (controller.signal.aborted) {
+            const abortErr = new Error('Proxy generation cancelled');
+            (abortErr as any).name = 'AbortError';
+            throw abortErr;
           }
 
           const proxyFilename = getProxyFileName(projectRelativePath);
@@ -169,19 +192,37 @@ export const useProxyStore = defineStore('proxy', () => {
         } finally {
           generatingProxies.value.delete(projectRelativePath);
           delete proxyProgress.value[projectRelativePath];
+
+          const nextControllers = { ...proxyAbortControllers.value };
+          delete nextControllers[projectRelativePath];
+          proxyAbortControllers.value = nextControllers;
         }
       });
     } catch (e) {
+      if ((e as any)?.name === 'AbortError') {
+        return;
+      }
       generatingProxies.value.delete(projectRelativePath);
       delete proxyProgress.value[projectRelativePath];
+
+      const nextControllers = { ...proxyAbortControllers.value };
+      delete nextControllers[projectRelativePath];
+      proxyAbortControllers.value = nextControllers;
       throw e;
     }
   }
 
   async function cancelProxyGeneration(projectRelativePath: string) {
-    if (generatingProxies.value.has(projectRelativePath)) {
-      generatingProxies.value.delete(projectRelativePath);
-      delete proxyProgress.value[projectRelativePath];
+    const controller = proxyAbortControllers.value[projectRelativePath];
+    if (controller && !controller.signal.aborted) {
+      controller.abort();
+    }
+
+    try {
+      const { client } = getExportWorkerClient();
+      await client.cancelExport();
+    } catch {
+      // ignore
     }
   }
 

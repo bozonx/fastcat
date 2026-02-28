@@ -5,7 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import FileManagerTree from '~/components/file-manager/FileManagerTree.vue';
+import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 
@@ -137,6 +137,7 @@ const emit = defineEmits<{
       | 'info'
       | 'delete'
       | 'createProxy'
+      | 'cancelProxy'
       | 'deleteProxy'
       | 'upload'
       | 'createProxyForFolder',
@@ -238,6 +239,7 @@ async function onEntrySelect(entry: FsEntry) {
     class="flex-1 overflow-auto min-h-0 min-w-0 relative"
     @dragover="onContainerDragOver"
     @dragleave="onContainerDragLeave"
+    @drop.capture="onContainerDrop"
     @drop="onContainerDrop"
   >
     <UContextMenu :items="rootContextMenuItems">
@@ -280,7 +282,7 @@ async function onEntrySelect(entry: FsEntry) {
             :move-entry="moveEntry"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
-            @action="emit('action', $event.action, $event.entry)"
+            @action="(action, entry) => emit('action', action, entry)"
           />
           <div v-if="isLoading" class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50">
             <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />

@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
@@ -19,6 +20,7 @@ import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
+const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 
 const fileManager = useFileManager();
@@ -121,7 +123,16 @@ watch(() => uiStore.pendingFsEntryDelete, (entry) => {
   }
 });
 
-watch(() => projectStore.currentProjectName, loadProjectDirectory, { immediate: true });
+watch(
+  () => projectStore.currentProjectName,
+  async (name) => {
+    if (name) {
+      uiStore.restoreFileTreeStateOnce(name);
+    }
+    await loadProjectDirectory();
+  },
+  { immediate: true },
+);
 
 function onDragOver(e: DragEvent) {
   if (e.dataTransfer?.types.includes('Files')) {
@@ -157,6 +168,15 @@ function openCreateFolderModal(targetEntry: FsEntry | null = null) {
 
 async function handleCreateFolder(name: string) {
   await createFolder(name, folderCreationTarget.value);
+}
+
+async function onCreateTimeline() {
+  const createdPath = await createTimeline();
+  if (!createdPath) return;
+
+  await projectStore.openTimelineFile(createdPath);
+  await timelineStore.loadTimeline();
+  void timelineStore.loadTimelineMetadata();
 }
 
 async function openFileInfoModal(entry: FsEntry) {
@@ -246,6 +266,7 @@ function onFileAction(
     | 'info'
     | 'delete'
     | 'createProxy'
+    | 'cancelProxy'
     | 'deleteProxy'
     | 'upload'
     | 'createProxyForFolder',
@@ -268,6 +289,11 @@ function onFileAction(
     const proxyStore = useProxyStore();
     if (entry.kind === 'file' && entry.path) {
       void proxyStore.generateProxy(entry.handle as FileSystemFileHandle, entry.path);
+    }
+  } else if (action === 'cancelProxy') {
+    const proxyStore = useProxyStore();
+    if (entry.kind === 'file' && entry.path) {
+      void proxyStore.cancelProxyGeneration(entry.path);
     }
   } else if (action === 'deleteProxy') {
     const proxyStore = useProxyStore();
@@ -423,21 +449,20 @@ async function onDirectoryFileSelect(e: Event) {
         @click="openCreateFolderModal(null)"
       />
       <UButton
+        icon="i-heroicons-document-plus"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
+        @click="onCreateTimeline"
+      />
+      <UButton
         icon="i-heroicons-arrow-up-tray"
         variant="ghost"
         color="neutral"
         size="xs"
         :title="t('videoEditor.fileManager.actions.uploadFiles')"
         @click="triggerFileUpload"
-      />
-      <UButton
-        icon="i-heroicons-arrow-path"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-        :disabled="isLoading || !projectStore.currentProjectName"
-        @click="loadProjectDirectory"
       />
       <UButton
         :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
@@ -448,12 +473,13 @@ async function onDirectoryFileSelect(e: Event) {
         @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
       />
       <UButton
-        icon="i-heroicons-document-plus"
+        icon="i-heroicons-arrow-path"
         variant="ghost"
         color="neutral"
         size="xs"
-        :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
-        @click="createTimeline"
+        :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
+        :disabled="isLoading || !projectStore.currentProjectName"
+        @click="loadProjectDirectory"
       />
 
       <div class="ml-auto w-20">

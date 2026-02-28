@@ -245,14 +245,18 @@ export function useFileManager() {
     for (const n of next) {
       if (!n.path) continue;
       const p = prevByPath.get(n.path);
-      if (!p) continue;
 
-      n.expanded = p.expanded;
-      if (n.kind === 'directory') {
-        n.children = p.children;
-      }
-      if (n.kind === 'file') {
-        n.lastModified = p.lastModified;
+      const isPersistedExpanded = uiStore.isFileTreePathExpanded(n.path);
+      if (p) {
+        n.expanded = p.expanded || isPersistedExpanded;
+        if (n.kind === 'directory') {
+          n.children = p.children;
+        }
+        if (n.kind === 'file') {
+          n.lastModified = p.lastModified;
+        }
+      } else {
+        n.expanded = n.kind === 'directory' ? isPersistedExpanded : false;
       }
     }
 
@@ -736,8 +740,8 @@ export function useFileManager() {
     }
   }
 
-  async function createTimeline() {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+  async function createTimeline(): Promise<string | null> {
+    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
 
     error.value = null;
     isLoading.value = true;
@@ -782,6 +786,7 @@ export function useFileManager() {
       await writable.close();
 
       await loadProjectDirectory();
+      return `${TIMELINES_DIR_NAME}/${fileName}`;
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to create timeline';
       toast.add({
@@ -789,6 +794,7 @@ export function useFileManager() {
         title: 'Timeline error',
         description: error.value || 'Failed to create timeline',
       });
+      return null;
     } finally {
       isLoading.value = false;
     }

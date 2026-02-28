@@ -31,7 +31,16 @@ const emit = defineEmits<{
   (e: 'select', entry: FsEntry): void;
   (
     e: 'action',
-    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload' | 'createProxyForFolder',
+    action:
+      | 'createFolder'
+      | 'rename'
+      | 'info'
+      | 'delete'
+      | 'createProxy'
+      | 'cancelProxy'
+      | 'deleteProxy'
+      | 'upload'
+      | 'createProxyForFolder',
     entry: FsEntry,
   ): void;
 }>();
@@ -286,6 +295,17 @@ function getContextMenuItems(entry: FsEntry) {
         onSelect: () => emit('action', 'createProxy', entry),
       },
     ]);
+
+    if (generating) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+          icon: 'i-heroicons-x-circle',
+          color: 'error',
+          onSelect: () => emit('action', 'cancelProxy', entry),
+        },
+      ]);
+    }
 
     if (hasP) {
       items.push([
