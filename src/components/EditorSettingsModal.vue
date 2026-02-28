@@ -49,6 +49,7 @@ const captureTargetCommandId = ref<HotkeyCommandId | null>(null);
 const capturedCombo = ref<string | null>(null);
 const isDuplicateConfirmOpen = ref(false);
 const duplicateWarningText = ref('');
+const duplicateOwnerCommandId = ref<HotkeyCommandId | null>(null);
 
 let captureKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
@@ -77,12 +78,35 @@ function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
 }
 
 function setBindings(cmdId: HotkeyCommandId, next: string[]) {
-  workspaceStore.userSettings.hotkeys.bindings[cmdId] = [...next];
+  void workspaceStore.batchUpdateUserSettings(
+    (draft) => {
+      draft.hotkeys.bindings[cmdId] = [...next];
+    },
+    { immediate: true },
+  );
 }
 
 function removeBinding(cmdId: HotkeyCommandId, combo: string) {
   const next = getCurrentBindings(cmdId).filter((c) => c !== combo);
   setBindings(cmdId, next);
+}
+
+function resetCommandBindings(cmdId: HotkeyCommandId) {
+  void workspaceStore.batchUpdateUserSettings(
+    (draft) => {
+      delete draft.hotkeys.bindings[cmdId];
+    },
+    { immediate: true },
+  );
+}
+
+function resetAllHotkeys() {
+  void workspaceStore.batchUpdateUserSettings(
+    (draft) => {
+      draft.hotkeys.bindings = {};
+    },
+    { immediate: true },
+  );
 }
 
 function findDuplicateOwner(combo: string, targetCmdId: HotkeyCommandId): HotkeyCommandId | null {
@@ -102,6 +126,8 @@ function finishCapture() {
   }
   isCapturingHotkey.value = false;
   captureTargetCommandId.value = null;
+  capturedCombo.value = null;
+  duplicateOwnerCommandId.value = null;
 }
 
 function startCapture(cmdId: HotkeyCommandId) {
@@ -147,6 +173,7 @@ function startCapture(cmdId: HotkeyCommandId) {
     const owner = findDuplicateOwner(combo, target);
     if (owner) {
       duplicateWarningText.value = `${combo} is already assigned to ${getCommandTitle(owner)}.`;
+      duplicateOwnerCommandId.value = owner;
       isDuplicateConfirmOpen.value = true;
       return;
     }
@@ -171,6 +198,31 @@ function confirmAddDuplicate() {
 
   const next = [...getCurrentBindings(target), combo];
   setBindings(target, Array.from(new Set(next)));
+  isDuplicateConfirmOpen.value = false;
+  finishCapture();
+}
+
+function confirmReplaceDuplicate() {
+  const target = captureTargetCommandId.value;
+  const combo = capturedCombo.value;
+  const owner = duplicateOwnerCommandId.value;
+  if (!target || !combo || !owner) {
+    isDuplicateConfirmOpen.value = false;
+    finishCapture();
+    return;
+  }
+
+  const ownerNext = getCurrentBindings(owner).filter((c) => c !== combo);
+  const targetNext = Array.from(new Set([...getCurrentBindings(target), combo]));
+
+  void workspaceStore.batchUpdateUserSettings(
+    (draft) => {
+      draft.hotkeys.bindings[owner] = ownerNext;
+      draft.hotkeys.bindings[target] = targetNext;
+    },
+    { immediate: true },
+  );
+
   isDuplicateConfirmOpen.value = false;
   finishCapture();
 }
@@ -283,10 +335,13 @@ const thumbnailsLimitGb = computed({
       :title="t('videoEditor.settings.hotkeysDuplicateTitle', 'Duplicate hotkey')"
       :description="duplicateWarningText"
       :confirm-text="t('videoEditor.settings.hotkeysDuplicateConfirm', 'Add anyway')"
+      :secondary-text="t('videoEditor.settings.hotkeysDuplicateReplace', 'Replace')"
+      secondary-color="warning"
       :cancel-text="t('common.cancel', 'Cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmAddDuplicate"
+      @secondary="confirmReplaceDuplicate"
     />
 
     <UiConfirmModal
@@ -414,6 +469,15 @@ const thumbnailsLimitGb = computed({
             <div class="text-sm font-semibold text-ui-text">
               {{ t('videoEditor.settings.userHotkeys', 'Hotkeys') }}
             </div>
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              :disabled="isCapturingHotkey"
+              @click="resetAllHotkeys"
+            >
+              {{ t('videoEditor.settings.hotkeysResetAll', 'Reset all') }}
+            </UButton>
             <div v-if="isCapturingHotkey" class="text-xs text-primary-500 font-medium animate-pulse">
               {{
                 t(
@@ -468,6 +532,17 @@ const thumbnailsLimitGb = computed({
                             :disabled="isCapturingHotkey"
                             :loading="isCapturingHotkey && captureTargetCommandId === cmd.id"
                             @click="startCapture(cmd.id)"
+                          />
+
+                          <UButton
+                            size="xs"
+                            color="neutral"
+                            variant="ghost"
+                            icon="i-heroicons-arrow-path"
+                            class="h-6 w-6 rounded-full shrink-0 justify-center"
+                            :disabled="isCapturingHotkey"
+                            :aria-label="t('videoEditor.settings.hotkeysResetCommand', 'Reset')"
+                            @click="resetCommandBindings(cmd.id)"
                           />
                         </div>
                         <div 

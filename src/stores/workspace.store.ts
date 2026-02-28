@@ -63,6 +63,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceSettings = ref<GranVideoEditorWorkspaceSettings>(createDefaultWorkspaceSettings());
 
   const isSavingUserSettings = ref(false);
+  const userSettingsSaveError = ref<string | null>(null);
+  const isBatchUpdatingUserSettings = ref(false);
   const debouncedEnqueueUserSettingsSave = useDebounceFn(async () => {
     await enqueueUserSettingsSave();
   }, 500);
@@ -71,6 +73,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const userSettingsSaveQueue = new PQueue({ concurrency: 1 });
 
   const isSavingWorkspaceSettings = ref(false);
+  const workspaceSettingsSaveError = ref<string | null>(null);
+  const isBatchUpdatingWorkspaceSettings = ref(false);
   const debouncedEnqueueWorkspaceSettingsSave = useDebounceFn(async () => {
     await enqueueWorkspaceSettingsSave();
   }, 500);
@@ -105,6 +109,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (savedUserSettingsRevision >= userSettingsRevision) return;
 
     isSavingUserSettings.value = true;
+    userSettingsSaveError.value = null;
     const revisionToSave = userSettingsRevision;
 
     try {
@@ -114,6 +119,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         savedUserSettingsRevision = revisionToSave;
       }
     } catch (e) {
+      userSettingsSaveError.value = getErrorMessage(e, 'Failed to save user settings');
       console.warn('Failed to save user settings', e);
     } finally {
       isSavingUserSettings.value = false;
@@ -137,17 +143,34 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(
     userSettings,
     () => {
+      if (isBatchUpdatingUserSettings.value) return;
       markUserSettingsAsDirty();
       void requestUserSettingsSave();
     },
     { deep: true },
   );
 
+  async function batchUpdateUserSettings(
+    updater: (draft: GranVideoEditorUserSettings) => void,
+    options?: { immediate?: boolean },
+  ) {
+    isBatchUpdatingUserSettings.value = true;
+    try {
+      updater(userSettings.value);
+    } finally {
+      isBatchUpdatingUserSettings.value = false;
+    }
+
+    markUserSettingsAsDirty();
+    await requestUserSettingsSave(options);
+  }
+
   async function persistWorkspaceSettingsNow() {
     if (!settingsRepo.value) return;
     if (savedWorkspaceSettingsRevision >= workspaceSettingsRevision) return;
 
     isSavingWorkspaceSettings.value = true;
+    workspaceSettingsSaveError.value = null;
     const revisionToSave = workspaceSettingsRevision;
 
     try {
@@ -157,6 +180,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         savedWorkspaceSettingsRevision = revisionToSave;
       }
     } catch (e) {
+      workspaceSettingsSaveError.value = getErrorMessage(e, 'Failed to save workspace settings');
       console.warn('Failed to save workspace settings', e);
     } finally {
       isSavingWorkspaceSettings.value = false;
@@ -180,11 +204,27 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(
     workspaceSettings,
     () => {
+      if (isBatchUpdatingWorkspaceSettings.value) return;
       markWorkspaceSettingsAsDirty();
       void requestWorkspaceSettingsSave();
     },
     { deep: true },
   );
+
+  async function batchUpdateWorkspaceSettings(
+    updater: (draft: GranVideoEditorWorkspaceSettings) => void,
+    options?: { immediate?: boolean },
+  ) {
+    isBatchUpdatingWorkspaceSettings.value = true;
+    try {
+      updater(workspaceSettings.value);
+    } finally {
+      isBatchUpdatingWorkspaceSettings.value = false;
+    }
+
+    markWorkspaceSettingsAsDirty();
+    await requestWorkspaceSettingsSave(options);
+  }
 
   const isApiSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
@@ -351,6 +391,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     lastProjectName: skipHydrate(lastProjectName),
     userSettings: skipHydrate(userSettings),
     workspaceSettings: skipHydrate(workspaceSettings),
+    isSavingUserSettings,
+    userSettingsSaveError,
+    isSavingWorkspaceSettings,
+    workspaceSettingsSaveError,
+    batchUpdateUserSettings,
+    batchUpdateWorkspaceSettings,
     init,
     openWorkspace,
     resetWorkspace,

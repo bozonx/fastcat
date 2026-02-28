@@ -8,21 +8,25 @@ const {
   title,
   description,
   confirmText,
+  secondaryText,
   cancelText,
   color = 'primary',
+  secondaryColor = 'neutral',
   icon,
   loading = false,
 } = defineProps<{
   title: string;
   description?: string;
   confirmText?: string;
+  secondaryText?: string;
   cancelText?: string;
   color?: ButtonColor;
+  secondaryColor?: ButtonColor;
   icon?: string;
   loading?: boolean;
 }>();
 
-const emit = defineEmits(['confirm']);
+const emit = defineEmits(['confirm', 'secondary']);
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
@@ -33,6 +37,12 @@ const handleConfirm = () => {
   // before the parent component tears down the modal DOM. This prevents "Cannot read properties of null (reading nextSibling)"
   setTimeout(() => {
     emit('confirm');
+  }, 0);
+};
+
+const handleSecondary = () => {
+  setTimeout(() => {
+    emit('secondary');
   }, 0);
 };
 
@@ -74,6 +84,15 @@ const handleClose = () => {
     <template #footer>
       <UButton color="neutral" variant="ghost" @click="handleClose">
         {{ cancelText || t('common.cancel') }}
+      </UButton>
+      <UButton
+        v-if="secondaryText"
+        :color="secondaryColor"
+        variant="ghost"
+        :disabled="loading"
+        @click="handleSecondary"
+      >
+        {{ secondaryText }}
       </UButton>
       <UButton :color="color" :loading="loading" @click="handleConfirm">
         {{ confirmText || t('common.confirm') }}
