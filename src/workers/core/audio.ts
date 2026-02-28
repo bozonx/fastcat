@@ -13,8 +13,8 @@ export async function buildMixedAudioTrack(
   const { AudioSampleSink, AudioSampleSource, Input, BlobSource, ALL_FORMATS } =
     await import('mediabunny');
 
-  const sampleRate = 48000;
-  const numberOfChannels = 2;
+  const sampleRate = options.audioSampleRate || 48000;
+  const numberOfChannels = options.audioChannels === 'mono' ? 1 : 2;
 
   const prepared = await AudioMixer.prepareClips({
     audioClips,

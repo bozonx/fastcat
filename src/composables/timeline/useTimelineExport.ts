@@ -34,6 +34,8 @@ export interface ExportOptions {
   audioBitrate: number;
   audio: boolean;
   audioCodec?: string;
+  audioSampleRate?: number;
+  audioChannels?: 'stereo' | 'mono';
   width: number;
   height: number;
   fps: number;
@@ -751,7 +753,12 @@ export function useTimelineExport() {
       },
     });
 
-    await (client as any).exportTimeline(fileHandle, options, videoClips, audioClips);
+    const finalOptions = {
+      ...options,
+      audioSampleRate: projectStore.projectSettings?.project?.sampleRate,
+      audioChannels: projectStore.projectSettings?.project?.audioChannels,
+    };
+    await (client as any).exportTimeline(fileHandle, finalOptions, videoClips, audioClips);
   }
 
   async function cancelExport() {

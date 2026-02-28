@@ -50,6 +50,7 @@ interface DecodeResponse {
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private decodedCache = new Map<string, AudioBuffer | null>();
+  private reversedDecodedCache = new Map<string, AudioBuffer | null>();
   private decodeInFlight = new Map<string, Promise<AudioBuffer | null>>();
   private activeNodes = new Map<string, AudioBufferSourceNode>();
   private masterGain: GainNode | null = null;
@@ -169,11 +170,26 @@ export class AudioEngine {
     return task;
   }
 
-  async init() {
+  async init(options?: { sampleRate?: number; audioChannels?: 'stereo' | 'mono' }) {
+    const sampleRate = options?.sampleRate || 48000;
+    const channelCount = options?.audioChannels === 'mono' ? 1 : 2;
+
+    if (this.ctx && this.ctx.sampleRate !== sampleRate) {
+      void this.ctx.close();
+      this.ctx = null;
+    }
+
     if (!this.ctx) {
-      this.ctx = new AudioContext({ sampleRate: 48000 });
+      this.ctx = new AudioContext({ sampleRate });
       this.masterGain = this.ctx.createGain();
       this.masterGain.connect(this.ctx.destination);
+      if (this.ctx.destination) {
+        this.ctx.destination.channelCount = channelCount;
+      }
+    } else {
+      if (this.ctx.destination && this.ctx.destination.channelCount !== channelCount) {
+        this.ctx.destination.channelCount = channelCount;
+      }
     }
   }
 
@@ -411,8 +427,14 @@ export class AudioEngine {
     const clipDurationS = clip.durationUs / 1_000_000;
     const clipEndS = clipStartS + clipDurationS;
 
+    const isBackward = this.globalSpeed < 0;
+
     // If the clip is already completely in the past relative to current time, skip
-    if (clipEndS <= currentTimeS) return;
+    if (isBackward) {
+      if (clipStartS >= currentTimeS) return;
+    } else {
+      if (clipEndS <= currentTimeS) return;
+    }
 
     const sourceStartS = clip.sourceStartUs / 1_000_000;
     const sourceDurationS = Math.max(0, clip.sourceDurationUs / 1_000_000);
@@ -425,7 +447,9 @@ export class AudioEngine {
 
     const effectiveSpeed = speed * Math.abs(this.globalSpeed);
 
-    const localOffsetInClipS = Math.max(0, currentTimeS - clipStartS);
+    const currentClipLocalS = isBackward
+      ? Math.max(0, Math.min(clipEndS, currentTimeS) - clipStartS)
+      : Math.max(0, currentTimeS - clipStartS);
 
     const { fadeInS, fadeOutS } = computeFadeDurationsSeconds({
       clipDurationS,
@@ -437,30 +461,34 @@ export class AudioEngine {
     const audioBalance = normalizeBalance(clip.audioBalance, 0);
 
     // When to start playing in AudioContext time.
-    const playStartS =
-      currentTimeS < clipStartS
-        ? this.ctx.currentTime + (clipStartS - currentTimeS) / Math.abs(this.globalSpeed)
-        : this.ctx.currentTime;
+    const playStartS = isBackward
+      ? (currentTimeS > clipEndS ? this.ctx.currentTime + (currentTimeS - clipEndS) / Math.abs(this.globalSpeed) : this.ctx.currentTime)
+      : (currentTimeS < clipStartS ? this.ctx.currentTime + (clipStartS - currentTimeS) / Math.abs(this.globalSpeed) : this.ctx.currentTime);
 
-    // Where to start in the audio buffer.
-    const bufferOffsetS = sourceStartS + localOffsetInClipS * speed;
+    const originalBufferOffsetS = sourceStartS + currentClipLocalS * speed;
 
-    const maxPlayableFromBufferS = Math.max(0, buffer.duration - sourceStartS);
-    const maxPlayableFromSourceS = sourceDurationS > 0 ? sourceDurationS : Number.POSITIVE_INFINITY;
-    const maxPlayableS = Math.min(maxPlayableFromBufferS, maxPlayableFromSourceS);
-    const remainingPlayableS = maxPlayableS - localOffsetInClipS * speed;
+    if (isBackward) {
+      let reversedBuffer = this.reversedDecodedCache.get(sourceKey) ?? null;
+      if (!reversedBuffer) {
+        reversedBuffer = this.ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+          const dest = reversedBuffer.getChannelData(i);
+          dest.set(buffer.getChannelData(i));
+          dest.reverse();
+        }
+        this.reversedDecodedCache.set(sourceKey, reversedBuffer);
+      }
+      buffer = reversedBuffer;
+    }
 
-    const remainingInClipS = Math.max(0, clipDurationS - localOffsetInClipS);
-    const durationToPlayS = Math.min(remainingInClipS * speed, remainingPlayableS);
+    const remainingInClipS = isBackward ? currentClipLocalS : Math.max(0, clipDurationS - currentClipLocalS);
+    const durationToPlayS = remainingInClipS * speed;
 
-    let safeBufferOffsetS = bufferOffsetS;
+    let safeBufferOffsetS = isBackward ? (buffer.duration - originalBufferOffsetS) : originalBufferOffsetS;
     let safeDurationToPlayS = durationToPlayS;
 
     if (!Number.isFinite(safeBufferOffsetS) || safeBufferOffsetS < 0) {
-      console.warn(
-        `[AudioEngine] Invalid bufferOffsetS: ${safeBufferOffsetS} (buffer.duration: ${buffer.duration}) for clip ${clip.id}`,
-      );
-      return;
+      safeBufferOffsetS = 0;
     }
 
     if (safeBufferOffsetS >= buffer.duration) {
@@ -476,7 +504,6 @@ export class AudioEngine {
     );
 
     if (!Number.isFinite(safeDurationToPlayS) || safeDurationToPlayS <= 0) {
-      console.warn(`[AudioEngine] Invalid durationToPlayS: ${durationToPlayS} for clip ${clip.id}`);
       return;
     }
 
@@ -484,7 +511,7 @@ export class AudioEngine {
       clipStartS,
       clipDurationS,
       currentTimeS,
-      bufferOffsetS,
+      bufferOffsetS: originalBufferOffsetS,
       durationToPlayS,
       playStartS,
       ctxCurrentTime: this.ctx.currentTime,
@@ -529,8 +556,8 @@ export class AudioEngine {
       });
     }
 
-    const t0 = localOffsetInClipS;
-    const t1 = localOffsetInClipS + remainingInClipS;
+    const t0 = currentClipLocalS;
+    const t1 = isBackward ? Math.max(0, currentClipLocalS - remainingInClipS) : (currentClipLocalS + remainingInClipS);
     const g0 = gainAtClipTime(t0);
     const gainParam: any = clipGain.gain as any;
     if (typeof gainParam.cancelScheduledValues === 'function') {
@@ -542,29 +569,52 @@ export class AudioEngine {
       gainParam.value = g0;
     }
 
-    const inEndClipS = fadeInS;
-    if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
-      const rampEndClipS = Math.min(inEndClipS, t1);
-      const rampEndAtS = startAtS + (rampEndClipS - t0);
-      if (typeof gainParam.linearRampToValueAtTime === 'function') {
-        gainParam.linearRampToValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
-      } else if (typeof gainParam.setValueAtTime === 'function') {
-        gainParam.setValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+    if (!isBackward) {
+      const inEndClipS = fadeInS;
+      if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
+        const rampEndClipS = Math.min(inEndClipS, t1);
+        const rampEndAtS = startAtS + (rampEndClipS - t0);
+        if (typeof gainParam.linearRampToValueAtTime === 'function') {
+          gainParam.linearRampToValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+        } else if (typeof gainParam.setValueAtTime === 'function') {
+          gainParam.setValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
+        }
       }
-    }
 
-    const outStartClipS = clipDurationS - fadeOutS;
-    if (fadeOutS > 0 && t1 > outStartClipS) {
-      const rampStartClipS = Math.max(outStartClipS, t0);
-      const rampStartAtS = startAtS + (rampStartClipS - t0);
-      // Ensure we are at the correct value at ramp start, then ramp down to end.
-      if (typeof gainParam.setValueAtTime === 'function') {
-        gainParam.setValueAtTime(gainAtClipTime(rampStartClipS), rampStartAtS);
+      const outStartClipS = clipDurationS - fadeOutS;
+      if (fadeOutS > 0 && t1 > outStartClipS) {
+        const rampStartClipS = Math.max(outStartClipS, t0);
+        const rampStartAtS = startAtS + (rampStartClipS - t0);
+        // Ensure we are at the correct value at ramp start, then ramp down to end.
+        if (typeof gainParam.setValueAtTime === 'function') {
+          gainParam.setValueAtTime(gainAtClipTime(rampStartClipS), rampStartAtS);
+        }
+        if (typeof gainParam.linearRampToValueAtTime === 'function') {
+          gainParam.linearRampToValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+        } else if (typeof gainParam.setValueAtTime === 'function') {
+          gainParam.setValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+        }
       }
-      if (typeof gainParam.linearRampToValueAtTime === 'function') {
-        gainParam.linearRampToValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
-      } else if (typeof gainParam.setValueAtTime === 'function') {
-        gainParam.setValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+    } else {
+      // In backward playback, the time t decreases from t0 down to t1.
+      // E.g. fading out at the end, if we play backward, we are fading IN.
+      // It starts at t0 (which is e.g. end of clip) and goes down to t1 (e.g. start of clip).
+      const outStartClipS = clipDurationS - fadeOutS;
+      if (fadeOutS > 0 && t0 > outStartClipS) {
+        const rampEndClipS = Math.max(outStartClipS, t1); // the time we stop fading (during backward)
+        const rampEndAtS = startAtS + (t0 - rampEndClipS) / speed;
+        if (typeof gainParam.setValueAtTime === 'function') {
+          // It's a bit complex with linearRampToValueAtTime since we ramp to a value over backward time.
+          // We can just use setValueAtTime for the endpoints.
+          gainParam.linearRampToValueAtTime?.(gainAtClipTime(rampEndClipS), rampEndAtS);
+        }
+      }
+      const inEndClipS = fadeInS;
+      if (fadeInS > 0 && t1 < inEndClipS) {
+        const rampStartClipS = Math.min(inEndClipS, t0);
+        const rampStartAtS = startAtS + (t0 - rampStartClipS) / speed;
+        gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
+        gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), endAtS);
       }
     }
 

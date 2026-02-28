@@ -697,7 +697,7 @@ async function createStopFrameSnapshot() {
 
         <WheelSlider
           :min="0"
-          :max="1"
+          :max="2"
           :step="0.05"
           :model-value="audioMuted ? 0 : audioVolume"
           slider-class="w-20"

@@ -491,7 +491,10 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await client.clearClips();
       }
 
-      await audioEngine.init();
+      await audioEngine.init({
+        sampleRate: projectStore.projectSettings?.project?.sampleRate,
+        audioChannels: projectStore.projectSettings?.project?.audioChannels,
+      });
 
       const audioEngineClips = (
         await Promise.all(
