@@ -277,8 +277,12 @@ export async function createTimelineCommand(params: {
     try {
       await timelinesDir.getFileHandle(fileName);
       index += 1;
-    } catch {
-      exists = false;
+    } catch (e: any) {
+      if (e?.name === 'NotFoundError') {
+        exists = false;
+        continue;
+      }
+      throw e;
     }
   }
 

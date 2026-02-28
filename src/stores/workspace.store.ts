@@ -31,7 +31,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceHandleStorage = ref<WorkspaceHandleStorage<FileSystemDirectoryHandle> | null>(
     typeof window === 'undefined'
       ? null
-      : createIndexedDbWorkspaceHandleStorage({ indexedDB: window.indexedDB }),
+      : window.indexedDB
+        ? createIndexedDbWorkspaceHandleStorage({ indexedDB: window.indexedDB })
+        : null,
   );
 
   const projects = ref<string[]>([]);

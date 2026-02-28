@@ -47,6 +47,37 @@ export function useFileManager() {
   const mediaStore = useMediaStore();
   const proxyStore = useProxyStore();
 
+  async function runWithUiFeedback<T>(params: {
+    action: () => Promise<T>;
+    defaultErrorMessage: string;
+    toastTitle: string;
+    toastDescription?: () => string;
+    ignoreError?: (e: unknown) => boolean;
+    rethrow?: boolean;
+  }): Promise<T | null> {
+    error.value = null;
+    isLoading.value = true;
+    try {
+      return await params.action();
+    } catch (e: any) {
+      if (params.ignoreError?.(e)) {
+        return null;
+      }
+
+      error.value = e?.message ?? params.defaultErrorMessage;
+      toast.add({
+        color: 'red',
+        title: params.toastTitle,
+        description: params.toastDescription?.() ?? (error.value || params.defaultErrorMessage),
+      });
+
+      if (params.rethrow) throw e;
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   const service = createFileManagerService({
     rootEntries,
     sortMode,
@@ -88,19 +119,18 @@ export function useFileManager() {
   async function toggleDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
 
-    error.value = null;
     const prevExpanded = Boolean(entry.expanded);
+    await runWithUiFeedback({
+      action: async () => {
+        await service.toggleDirectory(entry);
+      },
+      defaultErrorMessage: 'Failed to read folder',
+      toastTitle: 'Folder error',
+      toastDescription: () => error.value || 'Failed to read folder',
+      ignoreError: () => false,
+    });
 
-    try {
-      await service.toggleDirectory(entry);
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to read folder';
-      toast.add({
-        color: 'red',
-        title: 'Folder error',
-        description: error.value || 'Failed to read folder',
-      });
-
+    if (error.value) {
       entry.expanded = prevExpanded;
       const projectName = projectStore.currentProjectName;
       if (projectName && entry.path) {
@@ -115,25 +145,18 @@ export function useFileManager() {
       return;
     }
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
-      await service.loadProjectDirectory(projectDir);
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') {
-        error.value = e?.message ?? 'Failed to open project folder';
-        toast.add({
-          color: 'red',
-          title: 'Project error',
-          description: error.value || 'Failed to open project folder',
-        });
-      }
-    } finally {
-      isLoading.value = false;
-    }
+    await runWithUiFeedback({
+      action: async () => {
+        const projectDir = await workspaceStore.projectsHandle!.getDirectoryHandle(
+          projectStore.currentProjectName!,
+        );
+        await service.loadProjectDirectory(projectDir);
+      },
+      defaultErrorMessage: 'Failed to open project folder',
+      toastTitle: 'Project error',
+      toastDescription: () => error.value || 'Failed to open project folder',
+      ignoreError: (e: any) => e?.name === 'AbortError',
+    });
   }
 
   async function handleFiles(
@@ -143,169 +166,148 @@ export function useFileManager() {
   ) {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      await handleFilesCommand(
-        files,
-        {
-          targetDirHandle: targetDirHandle ? toRaw(targetDirHandle) : undefined,
-          targetDirPath,
-        },
-        {
-          getProjectDirHandle: async () =>
-            await workspaceStore.projectsHandle!.getDirectoryHandle(
-              projectStore.currentProjectName!,
-            ),
-          getTargetDirHandle: async ({ projectDir, file }) =>
-            await resolveDefaultTargetDir({ projectDir, file }),
-          convertSvgToPng: async (file) =>
-            await convertSvgToPng(file, {
-              maxWidth: projectStore.projectSettings.project.width,
-              maxHeight: projectStore.projectSettings.project.height,
-            }),
-          onSvgConvertError: ({ file, error: e }) => {
-            console.warn('Failed to convert SVG to PNG', e);
-            error.value = `Failed to import SVG: ${file.name}`;
-            toast.add({
-              color: 'red',
-              title: 'SVG Import Error',
-              description: error.value,
-            });
+    await runWithUiFeedback({
+      action: async () => {
+        await handleFilesCommand(
+          files,
+          {
+            targetDirHandle: targetDirHandle ? toRaw(targetDirHandle) : undefined,
+            targetDirPath,
           },
-          onSkipProjectFile: ({ file }) => {
-            toast.add({
-              color: 'neutral',
-              title: t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
-              description: t(
-                'videoEditor.fileManager.skipOtio.description',
-                `${file.name} is a project file and cannot be imported this way. Use Create Timeline instead.`,
+          {
+            getProjectDirHandle: async () =>
+              await workspaceStore.projectsHandle!.getDirectoryHandle(
+                projectStore.currentProjectName!,
               ),
-            });
+            getTargetDirHandle: async ({ projectDir, file }) =>
+              await resolveDefaultTargetDir({ projectDir, file }),
+            convertSvgToPng: async (file) =>
+              await convertSvgToPng(file, {
+                maxWidth: projectStore.projectSettings.project.width,
+                maxHeight: projectStore.projectSettings.project.height,
+              }),
+            onSvgConvertError: ({ file, error: e }) => {
+              console.warn('Failed to convert SVG to PNG', e);
+              error.value = `Failed to import SVG: ${file.name}`;
+              toast.add({
+                color: 'red',
+                title: 'SVG Import Error',
+                description: error.value,
+              });
+            },
+            onSkipProjectFile: ({ file }) => {
+              toast.add({
+                color: 'neutral',
+                title: t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
+                description: t(
+                  'videoEditor.fileManager.skipOtio.description',
+                  `${file.name} is a project file and cannot be imported this way. Use Create Timeline instead.`,
+                ),
+              });
+            },
+            onMediaImported: ({ fileHandle, projectRelativePath }) => {
+              void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
+            },
           },
-          onMediaImported: ({ fileHandle, projectRelativePath }) => {
-            void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
-          },
-        },
-      );
+        );
 
-      await loadProjectDirectory();
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to upload files';
-      toast.add({
-        color: 'red',
-        title: 'Upload error',
-        description: error.value || 'Failed to upload files',
-      });
-    } finally {
-      isLoading.value = false;
-    }
+        await loadProjectDirectory();
+      },
+      defaultErrorMessage: 'Failed to upload files',
+      toastTitle: 'Upload error',
+      toastDescription: () => error.value || 'Failed to upload files',
+    });
   }
 
   async function createFolder(name: string, targetEntry: FileSystemDirectoryHandle | null = null) {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      const baseDir =
-        targetEntry ||
-        (await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName));
-      await createFolderCommand({ name, baseDir });
-      await loadProjectDirectory();
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to create folder';
-      toast.add({
-        color: 'red',
-        title: 'Folder error',
-        description: error.value || 'Failed to create folder',
-      });
-    } finally {
-      isLoading.value = false;
-    }
+    await runWithUiFeedback({
+      action: async () => {
+        const baseDir =
+          targetEntry ||
+          (await workspaceStore.projectsHandle!.getDirectoryHandle(
+            projectStore.currentProjectName!,
+          ));
+        await createFolderCommand({ name, baseDir });
+        await loadProjectDirectory();
+      },
+      defaultErrorMessage: 'Failed to create folder',
+      toastTitle: 'Folder error',
+      toastDescription: () => error.value || 'Failed to create folder',
+    });
   }
 
   async function deleteEntry(target: FsEntry) {
-    error.value = null;
-    isLoading.value = true;
-    try {
-      await deleteEntryCommand(target, {
-        removeEntry: async ({ parentHandle, name, recursive }) => {
-          const parent = toRaw(parentHandle);
-          await parent.removeEntry(name, { recursive });
-        },
-        onFileDeleted: async ({ path }) => {
-          await proxyStore.deleteProxy(path);
+    await runWithUiFeedback({
+      action: async () => {
+        await deleteEntryCommand(target, {
+          removeEntry: async ({ parentHandle, name, recursive }) => {
+            const parent = toRaw(parentHandle);
+            await parent.removeEntry(name, { recursive });
+          },
+          onFileDeleted: async ({ path }) => {
+            await proxyStore.deleteProxy(path);
 
-          if (
-            path.startsWith(`${VIDEO_DIR_NAME}/`) ||
-            path.startsWith(`${SOURCES_DIR_NAME}/video/`)
-          ) {
-            if (projectStore.currentProjectId) {
-              await thumbnailGenerator.clearThumbnails({
-                projectId: projectStore.currentProjectId,
-                hash: getClipThumbnailsHash({
+            if (
+              path.startsWith(`${VIDEO_DIR_NAME}/`) ||
+              path.startsWith(`${SOURCES_DIR_NAME}/video/`)
+            ) {
+              if (projectStore.currentProjectId) {
+                await thumbnailGenerator.clearThumbnails({
                   projectId: projectStore.currentProjectId,
-                  projectRelativePath: path,
-                }),
-              });
+                  hash: getClipThumbnailsHash({
+                    projectId: projectStore.currentProjectId,
+                    projectRelativePath: path,
+                  }),
+                });
+              }
             }
-          }
-        },
-      });
-      await loadProjectDirectory();
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to delete';
-      toast.add({
-        color: 'red',
-        title: 'Delete error',
-        description: error.value || 'Failed to delete',
-      });
-    } finally {
-      isLoading.value = false;
-    }
+          },
+        });
+
+        await loadProjectDirectory();
+      },
+      defaultErrorMessage: 'Failed to delete',
+      toastTitle: 'Delete error',
+      toastDescription: () => error.value || 'Failed to delete',
+    });
   }
 
   async function renameEntry(target: FsEntry, newName: string) {
     if (!target.parentHandle) return;
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      await renameEntryCommand(
-        { target, newName },
-        {
-          ensureTargetNameDoesNotExist: async ({ parentHandle, kind, newName: nn }) => {
-            const parent = toRaw(parentHandle);
-            try {
-              if (kind === 'file') {
-                await parent.getFileHandle(nn);
-              } else {
-                await parent.getDirectoryHandle(nn);
+    await runWithUiFeedback({
+      action: async () => {
+        await renameEntryCommand(
+          { target, newName },
+          {
+            ensureTargetNameDoesNotExist: async ({ parentHandle, kind, newName: nn }) => {
+              const parent = toRaw(parentHandle);
+              try {
+                if (kind === 'file') {
+                  await parent.getFileHandle(nn);
+                } else {
+                  await parent.getDirectoryHandle(nn);
+                }
+                throw new Error(`Target name already exists: ${nn}`);
+              } catch (e: any) {
+                if (e?.name !== 'NotFoundError') throw e;
               }
-              throw new Error(`Target name already exists: ${nn}`);
-            } catch (e: any) {
-              if (e?.name !== 'NotFoundError') throw e;
-            }
+            },
+            removeEntry: async ({ parentHandle, name, recursive }) => {
+              const parent = toRaw(parentHandle);
+              await parent.removeEntry(name, { recursive });
+            },
           },
-          removeEntry: async ({ parentHandle, name, recursive }) => {
-            const parent = toRaw(parentHandle);
-            await parent.removeEntry(name, { recursive });
-          },
-        },
-      );
+        );
 
-      await loadProjectDirectory();
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to rename';
-      toast.add({
-        color: 'red',
-        title: 'Rename error',
-        description: error.value || 'Failed to rename',
-      });
-    } finally {
-      isLoading.value = false;
-    }
+        await loadProjectDirectory();
+      },
+      defaultErrorMessage: 'Failed to rename',
+      toastTitle: 'Rename error',
+      toastDescription: () => error.value || 'Failed to rename',
+    });
   }
 
   async function moveEntry(params: {
@@ -325,95 +327,82 @@ export function useFileManager() {
 
     if (!isMoveAllowed({ sourcePath, targetDirPath })) return;
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      await moveEntryCommand(
-        {
-          source: {
-            ...params.source,
-            handle: toRaw(params.source.handle) as any,
-            parentHandle: params.source.parentHandle
-              ? toRaw(params.source.parentHandle)
-              : undefined,
+    await runWithUiFeedback({
+      action: async () => {
+        await moveEntryCommand(
+          {
+            source: {
+              ...params.source,
+              handle: toRaw(params.source.handle) as any,
+              parentHandle: params.source.parentHandle
+                ? toRaw(params.source.parentHandle)
+                : undefined,
+            },
+            targetDirHandle: toRaw(params.targetDirHandle),
+            targetDirPath,
           },
-          targetDirHandle: toRaw(params.targetDirHandle),
-          targetDirPath,
-        },
-        {
-          removeEntry: async ({ parentHandle, name, recursive }) => {
-            const parent = toRaw(parentHandle);
-            await parent.removeEntry(name, { recursive });
-          },
-          onFileMoved: async ({ oldPath, newPath }) => {
-            delete mediaStore.mediaMetadata[oldPath];
-            delete mediaStore.mediaMetadata[newPath];
+          {
+            removeEntry: async ({ parentHandle, name, recursive }) => {
+              const parent = toRaw(parentHandle);
+              await parent.removeEntry(name, { recursive });
+            },
+            onFileMoved: async ({ oldPath, newPath }) => {
+              delete mediaStore.mediaMetadata[oldPath];
+              delete mediaStore.mediaMetadata[newPath];
 
-            if (
-              oldPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
-              oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-            ) {
-              await proxyStore.deleteProxy(oldPath);
-              proxyStore.existingProxies.clear();
+              if (
+                oldPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
+                oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)
+              ) {
+                await proxyStore.deleteProxy(oldPath);
+                proxyStore.existingProxies.clear();
 
-              if (projectStore.currentProjectId) {
-                await thumbnailGenerator.clearThumbnails({
-                  projectId: projectStore.currentProjectId,
-                  hash: getClipThumbnailsHash({
+                if (projectStore.currentProjectId) {
+                  await thumbnailGenerator.clearThumbnails({
                     projectId: projectStore.currentProjectId,
-                    projectRelativePath: oldPath,
-                  }),
-                });
+                    hash: getClipThumbnailsHash({
+                      projectId: projectStore.currentProjectId,
+                      projectRelativePath: oldPath,
+                    }),
+                  });
+                }
               }
-            }
+            },
+            onDirectoryMoved: async () => {
+              mediaStore.resetMediaState();
+              proxyStore.existingProxies.clear();
+            },
           },
-          onDirectoryMoved: async () => {
-            mediaStore.resetMediaState();
-            proxyStore.existingProxies.clear();
-          },
-        },
-      );
+        );
 
-      await loadProjectDirectory();
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to move';
-      toast.add({
-        color: 'red',
-        title: 'Move error',
-        description: error.value || 'Failed to move',
-      });
-      throw e;
-    } finally {
-      isLoading.value = false;
-    }
+        await loadProjectDirectory();
+      },
+      defaultErrorMessage: 'Failed to move',
+      toastTitle: 'Move error',
+      toastDescription: () => error.value || 'Failed to move',
+      rethrow: true,
+    });
   }
 
   async function createTimeline(): Promise<string | null> {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
-      const createdPath = await createTimelineCommand({
-        projectDir,
-        timelinesDirName: TIMELINES_DIR_NAME,
-      });
-      await loadProjectDirectory();
-      return createdPath;
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to create timeline';
-      toast.add({
-        color: 'red',
-        title: 'Timeline error',
-        description: error.value || 'Failed to create timeline',
-      });
-      return null;
-    } finally {
-      isLoading.value = false;
-    }
+    return await runWithUiFeedback({
+      action: async () => {
+        const projectDir = await workspaceStore.projectsHandle!.getDirectoryHandle(
+          projectStore.currentProjectName!,
+        );
+        const createdPath = await createTimelineCommand({
+          projectDir,
+          timelinesDirName: TIMELINES_DIR_NAME,
+        });
+        await loadProjectDirectory();
+        return createdPath;
+      },
+      defaultErrorMessage: 'Failed to create timeline',
+      toastTitle: 'Timeline error',
+      toastDescription: () => error.value || 'Failed to create timeline',
+    });
   }
 
   function getFileIcon(entry: FsEntry): string {

@@ -3,12 +3,6 @@ import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useWorkspaceStore } from '../../../src/stores/workspace.store';
 
-vi.mock('~/utils/indexedDB', () => ({
-  saveWorkspaceHandleToIndexedDB: vi.fn().mockResolvedValue(undefined),
-  getWorkspaceHandleFromIndexedDB: vi.fn().mockResolvedValue(null),
-  clearWorkspaceHandleFromIndexedDB: vi.fn().mockResolvedValue(undefined),
-}));
-
 describe('WorkspaceStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
