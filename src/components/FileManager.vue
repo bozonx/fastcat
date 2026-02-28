@@ -280,13 +280,15 @@ function onSortModeChange(v: 'name' | 'modified') {
 function onFileSelect(e: Event) {
   const target = e.target as HTMLInputElement;
   if (target.files) {
-    handleFiles(target.files);
+    const files = Array.from(target.files);
+    target.value = '';
+    handleFiles(files);
   }
 }
 
 async function onDirectoryFileSelect(e: Event) {
   const input = e.target as HTMLInputElement;
-  const files = input.files;
+  const files = input.files ? Array.from(input.files) : [];
   input.value = '';
 
   const entry = directoryUploadTarget.value;

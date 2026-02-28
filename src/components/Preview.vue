@@ -44,13 +44,14 @@ async function onDirectoryFileSelect(e: Event) {
   if (!entry || entry.kind !== 'directory') return;
 
   const input = e.target as HTMLInputElement;
-  const files = input.files;
+  const files = input.files ? Array.from(input.files) : [];
   input.value = '';
   if (!files || files.length === 0) return;
 
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
   const fm = useFileManager();
   await fm.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  await fm.loadProjectDirectory();
 }
 
 const currentUrl = ref<string | null>(null);
