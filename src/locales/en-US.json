@@ -158,7 +158,8 @@
       "proxyVideoBitrate": "Video bitrate (Mbps)",
       "proxyVideoBitrateHelp": "Higher bitrate means better quality but larger file size",
       "userOptimization": "Optimization",
-      "autoCreateProxies": "Automatically create proxies when adding media to the timeline"
+      "autoCreateProxies": "Automatically create proxies when adding media to the timeline",
+      "proxyConcurrency": "Proxy concurrency"
     },
     "projectSettings": {
       "note": "Settings are saved to .gran/project.settings.json",

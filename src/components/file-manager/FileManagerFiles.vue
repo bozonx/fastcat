@@ -120,13 +120,26 @@ const props = defineProps<{
     targetDirPath: string;
   }) => Promise<void>;
   getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  handleFiles: (
+    files: FileList | File[],
+    targetDirHandle?: FileSystemDirectoryHandle,
+    targetDirPath?: string,
+  ) => Promise<void>;
 }>();
 
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
   (
     e: 'action',
-    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload',
+    action:
+      | 'createFolder'
+      | 'rename'
+      | 'info'
+      | 'delete'
+      | 'createProxy'
+      | 'deleteProxy'
+      | 'upload'
+      | 'createProxyForFolder',
     entry: FsEntry,
   ): void;
   (e: 'createFolder', entry: FsEntry | null): void;
@@ -148,12 +161,10 @@ const rootContextMenuItems = computed(() => {
 const isRootDropOver = ref(false);
 
 function onRootDragOver(e: DragEvent) {
-  const types = e.dataTransfer?.types;
-  if (!types) return;
-  if (!types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) return;
+  if (!isRelevantDrag(e)) return;
 
   isRootDropOver.value = true;
-  e.dataTransfer.dropEffect = 'move';
+  e.dataTransfer!.dropEffect = e.dataTransfer?.types.includes('Files') ? 'copy' : 'move';
 }
 
 function onRootDragLeave(e: DragEvent) {
@@ -166,6 +177,17 @@ function onRootDragLeave(e: DragEvent) {
 
 async function onRootDrop(e: DragEvent) {
   isRootDropOver.value = false;
+
+  const rootHandle = await props.getProjectRootDirHandle();
+  if (!rootHandle) return;
+
+  if (e.dataTransfer?.types.includes('Files')) {
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      await props.handleFiles(files, rootHandle, '');
+    }
+    return;
+  }
 
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   if (!moveRaw) return;
@@ -182,9 +204,6 @@ async function onRootDrop(e: DragEvent) {
 
   const source = props.findEntryByPath(sourcePath);
   if (!source) return;
-
-  const rootHandle = await props.getProjectRootDirHandle();
-  if (!rootHandle) return;
 
   await props.moveEntry({
     source,
@@ -241,7 +260,7 @@ async function onEntrySelect(entry: FsEntry) {
           </p>
         </div>
 
-        <div v-if="isLoading" class="px-3 py-4 text-sm text-ui-text-muted">
+        <div v-if="isLoading && rootEntries.length === 0" class="px-3 py-4 text-sm text-ui-text-muted">
           {{ t('common.loading', 'Loading...') }}
         </div>
 
@@ -264,17 +283,21 @@ async function onEntrySelect(entry: FsEntry) {
         </div>
 
         <!-- File tree -->
-        <FileManagerTree
-          v-else
-          :entries="rootEntries"
-          :depth="0"
-          :get-file-icon="getFileIcon"
-          :find-entry-by-path="findEntryByPath"
-          :move-entry="moveEntry"
-          @toggle="emit('toggle', $event)"
-          @select="onEntrySelect"
-          @action="(action, entry) => emit('action', action, entry)"
-        />
+        <div v-else class="flex flex-col flex-1">
+          <FileManagerTree
+            :entries="rootEntries"
+            :depth="0"
+            :get-file-icon="getFileIcon"
+            :find-entry-by-path="findEntryByPath"
+            :move-entry="moveEntry"
+            @toggle="emit('toggle', $event)"
+            @select="onEntrySelect"
+            @action="(action, entry) => emit('action', action, entry)"
+          />
+          <div v-if="isLoading" class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50">
+            <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />
+          </div>
+        </div>
 
         <div
           class="h-12 shrink-0"

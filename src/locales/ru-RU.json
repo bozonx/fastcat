@@ -158,7 +158,8 @@
       "proxyVideoBitrate": "Битрейт видео (Мбит/с)",
       "proxyVideoBitrateHelp": "Более высокий битрейт означает лучшее качество, но больший размер файла",
       "userOptimization": "Оптимизация",
-      "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн"
+      "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн",
+      "proxyConcurrency": "Потоков генерации"
     },
     "projectSettings": {
       "note": "Настройки сохраняются в .gran/project.settings.json",

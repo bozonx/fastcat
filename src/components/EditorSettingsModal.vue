@@ -756,7 +756,7 @@ const thumbnailsLimitGb = computed({
             }}
           </div>
 
-          <div class="grid grid-cols-3 gap-4">
+          <div class="grid grid-cols-4 gap-4">
             <UFormField :label="t('videoEditor.settings.proxyResolution', 'Proxy resolution')">
               <USelectMenu
                 v-model="workspaceStore.userSettings.optimization.proxyResolution"
@@ -804,6 +804,18 @@ const thumbnailsLimitGb = computed({
                 min="32"
                 max="512"
                 step="32"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField :label="t('videoEditor.settings.proxyConcurrency', 'Concurrency')">
+              <UInput
+                v-model.number="workspaceStore.userSettings.optimization.proxyConcurrency"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="16"
+                step="1"
                 class="w-full"
               />
             </UFormField>

@@ -1,5 +1,6 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { defineStore } from 'pinia';
+import PQueue from 'p-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
@@ -13,6 +14,12 @@ export const useProxyStore = defineStore('proxy', () => {
   const generatingProxies = ref<Set<string>>(new Set());
   const existingProxies = ref<Set<string>>(new Set());
   const proxyProgress = ref<Record<string, number>>({});
+
+  const proxyQueue = ref(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency }));
+
+  watch(() => workspaceStore.userSettings.optimization.proxyConcurrency, (val) => {
+    proxyQueue.value.concurrency = val;
+  });
 
   function getProxyFileName(projectRelativePath: string): string {
     return `${encodeURIComponent(projectRelativePath)}.webm`;
@@ -71,84 +78,93 @@ export const useProxyStore = defineStore('proxy', () => {
     proxyProgress.value[projectRelativePath] = 0;
 
     try {
-      const proxyFilename = getProxyFileName(projectRelativePath);
-      const targetHandle = await dir.getFileHandle(proxyFilename, { create: true });
+      await proxyQueue.value.add(async () => {
+        try {
+          const proxyFilename = getProxyFileName(projectRelativePath);
+          const targetHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
-      const { optimization } = workspaceStore.userSettings;
+          const { optimization } = workspaceStore.userSettings;
 
-      let width = 1280;
-      let height = 720;
-      if (optimization.proxyResolution === '360p') {
-        width = 640;
-        height = 360;
-      } else if (optimization.proxyResolution === '480p') {
-        width = 854;
-        height = 480;
-      } else if (optimization.proxyResolution === '1080p') {
-        width = 1920;
-        height = 1080;
-      }
+          let width = 1280;
+          let height = 720;
+          if (optimization.proxyResolution === '360p') {
+            width = 640;
+            height = 360;
+          } else if (optimization.proxyResolution === '480p') {
+            width = 854;
+            height = 480;
+          } else if (optimization.proxyResolution === '1080p') {
+            width = 1920;
+            height = 1080;
+          }
 
-      const { client } = getExportWorkerClient();
+          const { client } = getExportWorkerClient();
 
-      setExportHostApi({
-        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-        onExportProgress: (progress) => {
-          proxyProgress.value[projectRelativePath] = progress;
-        },
-      });
+          setExportHostApi({
+            getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+            onExportProgress: (progress) => {
+              proxyProgress.value[projectRelativePath] = progress;
+            },
+          });
 
-      const meta = await client.extractMetadata(fileHandle);
-      const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+          const meta = await client.extractMetadata(fileHandle);
+          const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
-      if (!durationUs) throw new Error('Invalid video duration');
+          if (!durationUs) throw new Error('Invalid video duration');
 
-      const videoClips = [
-        {
-          kind: 'clip',
-          id: 'proxy_video',
-          layer: 0,
-          source: { path: projectRelativePath },
-          timelineRange: { startUs: 0, durationUs },
-          sourceRange: { startUs: 0, durationUs },
-        },
-      ];
-
-      const audioClips = meta.audio
-        ? [
+          const videoClips = [
             {
               kind: 'clip',
-              id: 'proxy_audio',
+              id: 'proxy_video',
               layer: 0,
               source: { path: projectRelativePath },
               timelineRange: { startUs: 0, durationUs },
               sourceRange: { startUs: 0, durationUs },
             },
-          ]
-        : [];
+          ];
 
-      const isOpusAudio =
-        typeof meta.audio?.codec === 'string' && meta.audio.codec.toLowerCase().startsWith('opus');
+          const audioClips = meta.audio
+            ? [
+                {
+                  kind: 'clip',
+                  id: 'proxy_audio',
+                  layer: 0,
+                  source: { path: projectRelativePath },
+                  timelineRange: { startUs: 0, durationUs },
+                  sourceRange: { startUs: 0, durationUs },
+                },
+              ]
+            : [];
 
-      const options = {
-        format: 'webm',
-        videoCodec: 'vp09.00.10.08',
-        bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
-        audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
-        audio: !!meta.audio,
-        audioCodec: 'opus',
-        audioPassthrough: optimization.proxyCopyOpusAudio && isOpusAudio,
-        width,
-        height,
-        fps: meta.video?.fps || 30,
-      };
+          const isOpusAudio =
+            typeof meta.audio?.codec === 'string' &&
+            meta.audio.codec.toLowerCase().startsWith('opus');
 
-      await (client as any).exportTimeline(targetHandle, options, videoClips, audioClips);
+          const options = {
+            format: 'webm',
+            videoCodec: 'vp09.00.10.08',
+            bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
+            audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
+            audio: !!meta.audio,
+            audioCodec: 'opus',
+            audioPassthrough: optimization.proxyCopyOpusAudio && isOpusAudio,
+            width,
+            height,
+            fps: meta.video?.fps || 30,
+          };
 
-      existingProxies.value.add(projectRelativePath);
-    } finally {
+          await (client as any).exportTimeline(targetHandle, options, videoClips, audioClips);
+
+          existingProxies.value.add(projectRelativePath);
+        } finally {
+          generatingProxies.value.delete(projectRelativePath);
+          delete proxyProgress.value[projectRelativePath];
+        }
+      });
+    } catch (e) {
       generatingProxies.value.delete(projectRelativePath);
       delete proxyProgress.value[projectRelativePath];
+      throw e;
     }
   }
 
