@@ -198,7 +198,11 @@ function onPreviewPointerDown(event: PointerEvent) {
 
 function onViewportPointerDown(event: PointerEvent) {
   const workspaceStore = useWorkspaceStore();
-  const settings = workspaceStore.userSettings?.mouse?.monitor;
+  const settings = workspaceStore.userSettings?.mouse?.monitor ?? {
+    wheel: 'zoom',
+    wheelShift: 'scroll_horizontal',
+    middleClick: 'pan',
+  };
 
   // Middle click (button 1)
   if (event.button === 1) {
@@ -250,8 +254,11 @@ function onViewportWheel(e: WheelEvent) {
 
   const isShift = e.shiftKey;
   const workspaceStore = useWorkspaceStore();
-  const settings = workspaceStore.userSettings?.mouse?.monitor;
-  if (!settings) return;
+  const settings = workspaceStore.userSettings?.mouse?.monitor ?? {
+    wheel: 'zoom',
+    wheelShift: 'scroll_horizontal',
+    middleClick: 'pan',
+  };
 
   const action = isShift ? settings.wheelShift : settings.wheel;
 

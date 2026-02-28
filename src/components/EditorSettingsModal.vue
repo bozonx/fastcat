@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import AppModal from '~/components/ui/AppModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -50,6 +50,8 @@ const capturedCombo = ref<string | null>(null);
 const isDuplicateConfirmOpen = ref(false);
 const duplicateWarningText = ref('');
 
+let captureKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
 const isClearWorkspaceVardataConfirmOpen = ref(false);
 
 async function confirmClearWorkspaceVardata() {
@@ -94,6 +96,10 @@ function findDuplicateOwner(combo: string, targetCmdId: HotkeyCommandId): Hotkey
 }
 
 function finishCapture() {
+  if (captureKeydownHandler) {
+    window.removeEventListener('keydown', captureKeydownHandler, true);
+    captureKeydownHandler = null;
+  }
   isCapturingHotkey.value = false;
   captureTargetCommandId.value = null;
 }
@@ -107,12 +113,14 @@ function startCapture(cmdId: HotkeyCommandId) {
   const handler = (e: KeyboardEvent) => {
     if (!isCapturingHotkey.value) {
       window.removeEventListener('keydown', handler, true);
+      if (captureKeydownHandler === handler) captureKeydownHandler = null;
       return;
     }
 
     if (e.key === 'Escape') {
       e.preventDefault();
       window.removeEventListener('keydown', handler, true);
+      if (captureKeydownHandler === handler) captureKeydownHandler = null;
       finishCapture();
       return;
     }
@@ -127,6 +135,7 @@ function startCapture(cmdId: HotkeyCommandId) {
 
     e.preventDefault();
     window.removeEventListener('keydown', handler, true);
+    if (captureKeydownHandler === handler) captureKeydownHandler = null;
     capturedCombo.value = combo;
 
     const target = captureTargetCommandId.value;
@@ -147,6 +156,7 @@ function startCapture(cmdId: HotkeyCommandId) {
     finishCapture();
   };
 
+  captureKeydownHandler = handler;
   window.addEventListener('keydown', handler, true);
 }
 
@@ -210,6 +220,20 @@ loadCodecSupport();
 const isOpen = computed({
   get: () => props.open,
   set: (v) => emit('update:open', v),
+});
+
+watch(
+  () => props.open,
+  (v) => {
+    if (!v) {
+      isDuplicateConfirmOpen.value = false;
+      finishCapture();
+    }
+  },
+);
+
+onBeforeUnmount(() => {
+  finishCapture();
 });
 
 const proxyLimitGb = computed({

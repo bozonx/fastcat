@@ -6,6 +6,7 @@
 
 import { vi } from 'vitest';
 import { config } from '@vue/test-utils';
+import { ref } from 'vue';
 
 const globalName = '__NUXT_COLOR_MODE__';
 
@@ -24,14 +25,16 @@ if (w.window) {
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
-    locale: { value: 'en' },
+    locale: ref('en'),
   }),
   createI18n: () => ({
+    mode: 'composition',
     mergeLocaleMessage: () => {},
     setLocaleMessage: () => {},
+    locale: ref('en'),
     global: {
       t: (key: string) => key,
-      locale: 'en',
+      locale: ref('en'),
       mergeLocaleMessage: () => {},
       setLocaleMessage: () => {},
     },
@@ -42,7 +45,7 @@ vi.mock('vue-i18n', () => ({
 vi.mock('#i18n', () => ({
   useI18n: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
-    locale: { value: 'en' },
+    locale: ref('en'),
   }),
   useLocaleRoute: () => (route: any) => route,
   useRouteBaseName: () => () => '',
@@ -61,7 +64,6 @@ vi.stubGlobal('useRuntimeConfig', () => ({
 }));
 
 config.global.config.warnHandler = (msg) => {
-  if (typeof msg === 'string' && msg.includes('Invalid watch source:')) return;
   if (typeof msg === 'string' && msg.includes('<Suspense> is an experimental feature')) return;
 };
 
@@ -75,7 +77,6 @@ function shouldIgnoreConsoleMessage(args: unknown[]) {
   const msg = parts.join(' ');
 
   if (msg.includes('i18n.mergeLocaleMessage is not a function')) return true;
-  if (parts.some((p) => p.includes('Invalid watch source:'))) return true;
   if (msg.includes('<Suspense> is an experimental feature')) return true;
   return false;
 }

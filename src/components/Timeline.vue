@@ -205,8 +205,13 @@ function onTimelineWheel(e: WheelEvent) {
     (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
 
   const workspaceStore = useWorkspaceStore();
-  const settings = workspaceStore.userSettings?.mouse?.timeline;
-  if (!settings) return; // Fallback will be handled by default browser behavior if settings are missing
+  const settings = workspaceStore.userSettings?.mouse?.timeline ?? {
+    wheel: 'scroll_vertical',
+    wheelShift: 'scroll_horizontal',
+    wheelSecondary: 'scroll_horizontal',
+    wheelSecondaryShift: 'zoom_vertical',
+    middleClick: 'pan',
+  };
 
   let action = settings.wheel;
   if (isSecondary && isShift) action = settings.wheelSecondaryShift;

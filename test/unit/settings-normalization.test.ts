@@ -42,4 +42,33 @@ describe('settings normalization', () => {
     expect(normalized.cacheStorageLimitBytes).toBe(2 * 1024 * 1024 * 1024);
     expect(normalized.thumbnailsStorageLimitBytes).toBe(42);
   });
+
+  it('normalizes mouse settings and falls back to defaults for invalid values', () => {
+    const normalized = normalizeUserSettings({
+      mouse: {
+        timeline: {
+          wheel: 'zoom_vertical',
+          wheelShift: 'invalid_action',
+          wheelSecondary: 'scroll_horizontal',
+          wheelSecondaryShift: 'none',
+          middleClick: 'invalid',
+        },
+        monitor: {
+          wheel: 'scroll_vertical',
+          wheelShift: 'invalid_action',
+          middleClick: 'none',
+        },
+      },
+    });
+
+    expect(normalized.mouse.timeline.wheel).toBe('zoom_vertical');
+    expect(normalized.mouse.timeline.wheelShift).toBe('scroll_horizontal');
+    expect(normalized.mouse.timeline.wheelSecondary).toBe('scroll_horizontal');
+    expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('none');
+    expect(normalized.mouse.timeline.middleClick).toBe('pan');
+
+    expect(normalized.mouse.monitor.wheel).toBe('scroll_vertical');
+    expect(normalized.mouse.monitor.wheelShift).toBe('scroll_horizontal');
+    expect(normalized.mouse.monitor.middleClick).toBe('none');
+  });
 });
