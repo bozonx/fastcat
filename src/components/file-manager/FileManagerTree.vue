@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, inject } from 'vue';
+import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
@@ -12,8 +13,11 @@ import type { FsEntry } from '~/types/fs';
 interface Props {
   entries: FsEntry[];
   depth: number;
+}
+
+interface TreeContext {
   getFileIcon: (entry: FsEntry) => string;
-  selectedPath: string | null;
+  selectedPath: ComputedRef<string | null>;
   getEntryMeta: (entry: FsEntry) => {
     hasProxy: boolean;
     generatingProxy: boolean;
@@ -23,6 +27,12 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const ctx = inject<TreeContext>('fileManagerTreeCtx', {
+  getFileIcon: () => 'i-heroicons-document',
+  selectedPath: ref(null) as any,
+  getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
+});
 
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
@@ -69,9 +79,9 @@ function isDotEntry(entry: FsEntry): boolean {
 }
 
 function isSelected(entry: FsEntry): boolean {
-  if (!props.selectedPath) return false;
+  if (!ctx.selectedPath.value) return false;
   if (!entry.path) return false;
-  return props.selectedPath === entry.path;
+  return ctx.selectedPath.value === entry.path;
 }
 
 function getEntryIconClass(entry: FsEntry): string {
@@ -264,7 +274,7 @@ function getContextMenuItems(entry: FsEntry) {
   ]);
 
   if (isVideo(entry)) {
-    const meta = props.getEntryMeta(entry);
+    const meta = ctx.getEntryMeta(entry);
     const hasProxy = meta.hasProxy;
     const generatingProxy = meta.generatingProxy;
 
@@ -367,15 +377,15 @@ function getContextMenuItems(entry: FsEntry) {
             <div
               class="h-4 flex items-center justify-center"
               :class="[
-                props.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
+                ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
               ]"
             >
               <UIcon
-                :name="getFileIcon(entry)"
+                :name="ctx.getFileIcon(entry)"
                 class="w-4 h-4 shrink-0 transition-colors"
                 :class="[
                   getEntryIconClass(entry),
-                  props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+                  ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
                 ]"
               />
             </div>
@@ -389,7 +399,7 @@ function getContextMenuItems(entry: FsEntry) {
                 ? 'font-medium text-ui-text group-hover:text-ui-text'
                 : 'text-ui-text group-hover:text-ui-text',
               isDotEntry(entry) ? 'opacity-30' : '',
-              props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+              ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
             ]"
           >
             {{ entry.name }}
@@ -398,7 +408,7 @@ function getContextMenuItems(entry: FsEntry) {
           <!-- Proxy indicators -->
           <template v-if="isVideo(entry)">
             <div
-              v-if="props.getEntryMeta(entry).generatingProxy"
+              v-if="ctx.getEntryMeta(entry).generatingProxy"
               class="flex items-center gap-1 ml-2"
             >
               <UIcon
@@ -406,10 +416,10 @@ function getContextMenuItems(entry: FsEntry) {
                 class="w-3.5 h-3.5 text-primary-400 animate-spin"
               />
               <span
-                v-if="props.getEntryMeta(entry).proxyProgress !== undefined"
+                v-if="ctx.getEntryMeta(entry).proxyProgress !== undefined"
                 class="text-xs text-primary-400 font-mono"
               >
-                {{ props.getEntryMeta(entry).proxyProgress }}%
+                {{ ctx.getEntryMeta(entry).proxyProgress }}%
               </span>
             </div>
           </template>
@@ -421,9 +431,6 @@ function getContextMenuItems(entry: FsEntry) {
         <FileManagerTree
           :entries="entry.children"
           :depth="depth + 1"
-          :get-file-icon="getFileIcon"
-          :selected-path="selectedPath"
-          :get-entry-meta="getEntryMeta"
           @toggle="emit('toggle', $event)"
           @select="emit('select', $event)"
           @action="(action, childEntry) => emit('action', action, childEntry)"

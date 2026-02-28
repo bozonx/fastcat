@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, watch } from 'vue';
+import { ref, computed, watch, provide } from 'vue';
+import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -21,9 +22,12 @@ const proxyStore = useProxyStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
-const lastDragEvent = ref<DragEvent | null>(null);
-let autoScrollRaf: number | null = null;
-let isWheelListenerAttached = false;
+
+const { 
+  onDragOver: autoScrollDragOver, 
+  onDragLeave: autoScrollDragLeave, 
+  onDrop: autoScrollDrop 
+} = useAutoScroll(scrollEl);
 
 function isRelevantDrag(e: DragEvent): boolean {
   const types = e.dataTransfer?.types;
@@ -31,88 +35,17 @@ function isRelevantDrag(e: DragEvent): boolean {
   return types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes('Files');
 }
 
-function stopAutoScroll() {
-  lastDragEvent.value = null;
-  if (autoScrollRaf !== null && typeof window !== 'undefined') {
-    window.cancelAnimationFrame(autoScrollRaf);
-    autoScrollRaf = null;
-  }
-
-  if (isWheelListenerAttached && typeof window !== 'undefined') {
-    window.removeEventListener('wheel', onWindowWheel as any);
-    isWheelListenerAttached = false;
-  }
-}
-
-onUnmounted(() => {
-  stopAutoScroll();
-});
-
-function onWindowWheel(e: WheelEvent) {
-  const el = scrollEl.value;
-  if (!el) return;
-
-  if (!lastDragEvent.value) return;
-  if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return;
-
-  e.preventDefault();
-  el.scrollTop += e.deltaY;
-}
-
-function scheduleAutoScroll() {
-  if (autoScrollRaf !== null) return;
-  if (typeof window === 'undefined') return;
-
-  const tick = () => {
-    autoScrollRaf = null;
-    const el = scrollEl.value;
-    const ev = lastDragEvent.value;
-    if (!el || !ev) return;
-
-    const rect = el.getBoundingClientRect();
-    const zone = 48;
-    const maxSpeed = 16;
-
-    const topDist = ev.clientY - rect.top;
-    const bottomDist = rect.bottom - ev.clientY;
-
-    let dy = 0;
-    if (topDist >= 0 && topDist < zone) {
-      dy = -Math.ceil(((zone - topDist) / zone) * maxSpeed);
-    } else if (bottomDist >= 0 && bottomDist < zone) {
-      dy = Math.ceil(((zone - bottomDist) / zone) * maxSpeed);
-    }
-
-    if (dy !== 0) {
-      el.scrollTop += dy;
-      scheduleAutoScroll();
-    }
-  };
-
-  autoScrollRaf = window.requestAnimationFrame(tick);
-}
-
 function onContainerDragOver(e: DragEvent) {
   if (!isRelevantDrag(e)) return;
-  lastDragEvent.value = e;
-  scheduleAutoScroll();
-
-  if (!isWheelListenerAttached && typeof window !== 'undefined') {
-    window.addEventListener('wheel', onWindowWheel, { passive: false });
-    isWheelListenerAttached = true;
-  }
+  autoScrollDragOver(e);
 }
 
 function onContainerDrop() {
-  stopAutoScroll();
+  autoScrollDrop();
 }
 
 function onContainerDragLeave(e: DragEvent) {
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  const relatedTarget = e.relatedTarget as Node | null;
-  if (!currentTarget?.contains(relatedTarget)) {
-    stopAutoScroll();
-  }
+  autoScrollDragLeave(e);
 }
 
 const props = defineProps<{
@@ -138,6 +71,12 @@ const props = defineProps<{
 const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
+
+provide('fileManagerTreeCtx', {
+  getFileIcon: props.getFileIcon,
+  selectedPath,
+  getEntryMeta,
+});
 
 function getEntryMeta(entry: FsEntry): {
   hasProxy: boolean;
@@ -338,9 +277,6 @@ async function onEntrySelect(entry: FsEntry) {
           <FileManagerTree
             :entries="rootEntries"
             :depth="0"
-            :get-file-icon="getFileIcon"
-            :selected-path="selectedPath"
-            :get-entry-meta="getEntryMeta"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
             @action="(action, entry) => emit('action', action, entry)"

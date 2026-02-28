@@ -19,11 +19,18 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 const { t } = useI18n();
+import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
+import { computeDirectorySize } from '~/utils/fs';
+
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
+const uiStore = useUiStore();
+const selectionStore = useSelectionStore();
+const proxyStore = useProxyStore();
+const toast = useToast();
 
 const fileManager = useFileManager();
 const {
@@ -50,80 +57,89 @@ const activeTab = ref('files');
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-// Modals state
-const isCreateFolderModalOpen = ref(false);
-const folderCreationTarget = ref<FileSystemDirectoryHandle | null>(null);
-
-const isRenameModalOpen = ref(false);
-const renameTarget = ref<FsEntry | null>(null);
-
-const isFileInfoModalOpen = ref(false);
-const currentFileInfo = ref<FileInfo | null>(null);
-
-const isDeleteConfirmModalOpen = ref(false);
-const deleteTarget = ref<FsEntry | null>(null);
-
-const directoryUploadTarget = ref<FsEntry | null>(null);
-const directoryUploadInput = ref<HTMLInputElement | null>(null);
-
-const uiStore = useUiStore();
-const selectionStore = useSelectionStore();
-
-const timelinesUsingDeleteTarget = computed(() => {
-  const entry = deleteTarget.value;
-  if (!entry || entry.kind !== 'file' || !entry.path) return [];
-  return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
+const {
+  isCreateFolderModalOpen,
+  folderCreationTarget, // still needed for template binding if used there
+  isRenameModalOpen,
+  renameTarget,
+  isFileInfoModalOpen,
+  currentFileInfo,
+  isDeleteConfirmModalOpen,
+  deleteTarget,
+  timelinesUsingDeleteTarget,
+  directoryUploadTarget,
+  directoryUploadInput,
+  openCreateFolderModal,
+  handleCreateFolder,
+  // openFileInfoModal is used inside onFileAction but can be called directly
+  openFileInfoModal: openFileInfoModalBase,
+  openDeleteConfirmModal,
+  handleDeleteConfirm,
+  handleRename,
+  onFileAction: onFileActionBase,
+} = useFileManagerModals({
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  loadProjectDirectory,
+  handleFiles,
 });
 
-const toast = useToast();
-
-interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
-  values?: () => AsyncIterable<FileSystemHandle>;
-  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
+async function openFileInfoModal(entry: FsEntry) {
+  // Override to include computeDirectorySize which uses locally available knowledge
+  const original = openFileInfoModalBase;
+  let size: number | undefined;
+  
+  if (entry.kind === 'directory') {
+    size = await computeDirectorySize(entry.handle as FileSystemDirectoryHandle);
+  }
+  
+  await original(entry);
+  if (size !== undefined && currentFileInfo.value) {
+    currentFileInfo.value.size = size;
+  }
 }
 
-async function computeDirectorySize(
-  dirHandle: FileSystemDirectoryHandle,
-  options?: { maxEntries?: number },
-): Promise<number | undefined> {
-  const maxEntries = options?.maxEntries ?? 25_000;
-  let seen = 0;
+function onFileAction(action: any, entry: FsEntry) {
+  if (action === 'info') {
+    openFileInfoModal(entry);
+  } else if (action === 'createProxyForFolder') {
+    // Keep this complex logic here for now, or move to a store later
+    if (entry.kind === 'directory' && entry.path !== undefined) {
+      const dirPath = entry.path;
+      const dirHandle = entry.handle as FileSystemDirectoryHandle;
+      (async () => {
+        const collect = async (dir: FileSystemDirectoryHandle, bPath: string) => {
+          // Iterator logic simplified for brevity here, or we keep original
+          // Using the logic from the original onFileAction
+          const iterator = (dir as any).values?.() ?? (dir as any).entries?.();
+          if (!iterator) return;
 
-  async function walk(handle: FileSystemDirectoryHandle): Promise<number> {
-    const iterator =
-      (handle as FsDirectoryHandleWithIteration).values?.() ??
-      (handle as FsDirectoryHandleWithIteration).entries?.();
-    if (!iterator) return 0;
+          for await (const value of iterator) {
+            const handle = (Array.isArray(value) ? value[1] : value) as FileSystemFileHandle | FileSystemDirectoryHandle;
+            const fullPath = bPath ? `${bPath}/${handle.name}` : handle.name;
 
-    let total = 0;
-    for await (const value of iterator) {
-      if (seen >= maxEntries) {
-        throw new Error('Directory too large');
-      }
-      seen += 1;
-
-      const entryHandle = (Array.isArray(value) ? value[1] : value) as
-        | FileSystemFileHandle
-        | FileSystemDirectoryHandle;
-
-      if (entryHandle.kind === 'file') {
+            if (handle.kind === 'file') {
+              const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
+              if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+                if (!proxyStore.existingProxies.has(fullPath) && !proxyStore.generatingProxies.has(fullPath)) {
+                  void proxyStore.generateProxy(handle as FileSystemFileHandle, fullPath);
+                }
+              }
+            } else if (handle.kind === 'directory') {
+              await collect(handle as FileSystemDirectoryHandle, fullPath);
+            }
+          }
+        };
         try {
-          const file = await (entryHandle as FileSystemFileHandle).getFile();
-          total += file.size;
-        } catch {
-          // ignore
+          await collect(dirHandle, dirPath);
+        } catch (e) {
+          console.error('Failed to walk folder for proxy creation', e);
         }
-      } else {
-        total += await walk(entryHandle as FileSystemDirectoryHandle);
-      }
+      })();
     }
-    return total;
-  }
-
-  try {
-    return await walk(dirHandle);
-  } catch {
-    return undefined;
+  } else {
+    onFileActionBase(action, entry);
   }
 }
 
@@ -174,16 +190,6 @@ function onDrop(e: DragEvent) {
   }
 }
 
-function openCreateFolderModal(targetEntry: FsEntry | null = null) {
-  folderCreationTarget.value =
-    targetEntry?.kind === 'directory' ? (targetEntry.handle as FileSystemDirectoryHandle) : null;
-  isCreateFolderModalOpen.value = true;
-}
-
-async function handleCreateFolder(name: string) {
-  await createFolder(name, folderCreationTarget.value);
-}
-
 async function onCreateTimeline() {
   const createdPath = await createTimeline();
   if (!createdPath) return;
@@ -191,216 +197,6 @@ async function onCreateTimeline() {
   await projectStore.openTimelineFile(createdPath);
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
-}
-
-async function openFileInfoModal(entry: FsEntry) {
-  let size: number | undefined;
-  let lastModified: number | undefined;
-  let fileType: string | undefined;
-
-  if (entry.kind === 'file') {
-    try {
-      const file = await (entry.handle as FileSystemFileHandle).getFile();
-      size = file.size;
-      lastModified = file.lastModified;
-      fileType = file.type;
-    } catch (e) {
-      toast.add({
-        color: 'red',
-        title: t('videoEditor.fileManager.info.error', 'Information error'),
-        description: String((e as any)?.message ?? e),
-      });
-    }
-  } else {
-    try {
-      size = await computeDirectorySize(entry.handle as FileSystemDirectoryHandle);
-    } catch (e) {
-      toast.add({
-        color: 'red',
-        title: t('videoEditor.fileManager.info.error', 'Information error'),
-        description: String((e as any)?.message ?? e),
-      });
-    }
-  }
-
-  currentFileInfo.value = {
-    name: entry.name,
-    kind: entry.kind,
-    size,
-    lastModified,
-    path: entry.path,
-    metadata:
-      entry.kind === 'file' &&
-      entry.path &&
-      typeof fileType === 'string' &&
-      (fileType.startsWith('video/') || fileType.startsWith('audio/'))
-        ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
-            forceRefresh: true,
-          })
-        : undefined,
-  };
-  isFileInfoModalOpen.value = true;
-}
-
-function openDeleteConfirmModal(entry: FsEntry) {
-  deleteTarget.value = entry;
-  isDeleteConfirmModalOpen.value = true;
-}
-
-async function handleDeleteConfirm() {
-  if (!deleteTarget.value) return;
-  const deletePath = deleteTarget.value.path;
-  await deleteEntry(deleteTarget.value);
-
-  if (deletePath && uiStore.selectedFsEntry?.path === deletePath) {
-    uiStore.selectedFsEntry = null;
-  }
-
-  if (
-    selectionStore.selectedEntity?.source === 'fileManager' &&
-    (selectionStore.selectedEntity.path
-      ? selectionStore.selectedEntity.path === deletePath
-      : selectionStore.selectedEntity.name === deleteTarget.value.name)
-  ) {
-    selectionStore.clearSelection();
-  }
-
-  // Delay closing the modal for a tick to allow the click event loop to finish
-  // This prevents Nuxt UI / Vue from crashing when trying to find nextSibling of the clicked button
-  // during the modal's unmount phase
-  setTimeout(() => {
-    isDeleteConfirmModalOpen.value = false;
-
-    // Wait for the modal transition to finish before clearing the reference
-    setTimeout(() => {
-      deleteTarget.value = null;
-    }, 300);
-  }, 0);
-}
-
-async function handleRename(newName: string) {
-  if (!renameTarget.value) return;
-
-  const trimmed = newName.trim();
-  if (!trimmed) {
-    toast.add({
-      color: 'red',
-      title: t('common.rename', 'Rename'),
-      description: t('common.validation.required', 'Name is required.'),
-    });
-    return;
-  }
-
-  if (trimmed.includes('/')) {
-    toast.add({
-      color: 'red',
-      title: t('common.rename', 'Rename'),
-      description: t('common.validation.invalidName', 'Name contains invalid characters.'),
-    });
-    return;
-  }
-
-  if (trimmed === '.' || trimmed === '..') {
-    toast.add({
-      color: 'red',
-      title: t('common.rename', 'Rename'),
-      description: t('common.validation.invalidName', 'Name contains invalid characters.'),
-    });
-    return;
-  }
-
-  await renameEntry(renameTarget.value, trimmed);
-  renameTarget.value = null;
-}
-
-function onFileAction(
-  action:
-    | 'createFolder'
-    | 'rename'
-    | 'info'
-    | 'delete'
-    | 'createProxy'
-    | 'cancelProxy'
-    | 'deleteProxy'
-    | 'upload'
-    | 'createProxyForFolder',
-  entry: FsEntry,
-) {
-  if (action === 'createFolder') {
-    openCreateFolderModal(entry);
-  } else if (action === 'upload') {
-    if (entry.kind !== 'directory') return;
-    directoryUploadTarget.value = entry;
-    directoryUploadInput.value?.click();
-  } else if (action === 'rename') {
-    renameTarget.value = entry;
-    isRenameModalOpen.value = true;
-  } else if (action === 'info') {
-    openFileInfoModal(entry);
-  } else if (action === 'delete') {
-    openDeleteConfirmModal(entry);
-  } else if (action === 'createProxy') {
-    const proxyStore = useProxyStore();
-    if (entry.kind === 'file' && entry.path) {
-      void proxyStore.generateProxy(entry.handle as FileSystemFileHandle, entry.path);
-    }
-  } else if (action === 'cancelProxy') {
-    const proxyStore = useProxyStore();
-    if (entry.kind === 'file' && entry.path) {
-      void proxyStore.cancelProxyGeneration(entry.path);
-    }
-  } else if (action === 'deleteProxy') {
-    const proxyStore = useProxyStore();
-    if (entry.kind === 'file' && entry.path) {
-      void proxyStore.deleteProxy(entry.path);
-    }
-  } else if (action === 'createProxyForFolder') {
-    const proxyStore = useProxyStore();
-    if (entry.kind === 'directory' && entry.path !== undefined) {
-      const dirPath = entry.path;
-      const dirHandle = entry.handle as FileSystemDirectoryHandle;
-
-      (async () => {
-        const collect = async (dir: FileSystemDirectoryHandle, bPath: string) => {
-          const iterator =
-            (dir as FsDirectoryHandleWithIteration).values?.() ??
-            (dir as FsDirectoryHandleWithIteration).entries?.();
-          if (!iterator) return;
-
-          for await (const value of iterator) {
-            const handle = (Array.isArray(value) ? value[1] : value) as
-              | FileSystemFileHandle
-              | FileSystemDirectoryHandle;
-
-            const fullPath = bPath ? `${bPath}/${handle.name}` : handle.name;
-
-            if (handle.kind === 'file') {
-              const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
-              if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
-                if (
-                  !proxyStore.existingProxies.has(fullPath) &&
-                  !proxyStore.generatingProxies.has(fullPath)
-                ) {
-                  void proxyStore.generateProxy(handle as FileSystemFileHandle, fullPath);
-                }
-              }
-            } else if (handle.kind === 'directory') {
-              await collect(handle as FileSystemDirectoryHandle, fullPath);
-            }
-          }
-        };
-
-        try {
-          // If tree children are already loaded, we can skip existing/generating even faster
-          // but walking handles is more accurate if the tree is not fully expanded.
-          // We walk handles starting from the current directory
-          await collect(dirHandle, dirPath);
-        } catch (e) {
-          console.error('Failed to walk folder for proxy creation', e);
-        }
-      })();
-    }
-  }
 }
 
 function triggerFileUpload() {
@@ -432,7 +228,6 @@ async function onDirectoryFileSelect(e: Event) {
   input.value = '';
 
   const entry = directoryUploadTarget.value;
-  directoryUploadTarget.value = null;
   if (!entry || entry.kind !== 'directory') return;
   if (!files || files.length === 0) return;
 
