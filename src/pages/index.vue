@@ -225,6 +225,12 @@ async function onGlobalKeydown(e: KeyboardEvent) {
 
 
 
+  if (cmd === 'timeline.rippleDelete') {
+    if (!focusStore.canUseTimelineHotkeys) return;
+    timelineStore.rippleDeleteFirstSelectedItem();
+    return;
+  }
+
   if (cmd === 'timeline.trimToPlayheadLeft') {
     if (!focusStore.canUseTimelineHotkeys) return;
     void timelineStore.trimToPlayheadLeftNoRipple();

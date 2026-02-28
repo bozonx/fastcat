@@ -15,6 +15,7 @@ export type HotkeyCommandId =
   | 'timeline.rippleTrimRight'
   | 'timeline.advancedRippleTrimLeft'
   | 'timeline.advancedRippleTrimRight'
+  | 'timeline.rippleDelete'
   | 'timeline.jumpPrevBoundary'
   | 'timeline.jumpNextBoundary'
   | 'timeline.jumpPrevBoundaryTrack'
@@ -113,6 +114,11 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
       title: 'Advanced ripple trim to playhead (remove right part, all tracks)',
     },
     {
+      id: 'timeline.rippleDelete',
+      groupId: 'timeline',
+      title: 'Ripple delete selected clip(s)',
+    },
+    {
       id: 'timeline.jumpPrevBoundary',
       groupId: 'timeline',
       title: 'Jump to previous clip boundary',
@@ -187,6 +193,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.rippleTrimRight': ['F'],
     'timeline.advancedRippleTrimLeft': ['Shift+D'],
     'timeline.advancedRippleTrimRight': ['Shift+F'],
+    'timeline.rippleDelete': ['Backspace'],
     'timeline.jumpPrevBoundary': ['A'],
     'timeline.jumpNextBoundary': ['S'],
     'timeline.jumpPrevBoundaryTrack': ['Shift+A'],

@@ -970,6 +970,48 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  function rippleDeleteFirstSelectedItem() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    if (selectedItemIds.value.length === 0) return;
+
+    const selectedSet = new Set(selectedItemIds.value);
+    let targetTrack: import('~/timeline/types').TimelineTrack | null = null;
+    const targetItems: import('~/timeline/types').TimelineClipItem[] = [];
+
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (selectedSet.has(item.id)) {
+          targetTrack = track;
+          break;
+        }
+      }
+      if (targetTrack) break;
+    }
+
+    if (!targetTrack) return;
+    for (const item of targetTrack.items) {
+      if (selectedSet.has(item.id) && item.kind === 'clip') {
+        targetItems.push(item);
+      }
+    }
+
+    if (targetItems.length === 0) return;
+
+    let startUs = Infinity;
+    let endUs = -Infinity;
+    for (const item of targetItems) {
+      startUs = Math.min(startUs, item.timelineRange.startUs);
+      endUs = Math.max(endUs, item.timelineRange.startUs + item.timelineRange.durationUs);
+    }
+
+    if (startUs < endUs) {
+      rippleDeleteRange({ trackIds: [targetTrack.id], startUs, endUs });
+      clearSelection();
+    }
+  }
+
   function goToStart() {
     currentTime.value = 0;
   }
@@ -1814,6 +1856,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTransition,
     deleteSelectedItems,
     deleteFirstSelectedItem,
+    rippleDeleteFirstSelectedItem,
     goToStart,
     goToEnd,
     setTimelineZoom,
