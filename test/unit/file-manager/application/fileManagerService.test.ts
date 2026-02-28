@@ -1,0 +1,183 @@
+// @vitest-environment node
+import { describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
+import type { FsEntry } from '../../../../src/types/fs';
+import { createFileManagerService } from '../../../../src/file-manager/application/fileManagerService';
+import { VIDEO_DIR_NAME } from '../../../../src/utils/constants';
+
+function createAsyncIterable<T>(items: T[]): AsyncIterable<T> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const item of items) yield item;
+    },
+  };
+}
+
+function createDirHandleMock(params?: {
+  values?: any[];
+  getDirectoryHandleImpl?: (name: string, opts?: any) => any;
+}) {
+  const handle: any = {
+    kind: 'directory',
+    name: 'root',
+    values: params?.values ? () => createAsyncIterable(params.values!) : undefined,
+    entries: undefined,
+    getDirectoryHandle:
+      params?.getDirectoryHandleImpl ?? vi.fn(async () => ({ kind: 'directory', name: 'child' })),
+    getFileHandle: vi.fn(async () => ({ kind: 'file', name: 'file' })),
+  };
+
+  return handle as unknown as FileSystemDirectoryHandle;
+}
+
+function createFileHandleMock(params: { name: string; lastModified?: number; type?: string }) {
+  return {
+    kind: 'file',
+    name: params.name,
+    getFile: vi.fn(async () => {
+      const file = new File(['x'], params.name, { type: params.type ?? 'text/plain' });
+      Object.defineProperty(file, 'lastModified', {
+        value: params.lastModified ?? 1,
+        configurable: true,
+      });
+      return file;
+    }),
+    createWritable: vi.fn(async () => ({ write: vi.fn(), close: vi.fn() })),
+  } as unknown as FileSystemFileHandle;
+}
+
+describe('fileManagerService', () => {
+  it('readDirectory filters hidden files when showHiddenFiles=false and sorts directories first', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const dirA: any = { kind: 'directory', name: 'aaa' };
+    const fileHidden: any = { kind: 'file', name: '.secret.txt', getFile: vi.fn() };
+    const fileB: any = createFileHandleMock({ name: 'bbb.txt' });
+
+    const dirHandle = createDirHandleMock({ values: [fileB, fileHidden, dirA] });
+
+    const checkExistingProxies = vi.fn(async () => undefined);
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => false,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies,
+    });
+
+    const entries = await service.readDirectory(dirHandle);
+
+    expect(entries.map((e) => e.name)).toEqual(['aaa', 'bbb.txt']);
+    expect(entries[0]!.kind).toBe('directory');
+    expect(entries[1]!.kind).toBe('file');
+    expect(checkExistingProxies).not.toHaveBeenCalled();
+  });
+
+  it('readDirectory calls checkExistingProxies for video files', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const video = createFileHandleMock({ name: 'a.mp4', type: 'video/mp4' });
+    const dirHandle = createDirHandleMock({ values: [video] });
+
+    const checkExistingProxies = vi.fn(async () => undefined);
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies,
+    });
+
+    await service.readDirectory(dirHandle, VIDEO_DIR_NAME);
+
+    expect(checkExistingProxies).toHaveBeenCalledWith([`${VIDEO_DIR_NAME}/a.mp4`]);
+  });
+
+  it('toggleDirectory sets expanded state, persists path, and lazy-loads children', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const childFile = createFileHandleMock({ name: 'child.txt' });
+    const childDirHandle = createDirHandleMock({ values: [childFile] });
+
+    const setPathExpanded = vi.fn();
+
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded,
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    const entry: FsEntry = {
+      name: 'folder',
+      kind: 'directory',
+      handle: childDirHandle,
+      parentHandle: undefined,
+      path: 'folder',
+      expanded: false,
+      children: undefined,
+    };
+
+    await service.toggleDirectory(entry);
+
+    expect(entry.expanded).toBe(true);
+    expect(setPathExpanded).toHaveBeenCalledWith('folder', true);
+    expect(entry.children?.map((e) => e.name)).toEqual(['child.txt']);
+  });
+
+  it('loadProjectDirectory merges entries and auto-expands media dirs', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const sourcesDir: any = {
+      kind: 'directory',
+      name: 'sources',
+      values: () => createAsyncIterable([]),
+    };
+    const videoDir: any = {
+      kind: 'directory',
+      name: VIDEO_DIR_NAME,
+      values: () => createAsyncIterable([]),
+    };
+
+    const projectDir = createDirHandleMock({ values: [sourcesDir, videoDir] });
+
+    const setPathExpanded = vi.fn();
+
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded,
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    await service.loadProjectDirectory(projectDir);
+
+    const names = rootEntries.value.map((e) => e.name);
+    expect(new Set(names)).toEqual(new Set(['sources', VIDEO_DIR_NAME]));
+
+    const videoEntry = rootEntries.value.find((e) => e.name === VIDEO_DIR_NAME);
+    expect(videoEntry?.expanded).toBe(true);
+  });
+});

@@ -1,4 +1,16 @@
 import withNuxt from './.nuxt/eslint.config.mjs';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 
-export default withNuxt(eslintPluginPrettierRecommended);
+const nuxtConfig = withNuxt(eslintPluginPrettierRecommended);
+const nuxtConfigArray = Array.isArray(nuxtConfig) ? nuxtConfig : [nuxtConfig];
+
+export default [
+  ...nuxtConfigArray,
+  {
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      'prettier/prettier': 'off',
+    },
+  },
+];

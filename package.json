@@ -9,6 +9,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "lint": "nuxi lint",
+    "typecheck": "nuxi typecheck",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:watch": "vitest"

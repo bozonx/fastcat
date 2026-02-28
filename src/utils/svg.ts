@@ -119,8 +119,8 @@ function parseViewBox(viewBox: string | null | undefined): SvgDimensions | null 
     .split(/[\s,]+/)
     .map((p) => Number(p));
   if (parts.length !== 4) return null;
-  const width = parts[2];
-  const height = parts[3];
+  const width = parts[2] ?? Number.NaN;
+  const height = parts[3] ?? Number.NaN;
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
   return { width, height };
 }

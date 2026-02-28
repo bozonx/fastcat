@@ -38,7 +38,7 @@ const isOpen = defineModel<boolean>('open', { default: false });
 const { t } = useI18n();
 
 const modalUi = computed(() => {
-  return props.ui || {};
+  return (props.ui || {}) as any;
 });
 
 const headerClass = computed(() => {

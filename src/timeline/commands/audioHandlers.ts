@@ -18,6 +18,14 @@ export function extractAudioToTrack(
   const item = videoTrack.items.find((x) => x.id === cmd.videoItemId);
   if (!item || item.kind !== 'clip') throw new Error('Video clip not found');
 
+  if (item.clipType !== 'media' && item.clipType !== 'timeline') {
+    throw new Error('Invalid clip type');
+  }
+
+  if (!item.source) {
+    throw new Error('Video clip source is missing');
+  }
+
   const existingLinked = doc.tracks.some((t) =>
     t.kind !== 'audio'
       ? false
@@ -32,6 +40,7 @@ export function extractAudioToTrack(
     kind: 'clip',
     id: nextItemId(audioTrack.id, 'clip'),
     trackId: audioTrack.id,
+    clipType: item.clipType,
     name: item.name,
     source: { ...item.source },
     sourceDurationUs: item.sourceDurationUs,

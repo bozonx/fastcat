@@ -83,9 +83,9 @@ export interface AudioMixerPrepareParams {
   reportExportWarning: (message: string) => Promise<void>;
   checkCancel?: () => boolean;
   mediabunny: {
-    AudioSampleSink: new (track: MediabunnyAudioTrack) => MediabunnyAudioSampleSink;
-    Input: new (params: any) => MediabunnyInput;
-    BlobSource: new (file: File) => unknown;
+    AudioSampleSink: new (...args: any[]) => MediabunnyAudioSampleSink;
+    Input: new (...args: any[]) => MediabunnyInput;
+    BlobSource: new (...args: any[]) => unknown;
     ALL_FORMATS: any;
   };
 }
