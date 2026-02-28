@@ -841,7 +841,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
   }
 
-  async function toggleDisableTargetTrack() {
+  async function toggleVisibilityTargetTrack() {
     const trackId = getSelectedOrActiveTrackId();
     if (!trackId) return;
     const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
@@ -849,8 +849,6 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     if (track.kind === 'video') {
       updateTrackProperties(trackId, { videoHidden: !track.videoHidden });
-    } else {
-      updateTrackProperties(trackId, { audioMuted: !track.audioMuted });
     }
     await requestTimelineSave({ immediate: true });
   }
@@ -1972,7 +1970,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     resetTimelineState,
     undoTimeline,
     redoTimeline,
-    toggleDisableTargetTrack,
+    toggleVisibilityTargetTrack,
     toggleMuteTargetTrack,
     toggleSoloTargetTrack,
     batchApplyTimeline,

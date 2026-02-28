@@ -372,26 +372,23 @@ async function onGlobalKeydown(e: KeyboardEvent) {
   }
 
   if (cmd === 'general.mute') {
-    if (!focusStore.canUsePlaybackHotkeys) return;
     timelineStore.toggleAudioMuted();
     return;
   }
 
   if (cmd === 'general.volumeUp') {
-    if (!focusStore.canUsePlaybackHotkeys) return;
     startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
     return;
   }
 
   if (cmd === 'general.volumeDown') {
-    if (!focusStore.canUsePlaybackHotkeys) return;
     startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
     return;
   }
 
-  if (cmd === 'timeline.toggleDisableTrack') {
+  if (cmd === 'timeline.toggleVisibilityTrack') {
     if (!focusStore.canUseTimelineHotkeys) return;
-    void timelineStore.toggleDisableTargetTrack();
+    void timelineStore.toggleVisibilityTargetTrack();
     return;
   }
 

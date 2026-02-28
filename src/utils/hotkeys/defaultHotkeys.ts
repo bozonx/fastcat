@@ -27,7 +27,7 @@ export type HotkeyCommandId =
   | 'timeline.splitAllAtPlayhead'
   | 'timeline.toggleDisableClip'
   | 'timeline.toggleMuteClip'
-  | 'timeline.toggleDisableTrack'
+  | 'timeline.toggleVisibilityTrack'
   | 'timeline.toggleMuteTrack'
   | 'timeline.toggleSoloTrack'
   | 'timeline.tab1'
@@ -147,9 +147,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     },
     { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / enable clip' },
     { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / unmute clip' },
-    { id: 'timeline.toggleDisableTrack', groupId: 'timeline', title: 'Disable / enable track' },
-    { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Mute / unmute track' },
-    { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Solo / unsolo track' },
+    { id: 'timeline.toggleVisibilityTrack', groupId: 'timeline', title: 'Toggle track visibility' },
+    { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Toggle track mute' },
+    { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Toggle track solo' },
     { id: 'timeline.tab1', groupId: 'timeline', title: 'Timeline Tab 1' },
     { id: 'timeline.tab2', groupId: 'timeline', title: 'Timeline Tab 2' },
     { id: 'timeline.tab3', groupId: 'timeline', title: 'Timeline Tab 3' },
@@ -208,7 +208,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.splitAllAtPlayhead': ['Shift+G'],
     'timeline.toggleDisableClip': ['W'],
     'timeline.toggleMuteClip': ['Q'],
-    'timeline.toggleDisableTrack': ['Shift+W'],
+    'timeline.toggleVisibilityTrack': ['Shift+W'],
     'timeline.toggleMuteTrack': ['Shift+Q'],
     'timeline.toggleSoloTrack': ['B'],
     'timeline.tab1': ['1'],
