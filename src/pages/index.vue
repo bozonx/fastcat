@@ -804,7 +804,7 @@ function leaveProject() {
                 <Monitor class="h-full" />
               </Pane>
               <Pane :size="topSplitSizes[2]" min-size="5">
-                <Preview class="h-full" />
+                <PropertiesPanel class="h-full" />
               </Pane>
             </Splitpanes>
           </Pane>
