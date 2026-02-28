@@ -5,6 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useProxyStore } from '~/stores/proxy.store';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
@@ -15,6 +16,7 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
+const proxyStore = useProxyStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
 const lastDragEvent = ref<DragEvent | null>(null);
@@ -126,6 +128,45 @@ const props = defineProps<{
     targetDirPath?: string,
   ) => Promise<void>;
 }>();
+
+const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
+
+function getEntryMeta(entry: FsEntry): {
+  hasProxy: boolean;
+  generatingProxy: boolean;
+  proxyProgress?: number;
+} {
+  if (entry.kind !== 'file' || !entry.path) {
+    return { hasProxy: false, generatingProxy: false };
+  }
+
+  const hasProxy = proxyStore.existingProxies.has(entry.path);
+  const generatingProxy = proxyStore.generatingProxies.has(entry.path);
+  const proxyProgress = proxyStore.proxyProgress[entry.path];
+  return { hasProxy, generatingProxy, proxyProgress };
+}
+
+async function onRequestMove(params: {
+  sourcePath: string;
+  targetDirHandle: FileSystemDirectoryHandle;
+  targetDirPath: string;
+}) {
+  const source = props.findEntryByPath(params.sourcePath);
+  if (!source) return;
+  await props.moveEntry({
+    source,
+    targetDirHandle: params.targetDirHandle,
+    targetDirPath: params.targetDirPath,
+  });
+}
+
+async function onRequestUpload(params: {
+  files: File[];
+  targetDirHandle: FileSystemDirectoryHandle;
+  targetDirPath: string;
+}) {
+  await props.handleFiles(params.files, params.targetDirHandle, params.targetDirPath);
+}
 
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
@@ -278,11 +319,13 @@ async function onEntrySelect(entry: FsEntry) {
             :entries="rootEntries"
             :depth="0"
             :get-file-icon="getFileIcon"
-            :find-entry-by-path="findEntryByPath"
-            :move-entry="moveEntry"
+            :selected-path="selectedPath"
+            :get-entry-meta="getEntryMeta"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
             @action="(action, entry) => emit('action', action, entry)"
+            @request-move="onRequestMove"
+            @request-upload="onRequestUpload"
           />
           <div v-if="isLoading" class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50">
             <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />

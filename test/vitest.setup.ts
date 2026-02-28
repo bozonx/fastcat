@@ -39,6 +39,8 @@ vi.mock('#i18n', () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
     locale: { value: 'en' },
   }),
+  useLocaleRoute: () => (route: any) => route,
+  useRouteBaseName: () => () => '',
   useLocalePath: () => (path: string) => path,
   useSwitchLocalePath: () => (locale: string) => locale,
 }));

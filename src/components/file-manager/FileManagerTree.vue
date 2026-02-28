@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useProxyStore } from '~/stores/proxy.store';
-import { useUiStore } from '~/stores/ui.store';
-import { useSelectionStore } from '~/stores/selection.store';
+import { ref } from 'vue';
 import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
@@ -16,12 +13,12 @@ interface Props {
   entries: FsEntry[];
   depth: number;
   getFileIcon: (entry: FsEntry) => string;
-  findEntryByPath: (path: string) => FsEntry | null;
-  moveEntry: (params: {
-    source: FsEntry;
-    targetDirHandle: FileSystemDirectoryHandle;
-    targetDirPath: string;
-  }) => Promise<void>;
+  selectedPath: string | null;
+  getEntryMeta: (entry: FsEntry) => {
+    hasProxy: boolean;
+    generatingProxy: boolean;
+    proxyProgress?: number;
+  };
 }
 
 const props = defineProps<Props>();
@@ -43,12 +40,25 @@ const emit = defineEmits<{
       | 'createProxyForFolder',
     entry: FsEntry,
   ): void;
+  (
+    e: 'requestMove',
+    params: {
+      sourcePath: string;
+      targetDirHandle: FileSystemDirectoryHandle;
+      targetDirPath: string;
+    },
+  ): void;
+  (
+    e: 'requestUpload',
+    params: {
+      files: File[];
+      targetDirHandle: FileSystemDirectoryHandle;
+      targetDirPath: string;
+    },
+  ): void;
 }>();
 
 const { t } = useI18n();
-const proxyStore = useProxyStore();
-const uiStore = useUiStore();
-const selectionStore = useSelectionStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const isDragOver = ref<string | null>(null);
@@ -58,10 +68,9 @@ function isDotEntry(entry: FsEntry): boolean {
 }
 
 function isSelected(entry: FsEntry): boolean {
-  const selected = uiStore.selectedFsEntry;
-  if (!selected) return false;
-  if (!entry.path || !selected.path) return false;
-  return selected.path === entry.path;
+  if (!props.selectedPath) return false;
+  if (!entry.path) return false;
+  return props.selectedPath === entry.path;
 }
 
 function getEntryIconClass(entry: FsEntry): string {
@@ -84,26 +93,8 @@ function isVideo(entry: FsEntry) {
   );
 }
 
-function hasProxy(entry: FsEntry) {
-  return isVideo(entry) && entry.path ? proxyStore.existingProxies.has(entry.path) : false;
-}
-
-function isGeneratingProxy(entry: FsEntry) {
-  return isVideo(entry) && entry.path ? proxyStore.generatingProxies.has(entry.path) : false;
-}
-
-function proxyProgress(entry: FsEntry) {
-  return isVideo(entry) && entry.path ? proxyStore.proxyProgress[entry.path] : undefined;
-}
-
-function selectEntry(entry: FsEntry) {
-  uiStore.selectedFsEntry = entry as any;
-  selectionStore.selectFsEntry(entry as any);
-  emit('select', entry);
-}
-
 function onEntryClick(entry: FsEntry) {
-  selectEntry(entry);
+  emit('select', entry);
 }
 
 function onCaretClick(e: MouseEvent, entry: FsEntry) {
@@ -179,8 +170,6 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   e.stopPropagation();
 
   isDragOver.value = null;
-  uiStore.isGlobalDragging = false;
-  uiStore.isFileManagerDragging = false;
 
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   if (moveRaw) {
@@ -194,11 +183,8 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
     if (!sourcePath) return;
 
-    const source = props.findEntryByPath(sourcePath);
-    if (!source) return;
-
-    await props.moveEntry({
-      source,
+    emit('requestMove', {
+      sourcePath,
       targetDirHandle: entry.handle as FileSystemDirectoryHandle,
       targetDirPath: entry.path ?? '',
     });
@@ -215,13 +201,11 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
   if (files.length === 0) return;
 
-  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-  const fm = useFileManager();
-  await fm.handleFiles(
+  emit('requestUpload', {
     files,
-    entry.handle as FileSystemDirectoryHandle,
-    entry.path,
-  );
+    targetDirHandle: entry.handle as FileSystemDirectoryHandle,
+    targetDirPath: entry.path ?? '',
+  });
 }
 
 function folderHasVideos(entry: FsEntry): boolean {
@@ -280,23 +264,24 @@ function getContextMenuItems(entry: FsEntry) {
   ]);
 
   if (isVideo(entry)) {
-    const hasP = hasProxy(entry);
-    const generating = isGeneratingProxy(entry);
+    const meta = props.getEntryMeta(entry);
+    const hasProxy = meta.hasProxy;
+    const generatingProxy = meta.generatingProxy;
 
     items.push([
       {
-        label: generating
+        label: generatingProxy
           ? t('videoEditor.fileManager.actions.generatingProxy', 'Generating Proxy...')
-          : hasP
+          : hasProxy
             ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
             : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
-        icon: generating ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
-        disabled: generating,
+        icon: generatingProxy ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
+        disabled: generatingProxy,
         onSelect: () => emit('action', 'createProxy', entry),
       },
     ]);
 
-    if (generating) {
+    if (generatingProxy) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
@@ -307,7 +292,7 @@ function getContextMenuItems(entry: FsEntry) {
       ]);
     }
 
-    if (hasP) {
+    if (hasProxy) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
@@ -376,7 +361,7 @@ function getContextMenuItems(entry: FsEntry) {
             class="w-4 h-4 shrink-0 transition-colors"
             :class="[
               getEntryIconClass(entry),
-              hasProxy(entry) ? 'text-(--color-success)!' : '',
+              props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
             ]"
           />
 
@@ -386,7 +371,7 @@ function getContextMenuItems(entry: FsEntry) {
             :class="[
               isSelected(entry) ? 'font-medium text-ui-text group-hover:text-ui-text' : 'text-ui-text group-hover:text-ui-text',
               isDotEntry(entry) ? 'opacity-30' : '',
-              hasProxy(entry) ? 'text-(--color-success)!' : '',
+              props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
             ]"
           >
             {{ entry.name }}
@@ -394,16 +379,16 @@ function getContextMenuItems(entry: FsEntry) {
 
           <!-- Proxy indicators -->
           <template v-if="isVideo(entry)">
-            <div v-if="isGeneratingProxy(entry)" class="flex items-center gap-1 ml-2">
+            <div v-if="props.getEntryMeta(entry).generatingProxy" class="flex items-center gap-1 ml-2">
               <UIcon
                 name="i-heroicons-arrow-path"
                 class="w-3.5 h-3.5 text-primary-400 animate-spin"
               />
               <span
-                v-if="proxyProgress(entry) !== undefined"
+                v-if="props.getEntryMeta(entry).proxyProgress !== undefined"
                 class="text-xs text-primary-400 font-mono"
               >
-                {{ proxyProgress(entry) }}%
+                {{ props.getEntryMeta(entry).proxyProgress }}%
               </span>
             </div>
           </template>
@@ -416,11 +401,13 @@ function getContextMenuItems(entry: FsEntry) {
           :entries="entry.children"
           :depth="depth + 1"
           :get-file-icon="getFileIcon"
-          :find-entry-by-path="findEntryByPath"
-          :move-entry="moveEntry"
+          :selected-path="selectedPath"
+          :get-entry-meta="getEntryMeta"
           @toggle="emit('toggle', $event)"
           @select="emit('select', $event)"
-          @action="emit('action', ($event as any), $event as any)"
+          @action="(action, childEntry) => emit('action', action, childEntry)"
+          @request-move="emit('requestMove', $event)"
+          @request-upload="emit('requestUpload', $event)"
         />
       </div>
     </li>
