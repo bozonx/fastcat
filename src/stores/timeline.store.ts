@@ -271,7 +271,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     applyTimeline(
       { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
-      { saveMode: 'none' },
+      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
     const updatedDoc = timelineDoc.value;
@@ -287,7 +287,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     applyTimeline(
       { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
-      { saveMode: 'none' },
+      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
     await requestTimelineSave({ immediate: true });
@@ -311,7 +311,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     applyTimeline(
       { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
-      { saveMode: 'none' },
+      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
     const updatedDoc = timelineDoc.value;
@@ -326,7 +326,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     applyTimeline(
       { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
-      { saveMode: 'none' },
+      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
     await requestTimelineSave({ immediate: true });
@@ -448,7 +448,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         edge: 'end',
         deltaUs: -deltaUs,
       },
-      { saveMode: 'none' },
+      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
     // 2. Shift all subsequent clips on the same track left by deltaUs
@@ -469,7 +469,7 @@ export const useTimelineStore = defineStore('timeline', () => {
           itemId: clip.id,
           startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
         },
-        { saveMode: 'none' },
+        { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
       );
     }
 
@@ -506,7 +506,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         edge: 'start',
         deltaUs: deltaUs,
       },
-      { saveMode: 'none' },
+      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
     // 2. Shift the trimmed clip and all subsequent clips on the same track left by deltaUs
@@ -527,7 +527,7 @@ export const useTimelineStore = defineStore('timeline', () => {
           itemId: clip.id,
           startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
         },
-        { saveMode: 'none' },
+        { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
       );
     }
 
