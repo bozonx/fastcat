@@ -26,11 +26,12 @@ import {
   type ProjectSettingsRepository,
 } from '~/repositories/project-settings.repository';
 
-import { useWorkspaceStore } from './workspace.store';
+import {
+  createProjectMetaRepository,
+  type ProjectMetaRepository,
+} from '~/repositories/project-meta.repository';
 
-interface ProjectMeta {
-  id: string;
-}
+import { useWorkspaceStore } from './workspace.store';
 
 function createProjectId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -43,6 +44,7 @@ export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
 
   const projectSettingsRepo = ref<ProjectSettingsRepository | null>(null);
+  const projectMetaRepo = ref<ProjectMetaRepository | null>(null);
 
   const currentProjectName = ref<string | null>(null);
   const currentProjectId = ref<string | null>(null);
@@ -75,6 +77,8 @@ export const useProjectStore = defineStore('project', () => {
     currentTimelinePath.value = null;
     currentFileName.value = null;
     isLoadingProjectSettings.value = false;
+    projectSettingsRepo.value = null;
+    projectMetaRepo.value = null;
   }
 
   function markProjectSettingsAsDirty() {
@@ -140,38 +144,21 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function ensureProjectMetaFile(options?: {
-    create?: boolean;
-  }): Promise<FileSystemFileHandle | null> {
-    if (!workspaceStore.projectsHandle || !currentProjectName.value) return null;
-
-    const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-      currentProjectName.value,
-    );
-    const granDir = await projectDir.getDirectoryHandle('.gran', {
-      create: options?.create ?? false,
-    });
-
-    return await granDir.getFileHandle('project.meta.json', {
-      create: options?.create ?? false,
-    });
-  }
-
   async function loadProjectMeta() {
     if (!workspaceStore.projectsHandle || !currentProjectName.value) return;
 
     try {
-      const metaHandle = await ensureProjectMetaFile({ create: false });
-      if (metaHandle) {
-        const file = await metaHandle.getFile();
-        const text = await file.text();
-        if (text.trim()) {
-          const parsed = JSON.parse(text) as ProjectMeta;
-          if (parsed?.id && typeof parsed.id === 'string') {
-            currentProjectId.value = parsed.id;
-            return;
-          }
-        }
+      if (!projectMetaRepo.value) {
+        const dir = await getProjectDirHandle();
+        projectMetaRepo.value = dir
+          ? createProjectMetaRepository({ projectDir: dir as any })
+          : null;
+      }
+
+      const meta = await projectMetaRepo.value?.load();
+      if (meta?.id) {
+        currentProjectId.value = meta.id;
+        return;
       }
     } catch {
       // ignore
@@ -181,11 +168,14 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectId.value = nextId;
 
     try {
-      const metaHandle = await ensureProjectMetaFile({ create: true });
-      if (!metaHandle) return;
-      const writable = await (metaHandle as any).createWritable();
-      await writable.write(`${JSON.stringify({ id: nextId } satisfies ProjectMeta, null, 2)}\n`);
-      await writable.close();
+      if (!projectMetaRepo.value) {
+        const dir = await getProjectDirHandle();
+        projectMetaRepo.value = dir
+          ? createProjectMetaRepository({ projectDir: dir as any })
+          : null;
+      }
+
+      await projectMetaRepo.value?.save({ id: nextId });
     } catch (e) {
       console.warn('Failed to write project meta file', e);
     }
@@ -330,11 +320,9 @@ export const useProjectStore = defineStore('project', () => {
       try {
         const granDir = await projectDir.getDirectoryHandle('.gran', { create: true });
         try {
-          const metaHandle = await granDir.getFileHandle('project.meta.json', { create: true });
           const id = createProjectId();
-          const writableMeta = await (metaHandle as any).createWritable();
-          await writableMeta.write(`${JSON.stringify({ id } satisfies ProjectMeta, null, 2)}\n`);
-          await writableMeta.close();
+          projectMetaRepo.value = createProjectMetaRepository({ projectDir: projectDir as any });
+          await projectMetaRepo.value.save({ id });
         } catch (e) {
           console.warn('Failed to create project meta file', e);
         }

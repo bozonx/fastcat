@@ -16,21 +16,13 @@ import {
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import type { FsEntry } from '~/types/fs';
 import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
-import {
-  findEntryByPath as findEntryByPathCore,
-  mergeEntries as mergeEntriesCore,
-} from '~/file-manager/core/tree';
+import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
   assertEntryDoesNotExist,
   copyDirectoryRecursive,
   copyFileToDirectory,
   renameDirectoryFallback,
 } from '~/file-manager/fs/ops';
-
-interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
-  values?: () => AsyncIterable<FileSystemHandle>;
-  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
-}
 
 type FsFileHandleWithMove = FileSystemFileHandle & {
   move?: (name: string) => Promise<void>;
@@ -56,6 +48,22 @@ export function useFileManager() {
   const mediaStore = useMediaStore();
   const proxyStore = useProxyStore();
 
+  const service = createFileManagerService({
+    rootEntries,
+    sortMode,
+    showHiddenFiles: () => uiStore.showHiddenFiles,
+    isPathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
+    setPathExpanded: (path, expanded) => {
+      const projectName = projectStore.currentProjectName;
+      if (!projectName) return;
+      uiStore.setFileTreePathExpanded(projectName, path, expanded);
+    },
+    getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
+    sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
+    sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
+    checkExistingProxies: (videoPaths) => proxyStore.checkExistingProxies(videoPaths),
+  });
+
   const isApiSupported = workspaceStore.isApiSupported;
 
   watch(
@@ -70,183 +78,34 @@ export function useFileManager() {
     return await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName);
   }
 
-  async function attachLastModified(entries: FsEntry[]): Promise<void> {
-    const files = entries.filter((e) => e.kind === 'file') as FsEntry[];
-    await Promise.all(
-      files.map(async (entry) => {
-        try {
-          const file = await (entry.handle as FileSystemFileHandle).getFile();
-          entry.lastModified = file.lastModified;
-        } catch {
-          entry.lastModified = undefined;
-        }
-      }),
-    );
-  }
-
-  function compareEntries(a: FsEntry, b: FsEntry): number {
-    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-
-    if (sortMode.value === 'modified') {
-      const am = a.lastModified ?? 0;
-      const bm = b.lastModified ?? 0;
-      if (am !== bm) return bm - am;
-    }
-
-    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-  }
-
-  async function readDirectory(
-    dirHandle: FileSystemDirectoryHandle,
-    basePath = '',
-  ): Promise<FsEntry[]> {
-    const entries: FsEntry[] = [];
-    try {
-      const iterator =
-        (dirHandle as FsDirectoryHandleWithIteration).values?.() ??
-        (dirHandle as FsDirectoryHandleWithIteration).entries?.();
-      if (!iterator) return entries;
-
-      for await (const value of iterator) {
-        let handle = (Array.isArray(value) ? value[1] : value) as
-          | FileSystemFileHandle
-          | FileSystemDirectoryHandle;
-        handle = markRaw(toRaw(handle));
-        const rawParent = markRaw(toRaw(dirHandle));
-
-        if (!uiStore.showHiddenFiles && handle.name.startsWith('.')) continue;
-
-        entries.push({
-          name: handle.name,
-          kind: handle.kind,
-          handle,
-          parentHandle: rawParent,
-          children: undefined,
-          expanded: false,
-          path: basePath ? `${basePath}/${handle.name}` : handle.name,
-          lastModified: undefined,
-        });
-      }
-    } catch (e: any) {
-      throw new Error(e?.message ?? 'Failed to read directory');
-    }
-
-    if (sortMode.value === 'modified') {
-      await attachLastModified(entries);
-    }
-
-    const videoPaths = entries
-      .filter((e) => e.kind === 'file' && e.path?.startsWith(`${VIDEO_DIR_NAME}/`))
-      .map((e) => e.path!);
-    if (videoPaths.length > 0) {
-      await proxyStore.checkExistingProxies(videoPaths);
-    }
-
-    return entries.sort(compareEntries);
+  function findEntryByPath(path: string): FsEntry | null {
+    return service.findEntryByPath(path);
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
-    return mergeEntriesCore(prev, next, {
-      isPathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
-    });
-  }
-
-  function findEntryByPath(path: string): FsEntry | null {
-    return findEntryByPathCore(rootEntries.value, path);
-  }
-
-  async function refreshExpandedChildren(entries: FsEntry[]): Promise<void> {
-    for (const entry of entries) {
-      if (entry.kind !== 'directory') continue;
-      if (!entry.expanded) continue;
-      if (entry.children === undefined) continue;
-
-      try {
-        const nextChildren = await readDirectory(
-          entry.handle as FileSystemDirectoryHandle,
-          entry.path,
-        );
-        entry.children = mergeEntries(entry.children, nextChildren);
-      } catch {
-        // ignore
-      }
-
-      if (entry.children) {
-        await refreshExpandedChildren(entry.children);
-      }
-    }
+    return service.mergeEntries(prev, next);
   }
 
   async function toggleDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
+
     error.value = null;
-    entry.expanded = !entry.expanded;
+    const prevExpanded = Boolean(entry.expanded);
 
-    if (entry.path) {
-      if (projectStore.currentProjectName) {
-        uiStore.setFileTreePathExpanded(
-          projectStore.currentProjectName,
-          entry.path,
-          entry.expanded,
-        );
-      }
-    }
+    try {
+      await service.toggleDirectory(entry);
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to read folder';
+      toast.add({
+        color: 'red',
+        title: 'Folder error',
+        description: error.value || 'Failed to read folder',
+      });
 
-    if (entry.expanded && entry.children === undefined) {
-      try {
-        entry.children = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
-      } catch (e: any) {
-        error.value = e?.message ?? 'Failed to read folder';
-        toast.add({
-          color: 'red',
-          title: 'Folder error',
-          description: error.value || 'Failed to read folder',
-        });
-        entry.expanded = false;
-
-        if (entry.path) {
-          if (projectStore.currentProjectName) {
-            uiStore.setFileTreePathExpanded(projectStore.currentProjectName, entry.path, false);
-          }
-        }
-      }
-    }
-  }
-
-  async function expandPersistedDirectories() {
-    const projectName = projectStore.currentProjectName;
-    if (!projectName) return;
-
-    const expandedPaths = Object.keys(uiStore.fileTreeExpandedPaths);
-    if (expandedPaths.length === 0) return;
-
-    const sortedPaths = [...expandedPaths].sort((a, b) => a.length - b.length);
-
-    for (const path of sortedPaths) {
-      const parts = path.split('/').filter(Boolean);
-      if (parts.length === 0) continue;
-
-      let currentList = rootEntries.value;
-      let currentPath = '';
-      for (const part of parts) {
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-        const entry = currentList.find((e) => e.kind === 'directory' && e.name === part);
-        if (!entry) break;
-
-        if (!entry.expanded) {
-          await toggleDirectory(entry);
-        } else if (entry.children === undefined) {
-          entry.children = await readDirectory(
-            entry.handle as FileSystemDirectoryHandle,
-            entry.path,
-          );
-        }
-
-        if (!uiStore.isFileTreePathExpanded(currentPath)) {
-          uiStore.setFileTreePathExpanded(projectName, currentPath, true);
-        }
-
-        currentList = entry.children ?? [];
+      entry.expanded = prevExpanded;
+      const projectName = projectStore.currentProjectName;
+      if (projectName && entry.path) {
+        uiStore.setFileTreePathExpanded(projectName, entry.path, prevExpanded);
       }
     }
   }
@@ -263,25 +122,7 @@ export function useFileManager() {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
         projectStore.currentProjectName,
       );
-      const nextRoot = await readDirectory(projectDir);
-      rootEntries.value = mergeEntries(rootEntries.value, nextRoot);
-
-      await refreshExpandedChildren(rootEntries.value);
-
-      await expandPersistedDirectories();
-
-      // Automatically expand the media directories if present
-      for (const entry of rootEntries.value) {
-        if (
-          entry.kind === 'directory' &&
-          (entry.name === VIDEO_DIR_NAME ||
-            entry.name === AUDIO_DIR_NAME ||
-            entry.name === FILES_DIR_NAME ||
-            entry.name === IMAGES_DIR_NAME)
-        ) {
-          if (!entry.expanded) await toggleDirectory(entry);
-        }
-      }
+      await service.loadProjectDirectory(projectDir);
     } catch (e: any) {
       if (e?.name !== 'AbortError') {
         error.value = e?.message ?? 'Failed to open project folder';
