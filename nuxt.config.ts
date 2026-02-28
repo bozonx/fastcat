@@ -29,10 +29,10 @@ export default defineNuxtConfig({
 
   i18n: {
     strategy: 'no_prefix',
-    defaultLocale: 'en',
+    defaultLocale: 'en-US',
     locales: [
-      { code: 'en', file: 'en-US.json' },
-      { code: 'ru', file: 'ru-RU.json' },
+      { code: 'en-US', file: 'en-US.json' },
+      { code: 'ru-RU', file: 'ru-RU.json' },
     ],
     restructureDir: 'src',
     langDir: 'locales',

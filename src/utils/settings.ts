@@ -3,6 +3,7 @@ import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from './hotke
 import { normalizeHotkeyCombo } from './hotkeys/hotkeyUtils';
 
 export interface GranVideoEditorUserSettings {
+  locale: 'en-US' | 'ru-RU';
   openLastProjectOnStart: boolean;
   stopFrames: {
     qualityPercent: number;
@@ -80,6 +81,7 @@ export interface GranVideoEditorWorkspaceSettings {
 }
 
 export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
+  locale: 'en-US',
   openLastProjectOnStart: true,
   stopFrames: {
     qualityPercent: 85,
@@ -187,6 +189,7 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
 
 export function createDefaultUserSettings(): GranVideoEditorUserSettings {
   return {
+    locale: DEFAULT_USER_SETTINGS.locale,
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
     stopFrames: {
       qualityPercent: DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
@@ -247,6 +250,14 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   }
 
   const input = raw as Record<string, any>;
+
+  const localeRaw = input.locale ?? input.language ?? input.lang;
+  const normalizedLocale =
+    localeRaw === 'ru-RU' || localeRaw === 'ru'
+      ? 'ru-RU'
+      : localeRaw === 'en-US' || localeRaw === 'en'
+        ? 'en-US'
+        : DEFAULT_USER_SETTINGS.locale;
 
   // Migration: if we have resolution/fps in exportDefaults/export, move them to projectDefaults
   const legacyExportInput = input.exportDefaults ?? input.export ?? null;
@@ -377,6 +388,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   }
 
   return {
+    locale: normalizedLocale,
     openLastProjectOnStart,
     stopFrames: {
       qualityPercent: stopFramesQualityPercent,

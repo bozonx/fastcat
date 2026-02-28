@@ -534,6 +534,22 @@ const thumbnailsLimitGb = computed({
             {{ t('videoEditor.settings.userGeneral', 'General') }}
           </div>
 
+          <UFormField :label="t('videoEditor.settings.uiLanguage', 'Interface language')">
+            <USelectMenu
+              v-model="workspaceStore.userSettings.locale"
+              :items="[
+                { label: 'English (US)', value: 'en-US' },
+                { label: 'Русский (RU)', value: 'ru-RU' },
+              ]"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+              @update:model-value="
+                (v: any) => (workspaceStore.userSettings.locale = v?.value ?? v)
+              "
+            />
+          </UFormField>
+
           <label class="flex items-center gap-3 cursor-pointer">
             <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
             <span class="text-sm text-ui-text">

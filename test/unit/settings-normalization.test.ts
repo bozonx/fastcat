@@ -7,8 +7,17 @@ describe('settings normalization', () => {
   it('migrates openBehavior to openLastProjectOnStart', () => {
     const normalized = normalizeUserSettings({ openBehavior: 'show_project_picker' });
     expect(normalized.openLastProjectOnStart).toBe(false);
+    expect(normalized.locale).toBe('en-US');
     expect(normalized.hotkeys).toBeDefined();
     expect(normalized.hotkeys.bindings).toBeDefined();
+  });
+
+  it('normalizes locale', () => {
+    expect(normalizeUserSettings({ locale: 'ru-RU' }).locale).toBe('ru-RU');
+    expect(normalizeUserSettings({ locale: 'ru' }).locale).toBe('ru-RU');
+    expect(normalizeUserSettings({ locale: 'en' }).locale).toBe('en-US');
+    expect(normalizeUserSettings({ locale: 'en-US' }).locale).toBe('en-US');
+    expect(normalizeUserSettings({ locale: 'fr' }).locale).toBe('en-US');
   });
 
   it('normalizes stopFrames quality percent', () => {
@@ -25,6 +34,7 @@ describe('settings normalization', () => {
 
   it('uses exportDefaults fallback when missing', () => {
     const normalized = normalizeUserSettings({ openLastProjectOnStart: true });
+    expect(normalized.locale).toBe('en-US');
     expect(normalized.projectDefaults.width).toBe(1920);
     expect(normalized.exportDefaults.encoding.format).toBe('mp4');
     expect(normalized.hotkeys.bindings).toEqual({});

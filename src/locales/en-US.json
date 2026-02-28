@@ -131,6 +131,7 @@
       "userSection": "User settings",
       "userGeneral": "General",
       "userExport": "Export defaults",
+      "uiLanguage": "Interface language",
       "workspaceSection": "Workspace settings",
       "workspaceStorage": "Storage",
       "openBehavior": "On editor open",
