@@ -333,10 +333,10 @@ async function onGlobalKeydown(e: KeyboardEvent) {
 
   // --- Playback ---
   if (cmd === 'playback.toggle') {
-    if (timelineStore.playbackSpeed !== 1) {
-      timelineStore.setPlaybackSpeed(1);
-      if (!timelineStore.isPlaying) timelineStore.togglePlayback();
+    if (timelineStore.isPlaying) {
+      timelineStore.togglePlayback();
     } else {
+      timelineStore.setPlaybackSpeed(1);
       timelineStore.togglePlayback();
     }
     return;
