@@ -112,13 +112,13 @@ watch(
     excludeAudio.value = projectStore.projectSettings.export.encoding.excludeAudio;
     audioCodec.value = projectStore.projectSettings.export.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.export.encoding.audioBitrateKbps;
-    exportWidth.value = projectStore.projectSettings.export.width;
-    exportHeight.value = projectStore.projectSettings.export.height;
-    exportFps.value = projectStore.projectSettings.export.fps;
-    resolutionFormat.value = projectStore.projectSettings.export.resolutionFormat;
-    orientation.value = projectStore.projectSettings.export.orientation;
-    aspectRatio.value = projectStore.projectSettings.export.aspectRatio;
-    isCustomResolution.value = projectStore.projectSettings.export.isCustomResolution;
+    exportWidth.value = projectStore.projectSettings.project.width;
+    exportHeight.value = projectStore.projectSettings.project.height;
+    exportFps.value = projectStore.projectSettings.project.fps;
+    resolutionFormat.value = projectStore.projectSettings.project.resolutionFormat;
+    orientation.value = projectStore.projectSettings.project.orientation;
+    aspectRatio.value = projectStore.projectSettings.project.aspectRatio;
+    isCustomResolution.value = projectStore.projectSettings.project.isCustomResolution;
 
     await ensureExportDir();
     await preloadExportIndex();
@@ -202,13 +202,13 @@ async function handleConfirm() {
       audioCodec.value as 'aac' | 'opus',
     );
 
-    projectStore.projectSettings.export.width = normalizedExportWidth.value;
-    projectStore.projectSettings.export.height = normalizedExportHeight.value;
-    projectStore.projectSettings.export.fps = normalizedExportFps.value;
-    projectStore.projectSettings.export.resolutionFormat = resolutionFormat.value;
-    projectStore.projectSettings.export.orientation = orientation.value;
-    projectStore.projectSettings.export.aspectRatio = aspectRatio.value;
-    projectStore.projectSettings.export.isCustomResolution = isCustomResolution.value;
+    projectStore.projectSettings.project.width = normalizedExportWidth.value;
+    projectStore.projectSettings.project.height = normalizedExportHeight.value;
+    projectStore.projectSettings.project.fps = normalizedExportFps.value;
+    projectStore.projectSettings.project.resolutionFormat = resolutionFormat.value;
+    projectStore.projectSettings.project.orientation = orientation.value;
+    projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
+    projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
     projectStore.projectSettings.export.encoding.format = outputFormat.value;
     projectStore.projectSettings.export.encoding.videoCodec = resolvedCodecs.videoCodec;
     projectStore.projectSettings.export.encoding.bitrateMbps = bitrateMbps.value;

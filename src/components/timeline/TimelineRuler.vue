@@ -89,7 +89,7 @@ onUnmounted(() => {
   }
 });
 
-const fps = computed(() => projectStore.projectSettings.export.fps || 30);
+const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 

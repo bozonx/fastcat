@@ -93,9 +93,9 @@ const commonResolutions = [
 function applySettings() {
   // Update project settings
   if (projectStore.projectSettings) {
-    projectStore.projectSettings.export.fps = frameRate.value;
-    projectStore.projectSettings.export.width = resolutionWidth.value;
-    projectStore.projectSettings.export.height = resolutionHeight.value;
+    projectStore.projectSettings.project.fps = frameRate.value;
+    projectStore.projectSettings.project.width = resolutionWidth.value;
+    projectStore.projectSettings.project.height = resolutionHeight.value;
   }
   
   // Close modal
@@ -211,20 +211,27 @@ function getAllClipsCount(): number {
 
       <div class="h-px bg-ui-border"></div>
 
-      <!-- Export Settings -->
+      <!-- Resolution & FPS Settings -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.export', 'Export') }}</h3>
+        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.projectInfo', 'Resolution & FPS') }}</h3>
         
         <MediaResolutionSettings
-          v-model:width="projectStore.projectSettings.export.width"
-          v-model:height="projectStore.projectSettings.export.height"
-          v-model:fps="projectStore.projectSettings.export.fps"
-          v-model:resolution-format="projectStore.projectSettings.export.resolutionFormat"
-          v-model:orientation="projectStore.projectSettings.export.orientation"
-          v-model:aspect-ratio="projectStore.projectSettings.export.aspectRatio"
-          v-model:is-custom-resolution="projectStore.projectSettings.export.isCustomResolution"
+          v-model:width="projectStore.projectSettings.project.width"
+          v-model:height="projectStore.projectSettings.project.height"
+          v-model:fps="projectStore.projectSettings.project.fps"
+          v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
+          v-model:orientation="projectStore.projectSettings.project.orientation"
+          v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
+          v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
         />
+      </div>
 
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Export Settings -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.export', 'Export Defaults') }}</h3>
+        
         <MediaEncodingSettings
           v-model:output-format="projectStore.projectSettings.export.encoding.format"
           v-model:video-codec="projectStore.projectSettings.export.encoding.videoCodec"

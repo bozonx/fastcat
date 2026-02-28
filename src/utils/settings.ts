@@ -17,7 +17,7 @@ export interface GranVideoEditorUserSettings {
     proxyCopyOpusAudio: boolean;
     autoCreateProxies: boolean;
   };
-  exportDefaults: {
+  projectDefaults: {
     width: number;
     height: number;
     fps: number;
@@ -25,6 +25,8 @@ export interface GranVideoEditorUserSettings {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+  };
+  exportDefaults: {
     encoding: {
       format: 'mp4' | 'webm' | 'mkv';
       videoCodec: string;
@@ -86,7 +88,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     proxyCopyOpusAudio: true,
     autoCreateProxies: true,
   },
-  exportDefaults: {
+  projectDefaults: {
     width: 1920,
     height: 1080,
     fps: 25,
@@ -94,6 +96,8 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     orientation: 'landscape',
     aspectRatio: '16:9',
     isCustomResolution: false,
+  },
+  exportDefaults: {
     encoding: {
       format: 'mp4',
       videoCodec: 'avc1.640032',
@@ -150,21 +154,20 @@ export function getResolutionPreset(width: number, height: number) {
   };
 }
 
-export function createDefaultExportDefaults(): GranVideoEditorUserSettings['exportDefaults'] {
+export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['projectDefaults'] {
   const preset = getResolutionPreset(
-    DEFAULT_USER_SETTINGS.exportDefaults.width,
-    DEFAULT_USER_SETTINGS.exportDefaults.height,
+    DEFAULT_USER_SETTINGS.projectDefaults.width,
+    DEFAULT_USER_SETTINGS.projectDefaults.height,
   );
 
   return {
-    width: DEFAULT_USER_SETTINGS.exportDefaults.width,
-    height: DEFAULT_USER_SETTINGS.exportDefaults.height,
-    fps: DEFAULT_USER_SETTINGS.exportDefaults.fps,
+    width: DEFAULT_USER_SETTINGS.projectDefaults.width,
+    height: DEFAULT_USER_SETTINGS.projectDefaults.height,
+    fps: DEFAULT_USER_SETTINGS.projectDefaults.fps,
     resolutionFormat: preset.resolutionFormat,
     orientation: preset.orientation as 'landscape' | 'portrait',
     aspectRatio: preset.aspectRatio,
     isCustomResolution: preset.isCustomResolution,
-    encoding: { ...DEFAULT_USER_SETTINGS.exportDefaults.encoding },
   };
 }
 
@@ -178,7 +181,10 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
       bindings: {},
     },
     optimization: { ...DEFAULT_USER_SETTINGS.optimization },
-    exportDefaults: createDefaultExportDefaults(),
+    projectDefaults: createDefaultProjectDefaults(),
+    exportDefaults: {
+      encoding: { ...DEFAULT_USER_SETTINGS.exportDefaults.encoding },
+    },
     mouse: {
       timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
       monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
@@ -206,9 +212,9 @@ function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] 
 
     const combos = Array.isArray(combosRaw) ? combosRaw : [];
     const normalizedCombos = combos
-      .filter((c): c is string => typeof c === 'string')
-      .map((c) => normalizeHotkeyCombo(c))
-      .filter((c): c is string => Boolean(c));
+        .filter((c): c is string => typeof c === 'string')
+        .map((c) => normalizeHotkeyCombo(c))
+        .filter((c): c is string => Boolean(c));
 
     if (normalizedCombos.length > 0) {
       normalizedBindings[cmdId] = Array.from(new Set(normalizedCombos));
@@ -227,67 +233,70 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   }
 
   const input = raw as Record<string, any>;
-  const exportInput = input.exportDefaults ?? input.export ?? null;
-  const encodingInput = exportInput?.encoding ?? {};
 
-  const width = Number(exportInput?.width);
-  const height = Number(exportInput?.height);
-  const fps = Number(exportInput?.fps);
-  const bitrateMbps = Number(encodingInput?.bitrateMbps);
-  const audioBitrateKbps = Number(encodingInput?.audioBitrateKbps);
-  const format = encodingInput?.format;
+  // Migration: if we have resolution/fps in exportDefaults/export, move them to projectDefaults
+  const legacyExportInput = input.exportDefaults ?? input.export ?? null;
+  const projectInput = input.projectDefaults ?? legacyExportInput ?? {};
+  const exportEncodingInput = input.exportDefaults?.encoding ?? legacyExportInput?.encoding ?? {};
+
+  const width = Number(projectInput?.width);
+  const height = Number(projectInput?.height);
+  const fps = Number(projectInput?.fps);
+  const bitrateMbps = Number(exportEncodingInput?.bitrateMbps);
+  const audioBitrateKbps = Number(exportEncodingInput?.audioBitrateKbps);
+  const format = exportEncodingInput?.format;
 
   const normalizedWidth =
-    Number.isFinite(width) && width > 0
-      ? Math.round(width)
-      : DEFAULT_USER_SETTINGS.exportDefaults.width;
+      Number.isFinite(width) && width > 0
+          ? Math.round(width)
+          : DEFAULT_USER_SETTINGS.projectDefaults.width;
   const normalizedHeight =
-    Number.isFinite(height) && height > 0
-      ? Math.round(height)
-      : DEFAULT_USER_SETTINGS.exportDefaults.height;
+      Number.isFinite(height) && height > 0
+          ? Math.round(height)
+          : DEFAULT_USER_SETTINGS.projectDefaults.height;
 
   const preset = getResolutionPreset(normalizedWidth, normalizedHeight);
   const isWidthHeightCustom =
-    normalizedWidth !== DEFAULT_USER_SETTINGS.exportDefaults.width ||
-    normalizedHeight !== DEFAULT_USER_SETTINGS.exportDefaults.height;
+      normalizedWidth !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
+      normalizedHeight !== DEFAULT_USER_SETTINGS.projectDefaults.height;
 
   const resolutionFormat =
-    typeof exportInput?.resolutionFormat === 'string' &&
-    exportInput.resolutionFormat &&
-    !isWidthHeightCustom
-      ? exportInput.resolutionFormat
-      : preset.resolutionFormat;
+      typeof projectInput?.resolutionFormat === 'string' &&
+      projectInput.resolutionFormat &&
+      !isWidthHeightCustom
+          ? projectInput.resolutionFormat
+          : preset.resolutionFormat;
   const orientation =
-    (exportInput?.orientation === 'portrait' || exportInput?.orientation === 'landscape') &&
-    !isWidthHeightCustom
-      ? exportInput.orientation
-      : (preset.orientation as 'landscape' | 'portrait');
+      (projectInput?.orientation === 'portrait' || projectInput?.orientation === 'landscape') &&
+      !isWidthHeightCustom
+          ? projectInput.orientation
+          : (preset.orientation as 'landscape' | 'portrait');
   const aspectRatio =
-    typeof exportInput?.aspectRatio === 'string' && exportInput.aspectRatio && !isWidthHeightCustom
-      ? exportInput.aspectRatio
-      : preset.aspectRatio;
+      typeof projectInput?.aspectRatio === 'string' && projectInput.aspectRatio && !isWidthHeightCustom
+          ? projectInput.aspectRatio
+          : preset.aspectRatio;
   const isCustomResolution =
-    exportInput?.isCustomResolution !== undefined && !isWidthHeightCustom
-      ? Boolean(exportInput.isCustomResolution)
-      : preset.isCustomResolution;
+      projectInput?.isCustomResolution !== undefined && !isWidthHeightCustom
+          ? Boolean(projectInput.isCustomResolution)
+          : preset.isCustomResolution;
 
   const openLastProjectOnStartRaw = input.openLastProjectOnStart;
   const openBehavior = input.openBehavior;
   const openLastProjectOnStart =
-    typeof openLastProjectOnStartRaw === 'boolean'
-      ? openLastProjectOnStartRaw
-      : openBehavior === 'show_project_picker'
-        ? false
-        : DEFAULT_USER_SETTINGS.openLastProjectOnStart;
+      typeof openLastProjectOnStartRaw === 'boolean'
+          ? openLastProjectOnStartRaw
+          : openBehavior === 'show_project_picker'
+              ? false
+              : DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
   const stopFramesInput = input.stopFrames ?? {};
   const qualityPercentRaw =
-    stopFramesInput?.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
+      stopFramesInput?.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
   const qualityPercentParsed = Number(qualityPercentRaw);
   const stopFramesQualityPercent =
-    Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
-      ? Math.round(Math.min(100, Math.max(1, qualityPercentParsed)))
-      : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+      Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
+          ? Math.round(Math.min(100, Math.max(1, qualityPercentParsed)))
+          : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
 
   const optimizationInput = input.optimization ?? {};
   const proxyResolution = optimizationInput.proxyResolution;
@@ -350,53 +359,55 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     hotkeys,
     optimization: {
       proxyResolution: ['360p', '480p', '720p', '1080p'].includes(proxyResolution)
-        ? proxyResolution
-        : DEFAULT_USER_SETTINGS.optimization.proxyResolution,
+          ? proxyResolution
+          : DEFAULT_USER_SETTINGS.optimization.proxyResolution,
       proxyVideoBitrateMbps:
-        Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
-          ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
-          : DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps,
+          Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
+              ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
+              : DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps,
       proxyAudioBitrateKbps:
-        Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
-          ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
-          : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
+          Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
+              ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
+              : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
       proxyCopyOpusAudio:
-        typeof proxyCopyOpusAudio === 'boolean'
-          ? proxyCopyOpusAudio
-          : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
+          typeof proxyCopyOpusAudio === 'boolean'
+              ? proxyCopyOpusAudio
+              : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
       autoCreateProxies:
-        typeof autoCreateProxies === 'boolean'
-          ? autoCreateProxies
-          : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
+          typeof autoCreateProxies === 'boolean'
+              ? autoCreateProxies
+              : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
     },
-    exportDefaults: {
+    projectDefaults: {
       width: normalizedWidth,
       height: normalizedHeight,
       fps:
-        Number.isFinite(fps) && fps > 0
-          ? Math.round(Math.min(240, Math.max(1, fps)))
-          : DEFAULT_USER_SETTINGS.exportDefaults.fps,
+          Number.isFinite(fps) && fps > 0
+              ? Math.round(Math.min(240, Math.max(1, fps)))
+              : DEFAULT_USER_SETTINGS.projectDefaults.fps,
       resolutionFormat,
       orientation,
       aspectRatio,
       isCustomResolution,
+    },
+    exportDefaults: {
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:
-          typeof encodingInput?.videoCodec === 'string' &&
-          encodingInput.videoCodec.trim().length > 0
-            ? encodingInput.videoCodec
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.videoCodec,
+            typeof exportEncodingInput?.videoCodec === 'string' &&
+            exportEncodingInput.videoCodec.trim().length > 0
+                ? exportEncodingInput.videoCodec
+                : DEFAULT_USER_SETTINGS.exportDefaults.encoding.videoCodec,
         bitrateMbps:
-          Number.isFinite(bitrateMbps) && bitrateMbps > 0
-            ? Math.min(200, Math.max(0.2, bitrateMbps))
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.bitrateMbps,
-        excludeAudio: Boolean(encodingInput?.excludeAudio),
-        audioCodec: encodingInput?.audioCodec === 'opus' ? 'opus' : 'aac',
+            Number.isFinite(bitrateMbps) && bitrateMbps > 0
+                ? Math.min(200, Math.max(0.2, bitrateMbps))
+                : DEFAULT_USER_SETTINGS.exportDefaults.encoding.bitrateMbps,
+        excludeAudio: Boolean(exportEncodingInput?.excludeAudio),
+        audioCodec: exportEncodingInput?.audioCodec === 'opus' ? 'opus' : 'aac',
         audioBitrateKbps:
-          Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
-            ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
+            Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
+                ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
+                : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
       },
     },
     mouse: normalizedMouse,

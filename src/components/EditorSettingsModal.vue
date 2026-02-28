@@ -38,6 +38,7 @@ type SettingsSection =
   | 'user.hotkeys'
   | 'user.mouse'
   | 'user.optimization'
+  | 'user.project'
   | 'user.export'
   | 'workspace.storage';
 
@@ -323,7 +324,15 @@ const thumbnailsLimitGb = computed({
               variant="ghost"
               color="neutral"
               class="justify-start"
-              :label="t('videoEditor.settings.userExport', 'Export')"
+              :label="t('videoEditor.settings.userProject', 'Project defaults')"
+              :disabled="activeSection === 'user.project'"
+              @click="activeSection = 'user.project'"
+            />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userExport', 'Export defaults')"
               :disabled="activeSection === 'user.export'"
               @click="activeSection = 'user.export'"
             />
@@ -830,23 +839,33 @@ const thumbnailsLimitGb = computed({
           </div>
         </div>
 
-        <div v-else-if="activeSection === 'user.export'" class="flex flex-col gap-6">
+        <div v-else-if="activeSection === 'user.project'" class="flex flex-col gap-6">
           <div class="text-sm font-medium text-ui-text">
-            {{ t('videoEditor.settings.userExport', 'Export') }}
+            {{ t('videoEditor.settings.userProject', 'Project defaults') }}
           </div>
 
           <MediaResolutionSettings
-            v-model:width="workspaceStore.userSettings.exportDefaults.width"
-            v-model:height="workspaceStore.userSettings.exportDefaults.height"
-            v-model:fps="workspaceStore.userSettings.exportDefaults.fps"
-            v-model:resolution-format="workspaceStore.userSettings.exportDefaults.resolutionFormat"
-            v-model:orientation="workspaceStore.userSettings.exportDefaults.orientation"
-            v-model:aspect-ratio="workspaceStore.userSettings.exportDefaults.aspectRatio"
+            v-model:width="workspaceStore.userSettings.projectDefaults.width"
+            v-model:height="workspaceStore.userSettings.projectDefaults.height"
+            v-model:fps="workspaceStore.userSettings.projectDefaults.fps"
+            v-model:resolution-format="workspaceStore.userSettings.projectDefaults.resolutionFormat"
+            v-model:orientation="workspaceStore.userSettings.projectDefaults.orientation"
+            v-model:aspect-ratio="workspaceStore.userSettings.projectDefaults.aspectRatio"
             v-model:is-custom-resolution="
-              workspaceStore.userSettings.exportDefaults.isCustomResolution
+              workspaceStore.userSettings.projectDefaults.isCustomResolution
             "
             :disabled="false"
           />
+
+          <div class="text-xs text-ui-text-muted">
+            {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+          </div>
+        </div>
+
+        <div v-else-if="activeSection === 'user.export'" class="flex flex-col gap-6">
+          <div class="text-sm font-medium text-ui-text">
+            {{ t('videoEditor.settings.userExport', 'Export defaults') }}
+          </div>
 
           <MediaEncodingSettings
             v-model:output-format="workspaceStore.userSettings.exportDefaults.encoding.format"

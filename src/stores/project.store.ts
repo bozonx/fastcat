@@ -22,7 +22,7 @@ function createProjectId(): string {
 }
 
 export interface GranVideoEditorProjectSettings {
-  export: {
+  project: {
     width: number;
     height: number;
     fps: number;
@@ -30,6 +30,8 @@ export interface GranVideoEditorProjectSettings {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
+  };
+  export: {
     encoding: {
       format: 'mp4' | 'webm' | 'mkv';
       videoCodec: string;
@@ -55,6 +57,15 @@ export interface GranVideoEditorProjectSettings {
 }
 
 const DEFAULT_PROJECT_SETTINGS = {
+  project: {
+    width: 1920,
+    height: 1080,
+    fps: 25,
+    resolutionFormat: '1080p',
+    orientation: 'landscape' as const,
+    aspectRatio: '16:9',
+    isCustomResolution: false,
+  },
   export: {
     encoding: {
       format: 'mp4' as const,
@@ -80,38 +91,46 @@ const DEFAULT_PROJECT_SETTINGS = {
   },
 };
 
-function getDefaultExportFromUserDefaults(userDefaults: {
-  width: number;
-  height: number;
-  fps: number;
-  resolutionFormat: string;
-  orientation: 'landscape' | 'portrait';
-  aspectRatio: string;
-  isCustomResolution: boolean;
-  encoding: {
-    format: 'mp4' | 'webm' | 'mkv';
-    videoCodec: string;
-    bitrateMbps: number;
-    excludeAudio: boolean;
-    audioCodec: 'aac' | 'opus';
-    audioBitrateKbps: number;
+function getProjectSettingsFromUserDefaults(userSettings: {
+  projectDefaults: {
+    width: number;
+    height: number;
+    fps: number;
+    resolutionFormat: string;
+    orientation: 'landscape' | 'portrait';
+    aspectRatio: string;
+    isCustomResolution: boolean;
   };
-}): GranVideoEditorProjectSettings['export'] {
-  return {
-    width: userDefaults.width,
-    height: userDefaults.height,
-    fps: userDefaults.fps,
-    resolutionFormat: userDefaults.resolutionFormat,
-    orientation: userDefaults.orientation,
-    aspectRatio: userDefaults.aspectRatio,
-    isCustomResolution: userDefaults.isCustomResolution,
+  exportDefaults: {
     encoding: {
-      format: userDefaults.encoding.format,
-      videoCodec: userDefaults.encoding.videoCodec,
-      bitrateMbps: userDefaults.encoding.bitrateMbps,
-      excludeAudio: userDefaults.encoding.excludeAudio,
-      audioCodec: userDefaults.encoding.audioCodec,
-      audioBitrateKbps: userDefaults.encoding.audioBitrateKbps,
+      format: 'mp4' | 'webm' | 'mkv';
+      videoCodec: string;
+      bitrateMbps: number;
+      excludeAudio: boolean;
+      audioCodec: 'aac' | 'opus';
+      audioBitrateKbps: number;
+    };
+  };
+}): Pick<GranVideoEditorProjectSettings, 'project' | 'export'> {
+  return {
+    project: {
+      width: userSettings.projectDefaults.width,
+      height: userSettings.projectDefaults.height,
+      fps: userSettings.projectDefaults.fps,
+      resolutionFormat: userSettings.projectDefaults.resolutionFormat,
+      orientation: userSettings.projectDefaults.orientation,
+      aspectRatio: userSettings.projectDefaults.aspectRatio,
+      isCustomResolution: userSettings.projectDefaults.isCustomResolution,
+    },
+    export: {
+      encoding: {
+        format: userSettings.exportDefaults.encoding.format,
+        videoCodec: userSettings.exportDefaults.encoding.videoCodec,
+        bitrateMbps: userSettings.exportDefaults.encoding.bitrateMbps,
+        excludeAudio: userSettings.exportDefaults.encoding.excludeAudio,
+        audioCodec: userSettings.exportDefaults.encoding.audioCodec,
+        audioBitrateKbps: userSettings.exportDefaults.encoding.audioBitrateKbps,
+      },
     },
   };
 }
@@ -141,25 +160,30 @@ function getResolutionPreset(width: number, height: number) {
   };
 }
 
-function createDefaultProjectSettings(userExportDefaults: {
-  width: number;
-  height: number;
-  fps: number;
-  resolutionFormat: string;
-  orientation: 'landscape' | 'portrait';
-  aspectRatio: string;
-  isCustomResolution: boolean;
-  encoding: {
-    format: 'mp4' | 'webm' | 'mkv';
-    videoCodec: string;
-    bitrateMbps: number;
-    excludeAudio: boolean;
-    audioCodec: 'aac' | 'opus';
-    audioBitrateKbps: number;
+function createDefaultProjectSettings(userSettings: {
+  projectDefaults: {
+    width: number;
+    height: number;
+    fps: number;
+    resolutionFormat: string;
+    orientation: 'landscape' | 'portrait';
+    aspectRatio: string;
+    isCustomResolution: boolean;
+  };
+  exportDefaults: {
+    encoding: {
+      format: 'mp4' | 'webm' | 'mkv';
+      videoCodec: string;
+      bitrateMbps: number;
+      excludeAudio: boolean;
+      audioCodec: 'aac' | 'opus';
+      audioBitrateKbps: number;
+    };
   };
 }): GranVideoEditorProjectSettings {
+  const base = getProjectSettingsFromUserDefaults(userSettings);
   return {
-    export: getDefaultExportFromUserDefaults(userExportDefaults),
+    ...base,
     monitor: {
       previewResolution: DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy: DEFAULT_PROJECT_SETTINGS.monitor.useProxy,
@@ -178,42 +202,52 @@ function createDefaultProjectSettings(userExportDefaults: {
 
 function normalizeProjectSettings(
   raw: unknown,
-  userExportDefaults: {
-    width: number;
-    height: number;
-    fps: number;
-    resolutionFormat: string;
-    orientation: 'landscape' | 'portrait';
-    aspectRatio: string;
-    isCustomResolution: boolean;
-    encoding: {
-      format: 'mp4' | 'webm' | 'mkv';
-      videoCodec: string;
-      bitrateMbps: number;
-      excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus';
-      audioBitrateKbps: number;
+  userSettings: {
+    projectDefaults: {
+      width: number;
+      height: number;
+      fps: number;
+      resolutionFormat: string;
+      orientation: 'landscape' | 'portrait';
+      aspectRatio: string;
+      isCustomResolution: boolean;
+    };
+    exportDefaults: {
+      encoding: {
+        format: 'mp4' | 'webm' | 'mkv';
+        videoCodec: string;
+        bitrateMbps: number;
+        excludeAudio: boolean;
+        audioCodec: 'aac' | 'opus';
+        audioBitrateKbps: number;
+      };
     };
   },
 ): GranVideoEditorProjectSettings {
   if (!raw || typeof raw !== 'object') {
-    return createDefaultProjectSettings(userExportDefaults);
+    return createDefaultProjectSettings(userSettings);
   }
 
   const input = raw as Record<string, any>;
-  const exportInput = input.export ?? {};
-  const encodingInput = exportInput.encoding ?? {};
+
+  // Migration: move resolution/fps from legacy export section to project section
+  const legacyExportInput = input.export ?? {};
+  const projectInput = input.project ?? legacyExportInput ?? {};
+  const encodingInput = input.export?.encoding ?? legacyExportInput?.encoding ?? {};
+
   const monitorInput = input.monitor ?? {};
   const transitionsInput = input.transitions ?? {};
 
-  const defaultSettings = createDefaultProjectSettings(userExportDefaults);
+  const defaultSettings = createDefaultProjectSettings(userSettings);
 
-  const width = Number(exportInput.width);
-  const height = Number(exportInput.height);
+  const width = Number(projectInput.width);
+  const height = Number(projectInput.height);
+  const fps = Number(projectInput.fps);
+
   const bitrateMbps = Number(encodingInput.bitrateMbps);
   const audioBitrateKbps = Number(encodingInput.audioBitrateKbps);
-  const fps = Number(exportInput.fps);
   const format = encodingInput.format;
+
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
   const panX = Number(monitorInput.panX);
@@ -221,50 +255,56 @@ function normalizeProjectSettings(
   const defaultTransitionDurationUs = Number(transitionsInput.defaultDurationUs);
 
   const finalWidth =
-    Number.isFinite(width) && width > 0 ? Math.round(width) : defaultSettings.export.width;
+    Number.isFinite(width) && width > 0 ? Math.round(width) : defaultSettings.project.width;
   const finalHeight =
-    Number.isFinite(height) && height > 0 ? Math.round(height) : defaultSettings.export.height;
+    Number.isFinite(height) && height > 0 ? Math.round(height) : defaultSettings.project.height;
 
   const isWidthHeightCustom =
-    finalWidth !== defaultSettings.export.width || finalHeight !== defaultSettings.export.height;
+    finalWidth !== defaultSettings.project.width || finalHeight !== defaultSettings.project.height;
+
   const preset = isWidthHeightCustom
     ? getResolutionPreset(finalWidth, finalHeight)
     : {
-        resolutionFormat: defaultSettings.export.resolutionFormat,
-        orientation: defaultSettings.export.orientation,
-        aspectRatio: defaultSettings.export.aspectRatio,
-        isCustomResolution: defaultSettings.export.isCustomResolution,
+        resolutionFormat: projectInput.resolutionFormat || defaultSettings.project.resolutionFormat,
+        orientation: projectInput.orientation || defaultSettings.project.orientation,
+        aspectRatio: projectInput.aspectRatio || defaultSettings.project.aspectRatio,
+        isCustomResolution:
+          projectInput.isCustomResolution !== undefined
+            ? projectInput.isCustomResolution
+            : defaultSettings.project.isCustomResolution,
       };
 
   return {
-    export: {
+    project: {
       width: finalWidth,
       height: finalHeight,
       fps:
         Number.isFinite(fps) && fps > 0
           ? Math.round(Math.min(240, Math.max(1, fps)))
-          : defaultSettings.export.fps,
+          : defaultSettings.project.fps,
       resolutionFormat:
-        typeof exportInput.resolutionFormat === 'string' &&
-        exportInput.resolutionFormat &&
+        typeof projectInput.resolutionFormat === 'string' &&
+        projectInput.resolutionFormat &&
         !isWidthHeightCustom
-          ? exportInput.resolutionFormat
+          ? projectInput.resolutionFormat
           : preset.resolutionFormat,
       orientation:
-        (exportInput.orientation === 'portrait' || exportInput.orientation === 'landscape') &&
+        (projectInput.orientation === 'portrait' || projectInput.orientation === 'landscape') &&
         !isWidthHeightCustom
-          ? exportInput.orientation
+          ? projectInput.orientation
           : (preset.orientation as 'landscape' | 'portrait'),
       aspectRatio:
-        typeof exportInput.aspectRatio === 'string' &&
-        exportInput.aspectRatio &&
+        typeof projectInput.aspectRatio === 'string' &&
+        projectInput.aspectRatio &&
         !isWidthHeightCustom
-          ? exportInput.aspectRatio
+          ? projectInput.aspectRatio
           : preset.aspectRatio,
       isCustomResolution:
-        exportInput.isCustomResolution !== undefined && !isWidthHeightCustom
-          ? Boolean(exportInput.isCustomResolution)
+        projectInput.isCustomResolution !== undefined && !isWidthHeightCustom
+          ? Boolean(projectInput.isCustomResolution)
           : preset.isCustomResolution,
+    },
+    export: {
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:
@@ -318,7 +358,7 @@ export const useProjectStore = defineStore('project', () => {
   const currentFileName = ref<string | null>(null);
 
   const projectSettings = ref<GranVideoEditorProjectSettings>(
-    createDefaultProjectSettings(workspaceStore.userSettings.exportDefaults),
+    createDefaultProjectSettings(workspaceStore.userSettings),
   );
   const isLoadingProjectSettings = ref(false);
   const isSavingProjectSettings = ref(false);
@@ -480,7 +520,7 @@ export const useProjectStore = defineStore('project', () => {
       const settingsFileHandle = await ensureProjectSettingsFile({ create: false });
       if (!settingsFileHandle) {
         projectSettings.value = createDefaultProjectSettings(
-          workspaceStore.userSettings.exportDefaults,
+          workspaceStore.userSettings,
         );
         return;
       }
@@ -489,7 +529,7 @@ export const useProjectStore = defineStore('project', () => {
       const text = await settingsFile.text();
       if (!text.trim()) {
         projectSettings.value = createDefaultProjectSettings(
-          workspaceStore.userSettings.exportDefaults,
+          workspaceStore.userSettings,
         );
         return;
       }
@@ -497,19 +537,19 @@ export const useProjectStore = defineStore('project', () => {
       const parsed = JSON.parse(text);
       projectSettings.value = normalizeProjectSettings(
         parsed,
-        workspaceStore.userSettings.exportDefaults,
+        workspaceStore.userSettings,
       );
     } catch (e: any) {
       if (e?.name === 'NotFoundError') {
         projectSettings.value = createDefaultProjectSettings(
-          workspaceStore.userSettings.exportDefaults,
+          workspaceStore.userSettings,
         );
         return;
       }
 
       console.warn('Failed to load project settings, fallback to defaults', e);
       projectSettings.value = createDefaultProjectSettings(
-        workspaceStore.userSettings.exportDefaults,
+        workspaceStore.userSettings,
       );
     } finally {
       isLoadingProjectSettings.value = false;
@@ -628,7 +668,7 @@ export const useProjectStore = defineStore('project', () => {
           create: true,
         });
 
-        const initial = createDefaultProjectSettings(workspaceStore.userSettings.exportDefaults);
+        const initial = createDefaultProjectSettings(workspaceStore.userSettings);
         // seeded is essentially redundant now but kept for backwards compatibility in structure
         const seeded = applyWorkspaceDefaultsToProjectSettings(initial);
         const writableSettings = await (settingsHandle as any).createWritable();
@@ -653,7 +693,7 @@ export const useProjectStore = defineStore('project', () => {
       currentFileName.value = initialTimeline;
 
       const initialSettings = createDefaultProjectSettings(
-        workspaceStore.userSettings.exportDefaults,
+        workspaceStore.userSettings,
       );
       initialSettings.timelines.openPaths = [initialTimeline];
       initialSettings.timelines.lastOpenedPath = initialTimeline;
@@ -748,7 +788,7 @@ export const useProjectStore = defineStore('project', () => {
     return createDefaultTimelineDocument({
       id: createTimelineDocId(currentProjectName.value),
       name: currentProjectName.value,
-      fps: projectSettings.value.export.fps,
+      fps: projectSettings.value.project.fps,
     });
   }
 

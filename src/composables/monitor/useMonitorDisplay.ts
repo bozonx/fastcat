@@ -11,13 +11,13 @@ export function useMonitorDisplay() {
   const MAX_CANVAS_DIMENSION = 7680;
 
   const exportWidth = computed(() => {
-    const value = Number(projectStore.projectSettings.export.width);
+    const value = Number(projectStore.projectSettings.project.width);
     if (!Number.isFinite(value) || value <= 0) return 1920;
     return Math.round(Math.min(MAX_CANVAS_DIMENSION, Math.max(MIN_CANVAS_DIMENSION, value)));
   });
 
   const exportHeight = computed(() => {
-    const value = Number(projectStore.projectSettings.export.height);
+    const value = Number(projectStore.projectSettings.project.height);
     if (!Number.isFinite(value) || value <= 0) return 1080;
     return Math.round(Math.min(MAX_CANVAS_DIMENSION, Math.max(MIN_CANVAS_DIMENSION, value)));
   });

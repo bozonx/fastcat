@@ -603,8 +603,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   watch(
     () => [
-      projectStore.projectSettings.export.width,
-      projectStore.projectSettings.export.height,
+      projectStore.projectSettings.project.width,
+      projectStore.projectSettings.project.height,
       projectStore.projectSettings.monitor?.previewResolution,
     ],
     () => {
