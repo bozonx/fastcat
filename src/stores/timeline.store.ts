@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
+import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timeline/commands/utils';
@@ -1238,86 +1239,40 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({ type: 'reorder_tracks', trackIds });
   }
 
+  const commandService = createTimelineCommandService({
+    getTimelineDoc: () => timelineDoc.value,
+    ensureTimelineDoc: () => {
+      if (!timelineDoc.value) {
+        timelineDoc.value = projectStore.createFallbackTimelineDoc();
+      }
+      return timelineDoc.value;
+    },
+    getTrackById: (trackId) => timelineDoc.value?.tracks.find((t) => t.id === trackId) ?? null,
+    applyTimeline,
+    getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
+    getOrFetchMetadata: (handle, path) => mediaStore.getOrFetchMetadata(handle, path),
+    getMediaMetadataByPath: (path) => mediaMetadata.value[path] ?? null,
+    fetchMediaMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
+    getUserSettings: () => workspaceStore.userSettings,
+    hasProxy: (path) => proxyStore.existingProxies.has(path),
+    generateProxy: (handle, path) => proxyStore.generateProxy(handle, path),
+    defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
+    defaultImageSourceDurationUs: DEFAULT_IMAGE_SOURCE_DURATION_US,
+  });
+
   async function moveItemToTrack(input: {
     fromTrackId: string;
     toTrackId: string;
     itemId: string;
     startUs: number;
   }) {
-    const doc = timelineDoc.value;
-    const fromTrack = doc?.tracks.find((t) => t.id === input.fromTrackId) ?? null;
-    const toTrack = doc?.tracks.find((t) => t.id === input.toTrackId) ?? null;
-    if (!fromTrack || !toTrack) throw new Error('Track not found');
-
-    const item = fromTrack.items.find((it) => it.id === input.itemId);
-    if (!item || item.kind !== 'clip') throw new Error('Item not found');
-
-    if (item.clipType !== 'media') {
-      throw new Error('Only media clips can be moved across tracks');
-    }
-
-    const path = item.source?.path;
-    if (!path) throw new Error('Invalid source');
-
-    let metadata = mediaMetadata.value[path] ?? null;
-    if (!metadata) {
-      metadata = await mediaStore.getOrFetchMetadataByPath(path);
-    }
-    if (!metadata) throw new Error('Failed to resolve media metadata');
-
-    const hasVideo = Boolean(metadata.video);
-    const hasAudio = Boolean(metadata.audio);
-    const isImageLike = !hasVideo && !hasAudio;
-
-    if (toTrack.kind === 'video' && !hasVideo && !isImageLike) {
-      throw new Error('Only video sources can be moved to video tracks');
-    }
-    if (toTrack.kind === 'audio' && isImageLike) {
-      throw new Error('Images cannot be moved to audio tracks');
-    }
-
-    applyTimeline({
-      type: 'move_item_to_track',
-      fromTrackId: input.fromTrackId,
-      toTrackId: input.toTrackId,
-      itemId: input.itemId,
-      startUs: input.startUs,
-    });
+    await commandService.moveItemToTrack(input);
   }
 
   async function extractAudioToTrack(input: { videoTrackId: string; videoItemId: string }) {
-    const doc = timelineDoc.value;
-    if (!doc) throw new Error('Timeline not loaded');
-    const videoTrack = doc.tracks.find((t) => t.id === input.videoTrackId) ?? null;
-    if (!videoTrack || videoTrack.kind !== 'video') throw new Error('Invalid video track');
-    const videoItem = videoTrack.items.find((it) => it.id === input.videoItemId) ?? null;
-    if (!videoItem || videoItem.kind !== 'clip') throw new Error('Clip not found');
-
-    if (videoItem.clipType !== 'media') {
-      throw new Error('Only media clips can extract audio');
-    }
-
-    const audioTracks = doc.tracks.filter((t) => t.kind === 'audio');
-    if (audioTracks.length === 0) throw new Error('No audio tracks');
-
-    const selected = doc.tracks.find((t) => t.id === selectedTrackId.value) ?? null;
-    const targetAudioTrackId = selected?.kind === 'audio' ? selected.id : audioTracks[0]!.id;
-
-    const path = videoItem.source?.path;
-    if (!path) throw new Error('Invalid source');
-
-    let metadata = mediaMetadata.value[path] ?? null;
-    if (!metadata) {
-      metadata = await mediaStore.getOrFetchMetadataByPath(path);
-    }
-    if (!metadata) throw new Error('Failed to resolve media metadata');
-    if (!metadata.audio) throw new Error('Source has no audio');
-
-    applyTimeline({
-      type: 'extract_audio_to_track',
-      videoTrackId: videoTrack.id,
-      videoItemId: videoItem.id,
-      audioTrackId: targetAudioTrackId,
+    await commandService.extractAudioToTrack({
+      videoTrackId: input.videoTrackId,
+      videoItemId: input.videoItemId,
     });
   }
 
@@ -1586,70 +1541,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     path: string;
     startUs?: number;
   }) {
-    const handle = await projectStore.getFileHandleByPath(input.path);
-    if (!handle) throw new Error('Failed to access file handle');
-
-    const resolvedTrackKind = timelineDoc.value?.tracks.find((t) => t.id === input.trackId)?.kind;
-    const trackKind =
-      resolvedTrackKind === 'audio' || resolvedTrackKind === 'video' ? resolvedTrackKind : null;
-    if (!trackKind) throw new Error('Track not found');
-
-    const metadata = await mediaStore.getOrFetchMetadata(handle, input.path);
-    if (!metadata) throw new Error('Failed to resolve media metadata');
-
-    const hasVideo = Boolean(metadata.video);
-    const hasAudio = Boolean(metadata.audio);
-    const isImageLike = !hasVideo && !hasAudio;
-
-    if (trackKind === 'video' && !hasVideo && !isImageLike) {
-      throw new Error('Only video sources can be added to video tracks');
-    }
-    if (trackKind === 'audio' && isImageLike) {
-      throw new Error('Images cannot be added to audio tracks');
-    }
-
-    let durationUs = 0;
-    let sourceDurationUs = 0;
-    if (isImageLike) {
-      durationUs = DEFAULT_IMAGE_DURATION_US;
-      sourceDurationUs = DEFAULT_IMAGE_SOURCE_DURATION_US;
-    } else {
-      const durationS = Number(metadata?.duration);
-      durationUs = Math.floor(durationS * 1_000_000);
-      sourceDurationUs = durationUs;
-    }
-    if (!Number.isFinite(durationUs) || durationUs <= 0) {
-      throw new Error('Failed to resolve media duration');
-    }
-
-    if (!timelineDoc.value) {
-      timelineDoc.value = projectStore.createFallbackTimelineDoc();
-    }
-
-    const targetTrack = timelineDoc.value.tracks.find((t) => t.id === input.trackId);
-    if (!targetTrack) throw new Error('Track not found');
-
-    const shouldAutoCreateProxy =
-      workspaceStore.userSettings.optimization.autoCreateProxies &&
-      hasVideo &&
-      input.path.startsWith(`${VIDEO_DIR_NAME}/`) &&
-      !proxyStore.existingProxies.has(input.path);
-
-    if (shouldAutoCreateProxy) {
-      void proxyStore.generateProxy(handle, input.path);
-    }
-
-    applyTimeline({
-      type: 'add_clip_to_track',
-      trackId: targetTrack.id,
-      name: input.name,
-      path: input.path,
-      clipType: 'media',
-      durationUs,
-      sourceDurationUs,
-      isImage: isImageLike,
-      startUs: input.startUs,
-    });
+    await commandService.addClipToTimelineFromPath(input);
   }
 
   async function addTimelineClipToTimelineFromPath(input: {
