@@ -19,19 +19,13 @@ import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
   createFolderCommand,
+  createTimelineCommand,
+  deleteEntryCommand,
   handleFilesCommand,
+  moveEntryCommand,
+  renameEntryCommand,
   resolveDefaultTargetDir,
 } from '~/file-manager/application/fileManagerCommands';
-import {
-  assertEntryDoesNotExist,
-  copyDirectoryRecursive,
-  copyFileToDirectory,
-  renameDirectoryFallback,
-} from '~/file-manager/fs/ops';
-
-type FsFileHandleWithMove = FileSystemFileHandle & {
-  move?: (name: string) => Promise<void>;
-};
 
 type FileTreeSortMode = 'name' | 'modified';
 
@@ -235,28 +229,30 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
-      const parent = target.parentHandle ? toRaw(target.parentHandle) : undefined;
-      if (parent) {
-        await parent.removeEntry(target.name, { recursive: true });
-      }
-      if (target.path && target.kind === 'file') {
-        await proxyStore.deleteProxy(target.path);
+      await deleteEntryCommand(target, {
+        removeEntry: async ({ parentHandle, name, recursive }) => {
+          const parent = toRaw(parentHandle);
+          await parent.removeEntry(name, { recursive });
+        },
+        onFileDeleted: async ({ path }) => {
+          await proxyStore.deleteProxy(path);
 
-        if (
-          target.path.startsWith(`${VIDEO_DIR_NAME}/`) ||
-          target.path.startsWith(`${SOURCES_DIR_NAME}/video/`)
-        ) {
-          if (projectStore.currentProjectId) {
-            await thumbnailGenerator.clearThumbnails({
-              projectId: projectStore.currentProjectId,
-              hash: getClipThumbnailsHash({
+          if (
+            path.startsWith(`${VIDEO_DIR_NAME}/`) ||
+            path.startsWith(`${SOURCES_DIR_NAME}/video/`)
+          ) {
+            if (projectStore.currentProjectId) {
+              await thumbnailGenerator.clearThumbnails({
                 projectId: projectStore.currentProjectId,
-                projectRelativePath: target.path,
-              }),
-            });
+                hash: getClipThumbnailsHash({
+                  projectId: projectStore.currentProjectId,
+                  projectRelativePath: path,
+                }),
+              });
+            }
           }
-        }
-      }
+        },
+      });
       await loadProjectDirectory();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to delete';
@@ -276,47 +272,28 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
-      const parent = toRaw(target.parentHandle);
-
-      try {
-        if (target.kind === 'file') {
-          await parent.getFileHandle(newName);
-        } else {
-          await parent.getDirectoryHandle(newName);
-        }
-        throw new Error(`Target name already exists: ${newName}`);
-      } catch (e: any) {
-        if (e?.name !== 'NotFoundError') throw e;
-      }
-
-      if (target.kind === 'file') {
-        const handle = target.handle as FsFileHandleWithMove;
-        if (typeof handle.move === 'function') {
-          await handle.move(newName);
-        } else {
-          const file = await (handle as FileSystemFileHandle).getFile();
-          const newHandle = await parent.getFileHandle(newName, { create: true });
-          if (typeof (newHandle as FileSystemFileHandle).createWritable !== 'function') {
-            throw new Error('Failed to rename file: createWritable is not available');
-          }
-          const writable = await (newHandle as FileSystemFileHandle).createWritable();
-          await writable.write(file);
-          await writable.close();
-          await parent.removeEntry(target.name);
-        }
-      } else {
-        const dirHandle = target.handle as unknown as { move?: (name: string) => Promise<void> };
-        if (typeof dirHandle.move === 'function') {
-          await dirHandle.move(newName);
-        } else {
-          await renameDirectoryFallback({
-            sourceDirHandle: target.handle as FileSystemDirectoryHandle,
-            sourceName: target.name,
-            parentDirHandle: parent,
-            newName,
-          });
-        }
-      }
+      await renameEntryCommand(
+        { target, newName },
+        {
+          ensureTargetNameDoesNotExist: async ({ parentHandle, kind, newName: nn }) => {
+            const parent = toRaw(parentHandle);
+            try {
+              if (kind === 'file') {
+                await parent.getFileHandle(nn);
+              } else {
+                await parent.getDirectoryHandle(nn);
+              }
+              throw new Error(`Target name already exists: ${nn}`);
+            } catch (e: any) {
+              if (e?.name !== 'NotFoundError') throw e;
+            }
+          },
+          removeEntry: async ({ parentHandle, name, recursive }) => {
+            const parent = toRaw(parentHandle);
+            await parent.removeEntry(name, { recursive });
+          },
+        },
+      );
 
       await loadProjectDirectory();
     } catch (e: any) {
@@ -351,61 +328,51 @@ export function useFileManager() {
     error.value = null;
     isLoading.value = true;
     try {
-      const targetDirHandleRaw = toRaw(params.targetDirHandle);
-      const sourceParentRaw = toRaw(params.source.parentHandle);
+      await moveEntryCommand(
+        {
+          source: {
+            ...params.source,
+            handle: toRaw(params.source.handle) as any,
+            parentHandle: params.source.parentHandle
+              ? toRaw(params.source.parentHandle)
+              : undefined,
+          },
+          targetDirHandle: toRaw(params.targetDirHandle),
+          targetDirPath,
+        },
+        {
+          removeEntry: async ({ parentHandle, name, recursive }) => {
+            const parent = toRaw(parentHandle);
+            await parent.removeEntry(name, { recursive });
+          },
+          onFileMoved: async ({ oldPath, newPath }) => {
+            delete mediaStore.mediaMetadata[oldPath];
+            delete mediaStore.mediaMetadata[newPath];
 
-      await assertEntryDoesNotExist({
-        targetDirHandle: targetDirHandleRaw,
-        entryName: params.source.name,
-        kind: params.source.kind,
-      });
+            if (
+              oldPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
+              oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)
+            ) {
+              await proxyStore.deleteProxy(oldPath);
+              proxyStore.existingProxies.clear();
 
-      if (params.source.kind === 'file') {
-        await copyFileToDirectory({
-          sourceHandle: toRaw(params.source.handle) as FileSystemFileHandle,
-          fileName: params.source.name,
-          targetDirHandle: targetDirHandleRaw,
-        });
-        await sourceParentRaw.removeEntry(params.source.name);
-
-        const oldPath = sourcePath;
-        const newPath = targetDirPath
-          ? `${targetDirPath}/${params.source.name}`
-          : params.source.name;
-
-        delete mediaStore.mediaMetadata[oldPath];
-        delete mediaStore.mediaMetadata[newPath];
-
-        if (
-          oldPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
-          oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-        ) {
-          await proxyStore.deleteProxy(oldPath);
-          proxyStore.existingProxies.clear();
-
-          if (projectStore.currentProjectId) {
-            await thumbnailGenerator.clearThumbnails({
-              projectId: projectStore.currentProjectId,
-              hash: getClipThumbnailsHash({
-                projectId: projectStore.currentProjectId,
-                projectRelativePath: oldPath,
-              }),
-            });
-          }
-        }
-      } else {
-        const targetDir = await targetDirHandleRaw.getDirectoryHandle(params.source.name, {
-          create: true,
-        });
-        await copyDirectoryRecursive({
-          sourceDirHandle: toRaw(params.source.handle) as FileSystemDirectoryHandle,
-          targetDirHandle: targetDir,
-        });
-        await sourceParentRaw.removeEntry(params.source.name, { recursive: true });
-
-        mediaStore.resetMediaState();
-        proxyStore.existingProxies.clear();
-      }
+              if (projectStore.currentProjectId) {
+                await thumbnailGenerator.clearThumbnails({
+                  projectId: projectStore.currentProjectId,
+                  hash: getClipThumbnailsHash({
+                    projectId: projectStore.currentProjectId,
+                    projectRelativePath: oldPath,
+                  }),
+                });
+              }
+            }
+          },
+          onDirectoryMoved: async () => {
+            mediaStore.resetMediaState();
+            proxyStore.existingProxies.clear();
+          },
+        },
+      );
 
       await loadProjectDirectory();
     } catch (e: any) {
@@ -430,44 +397,12 @@ export function useFileManager() {
       const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
         projectStore.currentProjectName,
       );
-      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, {
-        create: true,
+      const createdPath = await createTimelineCommand({
+        projectDir,
+        timelinesDirName: TIMELINES_DIR_NAME,
       });
-
-      // Find unique filename
-      let index = 1;
-      let fileName = '';
-      let exists = true;
-      while (exists) {
-        fileName = `timeline_${String(index).padStart(3, '0')}.otio`;
-        try {
-          await timelinesDir.getFileHandle(fileName);
-          index++;
-        } catch (e) {
-          exists = false;
-        }
-      }
-
-      const fileHandle = await timelinesDir.getFileHandle(fileName, { create: true });
-      if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
-        throw new Error('Failed to create timeline: createWritable is not available');
-      }
-      const writable = await (fileHandle as FileSystemFileHandle).createWritable();
-
-      const payload = {
-        OTIO_SCHEMA: 'Timeline.1',
-        name: fileName.replace('.otio', ''),
-        tracks: {
-          OTIO_SCHEMA: 'Stack.1',
-          children: [],
-          name: 'tracks',
-        },
-      };
-      await writable.write(JSON.stringify(payload, null, 2));
-      await writable.close();
-
       await loadProjectDirectory();
-      return `${TIMELINES_DIR_NAME}/${fileName}`;
+      return createdPath;
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to create timeline';
       toast.add({
