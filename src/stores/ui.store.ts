@@ -10,6 +10,15 @@ function getFileTreeStorageKey(projectName: string): string {
   return `gran-video-editor:file-tree:${projectName}`;
 }
 
+function hasLocalStorageKey(key: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+}
+
 function readLocalStorageJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -41,7 +50,9 @@ export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
   const showHiddenFiles = ref(readLocalStorageJson('gran-video-editor:show-hidden-files', false));
 
-  watch(showHiddenFiles, (val) => writeLocalStorageJson('gran-video-editor:show-hidden-files', val));
+  watch(showHiddenFiles, (val) =>
+    writeLocalStorageJson('gran-video-editor:show-hidden-files', val),
+  );
 
   const isGlobalDragging = ref(false);
   const isFileManagerDragging = ref(false);
@@ -94,6 +105,10 @@ export const useUiStore = defineStore('ui', () => {
     fileTreeExpandedPaths.value = next;
     fileTreeRevision = 0;
     markFileTreeAsCleanForCurrentRevision();
+  }
+
+  function hasPersistedFileTreeState(projectName: string): boolean {
+    return hasLocalStorageKey(getFileTreeStorageKey(projectName));
   }
 
   async function persistFileTreeNow(projectName: string) {
@@ -180,6 +195,7 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryDelete,
     showHiddenFiles,
     restoreFileTreeStateOnce,
+    hasPersistedFileTreeState,
     isFileTreePathExpanded,
     setFileTreePathExpanded,
   };

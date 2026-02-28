@@ -270,6 +270,8 @@ async function onEntrySelect(entry: FsEntry) {
     handle: entry.handle,
   };
 
+  selectionStore.selectFsEntry(entry);
+
   if (entry.kind === 'file') {
     focusStore.setTempFocus('left');
   }

@@ -20,6 +20,7 @@ export interface FileManagerServiceDeps {
   rootEntries: Ref<FsEntry[]>;
   sortMode: Ref<'name' | 'modified'>;
   showHiddenFiles: () => boolean;
+  hasPersistedFileTreeState?: () => boolean;
   isPathExpanded: (path: string) => boolean;
   setPathExpanded: (path: string, expanded: boolean) => void;
   getExpandedPaths: () => string[];
@@ -268,6 +269,10 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
     await refreshExpandedChildren(deps.rootEntries.value);
     await expandPersistedDirectories();
+
+    if (deps.hasPersistedFileTreeState?.()) {
+      return;
+    }
 
     for (const entry of deps.rootEntries.value) {
       if (

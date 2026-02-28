@@ -140,6 +140,7 @@ describe('fileManagerService', () => {
       rootEntries,
       sortMode,
       showHiddenFiles: () => true,
+      hasPersistedFileTreeState: () => false,
       isPathExpanded: () => false,
       setPathExpanded,
       getExpandedPaths: () => [],
@@ -234,6 +235,37 @@ describe('fileManagerService', () => {
 
     const videoEntry = rootEntries.value.find((e) => e.name === VIDEO_DIR_NAME);
     expect(videoEntry?.expanded).toBe(true);
+  });
+
+  it('loadProjectDirectory does not auto-expand media dirs when persisted tree state exists', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const videoDir: any = {
+      kind: 'directory',
+      name: VIDEO_DIR_NAME,
+      values: () => createAsyncIterable([]),
+    };
+
+    const projectDir = createDirHandleMock({ values: [videoDir] });
+
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      hasPersistedFileTreeState: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    await service.loadProjectDirectory(projectDir);
+
+    const videoEntry = rootEntries.value.find((e) => e.name === VIDEO_DIR_NAME);
+    expect(videoEntry?.expanded).toBe(false);
   });
 
   it('expandPersistedDirectories expands saved paths and loads children', async () => {

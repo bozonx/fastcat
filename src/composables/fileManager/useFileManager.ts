@@ -121,6 +121,12 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     rootEntries: deps.rootEntries,
     sortMode: deps.sortMode,
     showHiddenFiles: () => deps.showHiddenFiles.value,
+    hasPersistedFileTreeState: () => {
+      const projectName = deps.getProjectName();
+      if (!projectName) return false;
+      const uiStore = useUiStore();
+      return uiStore.hasPersistedFileTreeState(projectName);
+    },
     isPathExpanded: (path) => deps.isFileTreePathExpanded(path),
     setPathExpanded: (path, expanded) => deps.setFileTreePathExpanded(path, expanded),
     getExpandedPaths: () => deps.getExpandedPaths(),
