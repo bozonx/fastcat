@@ -4,7 +4,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
   EXPORT_DIR_NAME,
-  SOURCES_DIR_NAME,
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
   IMAGES_DIR_NAME,
@@ -160,11 +159,9 @@ export async function toWorkerTimelineClips(
     if (mediaPath.startsWith('/')) return mediaPath;
     if (isProbablyUrlLike(mediaPath)) return mediaPath;
     if (
-      mediaPath.startsWith('sources/') ||
       mediaPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
       mediaPath.startsWith(`${AUDIO_DIR_NAME}/`) ||
       mediaPath.startsWith(`${IMAGES_DIR_NAME}/`) ||
-      mediaPath.startsWith('timelines/') ||
       mediaPath.startsWith(`${TIMELINES_DIR_NAME}/`)
     ) {
       return mediaPath;

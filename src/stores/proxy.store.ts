@@ -4,7 +4,7 @@ import PQueue from 'p-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { SOURCES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
+import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { getProjectProxiesSegments } from '~/utils/vardata-paths';
 
 export const useProxyStore = defineStore('proxy', () => {
@@ -52,12 +52,7 @@ export const useProxyStore = defineStore('proxy', () => {
     if (!dir) return;
 
     for (const path of paths) {
-      if (
-        !path.startsWith(`${VIDEO_DIR_NAME}/`) &&
-        !path.startsWith(`${SOURCES_DIR_NAME}/video/`)
-      ) {
-        continue;
-      }
+      if (!path.startsWith(`${VIDEO_DIR_NAME}/`)) continue;
       try {
         await dir.getFileHandle(getProxyFileName(path));
         existingProxies.value.add(path);
@@ -73,12 +68,7 @@ export const useProxyStore = defineStore('proxy', () => {
     options?: { signal?: AbortSignal },
   ): Promise<void> {
     if (generatingProxies.value.has(projectRelativePath)) return;
-    if (
-      !projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`) &&
-      !projectRelativePath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-    ) {
-      return;
-    }
+    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
 
     const dir = await ensureProjectProxiesDir();
     if (!dir) throw new Error('Could not access proxies directory');
@@ -236,12 +226,7 @@ export const useProxyStore = defineStore('proxy', () => {
   }
 
   async function deleteProxy(projectRelativePath: string) {
-    if (
-      !projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`) &&
-      !projectRelativePath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-    ) {
-      return;
-    }
+    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
     const dir = await ensureProjectProxiesDir();
     if (!dir) return;
 
@@ -258,12 +243,7 @@ export const useProxyStore = defineStore('proxy', () => {
   async function getProxyFileHandle(
     projectRelativePath: string,
   ): Promise<FileSystemFileHandle | null> {
-    if (
-      !projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`) &&
-      !projectRelativePath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-    ) {
-      return null;
-    }
+    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
     const dir = await ensureProjectProxiesDir();
     if (!dir) return null;
 
@@ -275,12 +255,7 @@ export const useProxyStore = defineStore('proxy', () => {
   }
 
   async function getProxyFile(projectRelativePath: string): Promise<File | null> {
-    if (
-      !projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`) &&
-      !projectRelativePath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-    ) {
-      return null;
-    }
+    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
     const dir = await ensureProjectProxiesDir();
     if (!dir) return null;
 

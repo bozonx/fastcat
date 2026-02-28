@@ -30,7 +30,7 @@ function createFile(params: { name: string; path: string }): FsEntry {
 
 describe('FileManagerTree', () => {
   it('emits select on entry click', async () => {
-    const entries: FsEntry[] = [createFile({ name: 'a.mp4', path: 'sources/video/a.mp4' })];
+    const entries: FsEntry[] = [createFile({ name: 'a.mp4', path: '_video/a.mp4' })];
 
     const wrapper = mount(FileManagerTree, {
       props: {
@@ -56,7 +56,7 @@ describe('FileManagerTree', () => {
   });
 
   it('emits toggle when caret clicked', async () => {
-    const dir = createDir({ name: 'video', path: 'sources/video', expanded: false });
+    const dir = createDir({ name: '_video', path: '_video', expanded: false });
 
     const wrapper = mount(FileManagerTree, {
       props: {
@@ -82,7 +82,7 @@ describe('FileManagerTree', () => {
   });
 
   it('emits requestMove on internal move drop', async () => {
-    const dir = createDir({ name: 'video', path: 'sources/video', expanded: false });
+    const dir = createDir({ name: '_video', path: '_video', expanded: false });
 
     const wrapper = mount(FileManagerTree, {
       props: {
@@ -102,7 +102,7 @@ describe('FileManagerTree', () => {
 
     const treeItem = wrapper.get('[role="treeitem"]');
 
-    const payload = JSON.stringify({ path: 'sources/video/a.mp4' });
+    const payload = JSON.stringify({ path: '_video/a.mp4' });
     const dataTransfer = {
       types: ['application/gran-file-manager-move'],
       getData: (type: string) => (type === 'application/gran-file-manager-move' ? payload : ''),
@@ -116,7 +116,7 @@ describe('FileManagerTree', () => {
     const emitted = wrapper.emitted('requestMove');
     expect(emitted?.length).toBe(1);
     expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: 'sources/video/a.mp4',
+      sourcePath: '_video/a.mp4',
       targetDirHandle: dir.handle,
       targetDirPath: dir.path,
     });

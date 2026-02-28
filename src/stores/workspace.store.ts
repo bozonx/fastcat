@@ -24,6 +24,19 @@ import {
   type WorkspaceHandleStorage,
 } from '~/repositories/workspace-handle.repository';
 
+function getErrorMessage(e: unknown, fallback: string): string {
+  if (!e || typeof e !== 'object') return fallback;
+  if (!('message' in e)) return fallback;
+  const msg = (e as { message?: unknown }).message;
+  return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
+}
+
+function isAbortError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false;
+  if (!('name' in e)) return false;
+  return (e as { name?: unknown }).name === 'AbortError';
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
@@ -180,8 +193,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     projects.value = [];
     try {
-      const iterator =
-        (projectsHandle.value as any).values?.() ?? (projectsHandle.value as any).entries?.();
+      const handleLike = projectsHandle.value as unknown as {
+        values?: () => AsyncIterableIterator<FileSystemHandle>;
+        entries?: () => AsyncIterableIterator<[string, FileSystemHandle]>;
+      };
+      const iterator = handleLike.values?.() ?? handleLike.entries?.();
       if (!iterator) return;
 
       for await (const value of iterator) {
@@ -192,8 +208,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
 
       projects.value.sort((a, b) => a.localeCompare(b));
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to load projects';
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e, 'Failed to load projects');
     }
   }
 
@@ -235,7 +251,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
-    settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle as any });
+    settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
 
     const folders = ['projects', VARDATA_DIR_NAME];
     for (const folder of folders) {
@@ -266,12 +282,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error.value = null;
     isLoading.value = true;
     try {
-      const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+      const picker = (
+        window as unknown as {
+          showDirectoryPicker?: (options: {
+            mode: 'readwrite' | 'readonly';
+          }) => Promise<FileSystemDirectoryHandle>;
+        }
+      ).showDirectoryPicker;
+      if (!picker) return;
+      const handle = await picker({ mode: 'readwrite' });
       await setupWorkspace(handle);
       await workspaceHandleStorage.value?.set(handle);
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') {
-        error.value = e?.message ?? 'Failed to open workspace folder';
+    } catch (e: unknown) {
+      if (!isAbortError(e)) {
+        error.value = getErrorMessage(e, 'Failed to open workspace folder');
       }
     } finally {
       isLoading.value = false;
@@ -301,8 +325,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         return;
       }
 
-      const options = { mode: 'readwrite' };
-      if ((await (handle as any).queryPermission(options)) === 'granted') {
+      const handleWithPerm = handle as unknown as {
+        queryPermission?: (options: {
+          mode: 'readwrite' | 'readonly';
+        }) => Promise<'granted' | 'denied' | 'prompt'>;
+      };
+      const options = { mode: 'readwrite' as const };
+      if ((await handleWithPerm.queryPermission?.(options)) === 'granted') {
         await setupWorkspace(handle);
       }
     } catch (e) {
@@ -332,8 +361,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       if (!workspaceHandle.value) return;
       try {
         await workspaceHandle.value.removeEntry(VARDATA_DIR_NAME, { recursive: true });
-      } catch (e: any) {
-        if (e?.name !== 'NotFoundError') {
+      } catch (e: unknown) {
+        if ((e as { name?: unknown }).name !== 'NotFoundError') {
           console.warn('Failed to clear vardata', e);
         }
       }
@@ -377,8 +406,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         if (lastProjectName.value === name) {
           lastProjectName.value = null;
         }
-      } catch (e: any) {
-        if (e?.name !== 'NotFoundError') {
+      } catch (e: unknown) {
+        if ((e as { name?: unknown }).name !== 'NotFoundError') {
           console.warn('Failed to delete project', name, e);
           throw e;
         }

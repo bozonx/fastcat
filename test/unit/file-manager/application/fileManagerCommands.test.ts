@@ -15,7 +15,11 @@ function createDirHandleMock() {
   } as any as FileSystemDirectoryHandle;
 }
 
-function createFileEntry(params: { name: string; path: string; parent: FileSystemDirectoryHandle }) {
+function createFileEntry(params: {
+  name: string;
+  path: string;
+  parent: FileSystemDirectoryHandle;
+}) {
   const handle = {
     getFile: vi.fn(async () => new File(['x'], params.name, { type: 'text/plain' })),
     move: vi.fn(async () => undefined),
@@ -92,7 +96,9 @@ describe('fileManagerCommands', () => {
 
     // Mock: assertEntryDoesNotExist -> internally calls targetDir.getFileHandle / getDirectoryHandle.
     // Here simulate file doesn't exist.
-    (targetDir.getFileHandle as any).mockRejectedValueOnce(Object.assign(new Error('nf'), { name: 'NotFoundError' }));
+    (targetDir.getFileHandle as any).mockRejectedValueOnce(
+      Object.assign(new Error('nf'), { name: 'NotFoundError' }),
+    );
 
     // Mock file copy
     (targetDir.getFileHandle as any).mockResolvedValueOnce({
@@ -127,28 +133,30 @@ describe('fileManagerCommands', () => {
       createWritable: vi.fn(async () => writable),
     });
 
-    const path = await createTimelineCommand({ projectDir, timelinesDirName: 'timelines' });
-    expect(path).toBe('timelines/timeline_002.otio');
+    const path = await createTimelineCommand({ projectDir, timelinesDirName: '_timelines' });
+    expect(path).toBe('_timelines/timeline_002.otio');
     expect(writable.write).toHaveBeenCalled();
   });
 
   it('moveEntryCommand calls deps.onDirectoryMoved for directories', async () => {
     const parent = createDirHandleMock();
     const targetDir = createDirHandleMock();
-    const { entry } = createDirEntry({ name: 'dir1', path: 'sources/dir1', parent });
+    const { entry } = createDirEntry({ name: 'dir1', path: '_files/dir1', parent });
 
     const removeEntry = vi.fn(async () => undefined);
     const onDirectoryMoved = vi.fn(async () => undefined);
 
     // assertEntryDoesNotExist: directory doesn't exist
-    (targetDir.getDirectoryHandle as any).mockRejectedValueOnce(Object.assign(new Error('nf'), { name: 'NotFoundError' }));
+    (targetDir.getDirectoryHandle as any).mockRejectedValueOnce(
+      Object.assign(new Error('nf'), { name: 'NotFoundError' }),
+    );
 
     // target dir creation
     const createdDir = createDirHandleMock();
     (targetDir.getDirectoryHandle as any).mockResolvedValueOnce(createdDir);
 
     await moveEntryCommand(
-      { source: entry, targetDirHandle: targetDir, targetDirPath: 'sources' },
+      { source: entry, targetDirHandle: targetDir, targetDirPath: '_files' },
       { removeEntry, onDirectoryMoved },
     );
 

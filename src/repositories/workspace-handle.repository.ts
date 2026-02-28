@@ -21,25 +21,30 @@ export function createIndexedDbWorkspaceHandleStorage(input: {
   async function openDb(): Promise<IDBDatabase> {
     const request = input.indexedDB.open(dbName, 1);
 
-    request.onupgradeneeded = (e: any) => {
-      const db = e.target.result as IDBDatabase;
+    request.onupgradeneeded = (e: IDBVersionChangeEvent) => {
+      const db = (e.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(storeName)) {
         db.createObjectStore(storeName);
       }
     };
 
     return await new Promise<IDBDatabase>((resolve, reject) => {
-      request.onsuccess = (e: any) => resolve(e.target.result as IDBDatabase);
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
       request.onerror = () => reject(request.error);
     });
   }
 
-  async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>) {
+  async function withStore<T>(params: {
+    mode: IDBTransactionMode;
+    fn: (store: IDBObjectStore) => IDBRequest<T>;
+  }): Promise<T> {
     const db = await openDb();
     try {
-      const tx = db.transaction(storeName, mode);
+      const tx = db.transaction(storeName, params.mode);
       const store = tx.objectStore(storeName);
-      const req = fn(store);
+      const req = params.fn(store);
 
       return await new Promise<T>((resolve, reject) => {
         req.onsuccess = () => resolve(req.result);
@@ -53,24 +58,29 @@ export function createIndexedDbWorkspaceHandleStorage(input: {
   return {
     async get() {
       try {
-        const result = await withStore('readonly', (store) => store.get(key));
-        return (result as any) ?? null;
+        const result = await withStore({ mode: 'readonly', fn: (store) => store.get(key) });
+        return (result as FileSystemDirectoryHandle | null) ?? null;
       } catch {
         return null;
       }
     },
 
     async set(handle) {
-      await withStore('readwrite', (store) => store.put(handle as any, key));
+      await withStore({
+        mode: 'readwrite',
+        fn: (store) => store.put(handle as unknown as FileSystemDirectoryHandle, key),
+      });
     },
 
     async clear() {
-      await withStore('readwrite', (store) => store.delete(key));
+      await withStore({ mode: 'readwrite', fn: (store) => store.delete(key) });
     },
   };
 }
 
-export function createInMemoryWorkspaceHandleStorage<THandle = any>(): WorkspaceHandleStorage<THandle> {
+export function createInMemoryWorkspaceHandleStorage<
+  THandle = FileSystemDirectoryHandle,
+>(): WorkspaceHandleStorage<THandle> {
   let value: THandle | null = null;
   return {
     async get() {

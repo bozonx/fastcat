@@ -203,7 +203,7 @@ describe('useTimelineExport pure functions', () => {
         id: 'nested1',
         trackId: 't1',
         name: 'Nested',
-        source: { path: 'timelines/nested.otio' } as any,
+        source: { path: '_timelines/nested.otio' } as any,
         timelineRange: { startUs: 0, durationUs: 1_000_000 },
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
       } as any,
@@ -211,7 +211,7 @@ describe('useTimelineExport pure functions', () => {
 
     const projectStoreMock = {
       getFileHandleByPath: async (path: string) => {
-        if (path !== 'timelines/nested.otio') return null;
+        if (path !== '_timelines/nested.otio') return null;
         return {
           getFile: async () => ({ text: async () => nestedOtio }),
         } as any;
@@ -225,7 +225,7 @@ describe('useTimelineExport pure functions', () => {
 
     expect(clips.length).toBe(1);
     expect(clips[0]?.clipType).toBe('media');
-    expect(clips[0]?.source?.path).toBe('timelines/media/video.mp4');
+    expect(clips[0]?.source?.path).toBe('_timelines/media/video.mp4');
   });
 
   it('toWorkerTimelineClips should apply nested timeline parent audio gain/balance/fades when trackKind is audio', async () => {
@@ -278,7 +278,7 @@ describe('useTimelineExport pure functions', () => {
         id: 'nested1',
         trackId: 't1',
         name: 'Nested',
-        source: { path: 'timelines/nested.otio' } as any,
+        source: { path: '_timelines/nested.otio' } as any,
         timelineRange: { startUs: 0, durationUs: 1_000_000 },
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
         audioGain: 0.5,
@@ -290,7 +290,7 @@ describe('useTimelineExport pure functions', () => {
 
     const projectStoreMock = {
       getFileHandleByPath: async (path: string) => {
-        if (path !== 'timelines/nested.otio') return null;
+        if (path !== '_timelines/nested.otio') return null;
         return {
           getFile: async () => ({ text: async () => nestedOtio }),
         } as any;
@@ -302,7 +302,7 @@ describe('useTimelineExport pure functions', () => {
     });
 
     expect(clips.length).toBe(1);
-    expect(clips[0]?.source?.path).toBe('timelines/audio.wav');
+    expect(clips[0]?.source?.path).toBe('_timelines/audio.wav');
     expect(clips[0]?.audioGain).toBeCloseTo(1);
     expect(clips[0]?.audioBalance).toBeCloseTo(-0.1);
     expect(clips[0]?.audioFadeInUs).toBe(200_000);

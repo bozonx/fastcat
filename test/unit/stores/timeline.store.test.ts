@@ -541,7 +541,7 @@ describe('TimelineStore', () => {
     await store.addClipToTimelineFromPath({
       trackId: 'v1',
       name: 'image.png',
-      path: 'sources/images/image.png',
+      path: '_images/image.png',
       startUs: 0,
     });
 
@@ -594,7 +594,7 @@ describe('TimelineStore', () => {
     await store.addClipToTimelineFromPath({
       trackId: 'a1',
       name: 'audio.mp3',
-      path: 'sources/audio/audio.mp3',
+      path: '_audio/audio.mp3',
       startUs: 0,
     });
 

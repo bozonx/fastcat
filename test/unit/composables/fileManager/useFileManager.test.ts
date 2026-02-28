@@ -64,15 +64,9 @@ describe('useFileManager', () => {
   });
 
   it('isMoveAllowed should prevent moving directory into itself or descendant', () => {
-    expect(isMoveAllowed({ sourcePath: 'sources/video', targetDirPath: 'sources/video' })).toBe(
-      false,
-    );
-    expect(isMoveAllowed({ sourcePath: 'sources/video', targetDirPath: 'sources/video/sub' })).toBe(
-      false,
-    );
-    expect(isMoveAllowed({ sourcePath: 'sources/video/sub', targetDirPath: 'sources/video' })).toBe(
-      true,
-    );
+    expect(isMoveAllowed({ sourcePath: '_video', targetDirPath: '_video' })).toBe(false);
+    expect(isMoveAllowed({ sourcePath: '_video', targetDirPath: '_video/sub' })).toBe(false);
+    expect(isMoveAllowed({ sourcePath: '_video/sub', targetDirPath: '_video' })).toBe(true);
   });
 
   it('isMoveAllowed should allow moving into root', () => {

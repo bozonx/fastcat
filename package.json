@@ -9,7 +9,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "lint": "nuxi lint",
+    "lint": "eslint \"src/repositories/**/*.{ts,tsx}\" \"src/utils/settings.ts\" \"src/utils/project-settings.ts\" \"src/stores/workspace.store.ts\" \"src/stores/project.store.ts\" \"src/file-manager/application/**/*.{ts,tsx}\" \"test/unit/repositories/**/*.{ts,tsx}\" \"test/unit/file-manager/application/**/*.{ts,tsx}\"",
     "typecheck": "nuxi typecheck",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",

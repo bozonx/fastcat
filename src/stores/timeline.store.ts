@@ -8,7 +8,7 @@ import { applyTimelineCommand } from '~/timeline/commands';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timeline/commands/utils';
-import { SOURCES_DIR_NAME } from '~/utils/constants';
+import { VIDEO_DIR_NAME } from '~/utils/constants';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -849,10 +849,10 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     if (track.kind === 'video') {
       const nextHidden = !track.videoHidden;
-      updateTrackProperties(trackId, { 
+      updateTrackProperties(trackId, {
         videoHidden: nextHidden,
         // Auto-mute if becoming hidden, but don't force unmute when becoming visible
-        audioMuted: nextHidden ? true : track.audioMuted
+        audioMuted: nextHidden ? true : track.audioMuted,
       });
     }
     await requestTimelineSave({ immediate: true });
@@ -1594,7 +1594,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     const isImageLike = !hasVideo && !hasAudio;
 
     const durationS = Number(meta.duration);
-    const durationUs = Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+    const durationUs =
+      Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
 
     const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
     const needsIsImagePatch = isImageLike && !item.isImage;
@@ -1802,7 +1803,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const shouldAutoCreateProxy =
       workspaceStore.userSettings.optimization.autoCreateProxies &&
       hasVideo &&
-      input.path.startsWith(`${SOURCES_DIR_NAME}/video/`) &&
+      input.path.startsWith(`${VIDEO_DIR_NAME}/`) &&
       !proxyStore.existingProxies.has(input.path);
 
     if (shouldAutoCreateProxy) {

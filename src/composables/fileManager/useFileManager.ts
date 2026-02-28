@@ -6,7 +6,6 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { convertSvgToPng } from '~/utils/svg';
 import {
-  SOURCES_DIR_NAME,
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
   IMAGES_DIR_NAME,
@@ -249,10 +248,7 @@ export function useFileManager() {
           onFileDeleted: async ({ path }) => {
             await proxyStore.deleteProxy(path);
 
-            if (
-              path.startsWith(`${VIDEO_DIR_NAME}/`) ||
-              path.startsWith(`${SOURCES_DIR_NAME}/video/`)
-            ) {
+            if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
               if (projectStore.currentProjectId) {
                 await thumbnailGenerator.clearThumbnails({
                   projectId: projectStore.currentProjectId,
@@ -350,10 +346,7 @@ export function useFileManager() {
               delete mediaStore.mediaMetadata[oldPath];
               delete mediaStore.mediaMetadata[newPath];
 
-              if (
-                oldPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
-                oldPath.startsWith(`${SOURCES_DIR_NAME}/video/`)
-              ) {
+              if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
                 await proxyStore.deleteProxy(oldPath);
                 proxyStore.existingProxies.clear();
 

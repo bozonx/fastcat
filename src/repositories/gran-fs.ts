@@ -1,22 +1,9 @@
-export interface FileHandleLike {
-  getFile(): Promise<{ text(): Promise<string> }>;
-  createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
-}
+export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWritable'>;
 
-export interface DirectoryHandleLike {
-  getDirectoryHandle(
-    name: string,
-    options?: {
-      create?: boolean;
-    },
-  ): Promise<DirectoryHandleLike>;
-  getFileHandle(
-    name: string,
-    options?: {
-      create?: boolean;
-    },
-  ): Promise<FileHandleLike>;
-}
+export type DirectoryHandleLike = Pick<
+  FileSystemDirectoryHandle,
+  'getDirectoryHandle' | 'getFileHandle'
+>;
 
 export async function ensureGranFileHandle(input: {
   baseDir: DirectoryHandleLike;
@@ -31,9 +18,7 @@ export async function ensureGranFileHandle(input: {
   }
 }
 
-export async function readJsonFromFileHandle<T>(
-  handle: FileHandleLike,
-): Promise<T | null> {
+export async function readJsonFromFileHandle<T>(handle: FileHandleLike): Promise<T | null> {
   const file = await handle.getFile();
   const text = await file.text();
   const trimmed = text.trim();

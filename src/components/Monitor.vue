@@ -13,7 +13,7 @@ import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { SOURCES_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
+import { IMAGES_DIR_NAME } from '~/utils/constants';
 
 const { t } = useI18n();
 const toast = useToast();

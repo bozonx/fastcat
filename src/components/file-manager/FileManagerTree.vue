@@ -6,7 +6,7 @@ import {
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { SOURCES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
+import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 
 interface Props {
@@ -88,8 +88,7 @@ function getEntryIconClass(entry: FsEntry): string {
 function isVideo(entry: FsEntry) {
   return (
     entry.kind === 'file' &&
-    (entry.path?.startsWith(`${VIDEO_DIR_NAME}/`) ||
-      entry.path?.startsWith(`${SOURCES_DIR_NAME}/video/`))
+    entry.path?.startsWith(`${VIDEO_DIR_NAME}/`)
   );
 }
 

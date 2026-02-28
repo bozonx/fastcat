@@ -61,8 +61,9 @@ export async function handleFilesCommand(
     try {
       await targetDir.getFileHandle(file.name);
       throw new Error(`File already exists: ${file.name}`);
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') throw e;
+    } catch (e: unknown) {
+      const err = e as { name?: string };
+      if (err?.name !== 'NotFoundError') throw e;
     }
 
     const fileHandle = await targetDir.getFileHandle(file.name, { create: true });
@@ -277,8 +278,9 @@ export async function createTimelineCommand(params: {
     try {
       await timelinesDir.getFileHandle(fileName);
       index += 1;
-    } catch (e: any) {
-      if (e?.name === 'NotFoundError') {
+    } catch (e: unknown) {
+      const err = e as { name?: string };
+      if (err?.name === 'NotFoundError') {
         exists = false;
         continue;
       }
