@@ -1,4 +1,4 @@
-import { ref, computed, toRaw, markRaw } from 'vue';
+import { ref, computed, toRaw, markRaw, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -32,11 +32,6 @@ export function isMoveAllowed(params: { sourcePath: string; targetDirPath: strin
   return isMoveAllowedCore(params);
 }
 
-const rootEntries = ref<FsEntry[]>([]);
-const isLoading = ref(false);
-const error = ref<string | null>(null);
-const sortMode = ref<FileTreeSortMode>('name');
-
 export function useFileManager() {
   const { t } = useI18n();
   const toast = useToast();
@@ -45,6 +40,11 @@ export function useFileManager() {
   const uiStore = useUiStore();
   const mediaStore = useMediaStore();
   const proxyStore = useProxyStore();
+
+  const rootEntries = ref<FsEntry[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+  const sortMode = ref<FileTreeSortMode>('name');
 
   async function runWithUiFeedback<T>(params: {
     action: () => Promise<T>;
@@ -91,6 +91,16 @@ export function useFileManager() {
     sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
     sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
     checkExistingProxies: (videoPaths) => proxyStore.checkExistingProxies(videoPaths),
+    onError: (params) => {
+      const description = params.error
+        ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
+        : params.message;
+      toast.add({
+        color: 'red',
+        title: params.title ?? 'File manager error',
+        description,
+      });
+    },
   });
 
   const isApiSupported = workspaceStore.isApiSupported;

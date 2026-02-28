@@ -21,6 +21,7 @@ export interface FileManagerServiceDeps {
   sanitizeHandle: <T extends object>(handle: T) => T;
   sanitizeParentHandle: (handle: FileSystemDirectoryHandle) => FileSystemDirectoryHandle;
   checkExistingProxies: (videoPaths: string[]) => Promise<void>;
+  onError?: (params: { title?: string; message: string; error?: unknown }) => void;
 }
 
 export interface FileManagerService {
@@ -69,28 +70,43 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     const iterator =
       (dirHandle as FsDirectoryHandleWithIteration).values?.() ??
       (dirHandle as FsDirectoryHandleWithIteration).entries?.();
-    if (!iterator) return entries;
-
-    for await (const value of iterator) {
-      const rawHandle = (Array.isArray(value) ? value[1] : value) as
-        | FileSystemFileHandle
-        | FileSystemDirectoryHandle;
-
-      if (!deps.showHiddenFiles() && rawHandle.name.startsWith('.')) continue;
-
-      const handle = deps.sanitizeHandle(rawHandle);
-      const parentHandle = deps.sanitizeParentHandle(dirHandle);
-
-      entries.push({
-        name: handle.name,
-        kind: handle.kind,
-        handle,
-        parentHandle,
-        children: undefined,
-        expanded: false,
-        path: basePath ? `${basePath}/${handle.name}` : handle.name,
-        lastModified: undefined,
+    if (!iterator) {
+      deps.onError?.({
+        title: 'File manager error',
+        message: 'Failed to read directory: iteration is not available',
       });
+      return entries;
+    }
+
+    try {
+      for await (const value of iterator) {
+        const rawHandle = (Array.isArray(value) ? value[1] : value) as
+          | FileSystemFileHandle
+          | FileSystemDirectoryHandle;
+
+        if (!deps.showHiddenFiles() && rawHandle.name.startsWith('.')) continue;
+
+        const handle = deps.sanitizeHandle(rawHandle);
+        const parentHandle = deps.sanitizeParentHandle(dirHandle);
+
+        entries.push({
+          name: handle.name,
+          kind: handle.kind,
+          handle,
+          parentHandle,
+          children: undefined,
+          expanded: false,
+          path: basePath ? `${basePath}/${handle.name}` : handle.name,
+          lastModified: undefined,
+        });
+      }
+    } catch (e) {
+      deps.onError?.({
+        title: 'File manager error',
+        message: `Failed to read directory${basePath ? `: ${basePath}` : ''}`,
+        error: e,
+      });
+      return entries;
     }
 
     if (deps.sortMode.value === 'modified') {
@@ -143,8 +159,12 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
           entry.path,
         );
         entry.children = mergeEntries(entry.children, nextChildren);
-      } catch {
-        // ignore
+      } catch (e) {
+        deps.onError?.({
+          title: 'File manager error',
+          message: `Failed to refresh directory${entry.path ? `: ${entry.path}` : ''}`,
+          error: e,
+        });
       }
 
       if (entry.children) {

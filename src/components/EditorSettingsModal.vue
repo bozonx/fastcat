@@ -77,6 +77,10 @@ function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
   return DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
 }
 
+function isCommandCustom(cmdId: HotkeyCommandId): boolean {
+  return Array.isArray(workspaceStore.userSettings.hotkeys.bindings[cmdId]);
+}
+
 function setBindings(cmdId: HotkeyCommandId, next: string[]) {
   void workspaceStore.batchUpdateUserSettings(
     (draft) => {
@@ -235,6 +239,24 @@ const hotkeyGroups = computed(() => {
     commands: DEFAULT_HOTKEYS.commands.filter((c) => c.groupId === groupId),
   }));
 });
+
+const hotkeyConflicts = computed(() => {
+  const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+  const counts = new Map<string, number>();
+
+  for (const cmd of DEFAULT_HOTKEYS.commands) {
+    const list = effective[cmd.id] ?? [];
+    for (const combo of list) {
+      counts.set(combo, (counts.get(combo) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+});
+
+function isConflicting(combo: string): boolean {
+  return (hotkeyConflicts.value.get(combo) ?? 0) > 1;
+}
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
@@ -508,6 +530,10 @@ const thumbnailsLimitGb = computed({
                             v-for="combo in getCurrentBindings(cmd.id)"
                             :key="combo"
                             class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80 transition-colors"
+                            :class="{
+                              'border-warning-400 text-warning-700 bg-warning-50/80': isConflicting(combo),
+                            }"
+                            :title="isConflicting(combo) ? t('videoEditor.settings.hotkeysConflict', 'Conflict: used by another command') : undefined"
                           >
                             <span class="text-[10px] font-mono font-medium text-ui-text-muted select-none">
                               {{ combo }}
@@ -555,6 +581,15 @@ const thumbnailsLimitGb = computed({
                       <td class="p-3 py-2.5 align-middle">
                         <span class="text-sm text-ui-text font-medium leading-tight">
                           {{ cmd.title }}
+                        </span>
+                        <span
+                          class="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
+                          :class="isCommandCustom(cmd.id)
+                            ? 'border-primary-300 text-primary-700 bg-primary-50'
+                            : 'border-ui-border text-ui-text-muted bg-ui-bg'
+                          "
+                        >
+                          {{ isCommandCustom(cmd.id) ? t('common.custom', 'Custom') : t('common.default', 'Default') }}
                         </span>
                       </td>
                     </tr>
