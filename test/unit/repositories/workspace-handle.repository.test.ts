@@ -1,8 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import {
-  createInMemoryWorkspaceHandleStorage,
-} from '../../../src/repositories/workspace-handle.repository';
+import { createInMemoryWorkspaceHandleStorage } from '../../../src/repositories/workspace-handle.repository';
 
 describe('workspace-handle.repository', () => {
   it('in memory storage: set/get/clear', async () => {

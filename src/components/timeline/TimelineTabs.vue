@@ -38,7 +38,7 @@ function onWheel(e: WheelEvent) {
 
   // Use both vertical and horizontal scroll to scroll horizontally
   const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-  
+
   if (delta !== 0) {
     el.scrollLeft += delta;
     e.preventDefault();
@@ -47,10 +47,8 @@ function onWheel(e: WheelEvent) {
 </script>
 
 <template>
-  <div
-    class="timeline-tabs flex items-center h-full min-w-0 flex-1 select-none"
-  >
-    <div 
+  <div class="timeline-tabs flex items-center h-full min-w-0 flex-1 select-none">
+    <div
       ref="scrollContainer"
       class="flex h-full w-full overflow-x-auto no-scrollbar items-center"
       @wheel="onWheel"

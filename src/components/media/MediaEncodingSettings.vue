@@ -31,7 +31,9 @@ const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
-const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', { default: 'custom' });
+const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', {
+  default: 'custom',
+});
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
@@ -146,12 +148,25 @@ function onPresetChange(newPreset: string) {
   }, 50);
 }
 
-watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBitrateKbps, bitrateMode, keyframeIntervalSec, exportAlpha], () => {
-  if (!isPresetApplying) {
-    preset.value = 'custom';
-  }
-}, { deep: true });
-
+watch(
+  [
+    outputFormat,
+    videoCodec,
+    bitrateMbps,
+    excludeAudio,
+    audioCodec,
+    audioBitrateKbps,
+    bitrateMode,
+    keyframeIntervalSec,
+    exportAlpha,
+  ],
+  () => {
+    if (!isPresetApplying) {
+      preset.value = 'custom';
+    }
+  },
+  { deep: true },
+);
 </script>
 
 <template>
@@ -242,9 +257,11 @@ watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBit
         v-model="bitrateMode"
         :options="bitrateModeOptions"
         :disabled="props.disabled"
-        @change="() => {
-          isBitrateModeTouched = true;
-        }"
+        @change="
+          () => {
+            isBitrateModeTouched = true;
+          }
+        "
       />
     </div>
 
@@ -264,7 +281,6 @@ watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBit
         class="w-full"
       />
     </div>
-
 
     <label v-if="outputFormat === 'webm'" class="flex items-center gap-3 cursor-pointer">
       <UCheckbox v-model="exportAlpha" :disabled="props.disabled" />
@@ -324,7 +340,7 @@ watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBit
 
     <template v-if="props.showMetadata && outputFormat !== 'webm'">
       <div class="h-px bg-ui-border my-2"></div>
-      
+
       <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
         {{ t('videoEditor.export.metadata', 'Metadata') }}
       </div>
@@ -333,36 +349,21 @@ watch([outputFormat, videoCodec, bitrateMbps, excludeAudio, audioCodec, audioBit
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.metadataTitle', 'Title') }}
         </label>
-        <UInput
-          v-model="metadataTitle"
-          size="sm"
-          :disabled="props.disabled"
-          class="w-full"
-        />
+        <UInput v-model="metadataTitle" size="sm" :disabled="props.disabled" class="w-full" />
       </div>
 
       <div class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.metadataAuthor', 'Author') }}
         </label>
-        <UInput
-          v-model="metadataAuthor"
-          size="sm"
-          :disabled="props.disabled"
-          class="w-full"
-        />
+        <UInput v-model="metadataAuthor" size="sm" :disabled="props.disabled" class="w-full" />
       </div>
 
       <div class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.metadataTags', 'Tags') }}
         </label>
-        <UInput
-          v-model="metadataTags"
-          size="sm"
-          :disabled="props.disabled"
-          class="w-full"
-        />
+        <UInput v-model="metadataTags" size="sm" :disabled="props.disabled" class="w-full" />
       </div>
     </template>
   </div>

@@ -308,7 +308,10 @@ async function onEntrySelect(entry: FsEntry) {
           selectionStore.clearSelection();
         "
       >
-        <div v-if="isLoading && rootEntries.length === 0" class="px-3 py-4 text-sm text-ui-text-muted">
+        <div
+          v-if="isLoading && rootEntries.length === 0"
+          class="px-3 py-4 text-sm text-ui-text-muted"
+        >
           {{ t('common.loading', 'Loading...') }}
         </div>
 
@@ -344,7 +347,10 @@ async function onEntrySelect(entry: FsEntry) {
             @request-move="onRequestMove"
             @request-upload="onRequestUpload"
           />
-          <div v-if="isLoading" class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50">
+          <div
+            v-if="isLoading"
+            class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50"
+          >
             <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />
           </div>
         </div>

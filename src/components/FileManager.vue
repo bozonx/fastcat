@@ -90,7 +90,8 @@ async function computeDirectorySize(
   let seen = 0;
 
   async function walk(handle: FileSystemDirectoryHandle): Promise<number> {
-    const iterator = (handle as FsDirectoryHandleWithIteration).values?.() ??
+    const iterator =
+      (handle as FsDirectoryHandleWithIteration).values?.() ??
       (handle as FsDirectoryHandleWithIteration).entries?.();
     if (!iterator) return 0;
 
@@ -126,12 +127,15 @@ async function computeDirectorySize(
   }
 }
 
-watch(() => uiStore.pendingFsEntryDelete, (entry) => {
-  if (entry) {
-    openDeleteConfirmModal(entry);
-    uiStore.pendingFsEntryDelete = null;
-  }
-});
+watch(
+  () => uiStore.pendingFsEntryDelete,
+  (entry) => {
+    if (entry) {
+      openDeleteConfirmModal(entry);
+      uiStore.pendingFsEntryDelete = null;
+    }
+  },
+);
 
 watch(
   () => projectStore.currentProjectName,
@@ -164,7 +168,7 @@ function onDrop(e: DragEvent) {
   isDragging.value = false;
   uiStore.isFileManagerDragging = false;
   uiStore.isGlobalDragging = false;
-  
+
   if (e.dataTransfer?.files) {
     handleFiles(e.dataTransfer.files);
   }
@@ -251,7 +255,7 @@ async function handleDeleteConfirm() {
   if (deletePath && uiStore.selectedFsEntry?.path === deletePath) {
     uiStore.selectedFsEntry = null;
   }
-  
+
   if (
     selectionStore.selectedEntity?.source === 'fileManager' &&
     (selectionStore.selectedEntity.path
@@ -266,7 +270,7 @@ async function handleDeleteConfirm() {
   // during the modal's unmount phase
   setTimeout(() => {
     isDeleteConfirmModalOpen.value = false;
-    
+
     // Wait for the modal transition to finish before clearing the reference
     setTimeout(() => {
       deleteTarget.value = null;
@@ -291,10 +295,7 @@ async function handleRename(newName: string) {
     toast.add({
       color: 'red',
       title: t('common.rename', 'Rename'),
-      description: t(
-        'common.validation.invalidName',
-        'Name contains invalid characters.',
-      ),
+      description: t('common.validation.invalidName', 'Name contains invalid characters.'),
     });
     return;
   }
@@ -303,10 +304,7 @@ async function handleRename(newName: string) {
     toast.add({
       color: 'red',
       title: t('common.rename', 'Rename'),
-      description: t(
-        'common.validation.invalidName',
-        'Name contains invalid characters.',
-      ),
+      description: t('common.validation.invalidName', 'Name contains invalid characters.'),
     });
     return;
   }
@@ -606,7 +604,11 @@ async function onDirectoryFileSelect(e: Event) {
           {{ deleteTarget?.name }}
         </div>
         <div v-if="deleteTarget?.path" class="mt-1 text-xs text-ui-text-muted break-all">
-          {{ deleteTarget.kind === 'directory' ? t('common.folder', 'Folder') : t('common.file', 'File') }}
+          {{
+            deleteTarget.kind === 'directory'
+              ? t('common.folder', 'Folder')
+              : t('common.file', 'File')
+          }}
           ·
           {{ deleteTarget.path }}
         </div>
@@ -637,7 +639,9 @@ async function onDirectoryFileSelect(e: Event) {
       v-if="uiStore.isGlobalDragging && !isDragging"
       class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary-500/10 border-4 border-dashed border-primary-500/50 m-2 rounded-2xl pointer-events-none transition-all duration-300"
     >
-      <div class="flex flex-col items-center bg-ui-bg-elevated/90 px-6 py-4 rounded-xl border border-primary-500/30 shadow-xl">
+      <div
+        class="flex flex-col items-center bg-ui-bg-elevated/90 px-6 py-4 rounded-xl border border-primary-500/30 shadow-xl"
+      >
         <UIcon name="i-heroicons-folder-arrow-down" class="w-10 h-10 text-primary-400 mb-2" />
         <p class="text-sm font-bold text-primary-400 text-center uppercase tracking-wider">
           {{ t('videoEditor.fileManager.actions.dropZone', 'Move to folder') }}

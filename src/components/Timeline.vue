@@ -434,7 +434,14 @@ async function onDrop(e: DragEvent, trackId: string) {
   }
 
   const kind = typeof parsed?.kind === 'string' ? parsed.kind : undefined;
-  if (kind && kind !== 'file' && kind !== 'timeline' && kind !== 'adjustment' && kind !== 'background' && kind !== 'text') {
+  if (
+    kind &&
+    kind !== 'file' &&
+    kind !== 'timeline' &&
+    kind !== 'adjustment' &&
+    kind !== 'background' &&
+    kind !== 'text'
+  ) {
     clearDraggedFile();
     return;
   }
@@ -576,6 +583,5 @@ async function onDrop(e: DragEvent, trackId: string) {
         </Pane>
       </Splitpanes>
     </ClientOnly>
-
   </div>
 </template>

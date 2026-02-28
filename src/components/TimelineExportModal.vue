@@ -119,7 +119,8 @@ watch(
     audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
     bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
-    keyframeIntervalSec.value = projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
+    keyframeIntervalSec.value =
+      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
     exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
     metadataTitle.value = projectStore.projectSettings.exportDefaults.encoding.metadata.title;
     metadataAuthor.value = projectStore.projectSettings.exportDefaults.encoding.metadata.author;
@@ -227,9 +228,11 @@ async function handleConfirm() {
       projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
       projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
       projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
-      projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
+      projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
+        audioBitrateKbps.value;
       projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
-      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec = keyframeIntervalSec.value;
+      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
+        keyframeIntervalSec.value;
       projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
       projectStore.projectSettings.exportDefaults.encoding.metadata.title = metadataTitle.value;
       projectStore.projectSettings.exportDefaults.encoding.metadata.author = metadataAuthor.value;
@@ -256,7 +259,7 @@ async function handleConfirm() {
           title: metadataTitle.value,
           author: metadataAuthor.value,
           tags: metadataTags.value,
-        }
+        },
       },
       fileHandle,
       (progress) => {

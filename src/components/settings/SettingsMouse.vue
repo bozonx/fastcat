@@ -26,10 +26,7 @@ const workspaceStore = useWorkspaceStore();
                 value: 'scroll_vertical',
               },
               {
-                label: t(
-                  'videoEditor.settings.mouseActionScrollHorizontal',
-                  'Horizontal scroll',
-                ),
+                label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
                 value: 'scroll_horizontal',
               },
               {
@@ -62,10 +59,7 @@ const workspaceStore = useWorkspaceStore();
                 value: 'scroll_vertical',
               },
               {
-                label: t(
-                  'videoEditor.settings.mouseActionScrollHorizontal',
-                  'Horizontal scroll',
-                ),
+                label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
                 value: 'scroll_horizontal',
               },
               {
@@ -82,8 +76,7 @@ const workspaceStore = useWorkspaceStore();
             label-key="label"
             class="w-full"
             @update:model-value="
-              (v: any) =>
-                (workspaceStore.userSettings.mouse.timeline.wheelShift = v?.value ?? v)
+              (v: any) => (workspaceStore.userSettings.mouse.timeline.wheelShift = v?.value ?? v)
             "
           />
         </UFormField>
@@ -99,10 +92,7 @@ const workspaceStore = useWorkspaceStore();
                 value: 'scroll_vertical',
               },
               {
-                label: t(
-                  'videoEditor.settings.mouseActionScrollHorizontal',
-                  'Horizontal scroll',
-                ),
+                label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
                 value: 'scroll_horizontal',
               },
               {
@@ -126,7 +116,9 @@ const workspaceStore = useWorkspaceStore();
         </UFormField>
 
         <UFormField
-          :label="t('videoEditor.settings.mouseTimelineWheelSecondaryShift', 'Secondary wheel + Shift')"
+          :label="
+            t('videoEditor.settings.mouseTimelineWheelSecondaryShift', 'Secondary wheel + Shift')
+          "
         >
           <USelectMenu
             v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift"
@@ -136,10 +128,7 @@ const workspaceStore = useWorkspaceStore();
                 value: 'scroll_vertical',
               },
               {
-                label: t(
-                  'videoEditor.settings.mouseActionScrollHorizontal',
-                  'Horizontal scroll',
-                ),
+                label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
                 value: 'scroll_horizontal',
               },
               {
@@ -162,9 +151,7 @@ const workspaceStore = useWorkspaceStore();
           />
         </UFormField>
 
-        <UFormField
-          :label="t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle click')"
-        >
+        <UFormField :label="t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle click')">
           <USelectMenu
             v-model="workspaceStore.userSettings.mouse.timeline.middleClick"
             :items="[
@@ -175,8 +162,7 @@ const workspaceStore = useWorkspaceStore();
             label-key="label"
             class="w-full"
             @update:model-value="
-              (v: any) =>
-                (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
+              (v: any) => (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
             "
           />
         </UFormField>
@@ -197,10 +183,7 @@ const workspaceStore = useWorkspaceStore();
                 value: 'scroll_vertical',
               },
               {
-                label: t(
-                  'videoEditor.settings.mouseActionScrollHorizontal',
-                  'Horizontal scroll',
-                ),
+                label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
                 value: 'scroll_horizontal',
               },
               { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
@@ -214,9 +197,7 @@ const workspaceStore = useWorkspaceStore();
           />
         </UFormField>
 
-        <UFormField
-          :label="t('videoEditor.settings.mouseMonitorWheelShift', 'Wheel + Shift')"
-        >
+        <UFormField :label="t('videoEditor.settings.mouseMonitorWheelShift', 'Wheel + Shift')">
           <USelectMenu
             v-model="workspaceStore.userSettings.mouse.monitor.wheelShift"
             :items="[
@@ -226,10 +207,7 @@ const workspaceStore = useWorkspaceStore();
                 value: 'scroll_vertical',
               },
               {
-                label: t(
-                  'videoEditor.settings.mouseActionScrollHorizontal',
-                  'Horizontal scroll',
-                ),
+                label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
                 value: 'scroll_horizontal',
               },
               { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
@@ -238,15 +216,12 @@ const workspaceStore = useWorkspaceStore();
             label-key="label"
             class="w-full"
             @update:model-value="
-              (v: any) =>
-                (workspaceStore.userSettings.mouse.monitor.wheelShift = v?.value ?? v)
+              (v: any) => (workspaceStore.userSettings.mouse.monitor.wheelShift = v?.value ?? v)
             "
           />
         </UFormField>
 
-        <UFormField
-          :label="t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle click')"
-        >
+        <UFormField :label="t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle click')">
           <USelectMenu
             v-model="workspaceStore.userSettings.mouse.monitor.middleClick"
             :items="[
@@ -257,8 +232,7 @@ const workspaceStore = useWorkspaceStore();
             label-key="label"
             class="w-full"
             @update:model-value="
-              (v: any) =>
-                (workspaceStore.userSettings.mouse.monitor.middleClick = v?.value ?? v)
+              (v: any) => (workspaceStore.userSettings.mouse.monitor.middleClick = v?.value ?? v)
             "
           />
         </UFormField>

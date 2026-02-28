@@ -36,8 +36,7 @@ const workspaceStore = useWorkspaceStore();
           label-key="label"
           class="w-full"
           @update:model-value="
-            (v: any) =>
-              (workspaceStore.userSettings.optimization.proxyResolution = v?.value ?? v)
+            (v: any) => (workspaceStore.userSettings.optimization.proxyResolution = v?.value ?? v)
           "
         />
       </UFormField>

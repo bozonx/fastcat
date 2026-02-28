@@ -21,9 +21,7 @@ const workspaceStore = useWorkspaceStore();
         value-key="value"
         label-key="label"
         class="w-full"
-        @update:model-value="
-          (v: any) => (workspaceStore.userSettings.locale = v?.value ?? v)
-        "
+        @update:model-value="(v: any) => (workspaceStore.userSettings.locale = v?.value ?? v)"
       />
     </UFormField>
 

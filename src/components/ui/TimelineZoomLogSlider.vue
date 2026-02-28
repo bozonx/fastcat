@@ -37,11 +37,5 @@ const value = computed({
 </script>
 
 <template>
-  <WheelSlider
-    v-model="value"
-    :min="min"
-    :max="max"
-    :step="step"
-    :slider-class="sliderClass"
-  />
+  <WheelSlider v-model="value" :min="min" :max="max" :step="step" :slider-class="sliderClass" />
 </template>

@@ -91,10 +91,7 @@ async function confirmClearWorkspaceVardata() {
       <UFormField
         :label="t('videoEditor.settings.cacheLimit', 'Cache storage limit (GB)')"
         :help="
-          t(
-            'videoEditor.settings.cacheLimitHelp',
-            'Total limit for cached data in this workspace',
-          )
+          t('videoEditor.settings.cacheLimitHelp', 'Total limit for cached data in this workspace')
         "
       >
         <UInput
@@ -152,9 +149,7 @@ async function confirmClearWorkspaceVardata() {
     </div>
 
     <div class="text-xs text-ui-text-muted">
-      {{
-        t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json')
-      }}
+      {{ t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json') }}
     </div>
   </div>
 </template>

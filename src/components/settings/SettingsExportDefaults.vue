@@ -82,7 +82,9 @@ watch(
         workspaceStore.userSettings.exportDefaults.encoding.audioBitrateKbps
       "
       v-model:bitrate-mode="workspaceStore.userSettings.exportDefaults.encoding.bitrateMode"
-      v-model:keyframe-interval-sec="workspaceStore.userSettings.exportDefaults.encoding.keyframeIntervalSec"
+      v-model:keyframe-interval-sec="
+        workspaceStore.userSettings.exportDefaults.encoding.keyframeIntervalSec
+      "
       v-model:export-alpha="workspaceStore.userSettings.exportDefaults.encoding.exportAlpha"
       :disabled="false"
       :show-metadata="false"

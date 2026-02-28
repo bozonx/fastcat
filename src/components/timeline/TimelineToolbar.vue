@@ -14,9 +14,16 @@ const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 function onDragStart(e: DragEvent, kind: 'adjustment' | 'background' | 'text') {
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/json', JSON.stringify({ kind, name: t(`granVideoEditor.timeline.${kind}ClipDefaultName`, kind), path: '' }));
+    e.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({
+        kind,
+        name: t(`granVideoEditor.timeline.${kind}ClipDefaultName`, kind),
+        path: '',
+      }),
+    );
   }
-  
+
   const labels: Record<string, string> = {
     adjustment: t('granVideoEditor.timeline.adjustmentClipDefaultName', 'Adjustment'),
     background: t('granVideoEditor.timeline.backgroundClipDefaultName', 'Background'),

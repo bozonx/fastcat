@@ -158,7 +158,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     const current = findEntryByPathCore(deps.rootEntries.value, path);
     if (!current || current.kind !== 'directory') return;
 
-    const nextExpanded = !Boolean(current.expanded);
+    const nextExpanded = !current.expanded;
 
     const applyExpandedState = (expanded: boolean) => {
       deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({

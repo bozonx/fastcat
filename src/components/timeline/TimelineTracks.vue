@@ -973,7 +973,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       class="flex items-center px-2 relative transition-colors"
       :class="[
         timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : '',
-        timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id ? 'bg-ui-bg-elevated/50' : ''
+        timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id
+          ? 'bg-ui-bg-elevated/50'
+          : '',
       ]"
       :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
       @dragover.prevent="emit('dragover', $event, track.id)"
@@ -1291,13 +1293,17 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
           <!-- Main Content Layer -->
           <div class="flex-1 flex w-full min-h-0 relative z-20">
             <TimelineClipThumbnails
-              v-if="item.kind === 'clip' && (item as any).clipType === 'media' && track.kind === 'video'"
+              v-if="
+                item.kind === 'clip' && (item as any).clipType === 'media' && track.kind === 'video'
+              "
               :item="item as any"
               :width="getClipWidthPx(item)"
             />
 
             <TimelineAudioWaveform
-              v-if="item.kind === 'clip' && (item as any).clipType === 'media' && track.kind === 'audio'"
+              v-if="
+                item.kind === 'clip' && (item as any).clipType === 'media' && track.kind === 'audio'
+              "
               :item="item as any"
             />
 

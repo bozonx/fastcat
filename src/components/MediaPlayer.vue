@@ -109,12 +109,19 @@ watch(
         @ended="onPause"
       ></audio>
 
-      <div
-        class="flex-1 min-h-0 flex items-center justify-center bg-(--media-bg) relative"
-      >
-        <div class="absolute inset-0 opacity-30" style="background: radial-gradient(circle at 30% 30%, rgba(34,197,94,.35), transparent 60%), radial-gradient(circle at 80% 70%, rgba(59,130,246,.25), transparent 55%);" />
+      <div class="flex-1 min-h-0 flex items-center justify-center bg-(--media-bg) relative">
+        <div
+          class="absolute inset-0 opacity-30"
+          style="
+            background:
+              radial-gradient(circle at 30% 30%, rgba(34, 197, 94, 0.35), transparent 60%),
+              radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.25), transparent 55%);
+          "
+        />
         <div class="relative flex flex-col items-center justify-center text-ui-text-muted px-6">
-          <div class="w-32 h-32 rounded-2xl bg-ui-bg-elevated/60 border border-ui-border flex items-center justify-center">
+          <div
+            class="w-32 h-32 rounded-2xl bg-ui-bg-elevated/60 border border-ui-border flex items-center justify-center"
+          >
             <UIcon name="i-heroicons-musical-note" class="w-16 h-16 opacity-70" />
           </div>
           <div class="mt-4 text-xs uppercase tracking-wider opacity-70">
@@ -126,7 +133,10 @@ watch(
 
     <!-- Controls -->
     <div class="flex flex-col px-4 py-3 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
-      <div class="h-2 bg-ui-bg-accent rounded-full w-full cursor-pointer relative group" @click="seek">
+      <div
+        class="h-2 bg-ui-bg-accent rounded-full w-full cursor-pointer relative group"
+        @click="seek"
+      >
         <div
           class="absolute top-0 left-0 h-full bg-primary-500 rounded-full"
           :style="{ width: `${progress}%` }"

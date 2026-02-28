@@ -409,7 +409,7 @@ watch(
     <!-- Video clips: Chunked canvases -->
     <div
       class="absolute inset-y-0 h-full flex"
-      :class="{ 'hidden': isImage }"
+      :class="{ hidden: isImage }"
       :style="{
         left: `${-trimOffsetPx}px`,
         width: `${chunks.reduce((sum, c) => sum + c.widthPx, 0)}px`,

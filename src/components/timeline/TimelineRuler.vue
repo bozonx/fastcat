@@ -75,13 +75,16 @@ watch(
   { immediate: true },
 );
 
-useResizeObserver(() => props.scrollEl, (entries) => {
-  const entry = entries[0];
-  if (entry) {
-    width.value = entry.contentRect.width;
-    draw();
-  }
-});
+useResizeObserver(
+  () => props.scrollEl,
+  (entries) => {
+    const entry = entries[0];
+    if (entry) {
+      width.value = entry.contentRect.width;
+      draw();
+    }
+  },
+);
 
 onUnmounted(() => {
   if (props.scrollEl) {
@@ -268,19 +271,19 @@ function draw() {
     // Determine the exact color of primary-500 if possible, or use a fallback
     const styles = window.getComputedStyle(document.documentElement);
     const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
-    
+
     ctx.beginPath();
     ctx.fillStyle = primaryColor;
-    
+
     // Draw an inverted triangle for the playhead
     const pw = 10; // width
     const ph = 10; // height
-    
-    ctx.moveTo(playheadPx - pw/2, h - ph);
-    ctx.lineTo(playheadPx + pw/2, h - ph);
+
+    ctx.moveTo(playheadPx - pw / 2, h - ph);
+    ctx.lineTo(playheadPx + pw / 2, h - ph);
     ctx.lineTo(playheadPx, h);
     ctx.fill();
-    
+
     // Playhead line through the remaining bottom part of the ruler
     ctx.beginPath();
     ctx.strokeStyle = primaryColor;

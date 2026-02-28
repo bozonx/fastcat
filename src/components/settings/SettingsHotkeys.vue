@@ -295,7 +295,11 @@ defineExpose({
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmResetCommandHotkeys"
-      @update:open="(v: boolean) => { if (!v) resetCommandConfirmTarget = null }"
+      @update:open="
+        (v: boolean) => {
+          if (!v) resetCommandConfirmTarget = null;
+        }
+      "
     />
 
     <div class="flex items-center justify-between gap-3 px-1">
@@ -342,11 +346,21 @@ defineExpose({
                       :key="combo"
                       class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80 transition-colors"
                       :class="{
-                        'border-warning-400 text-warning-700 bg-warning-50/80': isConflicting(combo),
+                        'border-warning-400 text-warning-700 bg-warning-50/80':
+                          isConflicting(combo),
                       }"
-                      :title="isConflicting(combo) ? t('videoEditor.settings.hotkeysConflict', 'Conflict: used by another command') : undefined"
+                      :title="
+                        isConflicting(combo)
+                          ? t(
+                              'videoEditor.settings.hotkeysConflict',
+                              'Conflict: used by another command',
+                            )
+                          : undefined
+                      "
                     >
-                      <span class="text-[10px] font-mono font-medium text-ui-text-muted select-none">
+                      <span
+                        class="text-[10px] font-mono font-medium text-ui-text-muted select-none"
+                      >
                         {{ combo }}
                       </span>
                       <UButton
@@ -359,13 +373,13 @@ defineExpose({
                         @click="removeBinding(cmd.id, combo)"
                       />
                     </div>
-                    
+
                     <UButton
                       size="xs"
                       color="neutral"
                       variant="subtle"
                       icon="i-heroicons-plus"
-                        class="h-6 w-6 rounded-full shrink-0 justify-center"
+                      class="h-6 w-6 rounded-full shrink-0 justify-center"
                       :disabled="isCapturingHotkey"
                       :loading="isCapturingHotkey && captureTargetCommandId === cmd.id"
                       @click="startCapture(cmd.id)"
@@ -382,8 +396,8 @@ defineExpose({
                       @click="resetCommandBindings(cmd.id)"
                     />
                   </div>
-                  <div 
-                    v-if="isCapturingHotkey && captureTargetCommandId === cmd.id" 
+                  <div
+                    v-if="isCapturingHotkey && captureTargetCommandId === cmd.id"
                     class="mt-1 text-[9px] text-primary-500 font-bold uppercase tracking-wider animate-pulse"
                   >
                     {{ t('videoEditor.settings.hotkeysCapturing', 'Listening') }}
@@ -395,12 +409,17 @@ defineExpose({
                   </span>
                   <span
                     class="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
-                    :class="isCommandCustom(cmd.id)
-                      ? 'border-primary-300 text-primary-700 bg-primary-50'
-                      : 'border-ui-border text-ui-text-muted bg-ui-bg'
+                    :class="
+                      isCommandCustom(cmd.id)
+                        ? 'border-primary-300 text-primary-700 bg-primary-50'
+                        : 'border-ui-border text-ui-text-muted bg-ui-bg'
                     "
                   >
-                    {{ isCommandCustom(cmd.id) ? t('common.custom', 'Custom') : t('common.default', 'Default') }}
+                    {{
+                      isCommandCustom(cmd.id)
+                        ? t('common.custom', 'Custom')
+                        : t('common.default', 'Default')
+                    }}
                   </span>
                 </td>
               </tr>

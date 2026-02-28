@@ -47,7 +47,7 @@ watch(
     if (prev && !v) {
       await workspaceStore.flushSettingsSaves();
     }
-    
+
     if (!v && hotkeysRef.value) {
       hotkeysRef.value.isDuplicateConfirmOpen = false;
       hotkeysRef.value.finishCapture();

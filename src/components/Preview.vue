@@ -84,7 +84,8 @@ async function computeDirectorySize(
   let seen = 0;
 
   async function walk(handle: FileSystemDirectoryHandle): Promise<number> {
-    const iterator = (handle as FsDirectoryHandleWithIteration).values?.() ??
+    const iterator =
+      (handle as FsDirectoryHandleWithIteration).values?.() ??
       (handle as FsDirectoryHandleWithIteration).entries?.();
     if (!iterator) return 0;
 
@@ -1588,7 +1589,10 @@ function onPanelFocusOut() {
               v-if="selectedFsEntry?.kind === 'file'"
               class="w-full bg-ui-bg rounded border border-ui-border flex flex-col items-center justify-center min-h-50 overflow-hidden shrink-0"
             >
-              <div v-if="isUnknown" class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center">
+              <div
+                v-if="isUnknown"
+                class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
+              >
                 <UIcon name="i-heroicons-document" class="w-16 h-16" />
                 <p class="text-sm text-center">
                   {{

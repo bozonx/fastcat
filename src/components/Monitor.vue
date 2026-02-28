@@ -427,8 +427,10 @@ async function createStopFrameSnapshot() {
       onExportProgress: () => {},
     });
 
-    const clipsPayload = JSON.parse(JSON.stringify(rawWorkerTimelineClips.value ?? workerTimelineClips.value));
-    
+    const clipsPayload = JSON.parse(
+      JSON.stringify(rawWorkerTimelineClips.value ?? workerTimelineClips.value),
+    );
+
     const blob = await client.extractFrameToBlob(
       timeUs,
       exportWidth,

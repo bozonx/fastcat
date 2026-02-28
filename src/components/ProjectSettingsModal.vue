@@ -119,7 +119,10 @@ async function resetToDefaults() {
 <template>
   <AppModal
     v-model:open="isOpen"
-    :title="t('videoEditor.projectSettings.title', 'Project Settings') + (projectStore.currentProjectName ? ': ' + projectStore.currentProjectName : '')"
+    :title="
+      t('videoEditor.projectSettings.title', 'Project Settings') +
+      (projectStore.currentProjectName ? ': ' + projectStore.currentProjectName : '')
+    "
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <UiConfirmModal
@@ -161,11 +164,12 @@ async function resetToDefaults() {
         }}
       </div>
 
-
       <!-- Resolution & FPS Settings -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}</h3>
-        
+        <h3 class="text-lg font-semibold text-ui-text">
+          {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
+        </h3>
+
         <MediaResolutionSettings
           v-model:width="projectStore.projectSettings.project.width"
           v-model:height="projectStore.projectSettings.project.height"
@@ -183,20 +187,30 @@ async function resetToDefaults() {
 
       <!-- Export Settings -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.export', 'Export Defaults') }}</h3>
-        
+        <h3 class="text-lg font-semibold text-ui-text">
+          {{ t('videoEditor.projectSettings.export', 'Export Defaults') }}
+        </h3>
+
         <MediaEncodingSettings
           v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
           v-model:video-codec="projectStore.projectSettings.exportDefaults.encoding.videoCodec"
           v-model:bitrate-mbps="projectStore.projectSettings.exportDefaults.encoding.bitrateMbps"
           v-model:exclude-audio="projectStore.projectSettings.exportDefaults.encoding.excludeAudio"
           v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
-          v-model:audio-bitrate-kbps="projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps"
+          v-model:audio-bitrate-kbps="
+            projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
+          "
           v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
-          v-model:keyframe-interval-sec="projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec"
+          v-model:keyframe-interval-sec="
+            projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
+          "
           v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
-          v-model:metadata-title="projectStore.projectSettings.exportDefaults.encoding.metadata.title"
-          v-model:metadata-author="projectStore.projectSettings.exportDefaults.encoding.metadata.author"
+          v-model:metadata-title="
+            projectStore.projectSettings.exportDefaults.encoding.metadata.title
+          "
+          v-model:metadata-author="
+            projectStore.projectSettings.exportDefaults.encoding.metadata.author
+          "
           v-model:metadata-tags="projectStore.projectSettings.exportDefaults.encoding.metadata.tags"
           :show-metadata="true"
           :disabled="false"
@@ -211,7 +225,9 @@ async function resetToDefaults() {
 
       <!-- Storage Settings -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.storage', 'Storage') }}</h3>
+        <h3 class="text-lg font-semibold text-ui-text">
+          {{ t('videoEditor.projectSettings.storage', 'Storage') }}
+        </h3>
 
         <div class="space-y-3">
           <!-- Clear Vardata -->
@@ -241,7 +257,9 @@ async function resetToDefaults() {
           </div>
 
           <!-- Delete Project -->
-          <div class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5">
+          <div
+            class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5"
+          >
             <div class="flex flex-col gap-1 min-w-0">
               <div class="text-sm font-medium text-error-400">
                 {{ t('videoEditor.projectSettings.deleteProject', 'Delete Project') }}

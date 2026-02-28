@@ -3,10 +3,9 @@ interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
-function getDirectoryIterator(handle: FileSystemDirectoryHandle):
-  | AsyncIterable<FileSystemHandle>
-  | AsyncIterable<[string, FileSystemHandle]>
-  | null {
+function getDirectoryIterator(
+  handle: FileSystemDirectoryHandle,
+): AsyncIterable<FileSystemHandle> | AsyncIterable<[string, FileSystemHandle]> | null {
   return (
     (handle as FsDirectoryHandleWithIteration).values?.() ??
     (handle as FsDirectoryHandleWithIteration).entries?.() ??

@@ -243,4 +243,3 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'playback.backward1': [],
   },
 };
-

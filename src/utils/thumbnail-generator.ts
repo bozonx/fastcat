@@ -1,3 +1,8 @@
+import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
+import { getProjectThumbnailsSegments } from '~/utils/vardata-paths';
+
 export interface ThumbnailTask {
   id: string; // usually clip hash
   projectId: string;
@@ -7,11 +12,6 @@ export interface ThumbnailTask {
   onComplete?: () => void;
   onError?: (err: Error) => void;
 }
-
-import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
-import { getProjectThumbnailsSegments } from '~/utils/vardata-paths';
 
 function hashString(input: string): string {
   let hash = 2166136261;

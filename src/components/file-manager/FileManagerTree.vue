@@ -87,10 +87,7 @@ function getEntryIconClass(entry: FsEntry): string {
 }
 
 function isVideo(entry: FsEntry) {
-  return (
-    entry.kind === 'file' &&
-    entry.path?.startsWith(`${VIDEO_DIR_NAME}/`)
-  );
+  return entry.kind === 'file' && entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
 }
 
 function onEntryClick(entry: FsEntry) {
@@ -242,7 +239,10 @@ function getContextMenuItems(entry: FsEntry) {
     if (hasVideos) {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+          label: t(
+            'videoEditor.fileManager.actions.createProxyForAll',
+            'Create proxy for all videos',
+          ),
           icon: 'i-heroicons-film',
           onSelect: () => emit('action', 'createProxyForFolder' as any, entry),
         },
@@ -284,7 +284,10 @@ function getContextMenuItems(entry: FsEntry) {
     if (generatingProxy) {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+          label: t(
+            'videoEditor.fileManager.actions.cancelProxyGeneration',
+            'Cancel proxy generation',
+          ),
           icon: 'i-heroicons-x-circle',
           color: 'error',
           onSelect: () => emit('action', 'cancelProxy', entry),
@@ -326,8 +329,12 @@ function getContextMenuItems(entry: FsEntry) {
           class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
           :style="{ paddingLeft: `${8 + depth * 14}px` }"
           :class="[
-            isDragOver === entry.path ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1' : '',
-            isSelected(entry) ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1' : '',
+            isDragOver === entry.path
+              ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
+              : '',
+            isSelected(entry)
+              ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1'
+              : '',
           ]"
           :draggable="true"
           :aria-selected="isSelected(entry)"
@@ -378,7 +385,9 @@ function getContextMenuItems(entry: FsEntry) {
           <span
             class="text-sm truncate transition-colors"
             :class="[
-              isSelected(entry) ? 'font-medium text-ui-text group-hover:text-ui-text' : 'text-ui-text group-hover:text-ui-text',
+              isSelected(entry)
+                ? 'font-medium text-ui-text group-hover:text-ui-text'
+                : 'text-ui-text group-hover:text-ui-text',
               isDotEntry(entry) ? 'opacity-30' : '',
               props.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
             ]"
@@ -388,7 +397,10 @@ function getContextMenuItems(entry: FsEntry) {
 
           <!-- Proxy indicators -->
           <template v-if="isVideo(entry)">
-            <div v-if="props.getEntryMeta(entry).generatingProxy" class="flex items-center gap-1 ml-2">
+            <div
+              v-if="props.getEntryMeta(entry).generatingProxy"
+              class="flex items-center gap-1 ml-2"
+            >
               <UIcon
                 name="i-heroicons-arrow-path"
                 class="w-3.5 h-3.5 text-primary-400 animate-spin"
