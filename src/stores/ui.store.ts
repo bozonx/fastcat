@@ -173,7 +173,13 @@ export const useUiStore = defineStore('ui', () => {
 
     if (!fileTreeExpandedPaths.value[path]) return;
     const next = { ...fileTreeExpandedPaths.value };
-    delete next[path];
+
+    const prefix = `${path}/`;
+    for (const key of Object.keys(next)) {
+      if (key === path || key.startsWith(prefix)) {
+        delete next[key];
+      }
+    }
     fileTreeExpandedPaths.value = next;
     markFileTreeAsDirty();
     void requestFileTreeSave(projectName);
