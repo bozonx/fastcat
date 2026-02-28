@@ -76,71 +76,43 @@ async function loadCodecSupport() {
 loadCodecSupport();
 
 // Project settings form data
-const projectName = ref(projectStore.currentProjectName || '');
-const timelineName = ref(projectStore.currentFileName || '');
-const frameRate = ref(30);
-const resolutionWidth = ref(1920);
-const resolutionHeight = ref(1080);
-
-const availableFrameRates = [24, 25, 30, 48, 50, 60];
-const commonResolutions = [
-  { width: 1920, height: 1080, label: '1080p (1920×1080)' },
-  { width: 1280, height: 720, label: '720p (1280×720)' },
-  { width: 3840, height: 2160, label: '4K (3840×2160)' },
-  { width: 2560, height: 1440, label: '2K (2560×1440)' },
-];
-
 function applySettings() {
-  // Update project settings
-  if (projectStore.projectSettings) {
-    projectStore.projectSettings.project.fps = frameRate.value;
-    projectStore.projectSettings.project.width = resolutionWidth.value;
-    projectStore.projectSettings.project.height = resolutionHeight.value;
-  }
-  
+  // Settings are already bound via v-model and saved automatically in projectStore
+
   // Close modal
   isOpen.value = false;
-  
+
   // Show success message
   const toast = useToast();
   toast.add({
     title: t('videoEditor.projectSettings.applied', 'Project settings applied'),
-    color: 'success'
+    color: 'success',
   });
 }
 
 function resetToDefaults() {
-  frameRate.value = 30;
-  resolutionWidth.value = 1920;
-  resolutionHeight.value = 1080;
-}
+  if (!projectStore.projectSettings) return;
 
-function onResolutionChange(resolution: { width: number; height: number; label: string }) {
-  if (resolution) {
-    resolutionWidth.value = resolution.width;
-    resolutionHeight.value = resolution.height;
-  }
-}
+  // Reset project resolution and FPS to workspace defaults
+  const pDefaults = workspaceStore.userSettings.projectDefaults;
+  projectStore.projectSettings.project.width = pDefaults.width;
+  projectStore.projectSettings.project.height = pDefaults.height;
+  projectStore.projectSettings.project.fps = pDefaults.fps;
+  projectStore.projectSettings.project.resolutionFormat = pDefaults.resolutionFormat;
+  projectStore.projectSettings.project.orientation = pDefaults.orientation;
+  projectStore.projectSettings.project.aspectRatio = pDefaults.aspectRatio;
+  projectStore.projectSettings.project.isCustomResolution = pDefaults.isCustomResolution;
 
-function formatDuration(durationUs: number): string {
-  const seconds = Math.floor(durationUs / 1_000_000);
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-}
-
-function getAllClipsCount(): number {
-  if (!timelineStore.timelineDoc?.tracks) return 0;
-  return timelineStore.timelineDoc.tracks.reduce((count, track) => {
-    return count + (track.items?.length || 0);
-  }, 0);
+  // Reset export encoding settings to workspace defaults
+  const eDefaults = workspaceStore.userSettings.exportDefaults.encoding;
+  projectStore.projectSettings.exportDefaults.encoding = { ...eDefaults };
 }
 </script>
 
 <template>
   <AppModal
     v-model:open="isOpen"
-    :title="t('videoEditor.projectSettings.title', 'Project Settings')"
+    :title="t('videoEditor.projectSettings.title', 'Project Settings') + (projectStore.currentProjectName ? ': ' + projectStore.currentProjectName : '')"
     :ui="{ content: 'max-w-3xl max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <UiConfirmModal
@@ -166,54 +138,10 @@ function getAllClipsCount(): number {
         }}
       </div>
 
-      <!-- Project Info -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.projectInfo', 'Project Information') }}</h3>
-        
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField :label="t('videoEditor.projectSettings.projectName', 'Project Name')">
-            <UInput v-model="projectName" disabled class="bg-ui-bg-muted" />
-          </UFormField>
-          
-          <UFormField :label="t('videoEditor.projectSettings.timelineName', 'Timeline Name')">
-            <UInput v-model="timelineName" disabled class="bg-ui-bg-muted" />
-          </UFormField>
-        </div>
-      </div>
-
-      <!-- Current Timeline Info -->
-      <div v-if="timelineStore.timelineDoc" class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.currentTimeline', 'Current Timeline') }}</h3>
-        
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div class="space-y-2">
-            <div class="flex justify-between">
-              <span class="text-ui-text-muted">{{ t('videoEditor.projectSettings.duration', 'Duration') }}:</span>
-              <span class="text-ui-text font-mono">{{ formatDuration(timelineStore.duration) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-ui-text-muted">{{ t('videoEditor.projectSettings.tracks', 'Tracks') }}:</span>
-              <span class="text-ui-text">{{ timelineStore.timelineDoc?.tracks?.length || 0 }}</span>
-            </div>
-          </div>
-          <div class="space-y-2">
-            <div class="flex justify-between">
-              <span class="text-ui-text-muted">{{ t('videoEditor.projectSettings.clips', 'Clips') }}:</span>
-              <span class="text-ui-text">{{ getAllClipsCount() }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-ui-text-muted">{{ t('videoEditor.projectSettings.markers', 'Markers') }}:</span>
-              <span class="text-ui-text">{{ timelineStore.getMarkers().length }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="h-px bg-ui-border"></div>
 
       <!-- Resolution & FPS Settings -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.projectInfo', 'Resolution & FPS') }}</h3>
+        <h3 class="text-lg font-semibold text-ui-text">{{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}</h3>
         
         <MediaResolutionSettings
           v-model:width="projectStore.projectSettings.project.width"

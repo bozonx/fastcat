@@ -130,7 +130,7 @@
       "title": "Настройки редактора",
       "userSection": "Пользовательские настройки",
       "userGeneral": "Главное",
-      "userExport": "Экспорт",
+      "userExport": "Экспорт по умолчанию",
       "workspaceSection": "Настройки рабочей области",
       "workspaceStorage": "Хранилище",
       "openBehavior": "При открытии редактора",
@@ -162,7 +162,8 @@
     },
     "projectSettings": {
       "note": "Настройки сохраняются в .gran/project.settings.json",
-      "export": "Экспорт",
+      "resolutionAndFps": "Разрешение и FPS",
+      "export": "Экспорт по умолчанию",
       "exportWidth": "Ширина",
       "exportHeight": "Высота",
       "exportFps": "FPS"

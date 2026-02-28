@@ -130,7 +130,7 @@
       "title": "Editor settings",
       "userSection": "User settings",
       "userGeneral": "General",
-      "userExport": "Export",
+      "userExport": "Export defaults",
       "workspaceSection": "Workspace settings",
       "workspaceStorage": "Storage",
       "openBehavior": "On editor open",
@@ -162,7 +162,8 @@
     },
     "projectSettings": {
       "note": "Settings are saved to .gran/project.settings.json",
-      "export": "Export",
+      "resolutionAndFps": "Resolution & FPS",
+      "export": "Export defaults",
       "exportWidth": "Width",
       "exportHeight": "Height",
       "exportFps": "FPS"
