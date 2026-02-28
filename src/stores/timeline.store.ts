@@ -12,7 +12,7 @@ import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timel
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 
 import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
-import { createTimelineMarkers } from '~/stores/timeline/timelineMarkers';
+import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
 
 import { useProjectStore } from './project.store';
@@ -186,9 +186,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: undefined });
   }
 
-  const markers = createTimelineMarkers({
-    timelineDoc,
-    currentTime,
+  const markerService = createTimelineMarkerService({
+    getDoc: () => timelineDoc.value,
+    getCurrentTime: () => currentTime.value,
     applyTimeline,
   });
 
@@ -1214,7 +1214,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   return {
     timelineDoc,
-    getMarkers: markers.getMarkers,
+    getMarkers: markerService.getMarkers,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
@@ -1254,9 +1254,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     setPlaybackGestureHandler,
     togglePlayback,
     stopPlayback,
-    addMarkerAtPlayhead: markers.addMarkerAtPlayhead,
-    updateMarker: markers.updateMarker,
-    removeMarker: markers.removeMarker,
+    addMarkerAtPlayhead: markerService.addMarkerAtPlayhead,
+    updateMarker: markerService.updateMarker,
+    removeMarker: markerService.removeMarker,
     addTrack,
     addAdjustmentClipAtPlayhead,
     addVirtualClipAtPlayhead,
