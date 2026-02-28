@@ -46,6 +46,55 @@ const fileInfo = ref<{
   metadata?: unknown;
 } | null>(null);
 
+interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
+  values?: () => AsyncIterable<FileSystemHandle>;
+  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
+}
+
+async function computeDirectorySize(
+  dirHandle: FileSystemDirectoryHandle,
+  options?: { maxEntries?: number },
+): Promise<number | undefined> {
+  const maxEntries = options?.maxEntries ?? 25_000;
+  let seen = 0;
+
+  async function walk(handle: FileSystemDirectoryHandle): Promise<number> {
+    const iterator = (handle as FsDirectoryHandleWithIteration).values?.() ??
+      (handle as FsDirectoryHandleWithIteration).entries?.();
+    if (!iterator) return 0;
+
+    let total = 0;
+    for await (const value of iterator) {
+      if (seen >= maxEntries) {
+        throw new Error('Directory too large');
+      }
+      seen += 1;
+
+      const entryHandle = (Array.isArray(value) ? value[1] : value) as
+        | FileSystemFileHandle
+        | FileSystemDirectoryHandle;
+
+      if (entryHandle.kind === 'file') {
+        try {
+          const f = await (entryHandle as FileSystemFileHandle).getFile();
+          total += f.size;
+        } catch {
+          // ignore
+        }
+      } else {
+        total += await walk(entryHandle as FileSystemDirectoryHandle);
+      }
+    }
+    return total;
+  }
+
+  try {
+    return await walk(dirHandle);
+  } catch {
+    return undefined;
+  }
+}
+
 const selectedClip = computed<TimelineClipItem | null>(() => {
   const entity = selectionStore.selectedEntity;
   if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
@@ -438,23 +487,24 @@ const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>
   if (selectedTrack.value) return 'track';
 
   const entity = selectionStore.selectedEntity;
-  if (entity?.source === 'fileManager' && entity.kind === 'file') return 'file';
+  if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
+    return 'file';
 
   return 'empty';
 });
 
-const selectedFileEntry = computed(() => {
+const selectedFsEntry = computed(() => {
   const entity = selectionStore.selectedEntity;
-  if (entity?.source === 'fileManager' && entity.kind === 'file') {
+  if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory')) {
     return entity.entry;
   }
   return null;
 });
 
 const hasProxy = computed(() => {
-  if (displayMode.value !== 'file' || !selectedFileEntry.value || !selectedFileEntry.value.path)
+  if (displayMode.value !== 'file' || !selectedFsEntry.value || !selectedFsEntry.value.path)
     return false;
-  return proxyStore.existingProxies.has(selectedFileEntry.value.path);
+  return proxyStore.existingProxies.has(selectedFsEntry.value.path);
 });
 
 const selectedClipTrack = computed<TimelineTrack | null>(() => {
@@ -597,7 +647,7 @@ async function loadPreviewMedia() {
     currentUrl.value = null;
   }
 
-  const entry = selectedFileEntry.value;
+  const entry = selectedFsEntry.value;
   if (!entry || entry.kind !== 'file') return;
 
   try {
@@ -627,7 +677,7 @@ watch(previewMode, () => {
 });
 
 watch(
-  () => selectedFileEntry.value,
+  () => selectedFsEntry.value,
   async (entry) => {
     // Revoke old URL
     if (currentUrl.value) {
@@ -639,7 +689,16 @@ watch(
     fileInfo.value = null;
     previewMode.value = 'original';
 
-    if (!entry || entry.kind !== 'file') return;
+    if (!entry) return;
+
+    if (entry.kind === 'directory') {
+      fileInfo.value = {
+        name: entry.name,
+        kind: 'directory',
+        size: await computeDirectorySize(entry.handle as FileSystemDirectoryHandle),
+      };
+      return;
+    }
 
     try {
       const file = await (entry.handle as FileSystemFileHandle).getFile();
@@ -831,10 +890,10 @@ function onPanelFocusOut() {
           {{ selectedTransitionClip?.name }}
         </span>
         <span
-          v-else-if="displayMode === 'file' && selectedFileEntry"
+          v-else-if="displayMode === 'file' && selectedFsEntry"
           class="ml-2 text-xs text-ui-text-muted font-mono truncate"
         >
-          {{ selectedFileEntry.name }}
+          {{ selectedFsEntry.name }}
         </span>
         <span
           v-else-if="displayMode === 'track' && selectedTrack"

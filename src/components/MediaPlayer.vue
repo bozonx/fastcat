@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, watch } from 'vue';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   src: string;
