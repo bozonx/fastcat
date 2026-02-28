@@ -78,6 +78,30 @@ describe('fileManagerService', () => {
     expect(checkExistingProxies).not.toHaveBeenCalled();
   });
 
+  it('readDirectory includes hidden files when showHiddenFiles=true', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const fileHidden: any = { kind: 'file', name: '.secret.txt', getFile: vi.fn() };
+    const fileVisible: any = createFileHandleMock({ name: 'a.txt' });
+    const dirHandle = createDirHandleMock({ values: [fileHidden, fileVisible] });
+
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      sanitizeHandle: (h) => h,
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    const entries = await service.readDirectory(dirHandle);
+    expect(new Set(entries.map((e) => e.name))).toEqual(new Set(['.secret.txt', 'a.txt']));
+  });
+
   it('readDirectory calls checkExistingProxies for video files', async () => {
     const rootEntries = ref<FsEntry[]>([]);
     const sortMode = ref<'name' | 'modified'>('name');
@@ -210,5 +234,59 @@ describe('fileManagerService', () => {
 
     const videoEntry = rootEntries.value.find((e) => e.name === VIDEO_DIR_NAME);
     expect(videoEntry?.expanded).toBe(true);
+  });
+
+  it('expandPersistedDirectories expands saved paths and loads children', async () => {
+    const rootEntries = ref<FsEntry[]>([]);
+    const sortMode = ref<'name' | 'modified'>('name');
+
+    const childFile = createFileHandleMock({ name: 'child.txt' });
+    const nestedDirHandle = createDirHandleMock({ values: [childFile] });
+
+    const folderHandle = createDirHandleMock({
+      values: [
+        { kind: 'directory', name: 'nested', values: () => createAsyncIterable([childFile]) },
+      ],
+    });
+
+    const getExpandedPaths = () => ['folder/nested'];
+    const setPathExpanded = vi.fn();
+
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: (path) => path === 'folder/nested',
+      setPathExpanded,
+      getExpandedPaths,
+      sanitizeHandle: (h) => {
+        if ((h as any).name === 'nested') return nestedDirHandle as any;
+        return h;
+      },
+      sanitizeParentHandle: (h) => h,
+      checkExistingProxies: vi.fn(async () => undefined),
+      getDirectoryIterator: (dir) => {
+        const rawValues = (dir as any).values?.();
+        return rawValues ?? null;
+      },
+    });
+
+    rootEntries.value = [
+      {
+        name: 'folder',
+        kind: 'directory',
+        handle: folderHandle,
+        parentHandle: undefined,
+        path: 'folder',
+        expanded: false,
+        children: undefined,
+      },
+    ];
+
+    await service.expandPersistedDirectories();
+
+    const folder = rootEntries.value[0]!;
+    expect(folder.expanded).toBe(true);
+    expect(setPathExpanded).toHaveBeenCalledWith('folder', true);
   });
 });

@@ -1,9 +1,11 @@
-import { ref, computed, toRaw, markRaw, watch } from 'vue';
+import { ref, computed, toRaw, markRaw, watch, type Ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useSelectionStore } from '~/stores/selection.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { convertSvgToPng } from '~/utils/svg';
 import {
   VIDEO_DIR_NAME,
@@ -15,6 +17,7 @@ import {
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import type { FsEntry } from '~/types/fs';
 import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
+import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
   createFolderCommand,
@@ -32,21 +35,17 @@ export function isMoveAllowed(params: { sourcePath: string; targetDirPath: strin
   return isMoveAllowedCore(params);
 }
 
-export function useFileManager() {
-  const { t } = useI18n();
-  const toast = useToast();
-  const workspaceStore = useWorkspaceStore();
-  const projectStore = useProjectStore();
-  const uiStore = useUiStore();
-  const mediaStore = useMediaStore();
-  const proxyStore = useProxyStore();
+interface UiActionRunnerState {
+  isLoading: Ref<boolean>;
+  error: Ref<string | null>;
+}
 
-  const rootEntries = ref<FsEntry[]>([]);
-  const isLoading = ref(false);
-  const error = ref<string | null>(null);
-  const sortMode = ref<FileTreeSortMode>('name');
+interface UiActionRunnerDeps {
+  toast: ReturnType<typeof useToast>;
+}
 
-  async function runWithUiFeedback<T>(params: {
+function createUiActionRunner(state: UiActionRunnerState, deps: UiActionRunnerDeps) {
+  return async function runWithUiFeedback<T>(params: {
     action: () => Promise<T>;
     defaultErrorMessage: string;
     toastTitle: string;
@@ -54,8 +53,8 @@ export function useFileManager() {
     ignoreError?: (e: unknown) => boolean;
     rethrow?: boolean;
   }): Promise<T | null> {
-    error.value = null;
-    isLoading.value = true;
+    state.error.value = null;
+    state.isLoading.value = true;
     try {
       return await params.action();
     } catch (e: any) {
@@ -63,39 +62,76 @@ export function useFileManager() {
         return null;
       }
 
-      error.value = e?.message ?? params.defaultErrorMessage;
-      toast.add({
+      state.error.value = e?.message ?? params.defaultErrorMessage;
+      deps.toast.add({
         color: 'red',
         title: params.toastTitle,
-        description: params.toastDescription?.() ?? (error.value || params.defaultErrorMessage),
+        description:
+          params.toastDescription?.() ?? (state.error.value || params.defaultErrorMessage),
       });
 
       if (params.rethrow) throw e;
       return null;
     } finally {
-      isLoading.value = false;
+      state.isLoading.value = false;
     }
-  }
+  };
+}
+
+export interface FileManagerCreateDeps {
+  t: ReturnType<typeof useI18n>['t'];
+  toast: ReturnType<typeof useToast>;
+  isApiSupported: Ref<boolean>;
+  rootEntries: Ref<FsEntry[]>;
+  sortMode: Ref<FileTreeSortMode>;
+  showHiddenFiles: Ref<boolean>;
+  isFileTreePathExpanded: (path: string) => boolean;
+  setFileTreePathExpanded: (path: string, expanded: boolean) => void;
+  getExpandedPaths: () => string[];
+  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  getProjectName: () => string | null;
+  getProjectId: () => string | null;
+  getProjectSize: () => { width: number; height: number };
+  onMediaImported: (params: {
+    fileHandle: FileSystemFileHandle;
+    projectRelativePath: string;
+  }) => void;
+  proxy: {
+    checkExistingProxies: (paths: string[]) => Promise<void>;
+    deleteProxy: (path: string) => Promise<void>;
+    clearExistingProxies: () => void;
+  };
+  thumbnails: {
+    clearVideoThumbnails: (params: {
+      projectId: string;
+      projectRelativePath: string;
+    }) => Promise<void>;
+  };
+  onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
+  onDirectoryMoved?: () => void | Promise<void>;
+}
+
+export function createFileManager(deps: FileManagerCreateDeps) {
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+  const runWithUiFeedback = createUiActionRunner({ isLoading, error }, { toast: deps.toast });
 
   const service = createFileManagerService({
-    rootEntries,
-    sortMode,
-    showHiddenFiles: () => uiStore.showHiddenFiles,
-    isPathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
-    setPathExpanded: (path, expanded) => {
-      const projectName = projectStore.currentProjectName;
-      if (!projectName) return;
-      uiStore.setFileTreePathExpanded(projectName, path, expanded);
-    },
-    getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
+    rootEntries: deps.rootEntries,
+    sortMode: deps.sortMode,
+    showHiddenFiles: () => deps.showHiddenFiles.value,
+    isPathExpanded: (path) => deps.isFileTreePathExpanded(path),
+    setPathExpanded: (path, expanded) => deps.setFileTreePathExpanded(path, expanded),
+    getExpandedPaths: () => deps.getExpandedPaths(),
     sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
     sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
-    checkExistingProxies: (videoPaths) => proxyStore.checkExistingProxies(videoPaths),
+    checkExistingProxies: (videoPaths) => deps.proxy.checkExistingProxies(videoPaths),
     onError: (params: { title?: string; message: string; error?: unknown }) => {
       const description = params.error
         ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
         : params.message;
-      toast.add({
+      deps.toast.add({
         color: 'red',
         title: params.title ?? 'File manager error',
         description,
@@ -103,19 +139,12 @@ export function useFileManager() {
     },
   });
 
-  const isApiSupported = workspaceStore.isApiSupported;
-
   watch(
-    () => uiStore.showHiddenFiles,
+    () => deps.showHiddenFiles.value,
     () => {
       void loadProjectDirectory();
     },
   );
-
-  async function getProjectRootDirHandle(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
-    return await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName);
-  }
 
   function findEntryByPath(path: string): FsEntry | null {
     return service.findEntryByPath(path);
@@ -139,16 +168,14 @@ export function useFileManager() {
   }
 
   async function loadProjectDirectory() {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) {
-      rootEntries.value = [];
+    const projectDir = await deps.getProjectDirHandle();
+    if (!projectDir) {
+      deps.rootEntries.value = [];
       return;
     }
 
     await runWithUiFeedback({
       action: async () => {
-        const projectDir = await workspaceStore.projectsHandle!.getDirectoryHandle(
-          projectStore.currentProjectName!,
-        );
         await service.loadProjectDirectory(projectDir);
       },
       defaultErrorMessage: 'Failed to open project folder',
@@ -163,7 +190,10 @@ export function useFileManager() {
     targetDirHandle?: FileSystemDirectoryHandle,
     targetDirPath?: string,
   ) {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+    const projectName = deps.getProjectName();
+    if (!projectName) return;
+    const projectDir = await deps.getProjectDirHandle();
+    if (!projectDir) return;
 
     await runWithUiFeedback({
       action: async () => {
@@ -174,38 +204,38 @@ export function useFileManager() {
             targetDirPath,
           },
           {
-            getProjectDirHandle: async () =>
-              await workspaceStore.projectsHandle!.getDirectoryHandle(
-                projectStore.currentProjectName!,
-              ),
-            getTargetDirHandle: async ({ projectDir, file }) =>
-              await resolveDefaultTargetDir({ projectDir, file }),
+            getProjectDirHandle: async () => projectDir,
+            getTargetDirHandle: async ({ projectDir: pd, file }) =>
+              await resolveDefaultTargetDir({ projectDir: pd, file }),
             convertSvgToPng: async (file) =>
               await convertSvgToPng(file, {
-                maxWidth: projectStore.projectSettings.project.width,
-                maxHeight: projectStore.projectSettings.project.height,
+                maxWidth: deps.getProjectSize().width,
+                maxHeight: deps.getProjectSize().height,
               }),
             onSvgConvertError: ({ file, error: e }) => {
               console.warn('Failed to convert SVG to PNG', e);
               error.value = `Failed to import SVG: ${file.name}`;
-              toast.add({
+              deps.toast.add({
                 color: 'red',
                 title: 'SVG Import Error',
                 description: error.value,
               });
             },
             onSkipProjectFile: ({ file }) => {
-              toast.add({
+              deps.toast.add({
                 color: 'neutral',
-                title: t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
-                description: t(
+                title: deps.t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
+                description: deps.t(
                   'videoEditor.fileManager.skipOtio.description',
                   `${file.name} is a project file and cannot be imported this way. Use Create Timeline instead.`,
                 ),
               });
             },
             onMediaImported: ({ fileHandle, projectRelativePath }) => {
-              void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
+              deps.onMediaImported({
+                fileHandle: fileHandle as FileSystemFileHandle,
+                projectRelativePath,
+              });
             },
           },
         );
@@ -219,15 +249,13 @@ export function useFileManager() {
   }
 
   async function createFolder(name: string, targetEntry: FileSystemDirectoryHandle | null = null) {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+    const projectName = deps.getProjectName();
+    if (!projectName) return;
 
     await runWithUiFeedback({
       action: async () => {
-        const baseDir =
-          targetEntry ||
-          (await workspaceStore.projectsHandle!.getDirectoryHandle(
-            projectStore.currentProjectName!,
-          ));
+        const baseDir = targetEntry || (await deps.getProjectDirHandle());
+        if (!baseDir) return;
         await createFolderCommand({ name, baseDir });
         await loadProjectDirectory();
       },
@@ -246,16 +274,14 @@ export function useFileManager() {
             await parent.removeEntry(name, { recursive });
           },
           onFileDeleted: async ({ path }) => {
-            await proxyStore.deleteProxy(path);
+            await deps.proxy.deleteProxy(path);
 
             if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
-              if (projectStore.currentProjectId) {
-                await thumbnailGenerator.clearThumbnails({
-                  projectId: projectStore.currentProjectId,
-                  hash: getClipThumbnailsHash({
-                    projectId: projectStore.currentProjectId,
-                    projectRelativePath: path,
-                  }),
+              const projectId = deps.getProjectId();
+              if (projectId) {
+                await deps.thumbnails.clearVideoThumbnails({
+                  projectId,
+                  projectRelativePath: path,
                 });
               }
             }
@@ -272,6 +298,10 @@ export function useFileManager() {
 
   async function renameEntry(target: FsEntry, newName: string) {
     if (!target.parentHandle) return;
+
+    const oldPath = target.path;
+    const parentPath = oldPath ? oldPath.split('/').slice(0, -1).join('/') : '';
+    const newPath = oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '';
 
     await runWithUiFeedback({
       action: async () => {
@@ -298,6 +328,10 @@ export function useFileManager() {
           },
         );
 
+        if (oldPath && newPath) {
+          await deps.onEntryPathChanged?.({ oldPath, newPath });
+        }
+
         await loadProjectDirectory();
       },
       defaultErrorMessage: 'Failed to rename',
@@ -311,7 +345,8 @@ export function useFileManager() {
     targetDirHandle: FileSystemDirectoryHandle;
     targetDirPath: string;
   }) {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+    const projectName = deps.getProjectName();
+    if (!projectName) return;
     if (!params.source.parentHandle) return;
 
     const sourcePath = params.source.path ?? '';
@@ -343,27 +378,26 @@ export function useFileManager() {
               await parent.removeEntry(name, { recursive });
             },
             onFileMoved: async ({ oldPath, newPath }) => {
-              delete mediaStore.mediaMetadata[oldPath];
-              delete mediaStore.mediaMetadata[newPath];
+              await deps.onEntryPathChanged?.({ oldPath, newPath });
 
               if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
-                await proxyStore.deleteProxy(oldPath);
-                proxyStore.existingProxies.clear();
+                await deps.proxy.deleteProxy(oldPath);
+                deps.proxy.clearExistingProxies();
 
-                if (projectStore.currentProjectId) {
-                  await thumbnailGenerator.clearThumbnails({
-                    projectId: projectStore.currentProjectId,
-                    hash: getClipThumbnailsHash({
-                      projectId: projectStore.currentProjectId,
-                      projectRelativePath: oldPath,
-                    }),
+                const projectId = deps.getProjectId();
+                if (projectId) {
+                  await deps.thumbnails.clearVideoThumbnails({
+                    projectId,
+                    projectRelativePath: oldPath,
                   });
                 }
+
+                await deps.proxy.checkExistingProxies([newPath]);
               }
             },
             onDirectoryMoved: async () => {
-              mediaStore.resetMediaState();
-              proxyStore.existingProxies.clear();
+              await deps.onDirectoryMoved?.();
+              deps.proxy.clearExistingProxies();
             },
           },
         );
@@ -378,13 +412,11 @@ export function useFileManager() {
   }
 
   async function createTimeline(): Promise<string | null> {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
+    const projectDir = await deps.getProjectDirHandle();
+    if (!projectDir) return null;
 
     return await runWithUiFeedback({
       action: async () => {
-        const projectDir = await workspaceStore.projectsHandle!.getDirectoryHandle(
-          projectStore.currentProjectName!,
-        );
         const createdPath = await createTimelineCommand({
           projectDir,
           timelinesDirName: TIMELINES_DIR_NAME,
@@ -410,14 +442,14 @@ export function useFileManager() {
   }
 
   return {
-    rootEntries,
+    rootEntries: deps.rootEntries,
     isLoading,
     error,
-    isApiSupported,
-    getProjectRootDirHandle,
-    sortMode,
+    isApiSupported: deps.isApiSupported,
+    getProjectRootDirHandle: deps.getProjectRootDirHandle,
+    sortMode: deps.sortMode,
     setSortMode: (v: FileTreeSortMode) => {
-      sortMode.value = v;
+      deps.sortMode.value = v;
     },
     loadProjectDirectory,
     toggleDirectory,
@@ -426,8 +458,111 @@ export function useFileManager() {
     deleteEntry,
     renameEntry,
     findEntryByPath,
+    mergeEntries,
     moveEntry,
     createTimeline,
     getFileIcon,
   };
+}
+
+export function useFileManager() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const workspaceStore = useWorkspaceStore();
+  const projectStore = useProjectStore();
+  const uiStore = useUiStore();
+  const mediaStore = useMediaStore();
+  const proxyStore = useProxyStore();
+  const selectionStore = useSelectionStore();
+  const focusStore = useFocusStore();
+
+  const rootEntries = ref<FsEntry[]>([]);
+  const sortMode = ref<FileTreeSortMode>('name');
+
+  const isApiSupported = computed(() => workspaceStore.isApiSupported);
+  const showHiddenFiles = computed(() => uiStore.showHiddenFiles);
+
+  function updateSelectionPath(params: { oldPath: string; newPath: string }) {
+    if (uiStore.selectedFsEntry?.path === params.oldPath) {
+      uiStore.selectedFsEntry = {
+        ...uiStore.selectedFsEntry,
+        path: params.newPath,
+        name: params.newPath.split('/').pop() ?? uiStore.selectedFsEntry.name,
+      };
+      focusStore.setTempFocus('left');
+    }
+
+    if (
+      selectionStore.selectedEntity?.source === 'fileManager' &&
+      selectionStore.selectedEntity.path === params.oldPath
+    ) {
+      const updatedEntry = findEntryByPathCore(rootEntries.value, params.newPath);
+      if (updatedEntry) {
+        selectionStore.selectFsEntry(updatedEntry);
+      }
+    }
+  }
+
+  const api = createFileManager({
+    t,
+    toast,
+    isApiSupported,
+    rootEntries,
+    sortMode,
+    showHiddenFiles,
+    isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
+    setFileTreePathExpanded: (path, expanded) => {
+      const projectName = projectStore.currentProjectName;
+      if (!projectName) return;
+      uiStore.setFileTreePathExpanded(projectName, path, expanded);
+    },
+    getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
+    getProjectRootDirHandle: async () => {
+      if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
+      return await workspaceStore.projectsHandle.getDirectoryHandle(
+        projectStore.currentProjectName,
+      );
+    },
+    getProjectDirHandle: async () => {
+      if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
+      return await workspaceStore.projectsHandle.getDirectoryHandle(
+        projectStore.currentProjectName,
+      );
+    },
+    getProjectName: () => projectStore.currentProjectName,
+    getProjectId: () => projectStore.currentProjectId,
+    getProjectSize: () => ({
+      width: projectStore.projectSettings.project.width,
+      height: projectStore.projectSettings.project.height,
+    }),
+    onMediaImported: ({ fileHandle, projectRelativePath }) => {
+      void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
+    },
+    proxy: {
+      checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),
+      deleteProxy: async (path) => await proxyStore.deleteProxy(path),
+      clearExistingProxies: () => proxyStore.existingProxies.clear(),
+    },
+    thumbnails: {
+      clearVideoThumbnails: async ({ projectId, projectRelativePath }) => {
+        await thumbnailGenerator.clearThumbnails({
+          projectId,
+          hash: getClipThumbnailsHash({
+            projectId,
+            projectRelativePath,
+          }),
+        });
+      },
+    },
+    onEntryPathChanged: async ({ oldPath, newPath }) => {
+      delete mediaStore.mediaMetadata[oldPath];
+      delete mediaStore.mediaMetadata[newPath];
+      updateSelectionPath({ oldPath, newPath });
+    },
+    onDirectoryMoved: async () => {
+      mediaStore.resetMediaState();
+    },
+  });
+
+  return api;
 }

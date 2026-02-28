@@ -12,6 +12,10 @@ interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
+type DirectoryIterator = (
+  dirHandle: FileSystemDirectoryHandle,
+) => AsyncIterable<FileSystemHandle> | null;
+
 export interface FileManagerServiceDeps {
   rootEntries: Ref<FsEntry[]>;
   sortMode: Ref<'name' | 'modified'>;
@@ -19,6 +23,7 @@ export interface FileManagerServiceDeps {
   isPathExpanded: (path: string) => boolean;
   setPathExpanded: (path: string, expanded: boolean) => void;
   getExpandedPaths: () => string[];
+  getDirectoryIterator?: DirectoryIterator;
   sanitizeHandle: <T extends object>(handle: T) => T;
   sanitizeParentHandle: (handle: FileSystemDirectoryHandle) => FileSystemDirectoryHandle;
   checkExistingProxies: (videoPaths: string[]) => Promise<void>;
@@ -36,6 +41,21 @@ export interface FileManagerService {
 }
 
 export function createFileManagerService(deps: FileManagerServiceDeps): FileManagerService {
+  const getDirectoryIterator: DirectoryIterator =
+    deps.getDirectoryIterator ??
+    ((dirHandle) => {
+      const iterator =
+        (dirHandle as FsDirectoryHandleWithIteration).values?.() ??
+        (dirHandle as FsDirectoryHandleWithIteration).entries?.();
+      if (!iterator) return null;
+      return (async function* () {
+        for await (const value of iterator) {
+          const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
+          yield handle;
+        }
+      })();
+    });
+
   async function attachLastModified(entries: FsEntry[]): Promise<FsEntry[]> {
     const next = await Promise.all(
       entries.map(async (entry) => {
@@ -69,9 +89,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
   ): Promise<FsEntry[]> {
     const entries: FsEntry[] = [];
 
-    const iterator =
-      (dirHandle as FsDirectoryHandleWithIteration).values?.() ??
-      (dirHandle as FsDirectoryHandleWithIteration).entries?.();
+    const iterator = getDirectoryIterator(dirHandle);
     if (!iterator) {
       deps.onError?.({
         title: 'File manager error',
@@ -81,14 +99,10 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     }
 
     try {
-      for await (const value of iterator) {
-        const rawHandle = (Array.isArray(value) ? value[1] : value) as
-          | FileSystemFileHandle
-          | FileSystemDirectoryHandle;
-
+      for await (const rawHandle of iterator) {
         if (!deps.showHiddenFiles() && rawHandle.name.startsWith('.')) continue;
 
-        const handle = deps.sanitizeHandle(rawHandle);
+        const handle = deps.sanitizeHandle(rawHandle as any);
         const parentHandle = deps.sanitizeParentHandle(dirHandle);
 
         entries.push({
