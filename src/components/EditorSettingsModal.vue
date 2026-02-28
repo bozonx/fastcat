@@ -377,80 +377,86 @@ const thumbnailsLimitGb = computed({
         </div>
 
         <div v-else-if="activeSection === 'user.hotkeys'" class="flex flex-col gap-6">
-          <div class="flex items-center justify-between gap-3">
-            <div class="text-sm font-medium text-ui-text">
+          <div class="flex items-center justify-between gap-3 px-1">
+            <div class="text-sm font-semibold text-ui-text">
               {{ t('videoEditor.settings.userHotkeys', 'Hotkeys') }}
             </div>
-            <div v-if="isCapturingHotkey" class="text-xs text-ui-text-muted">
+            <div v-if="isCapturingHotkey" class="text-xs text-primary-500 font-medium animate-pulse">
               {{
                 t(
                   'videoEditor.settings.hotkeysCaptureHint',
-                  'Press a key combination (Esc to cancel)',
+                  'Listening for key combination (Esc to cancel)',
                 )
               }}
             </div>
           </div>
 
-          <div class="flex flex-col gap-6">
+          <div class="flex flex-col gap-8">
             <div v-for="group in hotkeyGroups" :key="group.id" class="flex flex-col gap-3">
-              <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
+              <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest px-1">
                 {{ group.title }}
               </div>
 
-              <div class="flex flex-col gap-3">
-                <div
-                  v-for="cmd in group.commands"
-                  :key="cmd.id"
-                  class="p-3 rounded border border-ui-border"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="text-sm text-ui-text">
-                      {{ cmd.title }}
-                    </div>
-                    <UButton
-                      size="xs"
-                      color="neutral"
-                      variant="ghost"
-                      :disabled="isCapturingHotkey"
-                      :label="
-                        isCapturingHotkey && captureTargetCommandId === cmd.id
-                          ? t('videoEditor.settings.hotkeysCapturing', 'Listening...')
-                          : t('videoEditor.settings.hotkeysAdd', 'Add')
-                      "
-                      @click="startCapture(cmd.id)"
-                    />
-                  </div>
-
-                  <div class="mt-3 flex flex-wrap gap-2">
-                    <div
-                      v-for="combo in getCurrentBindings(cmd.id)"
-                      :key="combo"
-                      class="inline-flex items-center gap-2 px-2 py-1 rounded bg-ui-bg-accent"
+              <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
+                <table class="w-full border-collapse">
+                  <tbody class="divide-y divide-ui-border">
+                    <tr
+                      v-for="cmd in group.commands"
+                      :key="cmd.id"
+                      class="group hover:bg-ui-bg-accent/10 transition-colors"
                     >
-                      <span class="text-xs font-mono text-ui-text">{{ combo }}</span>
-                      <UButton
-                        size="2xs"
-                        color="neutral"
-                        variant="ghost"
-                        icon="i-heroicons-x-mark"
-                        :aria-label="t('common.remove', 'Remove')"
-                        @click="removeBinding(cmd.id, combo)"
-                      />
-                    </div>
-
-                    <div
-                      v-if="getCurrentBindings(cmd.id).length === 0"
-                      class="text-xs text-ui-text-muted"
-                    >
-                      {{ t('videoEditor.settings.hotkeysNotSet', 'Not set') }}
-                    </div>
-                  </div>
-                </div>
+                      <td class="w-[25%] p-2 py-2.5 align-top border-r border-ui-border/50">
+                        <div class="flex flex-wrap gap-1.5 items-center">
+                          <div
+                            v-for="combo in getCurrentBindings(cmd.id)"
+                            :key="combo"
+                            class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80 transition-colors"
+                          >
+                            <span class="text-[10px] font-mono font-medium text-ui-text-muted select-none">
+                              {{ combo }}
+                            </span>
+                            <UButton
+                              size="2xs"
+                              color="neutral"
+                              variant="link"
+                              icon="i-heroicons-x-mark"
+                              class="p-0! h-4 w-4 opacity-40 hover:opacity-100 transition-opacity"
+                              :aria-label="t('common.remove', 'Remove')"
+                              @click="removeBinding(cmd.id, combo)"
+                            />
+                          </div>
+                          
+                          <UButton
+                            size="xs"
+                            color="neutral"
+                            variant="subtle"
+                            icon="i-heroicons-plus"
+                            class="h-6 w-6 p-0! rounded-full shrink-0"
+                            :disabled="isCapturingHotkey"
+                            :loading="isCapturingHotkey && captureTargetCommandId === cmd.id"
+                            @click="startCapture(cmd.id)"
+                          />
+                        </div>
+                        <div 
+                          v-if="isCapturingHotkey && captureTargetCommandId === cmd.id" 
+                          class="mt-1 text-[9px] text-primary-500 font-bold uppercase tracking-wider animate-pulse"
+                        >
+                          {{ t('videoEditor.settings.hotkeysCapturing', 'Listening') }}
+                        </div>
+                      </td>
+                      <td class="p-3 py-2.5 align-middle">
+                        <span class="text-sm text-ui-text font-medium leading-tight">
+                          {{ cmd.title }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
 
-          <div class="text-xs text-ui-text-muted">
+          <div class="text-[10px] text-ui-text-muted italic px-1">
             {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
           </div>
         </div>
