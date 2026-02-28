@@ -41,8 +41,8 @@ const formatOptions = [
 ];
 
 const audioChannelsOptions = [
-  { value: 'stereo', label: t('videoEditor.audio.stereo', 'stereo') },
-  { value: 'mono', label: t('videoEditor.audio.mono', 'mono') },
+  { value: 'stereo', label: t('videoEditor.audio.stereo', 'Stereo') },
+  { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
 ];
 
 const sampleRateOptions = [
