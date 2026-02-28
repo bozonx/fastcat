@@ -295,6 +295,7 @@ async function onDirectoryFileSelect(e: Event) {
   if (!files || files.length === 0) return;
 
   await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  await loadProjectDirectory();
 }
 </script>
 

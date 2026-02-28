@@ -417,6 +417,8 @@ export function useFileManager() {
       );
       const sourcesDir = await projectDir.getDirectoryHandle('sources', { create: true });
 
+      const targetDirHandleRaw = targetDirHandle ? toRaw(targetDirHandle) : undefined;
+
       for (let file of Array.from(files)) {
         if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
           try {
@@ -431,7 +433,7 @@ export function useFileManager() {
           }
         }
 
-        let targetDir = targetDirHandle;
+        let targetDir = targetDirHandleRaw;
         let finalRelativePathBase = targetDirPath || 'sources';
 
         if (!targetDir) {
