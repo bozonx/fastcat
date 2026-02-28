@@ -173,7 +173,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
   ],
   bindings: {
     'general.focus': ['Tab'],
-    'general.deselect': ['Backspace'],
+    'general.deselect': ['Escape'],
     'general.delete': ['Delete', 'X'],
     'general.undo': ['Ctrl+Z'],
     'general.redo': ['Ctrl+Shift+Z'],
