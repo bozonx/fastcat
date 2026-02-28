@@ -226,7 +226,11 @@
         "createProxy": "Create proxy",
         "regenerateProxy": "Regenerate proxy",
         "deleteProxy": "Delete proxy",
-        "generatingProxy": "Generating proxy..."
+        "generatingProxy": "Generating proxy...",
+        "dropToFolderHint": "Drag to the File Manager on the left to upload to a specific folder",
+        "dropZone": "Move to folder",
+        "toggleHiddenFiles": "Show/Hide hidden files",
+        "createProxyForAll": "Create proxy for all videos"
       },
       "proxyReady": "Proxy available",
       "preview": {

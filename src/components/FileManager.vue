@@ -239,7 +239,15 @@ async function handleRename(newName: string) {
 }
 
 function onFileAction(
-  action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload',
+  action:
+    | 'createFolder'
+    | 'rename'
+    | 'info'
+    | 'delete'
+    | 'createProxy'
+    | 'deleteProxy'
+    | 'upload'
+    | 'createProxyForFolder',
   entry: FsEntry,
 ) {
   if (action === 'createFolder') {
@@ -264,6 +272,35 @@ function onFileAction(
     const proxyStore = useProxyStore();
     if (entry.kind === 'file' && entry.path) {
       void proxyStore.deleteProxy(entry.path);
+    }
+  } else if (action === 'createProxyForFolder') {
+    const proxyStore = useProxyStore();
+    if (entry.kind === 'directory') {
+      const videos: Array<{ handle: FileSystemFileHandle; path: string }> = [];
+
+      const collect = (list: FsEntry[]) => {
+        for (const child of list) {
+          if (child.kind === 'file') {
+            const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
+            if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext) && child.path) {
+              videos.push({
+                handle: child.handle as FileSystemFileHandle,
+                path: child.path,
+              });
+            }
+          } else if (child.kind === 'directory' && child.children) {
+            collect(child.children);
+          }
+        }
+      };
+
+      if (entry.children) {
+        collect(entry.children);
+      }
+
+      for (const v of videos) {
+        void proxyStore.generateProxy(v.handle, v.path);
+      }
     }
   }
 }
@@ -385,6 +422,14 @@ async function onDirectoryFileSelect(e: Event) {
         @click="loadProjectDirectory"
       />
       <UButton
+        :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        :title="t('videoEditor.fileManager.actions.toggleHiddenFiles', 'Show/Hide hidden files')"
+        @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
+      />
+      <UButton
         icon="i-heroicons-document-plus"
         variant="ghost"
         color="neutral"
@@ -456,5 +501,18 @@ async function onDirectoryFileSelect(e: Event) {
         </div>
       </div>
     </UiConfirmModal>
+
+    <!-- Global Drag Highlight / Hint -->
+    <div
+      v-if="uiStore.isGlobalDragging && !isDragging"
+      class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-primary-500/10 border-4 border-dashed border-primary-500/50 m-2 rounded-2xl pointer-events-none transition-all duration-300"
+    >
+      <div class="flex flex-col items-center bg-ui-bg-elevated/90 px-6 py-4 rounded-xl border border-primary-500/30 shadow-xl">
+        <UIcon name="i-heroicons-folder-arrow-down" class="w-10 h-10 text-primary-400 mb-2" />
+        <p class="text-sm font-bold text-primary-400 text-center uppercase tracking-wider">
+          {{ t('videoEditor.fileManager.actions.dropZone', 'Move to folder') }}
+        </p>
+      </div>
+    </div>
   </div>
 </template>

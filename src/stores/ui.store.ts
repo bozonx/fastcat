@@ -39,6 +39,9 @@ export interface FsEntrySelection {
 
 export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
+  const showHiddenFiles = ref(readLocalStorageJson('gran-video-editor:show-hidden-files', false));
+
+  watch(showHiddenFiles, (val) => writeLocalStorageJson('gran-video-editor:show-hidden-files', val));
 
   const isGlobalDragging = ref(false);
   const isFileManagerDragging = ref(false);
@@ -175,6 +178,7 @@ export const useUiStore = defineStore('ui', () => {
     isFileManagerDragging,
     fileTreeExpandedPaths,
     pendingFsEntryDelete,
+    showHiddenFiles,
     restoreFileTreeStateOnce,
     isFileTreePathExpanded,
     setFileTreePathExpanded,

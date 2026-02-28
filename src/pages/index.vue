@@ -822,12 +822,11 @@ function leaveProject() {
 
       <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
 
-      <!-- Global Drag & Drop Overlay -->
       <div
         v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md transition-opacity pointer-events-none"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity pointer-events-none"
       >
-        <div class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/80 border border-primary-500/50 rounded-2xl shadow-2xl animate-pulse-slow">
+        <div class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/90 border border-primary-500/50 rounded-3xl shadow-2xl animate-pulse-slow">
           <UIcon
             name="i-heroicons-arrow-down-tray"
             class="w-20 h-20 text-primary-500 mb-6"
@@ -835,9 +834,17 @@ function leaveProject() {
           <h2 class="text-3xl font-bold text-white mb-2 text-center">
             {{ t('videoEditor.fileManager.actions.dropFilesHere', 'Drop files here') }}
           </h2>
-          <p class="text-lg text-ui-text-muted text-center max-w-md">
-            {{ t('videoEditor.fileManager.actions.dropFilesGlobalDescription', 'Release files to automatically save them to the project sources folder') }}
-          </p>
+          <div class="space-y-4 text-center max-w-md">
+            <p class="text-lg text-ui-text-muted">
+              {{ t('videoEditor.fileManager.actions.dropFilesGlobalDescription', 'Release files to automatically save them to the project sources folder') }}
+            </p>
+            <div class="flex items-center justify-center gap-2 py-2 px-4 bg-primary-500/10 rounded-xl border border-primary-400/20">
+              <UIcon name="i-heroicons-folder" class="w-5 h-5 text-primary-400" />
+              <p class="text-sm font-medium text-primary-400">
+                {{ t('videoEditor.fileManager.actions.dropToFolderHint', 'Drag to the File Manager on the left to upload to a specific folder') }}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </template>

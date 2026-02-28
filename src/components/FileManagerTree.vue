@@ -39,7 +39,7 @@ const emit = defineEmits<{
   (e: 'select', entry: FsEntry): void;
   (
     e: 'action',
-    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload',
+    action: 'createFolder' | 'rename' | 'info' | 'delete' | 'createProxy' | 'deleteProxy' | 'upload' | 'createProxyForFolder',
     entry: FsEntry,
   ): void;
 }>();
@@ -223,10 +223,24 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   );
 }
 
+function folderHasVideos(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  if (!entry.children) return true; // Assume true if not loaded yet, or we can be conservative
+  return entry.children.some((child) => {
+    if (child.kind === 'file') {
+      const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
+      return ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
+    }
+    return false;
+  });
+}
+
 function getContextMenuItems(entry: FsEntry) {
   const items = [];
 
   if (entry.kind === 'directory') {
+    const hasVideos = folderHasVideos(entry);
+
     items.push([
       {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
@@ -239,6 +253,16 @@ function getContextMenuItems(entry: FsEntry) {
         onSelect: () => emit('action', 'upload', entry),
       },
     ]);
+
+    if (hasVideos) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+          icon: 'i-heroicons-film',
+          onSelect: () => emit('action', 'createProxyForFolder' as any, entry),
+        },
+      ]);
+    }
   }
 
   items.push([

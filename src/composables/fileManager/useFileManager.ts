@@ -70,6 +70,10 @@ export function useFileManager() {
 
   const isApiSupported = workspaceStore.isApiSupported;
 
+  watch(() => uiStore.showHiddenFiles, () => {
+    void loadProjectDirectory();
+  });
+
   async function getProjectRootDirHandle(): Promise<FileSystemDirectoryHandle | null> {
     if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
     return await workspaceStore.projectsHandle.getDirectoryHandle(projectStore.currentProjectName);
@@ -203,6 +207,8 @@ export function useFileManager() {
           | FileSystemDirectoryHandle;
         handle = markRaw(toRaw(handle));
         const rawParent = markRaw(toRaw(dirHandle));
+
+        if (!uiStore.showHiddenFiles && handle.name.startsWith('.')) continue;
 
         entries.push({
           name: handle.name,

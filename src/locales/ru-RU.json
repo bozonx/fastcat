@@ -227,7 +227,11 @@
         "createProxy": "Создать прокси",
         "regenerateProxy": "Перегенерировать прокси",
         "deleteProxy": "Удалить прокси",
-        "generatingProxy": "Генерация прокси..."
+        "generatingProxy": "Генерация прокси...",
+        "dropToFolderHint": "Перетащите в файловый менеджер слева, чтобы загрузить в конкретную папку",
+        "dropZone": "Переместить в папку",
+        "toggleHiddenFiles": "Показать/скрыть скрытые файлы",
+        "createProxyForAll": "Создать прокси для всех видео"
       },
       "proxyReady": "Прокси готово",
       "preview": {
