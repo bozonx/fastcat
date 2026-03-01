@@ -17,6 +17,14 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
 import { useProxyStore } from '~/stores/proxy.store';
 
+defineProps<{
+  foldersOnly?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'select', entry: FsEntry): void;
+}>();
+
 const { t } = useI18n();
 
 const projectStore = useProjectStore();
@@ -124,7 +132,9 @@ function buildNextOtioVersionName(name: string, existingNames: Set<string>): str
   return `${prefix}_${Date.now()}.otio`;
 }
 
-async function resolveParentDirHandleForEntry(entry: FsEntry): Promise<FileSystemDirectoryHandle | null> {
+async function resolveParentDirHandleForEntry(
+  entry: FsEntry,
+): Promise<FileSystemDirectoryHandle | null> {
   if (entry.parentHandle) return entry.parentHandle;
   if (!entry.path) return null;
 
@@ -231,6 +241,7 @@ async function createMarkdownInDirectory(entry: FsEntry) {
       handle: newEntry.handle,
     };
     selectionStore.selectFsEntry(newEntry);
+    emit('select', newEntry);
   }
 }
 
@@ -292,6 +303,7 @@ watch(
           handle,
         };
         selectionStore.selectFsEntry(rootEntry);
+        emit('select', rootEntry);
       }
     }
   },
@@ -368,6 +380,10 @@ async function onDirectoryFileSelect(e: Event) {
   await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
   await loadProjectDirectory();
 }
+
+function handleFileManagerFilesSelect(entry: FsEntry) {
+  emit('select', entry);
+}
 </script>
 
 <template>
@@ -394,12 +410,16 @@ async function onDirectoryFileSelect(e: Event) {
     <div
       class="flex flex-col flex-1 min-h-0"
       :class="{
-        'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('left'),
+        'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+          focusStore.isPanelFocused('left'),
       }"
       @pointerdown.capture="focusStore.setTempFocus('left')"
     >
       <!-- Header / Tabs -->
-      <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
+      <div
+        v-if="!foldersOnly"
+        class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none"
+      >
         <button
           class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
           :class="
@@ -496,6 +516,7 @@ async function onDirectoryFileSelect(e: Event) {
       <!-- Content -->
       <FileManagerFiles
         v-if="activeTab === 'files'"
+        :folders-only="foldersOnly"
         :is-dragging="isDragging"
         :is-loading="isLoading"
         :is-api-supported="isApiSupported"
@@ -509,13 +530,20 @@ async function onDirectoryFileSelect(e: Event) {
         @toggle="toggleDirectory"
         @action="onFileAction"
         @create-folder="openCreateFolderModal"
+        @select="handleFileManagerFilesSelect"
       />
-      <FileManagerEffects v-else-if="activeTab === 'effects'" class="flex-1 min-h-0" />
-      <FileManagerHistory v-else-if="activeTab === 'history'" class="flex-1 min-h-0" />
+      <FileManagerEffects
+        v-else-if="activeTab === 'effects' && !foldersOnly"
+        class="flex-1 min-h-0"
+      />
+      <FileManagerHistory
+        v-else-if="activeTab === 'history' && !foldersOnly"
+        class="flex-1 min-h-0"
+      />
     </div>
 
     <!-- Timeline Toolbar at the bottom of the panel -->
-    <TimelineToolbar />
+    <TimelineToolbar v-if="!foldersOnly" />
 
     <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
 

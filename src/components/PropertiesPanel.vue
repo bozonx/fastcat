@@ -11,6 +11,11 @@ import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
+import type { SelectedEntity } from '~/stores/selection.store';
+
+const props = defineProps<{
+  entity?: SelectedEntity | null;
+}>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -25,7 +30,7 @@ function clearAllSelection() {
 }
 
 const selectedClip = computed<TimelineClipItem | null>(() => {
-  const entity = selectionStore.selectedEntity;
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
   const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === entity.trackId);
   const item = track?.items.find((it) => it.id === entity.itemId);
@@ -33,7 +38,7 @@ const selectedClip = computed<TimelineClipItem | null>(() => {
 });
 
 const selectedTransition = computed(() => {
-  const entity = selectionStore.selectedEntity;
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source !== 'timeline' || entity.kind !== 'transition') return null;
   return { trackId: entity.trackId, itemId: entity.itemId, edge: entity.edge };
 });
@@ -47,7 +52,7 @@ const selectedTransitionClip = computed<TimelineClipItem | null>(() => {
 });
 
 const selectedTrack = computed<TimelineTrack | null>(() => {
-  const entity = selectionStore.selectedEntity;
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source !== 'timeline' || entity.kind !== 'track') return null;
   const tracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
   return tracks.find((t) => t.id === entity.trackId) ?? null;
@@ -58,7 +63,7 @@ const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
 
-  const entity = selectionStore.selectedEntity;
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
 
@@ -66,7 +71,7 @@ const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>
 });
 
 const selectedFsEntry = computed(() => {
-  const entity = selectionStore.selectedEntity;
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory')) {
     return entity.entry;
   }
