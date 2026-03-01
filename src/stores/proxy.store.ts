@@ -11,6 +11,8 @@ export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
 
+  const videoExtensions = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm']);
+
   const generatingProxies = ref<Set<string>>(new Set());
   const existingProxies = ref<Set<string>>(new Set());
   const proxyProgress = ref<Record<string, number>>({});
@@ -44,6 +46,38 @@ export const useProxyStore = defineStore('proxy', () => {
       return dir;
     } catch {
       return null;
+    }
+  }
+
+  async function generateProxiesForFolder(input: {
+    dirHandle: FileSystemDirectoryHandle;
+    dirPath: string;
+  }): Promise<void> {
+    const iterator = (input.dirHandle as any).values?.() ?? (input.dirHandle as any).entries?.();
+    if (!iterator) return;
+
+    for await (const value of iterator) {
+      const handle = (Array.isArray(value) ? value[1] : value) as
+        | FileSystemFileHandle
+        | FileSystemDirectoryHandle;
+      const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
+
+      if (handle.kind === 'file') {
+        const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
+        if (!videoExtensions.has(ext)) continue;
+        if (existingProxies.value.has(fullPath)) continue;
+
+        try {
+          await generateProxy(handle as FileSystemFileHandle, fullPath);
+        } catch (e) {
+          console.warn('Failed to generate proxy for file', fullPath, e);
+        }
+      } else if (handle.kind === 'directory') {
+        await generateProxiesForFolder({
+          dirHandle: handle as FileSystemDirectoryHandle,
+          dirPath: fullPath,
+        });
+      }
     }
   }
 
@@ -273,6 +307,7 @@ export const useProxyStore = defineStore('proxy', () => {
     proxyProgress,
     checkExistingProxies,
     generateProxy,
+    generateProxiesForFolder,
     cancelProxyGeneration,
     deleteProxy,
     getProxyFileHandle,

@@ -1,16 +1,11 @@
-import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
-import PQueue from 'p-queue';
+import { defineStore, storeToRefs } from 'pinia';
+import { ref } from 'vue';
 
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument } from '~/timeline/otioSerializer';
 
-import {
-  createDefaultProjectSettings,
-  normalizeProjectSettings,
-  type GranVideoEditorProjectSettings,
-} from '~/utils/project-settings';
+import { createDefaultProjectSettings } from '~/utils/project-settings';
 
 import {
   VIDEO_DIR_NAME,
@@ -21,16 +16,12 @@ import {
 } from '~/utils/constants';
 
 import {
-  createProjectSettingsRepository,
-  type ProjectSettingsRepository,
-} from '~/repositories/project-settings.repository';
-
-import {
   createProjectMetaRepository,
   type ProjectMetaRepository,
 } from '~/repositories/project-meta.repository';
 
 import { useWorkspaceStore } from './workspace.store';
+import { useProjectSettingsStore } from './project-settings.store';
 
 function createProjectId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -41,6 +32,10 @@ function createProjectId(): string {
 
 export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
+  const projectSettingsStore = useProjectSettingsStore();
+
+  const { projectSettings, isLoadingProjectSettings, isSavingProjectSettings } =
+    storeToRefs(projectSettingsStore);
 
   function getErrorMessage(e: unknown, fallback: string): string {
     if (!e || typeof e !== 'object') return fallback;
@@ -49,7 +44,6 @@ export const useProjectStore = defineStore('project', () => {
     return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
   }
 
-  const projectSettingsRepo = ref<ProjectSettingsRepository | null>(null);
   const projectMetaRepo = ref<ProjectMetaRepository | null>(null);
 
   const currentProjectName = ref<string | null>(null);
@@ -57,47 +51,13 @@ export const useProjectStore = defineStore('project', () => {
   const currentTimelinePath = ref<string | null>(null);
   const currentFileName = ref<string | null>(null);
 
-  const projectSettings = ref<GranVideoEditorProjectSettings>(
-    createDefaultProjectSettings(workspaceStore.userSettings),
-  );
-  const isLoadingProjectSettings = ref(false);
-  const isSavingProjectSettings = ref(false);
-
-  let persistProjectSettingsTimeout: number | null = null;
-  let projectSettingsRevision = 0;
-  let savedProjectSettingsRevision = 0;
-
-  const projectSettingsSaveQueue = new PQueue({ concurrency: 1 });
-
-  function clearPersistProjectSettingsTimeout() {
-    if (typeof window === 'undefined') return;
-    if (persistProjectSettingsTimeout === null) return;
-    window.clearTimeout(persistProjectSettingsTimeout);
-    persistProjectSettingsTimeout = null;
-  }
-
   function closeProject() {
-    clearPersistProjectSettingsTimeout();
+    projectSettingsStore.closeProjectSettings();
     currentProjectName.value = null;
     currentProjectId.value = null;
     currentTimelinePath.value = null;
     currentFileName.value = null;
-    isLoadingProjectSettings.value = false;
-    isSavingProjectSettings.value = false;
-    projectSettingsRepo.value = null;
     projectMetaRepo.value = null;
-
-    projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
-    projectSettingsRevision = 0;
-    savedProjectSettingsRevision = 0;
-  }
-
-  function markProjectSettingsAsDirty() {
-    projectSettingsRevision += 1;
-  }
-
-  function markProjectSettingsAsCleanForCurrentRevision() {
-    savedProjectSettingsRevision = projectSettingsRevision;
   }
 
   function toProjectRelativePath(path: string): string {
@@ -188,109 +148,18 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  projectSettingsStore.setContext({
+    getProjectDirHandle,
+    getCurrentProjectName: () => currentProjectName.value,
+  });
+
   async function loadProjectSettings() {
-    isLoadingProjectSettings.value = true;
-
-    const dir = await getProjectDirHandle();
-    projectSettingsRepo.value = dir ? createProjectSettingsRepository({ projectDir: dir }) : null;
-
-    try {
-      if (!projectSettingsRepo.value) {
-        projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
-        return;
-      }
-
-      const raw = await projectSettingsRepo.value.load();
-      projectSettings.value = normalizeProjectSettings(raw, workspaceStore.userSettings);
-    } catch (e: unknown) {
-      if ((e as { name?: unknown }).name === 'NotFoundError') {
-        projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
-        return;
-      }
-
-      console.warn('Failed to load project settings, fallback to defaults', e);
-      projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
-    } finally {
-      isLoadingProjectSettings.value = false;
-      projectSettingsRevision = 0;
-      markProjectSettingsAsCleanForCurrentRevision();
-    }
-  }
-
-  async function persistProjectSettingsNow() {
-    if (
-      !workspaceStore.projectsHandle ||
-      !currentProjectName.value ||
-      isLoadingProjectSettings.value
-    ) {
-      return;
-    }
-
-    if (savedProjectSettingsRevision >= projectSettingsRevision) return;
-
-    isSavingProjectSettings.value = true;
-    const revisionToSave = projectSettingsRevision;
-
-    try {
-      if (!projectSettingsRepo.value) {
-        const dir = await getProjectDirHandle();
-        projectSettingsRepo.value = dir
-          ? createProjectSettingsRepository({ projectDir: dir })
-          : null;
-      }
-
-      if (!projectSettingsRepo.value) return;
-
-      await projectSettingsRepo.value.save(projectSettings.value);
-
-      if (savedProjectSettingsRevision < revisionToSave) {
-        savedProjectSettingsRevision = revisionToSave;
-      }
-    } catch (e) {
-      console.warn('Failed to save project settings', e);
-    } finally {
-      isSavingProjectSettings.value = false;
-    }
-  }
-
-  async function enqueueProjectSettingsSave() {
-    await projectSettingsSaveQueue.add(async () => {
-      await persistProjectSettingsNow();
-    });
-  }
-
-  async function requestProjectSettingsSave(options?: { immediate?: boolean }) {
-    if (options?.immediate) {
-      clearPersistProjectSettingsTimeout();
-      await enqueueProjectSettingsSave();
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      await enqueueProjectSettingsSave();
-      return;
-    }
-
-    clearPersistProjectSettingsTimeout();
-    persistProjectSettingsTimeout = window.setTimeout(() => {
-      persistProjectSettingsTimeout = null;
-      void enqueueProjectSettingsSave();
-    }, 500);
+    await projectSettingsStore.loadProjectSettings();
   }
 
   async function saveProjectSettings() {
-    await requestProjectSettingsSave({ immediate: true });
+    await projectSettingsStore.saveProjectSettings();
   }
-
-  watch(
-    projectSettings,
-    () => {
-      if (isLoadingProjectSettings.value) return;
-      markProjectSettingsAsDirty();
-      void requestProjectSettingsSave();
-    },
-    { deep: true },
-  );
 
   async function createProject(name: string) {
     if (!workspaceStore.projectsHandle) {
@@ -326,12 +195,7 @@ export const useProjectStore = defineStore('project', () => {
           console.warn('Failed to create project meta file', e);
         }
 
-        projectSettingsRepo.value = createProjectSettingsRepository({ projectDir });
-
-        const initial = createDefaultProjectSettings(workspaceStore.userSettings);
-        projectSettings.value = initial;
-
-        await projectSettingsRepo.value.save(projectSettings.value);
+        await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectDir });
       } catch (e) {
         console.warn('Failed to create project settings file', e);
       }
@@ -479,6 +343,7 @@ export const useProjectStore = defineStore('project', () => {
     currentFileName,
     projectSettings,
     isLoadingProjectSettings,
+    isSavingProjectSettings,
     createProject,
     openProject,
     openTimelineFile,

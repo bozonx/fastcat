@@ -60,7 +60,7 @@ describe('useFileManager', () => {
         kind: 'file',
         handle: {} as unknown as FileSystemFileHandle,
       }),
-    ).toBe('i-heroicons-document');
+    ).toBe('i-heroicons-document-text');
   });
 
   it('isMoveAllowed should prevent moving directory into itself or descendant', () => {
