@@ -33,12 +33,11 @@ const isHovered = ref(false);
     <Transition name="zoom-panel">
       <div
         v-if="isHovered"
-        class="absolute top-full right-0 mt-1 z-9999 pointer-events-auto origin-top-right flex items-center justify-end"
+        class="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-99999 pointer-events-auto origin-top flex items-center justify-center"
       >
         <!-- Main panel with slider -->
         <div
-          class="relative bg-ui-bg-elevated border border-ui-border rounded-lg shadow-xl px-3 py-2 flex items-center gap-2"
-          style="width: 240px"
+          class="relative bg-ui-bg-elevated border border-ui-border rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 w-60"
         >
           <!-- Top small panel with zoom value -->
           <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg select-none whitespace-nowrap">
@@ -46,14 +45,16 @@ const isHovered = ref(false);
           </div>
 
           <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4 shrink-0 text-ui-text-muted" />
-          <TimelineZoomLogSlider
-            :model-value="timelineStore.timelineZoom"
-            :min="0"
-            :max="100"
-            :step="1"
-            slider-class="w-full flex-1"
-            @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
-          />
+          <div class="flex-1 min-w-30">
+            <TimelineZoomLogSlider
+              :model-value="timelineStore.timelineZoom"
+              :min="0"
+              :max="100"
+              :step="1"
+              slider-class="w-full"
+              @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
+            />
+          </div>
           <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4 shrink-0 text-ui-text-muted" />
         </div>
       </div>
