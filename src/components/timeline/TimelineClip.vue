@@ -815,7 +815,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
         <div
           v-if="item.kind === 'clip' && !shouldCollapseTransitions(item)"
-          class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-0 pointer-events-none"
+          class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none"
         >
           <span class="truncate text-[10px] leading-tight opacity-70" :title="item.name">
             {{ item.name }}
