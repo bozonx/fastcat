@@ -2,12 +2,14 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useEditorViewStore } from '~/stores/editorView.store';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const { leaveProject } = useProjectActions();
+const viewStore = useEditorViewStore();
 
 defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 </script>
@@ -64,15 +66,27 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
 
       <!-- Window Switcher -->
       <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mx-2">
-        <NuxtLink to="/files" class="px-3 py-1 rounded text-sm font-medium transition-colors" active-class="bg-ui-bg-elevated text-primary-500 shadow-sm" inactive-class="text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50">
+        <button
+          class="px-3 py-1 rounded text-sm font-medium transition-colors"
+          :class="viewStore.currentView === 'files' ? 'bg-ui-bg-elevated text-primary-500 shadow-sm' : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'"
+          @click="viewStore.goToFiles()"
+        >
           Файлы
-        </NuxtLink>
-        <NuxtLink to="/cut" class="px-3 py-1 rounded text-sm font-medium transition-colors" active-class="bg-ui-bg-elevated text-primary-500 shadow-sm" inactive-class="text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50">
+        </button>
+        <button
+          class="px-3 py-1 rounded text-sm font-medium transition-colors"
+          :class="viewStore.currentView === 'cut' ? 'bg-ui-bg-elevated text-primary-500 shadow-sm' : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'"
+          @click="viewStore.goToCut()"
+        >
           Монтаж
-        </NuxtLink>
-        <NuxtLink to="/sound" class="px-3 py-1 rounded text-sm font-medium transition-colors" active-class="bg-ui-bg-elevated text-primary-500 shadow-sm" inactive-class="text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50">
+        </button>
+        <button
+          class="px-3 py-1 rounded text-sm font-medium transition-colors"
+          :class="viewStore.currentView === 'sound' ? 'bg-ui-bg-elevated text-primary-500 shadow-sm' : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'"
+          @click="viewStore.goToSound()"
+        >
           Звук
-        </NuxtLink>
+        </button>
       </div>
 
       <div class="w-px h-4 bg-ui-border mx-1" />
