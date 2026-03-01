@@ -187,7 +187,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     if (mode === 'blend' && adjacent) {
       if (input.edge === 'in') {
         const prev = adjacent;
-        const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
+        const prevSourceEnd =
+          (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
         const prevMaxEnd =
           prev.clipType === 'media' && !prev.isImage
             ? ((prev as any).sourceDurationUs ?? prevSourceEnd)
@@ -198,7 +199,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         limitByHandle = Math.max(0, prevTailHandleUs + input.currentTransition.durationUs);
       } else {
         const curr = clip;
-        const currSourceEnd = (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
+        const currSourceEnd =
+          (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
         const currMaxEnd =
           curr.clipType === 'media' && !curr.isImage
             ? ((curr as any).sourceDurationUs ?? currSourceEnd)

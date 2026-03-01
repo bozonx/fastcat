@@ -6,10 +6,7 @@ interface AutoScrollOptions {
   onScroll?: (dy: number) => void;
 }
 
-export function useAutoScroll(
-  scrollEl: Ref<HTMLElement | null>,
-  options: AutoScrollOptions = {},
-) {
+export function useAutoScroll(scrollEl: Ref<HTMLElement | null>, options: AutoScrollOptions = {}) {
   const { zone = 48, maxSpeed = 16 } = options;
   const lastDragEvent = ref<DragEvent | null>(null);
   let autoScrollRaf: number | null = null;

@@ -1,6 +1,7 @@
-import type { TimelineDocument } from '~/timeline/types';
+import type { TimelineDocument, TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+
+import { computeCutUs } from '~/timeline/domain/editing';
 
 interface HotkeyTarget {
   trackId: string;
@@ -24,8 +25,6 @@ export interface TimelineEditServiceDeps {
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
 }
-
-import { computeCutUs } from '~/timeline/domain/editing';
 
 interface RippleDeleteRangeParams {
   trackIds: string[];

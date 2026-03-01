@@ -25,13 +25,13 @@ export function useProjectActions() {
    */
   async function loadTimeline(path: string) {
     if (!projectStore.currentProjectName) return;
-    
+
     // 1. Update project store state
     await projectStore.openTimelineFile(path);
-    
+
     // 2. Sync focus
     focusStore.setActiveTimelinePath(path);
-    
+
     // 3. Load actual data
     await timelineStore.loadTimeline();
     void timelineStore.loadTimelineMetadata();
@@ -42,10 +42,10 @@ export function useProjectActions() {
    */
   async function openProject(name: string) {
     leaveProject();
-    
+
     await projectStore.openProject(name);
     uiStore.restoreFileTreeStateOnce(name);
-    
+
     // Project store's openProject already sets currentTimelinePath to lastOpened or default
     if (projectStore.currentTimelinePath) {
       await loadTimeline(projectStore.currentTimelinePath);

@@ -15,7 +15,9 @@ export interface TimelinePersistenceDeps {
   currentProjectName: Ref<string | null>;
   currentTimelinePath: Ref<string | null>;
 
-  ensureTimelineFileHandle: (options?: { create?: boolean }) => Promise<FileSystemFileHandle | null>;
+  ensureTimelineFileHandle: (options?: {
+    create?: boolean;
+  }) => Promise<FileSystemFileHandle | null>;
   createFallbackTimelineDoc: () => TimelineDocument;
 
   parseTimelineFromOtio: (
@@ -179,7 +181,9 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       deps.timelineDoc.value = fallback;
     } finally {
       if (requestId !== loadTimelineRequestId) return;
-      deps.duration.value = deps.timelineDoc.value ? deps.selectTimelineDurationUs(deps.timelineDoc.value) : 0;
+      deps.duration.value = deps.timelineDoc.value
+        ? deps.selectTimelineDurationUs(deps.timelineDoc.value)
+        : 0;
       timelineRevision = 0;
       markCleanForCurrentRevision();
       deps.timelineSaveError.value = null;

@@ -376,9 +376,7 @@ function getContextMenuItems(entry: FsEntry) {
           <div class="w-4 shrink-0 flex items-center justify-center">
             <div
               class="h-4 flex items-center justify-center"
-              :class="[
-                ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
-              ]"
+              :class="[ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '']"
             >
               <UIcon
                 :name="ctx.getFileIcon(entry)"

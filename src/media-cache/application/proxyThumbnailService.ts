@@ -8,20 +8,31 @@ export interface ProxyThumbnailServiceDeps {
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
   clearExistingProxies: () => void;
-  clearVideoThumbnails: (params: { projectId: string; projectRelativePath: string }) => Promise<void>;
+  clearVideoThumbnails: (params: {
+    projectId: string;
+    projectRelativePath: string;
+  }) => Promise<void>;
 }
 
 export interface ProxyThumbnailService {
   checkExistingProxies: (paths: string[]) => Promise<void>;
   hasProxy: (path: string) => boolean;
-  ensureProxy: (params: { fileHandle: FileSystemFileHandle; projectRelativePath: string }) => Promise<void>;
+  ensureProxy: (params: {
+    fileHandle: FileSystemFileHandle;
+    projectRelativePath: string;
+  }) => Promise<void>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
   clearExistingProxies: () => void;
-  clearVideoThumbnails: (params: { projectId: string; projectRelativePath: string }) => Promise<void>;
+  clearVideoThumbnails: (params: {
+    projectId: string;
+    projectRelativePath: string;
+  }) => Promise<void>;
 }
 
-export function createProxyThumbnailService(deps: ProxyThumbnailServiceDeps): ProxyThumbnailService {
+export function createProxyThumbnailService(
+  deps: ProxyThumbnailServiceDeps,
+): ProxyThumbnailService {
   return {
     checkExistingProxies: (paths) => deps.checkExistingProxies(paths),
     hasProxy: (path) => deps.hasProxy(path),

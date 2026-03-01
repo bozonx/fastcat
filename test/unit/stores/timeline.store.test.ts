@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '../../../src/stores/timeline.store';
 import { useHistoryStore } from '../../../src/stores/history.store';
+import { createTestTimeline } from '../utils/timeline-builder';
 
 const projectStoreMock = {
   currentProjectName: 'test',
@@ -116,32 +117,10 @@ describe('TimelineStore', () => {
   it('sets freeze frame from playhead when playhead is inside clip', () => {
     const store = useTimelineStore();
 
-    store.timelineDoc = {
-      OTIO_SCHEMA: 'Timeline.1',
-      id: 'doc-1',
-      name: 'Default',
-      timebase: { fps: 30 },
-      tracks: [
-        {
-          id: 'v1',
-          kind: 'video',
-          name: 'Video 1',
-          items: [
-            {
-              kind: 'clip',
-              clipType: 'media',
-              id: 'c1',
-              trackId: 'v1',
-              name: 'Clip',
-              source: { path: '/a.mp4' },
-              sourceDurationUs: 10_000_000,
-              timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
-            },
-          ],
-        },
-      ],
-    } as any;
+    store.timelineDoc = createTestTimeline()
+      .withTrack('v1')
+      .withClip('c1', 'v1', { startUs: 1_000_000, durationUs: 2_000_000 })
+      .build() as any;
 
     store.currentTime = 1_500_000;
     store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });

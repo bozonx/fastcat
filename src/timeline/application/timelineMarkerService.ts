@@ -18,7 +18,9 @@ function generateMarkerId(): string {
   return `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function createTimelineMarkerService(deps: TimelineMarkerServiceDeps): TimelineMarkerService {
+export function createTimelineMarkerService(
+  deps: TimelineMarkerServiceDeps,
+): TimelineMarkerService {
   function getMarkers(): TimelineMarker[] {
     const raw = deps.getDoc()?.metadata?.gran?.markers;
     return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];

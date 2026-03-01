@@ -145,7 +145,6 @@ function selectTransition(
 }
 </script>
 
-
 <template>
   <div
     class="flex flex-col divide-y divide-ui-border min-h-full"
@@ -286,7 +285,9 @@ function selectTransition(
           :track="track"
           :item="item"
           :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-          :is-dragging-current-item="Boolean(props.draggingMode && props.draggingItemId === item.id)"
+          :is-dragging-current-item="
+            Boolean(props.draggingMode && props.draggingItemId === item.id)
+          "
           :is-move-preview-current-item="Boolean(props.movePreview?.itemId === item.id)"
           :selected-transition="selectedTransition"
           :resize-volume="resizeVolume"
@@ -295,10 +296,14 @@ function selectTransition(
           @start-trim-item="(ev: any, payload: any) => emit('startTrimItem', ev, payload)"
           @start-resize-volume="(ev, tId, id, gain, h) => startResizeVolume(ev, tId, id, gain, h)"
           @start-resize-fade="(ev, tId, id, edge, dur) => startResizeFade(ev, tId, id, edge, dur)"
-          @start-resize-transition="(ev, tId, id, edge, dur) => startResizeTransition(ev, tId, id, edge, dur)"
+          @start-resize-transition="
+            (ev, tId, id, edge, dur) => startResizeTransition(ev, tId, id, edge, dur)
+          "
           @select-transition="(ev, payload) => selectTransition(ev, payload)"
-          @clip-action="payload => emit('clipAction', payload)"
-          @open-speed-modal="payload => openSpeedModal(payload.trackId, payload.itemId, payload.speed)"
+          @clip-action="(payload) => emit('clipAction', payload)"
+          @open-speed-modal="
+            (payload) => openSpeedModal(payload.trackId, payload.itemId, payload.speed)
+          "
         />
       </template>
     </div>

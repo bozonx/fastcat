@@ -339,7 +339,10 @@ const canEditAudioBalance = computed(() => {
 const audioGain = computed({
   get: () => {
     const v =
-      typeof (props.clip as any)?.audioGain === 'number' && Number.isFinite((props.clip as any).audioGain) ? (props.clip as any).audioGain : 1;
+      typeof (props.clip as any)?.audioGain === 'number' &&
+      Number.isFinite((props.clip as any).audioGain)
+        ? (props.clip as any).audioGain
+        : 1;
     return Math.max(0, Math.min(2, v));
   },
   set: (val: number) => {
@@ -351,7 +354,8 @@ const audioGain = computed({
 const audioBalance = computed({
   get: () => {
     const v =
-      typeof (props.clip as any)?.audioBalance === 'number' && Number.isFinite((props.clip as any).audioBalance)
+      typeof (props.clip as any)?.audioBalance === 'number' &&
+      Number.isFinite((props.clip as any).audioBalance)
         ? (props.clip as any).audioBalance
         : 0;
     return Math.max(-1, Math.min(1, v));
@@ -369,7 +373,8 @@ const clipDurationSec = computed(() => {
 const audioFadeInSec = computed({
   get: () => {
     const v =
-      typeof (props.clip as any)?.audioFadeInUs === 'number' && Number.isFinite((props.clip as any).audioFadeInUs)
+      typeof (props.clip as any)?.audioFadeInUs === 'number' &&
+      Number.isFinite((props.clip as any).audioFadeInUs)
         ? (props.clip as any).audioFadeInUs
         : 0;
     return Math.max(0, v / 1_000_000);
@@ -383,7 +388,8 @@ const audioFadeInSec = computed({
 const audioFadeOutSec = computed({
   get: () => {
     const v =
-      typeof (props.clip as any)?.audioFadeOutUs === 'number' && Number.isFinite((props.clip as any).audioFadeOutUs)
+      typeof (props.clip as any)?.audioFadeOutUs === 'number' &&
+      Number.isFinite((props.clip as any).audioFadeOutUs)
         ? (props.clip as any).audioFadeOutUs
         : 0;
     return Math.max(0, v / 1_000_000);
@@ -396,7 +402,8 @@ const audioFadeOutSec = computed({
 
 const audioFadeInMaxSec = computed(() => {
   const opp =
-    typeof (props.clip as any).audioFadeOutUs === 'number' && Number.isFinite((props.clip as any).audioFadeOutUs)
+    typeof (props.clip as any).audioFadeOutUs === 'number' &&
+    Number.isFinite((props.clip as any).audioFadeOutUs)
       ? (props.clip as any).audioFadeOutUs
       : 0;
   return Math.max(0, (Number(props.clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
@@ -404,7 +411,8 @@ const audioFadeInMaxSec = computed(() => {
 
 const audioFadeOutMaxSec = computed(() => {
   const opp =
-    typeof (props.clip as any).audioFadeInUs === 'number' && Number.isFinite((props.clip as any).audioFadeInUs)
+    typeof (props.clip as any).audioFadeInUs === 'number' &&
+    Number.isFinite((props.clip as any).audioFadeInUs)
       ? (props.clip as any).audioFadeInUs
       : 0;
   return Math.max(0, (Number(props.clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
@@ -471,8 +479,8 @@ function formatTime(us: number): string {
 }
 
 defineExpose({
-    isRenameModalOpen,
-    handleDeleteClip,
+  isRenameModalOpen,
+  handleDeleteClip,
 });
 </script>
 
@@ -658,9 +666,7 @@ defineExpose({
             size="xs"
             :color="(clip as any).transitionIn ? 'red' : 'primary'"
             variant="ghost"
-            :icon="
-              (clip as any).transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'
-            "
+            :icon="(clip as any).transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
             @click="toggleTransition('in')"
           />
         </div>
@@ -694,8 +700,7 @@ defineExpose({
             :max="
               Math.max(
                 0.1,
-                (clip.timelineRange.durationUs -
-                  ((clip as any).transitionOut?.durationUs ?? 0)) /
+                (clip.timelineRange.durationUs - ((clip as any).transitionOut?.durationUs ?? 0)) /
                   1_000_000,
               )
             "
@@ -715,9 +720,7 @@ defineExpose({
             size="xs"
             :color="(clip as any).transitionOut ? 'red' : 'primary'"
             variant="ghost"
-            :icon="
-              (clip as any).transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'
-            "
+            :icon="(clip as any).transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
             @click="toggleTransition('out')"
           />
         </div>
@@ -751,8 +754,7 @@ defineExpose({
             :max="
               Math.max(
                 0.1,
-                (clip.timelineRange.durationUs -
-                  ((clip as any).transitionIn?.durationUs ?? 0)) /
+                (clip.timelineRange.durationUs - ((clip as any).transitionIn?.durationUs ?? 0)) /
                   1_000_000,
               )
             "
@@ -771,9 +773,7 @@ defineExpose({
       class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
     >
       <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-ui-text uppercase tracking-wide"
-          >Прозрачность</span
-        >
+        <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">Прозрачность</span>
         <span class="text-xs font-mono text-ui-text-muted"
           >{{ Math.round((clip.opacity ?? 1) * 100) }}%</span
         >
@@ -813,9 +813,7 @@ defineExpose({
           <span class="text-xs text-ui-text-muted">{{
             t('granVideoEditor.clip.audio.volume', 'Volume')
           }}</span>
-          <span class="text-xs font-mono text-ui-text-muted"
-            >{{ audioGain.toFixed(3) }}x</span
-          >
+          <span class="text-xs font-mono text-ui-text-muted">{{ audioGain.toFixed(3) }}x</span>
         </div>
         <WheelSlider
           :model-value="audioGain"

@@ -11,6 +11,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
+import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 
@@ -26,17 +27,11 @@ const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
-const { 
-  onDragOver: autoScrollDragOver, 
-  onDragLeave: autoScrollDragLeave, 
-  onDrop: autoScrollDrop 
+const {
+  onDragOver: autoScrollDragOver,
+  onDragLeave: autoScrollDragLeave,
+  onDrop: autoScrollDrop,
 } = useAutoScroll(scrollEl);
-
-function isRelevantDrag(e: DragEvent): boolean {
-  const types = e.dataTransfer?.types;
-  if (!types) return false;
-  return types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes('Files');
-}
 
 function onContainerDragOver(e: DragEvent) {
   if (!isRelevantDrag(e)) return;
@@ -121,6 +116,15 @@ async function onRequestUpload(params: {
   await props.handleFiles(params.files, params.targetDirHandle, params.targetDirPath);
 }
 
+const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
+  {
+    getProjectRootDirHandle: props.getProjectRootDirHandle,
+    findEntryByPath: props.findEntryByPath,
+    handleFiles: props.handleFiles,
+    moveEntry: props.moveEntry,
+  },
+);
+
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
   (
@@ -152,64 +156,6 @@ const rootContextMenuItems = computed(() => {
     ],
   ];
 });
-
-const isRootDropOver = ref(false);
-
-function onRootDragOver(e: DragEvent) {
-  if (!isRelevantDrag(e)) return;
-
-  e.stopPropagation();
-
-  isRootDropOver.value = true;
-  e.dataTransfer!.dropEffect = e.dataTransfer?.types.includes('Files') ? 'copy' : 'move';
-}
-
-function onRootDragLeave(e: DragEvent) {
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  const relatedTarget = e.relatedTarget as Node | null;
-  if (!currentTarget?.contains(relatedTarget)) {
-    isRootDropOver.value = false;
-  }
-}
-
-async function onRootDrop(e: DragEvent) {
-  e.stopPropagation();
-  isRootDropOver.value = false;
-
-  // Snapshot data synchronously - dataTransfer becomes empty after any await
-  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-  const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
-
-  const rootHandle = await props.getProjectRootDirHandle();
-  if (!rootHandle) return;
-
-  if (hasFiles && droppedFiles.length > 0) {
-    await props.handleFiles(droppedFiles, rootHandle, '');
-    return;
-  }
-
-  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  if (!moveRaw) return;
-
-  let parsed: any;
-  try {
-    parsed = JSON.parse(moveRaw);
-  } catch {
-    return;
-  }
-
-  const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-  if (!sourcePath) return;
-
-  const source = props.findEntryByPath(sourcePath);
-  if (!source) return;
-
-  await props.moveEntry({
-    source,
-    targetDirHandle: rootHandle,
-    targetDirPath: '',
-  });
-}
 
 async function onEntrySelect(entry: FsEntry) {
   uiStore.selectedFsEntry = {

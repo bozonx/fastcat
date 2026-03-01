@@ -4,6 +4,8 @@ import AppModal from '~/components/ui/AppModal.vue';
 
 import type { FileInfo } from '~/types/fileManager';
 
+import { formatMegabytes } from '~/utils/format';
+
 const isOpen = defineModel<boolean>('open', { required: true });
 
 const props = defineProps<{
@@ -20,8 +22,6 @@ const metadataYaml = computed(() => {
     return String(props.info.metadata);
   }
 });
-
-import { formatMegabytes } from '~/utils/format';
 </script>
 
 <template>

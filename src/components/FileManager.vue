@@ -16,9 +16,9 @@ import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
+import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
 
 const { t } = useI18n();
-import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
 
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
@@ -99,7 +99,9 @@ function onFileAction(action: any, entry: FsEntry) {
           if (!iterator) return;
 
           for await (const value of iterator) {
-            const handle = (Array.isArray(value) ? value[1] : value) as FileSystemFileHandle | FileSystemDirectoryHandle;
+            const handle = (Array.isArray(value) ? value[1] : value) as
+              | FileSystemFileHandle
+              | FileSystemDirectoryHandle;
             const fullPath = bPath ? `${bPath}/${handle.name}` : handle.name;
 
             if (handle.kind === 'file') {
