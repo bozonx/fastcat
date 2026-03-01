@@ -12,6 +12,8 @@ export interface MediaMetadata {
     size: number;
     lastModified: number;
   };
+  mimeType?: string;
+  container?: string;
   duration: number;
   video?: {
     width: number;
@@ -22,6 +24,7 @@ export interface MediaMetadata {
     codec: string;
     parsedCodec: string;
     fps: number;
+    bitrate?: number;
     colorSpace?: any;
   };
   audio?: {
@@ -29,6 +32,7 @@ export interface MediaMetadata {
     parsedCodec: string;
     sampleRate: number;
     channels: number;
+    bitrate?: number;
   };
   audioPeaks?: number[][];
 }

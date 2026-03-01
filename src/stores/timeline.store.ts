@@ -16,6 +16,7 @@ import { createTimelinePlayback } from '~/stores/timeline/timelinePlayback';
 import { createTimelineTracks } from '~/stores/timeline/timelineTracks';
 import { createTimelineClips } from '~/stores/timeline/timelineClips';
 import { createTimelineTrimming } from '~/stores/timeline/timelineTrimming';
+import { createTimelineHydration } from '~/stores/timeline/timelineHydration';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -176,6 +177,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline,
   });
 
+  const hydration = createTimelineHydration({
+    mediaMetadata: mediaMetadata as any,
+  });
+
   function goToStart() {
     currentTime.value = 0;
   }
@@ -223,7 +228,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying.value = false;
     currentTime.value = 0;
   }
-
 
   const commandService = createTimelineCommandService({
     getTimelineDoc: () => timelineDoc.value,
@@ -348,57 +352,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     await persistence.saveTimeline();
   }
 
-  function hydrateClipSourceDuration(
-    doc: TimelineDocument,
-    cmd: TimelineCommand,
-  ): TimelineDocument {
-    if (cmd.type !== 'trim_item' && cmd.type !== 'overlay_trim_item') return doc;
-
-    const track = doc.tracks.find((t) => t.id === cmd.trackId);
-    if (!track) return doc;
-
-    const item = track.items.find((it) => it.id === cmd.itemId);
-    if (!item) return doc;
-    if (item.kind !== 'clip') return doc;
-    if (item.clipType !== 'media') return doc;
-    if (!item.source?.path) return doc;
-
-    const meta = mediaMetadata.value[item.source.path];
-    if (!meta) return doc;
-
-    const hasVideo = Boolean(meta.video);
-    const hasAudio = Boolean(meta.audio);
-    const isImageLike = !hasVideo && !hasAudio;
-
-    const durationS = Number(meta.duration);
-    const durationUs =
-      Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
-
-    const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
-    const needsIsImagePatch = isImageLike && !item.isImage;
-
-    if (!needsSourceDurationPatch && !needsIsImagePatch) return doc;
-
-    const nextTracks = doc.tracks.map((t) =>
-      t.id !== track.id
-        ? t
-        : {
-            ...t,
-            items: t.items.map((it) => {
-              if (it.id === item.id && it.kind === 'clip' && it.clipType === 'media') {
-                const patch: any = {};
-                if (needsSourceDurationPatch) patch.sourceDurationUs = durationUs;
-                if (needsIsImagePatch) patch.isImage = true;
-                return { ...it, ...patch };
-              }
-              return it;
-            }),
-          },
-    );
-
-    return { ...doc, tracks: nextTracks };
-  }
-
   function applyTimeline(
     cmd: TimelineCommand,
     options?: {
@@ -413,7 +366,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
 
     const prev = timelineDoc.value;
-    const hydrated = hydrateClipSourceDuration(timelineDoc.value, cmd);
+    const hydrated = hydration.hydrateClipSourceDuration(timelineDoc.value, cmd);
     const { next } = applyTimelineCommand(hydrated, cmd);
     if (next === prev) return;
 
@@ -485,7 +438,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const prev = timelineDoc.value;
     let current = prev;
     for (const cmd of cmds) {
-      const hydrated = hydrateClipSourceDuration(current, cmd);
+      const hydrated = hydration.hydrateClipSourceDuration(current, cmd);
       const { next } = applyTimelineCommand(hydrated, cmd);
       current = next;
     }
@@ -596,8 +549,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     loadTimelineMetadata,
     clearSelection: () => selection.clearSelection(),
     selectTrack: (trackId: string | null) => selection.selectTrack(trackId),
-    toggleSelection: (itemId: string, options?: { multi?: boolean }) => selection.toggleSelection(itemId, options),
-    selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) => selection.selectTransition(input),
+    toggleSelection: (itemId: string, options?: { multi?: boolean }) =>
+      selection.toggleSelection(itemId, options),
+    selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
+      selection.selectTransition(input),
     ...playback,
     ...tracks,
     ...trimming,

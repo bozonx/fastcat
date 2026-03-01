@@ -17,6 +17,8 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
         size: file.size,
         lastModified: file.lastModified,
       },
+      mimeType: typeof file.type === 'string' ? file.type : undefined,
+      container: 'image',
       duration: 0,
     };
   }
@@ -27,6 +29,9 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
     const input = new Input({ source, formats: ALL_FORMATS } as any);
 
     try {
+      const mimeType = typeof input.getMimeType === 'function' ? await input.getMimeType() : null;
+      const format = typeof input.getFormat === 'function' ? await input.getFormat() : null;
+
       const durationS = await input.computeDuration();
       const vTrack = await input.getPrimaryVideoTrack();
       const aTrack = await input.getPrimaryAudioTrack();
@@ -36,6 +41,8 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
           size: file.size,
           lastModified: file.lastModified,
         },
+        mimeType: mimeType ?? (typeof file.type === 'string' ? file.type : undefined),
+        container: format?.name ?? format?.constructor?.name,
         duration: durationS,
       };
 
@@ -54,17 +61,20 @@ export async function extractMetadata(fileHandle: FileSystemFileHandle) {
           codec: codecParam || vTrack.codec || '',
           parsedCodec: parseVideoCodec(codecParam || vTrack.codec || ''),
           fps: stats.averagePacketRate,
+          bitrate: stats.averageBitrate,
           colorSpace,
         };
       }
 
       if (aTrack) {
+        const stats = await aTrack.computePacketStats(250);
         const codecParam = await aTrack.getCodecParameterString();
         meta.audio = {
           codec: codecParam || aTrack.codec || '',
           parsedCodec: parseAudioCodec(codecParam || aTrack.codec || ''),
           sampleRate: aTrack.sampleRate,
           channels: aTrack.numberOfChannels,
+          bitrate: stats.averageBitrate,
         };
       }
 
