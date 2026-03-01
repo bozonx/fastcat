@@ -124,7 +124,7 @@ watch(
           >
             <UIcon name="i-heroicons-musical-note" class="w-16 h-16 opacity-70" />
           </div>
-          <div class="mt-4 text-xs uppercase tracking-wider opacity-70">
+          <div class="mt-4 text-xs uppercase tracking-wider opacity-70 py-2">
             {{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}
           </div>
         </div>

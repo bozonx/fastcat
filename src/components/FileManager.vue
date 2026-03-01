@@ -269,6 +269,35 @@ watch(
 );
 
 watch(
+  () => (uiStore as any).pendingFsEntryCreateTimeline,
+  async (value) => {
+    const entry = value as FsEntry | null;
+    if (entry && entry.kind === 'directory') {
+      const rootDir = await getProjectRootDirHandle();
+      if (rootDir) {
+        await createTimelineCommand({
+          projectDir: rootDir,
+          timelinesDirName: entry.path,
+        });
+        await loadProjectDirectory();
+      }
+      (uiStore as any).pendingFsEntryCreateTimeline = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateMarkdown,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry && entry.kind === 'directory') {
+      void createMarkdownInDirectory(entry);
+      (uiStore as any).pendingFsEntryCreateMarkdown = null;
+    }
+  },
+);
+
+watch(
   () => (uiStore as any).pendingOtioCreateVersion,
   (value) => {
     const entry = value as FsEntry | null;

@@ -235,6 +235,28 @@ function onDelete() {
           {{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload files') }}
         </UButton>
 
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-document-text"
+          class="w-full"
+          @click="() => (uiStore as any).pendingFsEntryCreateMarkdown = props.selectedFsEntry"
+        >
+          {{ t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document') }}
+        </UButton>
+
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-document-plus"
+          class="w-full"
+          @click="() => (uiStore as any).pendingFsEntryCreateTimeline = props.selectedFsEntry"
+        >
+          {{ t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline') }}
+        </UButton>
+
         <div v-if="!isProjectRootDir" class="flex gap-2">
           <UButton
             size="xs"

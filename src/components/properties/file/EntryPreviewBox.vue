@@ -16,7 +16,8 @@ const props = defineProps<{
 <template>
   <div
     v-if="props.selectedEntryKind === 'file' && !props.isOtio"
-    class="w-full bg-ui-bg rounded border border-ui-border flex flex-col items-center justify-center min-h-50 overflow-hidden shrink-0"
+    class="w-full bg-ui-bg rounded border border-ui-border flex flex-col min-h-50 overflow-hidden shrink-0"
+    :class="props.mediaType === 'text' ? 'justify-start items-start text-left' : 'items-center justify-center'"
   >
     <div
       v-if="props.isUnknown && !props.isOtio"
