@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
+import { useProjectStore } from '~/stores/project.store';
+
+const projectStore = useProjectStore();
+const { currentProjectId } = storeToRefs(projectStore);
 
 const { sizes: mainSplitSizes, onResized: onMainSplitResize } = usePersistedSplitpanes(
-  'gran-editor-main-split-v4',
+  'cut-main',
+  currentProjectId,
   [40, 60],
 );
 const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitpanes(
-  'gran-editor-top-split-v4',
+  'cut-top',
+  currentProjectId,
   [20, 60, 20],
 );
 </script>

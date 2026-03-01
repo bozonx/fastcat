@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useProjectStore } from '~/stores/project.store';
 import type { TimelineTrack } from '~/timeline/types';
 import {
   useTimelineInteraction,
@@ -28,9 +30,12 @@ const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const { draggedFile, clearDraggedFile } = useDraggedFile();
+const projectStore = useProjectStore();
+const { currentProjectId } = storeToRefs(projectStore);
 
 const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersistedSplitpanes(
-  'gran-editor-timeline-split-v4',
+  'timeline-split',
+  currentProjectId,
   [10, 90],
 );
 

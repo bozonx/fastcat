@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useEditorViewStore } from '~/stores/editorView.store';
+import { useProjectStore } from '~/stores/project.store';
 
 import FileManager from '~/components/FileManager.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
@@ -12,13 +14,17 @@ import { useFilesPageStore } from '~/stores/filesPage.store';
 
 const viewStore = useEditorViewStore();
 const filesPageStore = useFilesPageStore();
+const projectStore = useProjectStore();
+const { currentProjectId } = storeToRefs(projectStore);
 
 const { sizes: mainSplitSizes, onResized: onMainSplitResize } = usePersistedSplitpanes(
-  'gran-editor-main-split-v4',
+  'editor-main',
+  currentProjectId,
   [40, 60],
 );
 const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitpanes(
-  'gran-editor-top-split-v4',
+  'editor-top',
+  currentProjectId,
   [20, 60, 20],
 );
 </script>
