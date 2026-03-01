@@ -154,23 +154,7 @@ function handleDeleteClip() {
           icon="i-heroicons-x-mark"
           @click="clearAllSelection"
         />
-        <div v-if="displayMode === 'clip'" class="flex gap-1">
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-pencil"
-            @click="openRenameModal"
-          />
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="red"
-            icon="i-heroicons-trash"
-            @click="handleDeleteClip"
-          />
-        </div>
-        <div v-else-if="displayMode === 'file' && hasProxy" class="flex gap-1">
+        <div v-if="displayMode === 'file' && hasProxy" class="flex gap-1">
           <UFieldGroup size="xs">
             <UButton
               :color="previewMode === 'original' ? 'primary' : 'neutral'"

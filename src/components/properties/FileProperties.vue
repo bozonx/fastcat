@@ -358,7 +358,7 @@ onUnmounted(() => {
 
     <!-- Preview Box (only for files) -->
     <div
-      v-if="selectedFsEntry?.kind === 'file'"
+      v-if="selectedFsEntry?.kind === 'file' && !isOtio"
       class="w-full bg-ui-bg rounded border border-ui-border flex flex-col items-center justify-center min-h-50 overflow-hidden shrink-0"
     >
       <div
@@ -605,11 +605,11 @@ onUnmounted(() => {
 
 <style scoped>
 .checkerboard-bg {
-  background-color: #121212;
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%);
+  background-color: #1a1a1a;
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.15) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.15) 75%);
   background-size: 20px 20px;
   background-position:
     0 0,
