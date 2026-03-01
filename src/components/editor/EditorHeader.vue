@@ -14,7 +14,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
 
 <template>
   <div
-    class="flex items-center justify-between px-4 h-10 bg-ui-bg-elevated border-b border-ui-border"
+    class="flex items-center justify-between px-4 h-10 pt-1 bg-ui-bg-elevated border-b border-ui-border"
   >
     <div class="flex items-center gap-2 h-full flex-1 min-w-0">
       <UButton
