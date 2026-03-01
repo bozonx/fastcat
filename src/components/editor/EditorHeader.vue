@@ -62,6 +62,21 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
 
       <div class="w-px h-4 bg-ui-border mx-1" />
 
+      <!-- Window Switcher -->
+      <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mx-2">
+        <NuxtLink to="/files" class="px-3 py-1 rounded text-sm font-medium transition-colors" active-class="bg-ui-bg-elevated text-primary-500 shadow-sm" inactive-class="text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50">
+          Файлы
+        </NuxtLink>
+        <NuxtLink to="/cut" class="px-3 py-1 rounded text-sm font-medium transition-colors" active-class="bg-ui-bg-elevated text-primary-500 shadow-sm" inactive-class="text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50">
+          Монтаж
+        </NuxtLink>
+        <NuxtLink to="/sound" class="px-3 py-1 rounded text-sm font-medium transition-colors" active-class="bg-ui-bg-elevated text-primary-500 shadow-sm" inactive-class="text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50">
+          Звук
+        </NuxtLink>
+      </div>
+
+      <div class="w-px h-4 bg-ui-border mx-1" />
+
       <UButton
         size="sm"
         variant="ghost"
