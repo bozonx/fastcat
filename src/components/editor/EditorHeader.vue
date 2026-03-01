@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useMediaStore } from '~/stores/media.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const mediaStore = useMediaStore();
+const { leaveProject } = useProjectActions();
 
 defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
-
-function leaveProject() {
-  timelineStore.resetTimelineState();
-  mediaStore.resetMediaState();
-  projectStore.closeProject();
-}
 </script>
 
 <template>

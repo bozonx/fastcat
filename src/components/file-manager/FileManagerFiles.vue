@@ -8,6 +8,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
@@ -21,6 +22,7 @@ const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
+const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -226,9 +228,7 @@ async function onEntrySelect(entry: FsEntry) {
   if (entry.kind !== 'file') return;
   if (!entry.path?.toLowerCase().endsWith('.otio')) return;
 
-  await projectStore.openTimelineFile(entry.path);
-  await timelineStore.loadTimeline();
-  void timelineStore.loadTimelineMetadata();
+  await loadTimeline(entry.path);
 }
 </script>
 

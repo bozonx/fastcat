@@ -1,16 +1,13 @@
 <script setup lang="ts">
 const colorMode = useColorMode();
 
-// TODO: Hardcoded to dark mode for now. Remove this when adding support for other themes.
-if (colorMode) {
+/**
+ * Handle initial color mode preference.
+ * Defaults to dark but allows user to change it if we add a theme switcher later.
+ */
+if (colorMode.preference === 'system') {
   colorMode.preference = 'dark';
 }
-
-useHead({
-  htmlAttrs: {
-    class: 'dark',
-  },
-});
 </script>
 
 <template>
@@ -20,3 +17,17 @@ useHead({
     </NuxtLayout>
   </UApp>
 </template>
+
+<style>
+/* Global styles that might be needed in app.vue */
+html, body, #__nuxt {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-ui-bg text-ui-text;
+}
+</style>

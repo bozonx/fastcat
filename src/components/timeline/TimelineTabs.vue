@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useProjectStore } from '~/stores/project.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { storeToRefs } from 'pinia';
 
 const projectStore = useProjectStore();
 const { currentTimelinePath, projectSettings } = storeToRefs(projectStore);
+const { loadTimeline } = useProjectActions();
 
 const scrollContainer = ref<HTMLElement | null>(null);
 
@@ -24,7 +26,7 @@ function isActive(path: string) {
 }
 
 function selectTab(path: string) {
-  projectStore.openTimelineFile(path);
+  loadTimeline(path);
 }
 
 function closeTab(path: string, event: Event) {

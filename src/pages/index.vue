@@ -14,6 +14,7 @@ import { useFocusStore } from '~/stores/focus.store';
 
 // Composables
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 // Components
 import LoadingScreen from '~/components/startup/LoadingScreen.vue';
@@ -31,14 +32,13 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 
-const { currentTimelinePath } = storeToRefs(projectStore);
-
 const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
 const isProjectSettingsOpen = ref(false);
 const isStartingUp = ref(true);
 
-// Initialize Hotkeys
+// Initialize Actions and Hotkeys
+const { openProject } = useProjectActions();
 useEditorHotkeys();
 
 // Splitpanes persistence
@@ -57,15 +57,6 @@ function onTopSplitResize(event: { panes: { size: number }[] }) {
   }
 }
 
-// Watchers
-watch(currentTimelinePath, async (newPath) => {
-  if (newPath && projectStore.currentProjectName) {
-    focusStore.setActiveTimelinePath(newPath);
-    await timelineStore.loadTimeline();
-    void timelineStore.loadTimelineMetadata();
-  }
-});
-
 // Initialization
 onMounted(async () => {
   try {
@@ -77,8 +68,7 @@ onMounted(async () => {
       workspaceStore.lastProjectName &&
       workspaceStore.projects.includes(workspaceStore.lastProjectName)
     ) {
-      await projectStore.openProject(workspaceStore.lastProjectName);
-      uiStore.restoreFileTreeStateOnce(workspaceStore.lastProjectName);
+      await openProject(workspaceStore.lastProjectName);
     }
   } finally {
     isStartingUp.value = false;

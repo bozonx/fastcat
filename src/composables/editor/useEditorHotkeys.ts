@@ -5,6 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -16,6 +17,7 @@ export function useEditorHotkeys() {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const selectionStore = useSelectionStore();
+  const { loadTimeline } = useProjectActions();
 
   let volumeHoldTimeout: number | null = null;
   let volumeHoldInterval: number | null = null;
@@ -293,7 +295,7 @@ export function useEditorHotkeys() {
         if (tabIndex > 0 && tabIndex <= openPaths.length) {
           const path = openPaths[tabIndex - 1];
           if (path) {
-            projectStore.openTimelineFile(path);
+            void loadTimeline(path);
           }
         }
       }
