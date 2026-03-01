@@ -240,7 +240,7 @@ const contextMenuItems = computed(() => {
       {
         label: t('granVideoEditor.monitor.toolbarTop', 'Панель сверху'),
         icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
-        click: () => {
+        onSelect: () => {
           if (projectStore.projectSettings.monitor) {
             projectStore.projectSettings.monitor.toolbarPosition = 'top';
           }
@@ -249,8 +249,7 @@ const contextMenuItems = computed(() => {
       {
         label: t('granVideoEditor.monitor.toolbarRight', 'Панель справа'),
         icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
-        disabled: true,
-        click: () => {
+        onSelect: () => {
           if (projectStore.projectSettings.monitor) {
             projectStore.projectSettings.monitor.toolbarPosition = 'right';
           }
@@ -259,7 +258,7 @@ const contextMenuItems = computed(() => {
       {
         label: t('granVideoEditor.monitor.toolbarBottom', 'Панель снизу'),
         icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
-        click: () => {
+        onSelect: () => {
           if (projectStore.projectSettings.monitor) {
             projectStore.projectSettings.monitor.toolbarPosition = 'bottom';
           }
@@ -268,8 +267,7 @@ const contextMenuItems = computed(() => {
       {
         label: t('granVideoEditor.monitor.toolbarLeft', 'Панель слева'),
         icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
-        disabled: true,
-        click: () => {
+        onSelect: () => {
           if (projectStore.projectSettings.monitor) {
             projectStore.projectSettings.monitor.toolbarPosition = 'left';
           }
@@ -288,13 +286,17 @@ defineProps<{
   <UContextMenu :items="contextMenuItems" class="h-full">
     <div
       class="flex h-full bg-ui-bg-elevated min-w-0 min-h-0"
-      :class="{
-        'flex-col': toolbarPosition === 'bottom',
-        'flex-col-reverse': toolbarPosition === 'top',
-        'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-          !isFullscreen && focusStore.isPanelFocused('monitor'),
-        'border-r border-ui-border': !isFullscreen,
-      }"
+      :class="[
+        toolbarPosition === 'bottom' ? 'flex-col' : '',
+        toolbarPosition === 'top' ? 'flex-col-reverse' : '',
+        toolbarPosition === 'right' ? 'flex-row' : '',
+        toolbarPosition === 'left' ? 'flex-row-reverse' : '',
+        {
+          'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+            !isFullscreen && focusStore.isPanelFocused('monitor'),
+          'border-r border-ui-border': !isFullscreen,
+        },
+      ]"
       @pointerdown.capture="focusStore.setMainFocus('monitor')"
     >
 
@@ -368,7 +370,12 @@ defineProps<{
     <!-- Playback controls -->
     <div
       class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-ui-border shrink-0 bg-ui-bg-elevated"
-      :class="[toolbarPosition === 'bottom' ? 'border-t' : 'border-b']"
+      :class="[
+        toolbarPosition === 'bottom' ? 'border-t' : '',
+        toolbarPosition === 'top' ? 'border-b' : '',
+        toolbarPosition === 'right' ? 'border-l' : '',
+        toolbarPosition === 'left' ? 'border-r' : '',
+      ]"
     >
       <div class="flex items-center gap-2 shrink-0">
         <UTooltip :text="t('granVideoEditor.monitor.snapshot', 'Create snapshot')">
