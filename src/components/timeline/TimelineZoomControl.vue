@@ -33,7 +33,7 @@ function updatePopupPosition() {
   if (!triggerEl.value) return;
   const rect = triggerEl.value.getBoundingClientRect();
   popupPosition.value = {
-    top: rect.bottom + 4,
+    top: rect.top + rect.height / 2,
     left: rect.left + rect.width / 2,
   };
 }
@@ -90,32 +90,34 @@ onBeforeUnmount(() => {
       <Transition name="zoom-panel">
         <div
           v-if="isHovered"
-          class="fixed z-99999 pointer-events-auto origin-top flex flex-col items-center -translate-x-1/2"
+          class="fixed z-99999 pointer-events-auto origin-top -translate-x-1/2 -translate-y-1/2"
           :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
           @mouseenter="onPopupMouseEnter"
           @mouseleave="onPopupMouseLeave"
         >
-          <!-- Value badge: floats above slider panel, not counted in centering -->
-          <div class="-mb-2 bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg select-none whitespace-nowrap">
-            x{{ zoomFactor }}
-          </div>
-
-          <!-- Main panel with slider -->
-          <div
-            class="bg-ui-bg-elevated border border-ui-border rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 w-60"
-          >
-            <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4 shrink-0 text-ui-text-muted" />
-            <div class="flex-1 min-w-30">
-              <TimelineZoomLogSlider
-                :model-value="timelineStore.timelineZoom"
-                :min="0"
-                :max="100"
-                :step="1"
-                slider-class="w-full"
-                @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
-              />
+          <div class="relative">
+            <!-- Value badge: floats above slider panel, not counted in centering -->
+            <div class="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg select-none whitespace-nowrap">
+              x{{ zoomFactor }}
             </div>
-            <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4 shrink-0 text-ui-text-muted" />
+
+            <!-- Main panel with slider -->
+            <div
+              class="bg-ui-bg-elevated border border-ui-border rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 w-60"
+            >
+              <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4 shrink-0 text-ui-text-muted" />
+              <div class="flex-1 min-w-30">
+                <TimelineZoomLogSlider
+                  :model-value="timelineStore.timelineZoom"
+                  :min="0"
+                  :max="100"
+                  :step="1"
+                  slider-class="w-full"
+                  @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
+                />
+              </div>
+              <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4 shrink-0 text-ui-text-muted" />
+            </div>
           </div>
         </div>
       </Transition>
