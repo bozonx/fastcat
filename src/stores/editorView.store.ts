@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { readLocalStorageJson, writeLocalStorageJson } from './ui/uiLocalStorage';
+import { getPanelSizesKey } from '~/composables/ui/usePersistedSplitpanes';
+import type { Ref } from 'vue';
 
 export type EditorView = 'files' | 'cut' | 'sound' | 'fullscreen';
 
@@ -14,10 +17,25 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
   fullscreen: { timelineHeight: 0 },
 };
 
-export const useEditorViewStore = defineStore('editorView', () => {
+export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   const currentView = ref<EditorView>('cut');
 
-  const timelineHeight = computed(() => viewConfigs[currentView.value].timelineHeight);
+  const timelineHeightKey = computed(() => getPanelSizesKey('timeline-height', projectIdRef.value));
+
+  const timelineHeight = computed({
+    get() {
+      const key = timelineHeightKey.value;
+      const stored = readLocalStorageJson<number | null>(key, null);
+      if (stored && stored > 0 && stored < 100) {
+        return stored;
+      }
+      return viewConfigs[currentView.value].timelineHeight;
+    },
+    set(value: number) {
+      const key = timelineHeightKey.value;
+      writeLocalStorageJson(key, value);
+    },
+  });
 
   function setView(view: EditorView) {
     currentView.value = view;
@@ -48,4 +66,8 @@ export const useEditorViewStore = defineStore('editorView', () => {
     goToSound,
     goToFullscreen,
   };
+}
+
+export const useEditorViewStore = defineStore('editorView', () => {
+  return createEditorViewModule(ref(null));
 });

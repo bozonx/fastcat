@@ -6,7 +6,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useEditorViewStore } from '~/stores/editorView.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
@@ -21,7 +20,6 @@ const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
 const workspaceStore = useWorkspaceStore();
-const viewStore = useEditorViewStore();
 const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
 
 const playbackSpeedOptions = [
@@ -405,7 +403,7 @@ defineProps<{
           variant="ghost"
           icon="i-heroicons-arrow-left"
           :label="t('common.back', 'Back')"
-          @click="viewStore.goToCut()"
+          @click="projectStore.goToCut()"
         />
 
         <UButton
@@ -415,7 +413,7 @@ defineProps<{
           variant="ghost"
           icon="i-heroicons-arrows-pointing-out"
           :title="t('granVideoEditor.monitor.fullscreen', 'Fullscreen')"
-          @click="viewStore.goToFullscreen()"
+          @click="projectStore.goToFullscreen()"
         />
       </div>
 

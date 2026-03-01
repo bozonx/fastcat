@@ -17,6 +17,7 @@ import {
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectSettingsStore } from './project-settings.store';
+import { createEditorViewModule } from './editorView.store';
 
 import { createProjectFsModule } from '~/stores/project/projectFs';
 import { createProjectMetaModule } from '~/stores/project/projectMeta';
@@ -40,6 +41,8 @@ export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref<string | null>(null);
   const currentTimelinePath = ref<string | null>(null);
   const currentFileName = ref<string | null>(null);
+
+  const editorViewModule = createEditorViewModule(currentProjectId);
 
   const fsModule = createProjectFsModule({
     projectsHandle: computed(() => workspaceStore.projectsHandle) as any,
@@ -242,5 +245,6 @@ export const useProjectStore = defineStore('project', () => {
     loadProjectSettings,
     saveProjectSettings,
     deleteCurrentProject,
+    ...editorViewModule,
   };
 });

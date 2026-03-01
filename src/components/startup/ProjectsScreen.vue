@@ -3,13 +3,11 @@ import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useEditorViewStore } from '~/stores/editorView.store';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const { openProject } = useProjectActions();
-const viewStore = useEditorViewStore();
 
 const newProjectName = ref('');
 
@@ -18,14 +16,14 @@ async function createNewProject() {
   await projectStore.createProject(newProjectName.value.trim());
   if (workspaceStore.userSettings.openLastProjectOnStart) {
     await openProject(newProjectName.value.trim());
-    viewStore.goToCut();
+    projectStore.goToCut();
   }
   newProjectName.value = '';
 }
 
 async function handleOpenProject(project: string) {
   await openProject(project);
-  viewStore.goToCut();
+  projectStore.goToCut();
 }
 </script>
 
