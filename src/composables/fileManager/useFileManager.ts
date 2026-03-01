@@ -15,6 +15,7 @@ import {
   FILES_DIR_NAME,
   TIMELINES_DIR_NAME,
 } from '~/utils/constants';
+import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { createProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import {
@@ -447,13 +448,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   function getFileIcon(entry: FsEntry): string {
     if (entry.kind === 'directory') return 'i-heroicons-folder';
-    const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'i-heroicons-film';
-    if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) return 'i-heroicons-musical-note';
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext))
-      return 'i-heroicons-photo';
-    if (ext === 'otio') return 'i-heroicons-document-text';
-    return 'i-heroicons-document';
+    const type = getMediaTypeFromFilename(entry.name);
+    return getIconForMediaType(type);
   }
 
   return {

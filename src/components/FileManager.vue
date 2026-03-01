@@ -19,7 +19,6 @@ import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailComm
 
 const { t } = useI18n();
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
-import { computeDirectorySize } from '~/utils/fs';
 
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
@@ -68,7 +67,7 @@ const {
   openCreateFolderModal,
   handleCreateFolder,
   // openFileInfoModal is used inside onFileAction but can be called directly
-  openFileInfoModal: openFileInfoModalBase,
+  openFileInfoModal,
   openDeleteConfirmModal,
   handleDeleteConfirm,
   handleRename,
@@ -82,20 +81,7 @@ const {
   mediaCache: fileManager.mediaCache,
 });
 
-async function openFileInfoModal(entry: FsEntry) {
-  // Override to include computeDirectorySize which uses locally available knowledge
-  const original = openFileInfoModalBase;
-  let size: number | undefined;
-  
-  if (entry.kind === 'directory') {
-    size = await computeDirectorySize(entry.handle as FileSystemDirectoryHandle);
-  }
-  
-  await original(entry);
-  if (size !== undefined && currentFileInfo.value) {
-    currentFileInfo.value.size = size;
-  }
-}
+// openFileInfoModal is now handled entirely within useFileManagerModals
 
 function onFileAction(action: any, entry: FsEntry) {
   if (action === 'info') {

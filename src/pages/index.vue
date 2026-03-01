@@ -2,7 +2,7 @@
 import { ref, watch, onMounted } from 'vue';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
-import { useLocalStorage } from '@vueuse/core';
+import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { storeToRefs } from 'pinia';
 
 // Stores
@@ -42,20 +42,14 @@ const { openProject } = useProjectActions();
 useEditorHotkeys();
 
 // Splitpanes persistence
-const mainSplitSizes = useLocalStorage<number[]>('gran-editor-main-split-v4', [40, 60]);
-const topSplitSizes = useLocalStorage<number[]>('gran-editor-top-split-v4', [20, 60, 20]);
-
-function onMainSplitResize(event: { panes: { size: number }[] }) {
-  if (Array.isArray(event?.panes)) {
-    mainSplitSizes.value = event.panes.map((p) => p.size);
-  }
-}
-
-function onTopSplitResize(event: { panes: { size: number }[] }) {
-  if (Array.isArray(event?.panes)) {
-    topSplitSizes.value = event.panes.map((p) => p.size);
-  }
-}
+const { sizes: mainSplitSizes, onResized: onMainSplitResize } = usePersistedSplitpanes(
+  'gran-editor-main-split-v4',
+  [40, 60],
+);
+const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitpanes(
+  'gran-editor-top-split-v4',
+  [20, 60, 20],
+);
 
 // Initialization
 onMounted(async () => {

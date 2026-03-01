@@ -11,6 +11,7 @@ import {
   ensureProxyCommand,
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
+import { computeDirectorySize } from '~/utils/fs';
 
 interface FileManagerActions {
   createFolder: (name: string, target?: FileSystemDirectoryHandle | null) => Promise<void>;
@@ -82,11 +83,9 @@ export function useFileManagerModals(actions: FileManagerActions) {
           description: String(e?.message ?? e),
         });
       }
-    } else {
+    } else if (entry.kind === 'directory') {
       try {
-        // computeDirectorySize could be passed or imported, but for now let's keep it simple
-        // or just not compute size here if it's too complex to move.
-        // Actually, let's keep computeDirectorySize in the caller or move it to utils.
+        size = await computeDirectorySize(entry.handle as FileSystemDirectoryHandle);
       } catch (e: any) {
         toast.add({
           color: 'red',

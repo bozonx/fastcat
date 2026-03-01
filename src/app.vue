@@ -28,6 +28,7 @@ html, body, #__nuxt {
 }
 
 body {
-  @apply bg-ui-bg text-ui-text;
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
 }
 </style>
