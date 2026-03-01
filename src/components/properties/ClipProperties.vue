@@ -768,28 +768,16 @@ defineExpose({
         {{ t('granVideoEditor.timeline.transitions', 'Transitions') }}
       </div>
 
-      <!-- In Transition -->
-      <div class="flex flex-col gap-1 pb-1.5 border-b border-ui-border/40">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-medium text-ui-text-muted">Transition IN</span>
-          <UButton
-            size="xs"
-            :color="(clip as any).transitionIn ? 'red' : 'primary'"
-            variant="ghost"
-            :icon="(clip as any).transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
-            @click="toggleTransition('in')"
-          />
-        </div>
-        <div
-          v-if="(clip as any).transitionIn"
-          class="space-y-1.5 pl-2 border-l-2 border-primary-500/40"
-        >
+      <div class="grid grid-cols-2 gap-2">
+        <!-- In Transition -->
+        <div class="flex flex-col gap-1">
           <div class="flex items-center justify-between">
             <UButton
+              v-if="(clip as any).transitionIn"
               variant="link"
               color="primary"
               size="xs"
-              class="p-0 h-auto font-mono text-[10px]"
+              class="p-0 h-auto font-mono text-[11px] font-medium uppercase"
               @click="
                 timelineStore.selectTransition({
                   trackId: clip.trackId,
@@ -798,52 +786,48 @@ defineExpose({
                 })
               "
             >
-              {{ (clip as any).transitionIn.type }}
+              IN {{ (clip as any).transitionIn.type }}
             </UButton>
-            <span class="text-[10px] font-mono text-ui-text-muted">
-              {{ formatTime((clip as any).transitionIn.durationUs) }}
-            </span>
+            <span v-else class="text-[11px] font-medium text-ui-text-muted uppercase">IN</span>
+            <UButton
+              size="xs"
+              :color="(clip as any).transitionIn ? 'red' : 'primary'"
+              variant="ghost"
+              :icon="(clip as any).transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+              @click="toggleTransition('in')"
+            />
           </div>
-          <DurationSliderInput
-            :model-value="(clip as any).transitionIn.durationUs / 1_000_000"
-            :min="0.1"
-            :max="
-              Math.max(
-                0.1,
-                (clip.timelineRange.durationUs - ((clip as any).transitionOut?.durationUs ?? 0)) /
-                  1_000_000,
-              )
-            "
-            :step="0.01"
-            unit="s"
-            :decimals="2"
-            @update:model-value="(v: number) => updateTransitionDuration('in', v)"
-          />
+          <div
+            v-if="(clip as any).transitionIn"
+            class="pl-1.5 border-l-2 border-primary-500/40"
+          >
+            <DurationSliderInput
+              :model-value="(clip as any).transitionIn.durationUs / 1_000_000"
+              :min="0.1"
+              :max="
+                Math.max(
+                  0.1,
+                  (clip.timelineRange.durationUs - ((clip as any).transitionOut?.durationUs ?? 0)) /
+                    1_000_000,
+                )
+              "
+              :step="0.01"
+              unit="s"
+              :decimals="2"
+              @update:model-value="(v: number) => updateTransitionDuration('in', v)"
+            />
+          </div>
         </div>
-      </div>
 
-      <!-- Out Transition -->
-      <div class="flex flex-col gap-1">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-medium text-ui-text-muted">Transition OUT</span>
-          <UButton
-            size="xs"
-            :color="(clip as any).transitionOut ? 'red' : 'primary'"
-            variant="ghost"
-            :icon="(clip as any).transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
-            @click="toggleTransition('out')"
-          />
-        </div>
-        <div
-          v-if="(clip as any).transitionOut"
-          class="space-y-1.5 pl-2 border-l-2 border-primary-500/40"
-        >
+        <!-- Out Transition -->
+        <div class="flex flex-col gap-1">
           <div class="flex items-center justify-between">
             <UButton
+              v-if="(clip as any).transitionOut"
               variant="link"
               color="primary"
               size="xs"
-              class="p-0 h-auto font-mono text-[10px]"
+              class="p-0 h-auto font-mono text-[11px] font-medium uppercase"
               @click="
                 timelineStore.selectTransition({
                   trackId: clip.trackId,
@@ -852,27 +836,37 @@ defineExpose({
                 })
               "
             >
-              {{ (clip as any).transitionOut.type }}
+              OUT {{ (clip as any).transitionOut.type }}
             </UButton>
-            <span class="text-[10px] font-mono text-ui-text-muted">
-              {{ formatTime((clip as any).transitionOut.durationUs) }}
-            </span>
+            <span v-else class="text-[11px] font-medium text-ui-text-muted uppercase">OUT</span>
+            <UButton
+              size="xs"
+              :color="(clip as any).transitionOut ? 'red' : 'primary'"
+              variant="ghost"
+              :icon="(clip as any).transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+              @click="toggleTransition('out')"
+            />
           </div>
-          <DurationSliderInput
-            :model-value="(clip as any).transitionOut.durationUs / 1_000_000"
-            :min="0.1"
-            :max="
-              Math.max(
-                0.1,
-                (clip.timelineRange.durationUs - ((clip as any).transitionIn?.durationUs ?? 0)) /
-                  1_000_000,
-              )
-            "
-            :step="0.01"
-            unit="s"
-            :decimals="2"
-            @update:model-value="(v: number) => updateTransitionDuration('out', v)"
-          />
+          <div
+            v-if="(clip as any).transitionOut"
+            class="pl-1.5 border-l-2 border-primary-500/40"
+          >
+            <DurationSliderInput
+              :model-value="(clip as any).transitionOut.durationUs / 1_000_000"
+              :min="0.1"
+              :max="
+                Math.max(
+                  0.1,
+                  (clip.timelineRange.durationUs - ((clip as any).transitionIn?.durationUs ?? 0)) /
+                    1_000_000,
+                )
+              "
+              :step="0.01"
+              unit="s"
+              :decimals="2"
+              @update:model-value="(v: number) => updateTransitionDuration('out', v)"
+            />
+          </div>
         </div>
       </div>
     </div>
