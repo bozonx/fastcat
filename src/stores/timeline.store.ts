@@ -8,23 +8,14 @@ import { createTimelineCommandService } from '~/timeline/application/timelineCom
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '~/timeline/commands/utils';
-import { VIDEO_DIR_NAME } from '~/utils/constants';
 
 import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
-import {
-  calculateNextClipBoundary,
-  calculatePrevClipBoundary,
-  getBoundaryTimesUs,
-} from '~/timeline/domain/navigation';
-import {
-  buildSplitClipCommands,
-  buildSplitAllClipsCommands,
-  buildSplitSelectedClipsCommands,
-  computeCutUs,
-} from '~/timeline/domain/editing';
+import { createTimelinePlayback } from '~/stores/timeline/timelinePlayback';
+import { createTimelineTracks } from '~/stores/timeline/timelineTracks';
+import { createTimelineClips } from '~/stores/timeline/timelineClips';
+import { createTimelineTrimming } from '~/stores/timeline/timelineTrimming';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -122,398 +113,68 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const editService = createTimelineEditService({
     getDoc: () => timelineDoc.value,
-    getHotkeyTargetClip,
+    getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
     getSelectedItemIds: () => selectedItemIds.value,
     getCurrentTime: () => currentTime.value,
     applyTimeline,
     requestTimelineSave,
   });
 
-  function clearSelection() {
-    selection.clearSelection();
-  }
+  const playback = createTimelinePlayback({
+    currentTime,
+    isPlaying,
+    playbackSpeed,
+    timelineZoom,
+    audioVolume,
+    audioMuted,
+    duration,
+    playbackGestureHandler,
+  });
 
-  function clearSelectedTransition() {
-    selection.clearSelectedTransition();
-  }
+  const tracks = createTimelineTracks({
+    timelineDoc,
+    selectedTrackId,
+    applyTimeline,
+    requestTimelineSave,
+    getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
+  });
 
-  function selectTransition(input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) {
-    selection.selectTransition(input);
-  }
+  const trimming = createTimelineTrimming({
+    timelineDoc,
+    currentTime,
+    duration,
+    selectedItemIds,
+    applyTimeline,
+    batchApplyTimeline,
+    requestTimelineSave,
+    getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
+    getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
+    editService,
+  });
 
-  function selectTrack(trackId: string | null) {
-    selection.selectTrack(trackId);
-  }
-
-  function toggleSelection(itemId: string, options?: { multi?: boolean }) {
-    selection.toggleSelection(itemId, options);
-  }
-
-  function getHotkeyTargetClip(): { trackId: string; itemId: string } | null {
-    return selection.getHotkeyTargetClip();
-  }
-
-  function getSelectedOrActiveTrackId(): string | null {
-    return selection.getSelectedOrActiveTrackId();
-  }
-
-  function setPlaybackSpeed(speed: number) {
-    const parsed = Number(speed);
-    if (!Number.isFinite(parsed)) return;
-
-    const abs = Math.abs(parsed);
-    const clampedAbs = Math.max(0.1, Math.min(10, abs));
-
-    const sign = parsed < 0 ? -1 : 1;
-    playbackSpeed.value = clampedAbs * sign;
-  }
-
-  function setClipFreezeFrameFromPlayhead(input: { trackId: string; itemId: string }) {
-    const doc = timelineDoc.value;
-    if (!doc) throw new Error('Timeline not loaded');
-
-    const track = doc.tracks.find((t) => t.id === input.trackId) ?? null;
-    if (!track) throw new Error('Track not found');
-
-    const item = track.items.find((it) => it.id === input.itemId);
-    if (!item || item.kind !== 'clip') throw new Error('Clip not found');
-    if (item.clipType !== 'media') throw new Error('Only media clips can freeze frame');
-
-    const fps = getDocFps(doc);
-
-    const clipStartUs = item.timelineRange.startUs;
-    const clipEndUs = clipStartUs + item.timelineRange.durationUs;
-    const playheadUs = currentTime.value;
-
-    const usePlayhead = playheadUs >= clipStartUs && playheadUs < clipEndUs;
-    const localUs = usePlayhead ? playheadUs - clipStartUs : 0;
-    const sourceUsRaw = item.sourceRange.startUs + localUs;
-    const sourceUs = quantizeTimeUsToFrames(sourceUsRaw, fps, 'round');
-
-    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: sourceUs });
-  }
-
-  function resetClipFreezeFrame(input: { trackId: string; itemId: string }) {
-    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: undefined });
-  }
+  const clips = createTimelineClips({
+    timelineDoc,
+    selectedItemIds,
+    selectedTrackId,
+    selectedTransition,
+    currentTime,
+    applyTimeline,
+    requestTimelineSave,
+    resolveTargetVideoTrackIdForInsert: () => tracks.resolveTargetVideoTrackIdForInsert(),
+    clearSelection: () => selection.clearSelection(),
+    clearSelectedTransition: () => selection.clearSelectedTransition(),
+    rippleDeleteRange: (input) => trimming.rippleDeleteRange(input),
+    createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
+    deleteTrack: (trackId, options) => tracks.deleteTrack(trackId, options),
+    selectTrack: (trackId) => selection.selectTrack(trackId),
+    getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
+  });
 
   const markerService = createTimelineMarkerService({
     getDoc: () => timelineDoc.value,
     getCurrentTime: () => currentTime.value,
     applyTimeline,
   });
-
-  // selection helpers are wired above as wrapper functions to preserve store API
-
-  async function trimToPlayheadLeftNoRipple() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    const target = getHotkeyTargetClip();
-    if (!target) return;
-
-    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
-    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-
-    const cutUs = computeCutUs(doc, currentTime.value);
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
-    if (!(cutUs > startUs && cutUs < endUs)) return;
-
-    const cmds = buildSplitClipCommands(doc, currentTime.value, target);
-    for (const cmd of cmds) {
-      applyTimeline(cmd, { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 });
-    }
-
-    const updatedDoc = timelineDoc.value;
-    if (!updatedDoc) return;
-    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
-    if (!updatedTrack) return;
-
-    const right =
-      updatedTrack.items
-        .filter((it) => it.kind === 'clip')
-        .find((it) => it.timelineRange.startUs === cutUs) ?? null;
-    if (!right || right.kind !== 'clip') return;
-
-    applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-    );
-
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function trimToPlayheadRightNoRipple() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    const target = getHotkeyTargetClip();
-    if (!target) return;
-
-    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
-    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-
-    const cutUs = computeCutUs(doc, currentTime.value);
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
-    if (!(cutUs > startUs && cutUs < endUs)) return;
-
-    const cmds = buildSplitClipCommands(doc, currentTime.value, target);
-    for (const cmd of cmds) {
-      applyTimeline(cmd, { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 });
-    }
-
-    const updatedDoc = timelineDoc.value;
-    if (!updatedDoc) return;
-    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
-    if (!updatedTrack) return;
-
-    const left =
-      updatedTrack.items.filter((it) => it.kind === 'clip').find((it) => it.id === target.itemId) ??
-      null;
-    if (!left || left.kind !== 'clip') return;
-
-    applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-    );
-
-    await requestTimelineSave({ immediate: true });
-  }
-
-  function rippleDeleteRange(input: { trackIds: string[]; startUs: number; endUs: number }) {
-    editService.rippleDeleteRange(input);
-  }
-
-  async function rippleTrimRight() {
-    await editService.rippleTrimRight();
-  }
-
-  async function rippleTrimLeft() {
-    await editService.rippleTrimLeft();
-  }
-
-  async function advancedRippleTrimRight() {
-    await editService.advancedRippleTrimRight();
-  }
-
-  async function advancedRippleTrimLeft() {
-    await editService.advancedRippleTrimLeft();
-  }
-
-  function jumpToPrevClipBoundary(options?: { currentTrackOnly?: boolean }) {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-    const prevUs = calculatePrevClipBoundary(doc, currentTime.value, {
-      currentTrackOnly: options?.currentTrackOnly,
-      currentTrackId: getSelectedOrActiveTrackId(),
-    });
-    if (prevUs === null) {
-      currentTime.value = 0;
-    } else {
-      currentTime.value = prevUs;
-    }
-  }
-
-  function jumpToNextClipBoundary(options?: { currentTrackOnly?: boolean }) {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-    const nextUs = calculateNextClipBoundary(doc, currentTime.value, duration.value, {
-      currentTrackOnly: options?.currentTrackOnly,
-      currentTrackId: getSelectedOrActiveTrackId(),
-    });
-    currentTime.value = nextUs;
-  }
-
-  async function splitClipAtPlayhead() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    const target = getHotkeyTargetClip();
-    const cmds = buildSplitClipCommands(doc, currentTime.value, target);
-    for (const cmd of cmds) {
-      applyTimeline(cmd, { saveMode: 'none' });
-    }
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function splitAllClipsAtPlayhead() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    const cmds = buildSplitAllClipsCommands(doc, currentTime.value);
-    if (cmds.length === 0) return;
-
-    batchApplyTimeline(cmds, {
-      label: 'Split all clips',
-      saveMode: 'immediate',
-    });
-  }
-
-  async function toggleVisibilityTargetTrack() {
-    const trackId = getSelectedOrActiveTrackId();
-    if (!trackId) return;
-    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
-    if (!track) return;
-
-    if (track.kind === 'video') {
-      const nextHidden = !track.videoHidden;
-      updateTrackProperties(trackId, {
-        videoHidden: nextHidden,
-        // Auto-mute if becoming hidden, but don't force unmute when becoming visible
-        audioMuted: nextHidden ? true : track.audioMuted,
-      });
-    }
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function toggleMuteTargetTrack() {
-    const trackId = getSelectedOrActiveTrackId();
-    if (!trackId) return;
-    toggleTrackAudioMuted(trackId);
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function toggleSoloTargetTrack() {
-    const trackId = getSelectedOrActiveTrackId();
-    if (!trackId) return;
-    toggleTrackAudioSolo(trackId);
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function toggleDisableTargetClip() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-    const target = getHotkeyTargetClip();
-    if (!target) return;
-
-    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
-    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-
-    updateClipProperties(target.trackId, target.itemId, { disabled: !item.disabled });
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function toggleMuteTargetClip() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-    const target = getHotkeyTargetClip();
-    if (!target) return;
-
-    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
-    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-
-    const prevGain =
-      typeof item.audioGain === 'number' && Number.isFinite(item.audioGain) ? item.audioGain : 1;
-    const nextGain = prevGain === 0 ? 1 : 0;
-    updateClipProperties(target.trackId, target.itemId, { audioGain: nextGain });
-    await requestTimelineSave({ immediate: true });
-  }
-
-  async function splitClipsAtPlayhead() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    const cmds = buildSplitSelectedClipsCommands(doc, currentTime.value, selectedItemIds.value);
-    if (cmds.length === 0) return;
-
-    batchApplyTimeline(cmds, {
-      label: 'Split selected clips',
-      saveMode: 'immediate',
-    });
-
-    await requestTimelineSave({ immediate: true });
-  }
-
-  function deleteSelectedItems(trackId: string) {
-    if (selectedItemIds.value.length === 0) return;
-    applyTimeline({
-      type: 'delete_items',
-      trackId,
-      itemIds: [...selectedItemIds.value],
-    });
-    selectedItemIds.value = [];
-  }
-
-  function deleteFirstSelectedItem() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    if (selectedTransition.value) {
-      updateClipTransition(
-        selectedTransition.value.trackId,
-        selectedTransition.value.itemId,
-        selectedTransition.value.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
-      );
-      clearSelectedTransition();
-      return;
-    }
-
-    if (selectedItemIds.value.length === 0) {
-      if (selectedTrackId.value) {
-        deleteTrack(selectedTrackId.value, { allowNonEmpty: true });
-        selectTrack(null);
-      }
-      return;
-    }
-
-    const selectedSet = new Set(selectedItemIds.value);
-    for (const track of doc.tracks) {
-      for (const item of track.items) {
-        if (selectedSet.has(item.id)) {
-          deleteSelectedItems(track.id);
-          return;
-        }
-      }
-    }
-  }
-
-  function rippleDeleteFirstSelectedItem() {
-    const doc = timelineDoc.value;
-    if (!doc) return;
-
-    if (selectedItemIds.value.length === 0) return;
-
-    const selectedSet = new Set(selectedItemIds.value);
-    let targetTrack: import('~/timeline/types').TimelineTrack | null = null;
-    const targetItems: import('~/timeline/types').TimelineClipItem[] = [];
-
-    for (const track of doc.tracks) {
-      for (const item of track.items) {
-        if (selectedSet.has(item.id)) {
-          targetTrack = track;
-          break;
-        }
-      }
-      if (targetTrack) break;
-    }
-
-    if (!targetTrack) return;
-    for (const item of targetTrack.items) {
-      if (selectedSet.has(item.id) && item.kind === 'clip') {
-        targetItems.push(item);
-      }
-    }
-
-    if (targetItems.length === 0) return;
-
-    let startUs = Infinity;
-    let endUs = -Infinity;
-    for (const item of targetItems) {
-      startUs = Math.min(startUs, item.timelineRange.startUs);
-      endUs = Math.max(endUs, item.timelineRange.startUs + item.timelineRange.durationUs);
-    }
-
-    if (startUs < endUs) {
-      rippleDeleteRange({ trackIds: [targetTrack.id], startUs, endUs });
-      clearSelection();
-    }
-  }
 
   function goToStart() {
     currentTime.value = 0;
@@ -563,232 +224,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTime.value = 0;
   }
 
-  function addTrack(kind: 'video' | 'audio', name: string) {
-    applyTimeline({ type: 'add_track', kind, name });
-  }
-
-  function resolveTargetVideoTrackIdForInsert(): string {
-    const doc = timelineDoc.value;
-    if (!doc) throw new Error('Timeline not loaded');
-
-    const selected =
-      typeof selectedTrackId.value === 'string'
-        ? (doc.tracks.find((t) => t.id === selectedTrackId.value) ?? null)
-        : null;
-
-    if (selected?.kind === 'video') return selected.id;
-
-    const topVideo = doc.tracks.find((t) => t.kind === 'video') ?? null;
-    if (!topVideo) throw new Error('No video tracks');
-    return topVideo.id;
-  }
-
-  function addVirtualClipAtPlayhead(input: {
-    clipType: Extract<
-      import('~/timeline/types').TimelineClipType,
-      'adjustment' | 'background' | 'text'
-    >;
-    name: string;
-    durationUs?: number;
-    backgroundColor?: string;
-    text?: string;
-    style?: import('~/timeline/types').TextClipStyle;
-  }) {
-    if (!timelineDoc.value) {
-      timelineDoc.value = projectStore.createFallbackTimelineDoc();
-    }
-
-    const trackId = resolveTargetVideoTrackIdForInsert();
-    applyTimeline({
-      type: 'add_virtual_clip_to_track',
-      trackId,
-      clipType: input.clipType,
-      name: input.name,
-      durationUs: input.durationUs,
-      backgroundColor: input.backgroundColor,
-      text: input.text,
-      style: input.style,
-      startUs: currentTime.value,
-    });
-  }
-
-  function addVirtualClipToTrack(input: {
-    trackId: string;
-    startUs: number;
-    clipType: Extract<
-      import('~/timeline/types').TimelineClipType,
-      'adjustment' | 'background' | 'text'
-    >;
-    name: string;
-    durationUs?: number;
-    backgroundColor?: string;
-    text?: string;
-    style?: import('~/timeline/types').TextClipStyle;
-  }) {
-    if (!timelineDoc.value) {
-      timelineDoc.value = projectStore.createFallbackTimelineDoc();
-    }
-
-    applyTimeline({
-      type: 'add_virtual_clip_to_track',
-      trackId: input.trackId,
-      clipType: input.clipType,
-      name: input.name,
-      durationUs: input.durationUs,
-      backgroundColor: input.backgroundColor,
-      text: input.text,
-      style: input.style,
-      startUs: input.startUs,
-    });
-  }
-
-  function addAdjustmentClipAtPlayhead(options?: { durationUs?: number; name?: string }) {
-    addVirtualClipAtPlayhead({
-      clipType: 'adjustment',
-      name: options?.name ?? 'Adjustment',
-      durationUs: options?.durationUs,
-    });
-  }
-
-  function addBackgroundClipAtPlayhead(options?: {
-    durationUs?: number;
-    name?: string;
-    backgroundColor?: string;
-  }) {
-    addVirtualClipAtPlayhead({
-      clipType: 'background',
-      name: options?.name ?? 'Background',
-      durationUs: options?.durationUs,
-      backgroundColor: options?.backgroundColor,
-    });
-  }
-
-  function addTextClipAtPlayhead(options?: {
-    durationUs?: number;
-    name?: string;
-    text?: string;
-    style?: import('~/timeline/types').TextClipStyle;
-  }) {
-    addVirtualClipAtPlayhead({
-      clipType: 'text',
-      name: options?.name ?? 'Text',
-      durationUs: options?.durationUs,
-      text: options?.text,
-      style: options?.style,
-    });
-  }
-
-  function renameTrack(trackId: string, name: string) {
-    applyTimeline({ type: 'rename_track', trackId, name });
-  }
-
-  function updateTrackProperties(
-    trackId: string,
-    properties: Partial<
-      Pick<
-        import('~/timeline/types').TimelineTrack,
-        'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects' | 'audioGain' | 'audioBalance'
-      >
-    >,
-  ) {
-    applyTimeline(
-      {
-        type: 'update_track_properties',
-        trackId,
-        properties,
-      },
-      { historyMode: 'debounced' },
-    );
-  }
-
-  function toggleVideoHidden(trackId: string) {
-    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind !== 'video') return;
-    updateTrackProperties(trackId, { videoHidden: !track.videoHidden });
-  }
-
-  function toggleTrackAudioMuted(trackId: string) {
-    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
-    if (!track) return;
-    updateTrackProperties(trackId, { audioMuted: !track.audioMuted });
-  }
-
-  function toggleTrackAudioSolo(trackId: string) {
-    const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
-    if (!track) return;
-    updateTrackProperties(trackId, { audioSolo: !track.audioSolo });
-  }
-
-  function renameItem(trackId: string, itemId: string, name: string) {
-    applyTimeline({
-      type: 'rename_item',
-      trackId,
-      itemId,
-      name,
-    });
-  }
-
-  function updateClipProperties(
-    trackId: string,
-    itemId: string,
-    properties: Partial<
-      Pick<
-        import('~/timeline/types').TimelineClipItem,
-        | 'disabled'
-        | 'locked'
-        | 'opacity'
-        | 'effects'
-        | 'freezeFrameSourceUs'
-        | 'speed'
-        | 'transform'
-        | 'audioGain'
-        | 'audioBalance'
-        | 'audioFadeInUs'
-        | 'audioFadeOutUs'
-      >
-    > & {
-      backgroundColor?: string;
-      text?: string;
-      style?: import('~/timeline/types').TextClipStyle;
-    },
-  ) {
-    applyTimeline(
-      {
-        type: 'update_clip_properties',
-        trackId,
-        itemId,
-        properties,
-      },
-      { historyMode: 'debounced' },
-    );
-  }
-
-  function updateClipTransition(
-    trackId: string,
-    itemId: string,
-    options: {
-      transitionIn?: import('~/timeline/types').ClipTransition | null;
-      transitionOut?: import('~/timeline/types').ClipTransition | null;
-    },
-  ) {
-    applyTimeline({
-      type: 'update_clip_transition',
-      trackId,
-      itemId,
-      ...options,
-    });
-  }
-
-  function deleteTrack(trackId: string, options?: { allowNonEmpty?: boolean }) {
-    applyTimeline({ type: 'delete_track', trackId, allowNonEmpty: options?.allowNonEmpty });
-    if (selectedTrackId.value === trackId) {
-      selectedTrackId.value = null;
-    }
-  }
-
-  function reorderTracks(trackIds: string[]) {
-    applyTimeline({ type: 'reorder_tracks', trackIds });
-  }
 
   const commandService = createTimelineCommandService({
     getTimelineDoc: () => timelineDoc.value,
@@ -813,7 +248,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       }) => await proxyStore.generateProxy(params.fileHandle, params.projectRelativePath),
     } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
     defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
-    defaultImageSourceDurationUs: DEFAULT_IMAGE_SOURCE_DURATION_US,
+    defaultImageSourceDurationUs: DEFAULT_IMAGE_DURATION_US,
     parseTimelineFromOtio,
     selectTimelineDurationUs,
   });
@@ -850,8 +285,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioVolume.value = 1;
     audioMuted.value = false;
     timelineZoom.value = 50;
-    clearSelection();
-    selectTrack(null);
+    selection.clearSelection();
+    selection.selectTrack(null);
     historyStore.clear();
     clearPendingDebouncedHistory();
   }
@@ -899,8 +334,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   async function loadTimeline() {
-    clearSelection();
-    selectTrack(null);
+    selection.clearSelection();
+    selection.selectTrack(null);
     isPlaying.value = false;
     currentTime.value = 0;
     historyStore.clear();
@@ -1146,6 +581,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration,
     audioVolume,
     audioMuted,
+    playbackSpeed,
     timelineZoom,
     selectedItemIds,
     selectedTrackId,
@@ -1158,68 +594,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath,
     loadTimelineMetadata,
-    clearSelection,
-    clearSelectedTransition,
-    toggleSelection,
-    selectTrack,
-    selectTransition,
-    deleteSelectedItems,
-    deleteFirstSelectedItem,
-    rippleDeleteFirstSelectedItem,
-    goToStart,
-    goToEnd,
-    setTimelineZoom,
-    setAudioVolume,
-    setAudioMuted,
-    toggleAudioMuted,
-    playbackSpeed,
-    setPlaybackSpeed,
-    setPlaybackGestureHandler,
-    togglePlayback,
-    stopPlayback,
+    clearSelection: () => selection.clearSelection(),
+    selectTrack: (trackId: string | null) => selection.selectTrack(trackId),
+    toggleSelection: (itemId: string, options?: { multi?: boolean }) => selection.toggleSelection(itemId, options),
+    selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) => selection.selectTransition(input),
+    ...playback,
+    ...tracks,
+    ...trimming,
+    ...clips,
     addMarkerAtPlayhead: markerService.addMarkerAtPlayhead,
     updateMarker: markerService.updateMarker,
     removeMarker: markerService.removeMarker,
-    addTrack,
-    addAdjustmentClipAtPlayhead,
-    addVirtualClipAtPlayhead,
-    addVirtualClipToTrack,
-    addBackgroundClipAtPlayhead,
-    addTextClipAtPlayhead,
-    renameTrack,
-    updateTrackProperties,
-    toggleVideoHidden,
-    toggleTrackAudioMuted,
-    toggleTrackAudioSolo,
-    renameItem,
-    updateClipProperties,
-    updateClipTransition,
-    setClipFreezeFrameFromPlayhead,
-    resetClipFreezeFrame,
-    splitClipsAtPlayhead,
-    trimToPlayheadLeftNoRipple,
-    trimToPlayheadRightNoRipple,
-    rippleTrimLeft,
-    rippleTrimRight,
-    advancedRippleTrimLeft,
-    advancedRippleTrimRight,
-    jumpToPrevClipBoundary,
-    jumpToNextClipBoundary,
-    splitClipAtPlayhead,
-    splitAllClipsAtPlayhead,
-    toggleDisableTargetClip,
-    toggleMuteTargetClip,
-    deleteTrack,
-    reorderTracks,
     moveItemToTrack,
     extractAudioToTrack,
     returnAudioToVideo,
     resetTimelineState,
     undoTimeline,
     redoTimeline,
-    toggleVisibilityTargetTrack,
-    toggleMuteTargetTrack,
-    toggleSoloTargetTrack,
     batchApplyTimeline,
     historyStore,
   };
