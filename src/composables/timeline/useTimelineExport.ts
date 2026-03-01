@@ -96,6 +96,22 @@ export async function toWorkerTimelineClips(
     return effects;
   }
 
+  function clonePlain<T>(value: T): T {
+    if (value === null || value === undefined) return value;
+    try {
+      if (typeof structuredClone === 'function') {
+        return structuredClone(value);
+      }
+    } catch {
+      // ignore and fallback
+    }
+    try {
+      return JSON.parse(JSON.stringify(value)) as T;
+    } catch {
+      return value;
+    }
+  }
+
   function mergeFadeInUs(input: {
     childFadeInUs: unknown;
     parentFadeInUs: unknown;
@@ -201,7 +217,7 @@ export async function toWorkerTimelineClips(
       audioFadeOutUs: (item as any).audioFadeOutUs,
       opacity: combinedOpacity,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
-      transform: (item as any).transform,
+      transform: clonePlain((item as any).transform),
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
@@ -423,7 +439,7 @@ export async function toWorkerTimelineClips(
       clips.push({
         ...base,
         text: String((item as any).text ?? ''),
-        style: (item as any).style,
+        style: clonePlain((item as any).style),
       });
     } else {
       clips.push(base);
