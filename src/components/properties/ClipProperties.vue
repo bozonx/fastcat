@@ -35,6 +35,12 @@ function handleDeleteClip() {
   timelineStore.deleteSelectedItems(props.clip.trackId);
 }
 
+function selectTransitionEdge(edge: 'in' | 'out') {
+  const clip = props.clip;
+  timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
+  selectionStore.selectTimelineTransition(clip.trackId, clip.id, edge);
+}
+
 function handleRenameClip(newName: string) {
   if (newName.trim()) {
     timelineStore.renameItem(props.clip.trackId, props.clip.id, newName.trim());
@@ -778,17 +784,18 @@ defineExpose({
               color="primary"
               size="xs"
               class="p-0 h-auto font-mono text-[11px] font-medium uppercase"
-              @click="
-                timelineStore.selectTransition({
-                  trackId: clip.trackId,
-                  itemId: clip.id,
-                  edge: 'in',
-                })
-              "
+              @click="selectTransitionEdge('in')"
             >
               IN {{ (clip as any).transitionIn.type }}
             </UButton>
-            <span v-else class="text-[11px] font-medium text-ui-text-muted uppercase">IN</span>
+            <button
+              v-else
+              type="button"
+              class="text-[11px] font-medium text-ui-text-muted uppercase text-left"
+              @click="selectTransitionEdge('in')"
+            >
+              IN
+            </button>
             <UButton
               size="xs"
               :color="(clip as any).transitionIn ? 'red' : 'primary'"
@@ -828,17 +835,18 @@ defineExpose({
               color="primary"
               size="xs"
               class="p-0 h-auto font-mono text-[11px] font-medium uppercase"
-              @click="
-                timelineStore.selectTransition({
-                  trackId: clip.trackId,
-                  itemId: clip.id,
-                  edge: 'out',
-                })
-              "
+              @click="selectTransitionEdge('out')"
             >
               OUT {{ (clip as any).transitionOut.type }}
             </UButton>
-            <span v-else class="text-[11px] font-medium text-ui-text-muted uppercase">OUT</span>
+            <button
+              v-else
+              type="button"
+              class="text-[11px] font-medium text-ui-text-muted uppercase text-left"
+              @click="selectTransitionEdge('out')"
+            >
+              OUT
+            </button>
             <UButton
               size="xs"
               :color="(clip as any).transitionOut ? 'red' : 'primary'"
