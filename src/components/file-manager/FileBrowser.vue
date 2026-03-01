@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useFilesPageStore, type FileViewMode, type FileSortField, type SortOrder } from '~/stores/filesPage.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 
 const filesPageStore = useFilesPageStore();
+const projectStore = useProjectStore();
 const { readDirectory, getFileIcon, getProjectRootDirHandle } = useFileManager();
 const { t } = useI18n();
 
@@ -229,9 +231,25 @@ function navigateUp() {
   if (parentFolders.value.length > 1) {
     const parentIndex = parentFolders.value.length - 2;
     filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
+  } else if (parentFolders.value.length === 1) {
+    // Go to root (empty path)
+    filesPageStore.selectFolder(null);
   } else {
+    // Already at root
     filesPageStore.selectFolder(null);
   }
+}
+
+async function navigateToRoot() {
+  const rootHandle = await getProjectRootDirHandle();
+  if (!rootHandle) return;
+  const rootEntry: FsEntry = {
+    kind: 'directory',
+    name: projectStore.currentProjectName || '',
+    path: '',
+    handle: rootHandle,
+  };
+  filesPageStore.selectFolder(rootEntry);
 }
 
 function onResizeStart(e: MouseEvent, column: string) {
@@ -326,7 +344,7 @@ function onCardSizeChange(e: Event) {
         color="neutral"
         size="xs"
         icon="i-heroicons-arrow-left"
-        :disabled="parentFolders.length <= 1"
+        :disabled="parentFolders.length === 0"
         @click="navigateBack"
       />
       <UButton
@@ -334,7 +352,7 @@ function onCardSizeChange(e: Event) {
         color="neutral"
         size="xs"
         icon="i-heroicons-arrow-up"
-        :disabled="parentFolders.length <= 1"
+        :disabled="parentFolders.length === 0"
         @click="navigateUp"
       />
 
@@ -353,7 +371,7 @@ function onCardSizeChange(e: Event) {
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-auto p-4 content-scrollbar">
+    <div class="flex-1 overflow-auto p-4 content-scrollbar" @click.self="navigateToRoot">
       <div v-if="isLoading" class="flex flex-col items-center justify-center h-full gap-4 text-ui-text-muted">
         <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
         <span>{{ t('common.loading', 'Loading...') }}</span>
