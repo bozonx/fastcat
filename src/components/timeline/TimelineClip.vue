@@ -574,7 +574,8 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       <!-- Audio Fade Layer -->
       <div
         v-if="item.kind === 'clip' && clipHasAudio(item, track) && !shouldCollapseFades(item)"
-        class="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded"
+        class="absolute inset-0 pointer-events-none overflow-hidden rounded"
+        style="z-index: 25"
       >
         <svg
           v-if="
