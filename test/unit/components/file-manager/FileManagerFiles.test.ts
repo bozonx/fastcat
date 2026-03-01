@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import FileManagerFiles from '../../../../src/components/file-manager/FileManagerFiles.vue';
 import { setupTestPinia } from '../../../utils/pinia';
+import { useUiStore } from '../../../../src/stores/ui.store';
+import { useSelectionStore } from '../../../../src/stores/selection.store';
 
 function createWrapper(params: {
   projectName: string;
@@ -23,7 +25,8 @@ function createWrapper(params: {
   });
 
   const getProjectRootDirHandle =
-    params.getProjectRootDirHandle ?? vi.fn(async () => ({} as unknown as FileSystemDirectoryHandle));
+    params.getProjectRootDirHandle ??
+    vi.fn(async () => ({}) as unknown as FileSystemDirectoryHandle);
 
   return mount(FileManagerFiles, {
     props: {
@@ -51,12 +54,22 @@ function createWrapper(params: {
 
 describe('FileManagerFiles', () => {
   it('selects project root on background click', async () => {
-    const wrapper = createWrapper({ projectName: 'MyProject', rootEntries: [{ name: 'a' }] as any });
+    const getProjectRootDirHandle = vi.fn(async () => ({}) as unknown as FileSystemDirectoryHandle);
+    const wrapper = createWrapper({
+      projectName: 'MyProject',
+      rootEntries: [{ name: 'a' }] as any,
+      getProjectRootDirHandle,
+    });
 
     await wrapper.get('.min-w-full.w-max').trigger('pointerdown');
 
-    const uiStore = await import('~/stores/ui.store').then((m) => m.useUiStore());
-    const selectionStore = await import('~/stores/selection.store').then((m) => m.useSelectionStore());
+    await Promise.resolve();
+    await wrapper.vm.$nextTick();
+
+    const uiStore = useUiStore();
+    const selectionStore = useSelectionStore();
+
+    expect(getProjectRootDirHandle).toHaveBeenCalledTimes(1);
 
     expect(uiStore.selectedFsEntry?.kind).toBe('directory');
     expect(uiStore.selectedFsEntry?.path).toBe('');

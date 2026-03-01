@@ -16,6 +16,7 @@ import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
+import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -39,43 +40,13 @@ const isExifExpanded = ref(false);
 
 const uploadInputRef = ref<HTMLInputElement | null>(null);
 
-const isProjectRootDir = computed(() => {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return false;
-  const path = typeof entry.path === 'string' ? entry.path : undefined;
-  if (path !== '') return false;
-  if (!projectStore.currentProjectName) return false;
-  return entry.name === projectStore.currentProjectName;
-});
+const selectedFsEntryRef = computed(() => props.selectedFsEntry);
+const previewModeRef = computed(() => props.previewMode);
+const hasProxyRef = computed(() => props.hasProxy);
 
-const storageEstimate = ref<{ quota?: number; usage?: number } | null>(null);
-
-watch(
-  () => isProjectRootDir.value,
-  async (isRoot) => {
-    storageEstimate.value = null;
-    if (!isRoot) return;
-    const estimateFn = (navigator as any)?.storage?.estimate as undefined | (() => Promise<any>);
-    if (typeof estimateFn !== 'function') return;
-    try {
-      const res = await estimateFn.call((navigator as any).storage);
-      if (!res || typeof res !== 'object') return;
-      const quota = typeof res.quota === 'number' ? res.quota : undefined;
-      const usage = typeof res.usage === 'number' ? res.usage : undefined;
-      if (quota === undefined || usage === undefined) return;
-      storageEstimate.value = { quota, usage };
-    } catch {
-      storageEstimate.value = null;
-    }
-  },
-  { immediate: true },
-);
-
-const storageFreeBytes = computed<number | null>(() => {
-  const est = storageEstimate.value;
-  if (!est || typeof est.quota !== 'number' || typeof est.usage !== 'number') return null;
-  const free = est.quota - est.usage;
-  return Number.isFinite(free) && free >= 0 ? free : null;
+const { isProjectRootDir, storageFreeBytes } = useFileStorageInfo({
+  selectedFsEntry: selectedFsEntryRef,
+  currentProjectName: computed(() => projectStore.currentProjectName),
 });
 
 function triggerDirectoryUpload() {
@@ -101,10 +72,6 @@ async function onDirectoryFileSelect(e: Event) {
   }
   await fm.loadProjectDirectory();
 }
-
-const selectedFsEntryRef = computed(() => props.selectedFsEntry);
-const previewModeRef = computed(() => props.previewMode);
-const hasProxyRef = computed(() => props.hasProxy);
 
 const {
   currentUrl,
