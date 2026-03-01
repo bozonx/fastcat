@@ -43,6 +43,7 @@ type EntryPreviewInfo = {
   name: string;
   path?: string;
   size?: number;
+  createdAt?: number;
   lastModified?: number;
   mimeType?: string;
   container?: string;
@@ -119,7 +120,7 @@ function formatAudioChannels(channels: number | undefined) {
   if (!channels || channels <= 0) return '-';
   if (channels === 1) return 'Mono';
   if (channels === 2) return 'Stereo';
-  return `${channels}ch`;
+  return `${channels} tracks`;
 }
 
 const timelinesUsingSelectedFile = computed(() => {
@@ -143,7 +144,16 @@ const metadataYaml = computed(() => {
   }
 });
 
+const generalInfoTitle = computed(() => {
+  if (!fileInfo.value) return '';
+  if (fileInfo.value.kind === 'directory') return 'Folder';
+  if (isOtio.value) return 'OTIO';
+  return fileInfo.value.mimeType ?? 'File';
+});
+
 const mediaMeta = computed(() => fileInfo.value?.metadata as any);
+
+const isVideoOrAudio = computed(() => mediaType.value === 'video' || mediaType.value === 'audio');
 
 const isFolderWithVideo = computed(() => {
   const entry = props.selectedFsEntry;
@@ -299,6 +309,7 @@ watch(
         kind: 'file',
         path: entry.path,
         size: file.size,
+        createdAt: typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
         lastModified: file.lastModified,
         mimeType: typeof file.type === 'string' ? file.type : undefined,
         ext,
@@ -363,13 +374,24 @@ onUnmounted(() => {
       </div>
 
       <div v-else-if="currentUrl" class="w-full h-full flex flex-col">
-        <img
-          v-if="mediaType === 'image'"
-          :src="currentUrl"
-          class="max-w-full max-h-64 object-contain mx-auto my-auto"
-        />
+        <div
+          v-if="mediaType === 'image' || mediaType === 'video'"
+          class="w-full h-64 flex items-center justify-center checkerboard-bg"
+        >
+          <img
+            v-if="mediaType === 'image'"
+            :src="currentUrl"
+            class="max-w-full max-h-64 object-contain"
+          />
+          <MediaPlayer
+            v-else
+            :src="currentUrl"
+            :type="mediaType"
+            class="w-full h-64"
+          />
+        </div>
         <MediaPlayer
-          v-else-if="mediaType === 'video' || mediaType === 'audio'"
+          v-else-if="mediaType === 'audio'"
           :src="currentUrl"
           :type="mediaType"
           class="w-full h-64"
@@ -431,17 +453,20 @@ onUnmounted(() => {
       </div>
     </PropertySection>
 
-    <PropertySection
+    <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'image'"
-      :title="t('videoEditor.fileManager.image.title', 'Image')"
+      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
+      <div class="space-y-2">
       <PropertyRow :label="t('common.extension', 'Extension')" value="нет" />
-    </PropertySection>
+      </div>
+    </div>
 
-    <PropertySection
+    <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'video'"
-      :title="t('videoEditor.fileManager.video.title', 'Video')"
+      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
+      <div class="space-y-2">
       <PropertyRow
         :label="t('common.duration', 'Duration')"
         :value="formatDurationSeconds(mediaMeta?.duration)"
@@ -472,12 +497,14 @@ onUnmounted(() => {
         {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
         {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
       </PropertyRow>
-    </PropertySection>
+      </div>
+    </div>
 
-    <PropertySection
+    <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'audio'"
-      :title="t('videoEditor.fileManager.audio.title', 'Audio')"
+      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
+      <div class="space-y-2">
       <PropertyRow
         :label="t('common.duration', 'Duration')"
         :value="formatDurationSeconds(mediaMeta?.duration)"
@@ -493,12 +520,14 @@ onUnmounted(() => {
         {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
         {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
       </PropertyRow>
-    </PropertySection>
+      </div>
+    </div>
 
-    <PropertySection
+    <div
       v-if="fileInfo?.kind === 'file' && isOtio && timelineDocSummary"
-      :title="t('videoEditor.fileManager.otio.title', 'OTIO')"
+      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
+      <div class="space-y-2">
       <PropertyRow
         :label="t('common.duration', 'Duration')"
         :value="formatDurationSeconds((timelineDocSummary.durationUs ?? 0) / 1_000_000)"
@@ -512,38 +541,21 @@ onUnmounted(() => {
         :value="timelineDocSummary.audioTracks"
       />
       <PropertyRow :label="t('videoEditor.fileManager.otio.clips', 'Clips')" :value="timelineDocSummary.clips" />
-    </PropertySection>
+      </div>
+    </div>
 
-    <PropertySection
-      v-if="fileInfo?.kind === 'file' && (mediaType === 'video' || mediaType === 'audio') && metadataYaml"
-      :title="t('common.meta', 'Meta')"
-    >
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        :label="isMetaExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
-        @click="isMetaExpanded = !isMetaExpanded"
-      />
-      <pre
-        v-if="isMetaExpanded"
-        class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-        >{{ metadataYaml }}</pre
-      >
-    </PropertySection>
-
-    <PropertySection v-if="fileInfo" :title="t('common.file', 'File')">
+    <PropertySection v-if="fileInfo" :title="generalInfoTitle">
       <PropertyRow :label="t('common.path', 'Path')" :value="selectedPath ?? '-'" />
       <PropertyRow :label="t('common.size', 'Size')" :value="fileInfo.size !== undefined ? formatBytes(fileInfo.size) : '-'" />
       <PropertyRow
         :label="t('common.created', 'Created')"
+        :value="(fileInfo.createdAt ?? fileInfo.lastModified) ? new Date(fileInfo.createdAt ?? fileInfo.lastModified!).toLocaleString() : '-'"
+      />
+      <PropertyRow
+        :label="t('common.updated', 'Updated')"
         :value="fileInfo.lastModified ? new Date(fileInfo.lastModified).toLocaleString() : '-'"
       />
       <PropertyRow :label="t('common.hidden', 'Hidden')" :value="isHidden ? 'Yes' : 'No'" />
-      <PropertyRow
-        :label="t('common.type', 'Type')"
-        :value="fileInfo.kind === 'directory' ? 'folder' : fileInfo.mimeType ?? '-'"
-      />
     </PropertySection>
 
     <!-- Usage in timelines -->
@@ -570,5 +582,39 @@ onUnmounted(() => {
         </UButton>
       </div>
     </div>
+
+    <PropertySection
+      v-if="fileInfo?.kind === 'file' && isVideoOrAudio && metadataYaml"
+      :title="t('common.meta', 'Meta')"
+    >
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        :label="isMetaExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
+        @click="isMetaExpanded = !isMetaExpanded"
+      />
+      <pre
+        v-if="isMetaExpanded"
+        class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
+        >{{ metadataYaml }}</pre
+      >
+    </PropertySection>
   </div>
 </template>
+
+<style scoped>
+.checkerboard-bg {
+  background-color: #121212;
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%);
+  background-size: 20px 20px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
+}
+</style>
