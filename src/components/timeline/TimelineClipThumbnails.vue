@@ -404,7 +404,7 @@ watch(
 <template>
   <div
     ref="rootEl"
-    class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-10"
+    class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-0"
   >
     <!-- Video clips: Chunked canvases -->
     <div

@@ -11,6 +11,7 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import { formatDurationSeconds } from '~/utils/format';
+import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -481,6 +482,14 @@ const audioFadeOutMaxSec = computed(() => {
   return Math.max(0, (Number(props.clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
 });
 
+function handleUpdateAudioFadeInSec(val: number) {
+  audioFadeInSec.value = val;
+}
+
+function handleUpdateAudioFadeOutSec(val: number) {
+  audioFadeOutSec.value = val;
+}
+
 function handleTransitionUpdate(payload: {
   trackId: string;
   itemId: string;
@@ -907,80 +916,22 @@ defineExpose({
       @update:effects="handleUpdateClipEffects"
     />
 
-    <div
-      v-if="
-        canEditAudioFades &&
-        (selectedClipTrack?.kind === 'audio' || selectedClipTrack?.kind === 'video')
-      "
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
-    >
-      <div
-        class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-      >
-        {{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}
-      </div>
-
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.audio.volume', 'Volume')
-          }}</span>
-          <span class="text-xs font-mono text-ui-text-muted">{{ audioGain.toFixed(3) }}x</span>
-        </div>
-        <WheelSlider
-          :model-value="audioGain"
-          :min="0"
-          :max="2"
-          :step="0.001"
-          @update:model-value="handleUpdateAudioGain"
-        />
-      </div>
-
-      <div v-if="canEditAudioBalance" class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.audio.balance', 'Balance')
-          }}</span>
-          <span class="text-xs font-mono text-ui-text-muted">{{ audioBalance.toFixed(2) }}</span>
-        </div>
-        <WheelSlider
-          :model-value="audioBalance"
-          :min="-1"
-          :max="1"
-          :step="0.01"
-          @update:model-value="handleUpdateAudioBalance"
-        />
-      </div>
-
-      <div class="grid grid-cols-2 gap-2">
-        <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.audioFade.in', 'Fade in')
-          }}</span>
-          <UInput
-            v-model.number="audioFadeInSec"
-            size="sm"
-            type="number"
-            step="0.01"
-            :min="0"
-            :max="audioFadeInMaxSec"
-          />
-        </div>
-        <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.audioFade.out', 'Fade out')
-          }}</span>
-          <UInput
-            v-model.number="audioFadeOutSec"
-            size="sm"
-            type="number"
-            step="0.01"
-            :min="0"
-            :max="audioFadeOutMaxSec"
-          />
-        </div>
-      </div>
-    </div>
+    <ClipAudioSection
+      :can-edit-audio-fades="canEditAudioFades"
+      :can-edit-audio-balance="canEditAudioBalance"
+      :can-edit-audio-gain="canEditAudioGain"
+      :selected-track-kind="selectedClipTrack?.kind ?? null"
+      :audio-gain="audioGain"
+      :audio-balance="audioBalance"
+      :audio-fade-in-sec="audioFadeInSec"
+      :audio-fade-out-sec="audioFadeOutSec"
+      :audio-fade-in-max-sec="audioFadeInMaxSec"
+      :audio-fade-out-max-sec="audioFadeOutMaxSec"
+      @update-audio-gain="handleUpdateAudioGain"
+      @update-audio-balance="handleUpdateAudioBalance"
+      @update-audio-fade-in-sec="handleUpdateAudioFadeInSec"
+      @update-audio-fade-out-sec="handleUpdateAudioFadeOutSec"
+    />
 
     <!-- Transform -->
     <div
