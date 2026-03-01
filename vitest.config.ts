@@ -12,10 +12,18 @@ export default defineVitestConfig({
     setupFiles: ['test/vitest.setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov'],
+      reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage',
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['**/*.d.ts', '**/*.test.*', '**/*.spec.*', 'test/**', '**/node_modules/**'],
+      exclude: [
+        '**/*.d.ts',
+        '**/*.test.*',
+        '**/*.spec.*',
+        'test/**',
+        'src/workers/**',
+        'src/assets/**',
+        '**/node_modules/**',
+      ],
     },
   },
 });
