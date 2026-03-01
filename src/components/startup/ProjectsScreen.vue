@@ -16,12 +16,14 @@ async function createNewProject() {
   await projectStore.createProject(newProjectName.value.trim());
   if (workspaceStore.userSettings.openLastProjectOnStart) {
     await openProject(newProjectName.value.trim());
+    await navigateTo('/cut');
   }
   newProjectName.value = '';
 }
 
 async function handleOpenProject(project: string) {
   await openProject(project);
+  await navigateTo('/cut');
 }
 </script>
 

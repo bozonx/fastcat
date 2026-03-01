@@ -1,5 +1,14 @@
 <script setup lang="ts">
-definePageMeta({
-  redirect: '/cut'
-});
+import { useProjectStore } from '~/stores/project.store';
+
+const projectStore = useProjectStore();
+
+// Если проект уже открыт, переходим к монтажу
+if (projectStore.currentProjectName) {
+  navigateTo('/cut');
+}
 </script>
+
+<template>
+  <div></div>
+</template>
