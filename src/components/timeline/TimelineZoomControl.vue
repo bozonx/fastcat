@@ -33,7 +33,7 @@ const isHovered = ref(false);
     <Transition name="zoom-panel">
       <div
         v-if="isHovered"
-        class="absolute top-1/2 right-0 -translate-y-1/2 z-9999 pointer-events-auto origin-right flex items-center justify-end"
+        class="absolute top-full right-0 mt-1 z-9999 pointer-events-auto origin-top-right flex items-center justify-end"
       >
         <!-- Main panel with slider -->
         <div
@@ -70,6 +70,6 @@ const isHovered = ref(false);
 .zoom-panel-enter-from,
 .zoom-panel-leave-to {
   opacity: 0;
-  transform: translateY(-50%) scale(0.95) !important;
+  transform: translateY(-4px) scale(0.95);
 }
 </style>

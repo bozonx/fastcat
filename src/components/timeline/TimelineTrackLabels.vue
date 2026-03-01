@@ -6,6 +6,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import { useSelectionStore } from '~/stores/selection.store';
+import TimelineZoomControl from '~/components/timeline/TimelineZoomControl.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -328,6 +329,10 @@ function toggleClipSnapMode() {
             @click="toggleClipSnapMode"
           />
         </UTooltip>
+        
+        <div class="w-px h-3.5 bg-ui-border mx-0.5" />
+        
+        <TimelineZoomControl />
       </div>
     </div>
     <div class="flex flex-col divide-y divide-ui-border flex-1">
