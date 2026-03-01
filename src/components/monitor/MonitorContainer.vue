@@ -13,6 +13,7 @@ import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
+import MonitorAudioControl from './MonitorAudioControl.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -215,12 +216,6 @@ function onPlaybackSpeedChange(v: any) {
   }
 }
 
-function toggleMute() {
-  timelineStore.toggleAudioMuted();
-  blurActiveElement();
-}
-
-
 const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
   projectStore,
   timelineStore,
@@ -237,6 +232,11 @@ const toolbarPosition = computed(() => projectStore.projectSettings.monitor?.too
 const contextMenuItems = computed(() => {
   return [
     [
+      {
+        label: t('granVideoEditor.monitor.center', 'Center'),
+        icon: 'i-heroicons-arrows-pointing-in',
+        onSelect: centerMonitor,
+      },
       {
         label: t('granVideoEditor.monitor.toolbarTop', 'Панель сверху'),
         icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
@@ -401,16 +401,6 @@ defineProps<{
           />
         </UTooltip>
 
-        <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-arrows-pointing-in"
-            @click="centerMonitor"
-          />
-        </UTooltip>
-
         <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
           <UButton
             v-if="projectStore.projectSettings.monitor"
@@ -547,34 +537,7 @@ defineProps<{
         </USelectMenu>
       </div>
 
-      <div class="flex items-center gap-2.5">
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          :icon="audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-          :aria-label="
-            audioMuted
-              ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
-              : t('granVideoEditor.monitor.audioMute', 'Mute')
-          "
-          @click="toggleMute"
-        />
-
-        <WheelSlider
-          :min="0"
-          :max="2"
-          :step="0.05"
-          :model-value="audioMuted ? 0 : audioVolume"
-          slider-class="w-20"
-          :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
-          @update:model-value="(v) => timelineStore.setAudioVolume(Number(v ?? 1))"
-        />
-
-        <span class="text-sm text-ui-text-muted tabular-nums min-w-12">
-          {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%
-        </span>
-      </div>
+      <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
     </div>
     </div>
   </UContextMenu>
