@@ -124,6 +124,7 @@ function handleRemoveEffect(effectId: string) {
                 :min="control.min"
                 :max="control.max"
                 :step="control.step"
+                :default-value="getEffectManifest(effect.type)?.defaultValues?.[control.key as any]"
                 @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
               />
             </div>
