@@ -10,5 +10,12 @@ export default defineVitestConfig({
     hookTimeout: 30_000,
     include: ['test/unit/**/*.test.ts', 'test/unit/**/*.spec.ts'],
     setupFiles: ['test/vitest.setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,vue}'],
+      exclude: ['**/*.d.ts', '**/*.test.*', '**/*.spec.*', 'test/**', '**/node_modules/**'],
+    },
   },
 });

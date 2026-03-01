@@ -13,7 +13,8 @@
     "typecheck": "nuxi typecheck",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@nuxt/ui": "^4.4.0",
@@ -43,6 +44,7 @@
     "@nuxt/eslint": "^1.15.1",
     "@nuxt/icon": "^2.2.1",
     "@nuxt/test-utils": "^4.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.0",
     "@types/js-yaml": "^4.0.9",
