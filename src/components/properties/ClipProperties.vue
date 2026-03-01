@@ -2,11 +2,15 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyRow from '~/components/properties/PropertyRow.vue';
+import { formatDurationSeconds } from '~/utils/format';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -15,6 +19,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const selectionStore = useSelectionStore();
 
 const isRenameModalOpen = ref(false);
 
@@ -34,6 +39,58 @@ function handleRenameClip(newName: string) {
   if (newName.trim()) {
     timelineStore.renameItem(props.clip.trackId, props.clip.id, newName.trim());
   }
+}
+
+async function handleSelectInFileManager() {
+  if (props.clip.clipType !== 'media' || !props.clip.source?.path) return;
+  const path = props.clip.source.path;
+  
+  // Use file manager to select
+  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
+  const fm = useFileManager();
+  const entry = await fm.findEntryByPath(path);
+  
+  if (entry) {
+    selectionStore.selectFsEntry(entry);
+  }
+}
+
+const mediaMeta = computed(() => {
+  if (props.clip.clipType !== 'media' || !props.clip.source?.path) return null;
+  return mediaStore.mediaMetadata[props.clip.source.path] || null;
+});
+
+function formatAudioChannels(channels: number | undefined) {
+  if (!channels || channels <= 0) return '-';
+  if (channels === 1) return 'Mono';
+  if (channels === 2) return 'Stereo';
+  return `${channels} tracks`;
+}
+
+function handleUpdateStartTime(val: number | string) {
+  const newStartUs = Math.max(0, Math.round(Number(val) * 1_000_000));
+  if (newStartUs === props.clip.timelineRange.startUs) return;
+  
+  timelineStore.applyTimeline({
+    type: 'move_item',
+    trackId: props.clip.trackId,
+    itemId: props.clip.id,
+    startUs: newStartUs,
+  });
+}
+
+function handleUpdateEndTime(val: number | string) {
+  const newEndUs = Math.max(0, Math.round(Number(val) * 1_000_000));
+  const currentEndUs = props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
+  if (newEndUs === currentEndUs) return;
+  
+  timelineStore.applyTimeline({
+    type: 'trim_item',
+    trackId: props.clip.trackId,
+    itemId: props.clip.id,
+    edge: 'end',
+    deltaUs: newEndUs - currentEndUs,
+  });
 }
 
 function handleUpdateOpacity(val: number | undefined) {
@@ -486,42 +543,103 @@ defineExpose({
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
-    <div
-      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-    >
-      {{ clip.name }}
-    </div>
-
-    <div class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border text-xs">
-      <div
+    <PropertySection :title="t('granVideoEditor.clip.actions', 'Actions')">
+      <div class="flex gap-2 w-full">
+        <UButton
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-pencil"
+          class="flex-1 justify-center"
+          @click="isRenameModalOpen = true"
+        >
+          {{ t('common.rename', 'Rename') }}
+        </UButton>
+        <UButton
+          size="xs"
+          variant="soft"
+          color="red"
+          icon="i-heroicons-trash"
+          class="flex-1 justify-center"
+          @click="handleDeleteClip"
+        >
+          {{ t('common.delete', 'Delete') }}
+        </UButton>
+      </div>
+      <UButton
         v-if="clip.clipType === 'media'"
-        class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
+        size="xs"
+        variant="soft"
+        color="neutral"
+        icon="i-heroicons-folder-open"
+        class="w-full justify-center mt-2"
+        @click="handleSelectInFileManager"
       >
-        <span class="text-ui-text-muted text-xs">{{ t('common.source', 'Source File') }}</span>
-        <span class="font-medium break-all text-xs">{{ clip.source.path }}</span>
+        {{ t('granVideoEditor.clip.showInFileManager', 'Show in File Manager') }}
+      </UButton>
+    </PropertySection>
+
+    <PropertySection v-if="clip.clipType === 'media'" :title="t('common.source', 'Source File')">
+      <PropertyRow :label="t('common.path', 'Path')" :value="clip.source.path" />
+      <template v-if="mediaMeta?.video">
+        <PropertyRow
+          :label="t('videoEditor.fileManager.video.resolution', 'Resolution')"
+          :value="
+            mediaMeta.video.displayWidth && mediaMeta.video.displayHeight
+              ? `${mediaMeta.video.displayWidth}x${mediaMeta.video.displayHeight}`
+              : '-'
+          "
+        />
+        <PropertyRow :label="t('videoEditor.fileManager.video.fps', 'FPS')" :value="mediaMeta.video.fps ?? '-'" />
+      </template>
+      <template v-if="mediaMeta?.audio">
+        <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
+          {{ formatAudioChannels(mediaMeta.audio.channels) }},
+          {{ mediaMeta.audio.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
+        </PropertyRow>
+      </template>
+    </PropertySection>
+
+    <PropertySection :title="t('granVideoEditor.clip.info', 'Clip Info')">
+      <PropertyRow :label="t('common.duration', 'Duration')" :value="formatTime(clip.timelineRange.durationUs)" />
+      
+      <div class="flex flex-col gap-0.5 mt-2">
+        <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }} (s)</span>
+        <UInput
+          :model-value="clip.timelineRange.startUs / 1_000_000"
+          size="sm"
+          type="number"
+          step="0.01"
+          @update:model-value="handleUpdateStartTime"
+        />
       </div>
-      <div
-        v-else-if="clip.clipType === 'background'"
-        class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
-      >
-        <span class="text-ui-text-muted text-xs">{{ t('common.color', 'Color') }}</span>
-        <div class="flex items-center justify-between gap-3">
-          <span class="font-mono text-xs text-ui-text">{{ clip.backgroundColor }}</span>
-          <UColorPicker
-            :model-value="clip.backgroundColor"
-            format="hex"
-            size="sm"
-            @update:model-value="handleUpdateBackgroundColor"
-          />
-        </div>
+      
+      <div class="flex flex-col gap-0.5 mt-2">
+        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }} (s)</span>
+        <UInput
+          :model-value="(clip.timelineRange.startUs + clip.timelineRange.durationUs) / 1_000_000"
+          size="sm"
+          type="number"
+          step="0.01"
+          @update:model-value="handleUpdateEndTime"
+        />
       </div>
-      <div
-        v-else-if="clip.clipType === 'text'"
-        class="flex flex-col gap-1.5 border-b border-ui-border pb-1.5"
-      >
-        <span class="text-ui-text-muted text-xs">{{
-          t('granVideoEditor.textClip.text', 'Text')
-        }}</span>
+    </PropertySection>
+
+    <PropertySection v-if="clip.clipType === 'background'" :title="t('common.color', 'Color')">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-mono text-xs text-ui-text">{{ clip.backgroundColor }}</span>
+        <UColorPicker
+          :model-value="clip.backgroundColor"
+          format="hex"
+          size="sm"
+          @update:model-value="handleUpdateBackgroundColor"
+        />
+      </div>
+    </PropertySection>
+
+    <PropertySection v-else-if="clip.clipType === 'text'" :title="t('granVideoEditor.textClip.text', 'Text')">
+      <div class="flex flex-col gap-2">
         <UTextarea
           :model-value="(clip as any).text"
           size="sm"
@@ -637,15 +755,7 @@ defineExpose({
           />
         </div>
       </div>
-      <div class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
-        <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
-        <span class="font-mono text-xs">{{ formatTime(clip.timelineRange.startUs) }}</span>
-      </div>
-      <div class="flex flex-col gap-0.5 pb-1.5">
-        <span class="text-xs text-ui-text-muted">{{ t('common.duration', 'Duration') }}</span>
-        <span class="font-mono text-xs">{{ formatTime(clip.timelineRange.durationUs) }}</span>
-      </div>
-    </div>
+    </PropertySection>
 
     <!-- Quick Transitions -->
     <div
