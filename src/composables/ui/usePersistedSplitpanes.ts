@@ -1,4 +1,3 @@
-import { useLocalStorage } from '@vueuse/core';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import type { Ref } from 'vue';
 
@@ -22,20 +21,23 @@ export function usePersistedSplitpanes(
   projectId: Ref<string | null>,
   defaultSizes: number[],
 ) {
-  const key = computed(() => getPanelSizesKey(pageKey, projectId.value));
+  const key = ref(getPanelSizesKey(pageKey, projectId.value));
   const sizes = ref<number[]>([...defaultSizes]);
+  const isLoaded = ref(false);
 
   function loadSizes() {
-    const stored = readLocalStorageJson<number[] | null>(key.value, null);
+    const newKey = getPanelSizesKey(pageKey, projectId.value);
+    key.value = newKey;
+    const stored = readLocalStorageJson<number[] | null>(newKey, null);
     if (stored && Array.isArray(stored) && stored.length === defaultSizes.length) {
       sizes.value = stored;
     } else {
       sizes.value = [...defaultSizes];
     }
+    isLoaded.value = true;
   }
 
-  onMounted(loadSizes);
-  watch(() => projectId.value, loadSizes);
+  watch(() => projectId.value, loadSizes, { immediate: true });
 
   function onResized(event: { panes: { size: number }[] }) {
     if (Array.isArray(event?.panes)) {

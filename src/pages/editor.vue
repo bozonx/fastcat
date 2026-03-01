@@ -2,7 +2,6 @@
 import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
-import { useEditorViewStore } from '~/stores/editorView.store';
 import { useProjectStore } from '~/stores/project.store';
 
 import FileManager from '~/components/FileManager.vue';
@@ -12,10 +11,9 @@ import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import Timeline from '~/components/Timeline.vue';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 
-const viewStore = useEditorViewStore();
-const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const { currentProjectId } = storeToRefs(projectStore);
+const filesPageStore = useFilesPageStore();
 
 const { sizes: mainSplitSizes, onResized: onMainSplitResize } = usePersistedSplitpanes(
   'editor-main',
@@ -27,12 +25,18 @@ const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitp
   currentProjectId,
   [20, 60, 20],
 );
+
+function onTimelineResize(panes: { size: number }[]) {
+  if (panes[0]?.size) {
+    projectStore.timelineHeight = panes[0].size;
+  }
+}
 </script>
 
 <template>
   <ClientOnly>
     <!-- Fullscreen View -->
-    <div v-if="viewStore.currentView === 'fullscreen'" class="h-screen w-screen bg-ui-bg text-ui-text overflow-hidden">
+    <div v-if="projectStore.currentView === 'fullscreen'" class="h-screen w-screen bg-ui-bg text-ui-text overflow-hidden">
       <MonitorContainer is-fullscreen />
     </div>
 
@@ -44,9 +48,9 @@ const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitp
         @resized="onMainSplitResize"
       >
         <!-- Top Panel: varies by view -->
-        <Pane :size="100 - viewStore.timelineHeight" min-size="10">
+        <Pane :size="100 - projectStore.timelineHeight" min-size="10">
           <!-- Files View: FileManager + FileBrowser + Properties -->
-          <Splitpanes v-if="viewStore.currentView === 'files'" class="editor-splitpanes">
+          <Splitpanes v-if="projectStore.currentView === 'files'" class="editor-splitpanes">
             <Pane min-size="10">
               <FileManager folders-only class="h-full" @select="filesPageStore.selectFolder" />
             </Pane>
@@ -59,7 +63,7 @@ const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitp
           </Splitpanes>
 
           <!-- Cut View: FileManager + Monitor + Properties -->
-          <Splitpanes v-else-if="viewStore.currentView === 'cut'" class="editor-splitpanes" @resized="onTopSplitResize">
+          <Splitpanes v-else-if="projectStore.currentView === 'cut'" class="editor-splitpanes" @resized="onTopSplitResize">
             <Pane :size="topSplitSizes[0]" min-size="5">
               <FileManager class="h-full" />
             </Pane>
@@ -72,7 +76,7 @@ const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitp
           </Splitpanes>
 
           <!-- Sound View: Audio Panels -->
-          <Splitpanes v-else-if="viewStore.currentView === 'sound'" class="editor-splitpanes">
+          <Splitpanes v-else-if="projectStore.currentView === 'sound'" class="editor-splitpanes">
             <Pane min-size="10">
               <div class="h-full bg-ui-bg-elevated/50 p-4 border border-ui-border rounded flex flex-col items-center justify-center text-ui-text-muted">
                 <h3 class="font-bold mb-2">Звук: Панель 1</h3>
@@ -87,7 +91,7 @@ const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitp
         </Pane>
 
         <!-- Bottom Panel: Timeline (always visible, height varies) -->
-        <Pane :size="viewStore.timelineHeight" min-size="5">
+        <Pane :size="projectStore.timelineHeight" min-size="5" @resized="onTimelineResize">
           <Timeline class="h-full" />
         </Pane>
       </Splitpanes>
