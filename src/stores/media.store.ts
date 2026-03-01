@@ -3,8 +3,9 @@ import { ref } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';
-import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
-import { getProjectCacheSegments } from '~/utils/vardata-paths';
+
+import { createMediaCacheFsModule } from '~/stores/media/mediaCacheFs';
+import { createMediaWorkerModule } from '~/stores/media/mediaWorker';
 
 export interface MediaMetadata {
   source: {
@@ -36,30 +37,17 @@ export const useMediaStore = defineStore('media', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
 
+  const fsModule = createMediaCacheFsModule({
+    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+    getProjectId: () => projectStore.currentProjectId,
+  });
+
+  const workerModule = createMediaWorkerModule();
+
   const mediaMetadata = ref<Record<string, MediaMetadata>>({});
 
   function resetMediaState() {
     mediaMetadata.value = {};
-  }
-
-  function getCacheFileName(projectRelativePath: string): string {
-    return `${encodeURIComponent(projectRelativePath)}.json`;
-  }
-
-  async function ensureCacheDir(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.workspaceHandle || !projectStore.currentProjectId) return null;
-    const parts = getProjectCacheSegments(projectStore.currentProjectId);
-    let dir = workspaceStore.workspaceHandle;
-    for (const segment of parts) {
-      dir = await dir.getDirectoryHandle(segment, { create: true });
-    }
-    return dir;
-  }
-
-  async function ensureFilesMetaDir(): Promise<FileSystemDirectoryHandle | null> {
-    const projectCacheDir = await ensureCacheDir();
-    if (!projectCacheDir) return null;
-    return await projectCacheDir.getDirectoryHandle('files-meta', { create: true });
   }
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
@@ -120,8 +108,8 @@ export const useMediaStore = defineStore('media', () => {
       }
     }
 
-    const metaDir = await ensureFilesMetaDir();
-    const cacheFileName = getCacheFileName(projectRelativePath);
+    const metaDir = await fsModule.ensureFilesMetaDir();
+    const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
 
     if (!options?.forceRefresh && metaDir) {
       try {
@@ -139,8 +127,7 @@ export const useMediaStore = defineStore('media', () => {
     }
 
     try {
-      const { client } = getExportWorkerClient();
-      const meta = await client.extractMetadata(fileHandle);
+      const meta = (await workerModule.extractMetadata(fileHandle)) as MediaMetadata | null;
 
       if (meta) {
         mediaMetadata.value[cacheKey] = meta;
