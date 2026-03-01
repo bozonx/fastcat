@@ -35,6 +35,7 @@ export interface GranVideoEditorProjectSettings {
     useProxy: boolean;
     panX: number;
     panY: number;
+    toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
   };
   timelines: {
     openPaths: string[];
@@ -80,6 +81,7 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     useProxy: true,
     panX: 0,
     panY: 0,
+    toolbarPosition: 'bottom',
   },
   timelines: {
     openPaths: [],
@@ -279,6 +281,9 @@ export function normalizeProjectSettings(
         useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
       panX: Number.isFinite(panX) ? panX : DEFAULT_PROJECT_SETTINGS.monitor.panX,
       panY: Number.isFinite(panY) ? panY : DEFAULT_PROJECT_SETTINGS.monitor.panY,
+      toolbarPosition: ['top', 'bottom', 'left', 'right'].includes(monitorInput.toolbarPosition)
+        ? monitorInput.toolbarPosition
+        : DEFAULT_PROJECT_SETTINGS.monitor.toolbarPosition,
     },
     timelines: {
       openPaths: Array.isArray(input.timelines?.openPaths)
