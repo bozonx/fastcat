@@ -20,6 +20,7 @@ import { useMediaStore } from './media.store';
 import { useHistoryStore } from './history.store';
 import { useWorkspaceStore } from './workspace.store';
 import { useProxyStore } from './proxy.store';
+import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
@@ -887,8 +888,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     getMediaMetadataByPath: (path) => mediaMetadata.value[path] ?? null,
     fetchMediaMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
-    hasProxy: (path) => proxyStore.existingProxies.has(path),
-    generateProxy: (handle, path) => proxyStore.generateProxy(handle, path),
+    mediaCache: {
+      hasProxy: (path: string) => proxyStore.existingProxies.has(path),
+      ensureProxy: async (params: {
+        fileHandle: FileSystemFileHandle;
+        projectRelativePath: string;
+      }) => await proxyStore.generateProxy(params.fileHandle, params.projectRelativePath),
+    } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
     defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
     defaultImageSourceDurationUs: DEFAULT_IMAGE_SOURCE_DURATION_US,
     parseTimelineFromOtio,

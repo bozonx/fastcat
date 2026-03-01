@@ -13,11 +13,9 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
-import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 
 const { t } = useI18n();
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
@@ -27,11 +25,8 @@ const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
-const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
-const proxyStore = useProxyStore();
-const toast = useToast();
 
 const fileManager = useFileManager();
 const {
@@ -84,6 +79,7 @@ const {
   deleteEntry,
   loadProjectDirectory,
   handleFiles,
+  mediaCache: fileManager.mediaCache,
 });
 
 async function openFileInfoModal(entry: FsEntry) {
@@ -123,8 +119,12 @@ function onFileAction(action: any, entry: FsEntry) {
             if (handle.kind === 'file') {
               const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
               if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
-                if (!proxyStore.existingProxies.has(fullPath) && !proxyStore.generatingProxies.has(fullPath)) {
-                  void proxyStore.generateProxy(handle as FileSystemFileHandle, fullPath);
+                if (!fileManager.mediaCache.hasProxy(fullPath)) {
+                  void ensureProxyCommand({
+                    service: fileManager.mediaCache,
+                    fileHandle: handle as FileSystemFileHandle,
+                    projectRelativePath: fullPath,
+                  });
                 }
               }
             } else if (handle.kind === 'directory') {
@@ -146,7 +146,8 @@ function onFileAction(action: any, entry: FsEntry) {
 
 watch(
   () => uiStore.pendingFsEntryDelete,
-  (entry) => {
+  (value) => {
+    const entry = value as FsEntry | null;
     if (entry) {
       openDeleteConfirmModal(entry);
       uiStore.pendingFsEntryDelete = null;
@@ -362,6 +363,7 @@ async function onDirectoryFileSelect(e: Event) {
       :root-entries="rootEntries"
       :get-file-icon="getFileIcon"
       :find-entry-by-path="findEntryByPath"
+      :media-cache="fileManager.mediaCache"
       :move-entry="moveEntry"
       :get-project-root-dir-handle="getProjectRootDirHandle"
       :handle-files="handleFiles"

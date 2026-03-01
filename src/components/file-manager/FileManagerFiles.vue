@@ -6,11 +6,12 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useProxyStore } from '~/stores/proxy.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useProxyStore } from '~/stores/proxy.store';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
+import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -18,8 +19,8 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
-const proxyStore = useProxyStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
+const proxyStore = useProxyStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -55,6 +56,7 @@ const props = defineProps<{
   rootEntries: FsEntry[];
   getFileIcon: (entry: FsEntry) => string;
   findEntryByPath: (path: string) => FsEntry | null;
+  mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
   moveEntry: (params: {
     source: FsEntry;
     targetDirHandle: FileSystemDirectoryHandle;
@@ -88,7 +90,7 @@ function getEntryMeta(entry: FsEntry): {
     return { hasProxy: false, generatingProxy: false };
   }
 
-  const hasProxy = proxyStore.existingProxies.has(entry.path);
+  const hasProxy = props.mediaCache.hasProxy(entry.path);
   const generatingProxy = proxyStore.generatingProxies.has(entry.path);
   const proxyProgress = proxyStore.proxyProgress[entry.path];
   const isUsedInTimeline = Boolean(mediaUsageMap.value[entry.path]?.length);

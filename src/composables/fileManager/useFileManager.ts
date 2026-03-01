@@ -16,6 +16,12 @@ import {
   TIMELINES_DIR_NAME,
 } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
+import { createProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import {
+  clearVideoThumbnailsCommand,
+  onVideoPathMovedCommand,
+  removeProxyCommand,
+} from '~/media-cache/application/proxyThumbnailCommands';
 import type { FsEntry } from '~/types/fs';
 import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
@@ -98,17 +104,7 @@ export interface FileManagerCreateDeps {
     fileHandle: FileSystemFileHandle;
     projectRelativePath: string;
   }) => void;
-  proxy: {
-    checkExistingProxies: (paths: string[]) => Promise<void>;
-    deleteProxy: (path: string) => Promise<void>;
-    clearExistingProxies: () => void;
-  };
-  thumbnails: {
-    clearVideoThumbnails: (params: {
-      projectId: string;
-      projectRelativePath: string;
-    }) => Promise<void>;
-  };
+  mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryMoved?: () => void | Promise<void>;
 }
@@ -134,7 +130,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     getExpandedPaths: () => deps.getExpandedPaths(),
     sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
     sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
-    checkExistingProxies: (videoPaths) => deps.proxy.checkExistingProxies(videoPaths),
+    checkExistingProxies: (videoPaths) => deps.mediaCache.checkExistingProxies(videoPaths),
     onError: (params: { title?: string; message: string; error?: unknown }) => {
       const description = params.error
         ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
@@ -285,12 +281,16 @@ export function createFileManager(deps: FileManagerCreateDeps) {
             await parent.removeEntry(name, { recursive });
           },
           onFileDeleted: async ({ path }) => {
-            await deps.proxy.deleteProxy(path);
+            await removeProxyCommand({
+              service: deps.mediaCache,
+              projectRelativePath: path,
+            });
 
             if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
               const projectId = deps.getProjectId();
               if (projectId) {
-                await deps.thumbnails.clearVideoThumbnails({
+                await clearVideoThumbnailsCommand({
+                  service: deps.mediaCache,
                   projectId,
                   projectRelativePath: path,
                 });
@@ -392,23 +392,27 @@ export function createFileManager(deps: FileManagerCreateDeps) {
               await deps.onEntryPathChanged?.({ oldPath, newPath });
 
               if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
-                await deps.proxy.deleteProxy(oldPath);
-                deps.proxy.clearExistingProxies();
-
                 const projectId = deps.getProjectId();
                 if (projectId) {
-                  await deps.thumbnails.clearVideoThumbnails({
+                  await onVideoPathMovedCommand({
+                    service: deps.mediaCache,
                     projectId,
+                    oldPath,
+                    newPath,
+                  });
+                } else {
+                  await removeProxyCommand({
+                    service: deps.mediaCache,
                     projectRelativePath: oldPath,
                   });
+                  deps.mediaCache.clearExistingProxies();
+                  await deps.mediaCache.checkExistingProxies([newPath]);
                 }
-
-                await deps.proxy.checkExistingProxies([newPath]);
               }
             },
             onDirectoryMoved: async () => {
               await deps.onDirectoryMoved?.();
-              deps.proxy.clearExistingProxies();
+              deps.mediaCache.clearExistingProxies();
             },
           },
         );
@@ -457,6 +461,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     isLoading,
     error,
     isApiSupported: deps.isApiSupported,
+    mediaCache: deps.mediaCache,
     getProjectRootDirHandle: deps.getProjectRootDirHandle,
     sortMode: deps.sortMode,
     setSortMode: (v: FileTreeSortMode) => {
@@ -549,22 +554,22 @@ export function useFileManager() {
     onMediaImported: ({ fileHandle, projectRelativePath }) => {
       void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
     },
-    proxy: {
+    mediaCache: createProxyThumbnailService({
       checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),
-      deleteProxy: async (path) => await proxyStore.deleteProxy(path),
+      hasProxy: (path) => proxyStore.existingProxies.has(path),
+      ensureProxy: async ({ fileHandle, projectRelativePath }) =>
+        await proxyStore.generateProxy(fileHandle, projectRelativePath),
+      cancelProxy: async (projectRelativePath) =>
+        await proxyStore.cancelProxyGeneration(projectRelativePath),
+      removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
       clearExistingProxies: () => proxyStore.existingProxies.clear(),
-    },
-    thumbnails: {
       clearVideoThumbnails: async ({ projectId, projectRelativePath }) => {
         await thumbnailGenerator.clearThumbnails({
           projectId,
-          hash: getClipThumbnailsHash({
-            projectId,
-            projectRelativePath,
-          }),
+          hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
         });
       },
-    },
+    }),
     onEntryPathChanged: async ({ oldPath, newPath }) => {
       delete mediaStore.mediaMetadata[oldPath];
       delete mediaStore.mediaMetadata[newPath];

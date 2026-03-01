@@ -1,6 +1,8 @@
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
+import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 
 interface TimelineMediaMetadata {
   duration?: number;
@@ -29,8 +31,7 @@ export interface TimelineCommandServiceDeps {
   getMediaMetadataByPath: (path: string) => TimelineMediaMetadata | null;
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getUserSettings: () => { optimization: { autoCreateProxies: boolean } };
-  hasProxy: (path: string) => boolean;
-  generateProxy: (handle: FileSystemFileHandle, path: string) => Promise<void>;
+  mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
   parseTimelineFromOtio: typeof import('~/timeline/otioSerializer').parseTimelineFromOtio;
@@ -117,10 +118,14 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       deps.getUserSettings().optimization.autoCreateProxies &&
       hasVideo &&
       input.path.startsWith(`${VIDEO_DIR_NAME}/`) &&
-      !deps.hasProxy(input.path);
+      !deps.mediaCache.hasProxy(input.path);
 
     if (shouldAutoCreateProxy) {
-      void deps.generateProxy(handle, input.path);
+      void ensureProxyCommand({
+        service: deps.mediaCache,
+        fileHandle: handle,
+        projectRelativePath: input.path,
+      });
     }
 
     deps.ensureTimelineDoc();

@@ -1,18 +1,28 @@
 import { ref, computed, type Ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FsEntry } from '~/types/fs';
 import type { FileInfo } from '~/types/fileManager';
+import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import {
+  cancelProxyCommand,
+  ensureProxyCommand,
+  removeProxyCommand,
+} from '~/media-cache/application/proxyThumbnailCommands';
 
 interface FileManagerActions {
   createFolder: (name: string, target?: FileSystemDirectoryHandle | null) => Promise<void>;
   renameEntry: (target: FsEntry, newName: string) => Promise<void>;
   deleteEntry: (target: FsEntry) => Promise<void>;
   loadProjectDirectory: () => Promise<void>;
-  handleFiles: (files: File[], targetDirHandle?: FileSystemDirectoryHandle, targetDirPath?: string) => Promise<void>;
+  handleFiles: (
+    files: File[],
+    targetDirHandle?: FileSystemDirectoryHandle,
+    targetDirPath?: string,
+  ) => Promise<void>;
+  mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
 }
 
 export function useFileManagerModals(actions: FileManagerActions) {
@@ -22,7 +32,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
   const mediaStore = useMediaStore();
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
-  const proxyStore = useProxyStore();
 
   const isCreateFolderModalOpen = ref(false);
   const folderCreationTarget = ref<FileSystemDirectoryHandle | null>(null);
@@ -163,10 +172,7 @@ export function useFileManagerModals(actions: FileManagerActions) {
     renameTarget.value = null;
   }
 
-  function onFileAction(
-    action: string,
-    entry: FsEntry,
-  ) {
+  function onFileAction(action: string, entry: FsEntry) {
     if (action === 'createFolder') {
       openCreateFolderModal(entry);
     } else if (action === 'upload') {
@@ -182,21 +188,25 @@ export function useFileManagerModals(actions: FileManagerActions) {
       openDeleteConfirmModal(entry);
     } else if (action === 'createProxy') {
       if (entry.kind === 'file' && entry.path) {
-        void proxyStore.generateProxy(entry.handle as FileSystemFileHandle, entry.path);
+        void ensureProxyCommand({
+          service: actions.mediaCache,
+          fileHandle: entry.handle as FileSystemFileHandle,
+          projectRelativePath: entry.path,
+        });
       }
     } else if (action === 'cancelProxy') {
       if (entry.kind === 'file' && entry.path) {
-        void proxyStore.cancelProxyGeneration(entry.path);
+        void cancelProxyCommand({ service: actions.mediaCache, projectRelativePath: entry.path });
       }
     } else if (action === 'deleteProxy') {
       if (entry.kind === 'file' && entry.path) {
-        void proxyStore.deleteProxy(entry.path);
+        void removeProxyCommand({ service: actions.mediaCache, projectRelativePath: entry.path });
       }
     } else if (action === 'createProxyForFolder') {
       if (entry.kind === 'directory' && entry.path !== undefined) {
-         // This logic is long, maybe it should also be in proxyStore or useFileManager?
-         // For now let's keep it in the component or move it to a utility.
-         // Actually, let's keep it in onFileAction for now but simplifying it.
+        // This logic is long, maybe it should also be in proxyStore or useFileManager?
+        // For now let's keep it in the component or move it to a utility.
+        // Actually, let's keep it in onFileAction for now but simplifying it.
       }
     }
   }
