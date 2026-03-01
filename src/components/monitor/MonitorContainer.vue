@@ -375,9 +375,13 @@ defineProps<{
         toolbarPosition === 'top' ? 'border-b' : '',
         toolbarPosition === 'right' ? 'border-l' : '',
         toolbarPosition === 'left' ? 'border-r' : '',
+        toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
       ]"
     >
-      <div class="flex items-center gap-2 shrink-0">
+      <div
+        class="flex items-center gap-2 shrink-0"
+        :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
+      >
         <UTooltip :text="t('granVideoEditor.monitor.snapshot', 'Create snapshot')">
           <UButton
             size="xs"
