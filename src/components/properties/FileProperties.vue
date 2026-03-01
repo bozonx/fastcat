@@ -455,18 +455,18 @@ onUnmounted(() => {
 
     <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'image'"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
+      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
-      <div class="space-y-2">
+      <div class="flex flex-col">
       <PropertyRow :label="t('common.extension', 'Extension')" value="нет" />
       </div>
     </div>
 
     <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'video'"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
+      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
-      <div class="space-y-2">
+      <div class="flex flex-col">
       <PropertyRow
         :label="t('common.duration', 'Duration')"
         :value="formatDurationSeconds(mediaMeta?.duration)"
@@ -502,9 +502,9 @@ onUnmounted(() => {
 
     <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'audio'"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
+      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
-      <div class="space-y-2">
+      <div class="flex flex-col">
       <PropertyRow
         :label="t('common.duration', 'Duration')"
         :value="formatDurationSeconds(mediaMeta?.duration)"
@@ -525,9 +525,9 @@ onUnmounted(() => {
 
     <div
       v-if="fileInfo?.kind === 'file' && isOtio && timelineDocSummary"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
+      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
-      <div class="space-y-2">
+      <div class="flex flex-col">
       <PropertyRow
         :label="t('common.duration', 'Duration')"
         :value="formatDurationSeconds((timelineDocSummary.durationUs ?? 0) / 1_000_000)"
@@ -561,7 +561,7 @@ onUnmounted(() => {
     <!-- Usage in timelines -->
     <div
       v-if="timelinesUsingSelectedFile.length > 0"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border"
     >
       <div
         class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
