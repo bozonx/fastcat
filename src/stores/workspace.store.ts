@@ -1,20 +1,6 @@
 import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
-import PQueue from 'p-queue';
-import { useDebounceFn } from '@vueuse/core';
-import {
-  VARDATA_DIR_NAME,
-  VARDATA_PROJECTS_DIR_NAME,
-  getProjectVardataSegments,
-} from '~/utils/vardata-paths';
-import {
-  type GranVideoEditorUserSettings,
-  type GranVideoEditorWorkspaceSettings,
-  createDefaultUserSettings,
-  createDefaultWorkspaceSettings,
-  normalizeUserSettings,
-  normalizeWorkspaceSettings,
-} from '~/utils/settings';
+import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
 import {
   createWorkspaceSettingsRepository,
   type WorkspaceSettingsRepository,
@@ -23,6 +9,9 @@ import {
   createIndexedDbWorkspaceHandleStorage,
   type WorkspaceHandleStorage,
 } from '~/repositories/workspace-handle.repository';
+
+import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
+import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
 
 function getErrorMessage(e: unknown, fallback: string): string {
   if (!e || typeof e !== 'object') return fallback;
@@ -60,50 +49,36 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   const projects = ref<string[]>([]);
   const isLoading = ref(false);
-  const isInitializing = ref(true);
   const error = ref<string | null>(null);
-
+  const isInitializing = ref(true);
   const lastProjectName = ref<string | null>(readLocalStorageString('gran-editor-last-project'));
 
-  const userSettings = ref<GranVideoEditorUserSettings>(createDefaultUserSettings());
+  const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
+  const {
+    userSettings,
+    workspaceSettings,
+    isSavingUserSettings,
+    userSettingsSaveError,
+    isSavingWorkspaceSettings,
+    workspaceSettingsSaveError,
+    batchUpdateUserSettings,
+    batchUpdateWorkspaceSettings,
+    loadWorkspaceSettingsFromDisk,
+    loadUserSettingsFromDisk,
+    saveWorkspaceSettingsToDisk,
+    saveUserSettingsToDisk,
+    flushSettingsSaves,
+    resetSettingsState,
+  } = settingsModule;
 
-  const workspaceSettings = ref<GranVideoEditorWorkspaceSettings>(createDefaultWorkspaceSettings());
-
-  const isSavingUserSettings = ref(false);
-  const userSettingsSaveError = ref<string | null>(null);
-  const isBatchUpdatingUserSettings = ref(false);
-  const debouncedEnqueueUserSettingsSave = useDebounceFn(async () => {
-    await enqueueUserSettingsSave();
-  }, 500);
-  let userSettingsRevision = 0;
-  let savedUserSettingsRevision = 0;
-  const userSettingsSaveQueue = new PQueue({ concurrency: 1 });
-
-  const isSavingWorkspaceSettings = ref(false);
-  const workspaceSettingsSaveError = ref<string | null>(null);
-  const isBatchUpdatingWorkspaceSettings = ref(false);
-  const debouncedEnqueueWorkspaceSettingsSave = useDebounceFn(async () => {
-    await enqueueWorkspaceSettingsSave();
-  }, 500);
-  let workspaceSettingsRevision = 0;
-  let savedWorkspaceSettingsRevision = 0;
-  const workspaceSettingsSaveQueue = new PQueue({ concurrency: 1 });
-
-  function markUserSettingsAsDirty() {
-    userSettingsRevision += 1;
-  }
-
-  function markUserSettingsAsCleanForCurrentRevision() {
-    savedUserSettingsRevision = userSettingsRevision;
-  }
-
-  function markWorkspaceSettingsAsDirty() {
-    workspaceSettingsRevision += 1;
-  }
-
-  function markWorkspaceSettingsAsCleanForCurrentRevision() {
-    savedWorkspaceSettingsRevision = workspaceSettingsRevision;
-  }
+  const projectsModule = createWorkspaceProjectsModule({
+    workspaceHandle,
+    projectsHandle,
+    projects,
+    error,
+    lastProjectName,
+  });
+  const { loadProjects, clearVardata, clearProjectVardata, deleteProject } = projectsModule;
 
   watch(lastProjectName, (v) => {
     if (typeof window === 'undefined') return;
@@ -115,194 +90,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   });
 
-  async function persistUserSettingsNow() {
-    if (!settingsRepo.value) return;
-    if (savedUserSettingsRevision >= userSettingsRevision) return;
-
-    isSavingUserSettings.value = true;
-    userSettingsSaveError.value = null;
-    const revisionToSave = userSettingsRevision;
-
-    try {
-      await settingsRepo.value.saveUserSettings(userSettings.value);
-
-      if (savedUserSettingsRevision < revisionToSave) {
-        savedUserSettingsRevision = revisionToSave;
-      }
-    } catch (e) {
-      userSettingsSaveError.value = getErrorMessage(e, 'Failed to save user settings');
-      console.warn('Failed to save user settings', e);
-    } finally {
-      isSavingUserSettings.value = false;
-    }
-  }
-
-  async function enqueueUserSettingsSave() {
-    await userSettingsSaveQueue.add(async () => {
-      await persistUserSettingsNow();
-    });
-  }
-
-  async function requestUserSettingsSave(options?: { immediate?: boolean }) {
-    if (options?.immediate || typeof window === 'undefined') {
-      await enqueueUserSettingsSave();
-      return;
-    }
-    await debouncedEnqueueUserSettingsSave();
-  }
-
-  watch(
-    userSettings,
-    () => {
-      if (isBatchUpdatingUserSettings.value) return;
-      markUserSettingsAsDirty();
-      void requestUserSettingsSave();
-    },
-    { deep: true },
-  );
-
-  async function batchUpdateUserSettings(
-    updater: (draft: GranVideoEditorUserSettings) => void,
-    options?: { immediate?: boolean },
-  ) {
-    isBatchUpdatingUserSettings.value = true;
-    try {
-      updater(userSettings.value);
-    } finally {
-      isBatchUpdatingUserSettings.value = false;
-    }
-
-    markUserSettingsAsDirty();
-    await requestUserSettingsSave(options);
-  }
-
-  async function persistWorkspaceSettingsNow() {
-    if (!settingsRepo.value) return;
-    if (savedWorkspaceSettingsRevision >= workspaceSettingsRevision) return;
-
-    isSavingWorkspaceSettings.value = true;
-    workspaceSettingsSaveError.value = null;
-    const revisionToSave = workspaceSettingsRevision;
-
-    try {
-      await settingsRepo.value.saveWorkspaceSettings(workspaceSettings.value);
-
-      if (savedWorkspaceSettingsRevision < revisionToSave) {
-        savedWorkspaceSettingsRevision = revisionToSave;
-      }
-    } catch (e) {
-      workspaceSettingsSaveError.value = getErrorMessage(e, 'Failed to save workspace settings');
-      console.warn('Failed to save workspace settings', e);
-    } finally {
-      isSavingWorkspaceSettings.value = false;
-    }
-  }
-
-  async function enqueueWorkspaceSettingsSave() {
-    await workspaceSettingsSaveQueue.add(async () => {
-      await persistWorkspaceSettingsNow();
-    });
-  }
-
-  async function requestWorkspaceSettingsSave(options?: { immediate?: boolean }) {
-    if (options?.immediate || typeof window === 'undefined') {
-      await enqueueWorkspaceSettingsSave();
-      return;
-    }
-    await debouncedEnqueueWorkspaceSettingsSave();
-  }
-
-  watch(
-    workspaceSettings,
-    () => {
-      if (isBatchUpdatingWorkspaceSettings.value) return;
-      markWorkspaceSettingsAsDirty();
-      void requestWorkspaceSettingsSave();
-    },
-    { deep: true },
-  );
-
-  async function batchUpdateWorkspaceSettings(
-    updater: (draft: GranVideoEditorWorkspaceSettings) => void,
-    options?: { immediate?: boolean },
-  ) {
-    isBatchUpdatingWorkspaceSettings.value = true;
-    try {
-      updater(workspaceSettings.value);
-    } finally {
-      isBatchUpdatingWorkspaceSettings.value = false;
-    }
-
-    markWorkspaceSettingsAsDirty();
-    await requestWorkspaceSettingsSave(options);
-  }
-
   const isApiSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
-
-  async function loadProjects() {
-    if (!projectsHandle.value) return;
-
-    projects.value = [];
-    try {
-      const handleLike = projectsHandle.value as unknown as {
-        values?: () => AsyncIterableIterator<FileSystemHandle>;
-        entries?: () => AsyncIterableIterator<[string, FileSystemHandle]>;
-      };
-      const iterator = handleLike.values?.() ?? handleLike.entries?.();
-      if (!iterator) return;
-
-      for await (const value of iterator) {
-        const handle = Array.isArray(value) ? value[1] : value;
-        if (handle.kind === 'directory') {
-          projects.value.push(handle.name);
-        }
-      }
-
-      projects.value.sort((a, b) => a.localeCompare(b));
-    } catch (e: unknown) {
-      error.value = getErrorMessage(e, 'Failed to load projects');
-    }
-  }
-
-  async function loadWorkspaceSettingsFromDisk() {
-    if (!settingsRepo.value) return;
-
-    try {
-      const raw = await settingsRepo.value.loadWorkspaceSettings();
-      workspaceSettings.value = normalizeWorkspaceSettings(raw);
-    } catch {
-      workspaceSettings.value = normalizeWorkspaceSettings(null);
-    } finally {
-      workspaceSettingsRevision = 0;
-      markWorkspaceSettingsAsCleanForCurrentRevision();
-    }
-  }
-
-  async function loadUserSettingsFromDisk() {
-    if (!settingsRepo.value) return;
-
-    try {
-      const raw = await settingsRepo.value.loadUserSettings();
-      userSettings.value = normalizeUserSettings(raw);
-    } catch {
-      userSettings.value = normalizeUserSettings(null);
-    } finally {
-      userSettingsRevision = 0;
-      markUserSettingsAsCleanForCurrentRevision();
-    }
-  }
-
-  async function saveWorkspaceSettingsToDisk() {
-    await requestWorkspaceSettingsSave({ immediate: true });
-  }
-
-  async function saveUserSettingsToDisk() {
-    await requestUserSettingsSave({ immediate: true });
-  }
-
-  async function flushSettingsSaves() {
-    await Promise.all([saveUserSettingsToDisk(), saveWorkspaceSettingsToDisk()]);
-  }
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
@@ -364,6 +152,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projects.value = [];
     error.value = null;
 
+    resetSettingsState();
+
     workspaceHandleStorage.value?.clear().catch(console.warn);
   }
 
@@ -419,61 +209,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     setupWorkspace,
     loadProjects,
     isInitializing,
-    clearVardata: async () => {
-      if (!workspaceHandle.value) return;
-      try {
-        await workspaceHandle.value.removeEntry(VARDATA_DIR_NAME, { recursive: true });
-      } catch (e: unknown) {
-        if ((e as { name?: unknown }).name !== 'NotFoundError') {
-          console.warn('Failed to clear vardata', e);
-        }
-      }
-      try {
-        const vardataDir = await workspaceHandle.value.getDirectoryHandle(VARDATA_DIR_NAME, {
-          create: true,
-        });
-        await vardataDir.getDirectoryHandle(VARDATA_PROJECTS_DIR_NAME, { create: true });
-      } catch {
-        // ignore
-      }
-    },
-    clearProjectVardata: async (projectId: string) => {
-      const parts = getProjectVardataSegments(projectId);
-      try {
-        const vardataDir = await workspaceHandle.value?.getDirectoryHandle(parts[0]!);
-        const projectsDir = await vardataDir?.getDirectoryHandle(parts[1]!);
-        await projectsDir?.removeEntry(parts[2]!, { recursive: true });
-      } catch {
-        // ignore
-      }
-    },
-    deleteProject: async (name: string, projectId?: string) => {
-      if (!projectsHandle.value) return;
-
-      try {
-        if (projectId) {
-          const parts = getProjectVardataSegments(projectId);
-          try {
-            const vardataDir = await workspaceHandle.value?.getDirectoryHandle(parts[0]!);
-            const projectsDir = await vardataDir?.getDirectoryHandle(parts[1]!);
-            await projectsDir?.removeEntry(parts[2]!, { recursive: true });
-          } catch {
-            // ignore
-          }
-        }
-
-        await projectsHandle.value.removeEntry(name, { recursive: true });
-        await loadProjects();
-
-        if (lastProjectName.value === name) {
-          lastProjectName.value = null;
-        }
-      } catch (e: unknown) {
-        if ((e as { name?: unknown }).name !== 'NotFoundError') {
-          console.warn('Failed to delete project', name, e);
-          throw e;
-        }
-      }
-    },
+    clearVardata,
+    clearProjectVardata,
+    deleteProject,
   };
 });
