@@ -403,7 +403,7 @@ function getContextMenuItems(entry: FsEntry) {
           >
             <!-- Chevron for directories -->
             <UIcon
-              v-if="entry.kind === 'directory'"
+              v-if="entry.kind === 'directory' && (!foldersOnly || !entry.children || entry.children.some(c => c.kind === 'directory'))"
               name="i-heroicons-chevron-right"
               class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
               :class="{ 'rotate-90': entry.expanded }"
