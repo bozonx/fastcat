@@ -30,6 +30,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 
 const isMetaExpanded = ref(false);
+const isExifExpanded = ref(false);
 
 const uploadInputRef = ref<HTMLInputElement | null>(null);
 
@@ -62,6 +63,7 @@ const {
   textContent,
   fileInfo,
   timelineDocSummary,
+  exifYaml,
   metadataYaml,
   isUnknown,
   isOtio,
@@ -378,6 +380,23 @@ async function stopProxyGenerationForSelectedFolder() {
         v-if="isMetaExpanded"
         class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
         >{{ metadataYaml }}</pre>
+    </PropertySection>
+
+    <PropertySection
+      v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml"
+      title="EXIF"
+    >
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        :label="isExifExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
+        @click="isExifExpanded = !isExifExpanded"
+      />
+      <pre
+        v-if="isExifExpanded"
+        class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
+        >{{ exifYaml }}</pre>
     </PropertySection>
   </div>
 </template>

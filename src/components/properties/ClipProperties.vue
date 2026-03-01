@@ -6,13 +6,13 @@ import { useSelectionStore } from '~/stores/selection.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
-import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
-import { formatDurationSeconds } from '~/utils/format';
 import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
+import { useClipTransform } from '~/composables/properties/useClipTransform';
+import { useClipAudio } from '~/composables/properties/useClipAudio';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -25,13 +25,7 @@ const selectionStore = useSelectionStore();
 
 const isRenameModalOpen = ref(false);
 
-const selectedClipTrack = computed<TimelineTrack | null>(() => {
-  return (
-    (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
-      (t) => t.id === props.clip.trackId,
-    ) ?? null
-  );
-});
+const clipRef = computed(() => props.clip);
 
 function handleDeleteClip() {
   timelineStore.deleteSelectedItems(props.clip.trackId);
@@ -114,22 +108,6 @@ function handleUpdateClipEffects(effects: any[]) {
   });
 }
 
-function handleUpdateAudioGain(val: unknown) {
-  const v = typeof val === 'number' && Number.isFinite(val) ? val : Number(val);
-  const safe = Number.isFinite(v) ? Math.max(0, Math.min(2, v)) : 1;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    audioGain: safe,
-  });
-}
-
-function handleUpdateAudioBalance(val: unknown) {
-  const v = typeof val === 'number' && Number.isFinite(val) ? val : Number(val);
-  const safe = Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    audioBalance: safe,
-  });
-}
-
 function handleUpdateBackgroundColor(val: string | undefined) {
   if (props.clip.clipType !== 'background') return;
   const safe = typeof val === 'string' && val.trim().length > 0 ? val.trim() : '#000000';
@@ -156,347 +134,48 @@ function handleUpdateTextStyle(patch: Partial<import('~/timeline/types').TextCli
   });
 }
 
-function clampNumber(value: unknown, min: number, max: number): number {
-  const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
-  return Math.max(min, Math.min(max, n));
-}
-
-function getSafeTransform(clip: TimelineClipItem): import('~/timeline/types').ClipTransform {
-  const tr = (clip as any).transform ?? {};
-  const scaleRaw = tr.scale ?? {};
-  const scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
-  const scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
-  const linked = Boolean(scaleRaw.linked);
-
-  const positionRaw = tr.position ?? {};
-  const posX =
-    typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
-  const posY =
-    typeof positionRaw.y === 'number' && Number.isFinite(positionRaw.y) ? positionRaw.y : 0;
-
-  const rotationDeg =
-    typeof tr.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
-
-  const anchorRaw = tr.anchor ?? {};
-  const preset =
-    anchorRaw.preset === 'center' ||
-    anchorRaw.preset === 'topLeft' ||
-    anchorRaw.preset === 'topRight' ||
-    anchorRaw.preset === 'bottomLeft' ||
-    anchorRaw.preset === 'bottomRight' ||
-    anchorRaw.preset === 'custom'
-      ? anchorRaw.preset
-      : 'center';
-  const anchorX =
-    typeof anchorRaw.x === 'number' && Number.isFinite(anchorRaw.x) ? anchorRaw.x : 0.5;
-  const anchorY =
-    typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
-
-  return {
-    scale: {
-      x: clampNumber(scaleX, 0.001, 1000),
-      y: clampNumber(scaleY, 0.001, 1000),
-      linked,
-    },
-    position: {
-      x: clampNumber(posX, -1_000_000, 1_000_000),
-      y: clampNumber(posY, -1_000_000, 1_000_000),
-    },
-    rotationDeg: clampNumber(rotationDeg, -36000, 36000),
-    anchor:
-      preset === 'custom'
-        ? { preset, x: clampNumber(anchorX, 0, 1), y: clampNumber(anchorY, 0, 1) }
-        : { preset },
-  };
-}
-
-function updateSelectedClipTransform(patch: Partial<import('~/timeline/types').ClipTransform>) {
-  const clip = props.clip;
-  const current = getSafeTransform(clip);
-  const next: import('~/timeline/types').ClipTransform = {
-    ...current,
-    ...patch,
-    scale: {
-      ...(current.scale ?? { x: 1, y: 1, linked: true }),
-      ...(patch.scale ?? {}),
-    },
-    position: {
-      ...(current.position ?? { x: 0, y: 0 }),
-      ...(patch.position ?? {}),
-    },
-    anchor: {
-      ...(current.anchor ?? { preset: 'center' }),
-      ...(patch.anchor ?? {}),
-    },
-  };
-
-  timelineStore.updateClipProperties(clip.trackId, clip.id, {
-    transform: next,
-  });
-}
-
-const canEditTransform = computed(() => {
-  return props.clip.trackId.startsWith('v');
-});
-
-const anchorPresetOptions = computed(() => [
-  { value: 'center', label: 'Center' },
-  { value: 'topLeft', label: 'Top Left' },
-  { value: 'topRight', label: 'Top Right' },
-  { value: 'bottomLeft', label: 'Bottom Left' },
-  { value: 'bottomRight', label: 'Bottom Right' },
-  { value: 'custom', label: 'Custom' },
-]);
-
-const transformScaleLinked = computed({
-  get: () => {
-    return Boolean(getSafeTransform(props.clip).scale?.linked);
-  },
-  set: (val: boolean) => {
-    const current = getSafeTransform(props.clip);
-    const linked = Boolean(val);
-    const x = current.scale?.x ?? 1;
-    const y = current.scale?.y ?? 1;
-    updateSelectedClipTransform({
-      scale: linked ? { x, y: x, linked } : { x, y, linked },
-    });
+const {
+  anchorPresetOptions,
+  canEditTransform,
+  transformAnchorPreset,
+  transformAnchorX,
+  transformAnchorY,
+  transformPosX,
+  transformPosY,
+  transformRotationDeg,
+  transformScaleLinked,
+  transformScaleX,
+  transformScaleY,
+} = useClipTransform({
+  clip: clipRef,
+  updateTransform: (next) => {
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transform: next });
   },
 });
 
-const transformScaleX = computed({
-  get: () => {
-    return getSafeTransform(props.clip).scale?.x ?? 1;
-  },
-  set: (val: number) => {
-    const current = getSafeTransform(props.clip);
-    const linked = Boolean(current.scale?.linked);
-    const x = clampNumber(val, 0.001, 1000);
-    const y = linked ? x : (current.scale?.y ?? 1);
-    updateSelectedClipTransform({ scale: { x, y, linked } });
-  },
-});
-
-const transformScaleY = computed({
-  get: () => {
-    return getSafeTransform(props.clip).scale?.y ?? 1;
-  },
-  set: (val: number) => {
-    const current = getSafeTransform(props.clip);
-    const linked = Boolean(current.scale?.linked);
-    const y = clampNumber(val, 0.001, 1000);
-    const x = linked ? y : (current.scale?.x ?? 1);
-    updateSelectedClipTransform({ scale: { x, y, linked } });
+const {
+  audioBalance,
+  audioFadeInMaxSec,
+  audioFadeInSec,
+  audioFadeOutMaxSec,
+  audioFadeOutSec,
+  audioGain,
+  canEditAudioBalance,
+  canEditAudioFades,
+  canEditAudioGain,
+  selectedClipTrack,
+  updateAudioBalance,
+  updateAudioFadeInSec,
+  updateAudioFadeOutSec,
+  updateAudioGain,
+} = useClipAudio({
+  clip: clipRef,
+  tracks: computed(() => timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined),
+  mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
+  updateAudio: (patch) => {
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, patch);
   },
 });
-
-const transformRotationDeg = computed({
-  get: () => {
-    return getSafeTransform(props.clip).rotationDeg ?? 0;
-  },
-  set: (val: number) => {
-    updateSelectedClipTransform({ rotationDeg: clampNumber(val, -36000, 36000) });
-  },
-});
-
-const transformPosX = computed({
-  get: () => {
-    return getSafeTransform(props.clip).position?.x ?? 0;
-  },
-  set: (val: number) => {
-    const current = getSafeTransform(props.clip);
-    updateSelectedClipTransform({
-      position: { x: clampNumber(val, -1_000_000, 1_000_000), y: current.position?.y ?? 0 },
-    });
-  },
-});
-
-const transformPosY = computed({
-  get: () => {
-    return getSafeTransform(props.clip).position?.y ?? 0;
-  },
-  set: (val: number) => {
-    const current = getSafeTransform(props.clip);
-    updateSelectedClipTransform({
-      position: { x: current.position?.x ?? 0, y: clampNumber(val, -1_000_000, 1_000_000) },
-    });
-  },
-});
-
-const transformAnchorPreset = computed({
-  get: () => {
-    return getSafeTransform(props.clip).anchor?.preset ?? 'center';
-  },
-  set: (val: unknown) => {
-    const preset =
-      typeof val === 'string'
-        ? val
-        : val && typeof val === 'object' && typeof (val as any).value === 'string'
-          ? ((val as any).value as string)
-          : null;
-
-    if (
-      preset !== 'center' &&
-      preset !== 'topLeft' &&
-      preset !== 'topRight' &&
-      preset !== 'bottomLeft' &&
-      preset !== 'bottomRight' &&
-      preset !== 'custom'
-    ) {
-      return;
-    }
-    if (preset === 'custom') {
-      updateSelectedClipTransform({ anchor: { preset: 'custom', x: 0.5, y: 0.5 } });
-    } else {
-      updateSelectedClipTransform({ anchor: { preset: preset as any } });
-    }
-  },
-});
-
-const transformAnchorX = computed({
-  get: () => {
-    return getSafeTransform(props.clip).anchor?.x ?? 0.5;
-  },
-  set: (val: number) => {
-    const current = getSafeTransform(props.clip);
-    if (current.anchor?.preset !== 'custom') return;
-    updateSelectedClipTransform({
-      anchor: {
-        preset: 'custom',
-        x: clampNumber(val, 0, 1),
-        y: current.anchor?.y ?? 0.5,
-      },
-    });
-  },
-});
-
-const transformAnchorY = computed({
-  get: () => {
-    return getSafeTransform(props.clip).anchor?.y ?? 0.5;
-  },
-  set: (val: number) => {
-    const current = getSafeTransform(props.clip);
-    if (current.anchor?.preset !== 'custom') return;
-    updateSelectedClipTransform({
-      anchor: {
-        preset: 'custom',
-        x: current.anchor?.x ?? 0.5,
-        y: clampNumber(val, 0, 1),
-      },
-    });
-  },
-});
-
-const canEditAudioFades = computed(() => {
-  if (props.clip.clipType !== 'media' && props.clip.clipType !== 'timeline') return false;
-  return true;
-});
-
-const canEditAudioGain = computed(() => {
-  if (props.clip.clipType !== 'media' && props.clip.clipType !== 'timeline') return false;
-  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === props.clip.trackId);
-  if (track?.kind === 'video' && (props.clip as any).audioFromVideoDisabled) return false;
-
-  if (props.clip.source?.path) {
-    const meta = mediaStore.mediaMetadata[props.clip.source.path];
-    if (!meta?.audio) return false;
-  }
-
-  return true;
-});
-
-const canEditAudioBalance = computed(() => {
-  return canEditAudioGain.value;
-});
-
-const audioGain = computed({
-  get: () => {
-    const v =
-      typeof (props.clip as any)?.audioGain === 'number' &&
-      Number.isFinite((props.clip as any).audioGain)
-        ? (props.clip as any).audioGain
-        : 1;
-    return Math.max(0, Math.min(2, v));
-  },
-  set: (val: number) => {
-    const v = Math.max(0, Math.min(2, Number(val)));
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { audioGain: v });
-  },
-});
-
-const audioBalance = computed({
-  get: () => {
-    const v =
-      typeof (props.clip as any)?.audioBalance === 'number' &&
-      Number.isFinite((props.clip as any).audioBalance)
-        ? (props.clip as any).audioBalance
-        : 0;
-    return Math.max(-1, Math.min(1, v));
-  },
-  set: (val: number) => {
-    const v = Math.max(-1, Math.min(1, Number(val)));
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { audioBalance: v });
-  },
-});
-
-const clipDurationSec = computed(() => {
-  return Math.max(0, Number(props.clip.timelineRange?.durationUs ?? 0) / 1_000_000);
-});
-
-const audioFadeInSec = computed({
-  get: () => {
-    const v =
-      typeof (props.clip as any)?.audioFadeInUs === 'number' &&
-      Number.isFinite((props.clip as any).audioFadeInUs)
-        ? (props.clip as any).audioFadeInUs
-        : 0;
-    return Math.max(0, v / 1_000_000);
-  },
-  set: (val: number) => {
-    const v = Math.max(0, Math.min(val, clipDurationSec.value)) * 1_000_000;
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { audioFadeInUs: v });
-  },
-});
-
-const audioFadeOutSec = computed({
-  get: () => {
-    const v =
-      typeof (props.clip as any)?.audioFadeOutUs === 'number' &&
-      Number.isFinite((props.clip as any).audioFadeOutUs)
-        ? (props.clip as any).audioFadeOutUs
-        : 0;
-    return Math.max(0, v / 1_000_000);
-  },
-  set: (val: number) => {
-    const v = Math.max(0, Math.min(val, clipDurationSec.value)) * 1_000_000;
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { audioFadeOutUs: v });
-  },
-});
-
-const audioFadeInMaxSec = computed(() => {
-  const opp =
-    typeof (props.clip as any).audioFadeOutUs === 'number' &&
-    Number.isFinite((props.clip as any).audioFadeOutUs)
-      ? (props.clip as any).audioFadeOutUs
-      : 0;
-  return Math.max(0, (Number(props.clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
-});
-
-const audioFadeOutMaxSec = computed(() => {
-  const opp =
-    typeof (props.clip as any).audioFadeInUs === 'number' &&
-    Number.isFinite((props.clip as any).audioFadeInUs)
-      ? (props.clip as any).audioFadeInUs
-      : 0;
-  return Math.max(0, (Number(props.clip.timelineRange?.durationUs ?? 0) - opp) / 1_000_000);
-});
-
-function handleUpdateAudioFadeInSec(val: number) {
-  audioFadeInSec.value = val;
-}
-
-function handleUpdateAudioFadeOutSec(val: number) {
-  audioFadeOutSec.value = val;
-}
 
 function handleTransitionUpdate(payload: {
   trackId: string;
@@ -796,7 +475,9 @@ defineExpose({
       class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
     >
       <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">Прозрачность</span>
+        <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">
+          {{ t('granVideoEditor.clip.opacity', 'Opacity') }}
+        </span>
         <span class="text-xs font-mono text-ui-text-muted"
           >{{ Math.round((clip.opacity ?? 1) * 100) }}%</span
         >
@@ -829,10 +510,10 @@ defineExpose({
       :audio-fade-out-sec="audioFadeOutSec"
       :audio-fade-in-max-sec="audioFadeInMaxSec"
       :audio-fade-out-max-sec="audioFadeOutMaxSec"
-      @update-audio-gain="handleUpdateAudioGain"
-      @update-audio-balance="handleUpdateAudioBalance"
-      @update-audio-fade-in-sec="handleUpdateAudioFadeInSec"
-      @update-audio-fade-out-sec="handleUpdateAudioFadeOutSec"
+      @update-audio-gain="updateAudioGain"
+      @update-audio-balance="updateAudioBalance"
+      @update-audio-fade-in-sec="updateAudioFadeInSec"
+      @update-audio-fade-out-sec="updateAudioFadeOutSec"
     />
 
     <!-- Transform -->

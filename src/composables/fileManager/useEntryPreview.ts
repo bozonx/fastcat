@@ -26,7 +26,10 @@ function computeTimelineSummary(doc: TimelineDocument) {
   const durationUs = selectTimelineDurationUs(doc);
   const videoTracks = doc.tracks.filter((t) => t.kind === 'video').length;
   const audioTracks = doc.tracks.filter((t) => t.kind === 'audio').length;
-  const clips = doc.tracks.reduce((acc, t) => acc + t.items.filter((it) => it.kind === 'clip').length, 0);
+  const clips = doc.tracks.reduce(
+    (acc, t) => acc + t.items.filter((it) => it.kind === 'clip').length,
+    0,
+  );
   return { durationUs, videoTracks, audioTracks, clips };
 }
 
@@ -42,12 +45,22 @@ export function useEntryPreview(params: {
   const mediaType = ref<MediaType>(null);
   const textContent = ref<string>('');
   const fileInfo = ref<EntryPreviewInfo | null>(null);
+  const exifData = ref<unknown | null>(null);
   const timelineDocSummary = ref<{
     durationUs: number;
     videoTracks: number;
     audioTracks: number;
     clips: number;
   } | null>(null);
+
+  const exifYaml = computed(() => {
+    if (!exifData.value) return null;
+    try {
+      return yaml.dump(exifData.value, { indent: 2 });
+    } catch {
+      return String(exifData.value);
+    }
+  });
 
   const isUnknown = computed(() => mediaType.value === 'unknown');
 
@@ -92,7 +105,11 @@ export function useEntryPreview(params: {
         fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
       }
 
-      if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+      if (
+        mediaType.value === 'image' ||
+        mediaType.value === 'video' ||
+        mediaType.value === 'audio'
+      ) {
         currentUrl.value = URL.createObjectURL(fileToPlay);
       }
     } catch (e) {
@@ -117,6 +134,7 @@ export function useEntryPreview(params: {
       mediaType.value = null;
       textContent.value = '';
       fileInfo.value = null;
+      exifData.value = null;
       timelineDocSummary.value = null;
       params.onResetPreviewMode('original');
 
@@ -168,24 +186,47 @@ export function useEntryPreview(params: {
           mediaType.value = 'unknown';
         }
 
+        const selectionKey = entry;
+        if (mediaType.value === 'image') {
+          try {
+            const exifrModule = await import('exifr');
+            const data = await exifrModule.parse(file);
+
+            if (params.selectedFsEntry.value !== selectionKey) return;
+            exifData.value = data ?? null;
+          } catch {
+            if (params.selectedFsEntry.value !== selectionKey) return;
+            exifData.value = null;
+          }
+        }
+
         fileInfo.value = {
           name: file.name,
           kind: 'file',
           path: entry.path,
           size: file.size,
-          createdAt: typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
+          createdAt:
+            typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
           lastModified: file.lastModified,
           mimeType: typeof file.type === 'string' ? file.type : undefined,
           ext: fileExt,
           metadata:
             entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
-              ? await params.mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
-                  forceRefresh: true,
-                })
+              ? await params.mediaStore.getOrFetchMetadata(
+                  entry.handle as FileSystemFileHandle,
+                  entry.path,
+                  {
+                    forceRefresh: true,
+                  },
+                )
               : undefined,
         };
 
-        if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+        if (
+          mediaType.value === 'image' ||
+          mediaType.value === 'video' ||
+          mediaType.value === 'audio'
+        ) {
           await loadPreviewMedia();
         }
       } catch (e) {
@@ -206,6 +247,8 @@ export function useEntryPreview(params: {
     mediaType,
     textContent,
     fileInfo,
+    exifData,
+    exifYaml,
     timelineDocSummary,
     metadataYaml,
     isUnknown,
