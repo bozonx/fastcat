@@ -5,9 +5,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
-import type { FileInfo } from '~/types/fileManager';
 import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
-import FileInfoModal from '~/components/common/FileInfoModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
@@ -58,8 +56,6 @@ const {
   folderCreationTarget, // still needed for template binding if used there
   isRenameModalOpen,
   renameTarget,
-  isFileInfoModalOpen,
-  currentFileInfo,
   isDeleteConfirmModalOpen,
   deleteTarget,
   timelinesUsingDeleteTarget,
@@ -67,8 +63,6 @@ const {
   directoryUploadInput,
   openCreateFolderModal,
   handleCreateFolder,
-  // openFileInfoModal is used inside onFileAction but can be called directly
-  openFileInfoModal,
   openDeleteConfirmModal,
   handleDeleteConfirm,
   handleRename,
@@ -85,9 +79,7 @@ const {
 // openFileInfoModal is now handled entirely within useFileManagerModals
 
 function onFileAction(action: any, entry: FsEntry) {
-  if (action === 'info') {
-    openFileInfoModal(entry);
-  } else if (action === 'createMarkdown') {
+  if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
     }
@@ -388,6 +380,7 @@ async function onDirectoryFileSelect(e: Event) {
       <div class="ml-auto w-30">
         <USelectMenu
           :model-value="sortMode"
+          :search-input="false"
           :items="[
             { value: 'name', label: t('videoEditor.fileManager.sort.name', 'Name') },
             { value: 'modified', label: t('videoEditor.fileManager.sort.modified', 'Modified') },
@@ -428,8 +421,6 @@ async function onDirectoryFileSelect(e: Event) {
       :initial-name="renameTarget?.name"
       @rename="handleRename"
     />
-
-    <FileInfoModal v-model:open="isFileInfoModalOpen" :info="currentFileInfo" />
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"

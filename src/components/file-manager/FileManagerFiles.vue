@@ -130,7 +130,6 @@ const emit = defineEmits<{
   (
     e: 'action',
     action:
-      | 'info'
       | 'rename'
       | 'delete'
       | 'addToTimeline'

@@ -199,11 +199,11 @@ function onDelete() {
           size="xs"
           color="neutral"
           variant="soft"
-          icon="i-heroicons-bolt"
+          icon="i-heroicons-film"
           class="flex-1"
           @click="generateProxiesForSelectedFolder"
         >
-          {{ t('videoEditor.fileManager.proxy.generate', 'Generate proxies') }}
+          {{ t('videoEditor.fileManager.proxy.create', 'Create proxy') }}
         </UButton>
         <UButton
           v-else

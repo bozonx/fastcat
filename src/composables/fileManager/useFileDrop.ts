@@ -50,6 +50,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     // Snapshot data synchronously - dataTransfer becomes empty after any await
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+    const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
 
     const rootHandle = await options.getProjectRootDirHandle();
     if (!rootHandle) return;
@@ -59,7 +60,6 @@ export function useFileDrop(options: UseFileDropOptions) {
       return;
     }
 
-    const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     if (!moveRaw) return;
 
     let parsed: any;
