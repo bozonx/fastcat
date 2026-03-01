@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import yaml from 'js-yaml';
-import MediaPlayer from '~/components/MediaPlayer.vue';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
-import { computeDirectorySize } from '~/utils/fs';
-import { TEXT_EXTENSIONS, VIDEO_EXTENSIONS } from '~/utils/media-types';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
-import type { TimelineDocument } from '~/timeline/types';
+import { VIDEO_EXTENSIONS } from '~/utils/media-types';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
+import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -33,25 +29,7 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 
-const currentUrl = ref<string | null>(null);
-const mediaType = ref<'image' | 'video' | 'audio' | 'text' | 'unknown' | null>(null);
-const textContent = ref<string>('');
 const isMetaExpanded = ref(false);
-
-type EntryPreviewInfo = {
-  kind: 'file' | 'directory';
-  name: string;
-  path?: string;
-  size?: number;
-  createdAt?: number;
-  lastModified?: number;
-  mimeType?: string;
-  container?: string;
-  metadata?: unknown;
-  ext?: string;
-};
-
-const fileInfo = ref<EntryPreviewInfo | null>(null);
 
 const uploadInputRef = ref<HTMLInputElement | null>(null);
 
@@ -74,7 +52,27 @@ async function onDirectoryFileSelect(e: Event) {
   await fm.loadProjectDirectory();
 }
 
-const isUnknown = computed(() => mediaType.value === 'unknown');
+const selectedFsEntryRef = computed(() => props.selectedFsEntry);
+const previewModeRef = computed(() => props.previewMode);
+const hasProxyRef = computed(() => props.hasProxy);
+
+const {
+  currentUrl,
+  mediaType,
+  textContent,
+  fileInfo,
+  timelineDocSummary,
+  metadataYaml,
+  isUnknown,
+  isOtio,
+} = useEntryPreview({
+  selectedFsEntry: selectedFsEntryRef,
+  previewMode: previewModeRef,
+  hasProxy: hasProxyRef,
+  mediaStore,
+  proxyStore,
+  onResetPreviewMode: (mode) => emit('update:previewMode', mode),
+});
 
 const selectedPath = computed<string | null>(() => {
   const entry = props.selectedFsEntry;
@@ -94,28 +92,6 @@ const ext = computed(() => {
   return value && value !== name.toLowerCase() ? value : value;
 });
 
-const isOtio = computed(() => ext.value === 'otio');
-
-const timelineDocSummary = ref<{
-  durationUs: number;
-  videoTracks: number;
-  audioTracks: number;
-  clips: number;
-} | null>(null);
-
-function computeTimelineSummary(doc: TimelineDocument) {
-  const durationUs = selectTimelineDurationUs(doc);
-  const videoTracks = doc.tracks.filter((t) => t.kind === 'video').length;
-  const audioTracks = doc.tracks.filter((t) => t.kind === 'audio').length;
-  const clips = doc.tracks.reduce(
-    (acc, t) =>
-      acc +
-      t.items.filter((it) => it.kind === 'clip').length,
-    0,
-  );
-  return { durationUs, videoTracks, audioTracks, clips };
-}
-
 function formatAudioChannels(channels: number | undefined) {
   if (!channels || channels <= 0) return '-';
   if (channels === 1) return 'Mono';
@@ -134,15 +110,6 @@ async function openTimelineFromUsage(path: string) {
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
 }
-
-const metadataYaml = computed(() => {
-  if (!fileInfo.value?.metadata) return null;
-  try {
-    return yaml.dump(fileInfo.value.metadata, { indent: 2 });
-  } catch {
-    return String(fileInfo.value.metadata);
-  }
-});
 
 const generalInfoTitle = computed(() => {
   if (!fileInfo.value) return '';
@@ -197,153 +164,6 @@ async function stopProxyGenerationForSelectedFolder() {
     }
   }
 }
-
-// computeDirectorySize is now imported from ~/utils/fs
-
-async function loadPreviewMedia() {
-  if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value);
-    currentUrl.value = null;
-  }
-
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'file') return;
-
-  try {
-    let fileToPlay: File;
-
-    if (props.previewMode === 'proxy' && props.hasProxy && entry.path) {
-      const proxyFile = await proxyStore.getProxyFile(entry.path);
-      if (proxyFile) {
-        fileToPlay = proxyFile;
-      } else {
-        fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
-      }
-    } else {
-      fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
-    }
-
-    if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
-      currentUrl.value = URL.createObjectURL(fileToPlay);
-    }
-  } catch (e) {
-    console.error('Failed to load preview media:', e);
-  }
-}
-
-watch(
-  () => props.previewMode,
-  () => {
-    void loadPreviewMedia();
-  },
-);
-
-watch(
-  () => props.selectedFsEntry,
-  async (entry) => {
-    // Revoke old URL
-    if (currentUrl.value) {
-      URL.revokeObjectURL(currentUrl.value);
-      currentUrl.value = null;
-    }
-    mediaType.value = null;
-    textContent.value = '';
-    fileInfo.value = null;
-    isMetaExpanded.value = false;
-    timelineDocSummary.value = null;
-    emit('update:previewMode', 'original');
-
-    if (!entry) return;
-
-    if (entry.kind === 'directory') {
-      fileInfo.value = {
-        name: entry.name,
-        kind: 'directory',
-        path: entry.path,
-        size: await computeDirectorySize(entry.handle as FileSystemDirectoryHandle),
-      };
-      return;
-    }
-
-    try {
-      const file = await (entry.handle as FileSystemFileHandle).getFile();
-
-      const ext = entry.name.split('.').pop()?.toLowerCase() || '';
-      const textExtensions = TEXT_EXTENSIONS;
-
-      if (ext === 'otio') {
-        mediaType.value = 'text';
-        try {
-          const text = await file.text();
-          const parsedDoc = parseTimelineFromOtio(text, {
-            id: entry.path ?? 'unknown',
-            name: entry.name,
-            fps: 25,
-          });
-          timelineDocSummary.value = computeTimelineSummary(parsedDoc);
-        } catch {
-          timelineDocSummary.value = null;
-        }
-      } else
-
-      if (file.type.startsWith('image/')) {
-        mediaType.value = 'image';
-      } else if (file.type.startsWith('video/')) {
-        mediaType.value = 'video';
-      } else if (file.type.startsWith('audio/')) {
-        mediaType.value = 'audio';
-      } else if (textExtensions.includes(ext || '') || file.type.startsWith('text/')) {
-        mediaType.value = 'text';
-        // limit text read to first 1MB
-        const textSlice = file.slice(0, 1024 * 1024);
-        textContent.value = await textSlice.text();
-        if (file.size > 1024 * 1024) {
-          textContent.value += '\n... (truncated)';
-        }
-      } else {
-        mediaType.value = 'unknown';
-      }
-
-      fileInfo.value = {
-        name: file.name,
-        kind: 'file',
-        path: entry.path,
-        size: file.size,
-        createdAt: typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
-        lastModified: file.lastModified,
-        mimeType: typeof file.type === 'string' ? file.type : undefined,
-        ext,
-        metadata:
-          entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
-            ? await mediaStore.getOrFetchMetadata(
-                entry.handle as FileSystemFileHandle,
-                entry.path,
-                {
-                  forceRefresh: true,
-                },
-              )
-            : undefined,
-      };
-
-      if (
-        mediaType.value === 'image' ||
-        mediaType.value === 'video' ||
-        mediaType.value === 'audio'
-      ) {
-        await loadPreviewMedia();
-      }
-    } catch (e) {
-      console.error('Failed to preview file:', e);
-    }
-  },
-  { immediate: true },
-);
-
-onUnmounted(() => {
-  if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value);
-  }
-});
 </script>
 
 <template>
@@ -356,54 +176,14 @@ onUnmounted(() => {
       @change="onDirectoryFileSelect"
     />
 
-    <!-- Preview Box (only for files) -->
-    <div
-      v-if="selectedFsEntry?.kind === 'file' && !isOtio"
-      class="w-full bg-ui-bg rounded border border-ui-border flex flex-col items-center justify-center min-h-50 overflow-hidden shrink-0"
-    >
-      <div
-        v-if="isUnknown && !isOtio"
-        class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
-      >
-        <UIcon name="i-heroicons-document" class="w-16 h-16" />
-        <p class="text-sm text-center">
-          {{
-            t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview')
-          }}
-        </p>
-      </div>
-
-      <div v-else-if="currentUrl" class="w-full h-full flex flex-col">
-        <div
-          v-if="mediaType === 'image' || mediaType === 'video'"
-          class="w-full h-64 flex items-center justify-center checkerboard-bg"
-        >
-          <img
-            v-if="mediaType === 'image'"
-            :src="currentUrl"
-            class="max-w-full max-h-64 object-contain"
-          />
-          <MediaPlayer
-            v-else
-            :src="currentUrl"
-            :type="mediaType"
-            class="w-full h-64"
-          />
-        </div>
-        <MediaPlayer
-          v-else-if="mediaType === 'audio'"
-          :src="currentUrl"
-          :type="mediaType"
-          class="w-full h-64"
-        />
-      </div>
-
-      <pre
-        v-else-if="mediaType === 'text'"
-        class="w-full max-h-64 overflow-auto p-4 text-xs font-mono text-ui-text whitespace-pre-wrap"
-        >{{ textContent }}</pre
-      >
-    </div>
+    <EntryPreviewBox
+      :selected-entry-kind="selectedFsEntry?.kind ?? null"
+      :is-otio="isOtio"
+      :is-unknown="isUnknown"
+      :current-url="currentUrl"
+      :media-type="mediaType"
+      :text-content="textContent"
+    />
 
     <PropertySection
       v-if="fileInfo?.kind === 'directory' && (isFolderWithVideo || isGeneratingProxyForFolder)"
@@ -597,24 +377,7 @@ onUnmounted(() => {
       <pre
         v-if="isMetaExpanded"
         class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-        >{{ metadataYaml }}</pre
-      >
+        >{{ metadataYaml }}</pre>
     </PropertySection>
   </div>
 </template>
-
-<style scoped>
-.checkerboard-bg {
-  background-color: #1a1a1a;
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.15) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.15) 75%);
-  background-size: 20px 20px;
-  background-position:
-    0 0,
-    0 10px,
-    10px -10px,
-    -10px 0px;
-}
-</style>

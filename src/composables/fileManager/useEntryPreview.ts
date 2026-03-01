@@ -1,0 +1,216 @@
+import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
+import yaml from 'js-yaml';
+import { computeDirectorySize } from '~/utils/fs';
+import { TEXT_EXTENSIONS } from '~/utils/media-types';
+import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { selectTimelineDurationUs } from '~/timeline/selectors';
+import type { TimelineDocument } from '~/timeline/types';
+
+export type PreviewMode = 'original' | 'proxy';
+export type MediaType = 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
+
+export type EntryPreviewInfo = {
+  kind: 'file' | 'directory';
+  name: string;
+  path?: string;
+  size?: number;
+  createdAt?: number;
+  lastModified?: number;
+  mimeType?: string;
+  container?: string;
+  metadata?: unknown;
+  ext?: string;
+};
+
+function computeTimelineSummary(doc: TimelineDocument) {
+  const durationUs = selectTimelineDurationUs(doc);
+  const videoTracks = doc.tracks.filter((t) => t.kind === 'video').length;
+  const audioTracks = doc.tracks.filter((t) => t.kind === 'audio').length;
+  const clips = doc.tracks.reduce((acc, t) => acc + t.items.filter((it) => it.kind === 'clip').length, 0);
+  return { durationUs, videoTracks, audioTracks, clips };
+}
+
+export function useEntryPreview(params: {
+  selectedFsEntry: Ref<any>;
+  previewMode: Ref<PreviewMode>;
+  hasProxy: Ref<boolean>;
+  mediaStore: { getOrFetchMetadata: (...args: any[]) => Promise<unknown> };
+  proxyStore: { getProxyFile: (path: string) => Promise<File | null> };
+  onResetPreviewMode: (mode: PreviewMode) => void;
+}) {
+  const currentUrl = ref<string | null>(null);
+  const mediaType = ref<MediaType>(null);
+  const textContent = ref<string>('');
+  const fileInfo = ref<EntryPreviewInfo | null>(null);
+  const timelineDocSummary = ref<{
+    durationUs: number;
+    videoTracks: number;
+    audioTracks: number;
+    clips: number;
+  } | null>(null);
+
+  const isUnknown = computed(() => mediaType.value === 'unknown');
+
+  const ext = computed(() => {
+    const entry = params.selectedFsEntry.value;
+    const name = typeof entry?.name === 'string' ? entry.name : '';
+    const value = name.split('.').pop()?.toLowerCase() ?? '';
+    return value && value !== name.toLowerCase() ? value : value;
+  });
+
+  const isOtio = computed(() => ext.value === 'otio');
+
+  const metadataYaml = computed(() => {
+    if (!fileInfo.value?.metadata) return null;
+    try {
+      return yaml.dump(fileInfo.value.metadata, { indent: 2 });
+    } catch {
+      return String(fileInfo.value.metadata);
+    }
+  });
+
+  async function loadPreviewMedia() {
+    if (currentUrl.value) {
+      URL.revokeObjectURL(currentUrl.value);
+      currentUrl.value = null;
+    }
+
+    const entry = params.selectedFsEntry.value;
+    if (!entry || entry.kind !== 'file') return;
+
+    try {
+      let fileToPlay: File;
+
+      if (params.previewMode.value === 'proxy' && params.hasProxy.value && entry.path) {
+        const proxyFile = await params.proxyStore.getProxyFile(entry.path);
+        if (proxyFile) {
+          fileToPlay = proxyFile;
+        } else {
+          fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
+        }
+      } else {
+        fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
+      }
+
+      if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+        currentUrl.value = URL.createObjectURL(fileToPlay);
+      }
+    } catch (e) {
+      console.error('Failed to load preview media:', e);
+    }
+  }
+
+  watch(
+    () => params.previewMode.value,
+    () => {
+      void loadPreviewMedia();
+    },
+  );
+
+  watch(
+    () => params.selectedFsEntry.value,
+    async (entry) => {
+      if (currentUrl.value) {
+        URL.revokeObjectURL(currentUrl.value);
+        currentUrl.value = null;
+      }
+      mediaType.value = null;
+      textContent.value = '';
+      fileInfo.value = null;
+      timelineDocSummary.value = null;
+      params.onResetPreviewMode('original');
+
+      if (!entry) return;
+
+      if (entry.kind === 'directory') {
+        fileInfo.value = {
+          name: entry.name,
+          kind: 'directory',
+          path: entry.path,
+          size: await computeDirectorySize(entry.handle as FileSystemDirectoryHandle),
+        };
+        return;
+      }
+
+      try {
+        const file = await (entry.handle as FileSystemFileHandle).getFile();
+
+        const fileExt = entry.name.split('.').pop()?.toLowerCase() || '';
+        const textExtensions = TEXT_EXTENSIONS;
+
+        if (fileExt === 'otio') {
+          mediaType.value = 'text';
+          try {
+            const text = await file.text();
+            const parsedDoc = parseTimelineFromOtio(text, {
+              id: entry.path ?? 'unknown',
+              name: entry.name,
+              fps: 25,
+            });
+            timelineDocSummary.value = computeTimelineSummary(parsedDoc);
+          } catch {
+            timelineDocSummary.value = null;
+          }
+        } else if (file.type.startsWith('image/')) {
+          mediaType.value = 'image';
+        } else if (file.type.startsWith('video/')) {
+          mediaType.value = 'video';
+        } else if (file.type.startsWith('audio/')) {
+          mediaType.value = 'audio';
+        } else if (textExtensions.includes(fileExt || '') || file.type.startsWith('text/')) {
+          mediaType.value = 'text';
+          const textSlice = file.slice(0, 1024 * 1024);
+          textContent.value = await textSlice.text();
+          if (file.size > 1024 * 1024) {
+            textContent.value += '\n... (truncated)';
+          }
+        } else {
+          mediaType.value = 'unknown';
+        }
+
+        fileInfo.value = {
+          name: file.name,
+          kind: 'file',
+          path: entry.path,
+          size: file.size,
+          createdAt: typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
+          lastModified: file.lastModified,
+          mimeType: typeof file.type === 'string' ? file.type : undefined,
+          ext: fileExt,
+          metadata:
+            entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
+              ? await params.mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
+                  forceRefresh: true,
+                })
+              : undefined,
+        };
+
+        if (mediaType.value === 'image' || mediaType.value === 'video' || mediaType.value === 'audio') {
+          await loadPreviewMedia();
+        }
+      } catch (e) {
+        console.error('Failed to preview file:', e);
+      }
+    },
+    { immediate: true },
+  );
+
+  onUnmounted(() => {
+    if (currentUrl.value) {
+      URL.revokeObjectURL(currentUrl.value);
+    }
+  });
+
+  return {
+    currentUrl,
+    mediaType,
+    textContent,
+    fileInfo,
+    timelineDocSummary,
+    metadataYaml,
+    isUnknown,
+    isOtio,
+    ext,
+    loadPreviewMedia,
+  };
+}
