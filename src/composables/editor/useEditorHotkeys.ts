@@ -1,0 +1,395 @@
+import { onMounted, onUnmounted } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+
+export function useEditorHotkeys() {
+  const workspaceStore = useWorkspaceStore();
+  const projectStore = useProjectStore();
+  const timelineStore = useTimelineStore();
+  const uiStore = useUiStore();
+  const focusStore = useFocusStore();
+  const selectionStore = useSelectionStore();
+
+  let volumeHoldTimeout: number | null = null;
+  let volumeHoldInterval: number | null = null;
+  let volumeHoldKeyCode: string | null = null;
+
+  let zoomHoldTimeout: number | null = null;
+  let zoomHoldInterval: number | null = null;
+  let zoomHoldKeyCode: string | null = null;
+
+  const suppressedKeyupCodes = new Set<string>();
+
+  function clearVolumeHoldTimers() {
+    if (volumeHoldTimeout !== null) {
+      window.clearTimeout(volumeHoldTimeout);
+      volumeHoldTimeout = null;
+    }
+    if (volumeHoldInterval !== null) {
+      window.clearInterval(volumeHoldInterval);
+      volumeHoldInterval = null;
+    }
+    volumeHoldKeyCode = null;
+  }
+
+  function clearZoomHoldTimers() {
+    if (zoomHoldTimeout !== null) {
+      window.clearTimeout(zoomHoldTimeout);
+      zoomHoldTimeout = null;
+    }
+    if (zoomHoldInterval !== null) {
+      window.clearInterval(zoomHoldInterval);
+      zoomHoldInterval = null;
+    }
+    zoomHoldKeyCode = null;
+  }
+
+  function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
+    clearVolumeHoldTimers();
+    volumeHoldKeyCode = params.keyCode;
+
+    timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
+
+    volumeHoldTimeout = window.setTimeout(() => {
+      volumeHoldInterval = window.setInterval(() => {
+        timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
+      }, 60);
+    }, 350);
+  }
+
+  function startZoomHotkeyHold(params: { step: number; keyCode: string }) {
+    clearZoomHoldTimers();
+    zoomHoldKeyCode = params.keyCode;
+
+    timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
+
+    zoomHoldTimeout = window.setTimeout(() => {
+      zoomHoldInterval = window.setInterval(() => {
+        timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
+      }, 60);
+    }, 350);
+  }
+
+  async function onGlobalKeydown(e: KeyboardEvent) {
+    if (e.defaultPrevented) return;
+    if (e.repeat) return;
+
+    if (document.querySelector('[role="dialog"]')) return;
+
+    if (e.key === 'Tab' && focusStore.tempFocus !== 'none') {
+      e.preventDefault();
+      focusStore.handleFocusHotkey();
+      return;
+    }
+
+    if (isEditableTarget(e.target)) return;
+    if (isEditableTarget(document.activeElement)) return;
+
+    const combo = hotkeyFromKeyboardEvent(e);
+    if (!combo) return;
+
+    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+
+    const cmdOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+    const matched: HotkeyCommandId[] = [];
+    for (const cmdId of cmdOrder) {
+      const bindings = effective[cmdId];
+      if (bindings.includes(combo)) {
+        matched.push(cmdId);
+      }
+    }
+    if (matched.length === 0) return;
+
+    const focusAware = (() => {
+      const order: HotkeyCommandId[] = [];
+
+      const timeline = matched.filter((c) => c.startsWith('timeline.'));
+      const playback = matched.filter((c) => c.startsWith('playback.'));
+      const general = matched.filter((c) => c.startsWith('general.'));
+
+      if (focusStore.canUseTimelineHotkeys) {
+        order.push(...timeline, ...general, ...playback);
+      } else if (focusStore.canUsePlaybackHotkeys) {
+        order.push(...playback, ...general, ...timeline);
+      } else {
+        order.push(...general, ...timeline, ...playback);
+      }
+
+      return order[0] ?? matched[0]!;
+    })();
+
+    if (document.activeElement instanceof HTMLElement) {
+      if (!isEditableTarget(document.activeElement)) {
+        document.activeElement.blur();
+      }
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    (e as any).stopImmediatePropagation?.();
+    suppressedKeyupCodes.add(e.code);
+
+    const cmd: string = focusAware;
+    if (cmd === 'general.focus') {
+      focusStore.handleFocusHotkey();
+      return;
+    }
+
+    if (cmd === 'general.undo') {
+      timelineStore.undoTimeline();
+      return;
+    }
+
+    if (cmd === 'general.redo') {
+      timelineStore.redoTimeline();
+      return;
+    }
+
+    if (cmd === 'general.delete') {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager') {
+        uiStore.pendingFsEntryDelete = selected.entry;
+      } else if (selected?.source === 'timeline') {
+        if (selected.kind === 'track') {
+          timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });
+          selectionStore.clearSelection();
+        } else {
+          timelineStore.deleteFirstSelectedItem();
+        }
+      } else if (timelineStore.selectedItemIds.length > 0) {
+        timelineStore.deleteFirstSelectedItem();
+      }
+      return;
+    }
+
+    if (cmd === 'general.deselect') {
+      selectionStore.clearSelection();
+      timelineStore.clearSelection();
+      timelineStore.selectTrack(null);
+      return;
+    }
+
+    if (cmd === 'timeline.rippleDelete') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      timelineStore.rippleDeleteFirstSelectedItem();
+      return;
+    }
+
+    if (cmd === 'timeline.trimToPlayheadLeft') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.trimToPlayheadLeftNoRipple();
+      return;
+    }
+
+    if (cmd === 'timeline.trimToPlayheadRight') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.trimToPlayheadRightNoRipple();
+      return;
+    }
+
+    if (cmd === 'timeline.rippleTrimLeft') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.rippleTrimLeft();
+      return;
+    }
+
+    if (cmd === 'timeline.rippleTrimRight') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.rippleTrimRight();
+      return;
+    }
+
+    if (cmd === 'timeline.advancedRippleTrimLeft') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.advancedRippleTrimLeft();
+      return;
+    }
+
+    if (cmd === 'timeline.advancedRippleTrimRight') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.advancedRippleTrimRight();
+      return;
+    }
+
+    if (cmd === 'timeline.jumpPrevBoundary') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      timelineStore.jumpToPrevClipBoundary();
+      return;
+    }
+
+    if (cmd === 'timeline.jumpNextBoundary') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      timelineStore.jumpToNextClipBoundary();
+      return;
+    }
+
+    if (cmd === 'timeline.jumpPrevBoundaryTrack') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      timelineStore.jumpToPrevClipBoundary({ currentTrackOnly: true });
+      return;
+    }
+
+    if (cmd === 'timeline.jumpNextBoundaryTrack') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      timelineStore.jumpToNextClipBoundary({ currentTrackOnly: true });
+      return;
+    }
+
+    if (cmd === 'timeline.splitAtPlayhead') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.splitClipAtPlayhead();
+      return;
+    }
+
+    if (cmd === 'timeline.splitAllAtPlayhead') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.splitAllClipsAtPlayhead();
+      return;
+    }
+
+    if (cmd === 'timeline.zoomIn') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      startZoomHotkeyHold({ step: 3, keyCode: e.code });
+      return;
+    }
+
+    if (cmd === 'timeline.zoomOut') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      startZoomHotkeyHold({ step: -3, keyCode: e.code });
+      return;
+    }
+
+    if (cmd === 'timeline.zoomReset') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      timelineStore.setTimelineZoom(50);
+      return;
+    }
+
+    if (cmd === 'timeline.toggleDisableClip') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.toggleDisableTargetClip();
+      return;
+    }
+
+    if (cmd === 'timeline.toggleMuteClip') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.toggleMuteTargetClip();
+      return;
+    }
+
+    // --- Timeline Tabs ---
+    if (cmd.startsWith('timeline.tab')) {
+      const tabIndexStr = cmd.replace('timeline.tab', '');
+      const tabIndex = parseInt(tabIndexStr, 10);
+      if (!isNaN(tabIndex)) {
+        const openPaths = projectStore.projectSettings.timelines.openPaths;
+        if (tabIndex > 0 && tabIndex <= openPaths.length) {
+          const path = openPaths[tabIndex - 1];
+          if (path) {
+            projectStore.openTimelineFile(path);
+          }
+        }
+      }
+      return;
+    }
+
+    // --- Playback ---
+    if (cmd === 'playback.toggle') {
+      if (timelineStore.isPlaying) {
+        timelineStore.togglePlayback();
+      } else {
+        timelineStore.setPlaybackSpeed(1);
+        timelineStore.togglePlayback();
+      }
+      return;
+    }
+
+    if (cmd === 'playback.toStart') {
+      if (!focusStore.canUsePlaybackHotkeys) return;
+      timelineStore.goToStart();
+      return;
+    }
+
+    if (cmd === 'playback.toEnd') {
+      if (!focusStore.canUsePlaybackHotkeys) return;
+      timelineStore.goToEnd();
+      return;
+    }
+
+    if (cmd === 'general.mute') {
+      timelineStore.toggleAudioMuted();
+      return;
+    }
+
+    if (cmd === 'general.volumeUp') {
+      startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
+      return;
+    }
+
+    if (cmd === 'general.volumeDown') {
+      startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
+      return;
+    }
+
+    if (cmd === 'timeline.toggleVisibilityTrack') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.toggleVisibilityTargetTrack();
+      return;
+    }
+
+    if (cmd === 'timeline.toggleMuteTrack') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.toggleMuteTargetTrack();
+      return;
+    }
+
+    if (cmd === 'timeline.toggleSoloTrack') {
+      if (!focusStore.canUseTimelineHotkeys) return;
+      void timelineStore.toggleSoloTargetTrack();
+      return;
+    }
+  }
+
+  function onGlobalKeyup(e: KeyboardEvent) {
+    if (suppressedKeyupCodes.has(e.code)) {
+      e.preventDefault();
+      e.stopPropagation();
+      (e as any).stopImmediatePropagation?.();
+      suppressedKeyupCodes.delete(e.code);
+    }
+
+    if (volumeHoldKeyCode && e.code === volumeHoldKeyCode) {
+      clearVolumeHoldTimers();
+    }
+    if (zoomHoldKeyCode && e.code === zoomHoldKeyCode) {
+      clearZoomHoldTimers();
+    }
+  }
+
+  function onGlobalBlur() {
+    suppressedKeyupCodes.clear();
+    clearVolumeHoldTimers();
+    clearZoomHoldTimers();
+  }
+
+  onMounted(() => {
+    window.addEventListener('keydown', onGlobalKeydown, true);
+    window.addEventListener('keyup', onGlobalKeyup, true);
+    window.addEventListener('blur', onGlobalBlur);
+  });
+
+  onUnmounted(() => {
+    window.removeEventListener('keydown', onGlobalKeydown, true);
+    window.removeEventListener('keyup', onGlobalKeyup, true);
+    window.removeEventListener('blur', onGlobalBlur);
+    clearVolumeHoldTimers();
+    clearZoomHoldTimers();
+  });
+}
