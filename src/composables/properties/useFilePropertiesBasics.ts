@@ -31,6 +31,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     if (!info) return '';
     if (info.kind === 'directory') return 'Folder';
     if (options.isOtio.value) return 'OTIO';
+
+    if (options.mediaType.value === 'text') {
+      const ext = options.fileInfo.value?.ext?.toLowerCase();
+      if (ext === 'json') return 'JSON';
+      if (ext === 'md' || ext === 'markdown') return 'Markdown';
+      if (ext === 'yaml' || ext === 'yml') return 'YAML';
+      return 'Text';
+    }
+
     return info.mimeType ?? 'File';
   });
 

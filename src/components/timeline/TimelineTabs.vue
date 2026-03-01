@@ -64,11 +64,11 @@ function onWheel(e: WheelEvent) {
         <div
           v-for="path in openPaths"
           :key="path"
-          class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200"
+          class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
           :class="[
             isActive(path)
-              ? 'active-tab text-primary-400 shadow-inner'
-              : 'text-ui-text-muted hover:bg-ui-bg-elevated hover:text-ui-text',
+              ? 'active-tab text-primary-400 border-b-transparent'
+              : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
           ]"
           @click="selectTab(path)"
         >
@@ -90,7 +90,7 @@ function onWheel(e: WheelEvent) {
           </span>
 
           <button
-            class="tab-close-btn opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-red-500/10 hover:text-red-500 transition-all duration-200"
+            class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"
             @click="closeTab(path, $event)"
           >
             <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />

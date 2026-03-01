@@ -130,15 +130,16 @@ const emit = defineEmits<{
   (
     e: 'action',
     action:
-      | 'createFolder'
-      | 'rename'
       | 'info'
+      | 'rename'
       | 'delete'
+      | 'addToTimeline'
       | 'createProxy'
       | 'cancelProxy'
       | 'deleteProxy'
       | 'upload'
-      | 'createProxyForFolder',
+      | 'createProxyForFolder'
+      | 'cancelProxyForFolder',
     entry: FsEntry,
   ): void;
   (e: 'createFolder', entry: FsEntry | null): void;

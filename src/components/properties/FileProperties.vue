@@ -131,6 +131,15 @@ const {
   proxyStore,
   videoExtensions: VIDEO_EXTENSIONS,
 });
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    useToast().add({ title: 'Copied to clipboard' });
+  } catch (e) {
+    console.error('Failed to copy to clipboard', e);
+  }
+}
 </script>
 
 <template>
@@ -334,15 +343,17 @@ const {
     </div>
 
     <PropertySection v-if="fileInfo" :title="generalInfoTitle">
-      <PropertyRow :label="t('common.path', 'Path')" :value="selectedPath ?? '-'" />
-      <PropertyRow :label="t('common.size', 'Size')" :value="fileInfo.size !== undefined ? formatBytes(fileInfo.size) : '-'" />
+      <PropertyRow v-if="selectedPath !== undefined && selectedPath !== null" :label="t('common.path', 'Path')" :value="selectedPath === '' ? '/' : selectedPath" />
+      <PropertyRow v-if="fileInfo.size !== undefined" :label="t('common.size', 'Size')" :value="formatBytes(fileInfo.size)" />
       <PropertyRow
+        v-if="fileInfo.createdAt || fileInfo.lastModified"
         :label="t('common.created', 'Created')"
-        :value="(fileInfo.createdAt ?? fileInfo.lastModified) ? new Date(fileInfo.createdAt ?? fileInfo.lastModified!).toLocaleString() : '-'"
+        :value="new Date(fileInfo.createdAt ?? fileInfo.lastModified!).toLocaleString()"
       />
       <PropertyRow
+        v-if="fileInfo.lastModified"
         :label="t('common.updated', 'Updated')"
-        :value="fileInfo.lastModified ? new Date(fileInfo.lastModified).toLocaleString() : '-'"
+        :value="new Date(fileInfo.lastModified).toLocaleString()"
       />
       <PropertyRow :label="t('common.hidden', 'Hidden')" :value="isHidden ? 'Yes' : 'No'" />
     </PropertySection>
@@ -376,13 +387,24 @@ const {
       v-if="fileInfo?.kind === 'file' && isVideoOrAudio && metadataYaml"
       :title="t('common.meta', 'Meta')"
     >
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        :label="isMetaExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
-        @click="isMetaExpanded = !isMetaExpanded"
-      />
+      <div class="flex gap-2">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          :label="isMetaExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
+          @click="isMetaExpanded = !isMetaExpanded"
+        />
+        <UButton
+          v-if="isMetaExpanded"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-clipboard-document"
+          :title="t('common.copy', 'Copy')"
+          @click="() => copyToClipboard(metadataYaml!)"
+        />
+      </div>
       <pre
         v-if="isMetaExpanded"
         class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
@@ -393,13 +415,24 @@ const {
       v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml"
       title="EXIF"
     >
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        :label="isExifExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
-        @click="isExifExpanded = !isExifExpanded"
-      />
+      <div class="flex gap-2">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          :label="isExifExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
+          @click="isExifExpanded = !isExifExpanded"
+        />
+        <UButton
+          v-if="isExifExpanded"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-clipboard-document"
+          :title="t('common.copy', 'Copy')"
+          @click="() => copyToClipboard(exifYaml!)"
+        />
+      </div>
       <pre
         v-if="isExifExpanded"
         class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"

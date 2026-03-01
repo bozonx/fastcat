@@ -94,6 +94,15 @@ function onFileAction(action: any, entry: FsEntry) {
         dirPath: entry.path,
       });
     }
+  } else if (action === 'cancelProxyForFolder') {
+    if (entry.kind === 'directory' && entry.path !== undefined) {
+      const generatingProxies = proxyStore.generatingProxies;
+      for (const p of generatingProxies) {
+        if (p === entry.path || p.startsWith(`${entry.path}/`)) {
+          void proxyStore.cancelProxyGeneration(p);
+        }
+      }
+    }
   } else {
     onFileActionBase(action, entry);
   }
@@ -117,6 +126,25 @@ watch(
       uiStore.restoreFileTreeStateOnce(name);
     }
     await loadProjectDirectory();
+
+    if (name) {
+      const handle = await getProjectRootDirHandle();
+      if (handle) {
+        const rootEntry: FsEntry = {
+          kind: 'directory',
+          name,
+          path: '',
+          handle,
+        };
+        uiStore.selectedFsEntry = {
+          kind: 'directory',
+          name,
+          path: '',
+          handle,
+        };
+        selectionStore.selectFsEntry(rootEntry);
+      }
+    }
   },
   { immediate: true },
 );
@@ -252,6 +280,14 @@ async function onDirectoryFileSelect(e: Event) {
       class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
     >
       <UButton
+        icon="i-heroicons-arrow-up-tray"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        :title="t('videoEditor.fileManager.actions.uploadFiles')"
+        @click="triggerFileUpload"
+      />
+      <UButton
         icon="i-heroicons-folder-plus"
         variant="ghost"
         color="neutral"
@@ -266,14 +302,6 @@ async function onDirectoryFileSelect(e: Event) {
         size="xs"
         :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
         @click="onCreateTimeline"
-      />
-      <UButton
-        icon="i-heroicons-arrow-up-tray"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.uploadFiles')"
-        @click="triggerFileUpload"
       />
       <UButton
         :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
