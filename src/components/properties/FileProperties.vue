@@ -12,6 +12,8 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
+import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
+import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -116,17 +118,12 @@ function formatAudioChannels(channels: number | undefined) {
   return `${channels} tracks`;
 }
 
-const timelinesUsingSelectedFile = computed(() => {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'file' || !entry.path) return [];
-  return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
+const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsage({
+  selectedFsEntry: selectedFsEntryRef,
+  timelineMediaUsageStore,
+  projectStore,
+  timelineStore,
 });
-
-async function openTimelineFromUsage(path: string) {
-  await projectStore.openTimelineFile(path);
-  await timelineStore.loadTimeline();
-  void timelineStore.loadTimelineMetadata();
-}
 
 const generalInfoTitle = computed(() => {
   if (!fileInfo.value) return '';
@@ -139,48 +136,16 @@ const mediaMeta = computed(() => fileInfo.value?.metadata as any);
 
 const isVideoOrAudio = computed(() => mediaType.value === 'video' || mediaType.value === 'audio');
 
-const isFolderWithVideo = computed(() => {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return false;
-  const children = Array.isArray(entry.children) ? entry.children : [];
-  return children.some((c: any) => {
-    if (c?.kind !== 'file') return false;
-    const name = typeof c?.name === 'string' ? c.name : '';
-    const e = name.split('.').pop()?.toLowerCase() ?? '';
-    return VIDEO_EXTENSIONS.includes(e);
-  });
+const {
+  generateProxiesForSelectedFolder,
+  isFolderWithVideo,
+  isGeneratingProxyForFolder,
+  stopProxyGenerationForSelectedFolder,
+} = useFileProxyFolder({
+  selectedFsEntry: selectedFsEntryRef,
+  proxyStore,
+  videoExtensions: VIDEO_EXTENSIONS,
 });
-
-const isGeneratingProxyForFolder = computed(() => {
-  const entry = props.selectedFsEntry;
-  const path = typeof entry?.path === 'string' ? entry.path : '';
-  if (!path) return false;
-  for (const p of proxyStore.generatingProxies) {
-    if (typeof p === 'string' && (p === path || p.startsWith(`${path}/`))) return true;
-  }
-  return false;
-});
-
-async function generateProxiesForSelectedFolder() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory' || !entry.path) return;
-  await proxyStore.generateProxiesForFolder({
-    dirHandle: entry.handle as FileSystemDirectoryHandle,
-    dirPath: entry.path,
-  });
-}
-
-async function stopProxyGenerationForSelectedFolder() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory' || !entry.path) return;
-
-  for (const p of proxyStore.generatingProxies) {
-    if (typeof p !== 'string') continue;
-    if (p === entry.path || p.startsWith(`${entry.path}/`)) {
-      await proxyStore.cancelProxyGeneration(p);
-    }
-  }
-}
 </script>
 
 <template>
