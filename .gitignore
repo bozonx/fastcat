@@ -3,6 +3,7 @@
 !.env.example
 !.env.*.example
 playwright-report
+coverage/
 
 # Nuxt
 .nuxt
