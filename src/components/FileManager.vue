@@ -16,6 +16,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
 import { useProxyStore } from '~/stores/proxy.store';
+import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 
 defineProps<{
   foldersOnly?: boolean;
@@ -91,6 +92,10 @@ function onFileAction(action: any, entry: FsEntry) {
   if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
+    }
+  } else if (action === 'createTimeline') {
+    if (entry.kind === 'directory') {
+      (uiStore as any).pendingFsEntryCreateTimeline = entry;
     }
   } else if (action === 'createOtioVersion') {
     void createOtioVersion(entry);
@@ -273,13 +278,18 @@ watch(
   async (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      const rootDir = await getProjectRootDirHandle();
-      if (rootDir) {
-        await createTimelineCommand({
-          projectDir: rootDir,
-          timelinesDirName: entry.path,
-        });
-        await loadProjectDirectory();
+      const createdFileName = await createTimelineCommand({
+        projectDir: entry.handle as FileSystemDirectoryHandle,
+        timelinesDirName: undefined,
+      });
+      await loadProjectDirectory();
+      
+      const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+      
+      if (createdPath) {
+        await projectStore.openTimelineFile(createdPath);
+        await timelineStore.loadTimeline();
+        void timelineStore.loadTimelineMetadata();
       }
       (uiStore as any).pendingFsEntryCreateTimeline = null;
     }
