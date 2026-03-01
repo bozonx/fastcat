@@ -13,6 +13,7 @@ import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue'
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
+import { formatAudioChannels } from '~/utils/audio';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -61,13 +62,6 @@ const mediaMeta = computed(() => {
   if (props.clip.clipType !== 'media' || !props.clip.source?.path) return null;
   return mediaStore.mediaMetadata[props.clip.source.path] || null;
 });
-
-function formatAudioChannels(channels: number | undefined) {
-  if (!channels || channels <= 0) return '-';
-  if (channels === 1) return 'Mono';
-  if (channels === 2) return 'Stereo';
-  return `${channels} tracks`;
-}
 
 function handleUpdateStartTime(val: number | string) {
   const newStartUs = Math.max(0, Math.round(Number(val) * 1_000_000));
