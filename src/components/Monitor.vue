@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -10,13 +10,11 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
+import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
+import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
-import { buildStopFrameBaseName } from '~/utils/stop-frames';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { IMAGES_DIR_NAME } from '~/utils/constants';
 
 const { t } = useI18n();
-const toast = useToast();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
@@ -156,143 +154,16 @@ onMounted(() => {
   });
 });
 
-const isPreviewSelected = ref(false);
-
-const isPanning = ref(false);
-const panStart = ref({ x: 0, y: 0 });
-const panOrigin = ref({ x: 0, y: 0 });
-
-const panX = computed({
-  get: () => projectStore.projectSettings.monitor?.panX ?? 0,
-  set: (v: number) => {
-    if (!projectStore.projectSettings.monitor) return;
-    projectStore.projectSettings.monitor.panX = v;
-  },
-});
-
-const panY = computed({
-  get: () => projectStore.projectSettings.monitor?.panY ?? 0,
-  set: (v: number) => {
-    if (!projectStore.projectSettings.monitor) return;
-    projectStore.projectSettings.monitor.panY = v;
-  },
-});
-
-const workspaceStyle = computed(() => {
-  return {
-    transform: `translate(${panX.value}px, ${panY.value}px)`,
-  };
-});
-
-function centerMonitor() {
-  if (!projectStore.projectSettings.monitor) return;
-  projectStore.projectSettings.monitor.panX = 0;
-  projectStore.projectSettings.monitor.panY = 0;
-}
-
-function onPreviewPointerDown(event: PointerEvent) {
-  if (event.button !== 0) return;
-  isPreviewSelected.value = true;
-  event.stopPropagation();
-}
-
-function onViewportPointerDown(event: PointerEvent) {
-  const workspaceStore = useWorkspaceStore();
-  const settings = workspaceStore.userSettings?.mouse?.monitor ?? {
-    wheel: 'zoom',
-    wheelShift: 'scroll_horizontal',
-    middleClick: 'pan',
-  };
-
-  // Middle click (button 1)
-  if (event.button === 1) {
-    if (settings?.middleClick === 'pan') {
-      isPanning.value = true;
-      panStart.value = { x: event.clientX, y: event.clientY };
-      panOrigin.value = { x: panX.value, y: panY.value };
-      (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    }
-    return;
-  }
-}
-
-function onViewportPointerMove(event: PointerEvent) {
-  if (!isPanning.value) return;
-  const dx = event.clientX - panStart.value.x;
-  const dy = event.clientY - panStart.value.y;
-  panX.value = panOrigin.value.x + dx;
-  panY.value = panOrigin.value.y + dy;
-}
-
-function stopPan(event?: PointerEvent) {
-  if (!isPanning.value) return;
-  isPanning.value = false;
-  if (event) {
-    try {
-      (event.currentTarget as HTMLElement | null)?.releasePointerCapture(event.pointerId);
-    } catch {
-      // ignore
-    }
-  }
-}
-
-function onWindowPointerUp() {
-  isPanning.value = false;
-}
-
-onMounted(() => {
-  window.addEventListener('pointerup', onWindowPointerUp);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('pointerup', onWindowPointerUp);
-});
-
-function onViewportWheel(e: WheelEvent) {
-  if (e.defaultPrevented) return;
-
-  const isShift = e.shiftKey;
-  const workspaceStore = useWorkspaceStore();
-  const settings = workspaceStore.userSettings?.mouse?.monitor ?? {
-    wheel: 'zoom',
-    wheelShift: 'scroll_horizontal',
-    middleClick: 'pan',
-  };
-
-  const action = isShift ? settings.wheelShift : settings.wheel;
-
-  if (action === 'none') {
-    e.preventDefault();
-    return;
-  }
-
-  // Calculate delta amount based on event
-  // Some browsers use deltaX for shift+wheel, some keep deltaY but set shiftKey
-  const isHorizontalScroll = e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY);
-  const delta = isHorizontalScroll ? e.deltaX : e.deltaY;
-  if (!Number.isFinite(delta) || delta === 0) return;
-
-  if (action === 'zoom') {
-    e.preventDefault();
-    // Use pan properties to implement zoom later if needed,
-    // currently just center map as fallback
-    // TODO: implement actual zoom
-    return;
-  }
-
-  if (action === 'scroll_vertical') {
-    e.preventDefault();
-    panY.value -= delta;
-    return;
-  }
-
-  if (action === 'scroll_horizontal') {
-    e.preventDefault();
-    panX.value -= delta;
-    return;
-  }
-}
+const {
+  isPreviewSelected,
+  workspaceStyle,
+  centerMonitor,
+  onPreviewPointerDown,
+  onViewportPointerDown,
+  onViewportPointerMove,
+  stopPan,
+  onViewportWheel,
+} = useMonitorGestures({ projectStore });
 
 function togglePlayback() {
   if (isLoading.value) return;
@@ -349,134 +220,17 @@ function toggleMute() {
   blurActiveElement();
 }
 
-const isSavingStopFrame = ref(false);
 
-function getCanvasFromContainer(): HTMLCanvasElement | null {
-  const container = containerEl.value;
-  if (!container) return null;
-  const canvas = container.querySelector('canvas');
-  return canvas instanceof HTMLCanvasElement ? canvas : null;
-}
-
-async function canvasToWebpBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
-  return await new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error('Failed to create snapshot blob'));
-          return;
-        }
-        resolve(blob);
-      },
-      'image/webp',
-      quality,
-    );
-  });
-}
-
-async function createStopFrameSnapshot() {
-  if (isSavingStopFrame.value) return;
-  if (isLoading.value) return;
-  if (loadError.value) return;
-
-  const timelineName =
-    projectStore.currentFileName ||
-    projectStore.currentTimelinePath ||
-    timelineStore.timelineDoc?.name ||
-    'timeline';
-
-  const fps = projectStore.projectSettings?.project?.fps ?? 30;
-  const timeUs = uiCurrentTimeUs.value;
-
-  const qualityPercent = workspaceStore.userSettings.stopFrames?.qualityPercent ?? 85;
-  const quality = Math.max(0.01, Math.min(1, qualityPercent / 100));
-  const extension = 'webp';
-  const baseName = buildStopFrameBaseName({
-    timelineName,
-    timeUs,
-    fps,
-  });
-
-  let filename = `${baseName}.${extension}`;
-  let attempt = 0;
-  // Try to find next available incremental suffix if file already exists.
-  // Limits attempts to avoid infinite loop in case of unexpected errors.
-  const MAX_ATTEMPTS = 10_000;
-  while (attempt < MAX_ATTEMPTS) {
-    const existingHandle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
-      create: false,
-    });
-    if (!existingHandle) {
-      break;
-    }
-    attempt += 1;
-    const suffix = String(attempt).padStart(3, '0');
-    filename = `${baseName}_${suffix}.${extension}`;
-  }
-
-  isSavingStopFrame.value = true;
-  try {
-    const exportWidth = Math.round(Number(projectStore.projectSettings?.project?.width ?? 0));
-    const exportHeight = Math.round(Number(projectStore.projectSettings?.project?.height ?? 0));
-
-    // Request export worker to render a high quality frame directly
-    const { client } = getExportWorkerClient();
-    setExportHostApi({
-      getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
-      onExportProgress: () => {},
-    });
-
-    const clipsPayload = JSON.parse(
-      JSON.stringify(rawWorkerTimelineClips.value ?? workerTimelineClips.value),
-    );
-
-    const blob = await client.extractFrameToBlob(
-      timeUs,
-      exportWidth,
-      exportHeight,
-      clipsPayload,
-      quality,
-    );
-
-    if (!blob) {
-      throw new Error('Worker returned empty blob');
-    }
-
-    const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
-      create: true,
-    });
-
-    if (!fileHandle) {
-      toast.add({
-        color: 'red',
-        title: 'Snapshot failed',
-        description: 'Could not access project folder for writing',
-      });
-      return;
-    }
-
-    const writable = await fileHandle.createWritable();
-    await writable.write(blob);
-    await writable.close();
-
-    toast.add({
-      color: 'primary',
-      title: 'Snapshot created',
-      description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
-    });
-  } catch (err) {
-    console.error('[Monitor] Failed to create stop frame snapshot', err);
-    toast.add({
-      color: 'red',
-      title: 'Snapshot failed',
-      description: err instanceof Error ? err.message : 'Unknown error',
-    });
-  } finally {
-    isSavingStopFrame.value = false;
-  }
-}
+const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
+  projectStore,
+  timelineStore,
+  workspaceStore,
+  isLoading,
+  loadError,
+  uiCurrentTimeUs,
+  workerTimelineClips,
+  rawWorkerTimelineClips,
+});
 </script>
 
 <template>
@@ -582,6 +336,7 @@ async function createStopFrameSnapshot() {
       @pointermove="onViewportPointerMove"
       @pointerup="stopPan"
       @pointercancel="stopPan"
+      @wheel="onViewportWheel"
     >
       <div class="absolute inset-0">
         <div class="absolute inset-0" :style="workspaceStyle">

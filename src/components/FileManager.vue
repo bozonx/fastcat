@@ -15,8 +15,8 @@ import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
+import { useProxyStore } from '~/stores/proxy.store';
 
 const { t } = useI18n();
 
@@ -26,6 +26,7 @@ const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
+const proxyStore = useProxyStore();
 
 const fileManager = useFileManager();
 const {
@@ -87,45 +88,11 @@ function onFileAction(action: any, entry: FsEntry) {
   if (action === 'info') {
     openFileInfoModal(entry);
   } else if (action === 'createProxyForFolder') {
-    // Keep this complex logic here for now, or move to a store later
     if (entry.kind === 'directory' && entry.path !== undefined) {
-      const dirPath = entry.path;
-      const dirHandle = entry.handle as FileSystemDirectoryHandle;
-      (async () => {
-        const collect = async (dir: FileSystemDirectoryHandle, bPath: string) => {
-          // Iterator logic simplified for brevity here, or we keep original
-          // Using the logic from the original onFileAction
-          const iterator = (dir as any).values?.() ?? (dir as any).entries?.();
-          if (!iterator) return;
-
-          for await (const value of iterator) {
-            const handle = (Array.isArray(value) ? value[1] : value) as
-              | FileSystemFileHandle
-              | FileSystemDirectoryHandle;
-            const fullPath = bPath ? `${bPath}/${handle.name}` : handle.name;
-
-            if (handle.kind === 'file') {
-              const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
-              if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
-                if (!fileManager.mediaCache.hasProxy(fullPath)) {
-                  void ensureProxyCommand({
-                    service: fileManager.mediaCache,
-                    fileHandle: handle as FileSystemFileHandle,
-                    projectRelativePath: fullPath,
-                  });
-                }
-              }
-            } else if (handle.kind === 'directory') {
-              await collect(handle as FileSystemDirectoryHandle, fullPath);
-            }
-          }
-        };
-        try {
-          await collect(dirHandle, dirPath);
-        } catch (e) {
-          console.error('Failed to walk folder for proxy creation', e);
-        }
-      })();
+      void proxyStore.generateProxiesForFolder({
+        dirHandle: entry.handle as FileSystemDirectoryHandle,
+        dirPath: entry.path,
+      });
     }
   } else {
     onFileActionBase(action, entry);
