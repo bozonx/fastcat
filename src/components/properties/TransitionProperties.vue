@@ -21,6 +21,17 @@ const transitionValue = computed(() => {
     : props.clip.transitionOut;
 });
 
+const maxDurationSec = computed(() => {
+  if (!props.clip) return 3;
+  const clipDurationUs = props.clip.timelineRange?.durationUs ?? 0;
+  const oppositeTransitionUs =
+    props.transitionSelection.edge === 'in'
+      ? props.clip.transitionOut?.durationUs ?? 0
+      : props.clip.transitionIn?.durationUs ?? 0;
+  
+  return Math.max(0.1, (clipDurationUs - oppositeTransitionUs) / 1_000_000);
+});
+
 function handleTransitionUpdate(payload: {
   trackId: string;
   itemId: string;
@@ -41,18 +52,13 @@ function handleTransitionUpdate(payload: {
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
-    <div
-      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-    >
-      {{ transitionSelection.edge === 'in' ? 'Transition In' : 'Transition Out' }}
-    </div>
-
     <ClipTransitionPanel
       v-if="clip"
       :edge="transitionSelection.edge"
       :track-id="transitionSelection.trackId"
       :item-id="transitionSelection.itemId"
       :transition="transitionValue"
+      :max-duration="maxDurationSec"
       @update="handleTransitionUpdate"
     />
   </div>

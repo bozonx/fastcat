@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition } from '~/timeline/types';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
+import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 
 const { t } = useI18n();
 
@@ -12,6 +13,7 @@ const props = defineProps<{
   trackId: string;
   itemId: string;
   transition: ClipTransition | undefined;
+  maxDuration?: number;
 }>();
 
 const emit = defineEmits<{
@@ -92,8 +94,21 @@ function remove() {
 }
 
 const durationMin = 0.1;
-const durationMax = 3;
+const defaultDurationMax = 3;
+const durationMax = computed(() => {
+  return props.maxDuration ?? defaultDurationMax;
+});
 const durationStep = 0.05;
+
+const modeOptions = computed(() => [
+  { value: 'blend', label: t('granVideoEditor.timeline.transition.modeBlend') },
+  { value: 'composite', label: t('granVideoEditor.timeline.transition.modeComposite') },
+]);
+
+const curveOptions = computed(() => [
+  { value: 'linear', label: t('granVideoEditor.timeline.transition.curveLinear') },
+  { value: 'bezier', label: t('granVideoEditor.timeline.transition.curveBezier') },
+]);
 </script>
 
 <template>
@@ -102,9 +117,9 @@ const durationStep = 0.05;
   >
     <!-- Header with edge icon -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 font-semibold">
+      <div class="flex items-center gap-2 font-semibold uppercase tracking-wide">
         <UIcon :name="edgeIcon" class="w-4 h-4 shrink-0 text-primary-400" />
-        <span>{{ t('granVideoEditor.timeline.transition.title') }}</span>
+        <span>{{ edge === 'in' ? 'IN' : 'OUT' }} {{ t('granVideoEditor.timeline.transition.title') }}</span>
       </div>
       <UButton
         v-if="transition"
@@ -158,63 +173,19 @@ const durationStep = 0.05;
     <!-- Mode toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.mode') }}</span>
-      <div class="flex rounded overflow-hidden border border-ui-border">
-        <button
-          type="button"
-          class="flex-1 py-1 text-center transition-colors text-xs"
-          :class="
-            selectedMode === 'blend'
-              ? 'bg-primary-500 text-[color:var(--on-primary)]'
-              : 'bg-ui-bg hover:bg-ui-bg-hover'
-          "
-          @click="selectedMode = 'blend'"
-        >
-          {{ t('granVideoEditor.timeline.transition.modeBlend') }}
-        </button>
-        <button
-          type="button"
-          class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
-          :class="
-            selectedMode === 'composite'
-              ? 'bg-primary-500 text-[color:var(--on-primary)]'
-              : 'bg-ui-bg hover:bg-ui-bg-hover'
-          "
-          @click="selectedMode = 'composite'"
-        >
-          {{ t('granVideoEditor.timeline.transition.modeComposite') }}
-        </button>
-      </div>
+      <AppButtonGroup
+        v-model="selectedMode"
+        :options="modeOptions"
+      />
     </div>
 
     <!-- Curve toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.curve') }}</span>
-      <div class="flex rounded overflow-hidden border border-ui-border">
-        <button
-          type="button"
-          class="flex-1 py-1 text-center transition-colors text-xs"
-          :class="
-            selectedCurve === 'linear'
-              ? 'bg-primary-500 text-[color:var(--on-primary)]'
-              : 'bg-ui-bg hover:bg-ui-bg-hover'
-          "
-          @click="selectedCurve = 'linear'"
-        >
-          {{ t('granVideoEditor.timeline.transition.curveLinear') }}
-        </button>
-        <button
-          type="button"
-          class="flex-1 py-1 text-center transition-colors border-l border-ui-border text-xs"
-          :class="
-            selectedCurve === 'bezier'
-              ? 'bg-primary-500 text-[color:var(--on-primary)]'
-              : 'bg-ui-bg hover:bg-ui-bg-hover'
-          "
-          @click="selectedCurve = 'bezier'"
-        >
-          {{ t('granVideoEditor.timeline.transition.curveBezier') }}
-        </button>
-      </div>
+      <AppButtonGroup
+        v-model="selectedCurve"
+        :options="curveOptions"
+      />
     </div>
   </div>
 </template>
