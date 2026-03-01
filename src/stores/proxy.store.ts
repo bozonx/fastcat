@@ -1,11 +1,10 @@
-import { ref, watch, markRaw } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import PQueue from 'p-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { VIDEO_DIR_NAME } from '~/utils/constants';
-import { getProjectProxiesSegments } from '~/utils/vardata-paths';
+import { createProxyFsModule } from '~/stores/proxy/proxyFs';
+import { createProxyQueueModule } from '~/stores/proxy/proxyQueue';
+import { createProxyService } from '~/stores/proxy/proxyService';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -20,297 +19,39 @@ export const useProxyStore = defineStore('proxy', () => {
   // Tracks paths currently executing in worker (not just queued)
   const activeWorkerPaths = ref<Set<string>>(new Set());
 
-  const proxyQueue = ref(
-    markRaw(new PQueue({ concurrency: workspaceStore.userSettings.optimization.proxyConcurrency })),
-  );
+  const fsModule = createProxyFsModule({
+    workspaceHandle: ref(workspaceStore.workspaceHandle) as any,
+    currentProjectId: ref(projectStore.currentProjectId) as any,
+  });
 
-  watch(
-    () => workspaceStore.userSettings.optimization.proxyConcurrency,
-    (val) => {
-      proxyQueue.value.concurrency = val;
-    },
-  );
+  const queueModule = createProxyQueueModule({
+    concurrency: ref(workspaceStore.userSettings.optimization.proxyConcurrency) as any,
+  });
 
-  function getProxyFileName(projectRelativePath: string): string {
-    return `${encodeURIComponent(projectRelativePath)}.webm`;
-  }
-
-  async function ensureProjectProxiesDir(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.workspaceHandle || !projectStore.currentProjectId) return null;
-    try {
-      const parts = getProjectProxiesSegments(projectStore.currentProjectId);
-      let dir = workspaceStore.workspaceHandle;
-      for (const segment of parts) {
-        dir = await dir.getDirectoryHandle(segment, { create: true });
-      }
-      return dir;
-    } catch {
-      return null;
-    }
-  }
-
-  async function generateProxiesForFolder(input: {
-    dirHandle: FileSystemDirectoryHandle;
-    dirPath: string;
-  }): Promise<void> {
-    const iterator = (input.dirHandle as any).values?.() ?? (input.dirHandle as any).entries?.();
-    if (!iterator) return;
-
-    for await (const value of iterator) {
-      const handle = (Array.isArray(value) ? value[1] : value) as
-        | FileSystemFileHandle
-        | FileSystemDirectoryHandle;
-      const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
-
-      if (handle.kind === 'file') {
-        const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
-        if (!videoExtensions.has(ext)) continue;
-        if (existingProxies.value.has(fullPath)) continue;
-
-        try {
-          await generateProxy(handle as FileSystemFileHandle, fullPath);
-        } catch (e) {
-          console.warn('Failed to generate proxy for file', fullPath, e);
-        }
-      } else if (handle.kind === 'directory') {
-        await generateProxiesForFolder({
-          dirHandle: handle as FileSystemDirectoryHandle,
-          dirPath: fullPath,
-        });
-      }
-    }
-  }
-
-  async function checkExistingProxies(paths: string[]) {
-    const dir = await ensureProjectProxiesDir();
-    if (!dir) return;
-
-    for (const path of paths) {
-      if (!path.startsWith(`${VIDEO_DIR_NAME}/`)) continue;
-      try {
-        await dir.getFileHandle(getProxyFileName(path));
-        existingProxies.value.add(path);
-      } catch {
-        existingProxies.value.delete(path);
-      }
-    }
-  }
-
-  async function generateProxy(
-    fileHandle: FileSystemFileHandle,
-    projectRelativePath: string,
-    options?: { signal?: AbortSignal },
-  ): Promise<void> {
-    if (generatingProxies.value.has(projectRelativePath)) return;
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
-
-    const dir = await ensureProjectProxiesDir();
-    if (!dir) throw new Error('Could not access proxies directory');
-
-    generatingProxies.value.add(projectRelativePath);
-    proxyProgress.value[projectRelativePath] = 0;
-
-    const controller = new AbortController();
-    proxyAbortControllers.value = {
-      ...proxyAbortControllers.value,
-      [projectRelativePath]: controller,
-    };
-
-    const signal = options?.signal;
-    if (signal) {
-      if (signal.aborted) controller.abort();
-      else {
-        signal.addEventListener(
-          'abort',
-          () => {
-            controller.abort();
-          },
-          { once: true },
-        );
-      }
-    }
-
-    try {
-      await proxyQueue.value.add(async () => {
-        try {
-          if (controller.signal.aborted) {
-            const abortErr = new Error('Proxy generation cancelled');
-            (abortErr as any).name = 'AbortError';
-            throw abortErr;
-          }
-
-          // Mark as actively executing in worker
-          activeWorkerPaths.value.add(projectRelativePath);
-
-          const proxyFilename = getProxyFileName(projectRelativePath);
-          const targetHandle = await dir.getFileHandle(proxyFilename, { create: true });
-
-          const { optimization } = workspaceStore.userSettings;
-
-          let width = 1280;
-          let height = 720;
-          if (optimization.proxyResolution === '360p') {
-            width = 640;
-            height = 360;
-          } else if (optimization.proxyResolution === '480p') {
-            width = 854;
-            height = 480;
-          } else if (optimization.proxyResolution === '1080p') {
-            width = 1920;
-            height = 1080;
-          }
-
-          const { client } = getExportWorkerClient();
-
-          setExportHostApi({
-            getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-            onExportProgress: (progress) => {
-              proxyProgress.value[projectRelativePath] = progress;
-            },
-          });
-
-          const meta = await client.extractMetadata(fileHandle);
-          const durationUs = Math.round((meta.duration || 0) * 1_000_000);
-
-          if (!durationUs) throw new Error('Invalid video duration');
-
-          const videoClips = [
-            {
-              kind: 'clip',
-              id: 'proxy_video',
-              layer: 0,
-              source: { path: projectRelativePath },
-              timelineRange: { startUs: 0, durationUs },
-              sourceRange: { startUs: 0, durationUs },
-            },
-          ];
-
-          const audioClips = meta.audio
-            ? [
-                {
-                  kind: 'clip',
-                  id: 'proxy_audio',
-                  layer: 0,
-                  source: { path: projectRelativePath },
-                  timelineRange: { startUs: 0, durationUs },
-                  sourceRange: { startUs: 0, durationUs },
-                },
-              ]
-            : [];
-
-          const isOpusAudio =
-            typeof meta.audio?.codec === 'string' &&
-            meta.audio.codec.toLowerCase().startsWith('opus');
-
-          const exportOptions = {
-            format: 'webm',
-            videoCodec: 'vp09.00.10.08',
-            bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
-            audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
-            audio: !!meta.audio,
-            audioCodec: 'opus',
-            audioPassthrough: optimization.proxyCopyOpusAudio && isOpusAudio,
-            width,
-            height,
-            fps: meta.video?.fps || 30,
-          };
-
-          await (client as any).exportTimeline(targetHandle, exportOptions, videoClips, audioClips);
-
-          existingProxies.value.add(projectRelativePath);
-        } finally {
-          activeWorkerPaths.value.delete(projectRelativePath);
-          generatingProxies.value.delete(projectRelativePath);
-          delete proxyProgress.value[projectRelativePath];
-
-          const nextControllers = { ...proxyAbortControllers.value };
-          delete nextControllers[projectRelativePath];
-          proxyAbortControllers.value = nextControllers;
-        }
-      });
-    } catch (e) {
-      if ((e as any)?.name === 'AbortError') {
-        return;
-      }
-      generatingProxies.value.delete(projectRelativePath);
-      delete proxyProgress.value[projectRelativePath];
-
-      const nextControllers = { ...proxyAbortControllers.value };
-      delete nextControllers[projectRelativePath];
-      proxyAbortControllers.value = nextControllers;
-      throw e;
-    }
-  }
-
-  async function cancelProxyGeneration(projectRelativePath: string) {
-    const controller = proxyAbortControllers.value[projectRelativePath];
-    if (controller && !controller.signal.aborted) {
-      controller.abort();
-    }
-
-    // If this path is actively running in worker, cancel via worker API
-    if (activeWorkerPaths.value.has(projectRelativePath)) {
-      try {
-        const { client } = getExportWorkerClient();
-        await client.cancelExport();
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  async function deleteProxy(projectRelativePath: string) {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
-    const dir = await ensureProjectProxiesDir();
-    if (!dir) return;
-
-    try {
-      await dir.removeEntry(getProxyFileName(projectRelativePath));
-      existingProxies.value.delete(projectRelativePath);
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
-        console.warn('Failed to delete proxy', e);
-      }
-    }
-  }
-
-  async function getProxyFileHandle(
-    projectRelativePath: string,
-  ): Promise<FileSystemFileHandle | null> {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
-    const dir = await ensureProjectProxiesDir();
-    if (!dir) return null;
-
-    try {
-      return await dir.getFileHandle(getProxyFileName(projectRelativePath));
-    } catch {
-      return null;
-    }
-  }
-
-  async function getProxyFile(projectRelativePath: string): Promise<File | null> {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
-    const dir = await ensureProjectProxiesDir();
-    if (!dir) return null;
-
-    try {
-      const handle = await dir.getFileHandle(getProxyFileName(projectRelativePath));
-      return await handle.getFile();
-    } catch {
-      return null;
-    }
-  }
+  const service = createProxyService({
+    videoExtensions,
+    generatingProxies,
+    existingProxies,
+    proxyProgress,
+    proxyAbortControllers,
+    activeWorkerPaths,
+    proxyQueue: queueModule.proxyQueue as any,
+    ensureProjectProxiesDir: fsModule.ensureProjectProxiesDir,
+    getProxyFileName: fsModule.getProxyFileName,
+    getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
+    getOptimizationSettings: () => workspaceStore.userSettings.optimization,
+  });
 
   return {
     generatingProxies,
     existingProxies,
     proxyProgress,
-    checkExistingProxies,
-    generateProxy,
-    generateProxiesForFolder,
-    cancelProxyGeneration,
-    deleteProxy,
-    getProxyFileHandle,
-    getProxyFile,
+    checkExistingProxies: service.checkExistingProxies,
+    generateProxy: service.generateProxy,
+    generateProxiesForFolder: service.generateProxiesForFolder,
+    cancelProxyGeneration: service.cancelProxyGeneration,
+    deleteProxy: service.deleteProxy,
+    getProxyFileHandle: service.getProxyFileHandle,
+    getProxyFile: service.getProxyFile,
   };
 });
