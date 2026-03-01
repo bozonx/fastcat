@@ -433,6 +433,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     moveEntry,
     createTimeline,
     getFileIcon,
+    readDirectory: service.readDirectory,
   };
 }
 

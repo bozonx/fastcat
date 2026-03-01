@@ -12,12 +12,20 @@ export function useProjectActions() {
   const focusStore = useFocusStore();
 
   /**
-   * Completely closes the current project and resets all related stores
+   * Resets all stores related to the project without navigation
    */
-  function leaveProject() {
+  function resetProjectState() {
     timelineStore.resetTimelineState();
     mediaStore.resetMediaState();
     projectStore.closeProject();
+  }
+
+  /**
+   * Completely closes the current project and navigates to the start screen
+   */
+  async function leaveProject() {
+    resetProjectState();
+    await navigateTo('/');
   }
 
   /**
@@ -41,7 +49,7 @@ export function useProjectActions() {
    * Opens a project by name and restores its last state
    */
   async function openProject(name: string) {
-    leaveProject();
+    resetProjectState();
 
     await projectStore.openProject(name);
     uiStore.restoreFileTreeStateOnce(name);
@@ -53,6 +61,7 @@ export function useProjectActions() {
   }
 
   return {
+    resetProjectState,
     leaveProject,
     loadTimeline,
     openProject,
