@@ -14,6 +14,7 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
+import { calculateNextClipBoundary, calculatePrevClipBoundary, getBoundaryTimesUs } from '~/timeline/domain/navigation';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -301,80 +302,33 @@ export const useTimelineStore = defineStore('timeline', () => {
     await editService.advancedRippleTrimLeft();
   }
 
-  function getBoundaryTimesUs(trackFilter: ((trackId: string) => boolean) | null): number[] {
-    const doc = timelineDoc.value;
-    if (!doc) return [];
-
-    const boundaries: number[] = [];
-    for (const track of doc.tracks) {
-      if (trackFilter && !trackFilter(track.id)) continue;
-      for (const it of track.items) {
-        if (it.kind !== 'clip') continue;
-        const startUs = Math.max(0, Math.round(it.timelineRange.startUs));
-        const endUs = Math.max(
-          0,
-          Math.round(it.timelineRange.startUs + it.timelineRange.durationUs),
-        );
-        boundaries.push(startUs, endUs);
-      }
-    }
-
-    boundaries.sort((a, b) => a - b);
-    return Array.from(new Set(boundaries));
-  }
-
   function jumpToPrevClipBoundary(options?: { currentTrackOnly?: boolean }) {
     const doc = timelineDoc.value;
     if (!doc) return;
-
-    const currentTrackOnly = Boolean(options?.currentTrackOnly);
-    const trackId = currentTrackOnly ? getSelectedOrActiveTrackId() : null;
-    if (currentTrackOnly && !trackId) return;
-
-    const boundaries = getBoundaryTimesUs(trackId ? (id) => id === trackId : null);
-    if (boundaries.length === 0) return;
-
-    const atUs = currentTime.value;
-    let prev: number | null = null;
-    for (const b of boundaries) {
-      if (b >= atUs) break;
-      prev = b;
-    }
-
-    if (prev === null) {
+    const prevUs = calculatePrevClipBoundary(doc, currentTime.value, {
+      currentTrackOnly: options?.currentTrackOnly,
+      currentTrackId: getSelectedOrActiveTrackId(),
+    });
+    if (prevUs === null) {
       currentTime.value = 0;
-      return;
+    } else {
+      currentTime.value = prevUs;
     }
-
-    currentTime.value = prev;
   }
 
   function jumpToNextClipBoundary(options?: { currentTrackOnly?: boolean }) {
     const doc = timelineDoc.value;
     if (!doc) return;
-
-    const currentTrackOnly = Boolean(options?.currentTrackOnly);
-    const trackId = currentTrackOnly ? getSelectedOrActiveTrackId() : null;
-    if (currentTrackOnly && !trackId) return;
-
-    const boundaries = getBoundaryTimesUs(trackId ? (id) => id === trackId : null);
-    if (boundaries.length === 0) return;
-
-    const atUs = currentTime.value;
-    const next = boundaries.find((b) => b > atUs) ?? null;
-
-    if (next === null) {
-      const endFromState =
-        Number.isFinite(duration.value) && duration.value > 0
-          ? Math.max(0, Math.round(duration.value))
-          : 0;
-      const end =
-        endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationUs(doc)));
-      currentTime.value = end;
-      return;
-    }
-
-    currentTime.value = next;
+    const nextUs = calculateNextClipBoundary(
+      doc,
+      currentTime.value,
+      duration.value,
+      {
+        currentTrackOnly: options?.currentTrackOnly,
+        currentTrackId: getSelectedOrActiveTrackId(),
+      }
+    );
+    currentTime.value = nextUs;
   }
 
   async function splitClipAtPlayhead() {

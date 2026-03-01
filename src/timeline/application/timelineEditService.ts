@@ -23,8 +23,9 @@ export interface TimelineEditServiceDeps {
     },
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
-  computeCutUs: (doc: TimelineDocument, atUs: number) => number;
 }
+
+import { computeCutUs } from '~/timeline/domain/editing';
 
 interface RippleDeleteRangeParams {
   trackIds: string[];
@@ -41,8 +42,8 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const doc = deps.getDoc();
     if (!doc) return;
 
-    const startUs = deps.computeCutUs(doc, input.startUs);
-    const endUs = deps.computeCutUs(doc, input.endUs);
+    const startUs = computeCutUs(doc, input.startUs);
+    const endUs = computeCutUs(doc, input.endUs);
     if (!(endUs > startUs)) return;
 
     const deltaUs = endUs - startUs;
@@ -134,7 +135,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
 
-    const cutUs = deps.computeCutUs(doc, deps.getCurrentTime());
+    const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
@@ -189,7 +190,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
 
-    const cutUs = deps.computeCutUs(doc, deps.getCurrentTime());
+    const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
@@ -245,7 +246,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
 
-    const cutUs = deps.computeCutUs(doc, deps.getCurrentTime());
+    const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
@@ -338,7 +339,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
 
-    const cutUs = deps.computeCutUs(doc, deps.getCurrentTime());
+    const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
