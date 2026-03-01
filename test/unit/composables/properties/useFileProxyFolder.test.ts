@@ -8,7 +8,10 @@ describe('useFileProxyFolder', () => {
       selectedFsEntry: ref({
         kind: 'directory',
         path: '/dir',
-        children: [{ kind: 'file', name: 'a.MP4' }, { kind: 'file', name: 'b.txt' }],
+        children: [
+          { kind: 'file', name: 'a.MP4' },
+          { kind: 'file', name: 'b.txt' },
+        ],
       }),
       proxyStore: {
         generatingProxies: new Set<string>(),
@@ -21,7 +24,7 @@ describe('useFileProxyFolder', () => {
     expect(api.isFolderWithVideo.value).toBe(true);
   });
 
-  it('detects generating proxies under folder path', () => {
+  it('detects generating proxies for the folder path', () => {
     const api = useFileProxyFolder({
       selectedFsEntry: ref({ kind: 'directory', path: '/dir', children: [] }),
       proxyStore: {
@@ -33,6 +36,20 @@ describe('useFileProxyFolder', () => {
     });
 
     expect(api.isGeneratingProxyForFolder.value).toBe(true);
+  });
+
+  it('does not treat nested proxy paths as folder generation (non-recursive)', () => {
+    const api = useFileProxyFolder({
+      selectedFsEntry: ref({ kind: 'directory', path: '/dir', children: [] }),
+      proxyStore: {
+        generatingProxies: new Set<string>(['/dir/x.mp4']),
+        generateProxiesForFolder: vi.fn().mockResolvedValue(undefined),
+        cancelProxyGeneration: vi.fn().mockResolvedValue(undefined),
+      },
+      videoExtensions: ['mp4'],
+    });
+
+    expect(api.isGeneratingProxyForFolder.value).toBe(false);
   });
 
   it('generate/stop ignore non-directory entries', async () => {

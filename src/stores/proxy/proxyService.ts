@@ -67,11 +67,6 @@ export function createProxyService(params: {
         } catch (e) {
           console.warn('Failed to generate proxy for file', fullPath, e);
         }
-      } else if (handle.kind === 'directory') {
-        await generateProxiesForFolder({
-          dirHandle: handle as FileSystemDirectoryHandle,
-          dirPath: fullPath,
-        });
       }
     }
   }
@@ -267,7 +262,9 @@ export function createProxyService(params: {
     }
   }
 
-  async function getProxyFileHandle(projectRelativePath: string): Promise<FileSystemFileHandle | null> {
+  async function getProxyFileHandle(
+    projectRelativePath: string,
+  ): Promise<FileSystemFileHandle | null> {
     if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) return null;

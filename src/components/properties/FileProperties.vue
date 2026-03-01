@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -39,6 +39,45 @@ const isExifExpanded = ref(false);
 
 const uploadInputRef = ref<HTMLInputElement | null>(null);
 
+const isProjectRootDir = computed(() => {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'directory') return false;
+  const path = typeof entry.path === 'string' ? entry.path : undefined;
+  if (path !== '') return false;
+  if (!projectStore.currentProjectName) return false;
+  return entry.name === projectStore.currentProjectName;
+});
+
+const storageEstimate = ref<{ quota?: number; usage?: number } | null>(null);
+
+watch(
+  () => isProjectRootDir.value,
+  async (isRoot) => {
+    storageEstimate.value = null;
+    if (!isRoot) return;
+    const estimateFn = (navigator as any)?.storage?.estimate as undefined | (() => Promise<any>);
+    if (typeof estimateFn !== 'function') return;
+    try {
+      const res = await estimateFn.call((navigator as any).storage);
+      if (!res || typeof res !== 'object') return;
+      const quota = typeof res.quota === 'number' ? res.quota : undefined;
+      const usage = typeof res.usage === 'number' ? res.usage : undefined;
+      if (quota === undefined || usage === undefined) return;
+      storageEstimate.value = { quota, usage };
+    } catch {
+      storageEstimate.value = null;
+    }
+  },
+  { immediate: true },
+);
+
+const storageFreeBytes = computed<number | null>(() => {
+  const est = storageEstimate.value;
+  if (!est || typeof est.quota !== 'number' || typeof est.usage !== 'number') return null;
+  const free = est.quota - est.usage;
+  return Number.isFinite(free) && free >= 0 ? free : null;
+});
+
 function triggerDirectoryUpload() {
   uploadInputRef.value?.click();
 }
@@ -54,7 +93,12 @@ async function onDirectoryFileSelect(e: Event) {
 
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
   const fm = useFileManager();
-  await fm.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+
+  if (isProjectRootDir.value) {
+    await fm.handleFiles(files);
+  } else {
+    await fm.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  }
   await fm.loadProjectDirectory();
 }
 
@@ -142,7 +186,22 @@ const {
     />
 
     <PropertySection
-      v-if="fileInfo?.kind === 'directory' && (isFolderWithVideo || isGeneratingProxyForFolder)"
+      v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
+      :title="t('videoEditor.fileManager.projectRoot.title', 'Project root')"
+    >
+      <PropertyRow
+        :label="t('videoEditor.fileManager.projectRoot.project', 'Project')"
+        :value="projectStore.currentProjectName ?? '-'"
+      />
+      <PropertyRow
+        v-if="storageFreeBytes !== null"
+        :label="t('videoEditor.fileManager.projectRoot.freeSpace', 'Free space')"
+        :value="formatBytes(storageFreeBytes)"
+      />
+    </PropertySection>
+
+    <PropertySection
+      v-if="fileInfo?.kind === 'directory' && !isProjectRootDir && (isFolderWithVideo || isGeneratingProxyForFolder)"
       :title="t('videoEditor.fileManager.proxy.title', 'Proxy')"
     >
       <div class="flex gap-2">

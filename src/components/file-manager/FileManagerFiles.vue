@@ -157,6 +157,29 @@ const rootContextMenuItems = computed(() => {
   ];
 });
 
+async function selectProjectRoot() {
+  const name = projectStore.currentProjectName;
+  if (!name) return;
+  const handle = await props.getProjectRootDirHandle();
+  if (!handle) return;
+
+  const rootEntry: FsEntry = {
+    kind: 'directory',
+    name,
+    path: '',
+    handle,
+  };
+
+  uiStore.selectedFsEntry = {
+    kind: 'directory',
+    name,
+    path: '',
+    handle,
+  };
+
+  selectionStore.selectFsEntry(rootEntry);
+}
+
 async function onEntrySelect(entry: FsEntry) {
   uiStore.selectedFsEntry = {
     kind: entry.kind,
@@ -190,10 +213,7 @@ async function onEntrySelect(entry: FsEntry) {
     <UContextMenu :items="rootContextMenuItems">
       <div
         class="min-w-full w-max min-h-full flex flex-col"
-        @pointerdown="
-          uiStore.selectedFsEntry = null;
-          selectionStore.clearSelection();
-        "
+        @pointerdown.self="selectProjectRoot"
       >
         <div
           v-if="isLoading && rootEntries.length === 0"
@@ -247,6 +267,7 @@ async function onEntrySelect(entry: FsEntry) {
           @dragover.prevent="onRootDragOver"
           @dragleave.prevent="onRootDragLeave"
           @drop.prevent="onRootDrop"
+          @pointerdown="selectProjectRoot"
         >
           <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400 text-center">
             {{
