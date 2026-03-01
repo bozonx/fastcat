@@ -45,11 +45,7 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
     const path = typeof entry?.path === 'string' ? entry.path : '';
     if (!path) return false;
 
-    for (const p of generatingProxies.value) {
-      if (p === path || p.startsWith(`${path}/`)) return true;
-    }
-
-    return false;
+    return generatingProxies.value.has(path);
   });
 
   async function generateProxiesForSelectedFolder() {
