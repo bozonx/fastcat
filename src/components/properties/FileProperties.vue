@@ -149,6 +149,12 @@ const imageLocationLink = computed(() => {
   return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
 });
 
+const hasImageInfo = computed(() => {
+  return Boolean(
+    imageResolution.value || imageCreateDate.value || imageLocationLink.value || imageCameraMake.value,
+  );
+});
+
 function formatAudioChannels(channels: number | undefined) {
   if (!channels || channels <= 0) return '-';
   if (channels === 1) return 'Mono';
@@ -291,23 +297,25 @@ async function stopProxyGenerationForSelectedFolder() {
     </PropertySection>
 
     <div
-      v-if="fileInfo?.kind === 'file' && mediaType === 'image'"
+      v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
       <div class="flex flex-col">
         <PropertyRow
+          v-if="imageResolution"
           :label="t('videoEditor.fileManager.image.resolution', 'Resolution')"
-          :value="imageResolution ?? '-'"
+          :value="imageResolution"
         />
         <PropertyRow
+          v-if="imageCreateDate"
           label="CreateDate"
-          :value="imageCreateDate ?? '-'"
+          :value="imageCreateDate"
         />
         <PropertyRow
+          v-if="imageLocationLink"
           :label="t('videoEditor.fileManager.image.location', 'Location')"
         >
           <a
-            v-if="imageLocationLink"
             class="text-primary-500 hover:underline break-all"
             :href="imageLocationLink"
             target="_blank"
@@ -315,11 +323,11 @@ async function stopProxyGenerationForSelectedFolder() {
           >
             Google Maps
           </a>
-          <span v-else>-</span>
         </PropertyRow>
         <PropertyRow
+          v-if="imageCameraMake"
           :label="t('videoEditor.fileManager.image.camera', 'Camera')"
-          :value="imageCameraMake ?? '-'"
+          :value="imageCameraMake"
         />
       </div>
     </div>
