@@ -11,6 +11,7 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
+import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
@@ -503,8 +504,11 @@ async function onDirectoryFileSelect(e: Event) {
       @action="onFileAction"
       @create-folder="openCreateFolderModal"
     />
-    <FileManagerEffects v-else-if="activeTab === 'effects'" />
-    <FileManagerHistory v-else-if="activeTab === 'history'" />
+    <FileManagerEffects v-else-if="activeTab === 'effects'" class="flex-1 min-h-0" />
+    <FileManagerHistory v-else-if="activeTab === 'history'" class="flex-1 min-h-0" />
+
+    <!-- Timeline Toolbar at the bottom of the panel -->
+    <TimelineToolbar />
 
     <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
 
