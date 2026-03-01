@@ -375,9 +375,7 @@ async function onDirectoryFileSelect(e: Event) {
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
     :class="{
       'bg-ui-bg-accent outline-2 outline-primary-500/50 -outline-offset-2 z-10': isDragging,
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('left'),
     }"
-    @pointerdown.capture="focusStore.setTempFocus('left')"
     @dragover.prevent="onDragOver"
     @dragleave.prevent="onDragLeave"
     @drop.prevent="onDrop"
@@ -392,120 +390,129 @@ async function onDirectoryFileSelect(e: Event) {
       @change="onDirectoryFileSelect"
     />
 
-    <!-- Header / Tabs -->
-    <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
-      <button
-        class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="
-          activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-        "
-        @click="activeTab = 'files'"
-      >
-        {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
-      </button>
-      <button
-        class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="
-          activeTab === 'effects' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-        "
-        @click="activeTab = 'effects'"
-      >
-        {{ t('videoEditor.fileManager.tabs.effects', 'Effects') }}
-      </button>
-      <button
-        class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="
-          activeTab === 'history' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-        "
-        @click="activeTab = 'history'"
-      >
-        {{ t('videoEditor.fileManager.tabs.history', 'History') }}
-      </button>
-    </div>
-
-    <!-- Actions Toolbar (only for Files tab) -->
+    <!-- Content Wrapper with Focus Frame -->
     <div
-      v-if="activeTab === 'files' && projectStore.currentProjectName"
-      class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
+      class="flex flex-col flex-1 min-h-0"
+      :class="{
+        'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('left'),
+      }"
+      @pointerdown.capture="focusStore.setTempFocus('left')"
     >
-      <UButton
-        icon="i-heroicons-arrow-up-tray"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.uploadFiles')"
-        @click="triggerFileUpload"
-      />
-      <UButton
-        icon="i-heroicons-folder-plus"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.createFolder')"
-        @click="openCreateFolderModal(null)"
-      />
-      <UButton
-        icon="i-heroicons-document-plus"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
-        @click="onCreateTimeline"
-      />
-      <UButton
-        :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.toggleHiddenFiles', 'Show/Hide hidden files')"
-        @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
-      />
-      <UButton
-        icon="i-heroicons-arrow-path"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-        :disabled="isLoading || !projectStore.currentProjectName"
-        @click="loadProjectDirectory"
-      />
-
-      <div class="ml-auto w-30">
-        <USelectMenu
-          :model-value="sortMode"
-          :search-input="false"
-          :items="[
-            { value: 'name', label: t('videoEditor.fileManager.sort.name', 'Name') },
-            { value: 'modified', label: t('videoEditor.fileManager.sort.modified', 'Modified') },
-          ]"
-          value-key="value"
-          label-key="label"
-          size="xs"
-          class="w-full"
-          @update:model-value="(v: any) => onSortModeChange(v?.value ?? v)"
-        />
+      <!-- Header / Tabs -->
+      <div class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none">
+        <button
+          class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
+          :class="
+            activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+          "
+          @click="activeTab = 'files'"
+        >
+          {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
+        </button>
+        <button
+          class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
+          :class="
+            activeTab === 'effects' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+          "
+          @click="activeTab = 'effects'"
+        >
+          {{ t('videoEditor.fileManager.tabs.effects', 'Effects') }}
+        </button>
+        <button
+          class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
+          :class="
+            activeTab === 'history' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
+          "
+          @click="activeTab = 'history'"
+        >
+          {{ t('videoEditor.fileManager.tabs.history', 'History') }}
+        </button>
       </div>
-    </div>
 
-    <!-- Content -->
-    <FileManagerFiles
-      v-if="activeTab === 'files'"
-      :is-dragging="isDragging"
-      :is-loading="isLoading"
-      :is-api-supported="isApiSupported"
-      :root-entries="rootEntries"
-      :get-file-icon="getFileIcon"
-      :find-entry-by-path="findEntryByPath"
-      :media-cache="fileManager.mediaCache"
-      :move-entry="moveEntry"
-      :get-project-root-dir-handle="getProjectRootDirHandle"
-      :handle-files="handleFiles"
-      @toggle="toggleDirectory"
-      @action="onFileAction"
-      @create-folder="openCreateFolderModal"
-    />
-    <FileManagerEffects v-else-if="activeTab === 'effects'" class="flex-1 min-h-0" />
-    <FileManagerHistory v-else-if="activeTab === 'history'" class="flex-1 min-h-0" />
+      <!-- Actions Toolbar (only for Files tab) -->
+      <div
+        v-if="activeTab === 'files' && projectStore.currentProjectName"
+        class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
+      >
+        <UButton
+          icon="i-heroicons-arrow-up-tray"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.uploadFiles')"
+          @click="triggerFileUpload"
+        />
+        <UButton
+          icon="i-heroicons-folder-plus"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.createFolder')"
+          @click="openCreateFolderModal(null)"
+        />
+        <UButton
+          icon="i-heroicons-document-plus"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
+          @click="onCreateTimeline"
+        />
+        <UButton
+          :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.toggleHiddenFiles', 'Show/Hide hidden files')"
+          @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
+        />
+        <UButton
+          icon="i-heroicons-arrow-path"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
+          :disabled="isLoading || !projectStore.currentProjectName"
+          @click="loadProjectDirectory"
+        />
+
+        <div class="ml-auto w-30">
+          <USelectMenu
+            :model-value="sortMode"
+            :search-input="false"
+            :items="[
+              { value: 'name', label: t('videoEditor.fileManager.sort.name', 'Name') },
+              { value: 'modified', label: t('videoEditor.fileManager.sort.modified', 'Modified') },
+            ]"
+            value-key="value"
+            label-key="label"
+            size="xs"
+            class="w-full"
+            @update:model-value="(v: any) => onSortModeChange(v?.value ?? v)"
+          />
+        </div>
+      </div>
+
+      <!-- Content -->
+      <FileManagerFiles
+        v-if="activeTab === 'files'"
+        :is-dragging="isDragging"
+        :is-loading="isLoading"
+        :is-api-supported="isApiSupported"
+        :root-entries="rootEntries"
+        :get-file-icon="getFileIcon"
+        :find-entry-by-path="findEntryByPath"
+        :media-cache="fileManager.mediaCache"
+        :move-entry="moveEntry"
+        :get-project-root-dir-handle="getProjectRootDirHandle"
+        :handle-files="handleFiles"
+        @toggle="toggleDirectory"
+        @action="onFileAction"
+        @create-folder="openCreateFolderModal"
+      />
+      <FileManagerEffects v-else-if="activeTab === 'effects'" class="flex-1 min-h-0" />
+      <FileManagerHistory v-else-if="activeTab === 'history'" class="flex-1 min-h-0" />
+    </div>
 
     <!-- Timeline Toolbar at the bottom of the panel -->
     <TimelineToolbar />

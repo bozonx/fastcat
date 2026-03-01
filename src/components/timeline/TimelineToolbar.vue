@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TimelineZoomLogSlider from '~/components/ui/TimelineZoomLogSlider.vue';
 import { useDraggedFile } from '~/composables/useDraggedFile';
@@ -9,6 +10,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
+const focusStore = useFocusStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 function onDragStart(e: DragEvent, kind: 'adjustment' | 'background' | 'text') {
@@ -122,6 +124,7 @@ function toggleClipSnapMode() {
 <template>
   <div
     class="flex items-center gap-2 px-2 py-1.5 border-t-2 border-ui-border shrink-0 bg-ui-bg-elevated min-h-10 h-auto flex-wrap mt-auto w-full"
+    @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <div class="ml-2 flex items-center gap-1.5">
       <div
