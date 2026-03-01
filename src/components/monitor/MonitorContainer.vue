@@ -364,6 +364,13 @@ defineProps<{
         >
           {{ loadError }}
         </div>
+
+        <span
+          ref="timecodeEl"
+          class="absolute bottom-3 right-3 text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded"
+        >
+          00:00:00:00 / 00:00:00:00
+        </span>
       </div>
     </div>
 
@@ -415,7 +422,7 @@ defineProps<{
           />
         </UTooltip>
 
-        <div class="w-28">
+        <div class="w-21">
           <USelectMenu
             v-if="projectStore.projectSettings.monitor"
             :model-value="
@@ -443,7 +450,14 @@ defineProps<{
               />
             </template>
             <template #item-label="{ item }">
-              <span :class="{ 'text-primary-500 font-medium': item.isProject }">
+              <span
+                :class="[
+                  item.value === projectStore.projectSettings.monitor?.previewResolution
+                    ? 'text-primary-500 font-medium'
+                    : '',
+                  'truncate',
+                ]"
+              >
                 {{ item.label }}
               </span>
             </template>
@@ -554,9 +568,6 @@ defineProps<{
           {{ Math.round((audioMuted ? 0 : audioVolume) * 100) }}%
         </span>
       </div>
-      <span ref="timecodeEl" class="text-xs text-ui-text-muted ml-2 font-mono tabular-nums">
-        00:00:00:00 / 00:00:00:00
-      </span>
     </div>
     </div>
   </UContextMenu>
