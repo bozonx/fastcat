@@ -10,9 +10,12 @@ export function useGlobalDragAndDrop() {
   function onGlobalDragOver(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
+
+    const typesArr = Array.from(types);
     // Ignore internal drags (files dragged within the app from the file manager)
-    if (types.includes('application/gran-internal-file')) return;
-    if (types.includes('Files')) {
+    if (typesArr.includes('application/gran-internal-file')) return;
+
+    if (typesArr.includes('Files')) {
       uiStore.isGlobalDragging = true;
     }
   }
