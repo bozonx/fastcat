@@ -326,21 +326,28 @@ const transformAnchorPreset = computed({
   get: () => {
     return getSafeTransform(props.clip).anchor?.preset ?? 'center';
   },
-  set: (val: string) => {
+  set: (val: unknown) => {
+    const preset =
+      typeof val === 'string'
+        ? val
+        : val && typeof val === 'object' && typeof (val as any).value === 'string'
+          ? ((val as any).value as string)
+          : null;
+
     if (
-      val !== 'center' &&
-      val !== 'topLeft' &&
-      val !== 'topRight' &&
-      val !== 'bottomLeft' &&
-      val !== 'bottomRight' &&
-      val !== 'custom'
+      preset !== 'center' &&
+      preset !== 'topLeft' &&
+      preset !== 'topRight' &&
+      preset !== 'bottomLeft' &&
+      preset !== 'bottomRight' &&
+      preset !== 'custom'
     ) {
       return;
     }
-    if (val === 'custom') {
+    if (preset === 'custom') {
       updateSelectedClipTransform({ anchor: { preset: 'custom', x: 0.5, y: 0.5 } });
     } else {
-      updateSelectedClipTransform({ anchor: { preset: val as any } });
+      updateSelectedClipTransform({ anchor: { preset: preset as any } });
     }
   },
 });
