@@ -34,6 +34,7 @@ const proxyStore = useProxyStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const uiStore = useUiStore();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
@@ -140,6 +141,18 @@ async function copyToClipboard(text: string) {
     console.error('Failed to copy to clipboard', e);
   }
 }
+
+function onRename() {
+  const entry = props.selectedFsEntry;
+  if (!entry) return;
+  (uiStore as any).pendingFsEntryRename = entry;
+}
+
+function onDelete() {
+  const entry = props.selectedFsEntry;
+  if (!entry) return;
+  uiStore.pendingFsEntryDelete = entry;
+}
 </script>
 
 <template>
@@ -210,7 +223,7 @@ async function copyToClipboard(text: string) {
       v-if="fileInfo?.kind === 'directory'"
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
-      <div class="flex">
+      <div class="flex flex-col gap-2">
         <UButton
           size="xs"
           color="neutral"
@@ -220,6 +233,57 @@ async function copyToClipboard(text: string) {
           @click="triggerDirectoryUpload"
         >
           {{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload files') }}
+        </UButton>
+
+        <div class="flex gap-2">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-pencil"
+            class="flex-1"
+            @click="onRename"
+          >
+            {{ t('common.rename', 'Rename') }}
+          </UButton>
+          <UButton
+            size="xs"
+            color="red"
+            variant="soft"
+            icon="i-heroicons-trash"
+            class="flex-1"
+            @click="onDelete"
+          >
+            {{ t('common.delete', 'Delete') }}
+          </UButton>
+        </div>
+      </div>
+    </PropertySection>
+
+    <PropertySection
+      v-else-if="fileInfo?.kind === 'file'"
+      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+    >
+      <div class="flex gap-2 w-full">
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-pencil"
+          class="flex-1"
+          @click="onRename"
+        >
+          {{ t('common.rename', 'Rename') }}
+        </UButton>
+        <UButton
+          size="xs"
+          color="red"
+          variant="soft"
+          icon="i-heroicons-trash"
+          class="flex-1"
+          @click="onDelete"
+        >
+          {{ t('common.delete', 'Delete') }}
         </UButton>
       </div>
     </PropertySection>

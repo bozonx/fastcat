@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -20,8 +20,8 @@ export const useProxyStore = defineStore('proxy', () => {
   const activeWorkerPaths = ref<Set<string>>(new Set());
 
   const fsModule = createProxyFsModule({
-    workspaceHandle: ref(workspaceStore.workspaceHandle) as any,
-    currentProjectId: ref(projectStore.currentProjectId) as any,
+    workspaceHandle: computed(() => workspaceStore.workspaceHandle) as any,
+    currentProjectId: computed(() => projectStore.currentProjectId) as any,
   });
 
   const queueModule = createProxyQueueModule({

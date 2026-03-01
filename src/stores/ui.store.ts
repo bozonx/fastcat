@@ -26,6 +26,7 @@ export const useUiStore = defineStore('ui', () => {
   const fileTreeExpandedPaths = ref<Record<string, true>>({});
 
   const pendingFsEntryDelete = ref<unknown>(null);
+  const pendingFsEntryRename = ref<unknown>(null);
 
   const fileTreeModule = createUiFileTreePersistenceModule({ fileTreeExpandedPaths });
   const {
@@ -41,6 +42,7 @@ export const useUiStore = defineStore('ui', () => {
     isFileManagerDragging,
     fileTreeExpandedPaths,
     pendingFsEntryDelete,
+    pendingFsEntryRename,
     showHiddenFiles,
     restoreFileTreeStateOnce,
     hasPersistedFileTreeState,

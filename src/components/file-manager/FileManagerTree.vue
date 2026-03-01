@@ -49,7 +49,8 @@ const emit = defineEmits<{
       | 'deleteProxy'
       | 'upload'
       | 'createProxyForFolder'
-      | 'cancelProxyForFolder',
+      | 'cancelProxyForFolder'
+      | 'createMarkdown',
     entry: FsEntry,
   ): void;
   (
@@ -239,6 +240,14 @@ function getContextMenuItems(entry: FsEntry) {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => emit('action', 'createFolder', entry),
+      },
+      {
+        label: t(
+          'videoEditor.fileManager.actions.createMarkdown',
+          'Create Markdown document',
+        ),
+        icon: 'i-heroicons-document-text',
+        onSelect: () => emit('action', 'createMarkdown', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),

@@ -71,6 +71,16 @@ function getEffectiveVideoCodec(): string {
   return String(videoCodec.value || '');
 }
 
+const codecHint = computed(() => {
+  if (outputFormat.value === 'webm') {
+    return 'Video: VP9 · Audio: Opus';
+  }
+  if (outputFormat.value === 'mkv') {
+    return 'Video: AV1 · Audio: Opus';
+  }
+  return null;
+});
+
 watch(outputFormat, (fmt) => {
   if (fmt === 'mp4') {
     audioCodec.value = 'aac';
@@ -200,13 +210,19 @@ watch(
         :options="props.formatOptions as any"
         :disabled="props.disabled"
       />
+      <div
+        v-if="codecHint"
+        class="text-xs text-ui-text-muted bg-ui-bg-accent/30 px-3 py-2 rounded border border-ui-border"
+      >
+        {{ codecHint }}
+      </div>
     </div>
 
-    <div class="flex flex-col gap-2">
+    <div v-if="outputFormat === 'mp4'" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.videoCodec', 'Video codec') }}
       </label>
-      <div v-if="outputFormat === 'mp4'" class="w-full">
+      <div class="w-full">
         <USelectMenu
           :model-value="
             (filteredVideoCodecOptions.find((o) => o.value === videoCodec) || videoCodec) as any
@@ -219,9 +235,6 @@ watch(
           class="w-full"
           @update:model-value="(v: any) => (videoCodec = v?.value ?? v)"
         />
-      </div>
-      <div v-else class="text-sm text-ui-text font-medium bg-ui-bg-accent px-3 py-2 rounded">
-        {{ outputFormat === 'mkv' ? 'AV1' : 'VP9' }}
       </div>
     </div>
 
@@ -298,19 +311,12 @@ watch(
       }}</span>
     </label>
 
-    <div v-if="!excludeAudio" class="flex flex-col gap-2">
+    <div v-if="!excludeAudio && outputFormat === 'mp4'" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
       </label>
-      <div v-if="outputFormat === 'mp4'" class="w-full">
-        <UiAppButtonGroup
-          v-model="audioCodec"
-          :options="audioCodecOptions"
-          :disabled="props.disabled"
-        />
-      </div>
-      <div v-else class="text-sm text-ui-text font-medium bg-ui-bg-accent px-3 py-2 rounded">
-        Opus
+      <div class="w-full">
+        <UiAppButtonGroup v-model="audioCodec" :options="audioCodecOptions" :disabled="props.disabled" />
       </div>
     </div>
 
