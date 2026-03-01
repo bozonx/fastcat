@@ -14,6 +14,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 interface Props {
   entries: FsEntry[];
   depth: number;
+  foldersOnly?: boolean;
 }
 
 interface TreeContext {
@@ -27,7 +28,7 @@ interface TreeContext {
   };
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
@@ -254,10 +255,7 @@ function getContextMenuItems(entry: FsEntry) {
         onSelect: () => emit('action', 'createFolder', entry),
       },
       {
-        label: t(
-          'videoEditor.fileManager.actions.createMarkdown',
-          'Create Markdown document',
-        ),
+        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
         onSelect: () => emit('action', 'createMarkdown', entry),
       },
@@ -272,17 +270,9 @@ function getContextMenuItems(entry: FsEntry) {
       items.push([
         {
           label: isGeneratingProxyInDirectory(entry)
-            ? t(
-                'videoEditor.fileManager.actions.cancelProxyGeneration',
-                'Cancel proxy generation',
-              )
-            : t(
-                'videoEditor.fileManager.actions.createProxyForAll',
-                'Create proxy for all videos',
-              ),
-          icon: isGeneratingProxyInDirectory(entry)
-            ? 'i-heroicons-x-circle'
-            : 'i-heroicons-film',
+            ? t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
+            : t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+          icon: isGeneratingProxyInDirectory(entry) ? 'i-heroicons-x-circle' : 'i-heroicons-film',
           color: isGeneratingProxyInDirectory(entry) ? 'error' : undefined,
           onSelect: () =>
             emit(
@@ -375,110 +365,115 @@ function getContextMenuItems(entry: FsEntry) {
 
 <template>
   <ul class="select-none min-w-full w-max">
-    <li v-for="entry in entries" :key="entry.name">
-      <!-- Row -->
-      <UContextMenu :items="getContextMenuItems(entry)">
-        <div
-          class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
-          :style="{ paddingLeft: `${8 + depth * 14}px` }"
-          :class="[
-            isDragOver === entry.path
-              ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
-              : '',
-            isSelected(entry)
-              ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1'
-              : '',
-          ]"
-          :draggable="true"
-          :aria-selected="isSelected(entry)"
-          :aria-expanded="entry.kind === 'directory' ? entry.expanded : undefined"
-          :aria-level="depth + 1"
-          role="treeitem"
-          tabindex="0"
-          @keydown.enter="onEntryClick(entry)"
-          @keydown.space.prevent="onEntryClick(entry)"
-          @dragstart="onDragStart($event, entry)"
-          @dragend="onDragEnd()"
-          @dragover.prevent="onDragOverDir($event, entry)"
-          @dragleave.prevent="onDragLeaveDir($event, entry)"
-          @drop.prevent="onDropDir($event, entry)"
-          @click="onEntryClick(entry)"
-        >
-          <!-- Chevron for directories -->
-          <UIcon
-            v-if="entry.kind === 'directory'"
-            name="i-heroicons-chevron-right"
-            class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
-            :class="{ 'rotate-90': entry.expanded }"
-            :aria-hidden="true"
-            @click="onCaretClick($event, entry)"
-          />
-          <span v-else class="w-3.5 shrink-0" />
-
-          <!-- File / folder icon -->
-          <div class="w-4 shrink-0 flex items-center justify-center">
-            <div
-              class="h-4 flex items-center justify-center"
-              :class="[ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '']"
-            >
-              <UIcon
-                :name="ctx.getFileIcon(entry)"
-                class="w-4 h-4 shrink-0 transition-colors"
-                :class="[
-                  getEntryIconClass(entry),
-                  ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
-                ]"
-              />
-            </div>
-          </div>
-
-          <!-- Name -->
-          <span
-            class="text-sm truncate transition-colors"
+    <template v-for="entry in entries" :key="entry.name">
+      <li v-if="!foldersOnly || entry.kind === 'directory'">
+        <!-- Row -->
+        <UContextMenu :items="getContextMenuItems(entry)">
+          <div
+            class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
+            :style="{ paddingLeft: `${8 + depth * 14}px` }"
             :class="[
+              isDragOver === entry.path
+                ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
+                : '',
               isSelected(entry)
-                ? 'font-medium text-ui-text group-hover:text-ui-text'
-                : 'text-ui-text group-hover:text-ui-text',
-              isDotEntry(entry) ? 'opacity-30' : '',
-              ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+                ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1'
+                : '',
             ]"
+            :draggable="true"
+            :aria-selected="isSelected(entry)"
+            :aria-expanded="entry.kind === 'directory' ? entry.expanded : undefined"
+            :aria-level="depth + 1"
+            role="treeitem"
+            tabindex="0"
+            @keydown.enter="onEntryClick(entry)"
+            @keydown.space.prevent="onEntryClick(entry)"
+            @dragstart="onDragStart($event, entry)"
+            @dragend="onDragEnd()"
+            @dragover.prevent="onDragOverDir($event, entry)"
+            @dragleave.prevent="onDragLeaveDir($event, entry)"
+            @drop.prevent="onDropDir($event, entry)"
+            @click="onEntryClick(entry)"
           >
-            {{ entry.name }}
-          </span>
+            <!-- Chevron for directories -->
+            <UIcon
+              v-if="entry.kind === 'directory'"
+              name="i-heroicons-chevron-right"
+              class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
+              :class="{ 'rotate-90': entry.expanded }"
+              :aria-hidden="true"
+              @click="onCaretClick($event, entry)"
+            />
+            <span v-else class="w-3.5 shrink-0" />
 
-          <!-- Proxy indicators -->
-          <template v-if="isVideo(entry)">
-            <div
-              v-if="ctx.getEntryMeta(entry).generatingProxy"
-              class="flex items-center gap-1 ml-2"
-            >
-              <UIcon
-                name="i-heroicons-arrow-path"
-                class="w-3.5 h-3.5 text-primary-400 animate-spin"
-              />
-              <span
-                v-if="ctx.getEntryMeta(entry).proxyProgress !== undefined"
-                class="text-xs text-primary-400 font-mono"
+            <!-- File / folder icon -->
+            <div class="w-4 shrink-0 flex items-center justify-center">
+              <div
+                class="h-4 flex items-center justify-center"
+                :class="[
+                  ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
+                ]"
               >
-                {{ ctx.getEntryMeta(entry).proxyProgress }}%
-              </span>
+                <UIcon
+                  :name="ctx.getFileIcon(entry)"
+                  class="w-4 h-4 shrink-0 transition-colors"
+                  :class="[
+                    getEntryIconClass(entry),
+                    ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+                  ]"
+                />
+              </div>
             </div>
-          </template>
-        </div>
-      </UContextMenu>
 
-      <!-- Children -->
-      <div v-if="entry.kind === 'directory' && entry.expanded && entry.children">
-        <FileManagerTree
-          :entries="entry.children"
-          :depth="depth + 1"
-          @toggle="emit('toggle', $event)"
-          @select="emit('select', $event)"
-          @action="(action, childEntry) => emit('action', action, childEntry)"
-          @request-move="emit('requestMove', $event)"
-          @request-upload="emit('requestUpload', $event)"
-        />
-      </div>
-    </li>
+            <!-- Name -->
+            <span
+              class="text-sm truncate transition-colors"
+              :class="[
+                isSelected(entry)
+                  ? 'font-medium text-ui-text group-hover:text-ui-text'
+                  : 'text-ui-text group-hover:text-ui-text',
+                isDotEntry(entry) ? 'opacity-30' : '',
+                ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+              ]"
+            >
+              {{ entry.name }}
+            </span>
+
+            <!-- Proxy indicators -->
+            <template v-if="isVideo(entry)">
+              <div
+                v-if="ctx.getEntryMeta(entry).generatingProxy"
+                class="flex items-center gap-1 ml-2"
+              >
+                <UIcon
+                  name="i-heroicons-arrow-path"
+                  class="w-3.5 h-3.5 text-primary-400 animate-spin"
+                />
+                <span
+                  v-if="ctx.getEntryMeta(entry).proxyProgress !== undefined"
+                  class="text-xs text-primary-400 font-mono"
+                >
+                  {{ ctx.getEntryMeta(entry).proxyProgress }}%
+                </span>
+              </div>
+            </template>
+          </div>
+        </UContextMenu>
+
+        <!-- Children -->
+        <div v-if="entry.kind === 'directory' && entry.expanded && entry.children">
+          <FileManagerTree
+            :entries="entry.children"
+            :depth="depth + 1"
+            :folders-only="foldersOnly"
+            @toggle="emit('toggle', $event)"
+            @select="emit('select', $event)"
+            @action="(action, childEntry) => emit('action', action, childEntry)"
+            @request-move="emit('requestMove', $event)"
+            @request-upload="emit('requestUpload', $event)"
+          />
+        </div>
+      </li>
+    </template>
   </ul>
 </template>

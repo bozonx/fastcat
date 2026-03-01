@@ -47,6 +47,7 @@ function onContainerDragLeave(e: DragEvent) {
 }
 
 const props = defineProps<{
+  foldersOnly?: boolean;
   isDragging: boolean;
   isLoading: boolean;
   isApiSupported: boolean;
@@ -127,6 +128,7 @@ const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootD
 
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
+  (e: 'select', entry: FsEntry): void;
   (
     e: 'action',
     action:
@@ -155,10 +157,7 @@ const rootContextMenuItems = computed(() => {
         onSelect: () => emit('createFolder', null),
       },
       {
-        label: t(
-          'videoEditor.fileManager.actions.createMarkdown',
-          'Create Markdown document',
-        ),
+        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
         onSelect: async () => {
           const handle = await props.getProjectRootDirHandle();
@@ -207,6 +206,7 @@ async function onEntrySelect(entry: FsEntry) {
   };
 
   selectionStore.selectFsEntry(entry);
+  emit('select', entry);
 
   if (entry.kind === 'file') {
     focusStore.setTempFocus('left');
@@ -229,10 +229,7 @@ async function onEntrySelect(entry: FsEntry) {
     @drop="onContainerDrop"
   >
     <UContextMenu :items="rootContextMenuItems">
-      <div
-        class="min-w-full w-max min-h-full flex flex-col"
-        @pointerdown.self="selectProjectRoot"
-      >
+      <div class="min-w-full w-max min-h-full flex flex-col" @pointerdown.self="selectProjectRoot">
         <div
           v-if="isLoading && rootEntries.length === 0"
           class="px-3 py-4 text-sm text-ui-text-muted"
@@ -263,6 +260,7 @@ async function onEntrySelect(entry: FsEntry) {
           <FileManagerTree
             :entries="rootEntries"
             :depth="0"
+            :folders-only="foldersOnly"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
             @action="(action, entry) => emit('action', action as any, entry)"
