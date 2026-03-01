@@ -242,13 +242,78 @@ const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
     }"
     @pointerdown.capture="focusStore.setMainFocus('monitor')"
   >
-    <!-- Header -->
+
+
+    <!-- Video area -->
     <div
-      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated"
+      ref="viewportEl"
+      class="flex-1 min-h-0 min-w-0 overflow-hidden relative"
+      @pointerdown="onViewportPointerDown"
+      @pointermove="onViewportPointerMove"
+      @pointerup="stopPan"
+      @pointercancel="stopPan"
+      @wheel="onViewportWheel"
     >
-      <span class="text-xs font-semibold text-ui-text-muted uppercase tracking-wider">
-        {{ t('granVideoEditor.monitor.title', 'Monitor') }}
-      </span>
+      <div class="absolute inset-0">
+        <div class="absolute inset-0" :style="workspaceStyle">
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div
+              class="shrink-0 relative"
+              :style="getCanvasWrapperStyle()"
+              @pointerdown="onPreviewPointerDown"
+            >
+              <div ref="containerEl" :style="getCanvasInnerStyle()" />
+              <svg
+                class="absolute inset-0 overflow-visible"
+                :width="renderWidth"
+                :height="renderHeight"
+                style="pointer-events: none"
+              >
+                <rect
+                  v-if="isPreviewSelected"
+                  x="0"
+                  y="0"
+                  :width="renderWidth"
+                  :height="renderHeight"
+                  fill="none"
+                  :stroke="'var(--selection-ring)'"
+                  stroke-width="2"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="videoItems.length === 0"
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
+        >
+          <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
+          <p class="text-sm">
+            {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
+          </p>
+        </div>
+
+        <div
+          v-else-if="isLoading"
+          class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
+        >
+          <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
+        </div>
+
+        <div
+          v-else-if="loadError"
+          class="absolute inset-0 flex items-center justify-center text-red-500"
+        >
+          {{ loadError }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Playback controls -->
+    <div
+      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-t border-ui-border shrink-0 bg-ui-bg-elevated"
+    >
       <div class="flex items-center gap-2 shrink-0">
         <UTooltip :text="t('granVideoEditor.monitor.snapshot', 'Create snapshot')">
           <UButton
@@ -326,78 +391,7 @@ const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
           </USelectMenu>
         </div>
       </div>
-    </div>
 
-    <!-- Video area -->
-    <div
-      ref="viewportEl"
-      class="flex-1 min-h-0 min-w-0 overflow-hidden relative"
-      @pointerdown="onViewportPointerDown"
-      @pointermove="onViewportPointerMove"
-      @pointerup="stopPan"
-      @pointercancel="stopPan"
-      @wheel="onViewportWheel"
-    >
-      <div class="absolute inset-0">
-        <div class="absolute inset-0" :style="workspaceStyle">
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div
-              class="shrink-0 relative"
-              :style="getCanvasWrapperStyle()"
-              @pointerdown="onPreviewPointerDown"
-            >
-              <div ref="containerEl" :style="getCanvasInnerStyle()" />
-              <svg
-                class="absolute inset-0 overflow-visible"
-                :width="renderWidth"
-                :height="renderHeight"
-                style="pointer-events: none"
-              >
-                <rect
-                  v-if="isPreviewSelected"
-                  x="0"
-                  y="0"
-                  :width="renderWidth"
-                  :height="renderHeight"
-                  fill="none"
-                  :stroke="'var(--selection-ring)'"
-                  stroke-width="2"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div
-          v-if="videoItems.length === 0"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
-        >
-          <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
-          <p class="text-sm">
-            {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
-          </p>
-        </div>
-
-        <div
-          v-else-if="isLoading"
-          class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
-        >
-          <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
-        </div>
-
-        <div
-          v-else-if="loadError"
-          class="absolute inset-0 flex items-center justify-center text-red-500"
-        >
-          {{ loadError }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Playback controls -->
-    <div
-      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-t border-ui-border shrink-0 bg-ui-bg-elevated"
-    >
       <UButton
         size="md"
         variant="ghost"
