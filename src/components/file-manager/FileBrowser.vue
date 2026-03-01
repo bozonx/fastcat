@@ -219,11 +219,8 @@ function navigateBack() {
   if (parentFolders.value.length > 1) {
     const parentIndex = parentFolders.value.length - 2;
     filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
-  } else if (parentFolders.value.length === 1) {
-    filesPageStore.selectFolder(parentFolders.value[0] as FsEntry);
   } else {
-    // If we're at the root of a project, go back to project selection
-    filesPageStore.selectFolder(null);
+    void navigateToRoot();
   }
 }
 
@@ -232,11 +229,7 @@ function navigateUp() {
     const parentIndex = parentFolders.value.length - 2;
     filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
   } else if (parentFolders.value.length === 1) {
-    // Go to root (empty path)
-    filesPageStore.selectFolder(null);
-  } else {
-    // Already at root
-    filesPageStore.selectFolder(null);
+    void navigateToRoot();
   }
 }
 
@@ -338,13 +331,12 @@ function onCardSizeChange(e: Event) {
     </div>
 
     <!-- Navigation bar -->
-    <div v-if="filesPageStore.selectedFolder" class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0">
+    <div v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''" class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0">
       <UButton
         variant="ghost"
         color="neutral"
         size="xs"
         icon="i-heroicons-arrow-left"
-        :disabled="parentFolders.length === 0"
         @click="navigateBack"
       />
       <UButton
@@ -352,7 +344,6 @@ function onCardSizeChange(e: Event) {
         color="neutral"
         size="xs"
         icon="i-heroicons-arrow-up"
-        :disabled="parentFolders.length === 0"
         @click="navigateUp"
       />
 

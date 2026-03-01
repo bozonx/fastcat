@@ -195,6 +195,7 @@ async function selectProjectRoot() {
   };
 
   selectionStore.selectFsEntry(rootEntry);
+  emit('select', rootEntry);
 }
 
 async function onEntrySelect(entry: FsEntry) {
