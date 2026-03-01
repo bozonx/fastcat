@@ -20,7 +20,9 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
 export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   const currentView = ref<EditorView>('cut');
 
-  const timelineHeightKey = computed(() => getPanelSizesKey('timeline-height', projectIdRef.value));
+  const timelineHeightKey = computed(() =>
+    getPanelSizesKey(`timeline-height-${currentView.value}`, projectIdRef.value),
+  );
 
   const timelineHeight = computed({
     get() {

@@ -31,10 +31,12 @@ const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const { draggedFile, clearDraggedFile } = useDraggedFile();
 const projectStore = useProjectStore();
-const { currentProjectId } = storeToRefs(projectStore);
+const { currentProjectId, currentView } = storeToRefs(projectStore);
+
+const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
 
 const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersistedSplitpanes(
-  'timeline-split',
+  timelineSplitKey.value, // It's not fully reactive inside usePersistedSplitpanes, so we'll pass the base key
   currentProjectId,
   [10, 90],
 );
