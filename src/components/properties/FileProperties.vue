@@ -11,6 +11,7 @@ import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
+import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -96,63 +97,16 @@ const ext = computed(() => {
   return value && value !== name.toLowerCase() ? value : value;
 });
 
-const imageResolution = computed(() => {
-  if (mediaType.value !== 'image') return null;
-  const exif = exifData.value as any;
-  const width =
-    exif?.ExifImageWidth ??
-    exif?.ImageWidth ??
-    exif?.PixelXDimension ??
-    exif?.SourceImageWidth ??
-    imageDimensions.value?.width ??
-    null;
-  const height =
-    exif?.ExifImageHeight ??
-    exif?.ImageHeight ??
-    exif?.PixelYDimension ??
-    exif?.SourceImageHeight ??
-    imageDimensions.value?.height ??
-    null;
-
-  if (typeof width === 'number' && typeof height === 'number') return `${width}x${height}`;
-  return null;
-});
-
-const imageCreateDate = computed(() => {
-  if (mediaType.value !== 'image') return null;
-  const exif = exifData.value as any;
-  if (!exif) return null;
-
-  const date: unknown = exif.CreateDate ?? exif.DateTimeOriginal ?? exif.ModifyDate ?? null;
-  if (!date) return null;
-  if (date instanceof Date) return date.toLocaleString();
-  if (typeof date === 'string') return date;
-  return null;
-});
-
-const imageCameraMake = computed(() => {
-  if (mediaType.value !== 'image') return null;
-  const exif = exifData.value as any;
-  if (!exif) return null;
-  return typeof exif.Make === 'string' && exif.Make.trim().length > 0 ? exif.Make : null;
-});
-
-const imageLocationLink = computed(() => {
-  if (mediaType.value !== 'image') return null;
-  const exif = exifData.value as any;
-  if (!exif) return null;
-
-  const lat = exif.latitude ?? exif.Latitude ?? exif.GPSLatitude ?? null;
-  const lng = exif.longitude ?? exif.Longitude ?? exif.GPSLongitude ?? null;
-  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
-
-  return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
-});
-
-const hasImageInfo = computed(() => {
-  return Boolean(
-    imageResolution.value || imageCreateDate.value || imageLocationLink.value || imageCameraMake.value,
-  );
+const {
+  hasImageInfo,
+  imageCameraMake,
+  imageCreateDate,
+  imageLocationLink,
+  imageResolution,
+} = useImageExifInfo({
+  mediaType,
+  exifData,
+  imageDimensions,
 });
 
 function formatAudioChannels(channels: number | undefined) {
