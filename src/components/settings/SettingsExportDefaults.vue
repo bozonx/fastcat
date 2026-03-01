@@ -20,8 +20,8 @@ const toast = useToast();
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
-  { value: 'webm', label: 'WebM (VP9/OPUS)' },
-  { value: 'mkv', label: 'MKV (AV1|OPUS)' },
+  { value: 'webm', label: 'WEBM' },
+  { value: 'mkv', label: 'MKV (AV1)' },
 ];
 
 const videoCodecSupport = ref<Record<string, boolean>>({});

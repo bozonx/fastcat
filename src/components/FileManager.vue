@@ -87,6 +87,10 @@ const {
 function onFileAction(action: any, entry: FsEntry) {
   if (action === 'info') {
     openFileInfoModal(entry);
+  } else if (action === 'createMarkdown') {
+    if (entry.kind === 'directory') {
+      void createMarkdownInDirectory(entry);
+    }
   } else if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -108,6 +112,54 @@ function onFileAction(action: any, entry: FsEntry) {
   }
 }
 
+async function createMarkdownInDirectory(entry: FsEntry) {
+  const dirHandle = entry.handle as FileSystemDirectoryHandle;
+  const baseName = 'Документ_';
+  const ext = '.md';
+
+  const existing = new Set<string>();
+  try {
+    const iterator = (dirHandle as any).values?.() ?? (dirHandle as any).entries?.();
+    if (iterator) {
+      for await (const value of iterator) {
+        const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
+        existing.add(handle.name);
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  let i = 1;
+  let fileName = `${baseName}${i}${ext}`;
+  while (existing.has(fileName)) {
+    i += 1;
+    fileName = `${baseName}${i}${ext}`;
+  }
+
+  const handle = await dirHandle.getFileHandle(fileName, { create: true });
+  const createWritable = (handle as FileSystemFileHandle).createWritable;
+  if (typeof createWritable === 'function') {
+    const writable = await (handle as FileSystemFileHandle).createWritable();
+    await writable.write('');
+    await writable.close();
+  }
+
+  await loadProjectDirectory();
+
+  const newPath = entry.path ? `${entry.path}/${fileName}` : fileName;
+  const newEntry = findEntryByPath(newPath);
+  if (newEntry) {
+    uiStore.selectedFsEntry = {
+      kind: newEntry.kind,
+      name: newEntry.name,
+      path: newEntry.path,
+      handle: newEntry.handle,
+    };
+    selectionStore.selectFsEntry(newEntry);
+  }
+}
+
 watch(
   () => uiStore.pendingFsEntryDelete,
   (value) => {
@@ -115,6 +167,18 @@ watch(
     if (entry) {
       openDeleteConfirmModal(entry);
       uiStore.pendingFsEntryDelete = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryRename,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry) {
+      renameTarget.value = entry;
+      isRenameModalOpen.value = true;
+      (uiStore as any).pendingFsEntryRename = null;
     }
   },
 );

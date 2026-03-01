@@ -64,6 +64,13 @@ function onDoubleClick(event: MouseEvent) {
 
 <template>
   <div @wheel.prevent="onWheel" @dblclick="onDoubleClick">
-    <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
+    <USlider
+      v-model="value"
+      :min="min"
+      :max="max"
+      :step="step"
+      :class="sliderClass"
+      @dblclick="onDoubleClick"
+    />
   </div>
 </template>

@@ -139,7 +139,8 @@ const emit = defineEmits<{
       | 'deleteProxy'
       | 'upload'
       | 'createProxyForFolder'
-      | 'cancelProxyForFolder',
+      | 'cancelProxyForFolder'
+      | 'createMarkdown',
     entry: FsEntry,
   ): void;
   (e: 'createFolder', entry: FsEntry | null): void;
@@ -153,6 +154,23 @@ const rootContextMenuItems = computed(() => {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => emit('createFolder', null),
+      },
+      {
+        label: t(
+          'videoEditor.fileManager.actions.createMarkdown',
+          'Create Markdown document',
+        ),
+        icon: 'i-heroicons-document-text',
+        onSelect: async () => {
+          const handle = await props.getProjectRootDirHandle();
+          if (!handle) return;
+          emit('action', 'createMarkdown', {
+            kind: 'directory',
+            name: projectStore.currentProjectName!,
+            path: '',
+            handle,
+          });
+        },
       },
     ],
   ];
