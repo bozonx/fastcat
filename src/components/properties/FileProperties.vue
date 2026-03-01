@@ -63,6 +63,7 @@ const {
   textContent,
   fileInfo,
   timelineDocSummary,
+  exifData,
   exifYaml,
   metadataYaml,
   isUnknown,
@@ -92,6 +93,59 @@ const ext = computed(() => {
   const name = typeof entry?.name === 'string' ? entry.name : '';
   const value = name.split('.').pop()?.toLowerCase() ?? '';
   return value && value !== name.toLowerCase() ? value : value;
+});
+
+const imageResolution = computed(() => {
+  if (mediaType.value !== 'image') return null;
+  const exif = exifData.value as any;
+  if (!exif) return null;
+
+  const width =
+    exif.ExifImageWidth ??
+    exif.ImageWidth ??
+    exif.PixelXDimension ??
+    exif.SourceImageWidth ??
+    null;
+  const height =
+    exif.ExifImageHeight ??
+    exif.ImageHeight ??
+    exif.PixelYDimension ??
+    exif.SourceImageHeight ??
+    null;
+
+  if (typeof width === 'number' && typeof height === 'number') return `${width}x${height}`;
+  return null;
+});
+
+const imageCreateDate = computed(() => {
+  if (mediaType.value !== 'image') return null;
+  const exif = exifData.value as any;
+  if (!exif) return null;
+
+  const date: unknown = exif.CreateDate ?? exif.DateTimeOriginal ?? exif.ModifyDate ?? null;
+  if (!date) return null;
+  if (date instanceof Date) return date.toLocaleString();
+  if (typeof date === 'string') return date;
+  return null;
+});
+
+const imageCameraMake = computed(() => {
+  if (mediaType.value !== 'image') return null;
+  const exif = exifData.value as any;
+  if (!exif) return null;
+  return typeof exif.Make === 'string' && exif.Make.trim().length > 0 ? exif.Make : null;
+});
+
+const imageLocationLink = computed(() => {
+  if (mediaType.value !== 'image') return null;
+  const exif = exifData.value as any;
+  if (!exif) return null;
+
+  const lat = exif.latitude ?? exif.Latitude ?? exif.GPSLatitude ?? null;
+  const lng = exif.longitude ?? exif.Longitude ?? exif.GPSLongitude ?? null;
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+
+  return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
 });
 
 function formatAudioChannels(channels: number | undefined) {
@@ -240,7 +294,32 @@ async function stopProxyGenerationForSelectedFolder() {
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
       <div class="flex flex-col">
-      <PropertyRow :label="t('common.extension', 'Extension')" value="нет" />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.image.resolution', 'Resolution')"
+          :value="imageResolution ?? '-'"
+        />
+        <PropertyRow
+          label="CreateDate"
+          :value="imageCreateDate ?? '-'"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.image.location', 'Location')"
+        >
+          <a
+            v-if="imageLocationLink"
+            class="text-primary-500 hover:underline break-all"
+            :href="imageLocationLink"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google Maps
+          </a>
+          <span v-else>-</span>
+        </PropertyRow>
+        <PropertyRow
+          :label="t('videoEditor.fileManager.image.camera', 'Camera')"
+          :value="imageCameraMake ?? '-'"
+        />
       </div>
     </div>
 
