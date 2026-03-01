@@ -16,16 +16,6 @@ interface Props {
   depth: number;
 }
 
-function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  const dirPath = entry.path ?? '';
-  for (const p of proxyStore.generatingProxies) {
-    if (!dirPath) return true;
-    if (p === dirPath || p.startsWith(`${dirPath}/`)) return true;
-  }
-  return false;
-}
-
 interface TreeContext {
   getFileIcon: (entry: FsEntry) => string;
   selectedPath: ComputedRef<string | null>;
@@ -60,6 +50,7 @@ const emit = defineEmits<{
       | 'upload'
       | 'createProxyForFolder'
       | 'cancelProxyForFolder'
+      | 'createOtioVersion'
       | 'createMarkdown',
     entry: FsEntry,
   ): void;
@@ -84,6 +75,16 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
+
+function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  const dirPath = entry.path ?? '';
+  for (const p of proxyStore.generatingProxies) {
+    if (!dirPath) return true;
+    if (p === dirPath || p.startsWith(`${dirPath}/`)) return true;
+  }
+  return false;
+}
 
 const isDragOver = ref<string | null>(null);
 
@@ -346,6 +347,17 @@ function getContextMenuItems(entry: FsEntry) {
         },
       ]);
     }
+  }
+
+  const isOtioFile = entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio');
+  if (isOtioFile) {
+    items.push([
+      {
+        label: t('granVideoEditor.timeline.createVersion', 'Create version'),
+        icon: 'i-heroicons-document-duplicate',
+        onSelect: () => emit('action', 'createOtioVersion', entry),
+      },
+    ]);
   }
 
   items.push([

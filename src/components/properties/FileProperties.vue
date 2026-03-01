@@ -235,7 +235,7 @@ function onDelete() {
           {{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload files') }}
         </UButton>
 
-        <div class="flex gap-2">
+        <div v-if="!isProjectRootDir" class="flex gap-2">
           <UButton
             size="xs"
             color="neutral"
@@ -286,6 +286,18 @@ function onDelete() {
           {{ t('common.delete', 'Delete') }}
         </UButton>
       </div>
+
+      <UButton
+        v-if="isOtio"
+        size="xs"
+        color="neutral"
+        variant="soft"
+        icon="i-heroicons-document-duplicate"
+        class="w-full justify-center mt-2"
+        @click="() => (uiStore as any).pendingOtioCreateVersion = props.selectedFsEntry"
+      >
+        {{ t('granVideoEditor.timeline.createVersion', 'Create version') }}
+      </UButton>
     </PropertySection>
 
     <div
@@ -419,7 +431,7 @@ function onDelete() {
         :label="t('common.updated', 'Updated')"
         :value="new Date(fileInfo.lastModified).toLocaleString()"
       />
-      <PropertyRow :label="t('common.hidden', 'Hidden')" :value="isHidden ? 'Yes' : 'No'" />
+      <PropertyRow v-if="isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
     </PropertySection>
 
     <!-- Usage in timelines -->

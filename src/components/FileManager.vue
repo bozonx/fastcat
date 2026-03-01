@@ -83,6 +83,8 @@ function onFileAction(action: any, entry: FsEntry) {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
     }
+  } else if (action === 'createOtioVersion') {
+    void createOtioVersion(entry);
   } else if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -101,6 +103,85 @@ function onFileAction(action: any, entry: FsEntry) {
     }
   } else {
     onFileActionBase(action, entry);
+  }
+}
+
+function buildNextOtioVersionName(name: string, existingNames: Set<string>): string {
+  const lower = name.toLowerCase();
+  if (!lower.endsWith('.otio')) return name;
+
+  const base = name.slice(0, -'.otio'.length);
+  const match = base.match(/^(.*)_([0-9]{3})$/);
+  const prefix = match ? match[1] : base;
+  const start = match ? Number(match[2]) + 1 : 1;
+
+  for (let i = start; i < 10_000; i += 1) {
+    const candidate = `${prefix}_${String(i).padStart(3, '0')}.otio`;
+    if (!existingNames.has(candidate)) return candidate;
+  }
+
+  return `${prefix}_${Date.now()}.otio`;
+}
+
+async function resolveParentDirHandleForEntry(entry: FsEntry): Promise<FileSystemDirectoryHandle | null> {
+  if (entry.parentHandle) return entry.parentHandle;
+  if (!entry.path) return null;
+
+  const root = await getProjectRootDirHandle();
+  if (!root) return null;
+
+  const parts = entry.path.split('/').slice(0, -1);
+  let dir: FileSystemDirectoryHandle = root;
+  for (const p of parts) {
+    if (!p) continue;
+    dir = await dir.getDirectoryHandle(p);
+  }
+  return dir;
+}
+
+async function createOtioVersion(entry: FsEntry) {
+  if (entry.kind !== 'file') return;
+  if (!entry.name.toLowerCase().endsWith('.otio')) return;
+
+  const parentDir = await resolveParentDirHandleForEntry(entry);
+  if (!parentDir) return;
+
+  const existing = new Set<string>();
+  try {
+    const iterator = (parentDir as any).values?.() ?? (parentDir as any).entries?.();
+    if (iterator) {
+      for await (const value of iterator) {
+        const h = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
+        existing.add(h.name);
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  const nextName = buildNextOtioVersionName(entry.name, existing);
+  const file = await (entry.handle as FileSystemFileHandle).getFile();
+  const nextHandle = await parentDir.getFileHandle(nextName, { create: true });
+  const createWritable = (nextHandle as FileSystemFileHandle).createWritable;
+  if (typeof createWritable !== 'function') return;
+
+  const writable = await (nextHandle as FileSystemFileHandle).createWritable();
+  await writable.write(file);
+  await writable.close();
+
+  await loadProjectDirectory();
+
+  const parentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
+  const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
+  const newEntry = findEntryByPath(nextPath);
+  if (newEntry) {
+    uiStore.selectedFsEntry = {
+      kind: newEntry.kind,
+      name: newEntry.name,
+      path: newEntry.path,
+      handle: newEntry.handle,
+    };
+    selectionStore.selectFsEntry(newEntry);
   }
 }
 
@@ -171,6 +252,17 @@ watch(
       renameTarget.value = entry;
       isRenameModalOpen.value = true;
       (uiStore as any).pendingFsEntryRename = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingOtioCreateVersion,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry) {
+      void createOtioVersion(entry);
+      (uiStore as any).pendingOtioCreateVersion = null;
     }
   },
 );

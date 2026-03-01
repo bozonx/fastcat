@@ -27,6 +27,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const pendingFsEntryDelete = ref<unknown>(null);
   const pendingFsEntryRename = ref<unknown>(null);
+  const pendingOtioCreateVersion = ref<unknown>(null);
 
   const fileTreeModule = createUiFileTreePersistenceModule({ fileTreeExpandedPaths });
   const {
@@ -43,6 +44,7 @@ export const useUiStore = defineStore('ui', () => {
     fileTreeExpandedPaths,
     pendingFsEntryDelete,
     pendingFsEntryRename,
+    pendingOtioCreateVersion,
     showHiddenFiles,
     restoreFileTreeStateOnce,
     hasPersistedFileTreeState,
