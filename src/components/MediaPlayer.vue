@@ -118,13 +118,13 @@ watch(
               radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.25), transparent 55%);
           "
         />
-        <div class="relative flex flex-col items-center justify-center text-ui-text-muted px-6">
+        <div class="relative flex flex-col items-center justify-center text-ui-text-muted px-6 py-4">
           <div
-            class="w-32 h-32 rounded-2xl bg-ui-bg-elevated/60 border border-ui-border flex items-center justify-center"
+            class="w-16 h-16 rounded-2xl bg-ui-bg-elevated/60 border border-ui-border flex items-center justify-center shrink-0 shadow-inner"
           >
-            <UIcon name="i-heroicons-musical-note" class="w-16 h-16 opacity-70" />
+            <UIcon name="i-heroicons-musical-note" class="w-8 h-8 opacity-70" />
           </div>
-          <div class="mt-4 text-xs uppercase tracking-wider opacity-70 py-2">
+          <div class="mt-4 text-[10px] sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium">
             {{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}
           </div>
         </div>

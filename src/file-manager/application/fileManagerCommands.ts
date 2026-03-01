@@ -306,5 +306,5 @@ export async function createTimelineCommand(params: {
   await writable.write(JSON.stringify(payload, null, 2));
   await writable.close();
 
-  return `${params.timelinesDirName}/${fileName}`;
+  return params.timelinesDirName ? `${params.timelinesDirName}/${fileName}` : fileName;
 }
