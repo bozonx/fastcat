@@ -18,6 +18,8 @@ import { createTimelineClips } from '~/stores/timeline/timelineClips';
 import { createTimelineTrimming } from '~/stores/timeline/timelineTrimming';
 import { createTimelineHydration } from '~/stores/timeline/timelineHydration';
 import { createTimelineExternalRefs } from '~/stores/timeline/timelineExternalRefs';
+import { createTimelineHistoryDebounce } from '~/stores/timeline/timelineHistoryDebounce';
+import { createTimelineDispatcher } from '~/stores/timeline/timelineDispatcher';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -33,18 +35,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const workspaceStore = useWorkspaceStore();
   const proxyStore = useProxyStore();
 
-  const pendingDebouncedHistory = ref<{
-    snapshot: TimelineDocument;
-    cmd: TimelineCommand;
-    timeoutId: number;
-  } | null>(null);
-
-  function clearPendingDebouncedHistory() {
-    const pending = pendingDebouncedHistory.value;
-    if (!pending) return;
-    window.clearTimeout(pending.timeoutId);
-    pendingDebouncedHistory.value = null;
-  }
+  const historyDebounce = createTimelineHistoryDebounce({ historyStore });
 
   const { currentProjectName, currentTimelinePath, mediaMetadata } = createTimelineExternalRefs({
     projectStore,
@@ -78,6 +69,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     itemId: string;
     edge: 'in' | 'out';
   } | null>(null);
+
+  // Wrapper for applyTimeline to resolve circular dependencies in setup
+  function applyTimeline(cmd: TimelineCommand, options?: any) {
+    dispatcher.applyTimeline(cmd, options);
+  }
+
+  function batchApplyTimeline(cmds: TimelineCommand[], options?: any) {
+    dispatcher.batchApplyTimeline(cmds, options);
+  }
 
   const selection = createTimelineSelection({
     timelineDoc,
@@ -267,7 +267,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selection.clearSelection();
     selection.selectTrack(null);
     historyStore.clear();
-    clearPendingDebouncedHistory();
+    historyDebounce.clearPendingDebouncedHistory();
   }
 
   function markTimelineAsCleanForCurrentRevision() {
@@ -318,7 +318,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying.value = false;
     currentTime.value = 0;
     historyStore.clear();
-    clearPendingDebouncedHistory();
+    historyDebounce.clearPendingDebouncedHistory();
 
     await persistence.loadTimeline();
   }
@@ -327,134 +327,18 @@ export const useTimelineStore = defineStore('timeline', () => {
     await persistence.saveTimeline();
   }
 
-  function applyTimeline(
-    cmd: TimelineCommand,
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-    },
-  ) {
-    if (!timelineDoc.value) {
-      timelineDoc.value = projectStore.createFallbackTimelineDoc();
-    }
+  const dispatcher = createTimelineDispatcher({
+    timelineDoc,
+    duration,
+    createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
+    hydration,
+    historyDebounce,
+    historyStore,
+    requestTimelineSave,
+    markTimelineAsDirty,
+  });
 
-    const prev = timelineDoc.value;
-    const hydrated = hydration.hydrateClipSourceDuration(timelineDoc.value, cmd);
-    const { next } = applyTimelineCommand(hydrated, cmd);
-    if (next === prev) return;
-
-    if (!options?.skipHistory) {
-      const historyMode = options?.historyMode ?? 'immediate';
-      if (historyMode === 'debounced') {
-        const debounceMs = Math.max(0, Math.round(options?.historyDebounceMs ?? 300));
-        const pending = pendingDebouncedHistory.value;
-
-        if (pending) {
-          window.clearTimeout(pending.timeoutId);
-          pendingDebouncedHistory.value = {
-            snapshot: pending.snapshot,
-            cmd,
-            timeoutId: window.setTimeout(() => {
-              const p = pendingDebouncedHistory.value;
-              if (!p) return;
-              historyStore.push(p.cmd, p.snapshot);
-              pendingDebouncedHistory.value = null;
-            }, debounceMs),
-          };
-        } else {
-          pendingDebouncedHistory.value = {
-            snapshot: prev,
-            cmd,
-            timeoutId: window.setTimeout(() => {
-              const p = pendingDebouncedHistory.value;
-              if (!p) return;
-              historyStore.push(p.cmd, p.snapshot);
-              pendingDebouncedHistory.value = null;
-            }, debounceMs),
-          };
-        }
-      } else {
-        const pending = pendingDebouncedHistory.value;
-        if (pending) {
-          window.clearTimeout(pending.timeoutId);
-          pendingDebouncedHistory.value = null;
-        }
-        historyStore.push(cmd, prev);
-      }
-    }
-
-    timelineDoc.value = next;
-    duration.value = selectTimelineDurationUs(next);
-    markTimelineAsDirty();
-
-    const saveMode = options?.saveMode ?? 'debounced';
-    if (saveMode === 'immediate') {
-      void requestTimelineSave({ immediate: true });
-    } else if (saveMode === 'debounced') {
-      void requestTimelineSave();
-    }
-  }
-
-  function batchApplyTimeline(
-    cmds: TimelineCommand[],
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      label?: string;
-    },
-  ) {
-    if (cmds.length === 0) return;
-    if (!timelineDoc.value) {
-      timelineDoc.value = projectStore.createFallbackTimelineDoc();
-    }
-
-    const prev = timelineDoc.value;
-    let current = prev;
-    for (const cmd of cmds) {
-      const hydrated = hydration.hydrateClipSourceDuration(current, cmd);
-      const { next } = applyTimelineCommand(hydrated, cmd);
-      current = next;
-    }
-
-    if (current === prev) return;
-
-    if (!options?.skipHistory) {
-      historyStore.push(cmds[0]!, prev, options?.label);
-    }
-
-    timelineDoc.value = current;
-    duration.value = selectTimelineDurationUs(current);
-    markTimelineAsDirty();
-
-    const saveMode = options?.saveMode ?? 'debounced';
-    if (saveMode === 'immediate') {
-      void requestTimelineSave({ immediate: true });
-    } else if (saveMode === 'debounced') {
-      void requestTimelineSave();
-    }
-  }
-
-  function undoTimeline() {
-    if (!timelineDoc.value || !historyStore.canUndo) return;
-    const restored = historyStore.undo(timelineDoc.value);
-    if (!restored) return;
-    timelineDoc.value = restored;
-    duration.value = selectTimelineDurationUs(restored);
-    markTimelineAsDirty();
-    void requestTimelineSave();
-  }
-
-  function redoTimeline() {
-    if (!timelineDoc.value || !historyStore.canRedo) return;
-    const restored = historyStore.redo(timelineDoc.value);
-    if (!restored) return;
-    timelineDoc.value = restored;
-    duration.value = selectTimelineDurationUs(restored);
-    markTimelineAsDirty();
-    void requestTimelineSave();
-  }
+  const { undoTimeline, redoTimeline } = dispatcher;
 
   async function addClipToTimelineFromPath(input: {
     trackId: string;
