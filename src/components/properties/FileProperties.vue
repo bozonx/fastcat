@@ -14,6 +14,7 @@ import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
+import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -81,23 +82,13 @@ const {
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
-const selectedPath = computed<string | null>(() => {
-  const entry = props.selectedFsEntry;
-  return typeof entry?.path === 'string' && entry.path.length > 0 ? entry.path : null;
-});
-
-const isHidden = computed(() => {
-  const entry = props.selectedFsEntry;
-  const name = typeof entry?.name === 'string' ? entry.name : '';
-  return name.startsWith('.');
-});
-
-const ext = computed(() => {
-  const entry = props.selectedFsEntry;
-  const name = typeof entry?.name === 'string' ? entry.name : '';
-  const value = name.split('.').pop()?.toLowerCase() ?? '';
-  return value && value !== name.toLowerCase() ? value : value;
-});
+const { ext, generalInfoTitle, isHidden, isVideoOrAudio, mediaMeta, selectedPath } =
+  useFilePropertiesBasics({
+    selectedFsEntry: selectedFsEntryRef,
+    fileInfo,
+    isOtio,
+    mediaType,
+  });
 
 const {
   hasImageInfo,
@@ -124,17 +115,6 @@ const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsa
   projectStore,
   timelineStore,
 });
-
-const generalInfoTitle = computed(() => {
-  if (!fileInfo.value) return '';
-  if (fileInfo.value.kind === 'directory') return 'Folder';
-  if (isOtio.value) return 'OTIO';
-  return fileInfo.value.mimeType ?? 'File';
-});
-
-const mediaMeta = computed(() => fileInfo.value?.metadata as any);
-
-const isVideoOrAudio = computed(() => mediaType.value === 'video' || mediaType.value === 'audio');
 
 const {
   generateProxiesForSelectedFolder,
