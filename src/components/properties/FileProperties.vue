@@ -65,6 +65,7 @@ const {
   timelineDocSummary,
   exifData,
   exifYaml,
+  imageDimensions,
   metadataYaml,
   isUnknown,
   isOtio,
@@ -98,19 +99,19 @@ const ext = computed(() => {
 const imageResolution = computed(() => {
   if (mediaType.value !== 'image') return null;
   const exif = exifData.value as any;
-  if (!exif) return null;
-
   const width =
-    exif.ExifImageWidth ??
-    exif.ImageWidth ??
-    exif.PixelXDimension ??
-    exif.SourceImageWidth ??
+    exif?.ExifImageWidth ??
+    exif?.ImageWidth ??
+    exif?.PixelXDimension ??
+    exif?.SourceImageWidth ??
+    imageDimensions.value?.width ??
     null;
   const height =
-    exif.ExifImageHeight ??
-    exif.ImageHeight ??
-    exif.PixelYDimension ??
-    exif.SourceImageHeight ??
+    exif?.ExifImageHeight ??
+    exif?.ImageHeight ??
+    exif?.PixelYDimension ??
+    exif?.SourceImageHeight ??
+    imageDimensions.value?.height ??
     null;
 
   if (typeof width === 'number' && typeof height === 'number') return `${width}x${height}`;

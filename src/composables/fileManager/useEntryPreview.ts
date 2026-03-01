@@ -46,6 +46,7 @@ export function useEntryPreview(params: {
   const textContent = ref<string>('');
   const fileInfo = ref<EntryPreviewInfo | null>(null);
   const exifData = ref<unknown | null>(null);
+  const imageDimensions = ref<{ width: number; height: number } | null>(null);
   const timelineDocSummary = ref<{
     durationUs: number;
     videoTracks: number;
@@ -112,6 +113,20 @@ export function useEntryPreview(params: {
       ) {
         currentUrl.value = URL.createObjectURL(fileToPlay);
       }
+
+      if (mediaType.value === 'image') {
+        try {
+          const bitmap = await createImageBitmap(fileToPlay);
+          if (params.selectedFsEntry.value === entry) {
+            imageDimensions.value = { width: bitmap.width, height: bitmap.height };
+          }
+          bitmap.close();
+        } catch {
+          if (params.selectedFsEntry.value === entry) {
+            imageDimensions.value = null;
+          }
+        }
+      }
     } catch (e) {
       console.error('Failed to load preview media:', e);
     }
@@ -135,6 +150,7 @@ export function useEntryPreview(params: {
       textContent.value = '';
       fileInfo.value = null;
       exifData.value = null;
+      imageDimensions.value = null;
       timelineDocSummary.value = null;
       params.onResetPreviewMode('original');
 
@@ -249,6 +265,7 @@ export function useEntryPreview(params: {
     fileInfo,
     exifData,
     exifYaml,
+    imageDimensions,
     timelineDocSummary,
     metadataYaml,
     isUnknown,
