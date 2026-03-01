@@ -270,7 +270,7 @@
       "group": "Group",
       "noCollection": "No collection (root)",
       "noGroup": "No sub-group",
-      "confirm": "Export & Save",
+      "confirm": "Export",
       "phaseEncoding": "Encoding video...",
       "phaseUploading": "Uploading...",
       "phaseSaving": "Saving to library...",

@@ -8,6 +8,7 @@ interface WheelSliderProps {
   step?: number;
   sliderClass?: string;
   wheelStepMultiplier?: number;
+  defaultValue?: number;
 }
 
 const props = withDefaults(defineProps<WheelSliderProps>(), {
@@ -53,10 +54,16 @@ function onWheel(event: WheelEvent) {
   const rounded = Number(next.toFixed(precision));
   value.value = rounded;
 }
+
+function onDoubleClick(event: MouseEvent) {
+  if (props.defaultValue !== undefined) {
+    value.value = props.defaultValue;
+  }
+}
 </script>
 
 <template>
-  <div @wheel.prevent="onWheel">
+  <div @wheel.prevent="onWheel" @dblclick="onDoubleClick">
     <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
   </div>
 </template>

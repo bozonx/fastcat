@@ -48,7 +48,8 @@ const emit = defineEmits<{
       | 'cancelProxy'
       | 'deleteProxy'
       | 'upload'
-      | 'createProxyForFolder',
+      | 'createProxyForFolder'
+      | 'cancelProxyForFolder',
     entry: FsEntry,
   ): void;
   (
