@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { 
-  TimelineTrack, 
-  TimelineTrackItem, 
-  TimelineClipItem, 
-} from '~/timeline/types';
+import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -17,7 +13,6 @@ const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 
-
 interface Props {
   track: TimelineTrack;
   item: TimelineTrackItem;
@@ -25,7 +20,13 @@ interface Props {
   isDraggingCurrentItem: boolean;
   isMovePreviewCurrentItem: boolean;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
-  resizeVolume: { itemId: string; trackId: string; startGain: number; startY: number; trackHeight: number } | null;
+  resizeVolume: {
+    itemId: string;
+    trackId: string;
+    startGain: number;
+    startY: number;
+    trackHeight: number;
+  } | null;
 }
 
 const props = defineProps<Props>();
@@ -33,11 +34,40 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   (e: 'selectItem', event: MouseEvent, itemId: string): void;
   (e: 'startMoveItem', event: MouseEvent, trackId: string, itemId: string, startUs: number): void;
-  (e: 'startTrimItem', event: MouseEvent, payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number }): void;
-  (e: 'startResizeVolume', event: MouseEvent, trackId: string, itemId: string, gain: number, height: number): void;
-  (e: 'startResizeFade', event: MouseEvent, trackId: string, itemId: string, edge: 'in' | 'out', durationUs: number): void;
-  (e: 'startResizeTransition', event: MouseEvent, trackId: string, itemId: string, edge: 'in' | 'out', durationUs: number): void;
-  (e: 'selectTransition', event: MouseEvent, payload: { trackId: string; itemId: string; edge: 'in' | 'out' }): void;
+  (
+    e: 'startTrimItem',
+    event: MouseEvent,
+    payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
+  ): void;
+  (
+    e: 'startResizeVolume',
+    event: MouseEvent,
+    trackId: string,
+    itemId: string,
+    gain: number,
+    height: number,
+  ): void;
+  (
+    e: 'startResizeFade',
+    event: MouseEvent,
+    trackId: string,
+    itemId: string,
+    edge: 'in' | 'out',
+    durationUs: number,
+  ): void;
+  (
+    e: 'startResizeTransition',
+    event: MouseEvent,
+    trackId: string,
+    itemId: string,
+    edge: 'in' | 'out',
+    durationUs: number,
+  ): void;
+  (
+    e: 'selectTransition',
+    event: MouseEvent,
+    payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
+  ): void;
   (e: 'clipAction', payload: any): void;
   (e: 'openSpeedModal', payload: { trackId: string; itemId: string; speed: number }): void;
 }>();
@@ -184,7 +214,10 @@ function transitionSvgParts(w: number, h: number, edge: 'in' | 'out'): string {
   }
 }
 
-function getPrevClipForItem(track: TimelineTrack, item: TimelineTrackItem): TimelineClipItem | null {
+function getPrevClipForItem(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+): TimelineClipItem | null {
   const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
   const idx = clips.findIndex((c) => c.id === item.id);
   if (idx <= 0) return null;
@@ -195,10 +228,11 @@ function isCrossfadeTransitionIn(track: TimelineTrack, item: TimelineClipItem): 
   if (track.kind !== 'video') return false;
   const prev = getPrevClipForItem(track, item);
   if (!prev) return false;
-  
-  const gapUs = item.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs);
+
+  const gapUs =
+    item.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs);
   if (gapUs > 1000) return false;
-  
+
   const transIn = item.transitionIn;
   if (!transIn) return false;
   return transIn.mode === 'blend';
@@ -213,25 +247,40 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
 
   if (mode === 'blend') {
     const prev = getPrevClipForItem(track, item);
-    if (!prev) return t('granVideoEditor.timeline.transition.errorNoPreviousClip', 'No previous clip to blend with');
+    if (!prev)
+      return t(
+        'granVideoEditor.timeline.transition.errorNoPreviousClip',
+        'No previous clip to blend with',
+      );
     const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
     const gapUs = clip.timelineRange.startUs - prevEndUs;
-    if (gapUs > 1_000) return t('granVideoEditor.timeline.transition.errorGapBetweenClips', { gapSeconds: (gapUs / 1e6).toFixed(2) });
+    if (gapUs > 1_000)
+      return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
+        gapSeconds: (gapUs / 1e6).toFixed(2),
+      });
     const prevDurS = prev.timelineRange.durationUs / 1e6;
     const needS = tr.durationUs / 1e6;
-    if (prevDurS < needS) return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', { needSeconds: needS.toFixed(2), haveSeconds: prevDurS.toFixed(2) });
+    if (prevDurS < needS)
+      return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: prevDurS.toFixed(2),
+      });
     if (prev.clipType === 'media') {
       const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
       const prevTimelineEnd = prev.timelineRange.durationUs;
       const handleUs = prevSourceEnd - prevTimelineEnd;
-      if (handleUs < tr.durationUs - 1_000) return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', { needSeconds: needS.toFixed(2), haveSeconds: Math.max(0, handleUs / 1e6).toFixed(2) });
+      if (handleUs < tr.durationUs - 1_000)
+        return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
+          needSeconds: needS.toFixed(2),
+          haveSeconds: Math.max(0, handleUs / 1e6).toFixed(2),
+        });
     }
     return null;
   }
 
   if (mode === 'composite') {
     // Basic check for composite: simplified as in original Tracks
-    return null; 
+    return null;
   }
   return null;
 }
@@ -288,7 +337,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         : t('granVideoEditor.timeline.lockClip', 'Lock clip'),
       icon: (item as TimelineClipItem).locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
       onSelect: async () => {
-        timelineStore.updateClipProperties(track.id, (item as TimelineClipItem).id, { locked: !(item as TimelineClipItem).locked });
+        timelineStore.updateClipProperties(track.id, (item as TimelineClipItem).id, {
+          locked: !(item as TimelineClipItem).locked,
+        });
         await timelineStore.requestTimelineSave({ immediate: true });
       },
     });
@@ -298,17 +349,28 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
     mainGroup.push({
       label: `${t('granVideoEditor.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)})`,
       icon: 'i-heroicons-forward',
-      onSelect: () => emit('openSpeedModal', { trackId: track.id, itemId: (item as TimelineClipItem).id, speed: currentSpeed }),
+      onSelect: () =>
+        emit('openSpeedModal', {
+          trackId: track.id,
+          itemId: (item as TimelineClipItem).id,
+          speed: currentSpeed,
+        }),
     });
 
     const canExtract =
-      track.kind === 'video' && (item as TimelineClipItem).clipType === 'media' && !(item as any).audioFromVideoDisabled;
+      track.kind === 'video' &&
+      (item as TimelineClipItem).clipType === 'media' &&
+      !(item as any).audioFromVideoDisabled;
     if (canExtract) {
       mainGroup.push({
         label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
         icon: 'i-heroicons-musical-note',
         onSelect: () =>
-          emit('clipAction', { action: 'extractAudio', trackId: track.id, itemId: (item as TimelineClipItem).id }),
+          emit('clipAction', {
+            action: 'extractAudio',
+            trackId: track.id,
+            itemId: (item as TimelineClipItem).id,
+          }),
       });
     }
 
@@ -327,14 +389,20 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       );
 
     const hasReturnFromLockedAudioClip =
-      track.kind === 'audio' && Boolean((item as TimelineClipItem).linkedVideoClipId) && Boolean((item as TimelineClipItem).lockToLinkedVideo);
+      track.kind === 'audio' &&
+      Boolean((item as TimelineClipItem).linkedVideoClipId) &&
+      Boolean((item as TimelineClipItem).lockToLinkedVideo);
 
     if (hasReturnFromVideoClip) {
       mainGroup.push({
         label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
         icon: 'i-heroicons-arrow-uturn-left',
         onSelect: () =>
-          emit('clipAction', { action: 'returnAudio', trackId: track.id, itemId: (item as TimelineClipItem).id }),
+          emit('clipAction', {
+            action: 'returnAudio',
+            trackId: track.id,
+            itemId: (item as TimelineClipItem).id,
+          }),
       });
     } else if (hasReturnFromLockedAudioClip) {
       mainGroup.push({
@@ -350,14 +418,19 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       });
     }
 
-    const isMediaVideoClip = track.kind === 'video' && (item as TimelineClipItem).clipType === 'media';
+    const isMediaVideoClip =
+      track.kind === 'video' && (item as TimelineClipItem).clipType === 'media';
     const hasFreezeFrame = typeof (item as TimelineClipItem).freezeFrameSourceUs === 'number';
     if (isMediaVideoClip && !hasFreezeFrame) {
       mainGroup.push({
         label: t('granVideoEditor.timeline.freezeFrame', 'Freeze frame'),
         icon: 'i-heroicons-pause-circle',
         onSelect: () =>
-          emit('clipAction', { action: 'freezeFrame', trackId: track.id, itemId: (item as TimelineClipItem).id }),
+          emit('clipAction', {
+            action: 'freezeFrame',
+            trackId: track.id,
+            itemId: (item as TimelineClipItem).id,
+          }),
       });
     }
 
@@ -366,7 +439,11 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         label: t('granVideoEditor.timeline.resetFreezeFrame', 'Reset freeze frame'),
         icon: 'i-heroicons-play-circle',
         onSelect: () =>
-          emit('clipAction', { action: 'resetFreezeFrame', trackId: track.id, itemId: (item as TimelineClipItem).id }),
+          emit('clipAction', {
+            action: 'resetFreezeFrame',
+            trackId: track.id,
+            itemId: (item as TimelineClipItem).id,
+          }),
       });
     }
   }
@@ -458,13 +535,10 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
   return result;
 }
-
 </script>
 
 <template>
-  <UContextMenu
-    :items="getClipContextMenuItems(track, item)"
-  >
+  <UContextMenu :items="getClipContextMenuItems(track, item)">
     <div
       class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 cursor-pointer select-none transition-shadow group/clip"
       :class="[
@@ -580,7 +654,14 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             )}px`,
           }"
           @mousedown.stop="
-            emit('startResizeFade', $event, track.id, item.id, 'in', (item as any).audioFadeInUs || 0)
+            emit(
+              'startResizeFade',
+              $event,
+              track.id,
+              item.id,
+              'in',
+              (item as any).audioFadeInUs || 0,
+            )
           "
         >
           <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
@@ -606,7 +687,14 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             )}px`,
           }"
           @mousedown.stop="
-            emit('startResizeFade', $event, track.id, item.id, 'out', (item as any).audioFadeOutUs || 0)
+            emit(
+              'startResizeFade',
+              $event,
+              track.id,
+              item.id,
+              'out',
+              (item as any).audioFadeOutUs || 0,
+            )
           "
         >
           <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
@@ -623,14 +711,23 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         class="absolute top-0.5 left-0.5 flex flex-col gap-0.5 z-40 pointer-events-none"
       >
         <div
-          v-if="clipWidthPx >= 30 && clipHasAudio(item, track) && shouldCollapseFades(item) && (item as any).audioFadeInUs > 0"
+          v-if="
+            clipWidthPx >= 30 &&
+            clipHasAudio(item, track) &&
+            shouldCollapseFades(item) &&
+            (item as any).audioFadeInUs > 0
+          "
           class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm"
           title="Fade In"
         >
           <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-gray-800" />
         </div>
         <div
-          v-if="clipHasAudio(item, track) && shouldCollapseFades(item) && (item as any).audioFadeOutUs > 0"
+          v-if="
+            clipHasAudio(item, track) &&
+            shouldCollapseFades(item) &&
+            (item as any).audioFadeOutUs > 0
+          "
           class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm"
           title="Fade Out"
         >
@@ -663,8 +760,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             : timelineStore.selectedItemIds.includes(item.id)
               ? 'opacity-100'
               : 'opacity-0 group-hover/clip:opacity-100',
-          (isDraggingCurrentItem || isMovePreviewCurrentItem) &&
-          resizeVolume?.itemId !== item.id
+          (isDraggingCurrentItem || isMovePreviewCurrentItem) && resizeVolume?.itemId !== item.id
             ? 'opacity-0! pointer-events-none'
             : '',
         ]"
@@ -673,7 +769,14 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
         }"
         @mousedown.stop="
           !Boolean((item as any).locked) &&
-          emit('startResizeVolume', $event, track.id, item.id, (item as any).audioGain ?? 1, trackHeight)
+          emit(
+            'startResizeVolume',
+            $event,
+            track.id,
+            item.id,
+            (item as any).audioGain ?? 1,
+            trackHeight,
+          )
         "
       >
         <div
@@ -706,16 +809,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
       <!-- Main Content -->
       <div class="flex-1 flex w-full min-h-0 relative z-20">
-        <TimelineClipThumbnails
-          v-if="isVideo(item)"
-          :item="item as any"
-          :width="clipWidthPx"
-        />
+        <TimelineClipThumbnails v-if="isVideo(item)" :item="item as any" :width="clipWidthPx" />
 
-        <TimelineAudioWaveform
-          v-if="isAudio(item)"
-          :item="item as any"
-        />
+        <TimelineAudioWaveform v-if="isAudio(item)" :item="item as any" />
 
         <div
           v-if="item.kind === 'clip' && !shouldCollapseTransitions(item)"
@@ -728,7 +824,9 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
 
         <!-- Transition In -->
         <div
-          v-if="item.kind === 'clip' && (item as any).transitionIn && !shouldCollapseTransitions(item)"
+          v-if="
+            item.kind === 'clip' && (item as any).transitionIn && !shouldCollapseTransitions(item)
+          "
           class="absolute left-0 top-0 bottom-0 z-10"
           :style="{ width: `${transitionUsToPx((item as any).transitionIn.durationUs)}px` }"
         >
@@ -742,7 +840,13 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
                   ? 'ring-2 ring-inset ring-orange-500 z-10'
                   : '',
             ]"
-            @click.stop="emit('selectTransition', $event, { trackId: item.trackId, itemId: item.id, edge: 'in' })"
+            @click.stop="
+              emit('selectTransition', $event, {
+                trackId: item.trackId,
+                itemId: item.id,
+                edge: 'in',
+              })
+            "
           >
             <template v-if="!isCrossfadeTransitionIn(track, item as any)">
               <svg
@@ -751,10 +855,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
               >
-                <path
-                  :d="transitionSvgParts(100, 100, 'in')"
-                  fill="var(--clip-lower-tri)"
-                />
+                <path :d="transitionSvgParts(100, 100, 'in')" fill="var(--clip-lower-tri)" />
               </svg>
               <template v-else>
                 <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
@@ -764,14 +865,25 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <div
               v-if="!Boolean((item as any).locked)"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-              @mousedown.stop="emit('startResizeTransition', $event, item.trackId, item.id, 'in', (item as any).transitionIn.durationUs)"
+              @mousedown.stop="
+                emit(
+                  'startResizeTransition',
+                  $event,
+                  item.trackId,
+                  item.id,
+                  'in',
+                  (item as any).transitionIn.durationUs,
+                )
+              "
             />
           </button>
         </div>
 
         <!-- Transition Out -->
         <div
-          v-if="item.kind === 'clip' && (item as any).transitionOut && !shouldCollapseTransitions(item)"
+          v-if="
+            item.kind === 'clip' && (item as any).transitionOut && !shouldCollapseTransitions(item)
+          "
           class="absolute right-0 top-0 bottom-0 z-10"
           :style="{ width: `${transitionUsToPx((item as any).transitionOut.durationUs)}px` }"
         >
@@ -785,7 +897,13 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
                   ? 'ring-2 ring-inset ring-orange-500 z-10'
                   : '',
             ]"
-            @click.stop="emit('selectTransition', $event, { trackId: item.trackId, itemId: item.id, edge: 'out' })"
+            @click.stop="
+              emit('selectTransition', $event, {
+                trackId: item.trackId,
+                itemId: item.id,
+                edge: 'out',
+              })
+            "
           >
             <svg
               v-if="((item as any).transitionOut.mode ?? 'blend') === 'blend'"
@@ -793,10 +911,7 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
               preserveAspectRatio="none"
               viewBox="0 0 100 100"
             >
-              <path
-                :d="transitionSvgParts(100, 100, 'out')"
-                fill="var(--clip-lower-tri)"
-              />
+              <path :d="transitionSvgParts(100, 100, 'out')" fill="var(--clip-lower-tri)" />
             </svg>
             <template v-else>
               <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
@@ -805,7 +920,16 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
             <div
               v-if="!Boolean((item as any).locked)"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-              @mousedown.stop="emit('startResizeTransition', $event, item.trackId, item.id, 'out', (item as any).transitionOut.durationUs)"
+              @mousedown.stop="
+                emit(
+                  'startResizeTransition',
+                  $event,
+                  item.trackId,
+                  item.id,
+                  'out',
+                  (item as any).transitionOut.durationUs,
+                )
+              "
             />
           </button>
         </div>
@@ -815,12 +939,26 @@ function getClipContextMenuItems(track: TimelineTrack, item: any) {
       <div
         v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
         class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
-        @mousedown.stop="emit('startTrimItem', $event, { trackId: item.trackId, itemId: item.id, edge: 'start', startUs: item.timelineRange.startUs })"
+        @mousedown.stop="
+          emit('startTrimItem', $event, {
+            trackId: item.trackId,
+            itemId: item.id,
+            edge: 'start',
+            startUs: item.timelineRange.startUs,
+          })
+        "
       />
       <div
         v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
         class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
-        @mousedown.stop="emit('startTrimItem', $event, { trackId: item.trackId, itemId: item.id, edge: 'end', startUs: item.timelineRange.startUs })"
+        @mousedown.stop="
+          emit('startTrimItem', $event, {
+            trackId: item.trackId,
+            itemId: item.id,
+            edge: 'end',
+            startUs: item.timelineRange.startUs,
+          })
+        "
       />
     </div>
   </UContextMenu>

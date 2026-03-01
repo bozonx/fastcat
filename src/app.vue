@@ -20,7 +20,9 @@ if (colorMode.preference === 'system') {
 
 <style>
 /* Global styles that might be needed in app.vue */
-html, body, #__nuxt {
+html,
+body,
+#__nuxt {
   height: 100%;
   margin: 0;
   padding: 0;

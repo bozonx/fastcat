@@ -14,7 +14,17 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
-import { calculateNextClipBoundary, calculatePrevClipBoundary, getBoundaryTimesUs } from '~/timeline/domain/navigation';
+import {
+  calculateNextClipBoundary,
+  calculatePrevClipBoundary,
+  getBoundaryTimesUs,
+} from '~/timeline/domain/navigation';
+import {
+  buildSplitClipCommands,
+  buildSplitAllClipsCommands,
+  buildSplitSelectedClipsCommands,
+  computeCutUs,
+} from '~/timeline/domain/editing';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -117,7 +127,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     getCurrentTime: () => currentTime.value,
     applyTimeline,
     requestTimelineSave,
-    computeCutUs,
   });
 
   function clearSelection() {
@@ -196,13 +205,6 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   // selection helpers are wired above as wrapper functions to preserve store API
 
-  function computeCutUs(doc: TimelineDocument, atUs: number): number {
-    const fps = getDocFps(doc);
-    const q = quantizeTimeUsToFrames(Number(atUs), fps, 'round');
-    const frame = usToFrame(q, fps, 'round');
-    return frameToUs(frame, fps);
-  }
-
   async function trimToPlayheadLeftNoRipple() {
     const doc = timelineDoc.value;
     if (!doc) return;
@@ -219,10 +221,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     const endUs = startUs + item.timelineRange.durationUs;
     if (!(cutUs > startUs && cutUs < endUs)) return;
 
-    applyTimeline(
-      { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-    );
+    const cmds = buildSplitClipCommands(doc, currentTime.value, target);
+    for (const cmd of cmds) {
+      applyTimeline(cmd, { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 });
+    }
 
     const updatedDoc = timelineDoc.value;
     if (!updatedDoc) return;
@@ -259,10 +261,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     const endUs = startUs + item.timelineRange.durationUs;
     if (!(cutUs > startUs && cutUs < endUs)) return;
 
-    applyTimeline(
-      { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-    );
+    const cmds = buildSplitClipCommands(doc, currentTime.value, target);
+    for (const cmd of cmds) {
+      applyTimeline(cmd, { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 });
+    }
 
     const updatedDoc = timelineDoc.value;
     if (!updatedDoc) return;
@@ -319,15 +321,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   function jumpToNextClipBoundary(options?: { currentTrackOnly?: boolean }) {
     const doc = timelineDoc.value;
     if (!doc) return;
-    const nextUs = calculateNextClipBoundary(
-      doc,
-      currentTime.value,
-      duration.value,
-      {
-        currentTrackOnly: options?.currentTrackOnly,
-        currentTrackId: getSelectedOrActiveTrackId(),
-      }
-    );
+    const nextUs = calculateNextClipBoundary(doc, currentTime.value, duration.value, {
+      currentTrackOnly: options?.currentTrackOnly,
+      currentTrackId: getSelectedOrActiveTrackId(),
+    });
     currentTime.value = nextUs;
   }
 
@@ -336,13 +333,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!doc) return;
 
     const target = getHotkeyTargetClip();
-    if (!target) return;
-
-    const cutUs = computeCutUs(doc, currentTime.value);
-    applyTimeline(
-      { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atUs: cutUs },
-      { saveMode: 'none' },
-    );
+    const cmds = buildSplitClipCommands(doc, currentTime.value, target);
+    for (const cmd of cmds) {
+      applyTimeline(cmd, { saveMode: 'none' });
+    }
     await requestTimelineSave({ immediate: true });
   }
 
@@ -350,14 +344,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const doc = timelineDoc.value;
     if (!doc) return;
 
-    const cutUs = computeCutUs(doc, currentTime.value);
-    const cmds: TimelineCommand[] = [];
-    for (const track of doc.tracks) {
-      for (const it of track.items) {
-        if (it.kind !== 'clip') continue;
-        cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs: cutUs });
-      }
-    }
+    const cmds = buildSplitAllClipsCommands(doc, currentTime.value);
     if (cmds.length === 0) return;
 
     batchApplyTimeline(cmds, {
@@ -432,37 +419,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     const doc = timelineDoc.value;
     if (!doc) return;
 
-    const atUs = currentTime.value;
+    const cmds = buildSplitSelectedClipsCommands(doc, currentTime.value, selectedItemIds.value);
+    if (cmds.length === 0) return;
 
-    const selected = selectedItemIds.value;
-    const shouldUseSelection = selected.length > 0;
-    const targetIds = new Set<string>();
-
-    for (const t of doc.tracks) {
-      for (const it of t.items) {
-        if (it.kind !== 'clip') continue;
-        if (shouldUseSelection && !selected.includes(it.id)) continue;
-        targetIds.add(it.id);
-      }
-    }
-
-    if (targetIds.size === 0) return;
-
-    for (const t of (timelineDoc.value?.tracks ?? []) as any[]) {
-      for (const it of t.items ?? []) {
-        if (!it || it.kind !== 'clip') continue;
-        if (!targetIds.has(it.id)) continue;
-        applyTimeline(
-          {
-            type: 'split_item',
-            trackId: String(t.id),
-            itemId: String(it.id),
-            atUs,
-          },
-          { saveMode: 'none' },
-        );
-      }
-    }
+    batchApplyTimeline(cmds, {
+      label: 'Split selected clips',
+      saveMode: 'immediate',
+    });
 
     await requestTimelineSave({ immediate: true });
   }

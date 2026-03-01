@@ -233,10 +233,7 @@ onUnmounted(() => {
         <UIcon name="i-heroicons-document" class="w-16 h-16" />
         <p class="text-sm text-center">
           {{
-            t(
-              'granVideoEditor.preview.unsupported',
-              'Unsupported file format for visual preview',
-            )
+            t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview')
           }}
         </p>
       </div>
@@ -285,25 +282,39 @@ onUnmounted(() => {
         </UButton>
       </div>
 
-      <div v-if="fileInfo.size !== undefined" class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
+      <div
+        v-if="fileInfo.size !== undefined"
+        class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
+      >
         <span class="text-xs text-ui-text-muted">{{ t('common.size', 'Size') }}</span>
         <span class="text-ui-text">{{ formatMegabytes(fileInfo.size) }}</span>
       </div>
 
-      <div v-if="fileInfo.lastModified" class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5">
+      <div
+        v-if="fileInfo.lastModified"
+        class="flex flex-col gap-0.5 border-b border-ui-border pb-1.5"
+      >
         <span class="text-xs text-ui-text-muted">{{ t('common.modified', 'Modified') }}</span>
         <span class="text-ui-text">{{ new Date(fileInfo.lastModified).toLocaleString() }}</span>
       </div>
 
       <div v-if="metadataYaml" class="flex flex-col gap-1.5">
         <span class="text-xs text-ui-text-muted">{{ t('common.metadata', 'Metadata') }}</span>
-        <pre class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded">{{ metadataYaml }}</pre>
+        <pre
+          class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
+          >{{ metadataYaml }}</pre
+        >
       </div>
     </div>
 
     <!-- Usage in timelines -->
-    <div v-if="timelinesUsingSelectedFile.length > 0" class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border">
-      <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1">
+    <div
+      v-if="timelinesUsingSelectedFile.length > 0"
+      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+    >
+      <div
+        class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
+      >
         {{ t('granVideoEditor.preview.usedInTimelines', 'Used in timelines') }}
       </div>
       <div class="flex flex-wrap gap-1 mt-1">

@@ -57,8 +57,10 @@ export function calculateNextClipBoundary(
   const next = boundaries.find((b) => b > currentTimeUs) ?? null;
 
   if (next === null) {
-    const endFromState = Number.isFinite(durationUs) && durationUs > 0 ? Math.max(0, Math.round(durationUs)) : 0;
-    const end = endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationUs(doc)));
+    const endFromState =
+      Number.isFinite(durationUs) && durationUs > 0 ? Math.max(0, Math.round(durationUs)) : 0;
+    const end =
+      endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationUs(doc)));
     return end;
   }
 

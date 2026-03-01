@@ -12,7 +12,7 @@ export function computeCutUs(doc: TimelineDocument, atUs: number): number {
 export function buildSplitClipCommands(
   doc: TimelineDocument,
   atUs: number,
-  target: { trackId: string; itemId: string } | null
+  target: { trackId: string; itemId: string } | null,
 ): TimelineCommand[] {
   if (!target) return [];
   const cutUs = computeCutUs(doc, atUs);
@@ -34,13 +34,13 @@ export function buildSplitAllClipsCommands(doc: TimelineDocument, atUs: number):
 export function buildSplitSelectedClipsCommands(
   doc: TimelineDocument,
   atUs: number,
-  selectedItemIds: string[]
+  selectedItemIds: string[],
 ): TimelineCommand[] {
   const cutUs = computeCutUs(doc, atUs);
   const cmds: TimelineCommand[] = [];
   const selected = new Set(selectedItemIds);
   const shouldUseSelection = selected.size > 0;
-  
+
   for (const track of doc.tracks) {
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;

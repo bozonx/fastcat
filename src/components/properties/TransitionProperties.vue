@@ -16,7 +16,9 @@ const timelineStore = useTimelineStore();
 
 const transitionValue = computed(() => {
   if (!props.clip) return undefined;
-  return props.transitionSelection.edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
+  return props.transitionSelection.edge === 'in'
+    ? props.clip.transitionIn
+    : props.clip.transitionOut;
 });
 
 function handleTransitionUpdate(payload: {
