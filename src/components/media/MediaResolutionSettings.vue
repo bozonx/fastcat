@@ -34,6 +34,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const formatOptions = [
+  { value: '480p', label: t('videoEditor.resolution.preset.480p', '480p (Preview)') },
   { value: '720p', label: t('videoEditor.resolution.preset.720p', '720p (HD)') },
   { value: '1080p', label: t('videoEditor.resolution.preset.1080p', '1080p (FHD)') },
   { value: '2.7k', label: t('videoEditor.resolution.preset.2.7k', '2.7K (QHD)') },
@@ -71,6 +72,7 @@ const aspectRatioOptions = [
 ];
 
 const bases: Record<string, number> = {
+  '480p': 480,
   '720p': 720,
   '1080p': 1080,
   '2.7k': 1440,

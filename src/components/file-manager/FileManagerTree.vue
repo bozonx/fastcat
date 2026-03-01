@@ -255,6 +255,11 @@ function getContextMenuItems(entry: FsEntry) {
         onSelect: () => emit('action', 'createFolder', entry),
       },
       {
+        label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+        icon: 'i-heroicons-document-plus',
+        onSelect: () => emit('action', 'createTimeline' as any, entry),
+      },
+      {
         label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
         onSelect: () => emit('action', 'createMarkdown', entry),
@@ -394,6 +399,7 @@ function getContextMenuItems(entry: FsEntry) {
             @dragleave.prevent="onDragLeaveDir($event, entry)"
             @drop.prevent="onDropDir($event, entry)"
             @click="onEntryClick(entry)"
+            @dblclick="entry.kind === 'directory' ? emit('toggle', entry) : null"
           >
             <!-- Chevron for directories -->
             <UIcon

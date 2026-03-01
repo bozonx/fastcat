@@ -149,7 +149,8 @@ export function getResolutionPreset(width: number, height: number) {
   const h = isPortrait ? width : height;
 
   let format = '';
-  if (w === 1280 && h === 720) format = '720p';
+  if (w === 854 && h === 480) format = '480p';
+  else if (w === 1280 && h === 720) format = '720p';
   else if (w === 1920 && h === 1080) format = '1080p';
   else if (w === 2560 && h === 1440) format = '2.7k';
   else if (w === 3840 && h === 2160) format = '4k';

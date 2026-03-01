@@ -263,12 +263,12 @@ export async function moveEntryCommand(
 
 export async function createTimelineCommand(params: {
   projectDir: FileSystemDirectoryHandle;
-  timelinesDirName: string;
+  timelinesDirName?: string;
   initialIndex?: number;
 }): Promise<string> {
-  const timelinesDir = await params.projectDir.getDirectoryHandle(params.timelinesDirName, {
-    create: true,
-  });
+  const timelinesDir = params.timelinesDirName
+    ? await params.projectDir.getDirectoryHandle(params.timelinesDirName, { create: true })
+    : params.projectDir;
 
   let index = params.initialIndex ?? 1;
   let fileName = '';
