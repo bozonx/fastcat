@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { computed, toRef } from 'vue';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition } from '~/timeline/types';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
+import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 
 const { t } = useI18n();
 
@@ -30,75 +30,24 @@ const emit = defineEmits<{
 
 const manifests = computed(() => getAllTransitionManifests());
 
-const durationSec = ref(props.transition ? props.transition.durationUs / 1_000_000 : 0.5);
-const selectedType = ref(props.transition?.type ?? 'dissolve');
-const selectedMode = ref<'blend' | 'composite'>(props.transition?.mode ?? 'blend');
-const selectedCurve = ref<'linear' | 'bezier'>(props.transition?.curve ?? 'linear');
-
-// Track whether we're syncing from props to avoid emit loop
-let isSyncingFromProps = false;
-
-watch(
-  () => props.transition,
-  (t) => {
-    isSyncingFromProps = true;
-    if (t) {
-      selectedType.value = t.type;
-      durationSec.value = t.durationUs / 1_000_000;
-      selectedMode.value = t.mode ?? 'blend';
-      selectedCurve.value = t.curve ?? 'linear';
-    }
-    // Reset flag after Vue processes reactivity
-    void Promise.resolve().then(() => {
-      isSyncingFromProps = false;
-    });
-  },
-);
-
-const edgeIcon = computed(() =>
-  props.edge === 'in'
-    ? 'i-heroicons-arrow-left-end-on-rectangle'
-    : 'i-heroicons-arrow-right-end-on-rectangle',
-);
-
-function emitUpdate() {
-  if (isSyncingFromProps) return;
-  emit('update', {
-    trackId: props.trackId,
-    itemId: props.itemId,
-    edge: props.edge,
-    transition: {
-      type: selectedType.value,
-      durationUs: Math.round(durationSec.value * 1_000_000),
-      mode: selectedMode.value,
-      curve: selectedCurve.value,
-    },
-  });
-}
-
-// Debounce slider changes to avoid spamming commands
-const emitDebouncedDuration = useDebounceFn(emitUpdate, 80);
-
-watch(selectedType, emitUpdate);
-watch(selectedMode, emitUpdate);
-watch(selectedCurve, emitUpdate);
-watch(durationSec, emitDebouncedDuration);
-
-function remove() {
-  emit('update', {
-    trackId: props.trackId,
-    itemId: props.itemId,
-    edge: props.edge,
-    transition: null,
-  });
-}
-
-const durationMin = 0.1;
-const defaultDurationMax = 3;
-const durationMax = computed(() => {
-  return props.maxDuration ?? defaultDurationMax;
+const {
+  durationMax,
+  durationMin,
+  durationSec,
+  durationStep,
+  edgeIcon,
+  remove,
+  selectedCurve,
+  selectedMode,
+  selectedType,
+} = useClipTransitionPanel({
+  edge: toRef(props, 'edge'),
+  trackId: toRef(props, 'trackId'),
+  itemId: toRef(props, 'itemId'),
+  transition: toRef(props, 'transition'),
+  maxDuration: toRef(props, 'maxDuration'),
+  onUpdate: (payload) => emit('update', payload),
 });
-const durationStep = 0.05;
 
 const modeOptions = computed(() => [
   { value: 'blend', label: t('granVideoEditor.timeline.transition.modeBlend') },
