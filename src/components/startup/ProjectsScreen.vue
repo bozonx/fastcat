@@ -2,40 +2,26 @@
 import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useMediaStore } from '~/stores/media.store';
-import { useUiStore } from '~/stores/ui.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
-const mediaStore = useMediaStore();
-const uiStore = useUiStore();
+const { openProject } = useProjectActions();
 
 const newProjectName = ref('');
-
-function leaveProject() {
-  timelineStore.resetTimelineState();
-  mediaStore.resetMediaState();
-  projectStore.closeProject();
-}
 
 async function createNewProject() {
   if (!newProjectName.value.trim()) return;
   await projectStore.createProject(newProjectName.value.trim());
   if (workspaceStore.userSettings.openLastProjectOnStart) {
-    await projectStore.openProject(newProjectName.value.trim());
+    await openProject(newProjectName.value.trim());
   }
   newProjectName.value = '';
 }
 
 async function handleOpenProject(project: string) {
-  leaveProject();
-  await projectStore.openProject(project);
-  uiStore.restoreFileTreeStateOnce(project);
-  await timelineStore.loadTimeline();
-  void timelineStore.loadTimelineMetadata();
+  await openProject(project);
 }
 </script>
 
