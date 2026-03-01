@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
+import RenameModal from '~/components/common/RenameModal.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -11,6 +14,11 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+
+const isRenameModalOpen = ref(false);
+const isDeleteConfirmOpen = ref(false);
+
+const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
 
 const trackAudioGain = computed({
   get: () => {
@@ -43,15 +51,53 @@ const trackAudioBalance = computed({
 function handleUpdateTrackEffects(effects: any[]) {
   timelineStore.updateTrackProperties(props.track.id, { effects: [...effects] });
 }
+
+function handleRenameTrack(newName: string) {
+  const next = newName.trim();
+  if (!next) return;
+  timelineStore.renameTrack(props.track.id, next);
+}
+
+function requestDeleteTrack() {
+  if (canDeleteWithoutConfirm.value) {
+    timelineStore.deleteTrack(props.track.id);
+    return;
+  }
+  isDeleteConfirmOpen.value = true;
+}
+
+function confirmDeleteTrack() {
+  timelineStore.deleteTrack(props.track.id, { allowNonEmpty: true });
+  isDeleteConfirmOpen.value = false;
+}
 </script>
 
 <template>
   <div class="w-full flex flex-col gap-2">
-    <div
-      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-    >
-      {{ track.name }}
-    </div>
+    <PropertySection :title="t('granVideoEditor.track.actions', 'Actions')">
+      <div class="flex gap-2 w-full">
+        <UButton
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-pencil"
+          class="flex-1 justify-center"
+          @click="isRenameModalOpen = true"
+        >
+          {{ t('common.rename', 'Rename') }}
+        </UButton>
+        <UButton
+          size="xs"
+          variant="soft"
+          color="red"
+          icon="i-heroicons-trash"
+          class="flex-1 justify-center"
+          @click="requestDeleteTrack"
+        >
+          {{ t('common.delete', 'Delete') }}
+        </UButton>
+      </div>
+    </PropertySection>
 
     <div
       v-if="track.kind === 'audio' || track.kind === 'video'"
@@ -104,6 +150,22 @@ function handleUpdateTrackEffects(effects: any[]) {
       :add-label="t('granVideoEditor.effects.add', 'Add')"
       :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
       @update:effects="handleUpdateTrackEffects"
+    />
+
+    <RenameModal
+      v-model:open="isRenameModalOpen"
+      :title="t('granVideoEditor.timeline.renameTrack', 'Rename track')"
+      :current-name="track.name"
+      @rename="handleRenameTrack"
+    />
+
+    <UiConfirmModal
+      v-model:open="isDeleteConfirmOpen"
+      :title="t('granVideoEditor.timeline.deleteTrack', 'Delete track')"
+      :description="t('granVideoEditor.timeline.deleteTrackConfirm', 'This track contains clips. Delete it?')"
+      color="error"
+      :confirm-text="t('common.delete', 'Delete')"
+      @confirm="confirmDeleteTrack"
     />
   </div>
 </template>
