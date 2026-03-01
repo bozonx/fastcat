@@ -1,5 +1,5 @@
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
-import type { Ref } from 'vue';
+import { type Ref, isRef } from 'vue';
 
 const PANEL_SIZES_PREFIX = 'gran-panel-sizes';
 
@@ -11,22 +11,27 @@ export function getPanelSizesKey(pageKey: string, projectId: string | null): str
 /**
  * A composable to manage and persist splitpane sizes in local storage.
  *
- * @param pageKey Unique key for the page (e.g., 'files', 'cut', 'sound')
+ * @param pageKey Unique key for the page (e.g., 'files', 'cut', 'sound'), can be a Ref
  * @param projectId Reactive ref to current project ID
  * @param defaultSizes The default sizes for the panes.
  * @returns An object containing the current sizes and the onResized handler.
  */
 export function usePersistedSplitpanes(
-  pageKey: string,
+  pageKey: string | Ref<string>,
   projectId: Ref<string | null>,
   defaultSizes: number[],
 ) {
-  const key = ref(getPanelSizesKey(pageKey, projectId.value));
+  const getKey = () => {
+    const keyString = isRef(pageKey) ? pageKey.value : pageKey;
+    return getPanelSizesKey(keyString, projectId.value);
+  };
+
+  const key = ref(getKey());
   const sizes = ref<number[]>([...defaultSizes]);
   const isLoaded = ref(false);
 
   function loadSizes() {
-    const newKey = getPanelSizesKey(pageKey, projectId.value);
+    const newKey = getKey();
     key.value = newKey;
     const stored = readLocalStorageJson<number[] | null>(newKey, null);
     if (stored && Array.isArray(stored) && stored.length === defaultSizes.length) {
@@ -37,7 +42,10 @@ export function usePersistedSplitpanes(
     isLoaded.value = true;
   }
 
-  watch(() => projectId.value, loadSizes, { immediate: true });
+  // Watch both projectId and pageKey if it's a ref
+  watch([() => projectId.value, isRef(pageKey) ? pageKey : () => pageKey], loadSizes, {
+    immediate: true,
+  });
 
   function onResized(event: { panes: { size: number }[] }) {
     if (Array.isArray(event?.panes)) {
