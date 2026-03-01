@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
-import TimelineZoomControl from '~/components/timeline/TimelineZoomControl.vue';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
@@ -198,7 +197,7 @@ function onZoomInput(e: Event) {
     </div>
 
     <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted">
-      <TimelineZoomControl />
+      
     </div>
   </div>
 </template>
