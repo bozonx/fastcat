@@ -15,20 +15,12 @@ import {
   EXPORT_DIR_NAME,
 } from '~/utils/constants';
 
-import {
-  createProjectMetaRepository,
-  type ProjectMetaRepository,
-} from '~/repositories/project-meta.repository';
-
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectSettingsStore } from './project-settings.store';
 
-function createProjectId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
-}
+import { createProjectFsModule } from '~/stores/project/projectFs';
+import { createProjectMetaModule } from '~/stores/project/projectMeta';
+import { createProjectTimelinesModule } from '~/stores/project/projectTimelines';
 
 export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
@@ -44,12 +36,29 @@ export const useProjectStore = defineStore('project', () => {
     return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
   }
 
-  const projectMetaRepo = ref<ProjectMetaRepository | null>(null);
-
   const currentProjectName = ref<string | null>(null);
   const currentProjectId = ref<string | null>(null);
   const currentTimelinePath = ref<string | null>(null);
   const currentFileName = ref<string | null>(null);
+
+  const fsModule = createProjectFsModule({
+    projectsHandle: ref(workspaceStore.projectsHandle) as any,
+    currentProjectName,
+  });
+
+  const {
+    toProjectRelativePath,
+    getProjectFileHandleByRelativePath,
+    getFileHandleByPath,
+    getProjectDirHandle,
+  } = fsModule;
+
+  const metaModule = createProjectMetaModule({
+    currentProjectName,
+    currentProjectId,
+    getProjectDirHandle,
+  });
+  const { loadProjectMeta, clearProjectMetaState } = metaModule;
 
   function closeProject() {
     projectSettingsStore.closeProjectSettings();
@@ -57,96 +66,21 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectId.value = null;
     currentTimelinePath.value = null;
     currentFileName.value = null;
-    projectMetaRepo.value = null;
+    clearProjectMetaState();
   }
 
-  function toProjectRelativePath(path: string): string {
-    return path
-      .split('/')
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .join('/');
-  }
+  const timelinesModule = createProjectTimelinesModule({
+    currentProjectName,
+    currentTimelinePath,
+    currentFileName,
+    projectSettings: projectSettings as any,
+    toProjectRelativePath,
+    setWorkspaceError: (message) => {
+      workspaceStore.error = message;
+    },
+  });
 
-  async function getProjectFileHandleByRelativePath(input: {
-    relativePath: string;
-    create?: boolean;
-  }): Promise<FileSystemFileHandle | null> {
-    if (!workspaceStore.projectsHandle || !currentProjectName.value) return null;
-    const normalizedPath = toProjectRelativePath(input.relativePath);
-    if (!normalizedPath) return null;
-
-    const parts = normalizedPath.split('/');
-    const fileName = parts.pop();
-    if (!fileName) return null;
-
-    try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-        currentProjectName.value,
-      );
-      let currentDir = projectDir;
-      for (const dirName of parts) {
-        currentDir = await currentDir.getDirectoryHandle(dirName, {
-          create: input.create ?? false,
-        });
-      }
-
-      return await currentDir.getFileHandle(fileName, {
-        create: input.create ?? false,
-      });
-    } catch (e: unknown) {
-      if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.error('Failed to get project file handle by path:', input.relativePath, e);
-      }
-      return null;
-    }
-  }
-
-  async function getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null> {
-    return await getProjectFileHandleByRelativePath({ relativePath: path, create: false });
-  }
-
-  async function getProjectDirHandle(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.projectsHandle || !currentProjectName.value) return null;
-    try {
-      return await workspaceStore.projectsHandle.getDirectoryHandle(currentProjectName.value);
-    } catch {
-      return null;
-    }
-  }
-
-  async function loadProjectMeta() {
-    if (!workspaceStore.projectsHandle || !currentProjectName.value) return;
-
-    try {
-      if (!projectMetaRepo.value) {
-        const dir = await getProjectDirHandle();
-        projectMetaRepo.value = dir ? createProjectMetaRepository({ projectDir: dir }) : null;
-      }
-
-      const meta = await projectMetaRepo.value?.load();
-      if (meta?.id) {
-        currentProjectId.value = meta.id;
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
-    const nextId = createProjectId();
-    currentProjectId.value = nextId;
-
-    try {
-      if (!projectMetaRepo.value) {
-        const dir = await getProjectDirHandle();
-        projectMetaRepo.value = dir ? createProjectMetaRepository({ projectDir: dir }) : null;
-      }
-
-      await projectMetaRepo.value?.save({ id: nextId });
-    } catch (e) {
-      console.warn('Failed to write project meta file', e);
-    }
-  }
+  const { openTimelineFile, closeTimelineFile, reorderTimelines } = timelinesModule;
 
   projectSettingsStore.setContext({
     getProjectDirHandle,
@@ -187,14 +121,6 @@ export const useProjectStore = defineStore('project', () => {
 
       try {
         await projectDir.getDirectoryHandle('.gran', { create: true });
-        try {
-          const id = createProjectId();
-          projectMetaRepo.value = createProjectMetaRepository({ projectDir });
-          await projectMetaRepo.value.save({ id });
-        } catch (e) {
-          console.warn('Failed to create project meta file', e);
-        }
-
         await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectDir });
       } catch (e) {
         console.warn('Failed to create project settings file', e);
@@ -273,46 +199,6 @@ export const useProjectStore = defineStore('project', () => {
     }
 
     await saveProjectSettings();
-  }
-
-  async function openTimelineFile(path: string) {
-    if (!currentProjectName.value) {
-      workspaceStore.error = 'Project is not opened';
-      return;
-    }
-
-    const normalizedPath = toProjectRelativePath(path);
-    if (!normalizedPath.toLowerCase().endsWith('.otio')) return;
-
-    if (!projectSettings.value.timelines.openPaths.includes(normalizedPath)) {
-      projectSettings.value.timelines.openPaths.push(normalizedPath);
-    }
-
-    projectSettings.value.timelines.lastOpenedPath = normalizedPath;
-
-    currentTimelinePath.value = normalizedPath;
-    currentFileName.value = normalizedPath.split('/').pop() ?? normalizedPath;
-  }
-
-  async function closeTimelineFile(path: string) {
-    const index = projectSettings.value.timelines.openPaths.indexOf(path);
-    if (index === -1) return;
-
-    projectSettings.value.timelines.openPaths.splice(index, 1);
-
-    if (currentTimelinePath.value === path) {
-      const nextPath = projectSettings.value.timelines.openPaths[0] || null;
-      if (nextPath) {
-        await openTimelineFile(nextPath);
-      } else {
-        currentTimelinePath.value = null;
-        currentFileName.value = null;
-      }
-    }
-  }
-
-  function reorderTimelines(paths: string[]) {
-    projectSettings.value.timelines.openPaths = paths;
   }
 
   function createFallbackTimelineDoc(): TimelineDocument {
