@@ -9,10 +9,21 @@ import {
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
+import { useProxyStore } from '~/stores/proxy.store';
 
 interface Props {
   entries: FsEntry[];
   depth: number;
+}
+
+function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  const dirPath = entry.path ?? '';
+  for (const p of proxyStore.generatingProxies) {
+    if (!dirPath) return true;
+    if (p === dirPath || p.startsWith(`${dirPath}/`)) return true;
+  }
+  return false;
 }
 
 interface TreeContext {
@@ -42,7 +53,6 @@ const emit = defineEmits<{
     action:
       | 'createFolder'
       | 'rename'
-      | 'info'
       | 'delete'
       | 'createProxy'
       | 'cancelProxy'
@@ -73,6 +83,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
+const proxyStore = useProxyStore();
 
 const isDragOver = ref<string | null>(null);
 
@@ -259,12 +270,27 @@ function getContextMenuItems(entry: FsEntry) {
     if (hasVideos) {
       items.push([
         {
-          label: t(
-            'videoEditor.fileManager.actions.createProxyForAll',
-            'Create proxy for all videos',
-          ),
-          icon: 'i-heroicons-film',
-          onSelect: () => emit('action', 'createProxyForFolder' as any, entry),
+          label: isGeneratingProxyInDirectory(entry)
+            ? t(
+                'videoEditor.fileManager.actions.cancelProxyGeneration',
+                'Cancel proxy generation',
+              )
+            : t(
+                'videoEditor.fileManager.actions.createProxyForAll',
+                'Create proxy for all videos',
+              ),
+          icon: isGeneratingProxyInDirectory(entry)
+            ? 'i-heroicons-x-circle'
+            : 'i-heroicons-film',
+          color: isGeneratingProxyInDirectory(entry) ? 'error' : undefined,
+          onSelect: () =>
+            emit(
+              'action',
+              (isGeneratingProxyInDirectory(entry)
+                ? 'cancelProxyForFolder'
+                : 'createProxyForFolder') as any,
+              entry,
+            ),
         },
       ]);
     }
@@ -275,11 +301,6 @@ function getContextMenuItems(entry: FsEntry) {
       label: t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
       onSelect: () => emit('action', 'rename', entry),
-    },
-    {
-      label: t('videoEditor.fileManager.info.title', 'Information'),
-      icon: 'i-heroicons-information-circle',
-      onSelect: () => emit('action', 'info', entry),
     },
   ]);
 

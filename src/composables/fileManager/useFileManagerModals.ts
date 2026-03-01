@@ -1,17 +1,14 @@
 import { ref, computed, type Ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
-import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FsEntry } from '~/types/fs';
-import type { FileInfo } from '~/types/fileManager';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import {
   cancelProxyCommand,
   ensureProxyCommand,
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
-import { computeDirectorySize } from '~/utils/fs';
 
 interface FileManagerActions {
   createFolder: (name: string, target?: FileSystemDirectoryHandle | null) => Promise<void>;
@@ -30,7 +27,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
   const { t } = useI18n();
   const toast = useToast();
   const uiStore = useUiStore();
-  const mediaStore = useMediaStore();
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
@@ -39,9 +35,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
 
   const isRenameModalOpen = ref(false);
   const renameTarget = ref<FsEntry | null>(null);
-
-  const isFileInfoModalOpen = ref(false);
-  const currentFileInfo = ref<FileInfo | null>(null);
 
   const isDeleteConfirmModalOpen = ref(false);
   const deleteTarget = ref<FsEntry | null>(null);
@@ -63,55 +56,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
 
   async function handleCreateFolder(name: string) {
     await actions.createFolder(name, folderCreationTarget.value);
-  }
-
-  async function openFileInfoModal(entry: FsEntry) {
-    let size: number | undefined;
-    let lastModified: number | undefined;
-    let fileType: string | undefined;
-
-    if (entry.kind === 'file') {
-      try {
-        const file = await (entry.handle as FileSystemFileHandle).getFile();
-        size = file.size;
-        lastModified = file.lastModified;
-        fileType = file.type;
-      } catch (e: any) {
-        toast.add({
-          color: 'red',
-          title: t('videoEditor.fileManager.info.error', 'Information error'),
-          description: String(e?.message ?? e),
-        });
-      }
-    } else if (entry.kind === 'directory') {
-      try {
-        size = await computeDirectorySize(entry.handle as FileSystemDirectoryHandle);
-      } catch (e: any) {
-        toast.add({
-          color: 'red',
-          title: t('videoEditor.fileManager.info.error', 'Information error'),
-          description: String(e?.message ?? e),
-        });
-      }
-    }
-
-    currentFileInfo.value = {
-      name: entry.name,
-      kind: entry.kind,
-      size,
-      lastModified,
-      path: entry.path,
-      metadata:
-        entry.kind === 'file' &&
-        entry.path &&
-        typeof fileType === 'string' &&
-        (fileType.startsWith('video/') || fileType.startsWith('audio/'))
-          ? await mediaStore.getOrFetchMetadata(entry.handle as FileSystemFileHandle, entry.path, {
-              forceRefresh: true,
-            })
-          : undefined,
-    };
-    isFileInfoModalOpen.value = true;
   }
 
   function openDeleteConfirmModal(entry: FsEntry) {
@@ -171,7 +115,7 @@ export function useFileManagerModals(actions: FileManagerActions) {
     renameTarget.value = null;
   }
 
-  function onFileAction(action: string, entry: FsEntry) {
+  function onFileAction(action: any, entry: FsEntry) {
     if (action === 'createFolder') {
       openCreateFolderModal(entry);
     } else if (action === 'upload') {
@@ -181,18 +125,15 @@ export function useFileManagerModals(actions: FileManagerActions) {
     } else if (action === 'rename') {
       renameTarget.value = entry;
       isRenameModalOpen.value = true;
-    } else if (action === 'info') {
-      openFileInfoModal(entry);
     } else if (action === 'delete') {
       openDeleteConfirmModal(entry);
     } else if (action === 'createProxy') {
-      if (entry.kind === 'file' && entry.path) {
-        void ensureProxyCommand({
-          service: actions.mediaCache,
-          fileHandle: entry.handle as FileSystemFileHandle,
-          projectRelativePath: entry.path,
-        });
-      }
+      if (entry.kind !== 'file' || !entry.path) return;
+      void ensureProxyCommand({
+        service: actions.mediaCache,
+        fileHandle: entry.handle as FileSystemFileHandle,
+        projectRelativePath: entry.path!,
+      });
     } else if (action === 'cancelProxy') {
       if (entry.kind === 'file' && entry.path) {
         void cancelProxyCommand({ service: actions.mediaCache, projectRelativePath: entry.path });
@@ -215,8 +156,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
     folderCreationTarget,
     isRenameModalOpen,
     renameTarget,
-    isFileInfoModalOpen,
-    currentFileInfo,
     isDeleteConfirmModalOpen,
     deleteTarget,
     timelinesUsingDeleteTarget,
@@ -224,7 +163,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
     directoryUploadInput,
     openCreateFolderModal,
     handleCreateFolder,
-    openFileInfoModal,
     openDeleteConfirmModal,
     handleDeleteConfirm,
     handleRename,
