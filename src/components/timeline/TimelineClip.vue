@@ -6,6 +6,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import {
   clampHandlePx,
   getClipClass,
@@ -228,251 +229,31 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   return null;
 }
 
-function getClipContextMenuItems(track: TimelineTrack, item: any) {
-  if (!item) return [];
+const trackRef = computed(() => props.track);
+const itemRef = computed(() => props.item);
+const timelineDocRef = computed(() => timelineStore.timelineDoc);
+const projectSettingsRef = computed(() => projectStore.projectSettings);
 
-  if (item.kind === 'gap') {
-    return [
-      [
-        {
-          label: t('granVideoEditor.timeline.delete', 'Delete'),
-          icon: 'i-heroicons-trash',
-          onSelect: () => {
-            timelineStore.applyTimeline({
-              type: 'delete_items',
-              trackId: track.id,
-              itemIds: [item.id],
-            });
-          },
-        },
-      ],
-    ];
-  }
-
-  const mainGroup: any[] = [];
-
-  if (item.kind === 'clip') {
-    mainGroup.push({
-      label: (item as TimelineClipItem).disabled
-        ? t('granVideoEditor.timeline.enableClip', 'Enable clip')
-        : t('granVideoEditor.timeline.disableClip', 'Disable clip'),
-      icon: (item as TimelineClipItem).disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
-      onSelect: async () => {
-        timelineStore.updateClipProperties(track.id, (item as TimelineClipItem).id, {
-          disabled: !(item as TimelineClipItem).disabled,
-        });
-        await timelineStore.requestTimelineSave({ immediate: true });
-      },
-    });
-
-    mainGroup.push({
-      label: (item as TimelineClipItem).locked
-        ? t('granVideoEditor.timeline.unlockClip', 'Unlock clip')
-        : t('granVideoEditor.timeline.lockClip', 'Lock clip'),
-      icon: (item as TimelineClipItem).locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
-      onSelect: async () => {
-        timelineStore.updateClipProperties(track.id, (item as TimelineClipItem).id, {
-          locked: !(item as TimelineClipItem).locked,
-        });
-        await timelineStore.requestTimelineSave({ immediate: true });
-      },
-    });
-
-    const currentSpeed = (item as TimelineClipItem).speed ?? 1;
-
-    mainGroup.push({
-      label: `${t('granVideoEditor.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)})`,
-      icon: 'i-heroicons-forward',
-      onSelect: () =>
-        emit('openSpeedModal', {
-          trackId: track.id,
-          itemId: (item as TimelineClipItem).id,
-          speed: currentSpeed,
-        }),
-    });
-
-    const canExtract =
-      track.kind === 'video' &&
-      (item as TimelineClipItem).clipType === 'media' &&
-      !(item as any).audioFromVideoDisabled;
-    if (canExtract) {
-      mainGroup.push({
-        label: t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
-        icon: 'i-heroicons-musical-note',
-        onSelect: () =>
-          emit('clipAction', {
-            action: 'extractAudio',
-            trackId: track.id,
-            itemId: (item as TimelineClipItem).id,
-          }),
-      });
-    }
-
-    const hasReturnFromVideoClip =
-      track.kind === 'video' &&
-      Boolean((item as any).audioFromVideoDisabled) &&
-      (timelineStore.timelineDoc?.tracks ?? []).some((t: any) =>
-        t.kind !== 'audio'
-          ? false
-          : (t.items ?? []).some(
-              (it: any) =>
-                it.kind === 'clip' &&
-                it.linkedVideoClipId === (item as TimelineClipItem).id &&
-                Boolean(it.lockToLinkedVideo),
-            ),
-      );
-
-    const hasReturnFromLockedAudioClip =
-      track.kind === 'audio' &&
-      Boolean((item as TimelineClipItem).linkedVideoClipId) &&
-      Boolean((item as TimelineClipItem).lockToLinkedVideo);
-
-    if (hasReturnFromVideoClip) {
-      mainGroup.push({
-        label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
-        icon: 'i-heroicons-arrow-uturn-left',
-        onSelect: () =>
-          emit('clipAction', {
-            action: 'returnAudio',
-            trackId: track.id,
-            itemId: (item as TimelineClipItem).id,
-          }),
-      });
-    } else if (hasReturnFromLockedAudioClip) {
-      mainGroup.push({
-        label: t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
-        icon: 'i-heroicons-arrow-uturn-left',
-        onSelect: () =>
-          emit('clipAction', {
-            action: 'returnAudio',
-            trackId: track.id,
-            itemId: (item as TimelineClipItem).id,
-            videoItemId: String((item as TimelineClipItem).linkedVideoClipId),
-          }),
-      });
-    }
-
-    const isMediaVideoClip =
-      track.kind === 'video' && (item as TimelineClipItem).clipType === 'media';
-    const hasFreezeFrame = typeof (item as TimelineClipItem).freezeFrameSourceUs === 'number';
-    if (isMediaVideoClip && !hasFreezeFrame) {
-      mainGroup.push({
-        label: t('granVideoEditor.timeline.freezeFrame', 'Freeze frame'),
-        icon: 'i-heroicons-pause-circle',
-        onSelect: () =>
-          emit('clipAction', {
-            action: 'freezeFrame',
-            trackId: track.id,
-            itemId: (item as TimelineClipItem).id,
-          }),
-      });
-    }
-
-    if (isMediaVideoClip && hasFreezeFrame) {
-      mainGroup.push({
-        label: t('granVideoEditor.timeline.resetFreezeFrame', 'Reset freeze frame'),
-        icon: 'i-heroicons-play-circle',
-        onSelect: () =>
-          emit('clipAction', {
-            action: 'resetFreezeFrame',
-            trackId: track.id,
-            itemId: (item as TimelineClipItem).id,
-          }),
-      });
-    }
-  }
-
-  const actionGroup: any[] = [
-    {
-      label: t('granVideoEditor.timeline.delete', 'Delete'),
-      icon: 'i-heroicons-trash',
-      disabled: item.kind === 'clip' && Boolean(item.locked),
-      onSelect: () => {
-        selectionStore.clearSelection();
-        timelineStore.applyTimeline({
-          type: 'delete_items',
-          trackId: track.id,
-          itemIds: [item.id],
-        });
-      },
-    },
-  ];
-
-  const result = [];
-  if (mainGroup.length > 0) result.push(mainGroup);
-
-  if (item.kind === 'clip' && track.kind === 'video') {
-    const transitionGroup: any[] = [];
-    const hasIn = Boolean((item as any).transitionIn);
-    const hasOut = Boolean((item as any).transitionOut);
-
-    const defaultTransitionDurationUs = Math.max(
-      0,
-      Math.round(Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000)),
-    );
-    const clipDurationUs = Math.max(0, Math.round(Number(item.timelineRange?.durationUs ?? 0)));
-    const suggestedDurationUs =
-      clipDurationUs > 0 && clipDurationUs < defaultTransitionDurationUs
-        ? Math.round(clipDurationUs * 0.3)
-        : defaultTransitionDurationUs;
-
-    transitionGroup.push({
-      label: hasIn
-        ? t('granVideoEditor.timeline.removeTransitionIn')
-        : t('granVideoEditor.timeline.addTransitionIn'),
-      icon: hasIn ? 'i-heroicons-x-circle' : 'i-heroicons-arrow-left-end-on-rectangle',
-      onSelect: () => {
-        if (hasIn) {
-          timelineStore.updateClipTransition(track.id, item.id, { transitionIn: null });
-          selectionStore.clearSelection();
-        } else {
-          const transition = {
-            type: 'dissolve',
-            durationUs: suggestedDurationUs,
-            mode: 'blend' as const,
-            curve: 'linear' as const,
-          };
-          timelineStore.updateClipTransition(track.id, item.id, { transitionIn: transition });
-          timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'in' });
-          selectionStore.selectTimelineTransition(track.id, item.id, 'in');
-        }
-      },
-    });
-
-    transitionGroup.push({
-      label: hasOut
-        ? t('granVideoEditor.timeline.removeTransitionOut')
-        : t('granVideoEditor.timeline.addTransitionOut'),
-      icon: hasOut ? 'i-heroicons-x-circle' : 'i-heroicons-arrow-right-end-on-rectangle',
-      onSelect: () => {
-        if (hasOut) {
-          timelineStore.updateClipTransition(track.id, item.id, { transitionOut: null });
-          selectionStore.clearSelection();
-        } else {
-          const transition = {
-            type: 'dissolve',
-            durationUs: suggestedDurationUs,
-            mode: 'blend' as const,
-            curve: 'linear' as const,
-          };
-          timelineStore.updateClipTransition(track.id, item.id, { transitionOut: transition });
-          timelineStore.selectTransition({ trackId: track.id, itemId: item.id, edge: 'out' });
-          selectionStore.selectTimelineTransition(track.id, item.id, 'out');
-        }
-      },
-    });
-
-    if (transitionGroup.length > 0) result.push(transitionGroup);
-  }
-
-  result.push(actionGroup);
-
-  return result;
-}
+const { contextMenuItems } = useClipContextMenu({
+  track: trackRef,
+  item: itemRef,
+  timelineDoc: timelineDocRef,
+  projectSettings: projectSettingsRef,
+  applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
+  updateClipProperties: (trackId, itemId, p) => timelineStore.updateClipProperties(trackId, itemId, p),
+  updateClipTransition: (trackId, itemId, p) => timelineStore.updateClipTransition(trackId, itemId, p),
+  requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
+  selectTransition: (payload) => timelineStore.selectTransition(payload),
+  clearSelection: () => selectionStore.clearSelection(),
+  selectTimelineTransition: (trackId, itemId, edge) => selectionStore.selectTimelineTransition(trackId, itemId, edge),
+  emitOpenSpeedModal: (payload) => emit('openSpeedModal', payload),
+  emitClipAction: (payload) => emit('clipAction', payload),
+  t,
+});
 </script>
 
 <template>
-  <UContextMenu :items="getClipContextMenuItems(track, item)">
+  <UContextMenu :items="contextMenuItems">
     <div
       class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 cursor-pointer select-none transition-shadow group/clip"
       :class="[
