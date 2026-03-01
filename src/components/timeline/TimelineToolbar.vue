@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
-import TimelineZoomLogSlider from '~/components/ui/TimelineZoomLogSlider.vue';
+import TimelineZoomControl from '~/components/timeline/TimelineZoomControl.vue';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
@@ -198,17 +198,7 @@ function onZoomInput(e: Event) {
     </div>
 
     <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted">
-      <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4" />
-      <TimelineZoomLogSlider
-        :model-value="timelineStore.timelineZoom"
-        :min="0"
-        :max="100"
-        :step="1"
-        slider-class="w-28"
-        :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
-        @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
-      />
-      <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
+      <TimelineZoomControl />
     </div>
   </div>
 </template>
