@@ -248,7 +248,7 @@ async function onEntrySelect(entry: FsEntry) {
             :depth="0"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
-            @action="(action, entry) => emit('action', action, entry)"
+            @action="(action, entry) => emit('action', action as any, entry)"
             @request-move="onRequestMove"
             @request-upload="onRequestUpload"
           />

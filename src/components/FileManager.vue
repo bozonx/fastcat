@@ -321,7 +321,7 @@ async function onDirectoryFileSelect(e: Event) {
         @click="loadProjectDirectory"
       />
 
-      <div class="ml-auto w-20">
+      <div class="ml-auto w-30">
         <USelectMenu
           :model-value="sortMode"
           :items="[
