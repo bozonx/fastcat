@@ -422,7 +422,7 @@ defineProps<{
           />
         </UTooltip>
 
-        <div class="w-21">
+        <div class="w-17">
           <USelectMenu
             v-if="projectStore.projectSettings.monitor"
             :model-value="
@@ -433,7 +433,9 @@ defineProps<{
             :items="previewResolutions"
             value-key="value"
             label-key="label"
-            size="xs"
+            size="2xs"
+            :search-input="false"
+            :ui="{ trigger: 'px-1 py-1 font-medium', leading: { padding: { '2xs': 'ps-1' } } }"
             class="w-full"
             @update:model-value="
               (v: any) => {
@@ -455,7 +457,7 @@ defineProps<{
                   item.value === projectStore.projectSettings.monitor?.previewResolution
                     ? 'text-primary-500 font-medium'
                     : '',
-                  'truncate',
+                  'truncate text-xs',
                 ]"
               >
                 {{ item.label }}
@@ -465,7 +467,7 @@ defineProps<{
               <UIcon
                 v-if="item.isProject"
                 name="i-heroicons-star-20-solid"
-                class="w-3.5 h-3.5 text-primary-500 shrink-0"
+                class="w-3 h-3 text-primary-500 shrink-0"
                 :title="t('granVideoEditor.monitor.projectResolutionHint')"
               />
             </template>
@@ -527,17 +529,22 @@ defineProps<{
         "
       />
 
-      <div class="w-24">
+      <div class="w-15">
         <USelectMenu
           :model-value="selectedPlaybackSpeedOption as any"
           :items="playbackSpeedOptions"
           value-key="value"
           label-key="label"
-          size="sm"
+          size="2xs"
+          :ui="{ trigger: 'px-1 py-1 font-medium' }"
           class="w-full"
           :disabled="!canInteractPlayback"
           @update:model-value="onPlaybackSpeedChange"
-        />
+        >
+          <template #item-label="{ item }">
+            <span class="truncate text-xs">{{ item.label }}</span>
+          </template>
+        </USelectMenu>
       </div>
 
       <div class="flex items-center gap-2.5">
