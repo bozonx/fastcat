@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
@@ -42,7 +42,7 @@ export const useProjectStore = defineStore('project', () => {
   const currentFileName = ref<string | null>(null);
 
   const fsModule = createProjectFsModule({
-    projectsHandle: ref(workspaceStore.projectsHandle) as any,
+    projectsHandle: computed(() => workspaceStore.projectsHandle) as any,
     currentProjectName,
   });
 

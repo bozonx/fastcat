@@ -1,4 +1,4 @@
-import { defineStore, storeToRefs } from 'pinia';
+import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
@@ -17,6 +17,7 @@ import { createTimelineTracks } from '~/stores/timeline/timelineTracks';
 import { createTimelineClips } from '~/stores/timeline/timelineClips';
 import { createTimelineTrimming } from '~/stores/timeline/timelineTrimming';
 import { createTimelineHydration } from '~/stores/timeline/timelineHydration';
+import { createTimelineExternalRefs } from '~/stores/timeline/timelineExternalRefs';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -45,36 +46,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     pendingDebouncedHistory.value = null;
   }
 
-  const projectRefs = (() => {
-    try {
-      return storeToRefs(projectStore as any) as any;
-    } catch {
-      return projectStore as any;
-    }
-  })();
-
-  const currentProjectName =
-    projectRefs?.currentProjectName && typeof projectRefs.currentProjectName === 'object'
-      ? projectRefs.currentProjectName
-      : ref((projectStore as any)?.currentProjectName ?? null);
-
-  const currentTimelinePath =
-    projectRefs?.currentTimelinePath && typeof projectRefs.currentTimelinePath === 'object'
-      ? projectRefs.currentTimelinePath
-      : ref((projectStore as any)?.currentTimelinePath ?? null);
-
-  const mediaRefs = (() => {
-    try {
-      return storeToRefs(mediaStore as any) as any;
-    } catch {
-      return mediaStore as any;
-    }
-  })();
-
-  const mediaMetadata =
-    mediaRefs?.mediaMetadata && typeof mediaRefs.mediaMetadata === 'object'
-      ? mediaRefs.mediaMetadata
-      : ref((mediaStore as any)?.mediaMetadata ?? {});
+  const { currentProjectName, currentTimelinePath, mediaMetadata } = createTimelineExternalRefs({
+    projectStore,
+    mediaStore,
+  });
 
   const DEFAULT_IMAGE_DURATION_US = 5_000_000;
   const DEFAULT_IMAGE_SOURCE_DURATION_US = DEFAULT_IMAGE_DURATION_US;
