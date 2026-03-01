@@ -16,7 +16,7 @@ import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage } from '@vueuse/core';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
-import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
+
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
@@ -508,16 +508,7 @@ async function onDrop(e: DragEvent, trackId: string) {
     }"
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
-    <!-- Toolbar -->
-    <TimelineToolbar
-      @update:zoom="
-        (v) =>
-          applyZoomWithAnchor({
-            nextZoom: v,
-            anchor: makePlayheadAnchor({ zoom: timelineStore.timelineZoom }),
-          })
-      "
-    />
+
 
     <ClientOnly>
       <Splitpanes

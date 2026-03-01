@@ -41,9 +41,7 @@ function onDragEnd() {
   clearDraggedFile();
 }
 
-const emit = defineEmits<{
-  (e: 'update:zoom', value: number): void;
-}>();
+
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -123,7 +121,7 @@ function toggleClipSnapMode() {
 
 <template>
   <div
-    class="flex items-center gap-2 px-2 py-1.5 border-b border-ui-border shrink-0 bg-ui-bg-elevated h-10"
+    class="flex items-center gap-2 px-2 py-1.5 border-t-2 border-ui-border shrink-0 bg-ui-bg-elevated min-h-10 h-auto flex-wrap mt-auto w-full"
   >
     <div class="ml-2 flex items-center gap-1.5">
       <div
@@ -282,7 +280,7 @@ function toggleClipSnapMode() {
         :step="1"
         slider-class="w-28"
         :aria-label="t('granVideoEditor.timeline.zoom', 'Zoom')"
-        @update:model-value="(v) => emit('update:zoom', v ?? 50)"
+        @update:model-value="(v) => timelineStore.setTimelineZoom(v ?? 50)"
       />
       <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
     </div>
