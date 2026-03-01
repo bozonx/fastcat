@@ -15,6 +15,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage } from '@vueuse/core';
+import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -28,13 +29,10 @@ const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const { draggedFile, clearDraggedFile } = useDraggedFile();
 
-const timelineSplitSizes = useLocalStorage<number[]>('gran-editor-timeline-split-v4', [10, 90]);
-
-function onTimelineSplitResize(event: { panes: { size: number }[] }) {
-  if (Array.isArray(event?.panes)) {
-    timelineSplitSizes.value = event.panes.map((p) => p.size);
-  }
-}
+const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersistedSplitpanes(
+  'gran-editor-timeline-split-v4',
+  [10, 90],
+);
 
 const trackHeights = useLocalStorage<Record<string, number>>('gran-editor-track-heights-v1', {});
 
