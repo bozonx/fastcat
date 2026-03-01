@@ -9,6 +9,7 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
 export function useEditorHotkeys() {
   const workspaceStore = useWorkspaceStore();
@@ -19,64 +20,27 @@ export function useEditorHotkeys() {
   const selectionStore = useSelectionStore();
   const { loadTimeline } = useProjectActions();
 
-  let volumeHoldTimeout: number | null = null;
-  let volumeHoldInterval: number | null = null;
-  let volumeHoldKeyCode: string | null = null;
-
-  let zoomHoldTimeout: number | null = null;
-  let zoomHoldInterval: number | null = null;
-  let zoomHoldKeyCode: string | null = null;
+  const volumeHoldRunner = createHotkeyHoldRunner();
+  const zoomHoldRunner = createHotkeyHoldRunner();
 
   const suppressedKeyupCodes = new Set<string>();
 
-  function clearVolumeHoldTimers() {
-    if (volumeHoldTimeout !== null) {
-      window.clearTimeout(volumeHoldTimeout);
-      volumeHoldTimeout = null;
-    }
-    if (volumeHoldInterval !== null) {
-      window.clearInterval(volumeHoldInterval);
-      volumeHoldInterval = null;
-    }
-    volumeHoldKeyCode = null;
-  }
-
-  function clearZoomHoldTimers() {
-    if (zoomHoldTimeout !== null) {
-      window.clearTimeout(zoomHoldTimeout);
-      zoomHoldTimeout = null;
-    }
-    if (zoomHoldInterval !== null) {
-      window.clearInterval(zoomHoldInterval);
-      zoomHoldInterval = null;
-    }
-    zoomHoldKeyCode = null;
-  }
-
   function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
-    clearVolumeHoldTimers();
-    volumeHoldKeyCode = params.keyCode;
-
-    timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
-
-    volumeHoldTimeout = window.setTimeout(() => {
-      volumeHoldInterval = window.setInterval(() => {
+    volumeHoldRunner.startHold({
+      keyCode: params.keyCode,
+      action: () => {
         timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
-      }, 60);
-    }, 350);
+      },
+    });
   }
 
   function startZoomHotkeyHold(params: { step: number; keyCode: string }) {
-    clearZoomHoldTimers();
-    zoomHoldKeyCode = params.keyCode;
-
-    timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
-
-    zoomHoldTimeout = window.setTimeout(() => {
-      zoomHoldInterval = window.setInterval(() => {
+    zoomHoldRunner.startHold({
+      keyCode: params.keyCode,
+      action: () => {
         timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
-      }, 60);
-    }, 350);
+      },
+    });
   }
 
   async function onGlobalKeydown(e: KeyboardEvent) {
@@ -367,18 +331,14 @@ export function useEditorHotkeys() {
       suppressedKeyupCodes.delete(e.code);
     }
 
-    if (volumeHoldKeyCode && e.code === volumeHoldKeyCode) {
-      clearVolumeHoldTimers();
-    }
-    if (zoomHoldKeyCode && e.code === zoomHoldKeyCode) {
-      clearZoomHoldTimers();
-    }
+    volumeHoldRunner.handleKeyup(e.code);
+    zoomHoldRunner.handleKeyup(e.code);
   }
 
   function onGlobalBlur() {
     suppressedKeyupCodes.clear();
-    clearVolumeHoldTimers();
-    clearZoomHoldTimers();
+    volumeHoldRunner.clearTimers();
+    zoomHoldRunner.clearTimers();
   }
 
   onMounted(() => {
@@ -391,7 +351,7 @@ export function useEditorHotkeys() {
     window.removeEventListener('keydown', onGlobalKeydown, true);
     window.removeEventListener('keyup', onGlobalKeyup, true);
     window.removeEventListener('blur', onGlobalBlur);
-    clearVolumeHoldTimers();
-    clearZoomHoldTimers();
+    volumeHoldRunner.clearTimers();
+    zoomHoldRunner.clearTimers();
   });
 }

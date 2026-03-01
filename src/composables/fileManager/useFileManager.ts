@@ -36,54 +36,12 @@ import {
   renameEntryCommand,
   resolveDefaultTargetDir,
 } from '~/file-manager/application/fileManagerCommands';
+import { createUiActionRunner } from './useUiActionRunner';
 
 type FileTreeSortMode = 'name' | 'modified';
 
 export function isMoveAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
   return isMoveAllowedCore(params);
-}
-
-interface UiActionRunnerState {
-  isLoading: Ref<boolean>;
-  error: Ref<string | null>;
-}
-
-interface UiActionRunnerDeps {
-  toast: ReturnType<typeof useToast>;
-}
-
-function createUiActionRunner(state: UiActionRunnerState, deps: UiActionRunnerDeps) {
-  return async function runWithUiFeedback<T>(params: {
-    action: () => Promise<T>;
-    defaultErrorMessage: string;
-    toastTitle: string;
-    toastDescription?: () => string;
-    ignoreError?: (e: unknown) => boolean;
-    rethrow?: boolean;
-  }): Promise<T | null> {
-    state.error.value = null;
-    state.isLoading.value = true;
-    try {
-      return await params.action();
-    } catch (e: any) {
-      if (params.ignoreError?.(e)) {
-        return null;
-      }
-
-      state.error.value = e?.message ?? params.defaultErrorMessage;
-      deps.toast.add({
-        color: 'red',
-        title: params.toastTitle,
-        description:
-          params.toastDescription?.() ?? (state.error.value || params.defaultErrorMessage),
-      });
-
-      if (params.rethrow) throw e;
-      return null;
-    } finally {
-      state.isLoading.value = false;
-    }
-  };
 }
 
 export interface FileManagerCreateDeps {

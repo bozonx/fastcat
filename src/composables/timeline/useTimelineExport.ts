@@ -25,6 +25,13 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
+import {
+  cloneEffects,
+  clonePlain,
+  mergeFadeInUs,
+  mergeFadeOutUs,
+  resolveNestedMediaPath,
+} from '~/utils/video-editor/worker-clip-utils';
 
 export interface ExportOptions {
   format: 'mp4' | 'webm' | 'mkv';
@@ -84,108 +91,6 @@ export async function toWorkerTimelineClips(
   const clips: WorkerTimelineClip[] = [];
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
-
-  function cloneEffects<T>(effects: T): T {
-    try {
-      if (typeof structuredClone === 'function') {
-        return structuredClone(effects);
-      }
-    } catch {
-      // ignore
-    }
-    return effects;
-  }
-
-  function clonePlain<T>(value: T): T {
-    if (value === null || value === undefined) return value;
-    try {
-      if (typeof structuredClone === 'function') {
-        return structuredClone(value);
-      }
-    } catch {
-      // ignore and fallback
-    }
-    try {
-      return JSON.parse(JSON.stringify(value)) as T;
-    } catch {
-      return value;
-    }
-  }
-
-  function mergeFadeInUs(input: {
-    childFadeInUs: unknown;
-    parentFadeInUs: unknown;
-    parentLocalStartUs: number;
-  }): number | undefined {
-    const child = clampNumber(input.childFadeInUs, 0, Number.MAX_SAFE_INTEGER);
-    const parent = clampNumber(input.parentFadeInUs, 0, Number.MAX_SAFE_INTEGER);
-    if (!parent || parent <= 0) return child;
-    const remaining = Math.max(0, Math.round(parent - input.parentLocalStartUs));
-    if (remaining <= 0) return child;
-    if (child === undefined) return remaining;
-    return Math.max(child, remaining);
-  }
-
-  function mergeFadeOutUs(input: {
-    childFadeOutUs: unknown;
-    parentFadeOutUs: unknown;
-    parentLocalEndUs: number;
-    parentDurationUs: number;
-  }): number | undefined {
-    const child = clampNumber(input.childFadeOutUs, 0, Number.MAX_SAFE_INTEGER);
-    const parent = clampNumber(input.parentFadeOutUs, 0, Number.MAX_SAFE_INTEGER);
-    if (!parent || parent <= 0) return child;
-    const outStart = Math.max(0, Math.round(input.parentDurationUs - parent));
-    if (input.parentLocalEndUs <= outStart) return child;
-    const remaining = Math.max(
-      0,
-      Math.round(parent - (input.parentDurationUs - input.parentLocalEndUs)),
-    );
-    if (remaining <= 0) return child;
-    if (child === undefined) return remaining;
-    return Math.max(child, remaining);
-  }
-
-  function isProbablyUrlLike(path: string): boolean {
-    return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path);
-  }
-
-  function getDirname(path: string): string {
-    const normalized = String(path).replace(/\\/g, '/');
-    const parts = normalized.split('/').filter(Boolean);
-    if (parts.length <= 1) return '';
-    parts.pop();
-    return parts.join('/');
-  }
-
-  function joinPaths(left: string, right: string): string {
-    const l = String(left).replace(/\\/g, '/').replace(/\/+$/g, '');
-    const r = String(right).replace(/\\/g, '/').replace(/^\/+/, '');
-    if (!l) return r;
-    if (!r) return l;
-    return `${l}/${r}`;
-  }
-
-  function resolveNestedMediaPath(params: {
-    nestedTimelinePath: string;
-    mediaPath: string;
-  }): string {
-    const mediaPath = String(params.mediaPath);
-    if (!mediaPath) return mediaPath;
-    if (mediaPath.startsWith('/')) return mediaPath;
-    if (isProbablyUrlLike(mediaPath)) return mediaPath;
-    if (
-      mediaPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
-      mediaPath.startsWith(`${AUDIO_DIR_NAME}/`) ||
-      mediaPath.startsWith(`${IMAGES_DIR_NAME}/`) ||
-      mediaPath.startsWith(`${TIMELINES_DIR_NAME}/`)
-    ) {
-      return mediaPath;
-    }
-    const baseDir = getDirname(params.nestedTimelinePath);
-    if (!baseDir) return mediaPath;
-    return joinPaths(baseDir, mediaPath);
-  }
 
   for (const item of items) {
     if (item.kind !== 'clip') continue;
