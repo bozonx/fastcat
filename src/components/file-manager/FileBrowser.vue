@@ -60,6 +60,7 @@ async function loadParentFolders() {
 
   for (let i = 0; i < pathParts.length; i++) {
     const part = pathParts[i];
+    if (!part) continue;
     try {
       currentHandle = await currentHandle.getDirectoryHandle(part);
       parentFolders.value.push({
@@ -215,16 +216,21 @@ function navigateToFolder(index: number) {
 function navigateBack() {
   if (parentFolders.value.length > 1) {
     const parentIndex = parentFolders.value.length - 2;
-    filesPageStore.selectFolder(parentFolders.value[parentIndex]);
+    filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
   } else if (parentFolders.value.length === 1) {
-    filesPageStore.selectFolder(parentFolders.value[0]);
+    filesPageStore.selectFolder(parentFolders.value[0] as FsEntry);
+  } else {
+    // If we're at the root of a project, go back to project selection
+    filesPageStore.selectFolder(null);
   }
 }
 
 function navigateUp() {
   if (parentFolders.value.length > 1) {
     const parentIndex = parentFolders.value.length - 2;
-    filesPageStore.selectFolder(parentFolders.value[parentIndex]);
+    filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
+  } else {
+    filesPageStore.selectFolder(null);
   }
 }
 
@@ -250,8 +256,12 @@ function onResizeEnd() {
 }
 
 function onCardSizeChange(e: Event) {
-  const value = parseInt((e.target as HTMLInputElement).value);
-  filesPageStore.setGridCardSize(GRID_SIZES[value]);
+  const target = e.target as HTMLInputElement;
+  if (!target) return;
+  const value = parseInt(target.value);
+  if (!isNaN(value)) {
+    filesPageStore.setGridCardSize(GRID_SIZES[value] || 120);
+  }
 }
 </script>
 
@@ -277,17 +287,17 @@ function onCardSizeChange(e: Event) {
       </div>
 
       <!-- Card size slider (only in grid view) -->
-      <div v-if="filesPageStore.viewMode === 'grid'" class="flex items-center gap-2 ml-2">
-        <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-ui-text-muted" />
-        <input
-          type="range"
+      <div v-if="filesPageStore.viewMode === 'grid'" class="flex items-center gap-2 ml-2 w-32">
+        <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-ui-text-muted shrink-0" />
+        <USlider
+          :model-value="GRID_SIZES.indexOf(filesPageStore.gridCardSize)"
           :min="0"
           :max="GRID_SIZES.length - 1"
-          :value="GRID_SIZES.indexOf(filesPageStore.gridCardSize)"
-          class="w-20 h-1 bg-ui-border rounded-lg appearance-none cursor-pointer accent-primary-500"
-          @input="onCardSizeChange"
+          :step="1"
+          class="flex-1"
+          @update:model-value="(v) => filesPageStore.setGridCardSize(GRID_SIZES[Number(v) || 0] || 120)"
         />
-        <span class="text-xs text-ui-text-muted w-8">{{ filesPageStore.gridCardSize }}px</span>
+        <span class="text-xs text-ui-text-muted w-10 shrink-0 text-right">{{ filesPageStore.gridCardSize }}px</span>
       </div>
 
       <div class="ml-auto flex items-center gap-2">
