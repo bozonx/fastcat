@@ -27,6 +27,7 @@ vi.mock('~/composables/fileManager/useEntryPreview', () => {
           longitude: 56.78,
         }),
         exifYaml: ref('Make: TestCamera\nModel: UnitTest\n'),
+        imageDimensions: ref({ width: 1920, height: 1080 }),
         metadataYaml: ref(null),
         isUnknown: ref(false),
         isOtio: ref(false),
