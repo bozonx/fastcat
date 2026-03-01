@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TimelineZoomLogSlider from '~/components/ui/TimelineZoomLogSlider.vue';
@@ -9,7 +8,6 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
@@ -107,18 +105,6 @@ function onZoomInput(e: Event) {
   const target = e.target as HTMLInputElement | null;
   timelineStore.setTimelineZoom(Number(target?.value ?? 50));
 }
-
-function toggleOverlapMode() {
-  settingsStore.setOverlapMode(settingsStore.overlapMode === 'none' ? 'pseudo' : 'none');
-}
-
-function toggleFrameSnapMode() {
-  settingsStore.setFrameSnapMode(settingsStore.frameSnapMode === 'frames' ? 'free' : 'frames');
-}
-
-function toggleClipSnapMode() {
-  settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
-}
 </script>
 
 <template>
@@ -208,69 +194,6 @@ function toggleClipSnapMode() {
         icon="i-heroicons-arrow-right"
         :aria-label="t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right')"
         @click="rippleTrimRight"
-      />
-    </div>
-
-    <div class="mx-2 flex items-center gap-1.5">
-      <div class="w-px h-5 bg-ui-border" />
-
-      <!-- Overlap mode toggle -->
-      <UButton
-        size="sm"
-        :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
-        :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
-        icon="i-heroicons-squares-2x2"
-        :aria-label="
-          settingsStore.overlapMode === 'pseudo'
-            ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode (active)')
-            : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode (no overlap)')
-        "
-        :title="
-          settingsStore.overlapMode === 'pseudo'
-            ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode')
-            : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode')
-        "
-        @click="toggleOverlapMode"
-      />
-
-      <div class="w-px h-5 bg-ui-border" />
-
-      <!-- Frame snap toggle -->
-      <UButton
-        size="sm"
-        :variant="settingsStore.frameSnapMode === 'frames' ? 'solid' : 'ghost'"
-        :color="settingsStore.frameSnapMode === 'frames' ? 'primary' : 'neutral'"
-        icon="i-heroicons-film"
-        :aria-label="
-          settingsStore.frameSnapMode === 'frames'
-            ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames (active)')
-            : t('granVideoEditor.timeline.frameSnapOff', 'Free placement (no frame snap)')
-        "
-        :title="
-          settingsStore.frameSnapMode === 'frames'
-            ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames')
-            : t('granVideoEditor.timeline.frameSnapOff', 'Free placement')
-        "
-        @click="toggleFrameSnapMode"
-      />
-
-      <!-- Clip snap toggle -->
-      <UButton
-        size="sm"
-        :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
-        :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
-        icon="i-heroicons-link"
-        :aria-label="
-          settingsStore.clipSnapMode === 'clips'
-            ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
-            : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
-        "
-        :title="
-          settingsStore.clipSnapMode === 'clips'
-            ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
-            : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
-        "
-        @click="toggleClipSnapMode"
       />
     </div>
 
