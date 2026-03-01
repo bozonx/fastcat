@@ -203,6 +203,45 @@ function onTimelinePointerUp(e: PointerEvent) {
   }
 }
 
+function onTimelineRulerWheel(e: WheelEvent) {
+  const el = scrollEl.value;
+  if (!el) return;
+
+  const isSecondary =
+    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
+
+  const delta = isSecondary ? e.deltaX : e.deltaY;
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  if (!isSecondary) {
+    // Primary wheel -> Zoom horizontal
+    e.preventDefault();
+
+    const prevZoom = timelineStore.timelineZoom;
+    const dir = delta < 0 ? 1 : -1;
+    const step = 3;
+    const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
+
+    const rect = el.getBoundingClientRect();
+    const viewportX = e.clientX - rect.left;
+    const prevScrollLeft = el.scrollLeft;
+    const anchorPx = prevScrollLeft + viewportX;
+    const anchorTimeUs = pxToTimeUs(anchorPx, prevZoom);
+
+    applyZoomWithAnchor({
+      nextZoom,
+      anchor: {
+        anchorTimeUs,
+        anchorViewportX: viewportX,
+      },
+    });
+  } else {
+    // Secondary wheel -> Scroll horizontal
+    e.preventDefault();
+    el.scrollLeft += delta;
+  }
+}
+
 function onTimelineWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
@@ -536,6 +575,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               class="h-7 border-b border-ui-border bg-ui-bg-elevated z-10 cursor-pointer shrink-0"
               :scroll-el="scrollEl"
               @mousedown="onTimeRulerMouseDown"
+              @wheel="onTimelineRulerWheel"
             />
             <div
               ref="scrollEl"
