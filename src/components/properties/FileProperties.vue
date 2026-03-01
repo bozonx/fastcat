@@ -7,6 +7,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
 import { VIDEO_EXTENSIONS } from '~/utils/media-types';
+import { formatAudioChannels } from '~/utils/audio';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
@@ -101,13 +102,6 @@ const {
   exifData,
   imageDimensions,
 });
-
-function formatAudioChannels(channels: number | undefined) {
-  if (!channels || channels <= 0) return '-';
-  if (channels === 1) return 'Mono';
-  if (channels === 2) return 'Stereo';
-  return `${channels} tracks`;
-}
 
 const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsage({
   selectedFsEntry: selectedFsEntryRef,
