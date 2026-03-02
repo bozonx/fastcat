@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from 'vue';
-
+import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import { useProjectStore } from '~/stores/project.store';
 
 const props = defineProps<{
   filePath: string;
+  fileName?: string;
   initialContent: string;
 }>();
 
@@ -15,6 +16,7 @@ const isSaving = ref(false);
 const saveError = ref<string | null>(null);
 const lastSavedAt = ref<Date | null>(null);
 const lastSavedContent = ref(props.initialContent);
+const isModalOpen = ref(false);
 
 let saveTimer: number | undefined;
 
@@ -92,7 +94,17 @@ onUnmounted(() => {
 <template>
   <div class="flex flex-col h-full w-full bg-ui-bg">
     <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border text-xs">
-      <span class="text-ui-text-muted">Autosave enabled</span>
+      <div class="flex items-center gap-2">
+        <span class="text-ui-text-muted">Autosave enabled</span>
+        <UButton
+          icon="i-heroicons-arrows-pointing-out"
+          variant="ghost"
+          size="xs"
+          color="neutral"
+          title="Open in modal"
+          @click="isModalOpen = true"
+        />
+      </div>
       <span v-if="isSaving" class="text-ui-text">Saving...</span>
       <span v-else-if="saveError" class="text-red-400">{{ saveError }}</span>
       <span v-else-if="lastSavedAt" class="text-ui-text-muted">
@@ -106,6 +118,13 @@ onUnmounted(() => {
       v-model="content"
       class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
       spellcheck="false"
+    />
+
+    <TextEditorModal
+      v-model:open="isModalOpen"
+      :file-path="props.filePath"
+      :file-name="props.fileName || 'Text Editor'"
+      :initial-content="props.initialContent"
     />
   </div>
 </template>

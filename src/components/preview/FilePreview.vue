@@ -11,6 +11,7 @@ const props = defineProps<{
   textContent?: string;
   alt?: string;
   filePath?: string;
+  fileName?: string;
 }>();
 </script>
 
@@ -33,6 +34,7 @@ const props = defineProps<{
     <TextEditor
       v-else-if="props.mediaType === 'text'"
       :file-path="props.filePath || ''"
+      :file-name="props.fileName"
       :initial-content="props.textContent || ''"
       class="w-full h-full"
     />
