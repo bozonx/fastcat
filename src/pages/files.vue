@@ -24,7 +24,7 @@ const { sizes, onResized } = usePersistedSplitpanes(
   <ClientOnly>
     <Splitpanes class="flex-1 min-h-0 editor-splitpanes" @resized="onResized">
       <Pane :size="sizes[0]" min-size="10">
-        <FileManager folders-only class="h-full" @select="filesPageStore.selectFolder" />
+        <FileManager folders-only disable-sort class="h-full" @select="filesPageStore.selectFolder" />
       </Pane>
       <Pane :size="sizes[1]" min-size="10">
         <FileBrowser class="h-full" />

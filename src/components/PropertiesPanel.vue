@@ -19,6 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   panelDragStart: [e: DragEvent];
+  clearSelection: [];
 }>();
 
 const { t } = useI18n();
@@ -31,6 +32,7 @@ function clearAllSelection() {
   selectionStore.clearSelection();
   timelineStore.clearSelection();
   timelineStore.selectTrack(null);
+  emit('clearSelection');
 }
 
 const selectedClip = computed<TimelineClipItem | null>(() => {
@@ -162,13 +164,6 @@ function handleDeleteClip() {
         </span>
       </div>
       <div class="flex gap-1 shrink-0 ml-2" v-if="displayMode !== 'empty'">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-x-mark"
-          @click="clearAllSelection"
-        />
         <div v-if="displayMode === 'file' && hasProxy" class="flex gap-1">
           <UFieldGroup size="xs">
             <UButton
@@ -185,6 +180,13 @@ function handleDeleteClip() {
             />
           </UFieldGroup>
         </div>
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-x-mark"
+          @click="clearAllSelection"
+        />
       </div>
     </div>
 

@@ -2,13 +2,16 @@
 import { ref, computed, watch } from 'vue';
 import { useFilesPageStore, type FileViewMode, type FileSortField, type SortOrder } from '~/stores/filesPage.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
+const uiStore = useUiStore();
 const { readDirectory, getFileIcon, getProjectRootDirHandle } = useFileManager();
 const { t } = useI18n();
 
@@ -41,7 +44,10 @@ async function loadFolderContent() {
     const handle = filesPageStore.selectedFolder.handle as FileSystemDirectoryHandle;
     const path = filesPageStore.selectedFolder.path || '';
     const entries = await readDirectory(handle, path);
-    folderEntries.value = await supplementEntries(entries);
+    // readDirectory already filters hidden files based on deps.showHiddenFiles(),
+    // but just to be sure we also filter it here if needed.
+    const filteredEntries = entries.filter(e => uiStore.showHiddenFiles || !e.name.startsWith('.'));
+    folderEntries.value = await supplementEntries(filteredEntries);
   } catch (error) {
     console.error('Failed to load folder content:', error);
     folderEntries.value = [];
@@ -77,10 +83,18 @@ async function loadParentFolders() {
   }
 }
 
+watch(() => uiStore.showHiddenFiles, async () => {
+  await loadFolderContent();
+});
+
 watch(() => filesPageStore.selectedFolder, async () => {
   await loadFolderContent();
   await loadParentFolders();
 }, { immediate: true });
+
+watch(() => uiStore.fileManagerUpdateCounter, async () => {
+  await loadFolderContent();
+});
 
 interface ExtendedFsEntry extends FsEntry {
   size?: number;
@@ -298,15 +312,14 @@ function onCardSizeChange(e: Event) {
       </div>
 
       <!-- Card size slider (only in grid view) -->
-      <div v-if="filesPageStore.viewMode === 'grid'" class="flex items-center gap-2 ml-2 w-32">
-        <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-ui-text-muted shrink-0" />
-        <USlider
+      <div v-if="filesPageStore.viewMode === 'grid'" class="flex items-center gap-2 ml-2 w-32" :title="t('videoEditor.fileManager.cardScale', 'Масштаб карточек')">
+        <WheelSlider
           :model-value="GRID_SIZES.indexOf(filesPageStore.gridCardSize)"
           :min="0"
           :max="GRID_SIZES.length - 1"
           :step="1"
-          class="flex-1"
-          @update:model-value="(v) => filesPageStore.setGridCardSize(GRID_SIZES[Number(v) || 0] || 120)"
+          class="flex-1 w-full"
+          @update:model-value="(v) => filesPageStore.setGridCardSize(GRID_SIZES[v] || 120)"
         />
         <span class="text-xs text-ui-text-muted w-10 shrink-0 text-right">{{ filesPageStore.gridCardSize }}px</span>
       </div>
@@ -319,6 +332,7 @@ function onCardSizeChange(e: Event) {
           value-key="value"
           size="xs"
           class="w-32"
+          :search-input="false"
         />
         <UButton
           :icon="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
@@ -540,13 +554,10 @@ function onCardSizeChange(e: Event) {
     </div>
 
     <!-- Bottom Panel -->
-    <div class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-between text-[10px] uppercase font-bold tracking-wider text-ui-text-muted">
+    <div class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-[10px] uppercase font-bold tracking-wider text-ui-text-muted">
       <div v-if="filesPageStore.selectedFolder" class="flex items-center gap-4">
         <span>{{ t('common.totalSize', 'Total Size') }}: <span class="text-ui-text">{{ stats.totalSize }}</span></span>
         <span>{{ t('common.filesCount', 'Files') }}: <span class="text-ui-text">{{ stats.fileCount }}</span></span>
-      </div>
-      <div class="ml-auto" v-if="filesPageStore.selectedFolder">
-        <span class="text-ui-text-disabled">{{ filesPageStore.selectedFolder.path }}</span>
       </div>
     </div>
   </div>

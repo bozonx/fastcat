@@ -114,9 +114,9 @@ function onDragLeave(event: DragEvent, col: number, row: number) {
   }
 }
 
-function onDrop(event: DragEvent, _col: number, _row: number) {
+function onDrop(event: DragEvent, col: number, row: number) {
   event.preventDefault();
-  if (!draggingPanel.value || !dragOverPanel.value || !dropPosition.value) {
+  if (!draggingPanel.value || !dropPosition.value) {
     resetDragState();
     return;
   }
@@ -124,8 +124,8 @@ function onDrop(event: DragEvent, _col: number, _row: number) {
   projectStore.movePanel(
     draggingPanel.value.col,
     draggingPanel.value.row,
-    dragOverPanel.value.col,
-    dragOverPanel.value.row,
+    col,
+    row,
     dropPosition.value,
   );
 
@@ -157,8 +157,9 @@ watch(
 );
 
 function onVerticalSplitResize(event: any, colIndex: number) {
-  if (event && Array.isArray(event)) {
-    const newSizes = event.map((p: any) => p.size);
+  const panes = event?.panes ?? event;
+  if (Array.isArray(panes)) {
+    const newSizes = panes.map((p: any) => p.size);
     verticalSplitSizes.value[colIndex] = newSizes;
     writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
   }
@@ -191,13 +192,18 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
             @resized="onFilesResize"
           >
             <Pane :size="filesSizes[0]" min-size="10">
-              <FileManager folders-only class="h-full" @select="filesPageStore.selectFolder" />
+              <FileManager
+                folders-only
+                disable-sort
+                class="h-full"
+                @select="filesPageStore.selectFolder"
+              />
             </Pane>
             <Pane :size="filesSizes[1]" min-size="10">
               <FileBrowser class="h-full" />
             </Pane>
             <Pane :size="filesSizes[2]" min-size="10">
-              <PropertiesPanel :entity="filesPageStore.selectedEntity" class="h-full" />
+              <PropertiesPanel :entity="filesPageStore.selectedEntity" @clear-selection="filesPageStore.clearSelection" class="h-full" />
             </Pane>
           </Splitpanes>
 
@@ -209,19 +215,19 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
           >
             <Pane
               v-for="(col, colIndex) in projectStore.cutPanels"
-              :key="`col-${colIndex}`"
+              :key="col.id"
               :size="topSplitSizes[colIndex] ?? 100 / projectStore.cutPanels.length"
               min-size="5"
             >
               <Splitpanes
                 horizontal
                 class="editor-splitpanes"
-                @resized="(e: { panes: { size: number }[] }) => onVerticalSplitResize(e, colIndex)"
+                @resized="(e: any) => onVerticalSplitResize(e, colIndex)"
               >
                 <Pane
-                  v-for="(panel, rowIndex) in col"
+                  v-for="(panel, rowIndex) in col.panels"
                   :key="panel.id"
-                  :size="getVerticalSize(colIndex, rowIndex) ?? 100 / col.length"
+                  :size="getVerticalSize(colIndex, rowIndex) ?? 100 / col.panels.length"
                   min-size="5"
                 >
                   <div

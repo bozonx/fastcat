@@ -31,6 +31,12 @@ export const useUiStore = defineStore('ui', () => {
   const pendingFsEntryCreateTimeline = ref<unknown>(null);
   const pendingOtioCreateVersion = ref<unknown>(null);
 
+  const fileManagerUpdateCounter = ref(0);
+
+  function notifyFileManagerUpdate() {
+    fileManagerUpdateCounter.value++;
+  }
+
   const fileTreeModule = createUiFileTreePersistenceModule({ fileTreeExpandedPaths });
   const {
     restoreFileTreeStateOnce,
@@ -50,6 +56,8 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,
     showHiddenFiles,
+    fileManagerUpdateCounter,
+    notifyFileManagerUpdate,
     restoreFileTreeStateOnce,
     hasPersistedFileTreeState,
     isFileTreePathExpanded,
