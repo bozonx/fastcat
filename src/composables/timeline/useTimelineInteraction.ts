@@ -20,6 +20,8 @@ import {
   computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
 
+export { BASE_PX_PER_SECOND, timeUsToPx, pxToTimeUs, pxToDeltaUs, computeAnchoredScrollLeft };
+
 function computeSnapTargetsUs(params: {
   tracks: TimelineTrack[];
   excludeItemId: string;
