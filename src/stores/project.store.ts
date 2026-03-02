@@ -50,7 +50,7 @@ export const useProjectStore = defineStore('project', () => {
   const editorViewModule = createEditorViewModule(currentProjectId);
 
   const fsModule = createProjectFsModule({
-    projectsHandle: computed(() => workspaceStore.projectsHandle) as any,
+    projectsHandle: computed(() => workspaceStore.projectsHandle),
     currentProjectName,
   });
 
@@ -94,7 +94,7 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectName,
     currentTimelinePath,
     currentFileName,
-    projectSettings: projectSettings as any,
+    projectSettings,
     toProjectRelativePath,
     setWorkspaceError: (message) => {
       workspaceStore.error = message;

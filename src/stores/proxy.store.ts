@@ -20,12 +20,12 @@ export const useProxyStore = defineStore('proxy', () => {
   const activeWorkerPaths = ref<Set<string>>(new Set());
 
   const fsModule = createProxyFsModule({
-    workspaceHandle: computed(() => workspaceStore.workspaceHandle) as any,
-    currentProjectId: computed(() => projectStore.currentProjectId) as any,
+    workspaceHandle: computed(() => workspaceStore.workspaceHandle),
+    currentProjectId: computed(() => projectStore.currentProjectId),
   });
 
   const queueModule = createProxyQueueModule({
-    concurrency: ref(workspaceStore.userSettings.optimization.proxyConcurrency) as any,
+    concurrency: computed(() => workspaceStore.userSettings.optimization.proxyConcurrency),
   });
 
   const service = createProxyService({
@@ -35,7 +35,7 @@ export const useProxyStore = defineStore('proxy', () => {
     proxyProgress,
     proxyAbortControllers,
     activeWorkerPaths,
-    proxyQueue: queueModule.proxyQueue as any,
+    proxyQueue: queueModule.proxyQueue,
     ensureProjectProxiesDir: fsModule.ensureProjectProxiesDir,
     getProxyFileName: fsModule.getProxyFileName,
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
