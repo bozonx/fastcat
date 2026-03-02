@@ -13,6 +13,9 @@ import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vu
 import Timeline from '~/components/Timeline.vue';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 
+// Vertical Splitpanes logic
+import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
+
 const projectStore = useProjectStore();
 const { currentProjectId } = storeToRefs(projectStore);
 const filesPageStore = useFilesPageStore();
@@ -54,73 +57,77 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
 }
 
 // Drag and drop logic for dynamic panels
-const draggingPanelIndex = ref<number | null>(null);
-const dragOverPanelIndex = ref<number | null>(null);
-const dropPosition = ref<'left' | 'right' | null>(null);
+const draggingPanel = ref<{ col: number; row: number } | null>(null);
+const dragOverPanel = ref<{ col: number; row: number } | null>(null);
+const dropPosition = ref<'left' | 'right' | 'top' | 'bottom' | null>(null);
 
-function onDragStart(event: DragEvent, index: number) {
+function onDragStart(event: DragEvent, col: number, row: number) {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
     // Use an invisible image or just let default ghost image
   }
-  draggingPanelIndex.value = index;
+  draggingPanel.value = { col, row };
 }
 
-function onDragOver(event: DragEvent, index: number) {
+function onDragOver(event: DragEvent, col: number, row: number) {
   event.preventDefault();
-  if (draggingPanelIndex.value === null || draggingPanelIndex.value === index) {
-    dragOverPanelIndex.value = null;
+  if (!draggingPanel.value) {
+    dragOverPanel.value = null;
+    dropPosition.value = null;
+    return;
+  }
+  if (draggingPanel.value.col === col && draggingPanel.value.row === row) {
+    dragOverPanel.value = null;
     dropPosition.value = null;
     return;
   }
 
-  dragOverPanelIndex.value = index;
+  dragOverPanel.value = { col, row };
 
   const target = event.currentTarget as HTMLElement;
   const rect = target.getBoundingClientRect();
   const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
 
-  if (x < rect.width / 2) {
-    dropPosition.value = 'left';
-  } else {
-    dropPosition.value = 'right';
-  }
+  const distLeft = x;
+  const distRight = rect.width - x;
+  const distTop = y;
+  const distBottom = rect.height - y;
+
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+  if (minDist === distLeft) dropPosition.value = 'left';
+  else if (minDist === distRight) dropPosition.value = 'right';
+  else if (minDist === distTop) dropPosition.value = 'top';
+  else dropPosition.value = 'bottom';
 }
 
-function onDragLeave(event: DragEvent, index: number) {
+function onDragLeave(event: DragEvent, col: number, row: number) {
   // Only clear if we actually leave the element, not when entering children
   const target = event.currentTarget as HTMLElement;
   const relatedTarget = event.relatedTarget as Node | null;
   if (!target.contains(relatedTarget)) {
-    if (dragOverPanelIndex.value === index) {
-      dragOverPanelIndex.value = null;
+    if (dragOverPanel.value?.col === col && dragOverPanel.value?.row === row) {
+      dragOverPanel.value = null;
       dropPosition.value = null;
     }
   }
 }
 
-function onDrop(event: DragEvent, index: number) {
+function onDrop(event: DragEvent, _col: number, _row: number) {
   event.preventDefault();
-  if (draggingPanelIndex.value === null || dragOverPanelIndex.value === null) {
+  if (!draggingPanel.value || !dragOverPanel.value || !dropPosition.value) {
     resetDragState();
     return;
   }
 
-  const fromIndex = draggingPanelIndex.value;
-  let toIndex = dragOverPanelIndex.value;
-
-  if (dropPosition.value === 'right') {
-    toIndex += 1;
-  }
-
-  // Adjust index if moving from left to right to account for the removed element
-  if (fromIndex < toIndex) {
-    toIndex -= 1;
-  }
-
-  if (fromIndex !== toIndex) {
-    projectStore.movePanel(fromIndex, toIndex);
-  }
+  projectStore.movePanel(
+    draggingPanel.value.col,
+    draggingPanel.value.row,
+    dragOverPanel.value.col,
+    dragOverPanel.value.row,
+    dropPosition.value,
+  );
 
   resetDragState();
 }
@@ -130,9 +137,35 @@ function onDragEnd() {
 }
 
 function resetDragState() {
-  draggingPanelIndex.value = null;
-  dragOverPanelIndex.value = null;
+  draggingPanel.value = null;
+  dragOverPanel.value = null;
   dropPosition.value = null;
+}
+
+const verticalSplitSizesKey = computed(
+  () => `gran-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
+);
+const verticalSplitSizes = ref<Record<number, number[]>>(
+  readLocalStorageJson<Record<number, number[]>>(verticalSplitSizesKey.value, {}),
+);
+
+watch(
+  () => verticalSplitSizesKey.value,
+  (key) => {
+    verticalSplitSizes.value = readLocalStorageJson<Record<number, number[]>>(key, {});
+  },
+);
+
+function onVerticalSplitResize(event: any, colIndex: number) {
+  if (event && Array.isArray(event)) {
+    const newSizes = event.map((p: any) => p.size);
+    verticalSplitSizes.value[colIndex] = newSizes;
+    writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
+  }
+}
+
+function getVerticalSize(colIndex: number, rowIndex: number): number | undefined {
+  return verticalSplitSizes.value[colIndex]?.[rowIndex];
 }
 </script>
 
@@ -168,124 +201,152 @@ function resetDragState() {
             </Pane>
           </Splitpanes>
 
-          <!-- Cut View: Dynamic Panels -->
+          <!-- Cut View: Dynamic Panels (Columns and Rows) -->
           <Splitpanes
             v-else-if="projectStore.currentView === 'cut'"
             class="editor-splitpanes"
             @resized="onTopSplitResize"
           >
             <Pane
-              v-for="(panel, index) in projectStore.cutPanels"
-              :key="panel.id"
-              :size="topSplitSizes[index] ?? 100 / projectStore.cutPanels.length"
+              v-for="(col, colIndex) in projectStore.cutPanels"
+              :key="`col-${colIndex}`"
+              :size="topSplitSizes[colIndex] ?? 100 / projectStore.cutPanels.length"
               min-size="5"
             >
-              <div
-                class="h-full w-full relative transition-all duration-200"
-                :class="{
-                  'opacity-50': draggingPanelIndex === index,
-                  'border-l-2 border-l-primary-500':
-                    dragOverPanelIndex === index && dropPosition === 'left',
-                  'border-r-2 border-r-primary-500':
-                    dragOverPanelIndex === index && dropPosition === 'right',
-                }"
-                @dragenter.prevent
-                @dragover.prevent="(e) => onDragOver(e, index)"
-                @dragleave="(e) => onDragLeave(e, index)"
-                @drop.prevent="(e) => onDrop(e, index)"
-                @dragend="onDragEnd"
+              <Splitpanes
+                horizontal
+                class="editor-splitpanes"
+                @resized="(e: { panes: { size: number }[] }) => onVerticalSplitResize(e, colIndex)"
               >
-                <!-- Drag Handle Overlay for non-Properties panels (which handle their own) -->
-                <div
-                  v-if="panel.type !== 'properties'"
-                  class="absolute top-0 left-0 right-0 h-8 z-10 cursor-grab active:cursor-grabbing flex justify-between items-center px-2 bg-transparent hover:bg-ui-bg-elevated/50 transition-colors"
-                  draggable="true"
-                  @dragstart="(e) => onDragStart(e, index)"
+                <Pane
+                  v-for="(panel, rowIndex) in col"
+                  :key="panel.id"
+                  :size="getVerticalSize(colIndex, rowIndex) ?? 100 / col.length"
+                  min-size="5"
                 >
-                  <span
-                    class="text-xs text-ui-text-muted font-medium opacity-0 hover:opacity-100 transition-opacity flex items-center gap-1"
+                  <div
+                    class="h-full w-full relative transition-all duration-200"
+                    :class="{
+                      'opacity-50':
+                        draggingPanel?.col === colIndex && draggingPanel?.row === rowIndex,
+                      'border-l-2 border-l-primary-500':
+                        dragOverPanel?.col === colIndex &&
+                        dragOverPanel?.row === rowIndex &&
+                        dropPosition === 'left',
+                      'border-r-2 border-r-primary-500':
+                        dragOverPanel?.col === colIndex &&
+                        dragOverPanel?.row === rowIndex &&
+                        dropPosition === 'right',
+                      'border-t-2 border-t-primary-500':
+                        dragOverPanel?.col === colIndex &&
+                        dragOverPanel?.row === rowIndex &&
+                        dropPosition === 'top',
+                      'border-b-2 border-b-primary-500':
+                        dragOverPanel?.col === colIndex &&
+                        dragOverPanel?.row === rowIndex &&
+                        dropPosition === 'bottom',
+                    }"
+                    @dragenter.prevent
+                    @dragover.prevent="(e) => onDragOver(e, colIndex, rowIndex)"
+                    @dragleave="(e) => onDragLeave(e, colIndex, rowIndex)"
+                    @drop.prevent="(e) => onDrop(e, colIndex, rowIndex)"
+                    @dragend="onDragEnd"
                   >
-                    <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3" />
-                  </span>
-                </div>
+                    <!-- Drag Handle Overlay for non-Properties panels (which handle their own) -->
+                    <div
+                      v-if="panel.type !== 'properties'"
+                      class="absolute top-0 left-0 right-0 h-8 z-10 cursor-grab active:cursor-grabbing flex justify-between items-center px-2 bg-transparent hover:bg-ui-bg-elevated/50 transition-colors"
+                      draggable="true"
+                      @dragstart="(e) => onDragStart(e, colIndex, rowIndex)"
+                    >
+                      <span
+                        class="text-xs text-ui-text-muted font-medium opacity-0 hover:opacity-100 transition-opacity flex items-center gap-1"
+                      >
+                        <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3" />
+                      </span>
+                    </div>
 
-                <FileManager v-if="panel.type === 'fileManager'" class="h-full pt-2" />
-                <MonitorContainer v-else-if="panel.type === 'monitor'" class="h-full pt-2" />
-                <PropertiesPanel
-                  v-else-if="panel.type === 'properties'"
-                  class="h-full"
-                  @panel-drag-start="(e) => onDragStart(e, index)"
-                />
-                <div
-                  v-else-if="panel.type === 'media'"
-                  class="h-full w-full bg-ui-bg-elevated flex flex-col relative pt-8 border border-ui-border"
-                >
-                  <div
-                    class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
-                    draggable="true"
-                    @dragstart="(e) => onDragStart(e, index)"
-                  >
-                    <div class="flex items-center gap-2">
-                      <UIcon
-                        v-if="panel.mediaType === 'image'"
-                        name="i-heroicons-photo"
-                        class="w-4 h-4 text-ui-text-muted"
-                      />
-                      <UIcon
-                        v-else-if="panel.mediaType === 'video'"
-                        name="i-heroicons-film"
-                        class="w-4 h-4 text-ui-text-muted"
-                      />
-                      <UIcon
-                        v-else-if="panel.mediaType === 'audio'"
-                        name="i-heroicons-musical-note"
-                        class="w-4 h-4 text-ui-text-muted"
-                      />
-                      <h3 class="font-bold truncate max-w-50" :title="panel.title">
-                        {{ panel.title }}
-                      </h3>
+                    <FileManager v-if="panel.type === 'fileManager'" class="h-full pt-2" />
+                    <MonitorContainer v-else-if="panel.type === 'monitor'" class="h-full pt-2" />
+                    <PropertiesPanel
+                      v-else-if="panel.type === 'properties'"
+                      class="h-full"
+                      @panel-drag-start="(e) => onDragStart(e, colIndex, rowIndex)"
+                    />
+                    <div
+                      v-else-if="panel.type === 'media'"
+                      class="h-full w-full bg-ui-bg-elevated flex flex-col relative pt-8 border border-ui-border"
+                    >
+                      <div
+                        class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
+                        draggable="true"
+                        @dragstart="(e) => onDragStart(e, colIndex, rowIndex)"
+                      >
+                        <div class="flex items-center gap-2">
+                          <UIcon
+                            v-if="panel.mediaType === 'image'"
+                            name="i-heroicons-photo"
+                            class="w-4 h-4 text-ui-text-muted"
+                          />
+                          <UIcon
+                            v-else-if="panel.mediaType === 'video'"
+                            name="i-heroicons-film"
+                            class="w-4 h-4 text-ui-text-muted"
+                          />
+                          <UIcon
+                            v-else-if="panel.mediaType === 'audio'"
+                            name="i-heroicons-musical-note"
+                            class="w-4 h-4 text-ui-text-muted"
+                          />
+                          <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                            {{ panel.title }}
+                          </h3>
+                        </div>
+                        <UButton
+                          size="xs"
+                          variant="ghost"
+                          color="neutral"
+                          icon="i-heroicons-x-mark"
+                          @click="projectStore.removePanel(panel.id)"
+                        />
+                      </div>
+                      <div class="flex-1 overflow-hidden min-h-0 relative">
+                        <MediaPanelWrapper
+                          :file-path="panel.filePath || ''"
+                          :media-type="panel.mediaType || 'unknown'"
+                        />
+                      </div>
                     </div>
-                    <UButton
-                      size="xs"
-                      variant="ghost"
-                      color="neutral"
-                      icon="i-heroicons-x-mark"
-                      @click="projectStore.removePanel(panel.id)"
-                    />
-                  </div>
-                  <div class="flex-1 overflow-hidden min-h-0 relative">
-                    <MediaPanelWrapper
-                      :file-path="panel.filePath || ''"
-                      :media-type="panel.mediaType || 'unknown'"
-                    />
-                  </div>
-                </div>
-                <div
-                  v-else-if="panel.type === 'text'"
-                  class="h-full w-full bg-ui-bg-elevated p-4 overflow-auto border border-ui-border flex flex-col pt-8 relative"
-                >
-                  <div
-                    class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
-                    draggable="true"
-                    @dragstart="(e) => onDragStart(e, index)"
-                  >
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
-                      <h3 class="font-bold truncate max-w-50" :title="panel.title">
-                        {{ panel.title }}
-                      </h3>
+                    <div
+                      v-else-if="panel.type === 'text'"
+                      class="h-full w-full bg-ui-bg-elevated p-4 overflow-auto border border-ui-border flex flex-col pt-8 relative"
+                    >
+                      <div
+                        class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
+                        draggable="true"
+                        @dragstart="(e) => onDragStart(e, colIndex, rowIndex)"
+                      >
+                        <div class="flex items-center gap-2">
+                          <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
+                          <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                            {{ panel.title }}
+                          </h3>
+                        </div>
+                        <UButton
+                          size="xs"
+                          variant="ghost"
+                          color="neutral"
+                          icon="i-heroicons-x-mark"
+                          @click="projectStore.removePanel(panel.id)"
+                        />
+                      </div>
+                      <pre class="text-xs whitespace-pre-wrap flex-1 mt-2">{{
+                        panel.fileContent
+                      }}</pre>
                     </div>
-                    <UButton
-                      size="xs"
-                      variant="ghost"
-                      color="neutral"
-                      icon="i-heroicons-x-mark"
-                      @click="projectStore.removePanel(panel.id)"
-                    />
                   </div>
-                  <pre class="text-xs whitespace-pre-wrap flex-1 mt-2">{{ panel.fileContent }}</pre>
-                </div>
-              </div>
+                </Pane>
+              </Splitpanes>
             </Pane>
           </Splitpanes>
 
