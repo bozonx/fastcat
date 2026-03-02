@@ -66,6 +66,16 @@ const dropPosition = ref<'left' | 'right' | 'top' | 'bottom' | null>(null);
 function onDragStart(event: DragEvent, panelId: string) {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
+
+    // Find panel to attach file metadata for Project tab drop
+    const panel = projectStore.cutPanels.flatMap((c) => c.panels).find((p) => p.id === panelId);
+    if (panel && (panel.type === 'media' || panel.type === 'text') && panel.filePath) {
+      const fileName = panel.title ?? panel.filePath.split('/').pop() ?? panel.filePath;
+      event.dataTransfer.setData(
+        'panel-drag',
+        JSON.stringify({ panelId, filePath: panel.filePath, fileName }),
+      );
+    }
   }
   draggingPanelId.value = panelId;
 }

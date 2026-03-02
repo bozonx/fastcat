@@ -1,31 +1,131 @@
 <script setup lang="ts">
-import { onMounted, markRaw } from 'vue';
-import { useProjectTabs, registerProjectTab } from '~/composables/project/useProjectTabs';
+import { onMounted, markRaw, ref, computed } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
+import {
+  useProjectTabs,
+  registerProjectTab,
+  isFileTab,
+  type AnyProjectTab,
+  type ProjectTab,
+} from '~/composables/project/useProjectTabs';
+import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import ProjectFiles from '~/components/project/ProjectFiles.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
+import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 
-const { tabs, activeTabId, setActiveTab, initDefaultTab } = useProjectTabs();
+const { t } = useI18n();
+
+const {
+  tabs,
+  activeTabId,
+  setActiveTab,
+  initDefaultTab,
+  reorderTabs,
+  addFileTab,
+  removeFileTab,
+} = useProjectTabs();
+
+/** Mutable proxy for VueDraggable v-model */
+const tabsModel = computed({
+  get: () => tabs.value as AnyProjectTab[],
+  set: (val) => reorderTabs(val),
+});
+
+const activeFileTab = computed(() => {
+  const tab = tabs.value.find((t) => t.id === activeTabId.value);
+  return tab && isFileTab(tab) ? tab : null;
+});
+
+const activeStaticTab = computed<ProjectTab | null>(() => {
+  const tab = tabs.value.find((t) => t.id === activeTabId.value);
+  return tab && !isFileTab(tab) ? (tab as ProjectTab) : null;
+});
+
+const activeStaticComponent = computed(() => activeStaticTab.value?.component ?? null);
+
+/** Whether the tab bar drop zone is active */
+const isDropTarget = ref(false);
+
+function onTabBarDragOver(e: DragEvent) {
+  const types = e.dataTransfer?.types ?? [];
+  if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes('panel-drag')) {
+    e.preventDefault();
+    isDropTarget.value = true;
+  }
+}
+
+function onTabBarDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const related = e.relatedTarget as Node | null;
+  if (!currentTarget?.contains(related)) {
+    isDropTarget.value = false;
+  }
+}
+
+function onTabBarDrop(e: DragEvent) {
+  isDropTarget.value = false;
+  e.preventDefault();
+
+  // Drop from FileManager tree (internal file drag)
+  const movePayloadRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+  if (movePayloadRaw) {
+    try {
+      const payload = JSON.parse(movePayloadRaw) as { path: string; name: string; kind: string };
+      if (payload.kind === 'file' && payload.path) {
+        const tabId = addFileTab({ filePath: payload.path, fileName: payload.name });
+        setActiveTab(tabId);
+      }
+    } catch {
+      // ignore malformed payload
+    }
+    return;
+  }
+
+  // Drop from dynamic panel (media/text panel → tab)
+  const panelPayloadRaw = e.dataTransfer?.getData('panel-drag');
+  if (panelPayloadRaw) {
+    try {
+      const payload = JSON.parse(panelPayloadRaw) as {
+        panelId: string;
+        filePath?: string;
+        fileName?: string;
+      };
+      if (payload.filePath && payload.fileName) {
+        const tabId = addFileTab({
+          filePath: payload.filePath,
+          fileName: payload.fileName,
+        });
+        setActiveTab(tabId);
+        // Remove the source panel
+        const projectStore = useProjectStore();
+        projectStore.removePanel(payload.panelId);
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
 
 onMounted(() => {
   registerProjectTab({
     id: 'files',
-    label: 'Files',
+    label: t('videoEditor.fileManager.tabs.files', 'Files'),
     icon: 'i-heroicons-folder',
     component: markRaw(ProjectFiles),
   });
 
   registerProjectTab({
     id: 'history',
-    label: 'History',
+    label: t('videoEditor.fileManager.tabs.history', 'History'),
     icon: 'i-heroicons-clock',
     component: markRaw(ProjectHistory),
   });
 
   registerProjectTab({
     id: 'effects',
-    label: 'Effects',
+    label: t('videoEditor.fileManager.tabs.effects', 'Effects'),
     icon: 'i-heroicons-sparkles',
     component: markRaw(ProjectEffects),
   });
@@ -36,31 +136,102 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden">
+    <!-- Tab bar -->
     <div
-      class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none"
+      class="flex items-center border-b border-ui-border shrink-0 select-none transition-colors duration-150 min-h-[36px]"
+      :class="isDropTarget ? 'bg-primary-500/10 border-primary-500/50' : ''"
+      @dragover="onTabBarDragOver"
+      @dragleave="onTabBarDragLeave"
+      @drop="onTabBarDrop"
     >
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-        :class="
-          activeTabId === tab.id
-            ? 'text-primary-400'
-            : 'text-ui-text-muted hover:text-ui-text'
-        "
-        @click="setActiveTab(tab.id)"
+      <VueDraggable
+        v-model="tabsModel"
+        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
+        :animation="150"
+        ghost-class="tab-ghost"
+        item-key="id"
       >
-        {{ tab.label }}
-      </button>
+        <div
+          v-for="tab in tabsModel"
+          :key="tab.id"
+          class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
+          :class="
+            activeTabId === tab.id
+              ? 'bg-primary-500/15 text-primary-400'
+              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
+          "
+          :title="isFileTab(tab) ? tab.fileName : tab.label"
+          @click="setActiveTab(tab.id)"
+        >
+          <!-- Icon -->
+          <UIcon
+            :name="isFileTab(tab) ? tab.icon : (tab.icon ?? 'i-heroicons-rectangle-stack')"
+            class="w-3.5 h-3.5 shrink-0"
+            :class="activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+          />
+
+          <!-- Label: static tabs show text, file tabs show icon only (with tooltip via :title) -->
+          <span
+            v-if="!isFileTab(tab)"
+            class="text-[10px] font-semibold uppercase tracking-wider"
+          >
+            {{ tab.label }}
+          </span>
+
+          <!-- Close button for file tabs -->
+          <button
+            v-if="isFileTab(tab)"
+            class="ml-0.5 p-0.5 rounded hover:bg-red-500/15 hover:text-red-400 transition-colors"
+            :title="t('common.close', 'Close')"
+            @click.stop="removeFileTab(tab.id)"
+          >
+            <UIcon name="i-heroicons-x-mark" class="w-3 h-3" />
+          </button>
+        </div>
+      </VueDraggable>
+
+      <!-- Drop hint when dragging over -->
+      <div
+        v-if="isDropTarget"
+        class="flex items-center gap-1 px-2 text-[10px] text-primary-400 font-semibold uppercase tracking-wider shrink-0 pointer-events-none"
+      >
+        <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5" />
+        {{ t('videoEditor.projectTabs.dropHint', 'Add as tab') }}
+      </div>
     </div>
 
+    <!-- Content area -->
     <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <!-- File viewer for file tabs -->
+      <ProjectTabFileViewer
+        v-if="activeFileTab"
+        :file-path="activeFileTab.filePath"
+        :file-name="activeFileTab.fileName"
+        :media-type="activeFileTab.mediaType"
+      />
+
+      <!-- Static tab component -->
       <component
-        :is="tabs.find((t) => t.id === activeTabId)?.component"
-        v-if="activeTabId"
+        :is="activeStaticComponent"
+        v-else-if="activeStaticComponent"
       />
     </div>
 
     <TimelineToolbar />
   </div>
 </template>
+
+<style scoped>
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-ghost {
+  opacity: 0.3;
+  background: rgba(var(--color-primary-500), 0.1);
+  border-radius: 4px;
+}
+</style>

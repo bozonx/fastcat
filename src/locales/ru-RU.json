@@ -329,6 +329,9 @@
     "export": {
       "destination": "Место сохранения: export/"
     },
+    "projectTabs": {
+      "dropHint": "Добавить как вкладку"
+    },
     "projects": {
       "title": "Проекты",
       "changeWorkspace": "Сменить рабочую область",
