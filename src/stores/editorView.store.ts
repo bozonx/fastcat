@@ -80,6 +80,24 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     cutPanels.value = cutPanels.value.filter((p) => p.id !== id);
   }
 
+  function movePanel(fromIndex: number, toIndex: number) {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= cutPanels.value.length ||
+      toIndex < 0 ||
+      toIndex >= cutPanels.value.length ||
+      fromIndex === toIndex
+    )
+      return;
+
+    const panels = [...cutPanels.value];
+    const [movedPanel] = panels.splice(fromIndex, 1);
+    if (movedPanel) {
+      panels.splice(toIndex, 0, movedPanel);
+      cutPanels.value = panels;
+    }
+  }
+
   const timelineHeightKey = computed(() =>
     getPanelSizesKey(`timeline-height-${currentView.value}`, projectIdRef.value),
   );
@@ -125,6 +143,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     cutPanels,
     addTextPanel,
     removePanel,
+    movePanel,
     setView,
     goToFiles,
     goToCut,
