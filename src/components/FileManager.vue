@@ -18,8 +18,9 @@ import { useFileManagerModals } from '~/composables/fileManager/useFileManagerMo
 import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 
-defineProps<{
+const props = defineProps<{
   foldersOnly?: boolean;
+  disableSort?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -535,7 +536,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           @click="loadProjectDirectory"
         />
 
-        <div class="ml-auto w-30">
+        <div v-if="!disableSort" class="ml-auto w-30">
           <USelectMenu
             :model-value="sortMode"
             :search-input="false"

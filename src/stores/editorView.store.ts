@@ -21,6 +21,11 @@ export interface DynamicPanel {
   fsEntry?: any; // To pass to EntryPreviewBox or logic
 }
 
+export interface PanelColumn {
+  id: string;
+  panels: DynamicPanel[];
+}
+
 export type PanelPosition = 'left' | 'right' | 'top' | 'bottom';
 
 const viewConfigs: Record<EditorView, ViewConfig> = {
@@ -30,18 +35,24 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
   fullscreen: { timelineHeight: 0 },
 };
 
+function generateId() {
+  return Math.random().toString(36).substring(2, 9);
+}
+
 export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   const currentView = ref<EditorView>('cut');
 
-  // Dynamic panels for cut view, now 2D array: columns -> rows
-  const defaultCutPanels: DynamicPanel[][] = [
-    [{ id: 'fileManager', type: 'fileManager' }],
-    [{ id: 'monitor', type: 'monitor' }],
-    [{ id: 'properties', type: 'properties' }],
+  // Dynamic panels for cut view, 2D structure
+  const defaultCutPanels: PanelColumn[] = [
+    { id: 'col-1', panels: [{ id: 'fileManager', type: 'fileManager' }] },
+    { id: 'col-2', panels: [{ id: 'monitor', type: 'monitor' }] },
+    { id: 'col-3', panels: [{ id: 'properties', type: 'properties' }] },
   ];
 
   const cutPanelsKey = computed(() => `gran-cut-panels-${projectIdRef.value ?? 'no-project'}`);
-  const cutPanels = ref<DynamicPanel[][]>([...defaultCutPanels.map((col) => [...col])]);
+  const cutPanels = ref<PanelColumn[]>([
+    ...defaultCutPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
+  ]);
 
   // Load panels from local storage
   watch(
@@ -49,14 +60,21 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     (key) => {
       const stored = readLocalStorageJson<any[] | null>(key, null);
       if (stored && Array.isArray(stored) && stored.length > 0) {
-        // Migration from 1D to 2D
-        if (!Array.isArray(stored[0])) {
-          cutPanels.value = stored.map((p) => [p]);
+        // Migration from 1D to 2D columns
+        if (!Array.isArray(stored[0]) && !stored[0].panels) {
+          // 1D array of panels
+          cutPanels.value = stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] }));
+        } else if (Array.isArray(stored[0])) {
+          // 2D array without column IDs
+          cutPanels.value = stored.map((col) => ({ id: `col-${generateId()}`, panels: col }));
         } else {
+          // Already PanelColumn format
           cutPanels.value = stored;
         }
       } else {
-        cutPanels.value = [...defaultCutPanels.map((col) => [...col])];
+        cutPanels.value = [
+          ...defaultCutPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
+        ];
       }
     },
     { immediate: true },
@@ -80,9 +98,8 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       title,
     };
 
-    // Insert as a new column in the middle
     const middleIndex = Math.floor(cutPanels.value.length / 2);
-    cutPanels.value.splice(middleIndex, 0, [newPanel]);
+    cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
   }
 
   function addMediaPanel(
@@ -98,17 +115,16 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       title,
     };
 
-    // Insert as a new column in the middle
     const middleIndex = Math.floor(cutPanels.value.length / 2);
-    cutPanels.value.splice(middleIndex, 0, [newPanel]);
+    cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
   }
 
   function removePanel(id: string) {
-    const newPanels: DynamicPanel[][] = [];
+    const newPanels: PanelColumn[] = [];
     for (const col of cutPanels.value) {
-      const newCol = col.filter((p) => p.id !== id);
-      if (newCol.length > 0) {
-        newPanels.push(newCol);
+      const newColPanels = col.panels.filter((p) => p.id !== id);
+      if (newColPanels.length > 0) {
+        newPanels.push({ id: col.id, panels: newColPanels });
       }
     }
     cutPanels.value = newPanels;
@@ -121,13 +137,17 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     toRow: number,
     position: PanelPosition,
   ) {
-    const panels = cutPanels.value.map((col) => [...col]);
+    const panels = cutPanels.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
 
     // Bounds check
-    if (!panels[fromCol] || !panels[fromCol]![fromRow]) return;
+    if (!panels[fromCol] || !panels[fromCol]!.panels[fromRow]) return;
+
+    // Check if moving to exact same spot without split changes
+    if (fromCol === toCol && fromRow === toRow && (position === 'top' || position === 'bottom'))
+      return;
 
     // Remove the panel from its original position
-    const [movedPanel] = panels[fromCol]!.splice(fromRow, 1);
+    const [movedPanel] = panels[fromCol]!.panels.splice(fromRow, 1);
     if (!movedPanel) return;
 
     // Adjust target indices if we removed an item from the same column before the target row
@@ -139,19 +159,19 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
 
     // Insert the panel at the new position
     if (position === 'left') {
-      panels.splice(adjustedToCol, 0, [movedPanel]);
+      panels.splice(adjustedToCol, 0, { id: `col-${generateId()}`, panels: [movedPanel] });
     } else if (position === 'right') {
-      panels.splice(adjustedToCol + 1, 0, [movedPanel]);
+      panels.splice(adjustedToCol + 1, 0, { id: `col-${generateId()}`, panels: [movedPanel] });
     } else if (position === 'top') {
-      if (!panels[adjustedToCol]) panels[adjustedToCol] = [];
-      panels[adjustedToCol]!.splice(adjustedToRow, 0, movedPanel);
+      if (!panels[adjustedToCol]) panels[adjustedToCol] = { id: `col-${generateId()}`, panels: [] };
+      panels[adjustedToCol]!.panels.splice(adjustedToRow, 0, movedPanel);
     } else if (position === 'bottom') {
-      if (!panels[adjustedToCol]) panels[adjustedToCol] = [];
-      panels[adjustedToCol]!.splice(adjustedToRow + 1, 0, movedPanel);
+      if (!panels[adjustedToCol]) panels[adjustedToCol] = { id: `col-${generateId()}`, panels: [] };
+      panels[adjustedToCol]!.panels.splice(adjustedToRow + 1, 0, movedPanel);
     }
 
-    // Clean up empty columns
-    cutPanels.value = panels.filter((col) => col && col.length > 0);
+    // Clean up empty columns and update
+    cutPanels.value = panels.filter((col) => col && col.panels.length > 0);
   }
 
   const timelineHeightKey = computed(() =>

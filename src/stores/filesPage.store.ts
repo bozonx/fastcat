@@ -124,6 +124,10 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     return null;
   });
 
+  function clearSelection() {
+    selectedFile.value = null;
+  }
+
   return {
     selectedFolder,
     selectedFile,
@@ -133,6 +137,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     columnWidths,
     selectFolder,
     selectFile,
+    clearSelection,
     setViewMode,
     setSortOption,
     setGridCardSize,

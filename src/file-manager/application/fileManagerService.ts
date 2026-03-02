@@ -29,6 +29,7 @@ export interface FileManagerServiceDeps {
   sanitizeParentHandle: (handle: FileSystemDirectoryHandle) => FileSystemDirectoryHandle;
   checkExistingProxies: (videoPaths: string[]) => Promise<void>;
   onError?: (params: { title?: string; message: string; error?: unknown }) => void;
+  onDirectoryLoaded?: () => void;
 }
 
 export interface FileManagerService {

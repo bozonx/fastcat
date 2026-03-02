@@ -66,6 +66,7 @@ export interface FileManagerCreateDeps {
   mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryMoved?: () => void | Promise<void>;
+  onDirectoryLoaded?: () => void;
 }
 
 export function createFileManager(deps: FileManagerCreateDeps) {
@@ -90,6 +91,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
     sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
     checkExistingProxies: (videoPaths) => deps.mediaCache.checkExistingProxies(videoPaths),
+    onDirectoryLoaded: () => {
+      deps.onDirectoryLoaded?.();
+      const uiStore = useUiStore();
+      uiStore.notifyFileManagerUpdate();
+    },
     onError: (params: { title?: string; message: string; error?: unknown }) => {
       const description = params.error
         ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
@@ -533,6 +539,9 @@ export function useFileManager() {
     },
     onDirectoryMoved: async () => {
       mediaStore.resetMediaState();
+    },
+    onDirectoryLoaded: () => {
+      uiStore.notifyFileManagerUpdate();
     },
   });
 
