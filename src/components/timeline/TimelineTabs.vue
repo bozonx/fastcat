@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -34,6 +34,17 @@ function closeTab(path: string, event: Event) {
   projectStore.closeTimelineFile(path);
 }
 
+watch(currentTimelinePath, async (newPath) => {
+  if (!newPath) return;
+  await nextTick();
+  const el = scrollContainer.value;
+  if (!el) return;
+  const activeEl = el.querySelector(`[data-path="${CSS.escape(newPath)}"]`) as HTMLElement | null;
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
+});
+
 function onWheel(e: WheelEvent) {
   const el = scrollContainer.value;
   if (!el) return;
@@ -64,6 +75,7 @@ function onWheel(e: WheelEvent) {
         <div
           v-for="path in openPaths"
           :key="path"
+          :data-path="path"
           class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
           :class="[
             isActive(path)

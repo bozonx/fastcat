@@ -48,17 +48,20 @@ const activeStaticComponent = computed(() => activeStaticTab.value?.component ??
 /** Whether the tab bar drop zone is active */
 const isDropTarget = ref(false);
 
-const tabContainerRef = ref<any>(null);
+const tabContainerRef = ref<HTMLElement | null>(null);
 
 watch(activeTabId, async (newId) => {
   if (!newId) return;
+  
+  // Wait for DOM to update
   await nextTick();
-  const container = tabContainerRef.value?.$el || tabContainerRef.value?.target || document.querySelector('.gran-project-tabs-container');
-  if (!container) return;
-
-  const activeEl = container.querySelector(`[data-tab-id="${newId}"]`) as HTMLElement;
+  await nextTick();
+  
+  const activeEl = document.querySelector(`[data-tab-id="${newId}"]`) as HTMLElement;
   if (activeEl) {
-    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    // block: nearest - vertical scroll (don't change if possible)
+    // inline: center - horizontal scroll to center the tab
+    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }
 });
 
@@ -160,7 +163,6 @@ onMounted(() => {
     >
       <VueDraggable
         v-model="tabsModel"
-        ref="tabContainerRef"
         class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1 gran-project-tabs-container"
         :animation="150"
         ghost-class="tab-ghost"
