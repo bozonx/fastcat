@@ -44,7 +44,7 @@ const { sizes: filesSizes, onResized: onFilesResize } = usePersistedSplitpanes(
 const { sizes: soundSizes, onResized: onSoundResize } = usePersistedSplitpanes(
   'editor-sound-top',
   currentProjectId,
-  [50, 50],
+  [75, 25],
 );
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {
@@ -414,11 +414,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
               </div>
             </Pane>
             <Pane :size="soundSizes[1]" min-size="10">
-              <div
-                class="h-full bg-ui-bg-elevated/50 p-4 border border-ui-border rounded flex flex-col items-center justify-center text-ui-text-muted"
-              >
-                <h3 class="font-bold mb-2">Звук: Панель 2</h3>
-              </div>
+              <MonitorContainer class="h-full" />
             </Pane>
           </Splitpanes>
         </Pane>

@@ -54,7 +54,22 @@ async function handleSelectInFileManager() {
   const entry = await fm.findEntryByPath(path);
   
   if (entry) {
+    const { useUiStore } = await import('~/stores/ui.store');
+    const uiStore = useUiStore();
+    uiStore.selectedFsEntry = {
+      kind: entry.kind,
+      name: entry.name,
+      path: entry.path,
+      handle: entry.handle,
+    };
     selectionStore.selectFsEntry(entry);
+    
+    // Switch to files view to see the selection if needed
+    const { useProjectStore } = await import('~/stores/project.store');
+    const projectStore = useProjectStore();
+    if (projectStore.currentView !== 'files' && projectStore.currentView !== 'cut') {
+      projectStore.goToFiles();
+    }
   }
 }
 

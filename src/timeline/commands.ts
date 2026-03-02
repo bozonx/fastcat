@@ -90,6 +90,8 @@ export interface AddTrackCommand {
   kind: 'video' | 'audio';
   name: string;
   trackId?: string;
+  insertBeforeId?: string;
+  insertAfterId?: string;
 }
 
 export interface RenameTrackCommand {

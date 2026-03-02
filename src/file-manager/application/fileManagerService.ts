@@ -59,6 +59,18 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     });
 
   function compareEntries(a: FsEntry, b: FsEntry): number {
+    const aIsHidden = a.name.startsWith('.');
+    const bIsHidden = b.name.startsWith('.');
+
+    if (aIsHidden !== bIsHidden) {
+      return aIsHidden ? -1 : 1;
+    }
+
+    if (aIsHidden && bIsHidden) {
+      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
     if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
 
     if (deps.sortMode.value === 'type' && a.kind === 'file' && b.kind === 'file') {

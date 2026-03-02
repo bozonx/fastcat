@@ -24,7 +24,7 @@ function togglePlay() {
 }
 
 function onTimeUpdate() {
-  if (!mediaElement.value) return;
+  if (!mediaElement.value || isDragging.value) return;
   currentTime.value = mediaElement.value.currentTime;
   if (duration.value > 0) {
     progress.value = (currentTime.value / duration.value) * 100;
@@ -55,13 +55,30 @@ function formatTime(seconds: number) {
   return `${m}:${s}`;
 }
 
-function seek(e: MouseEvent) {
+const isDragging = ref(false);
+const wasPlayingBeforeDrag = ref(false);
+
+function onSeekStart() {
+  isDragging.value = true;
+  if (isPlaying.value) {
+    wasPlayingBeforeDrag.value = true;
+    mediaElement.value?.pause();
+  } else {
+    wasPlayingBeforeDrag.value = false;
+  }
+}
+
+function onSeek() {
   if (!mediaElement.value || duration.value === 0) return;
-  const target = e.currentTarget as HTMLElement;
-  const rect = target.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const newProgress = Math.max(0, Math.min(1, clickX / rect.width));
-  mediaElement.value.currentTime = newProgress * duration.value;
+  mediaElement.value.currentTime = currentTime.value;
+  progress.value = (currentTime.value / duration.value) * 100;
+}
+
+function onSeekEnd() {
+  isDragging.value = false;
+  if (wasPlayingBeforeDrag.value) {
+    mediaElement.value?.play();
+  }
 }
 
 // Reset state when src changes
@@ -133,18 +150,30 @@ watch(
 
     <!-- Controls -->
     <div class="flex flex-col px-4 py-3 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
-      <div
-        class="h-2 bg-ui-bg-accent rounded-full w-full cursor-pointer relative group"
-        @click="seek"
-      >
-        <div
-          class="absolute top-0 left-0 h-full bg-primary-500 rounded-full"
-          :style="{ width: `${progress}%` }"
-        ></div>
-        <div
-          class="absolute top-1/2 -mt-1.5 w-3 h-3 bg-white rounded-full shadow transition-transform scale-0 group-hover:scale-100 cursor-grab"
-          :style="{ left: `calc(${progress}% - 6px)` }"
-        ></div>
+      <div class="w-full relative flex items-center h-4 group">
+        <input
+          type="range"
+          min="0"
+          :max="duration || 100"
+          step="0.01"
+          v-model.number="currentTime"
+          @input="onSeek"
+          @mousedown="onSeekStart"
+          @mouseup="onSeekEnd"
+          @touchstart="onSeekStart"
+          @touchend="onSeekEnd"
+          class="w-full absolute inset-0 opacity-0 cursor-pointer z-10"
+        />
+        <div class="h-2 bg-ui-bg-accent rounded-full w-full relative pointer-events-none">
+          <div
+            class="absolute top-0 left-0 h-full bg-primary-500 rounded-full pointer-events-none"
+            :style="{ width: `${progress}%` }"
+          ></div>
+          <div
+            class="absolute top-1/2 -mt-1.5 w-3 h-3 bg-white rounded-full shadow transition-transform scale-0 group-hover:scale-100 pointer-events-none"
+            :style="{ left: `calc(${progress}% - 6px)` }"
+          ></div>
+        </div>
       </div>
 
       <div class="flex items-center justify-between gap-3">

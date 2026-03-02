@@ -2,7 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useProxyStore } from '~/stores/proxy.store';
-import MediaPlayer from '~/components/MediaPlayer.vue';
+import FilePreview from '~/components/preview/FilePreview.vue';
 
 const props = defineProps<{
   filePath: string;
@@ -100,49 +100,13 @@ onUnmounted(() => {
       <span>{{ loadError }}</span>
     </div>
 
-    <!-- Image -->
-    <div
-      v-else-if="isImage && currentUrl"
-      class="flex items-center justify-center h-full checkerboard-bg overflow-hidden"
-    >
-      <img
-        :src="currentUrl"
-        :alt="fileName"
-        class="max-w-full max-h-full object-contain"
-      />
-    </div>
-
-    <!-- Video -->
-    <MediaPlayer
-      v-else-if="isVideo && currentUrl"
-      :src="currentUrl"
-      type="video"
-      class="w-full h-full"
+    <!-- Preview -->
+    <FilePreview
+      v-else
+      :url="currentUrl"
+      :media-type="mediaType"
+      :text-content="textContent"
+      :alt="fileName"
     />
-
-    <!-- Audio -->
-    <MediaPlayer
-      v-else-if="isAudio && currentUrl"
-      :src="currentUrl"
-      type="audio"
-      class="w-full h-full"
-    />
-
-    <!-- Text -->
-    <pre
-      v-else-if="isText"
-      class="flex-1 overflow-auto p-4 text-xs font-mono text-ui-text whitespace-pre-wrap"
-    >{{ textContent }}</pre>
-
-    <!-- Unknown / unsupported -->
-    <div
-      v-else-if="isUnknown"
-      class="flex flex-col items-center justify-center h-full gap-3 text-ui-text-muted p-8"
-    >
-      <UIcon name="i-heroicons-document" class="w-16 h-16" />
-      <p class="text-sm text-center">
-        {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview') }}
-      </p>
-    </div>
   </div>
 </template>

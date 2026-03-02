@@ -5,13 +5,20 @@ import type { TimelineCommand } from '~/timeline/commands';
 export interface TimelineTracksDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   selectedTrackId: Ref<string | null>;
-  applyTimeline: (cmd: TimelineCommand, options?: { historyMode?: 'immediate' | 'debounced' }) => void;
+  applyTimeline: (
+    cmd: TimelineCommand,
+    options?: { historyMode?: 'immediate' | 'debounced' },
+  ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getSelectedOrActiveTrackId: () => string | null;
 }
 
 export interface TimelineTracksApi {
-  addTrack: (kind: 'video' | 'audio', name: string) => void;
+  addTrack: (
+    kind: 'video' | 'audio',
+    name: string,
+    options?: { insertBeforeId?: string; insertAfterId?: string },
+  ) => void;
   resolveTargetVideoTrackIdForInsert: () => string;
   renameTrack: (trackId: string, name: string) => void;
   updateTrackProperties: (
@@ -34,8 +41,18 @@ export interface TimelineTracksApi {
 }
 
 export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksApi {
-  function addTrack(kind: 'video' | 'audio', name: string) {
-    deps.applyTimeline({ type: 'add_track', kind, name });
+  function addTrack(
+    kind: 'video' | 'audio',
+    name: string,
+    options?: { insertBeforeId?: string; insertAfterId?: string },
+  ) {
+    deps.applyTimeline({
+      type: 'add_track',
+      kind,
+      name,
+      insertBeforeId: options?.insertBeforeId,
+      insertAfterId: options?.insertAfterId,
+    });
   }
 
   function resolveTargetVideoTrackIdForInsert(): string {
