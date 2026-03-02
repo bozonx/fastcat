@@ -203,7 +203,10 @@ async function handleConfirm() {
     try {
       fileHandle = await exportDir.getFileHandle(outputFilename.value, { create: true });
     } catch (e: unknown) {
-      if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'InvalidModificationError')) {
+      if (
+        e instanceof Error &&
+        (e.name === 'NotAllowedError' || e.name === 'InvalidModificationError')
+      ) {
         throw new Error('A file with this name already exists', { cause: e });
       }
       throw e;
@@ -293,7 +296,8 @@ async function handleConfirm() {
     if (err instanceof Error && err.name === 'AbortError') {
       exportError.value = t('videoEditor.export.errorCancelled', 'Export was cancelled');
     } else {
-      exportError.value = err instanceof Error ? err.message : t('videoEditor.export.error', 'Export failed');
+      exportError.value =
+        err instanceof Error ? err.message : t('videoEditor.export.error', 'Export failed');
     }
   } finally {
     isExporting.value = false;

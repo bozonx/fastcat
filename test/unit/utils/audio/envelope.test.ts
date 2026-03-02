@@ -113,7 +113,7 @@ describe('audio/envelope', () => {
           fadeOutS: 2,
           baseGain: 1,
           tClipS: 5,
-        })
+        }),
       ).toBe(1);
     });
 
@@ -125,7 +125,7 @@ describe('audio/envelope', () => {
           fadeOutS: 2,
           baseGain: 1,
           tClipS: 1,
-        })
+        }),
       ).toBe(0.5);
     });
 
@@ -137,7 +137,7 @@ describe('audio/envelope', () => {
           fadeOutS: 2,
           baseGain: 1,
           tClipS: 9,
-        })
+        }),
       ).toBe(0.5);
     });
 
@@ -149,7 +149,7 @@ describe('audio/envelope', () => {
           fadeOutS: 2,
           baseGain: 1,
           tClipS: 15,
-        })
+        }),
       ).toBe(0);
 
       expect(
@@ -159,7 +159,7 @@ describe('audio/envelope', () => {
           fadeOutS: 2,
           baseGain: 1,
           tClipS: -5,
-        })
+        }),
       ).toBe(0);
     });
   });

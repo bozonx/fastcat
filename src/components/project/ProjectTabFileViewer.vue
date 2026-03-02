@@ -23,9 +23,7 @@ const isText = computed(() => props.mediaType === 'text');
 const isImage = computed(() => props.mediaType === 'image');
 const isVideo = computed(() => props.mediaType === 'video');
 const isAudio = computed(() => props.mediaType === 'audio');
-const isUnknown = computed(
-  () => props.mediaType === 'unknown' || props.mediaType === null,
-);
+const isUnknown = computed(() => props.mediaType === 'unknown' || props.mediaType === null);
 
 async function loadFile() {
   if (currentUrl.value) {

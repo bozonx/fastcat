@@ -162,7 +162,9 @@ function confirmDeleteTrack() {
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"
       :title="t('granVideoEditor.timeline.deleteTrack', 'Delete track')"
-      :description="t('granVideoEditor.timeline.deleteTrackConfirm', 'This track contains clips. Delete it?')"
+      :description="
+        t('granVideoEditor.timeline.deleteTrackConfirm', 'This track contains clips. Delete it?')
+      "
       color="error"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDeleteTrack"

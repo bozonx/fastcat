@@ -135,13 +135,17 @@ watch(
               radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.25), transparent 55%);
           "
         />
-        <div class="relative flex flex-col items-center justify-center text-ui-text-muted px-6 py-4">
+        <div
+          class="relative flex flex-col items-center justify-center text-ui-text-muted px-6 py-4"
+        >
           <div
             class="w-16 h-16 rounded-2xl bg-ui-bg-elevated/60 border border-ui-border flex items-center justify-center shrink-0 shadow-inner"
           >
             <UIcon name="i-heroicons-musical-note" class="w-8 h-8 opacity-70" />
           </div>
-          <div class="mt-4 text-[10px] sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium">
+          <div
+            class="mt-4 text-[10px] sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium"
+          >
             {{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}
           </div>
         </div>
@@ -152,17 +156,17 @@ watch(
     <div class="flex flex-col px-4 py-3 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
       <div class="w-full relative flex items-center h-4 group">
         <input
+          v-model.number="currentTime"
           type="range"
           min="0"
           :max="duration || 100"
           step="0.01"
-          v-model.number="currentTime"
+          class="w-full absolute inset-0 opacity-0 cursor-pointer z-10"
           @input="onSeek"
           @mousedown="onSeekStart"
           @mouseup="onSeekEnd"
           @touchstart="onSeekStart"
           @touchend="onSeekEnd"
-          class="w-full absolute inset-0 opacity-0 cursor-pointer z-10"
         />
         <div class="h-2 bg-ui-bg-accent rounded-full w-full relative pointer-events-none">
           <div

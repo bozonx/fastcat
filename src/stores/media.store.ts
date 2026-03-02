@@ -1,18 +1,18 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
+import { useWorkspaceStore } from './workspace.store';
+import { useProjectStore } from './project.store';
+
+import { createMediaCacheFsModule } from '~/stores/media/mediaCacheFs';
+import { createMediaWorkerModule } from '~/stores/media/mediaWorker';
+
 interface VideoColorSpaceInit {
   fullRange?: boolean;
   matrix?: string;
   primaries?: string;
   transfer?: string;
 }
-
-import { useWorkspaceStore } from './workspace.store';
-import { useProjectStore } from './project.store';
-
-import { createMediaCacheFsModule } from '~/stores/media/mediaCacheFs';
-import { createMediaWorkerModule } from '~/stores/media/mediaWorker';
 
 export interface MediaMetadata {
   source: {

@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { mountWithNuxt } from '../utils/mount';
 
+import FileProperties from '../../src/components/properties/FileProperties.vue';
+
 vi.mock('~/composables/fileManager/useEntryPreview', () => {
   return {
     useEntryPreview: () => {
@@ -35,8 +37,6 @@ vi.mock('~/composables/fileManager/useEntryPreview', () => {
     },
   };
 });
-
-import FileProperties from '../../src/components/properties/FileProperties.vue';
 
 describe('FileProperties EXIF', () => {
   it('renders EXIF section collapsed by default and shows YAML on expand', async () => {

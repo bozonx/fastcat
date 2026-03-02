@@ -19,10 +19,13 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
   const linked = Boolean(scaleRaw.linked);
 
   const positionRaw = tr.position ?? {};
-  const posX = typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
-  const posY = typeof positionRaw.y === 'number' && Number.isFinite(positionRaw.y) ? positionRaw.y : 0;
+  const posX =
+    typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
+  const posY =
+    typeof positionRaw.y === 'number' && Number.isFinite(positionRaw.y) ? positionRaw.y : 0;
 
-  const rotationDeg = typeof tr.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
+  const rotationDeg =
+    typeof tr.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
 
   const anchorRaw = tr.anchor ?? {};
   const preset =
@@ -34,8 +37,10 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
     anchorRaw.preset === 'custom'
       ? anchorRaw.preset
       : 'center';
-  const anchorX = typeof anchorRaw.x === 'number' && Number.isFinite(anchorRaw.x) ? anchorRaw.x : 0.5;
-  const anchorY = typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
+  const anchorX =
+    typeof anchorRaw.x === 'number' && Number.isFinite(anchorRaw.x) ? anchorRaw.x : 0.5;
+  const anchorY =
+    typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
 
   return {
     scale: {

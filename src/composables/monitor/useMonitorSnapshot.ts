@@ -1,8 +1,8 @@
 import { ref } from 'vue';
 import type { Ref } from 'vue';
-import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
+import type { useProjectStore } from '~/stores/project.store';
+import type { useTimelineStore } from '~/stores/timeline.store';
+import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';

@@ -21,11 +21,7 @@ const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitp
 
 <template>
   <ClientOnly>
-    <Splitpanes
-      class="flex-1 min-h-0 editor-splitpanes"
-      horizontal
-      @resized="onMainSplitResize"
-    >
+    <Splitpanes class="flex-1 min-h-0 editor-splitpanes" horizontal @resized="onMainSplitResize">
       <Pane :size="mainSplitSizes[0]" min-size="10">
         <Splitpanes class="editor-splitpanes" @resized="onTopSplitResize">
           <Pane :size="topSplitSizes[0]" min-size="5">

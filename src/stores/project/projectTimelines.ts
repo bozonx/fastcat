@@ -1,4 +1,4 @@
-import { type Ref } from 'vue';
+import type { Ref } from 'vue';
 
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
 import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';

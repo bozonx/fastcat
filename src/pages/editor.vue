@@ -82,8 +82,10 @@ function onDragStart(event: DragEvent, panelId: string) {
 
 function onDragOver(event: DragEvent, panelId: string) {
   event.preventDefault();
-  
-  const isDraggingFile = event.dataTransfer?.types.includes('application/json') || event.dataTransfer?.types.includes('application/gran-file-manager-move');
+
+  const isDraggingFile =
+    event.dataTransfer?.types.includes('application/json') ||
+    event.dataTransfer?.types.includes('application/gran-file-manager-move');
   const isDraggingPanel = !!draggingPanelId.value;
 
   if (!isDraggingFile && !isDraggingPanel) {
@@ -131,7 +133,9 @@ function onDrop(event: DragEvent, targetPanelId: string) {
   event.preventDefault();
 
   // Try to parse file drag payload first
-  const fileDragData = event.dataTransfer?.getData('application/json') || event.dataTransfer?.getData('application/gran-file-manager-move');
+  const fileDragData =
+    event.dataTransfer?.getData('application/json') ||
+    event.dataTransfer?.getData('application/gran-file-manager-move');
   if (fileDragData) {
     try {
       const payload = JSON.parse(fileDragData);
@@ -142,7 +146,8 @@ function onDrop(event: DragEvent, targetPanelId: string) {
 
         if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) mediaType = 'video';
         else if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) mediaType = 'audio';
-        else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext)) mediaType = 'image';
+        else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext))
+          mediaType = 'image';
 
         if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) {
           // Add as text panel. Normally you'd read the content, but for now we'll just put a placeholder.
@@ -152,7 +157,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
             `File: ${payload.name}`,
             payload.name,
             targetPanelId,
-            dropPosition.value
+            dropPosition.value,
           );
         } else {
           // Add as media panel
@@ -166,7 +171,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
             mediaType,
             payload.name,
             targetPanelId,
-            dropPosition.value
+            dropPosition.value,
           );
         }
         resetDragState();
@@ -201,8 +206,13 @@ function resetDragState() {
 // Changes on every structural change — forces Splitpanes to remount and pick up new sizes
 const cutPanelsLayoutKey = ref(0);
 watch(
-  () => JSON.stringify(projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) }))),
-  () => { cutPanelsLayoutKey.value++; },
+  () =>
+    JSON.stringify(
+      projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
+    ),
+  () => {
+    cutPanelsLayoutKey.value++;
+  },
   { flush: 'post' },
 );
 
@@ -258,18 +268,17 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
             @resized="onFilesResize"
           >
             <Pane :size="filesSizes[0]" min-size="10">
-              <ProjectFiles
-                folders-only
-                disable-sort
-                class="h-full"
-                @resized="onFilesResize"
-              />
+              <ProjectFiles folders-only disable-sort class="h-full" @resized="onFilesResize" />
             </Pane>
             <Pane :size="filesSizes[1]" min-size="10">
               <FileBrowser class="h-full" />
             </Pane>
             <Pane :size="filesSizes[2]" min-size="10">
-              <PropertiesPanel :entity="selectionStore.selectedEntity" @clear-selection="selectionStore.clearSelection" class="h-full" />
+              <PropertiesPanel
+                :entity="selectionStore.selectedEntity"
+                class="h-full"
+                @clear-selection="selectionStore.clearSelection"
+              />
             </Pane>
           </Splitpanes>
 
@@ -287,15 +296,17 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
               min-size="5"
             >
               <Splitpanes
-                horizontal
                 :key="col.id + '-' + col.panels.length"
+                horizontal
                 class="editor-splitpanes"
                 @resized="(e: any) => onVerticalSplitResize(e, col.id)"
               >
                 <Pane
                   v-for="(panel, rowIndex) in col.panels"
                   :key="panel.id"
-                  :size="getVerticalSize(col.id, rowIndex, col.panels.length) ?? 100 / col.panels.length"
+                  :size="
+                    getVerticalSize(col.id, rowIndex, col.panels.length) ?? 100 / col.panels.length
+                  "
                   min-size="5"
                 >
                   <div

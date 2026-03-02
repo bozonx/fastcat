@@ -1,10 +1,7 @@
 import type { Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import {
-  calculateNextClipBoundary,
-  calculatePrevClipBoundary,
-} from '~/timeline/domain/navigation';
+import { calculateNextClipBoundary, calculatePrevClipBoundary } from '~/timeline/domain/navigation';
 import {
   buildSplitClipCommands,
   buildSplitAllClipsCommands,
@@ -17,8 +14,18 @@ export interface TimelineTrimmingDeps {
   currentTime: Ref<number>;
   duration: Ref<number>;
   selectedItemIds: Ref<string[]>;
-  applyTimeline: (cmd: TimelineCommand, options?: { saveMode?: 'none' | 'debounced' | 'immediate'; historyMode?: 'immediate' | 'debounced'; historyDebounceMs?: number }) => void;
-  batchApplyTimeline: (cmds: TimelineCommand[], options?: { saveMode?: 'none' | 'debounced' | 'immediate'; label?: string }) => void;
+  applyTimeline: (
+    cmd: TimelineCommand,
+    options?: {
+      saveMode?: 'none' | 'debounced' | 'immediate';
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+    },
+  ) => void;
+  batchApplyTimeline: (
+    cmds: TimelineCommand[],
+    options?: { saveMode?: 'none' | 'debounced' | 'immediate'; label?: string },
+  ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
@@ -65,7 +72,11 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
 
     const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
     for (const cmd of cmds) {
-      deps.applyTimeline(cmd, { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 });
+      deps.applyTimeline(cmd, {
+        saveMode: 'none',
+        historyMode: 'debounced',
+        historyDebounceMs: 100,
+      });
     }
 
     const updatedDoc = deps.timelineDoc.value;
@@ -105,7 +116,11 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
 
     const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
     for (const cmd of cmds) {
-      deps.applyTimeline(cmd, { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 });
+      deps.applyTimeline(cmd, {
+        saveMode: 'none',
+        historyMode: 'debounced',
+        historyDebounceMs: 100,
+      });
     }
 
     const updatedDoc = deps.timelineDoc.value;
@@ -199,7 +214,11 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const cmds = buildSplitSelectedClipsCommands(doc, deps.currentTime.value, deps.selectedItemIds.value);
+    const cmds = buildSplitSelectedClipsCommands(
+      doc,
+      deps.currentTime.value,
+      deps.selectedItemIds.value,
+    );
     if (cmds.length === 0) return;
 
     deps.batchApplyTimeline(cmds, {

@@ -91,13 +91,19 @@ export function useClipAudio(options: UseClipAudioOptions) {
   const audioFadeInMaxSec = computed(() => {
     const oppUs = (options.clip.value as any)?.audioFadeOutUs;
     const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
-    return Math.max(0, (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / 1_000_000);
+    return Math.max(
+      0,
+      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / 1_000_000,
+    );
   });
 
   const audioFadeOutMaxSec = computed(() => {
     const oppUs = (options.clip.value as any)?.audioFadeInUs;
     const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
-    return Math.max(0, (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / 1_000_000);
+    return Math.max(
+      0,
+      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / 1_000_000,
+    );
   });
 
   function updateAudioFadeInSec(val: number) {

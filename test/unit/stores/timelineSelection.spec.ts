@@ -37,7 +37,7 @@ describe('timelineSelection', () => {
     const { api, selectedItemIds, selectedTransition } = setup();
 
     selectedTransition.value = { trackId: 't1', itemId: 'c1', edge: 'in' };
-    
+
     // Select single
     api.toggleSelection('item1');
     expect(selectedItemIds.value).toEqual(['item1']);
@@ -68,7 +68,7 @@ describe('timelineSelection', () => {
     ]);
 
     selectedItemIds.value = ['clip1'];
-    
+
     const target = api.getHotkeyTargetClip();
     expect(target).toEqual({ trackId: 'track1', itemId: 'clip1' });
   });
@@ -81,18 +81,18 @@ describe('timelineSelection', () => {
         id: 'track1',
         kind: 'video',
         items: [
-          { 
-            kind: 'clip', 
+          {
+            kind: 'clip',
             id: 'clip1',
-            timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 } 
-          }
+            timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+          },
         ],
       },
     ]);
 
     selectedTrackId.value = 'track1';
     currentTime.value = 2_000_000;
-    
+
     const target = api.getHotkeyTargetClip();
     expect(target).toEqual({ trackId: 'track1', itemId: 'clip1' });
   });
@@ -105,18 +105,18 @@ describe('timelineSelection', () => {
         id: 'track1',
         kind: 'video',
         items: [
-          { 
-            kind: 'clip', 
+          {
+            kind: 'clip',
             id: 'clip1',
-            timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 } 
-          }
+            timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+          },
         ],
       },
     ]);
 
     selectedTrackId.value = 'track1';
     currentTime.value = 0; // Outside clip range
-    
+
     expect(api.getHotkeyTargetClip()).toBeNull();
   });
 });

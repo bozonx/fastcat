@@ -26,9 +26,9 @@ const maxDurationSec = computed(() => {
   const clipDurationUs = props.clip.timelineRange?.durationUs ?? 0;
   const oppositeTransitionUs =
     props.transitionSelection.edge === 'in'
-      ? props.clip.transitionOut?.durationUs ?? 0
-      : props.clip.transitionIn?.durationUs ?? 0;
-  
+      ? (props.clip.transitionOut?.durationUs ?? 0)
+      : (props.clip.transitionIn?.durationUs ?? 0);
+
   return Math.max(0.1, (clipDurationUs - oppositeTransitionUs) / 1_000_000);
 });
 

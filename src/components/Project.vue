@@ -17,15 +17,8 @@ import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 
 const { t } = useI18n();
 
-const {
-  tabs,
-  activeTabId,
-  setActiveTab,
-  initDefaultTab,
-  reorderTabs,
-  addFileTab,
-  removeFileTab,
-} = useProjectTabs();
+const { tabs, activeTabId, setActiveTab, initDefaultTab, reorderTabs, addFileTab, removeFileTab } =
+  useProjectTabs();
 
 /** Mutable proxy for VueDraggable v-model */
 const tabsModel = computed({
@@ -52,11 +45,11 @@ const tabContainerRef = ref<HTMLElement | null>(null);
 
 watch(activeTabId, async (newId) => {
   if (!newId) return;
-  
+
   // Wait for DOM to update
   await nextTick();
   await nextTick();
-  
+
   const activeEl = document.querySelector(`[data-tab-id="${newId}"]`) as HTMLElement;
   if (activeEl) {
     // block: nearest - vertical scroll (don't change if possible)
@@ -152,7 +145,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden">
+  <div
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden"
+  >
     <!-- Tab bar -->
     <div
       class="flex items-center border-b border-ui-border shrink-0 select-none transition-colors duration-150 min-h-[36px]"
@@ -189,10 +184,7 @@ onMounted(() => {
           />
 
           <!-- Label: static tabs show text, file tabs show icon only (with tooltip via :title) -->
-          <span
-            v-if="!isFileTab(tab)"
-            class="text-[10px] font-semibold uppercase tracking-wider"
-          >
+          <span v-if="!isFileTab(tab)" class="text-[10px] font-semibold uppercase tracking-wider">
             {{ tab.label }}
           </span>
 
@@ -229,10 +221,7 @@ onMounted(() => {
       />
 
       <!-- Static tab component -->
-      <component
-        :is="activeStaticComponent"
-        v-else-if="activeStaticComponent"
-      />
+      <component :is="activeStaticComponent" v-else-if="activeStaticComponent" />
     </div>
 
     <TimelineToolbar />

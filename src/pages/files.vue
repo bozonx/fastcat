@@ -15,11 +15,7 @@ const selectionStore = useSelectionStore();
 const { currentProjectId } = storeToRefs(projectStore);
 const { t } = useI18n();
 
-const { sizes, onResized } = usePersistedSplitpanes(
-  'files',
-  currentProjectId,
-  [20, 60, 20],
-);
+const { sizes, onResized } = usePersistedSplitpanes('files', currentProjectId, [20, 60, 20]);
 </script>
 
 <template>

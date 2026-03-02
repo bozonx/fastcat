@@ -163,7 +163,7 @@ function handleDeleteClip() {
           {{ t('common.properties', 'Properties') }}
         </span>
       </div>
-      <div class="flex gap-1 shrink-0 ml-2" v-if="displayMode !== 'empty'">
+      <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">
         <div v-if="displayMode === 'file' && hasProxy" class="flex gap-1">
           <UFieldGroup size="xs">
             <UButton

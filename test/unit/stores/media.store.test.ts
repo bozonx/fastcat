@@ -26,19 +26,23 @@ describe('MediaStore', () => {
 
   it('resets media state', () => {
     const store = useMediaStore();
-    store.mediaMetadata = { 'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 } } as any;
-    
+    store.mediaMetadata = {
+      'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
+    } as any;
+
     store.resetMediaState();
-    
+
     expect(store.mediaMetadata).toEqual({});
   });
 
   it('sets audio peaks', () => {
     const store = useMediaStore();
-    store.mediaMetadata = { 'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 } } as any;
-    
+    store.mediaMetadata = {
+      'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
+    } as any;
+
     store.setAudioPeaks('some/path.mp4', [[0.5, 0.5]]);
-    
+
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([[0.5, 0.5]]);
   });
 });

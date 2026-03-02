@@ -22,7 +22,9 @@ const { t } = useI18n();
     v-if="props.isVideoTrack"
     class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
   >
-    <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+    <div
+      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+    >
       {{ t('granVideoEditor.timeline.transitions', 'Transitions') }}
     </div>
 
@@ -69,7 +71,9 @@ const { t } = useI18n();
             :step="0.01"
             unit="s"
             :decimals="2"
-            @update:model-value="(v: number) => emit('updateDuration', { edge: 'in', durationSec: v })"
+            @update:model-value="
+              (v: number) => emit('updateDuration', { edge: 'in', durationSec: v })
+            "
           />
         </div>
       </div>
@@ -116,7 +120,9 @@ const { t } = useI18n();
             :step="0.01"
             unit="s"
             :decimals="2"
-            @update:model-value="(v: number) => emit('updateDuration', { edge: 'out', durationSec: v })"
+            @update:model-value="
+              (v: number) => emit('updateDuration', { edge: 'out', durationSec: v })
+            "
           />
         </div>
       </div>

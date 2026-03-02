@@ -18,7 +18,8 @@ const props = defineProps<{
 <style scoped>
 .checkerboard-bg {
   background-color: transparent;
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
     linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.15) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.15) 75%);

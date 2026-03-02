@@ -401,9 +401,8 @@ function toggleClipSnapMode() {
               @click="toggleClipSnapMode"
             />
           </UTooltip>
-          
+
           <div class="w-px h-3.5 bg-ui-border mx-0.5" />
-          
         </div>
       </div>
     </UContextMenu>

@@ -403,7 +403,12 @@ function getContextMenuItems(entry: FsEntry) {
           >
             <!-- Chevron for directories -->
             <UIcon
-              v-if="entry.kind === 'directory' && (!foldersOnly || !entry.children || entry.children.some(c => c.kind === 'directory'))"
+              v-if="
+                entry.kind === 'directory' &&
+                (!foldersOnly ||
+                  !entry.children ||
+                  entry.children.some((c) => c.kind === 'directory'))
+              "
               name="i-heroicons-chevron-right"
               class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
               :class="{ 'rotate-90': entry.expanded }"
@@ -420,22 +425,34 @@ function getContextMenuItems(entry: FsEntry) {
                   ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
                 ]"
               >
-                <div 
-                  v-if="ctx.getEntryMeta(entry).generatingProxy" 
-                  class="w-4 h-4 shrink-0 relative flex items-center justify-center" 
+                <div
+                  v-if="ctx.getEntryMeta(entry).generatingProxy"
+                  class="w-4 h-4 shrink-0 relative flex items-center justify-center"
                   :title="`${ctx.getEntryMeta(entry).proxyProgress ?? 0}%`"
                 >
                   <svg class="w-4 h-4 transform -rotate-90" viewBox="0 0 16 16">
-                    <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" class="text-ui-border" />
-                    <circle 
-                      cx="8" cy="8" r="6" 
-                      stroke="currentColor" 
-                      stroke-width="2" 
-                      fill="none" 
-                      class="text-amber-400 transition-all duration-300" 
-                      :stroke-dasharray="37.7" 
-                      :stroke-dashoffset="37.7 - (37.7 * (ctx.getEntryMeta(entry).proxyProgress ?? 0) / 100)" 
-                      stroke-linecap="round" 
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      fill="none"
+                      class="text-ui-border"
+                    />
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      fill="none"
+                      class="text-amber-400 transition-all duration-300"
+                      :stroke-dasharray="37.7"
+                      :stroke-dashoffset="
+                        37.7 - (37.7 * (ctx.getEntryMeta(entry).proxyProgress ?? 0)) / 100
+                      "
+                      stroke-linecap="round"
                     />
                   </svg>
                 </div>
@@ -459,8 +476,10 @@ function getContextMenuItems(entry: FsEntry) {
                   ? 'font-medium text-ui-text group-hover:text-ui-text'
                   : 'text-ui-text group-hover:text-ui-text',
                 isDotEntry(entry) ? 'opacity-30' : '',
-                ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy ? 'text-(--color-success)!' : '',
-                ctx.getEntryMeta(entry).generatingProxy ? 'text-amber-400!' : ''
+                ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy
+                  ? 'text-(--color-success)!'
+                  : '',
+                ctx.getEntryMeta(entry).generatingProxy ? 'text-amber-400!' : '',
               ]"
             >
               {{ entry.name }}

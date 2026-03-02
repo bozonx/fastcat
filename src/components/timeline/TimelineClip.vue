@@ -240,12 +240,15 @@ const { contextMenuItems } = useClipContextMenu({
   timelineDoc: timelineDocRef,
   projectSettings: projectSettingsRef,
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
-  updateClipProperties: (trackId, itemId, p) => timelineStore.updateClipProperties(trackId, itemId, p),
-  updateClipTransition: (trackId, itemId, p) => timelineStore.updateClipTransition(trackId, itemId, p),
+  updateClipProperties: (trackId, itemId, p) =>
+    timelineStore.updateClipProperties(trackId, itemId, p),
+  updateClipTransition: (trackId, itemId, p) =>
+    timelineStore.updateClipTransition(trackId, itemId, p),
   requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
   selectTransition: (payload) => timelineStore.selectTransition(payload),
   clearSelection: () => selectionStore.clearSelection(),
-  selectTimelineTransition: (trackId, itemId, edge) => selectionStore.selectTimelineTransition(trackId, itemId, edge),
+  selectTimelineTransition: (trackId, itemId, edge) =>
+    selectionStore.selectTimelineTransition(trackId, itemId, edge),
   emitOpenSpeedModal: (payload) => emit('openSpeedModal', payload),
   emitClipAction: (payload) => emit('clipAction', payload),
   t,

@@ -64,9 +64,11 @@ describe('useUiActionRunner', () => {
     });
 
     expect(state.error.value).toBe('Fallback error');
-    expect(toast.add).toHaveBeenCalledWith(expect.objectContaining({
-      description: 'Fallback error',
-    }));
+    expect(toast.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Fallback error',
+      }),
+    );
   });
 
   it('should ignore error if ignoreError returns true', async () => {

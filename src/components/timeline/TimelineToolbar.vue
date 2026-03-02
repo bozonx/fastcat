@@ -40,8 +40,6 @@ function onDragEnd() {
   clearDraggedFile();
 }
 
-
-
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
@@ -196,8 +194,6 @@ function onZoomInput(e: Event) {
       />
     </div>
 
-    <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted">
-      
-    </div>
+    <div class="ml-auto flex items-center gap-2 text-sm text-ui-text-muted"></div>
   </div>
 </template>

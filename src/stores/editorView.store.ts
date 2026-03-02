@@ -216,7 +216,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     if (!movedPanel) return;
 
     // Re-find target after removal (target may have shifted if same column and source was before target)
-    let adjustedToColIdx = toColIdx;
+    const adjustedToColIdx = toColIdx;
     let adjustedToRowIdx = toRowIdx;
     if (fromColIdx === toColIdx && fromRowIdx < toRowIdx) {
       adjustedToRowIdx -= 1;

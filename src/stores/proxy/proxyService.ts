@@ -1,5 +1,5 @@
 import type PQueue from 'p-queue';
-import { type Ref } from 'vue';
+import type { Ref } from 'vue';
 
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
