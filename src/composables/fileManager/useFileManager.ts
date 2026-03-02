@@ -38,7 +38,7 @@ import {
 } from '~/file-manager/application/fileManagerCommands';
 import { createUiActionRunner } from './useUiActionRunner';
 
-type FileTreeSortMode = 'name' | 'modified';
+type FileTreeSortMode = 'name' | 'type';
 
 export function isMoveAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
   return isMoveAllowedCore(params);

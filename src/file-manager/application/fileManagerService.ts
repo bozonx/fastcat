@@ -18,7 +18,7 @@ type DirectoryIterator = (
 
 export interface FileManagerServiceDeps {
   rootEntries: Ref<FsEntry[]>;
-  sortMode: Ref<'name' | 'modified'>;
+  sortMode: Ref<'name' | 'type'>;
   showHiddenFiles: () => boolean;
   hasPersistedFileTreeState?: () => boolean;
   isPathExpanded: (path: string) => boolean;
@@ -58,28 +58,15 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       })();
     });
 
-  async function attachLastModified(entries: FsEntry[]): Promise<FsEntry[]> {
-    const next = await Promise.all(
-      entries.map(async (entry) => {
-        if (entry.kind !== 'file') return entry;
-        try {
-          const file = await (entry.handle as FileSystemFileHandle).getFile();
-          return { ...entry, lastModified: file.lastModified };
-        } catch {
-          return { ...entry, lastModified: undefined };
-        }
-      }),
-    );
-    return next;
-  }
-
   function compareEntries(a: FsEntry, b: FsEntry): number {
     if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
 
-    if (deps.sortMode.value === 'modified') {
-      const am = a.lastModified ?? 0;
-      const bm = b.lastModified ?? 0;
-      if (am !== bm) return bm - am;
+    if (deps.sortMode.value === 'type' && a.kind === 'file' && b.kind === 'file') {
+      const aExt = a.name.includes('.') ? a.name.split('.').pop()?.toLowerCase() || '' : '';
+      const bExt = b.name.includes('.') ? b.name.split('.').pop()?.toLowerCase() || '' : '';
+      if (aExt !== bExt) {
+        return aExt.localeCompare(bExt, undefined, { numeric: true, sensitivity: 'base' });
+      }
     }
 
     return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -127,17 +114,14 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       return entries;
     }
 
-    const entriesWithModified =
-      deps.sortMode.value === 'modified' ? await attachLastModified(entries) : entries;
-
-    const videoPaths = entriesWithModified
+    const videoPaths = entries
       .filter((e) => e.kind === 'file' && e.path?.startsWith(`${VIDEO_DIR_NAME}/`))
       .map((e) => e.path!);
     if (videoPaths.length > 0) {
       await deps.checkExistingProxies(videoPaths);
     }
 
-    return [...entriesWithModified].sort(compareEntries);
+    return entries.sort(compareEntries);
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {

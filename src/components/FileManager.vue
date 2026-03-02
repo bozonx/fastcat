@@ -389,7 +389,7 @@ function triggerFileUpload() {
   fileInput.value?.click();
 }
 
-function onSortModeChange(v: 'name' | 'modified') {
+function onSortModeChange(v: 'name' | 'type') {
   setSortMode(v);
   const selectedPath = uiStore.selectedFsEntry?.path;
   void loadProjectDirectory().then(() => {
@@ -503,14 +503,6 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           @click="triggerFileUpload"
         />
         <UButton
-          icon="i-heroicons-folder-plus"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="openCreateFolderModal(null)"
-        />
-        <UButton
           icon="i-heroicons-document-plus"
           variant="ghost"
           color="neutral"
@@ -519,37 +511,56 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           @click="onCreateTimeline"
         />
         <UButton
-          :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+          icon="i-heroicons-folder-plus"
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="t('videoEditor.fileManager.actions.toggleHiddenFiles', 'Show/Hide hidden files')"
-          @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
-        />
-        <UButton
-          icon="i-heroicons-arrow-path"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-          :disabled="isLoading || !projectStore.currentProjectName"
-          @click="loadProjectDirectory"
+          :title="t('videoEditor.fileManager.actions.createFolder')"
+          @click="openCreateFolderModal(uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
         />
 
-        <div v-if="!disableSort" class="ml-auto w-30">
-          <USelectMenu
-            :model-value="sortMode"
-            :search-input="false"
+        <div class="ml-auto flex items-center">
+          <UDropdown
             :items="[
-              { value: 'name', label: t('videoEditor.fileManager.sort.name', 'Name') },
-              { value: 'modified', label: t('videoEditor.fileManager.sort.modified', 'Modified') },
+              [
+                {
+                  label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
+                  icon: 'i-heroicons-arrow-path',
+                  disabled: isLoading || !projectStore.currentProjectName,
+                  click: loadProjectDirectory,
+                },
+              ],
+              [
+                {
+                  label: t('videoEditor.fileManager.sort.name', 'Sort by name'),
+                  icon: sortMode === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+                  click: () => onSortModeChange('name'),
+                },
+                {
+                  label: t('videoEditor.fileManager.sort.type', 'Sort by type'),
+                  icon: sortMode === 'type' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+                  click: () => onSortModeChange('type'),
+                },
+              ],
+              [
+                {
+                  label: uiStore.showHiddenFiles
+                    ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
+                    : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+                  icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+                  click: () => (uiStore.showHiddenFiles = !uiStore.showHiddenFiles),
+                },
+              ],
             ]"
-            value-key="value"
-            label-key="label"
-            size="xs"
-            class="w-full"
-            @update:model-value="(v: any) => onSortModeChange(v?.value ?? v)"
-          />
+            :popper="{ placement: 'bottom-end' }"
+          >
+            <UButton
+              icon="i-heroicons-ellipsis-horizontal"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+            />
+          </UDropdown>
         </div>
       </div>
 
