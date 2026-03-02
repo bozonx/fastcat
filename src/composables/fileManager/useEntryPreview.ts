@@ -32,7 +32,9 @@ function computeTimelineSummary(doc: TimelineDocument) {
     (acc, t) => acc + t.items.filter((it) => it.kind === 'clip').length,
     0,
   );
-  return { durationUs, videoTracks, audioTracks, clips };
+  const version =
+    typeof doc.metadata?.gran?.version === 'number' ? doc.metadata.gran.version : null;
+  return { durationUs, videoTracks, audioTracks, clips, version };
 }
 
 export function useEntryPreview(params: {
@@ -60,6 +62,7 @@ export function useEntryPreview(params: {
     videoTracks: number;
     audioTracks: number;
     clips: number;
+    version: number | null;
   } | null>(null);
 
   const exifYaml = computed(() => {
