@@ -325,6 +325,9 @@
     "export": {
       "destination": "Destination: export/"
     },
+    "projectTabs": {
+      "dropHint": "Add as tab"
+    },
     "projects": {
       "title": "Projects",
       "changeWorkspace": "Change Workspace",
