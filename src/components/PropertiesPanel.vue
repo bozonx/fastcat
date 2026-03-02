@@ -17,6 +17,10 @@ const props = defineProps<{
   entity?: SelectedEntity | null;
 }>();
 
+const emit = defineEmits<{
+  panelDragStart: [e: DragEvent];
+}>();
+
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
@@ -122,36 +126,42 @@ function handleDeleteClip() {
   >
     <!-- Header -->
     <div
-      v-if="displayMode !== 'empty'"
-      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0"
+      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 cursor-grab active:cursor-grabbing"
+      draggable="true"
+      @dragstart="(e) => $emit('panelDragStart', e)"
     >
       <div class="flex items-center overflow-hidden min-w-0">
-        <span
-          v-if="displayMode === 'clip'"
-          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-        >
-          {{ selectedClip?.name }}
-        </span>
-        <span
-          v-else-if="displayMode === 'transition'"
-          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-        >
-          {{ selectedTransitionClip?.name }}
-        </span>
-        <span
-          v-else-if="displayMode === 'file' && selectedFsEntry"
-          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-        >
-          {{ selectedFsEntry.name }}
-        </span>
-        <span
-          v-else-if="displayMode === 'track' && selectedTrack"
-          class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-        >
-          {{ selectedTrack.name }}
+        <template v-if="displayMode !== 'empty'">
+          <span
+            v-if="displayMode === 'clip'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ selectedClip?.name }}
+          </span>
+          <span
+            v-else-if="displayMode === 'transition'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ selectedTransitionClip?.name }}
+          </span>
+          <span
+            v-else-if="displayMode === 'file' && selectedFsEntry"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ selectedFsEntry.name }}
+          </span>
+          <span
+            v-else-if="displayMode === 'track' && selectedTrack"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ selectedTrack.name }}
+          </span>
+        </template>
+        <span v-else class="ml-2 text-xs text-ui-text-muted font-mono truncate">
+          {{ t('common.properties', 'Properties') }}
         </span>
       </div>
-      <div class="flex gap-1 shrink-0 ml-2">
+      <div class="flex gap-1 shrink-0 ml-2" v-if="displayMode !== 'empty'">
         <UButton
           size="xs"
           variant="ghost"
