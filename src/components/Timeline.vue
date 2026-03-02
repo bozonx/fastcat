@@ -66,6 +66,14 @@ const dragPreview = ref<{
   kind: 'timeline-clip' | 'file';
 } | null>(null);
 
+const zoomFactor = computed(() => {
+  const zoom = timelineStore.timelineZoom;
+  const pos = Math.min(100, Math.max(0, zoom));
+  const exponent = (pos - 50) / 10;
+  const factor = Math.pow(2, exponent);
+  return factor.toFixed(2);
+});
+
 const isRulerHovered = ref(false);
 let zoomTimeout: number | null = null;
 const isZooming = ref(false);
@@ -603,7 +611,7 @@ async function onDrop(e: DragEvent, trackId: string) {
                   v-if="isRulerHovered || isZooming"
                   class="absolute top-full mt-1 right-2 px-1.5 py-0.5 text-[10px] font-mono rounded bg-ui-bg-elevated border border-ui-border text-ui-text-muted shadow-sm z-20 pointer-events-none"
                 >
-                  {{ Math.round(timelineStore.timelineZoom) }}%
+                  x{{ zoomFactor }}
                 </div>
               </Transition>
             </div>
