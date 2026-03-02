@@ -89,7 +89,50 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     { deep: true },
   );
 
-  function addTextPanel(filePath: string, fileContent: string, title: string) {
+  function insertPanelAt(newPanel: DynamicPanel, targetPanelId?: string, position?: PanelPosition) {
+    if (!targetPanelId || !position) {
+      const middleIndex = Math.floor(cutPanels.value.length / 2);
+      cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+      return;
+    }
+
+    const cols = cutPanels.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
+
+    let toColIdx = -1;
+    let toRowIdx = -1;
+    for (let ci = 0; ci < cols.length; ci++) {
+      const ri = cols[ci]!.panels.findIndex((p) => p.id === targetPanelId);
+      if (ri !== -1) {
+        toColIdx = ci;
+        toRowIdx = ri;
+        break;
+      }
+    }
+
+    if (toColIdx === -1) {
+      cols.push({ id: `col-${generateId()}`, panels: [newPanel] });
+    } else {
+      if (position === 'left') {
+        cols.splice(toColIdx, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+      } else if (position === 'right') {
+        cols.splice(toColIdx + 1, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+      } else if (position === 'top') {
+        cols[toColIdx]!.panels.splice(toRowIdx, 0, newPanel);
+      } else if (position === 'bottom') {
+        cols[toColIdx]!.panels.splice(toRowIdx + 1, 0, newPanel);
+      }
+    }
+
+    cutPanels.value = cols;
+  }
+
+  function addTextPanel(
+    filePath: string,
+    fileContent: string,
+    title: string,
+    targetPanelId?: string,
+    position?: PanelPosition,
+  ) {
     const newPanel: DynamicPanel = {
       id: `text-${Date.now()}`,
       type: 'text',
@@ -97,15 +140,15 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       fileContent,
       title,
     };
-
-    const middleIndex = Math.floor(cutPanels.value.length / 2);
-    cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+    insertPanelAt(newPanel, targetPanelId, position);
   }
 
   function addMediaPanel(
     fsEntry: any,
     mediaType: 'video' | 'audio' | 'image' | 'unknown' | null,
     title: string,
+    targetPanelId?: string,
+    position?: PanelPosition,
   ) {
     const newPanel: DynamicPanel = {
       id: `media-${Date.now()}`,
@@ -114,9 +157,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       mediaType,
       title,
     };
-
-    const middleIndex = Math.floor(cutPanels.value.length / 2);
-    cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+    insertPanelAt(newPanel, targetPanelId, position);
   }
 
   function removePanel(id: string) {
