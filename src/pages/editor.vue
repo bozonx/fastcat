@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { computed, ref, watch } from 'vue';
 
 import Project from '~/components/Project.vue';
+import ProjectFiles from '~/components/project/ProjectFiles.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
@@ -190,7 +191,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
             @resized="onFilesResize"
           >
             <Pane :size="filesSizes[0]" min-size="10">
-              <Project
+              <ProjectFiles
                 folders-only
                 disable-sort
                 class="h-full"
