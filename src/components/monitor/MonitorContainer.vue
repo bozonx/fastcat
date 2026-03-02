@@ -280,6 +280,10 @@ const contextMenuItems = computed(() => {
 defineProps<{
   isFullscreen?: boolean;
 }>();
+
+const emit = defineEmits<{
+  panelDragStart: [e: DragEvent];
+}>();
 </script>
 
 <template>
@@ -376,7 +380,7 @@ defineProps<{
 
     <!-- Playback controls -->
     <div
-      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-ui-border shrink-0 bg-ui-bg-elevated"
+      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-ui-border shrink-0 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
       :class="[
         toolbarPosition === 'bottom' ? 'border-t' : '',
         toolbarPosition === 'top' ? 'border-b' : '',
@@ -384,6 +388,8 @@ defineProps<{
         toolbarPosition === 'left' ? 'border-r' : '',
         toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
       ]"
+      draggable="true"
+      @dragstart="(e) => emit('panelDragStart', e)"
     >
       <div
         class="flex items-center gap-2 shrink-0"

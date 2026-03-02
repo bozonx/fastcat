@@ -3,7 +3,7 @@ import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useProjectStore } from '~/stores/project.store';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import FileManager from '~/components/FileManager.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
@@ -129,6 +129,14 @@ function resetDragState() {
   dropPosition.value = null;
 }
 
+// Changes on every structural change — forces Splitpanes to remount and pick up new sizes
+const cutPanelsLayoutKey = ref(0);
+watch(
+  () => JSON.stringify(projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) }))),
+  () => { cutPanelsLayoutKey.value++; },
+  { flush: 'post' },
+);
+
 const verticalSplitSizesKey = computed(
   () => `gran-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
 );
@@ -199,6 +207,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
           <!-- Cut View: Dynamic Panels (Columns and Rows) -->
           <Splitpanes
             v-else-if="projectStore.currentView === 'cut'"
+            :key="cutPanelsLayoutKey"
             class="editor-splitpanes"
             @resized="onTopSplitResize"
           >
@@ -210,6 +219,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
             >
               <Splitpanes
                 horizontal
+                :key="col.id + '-' + col.panels.length"
                 class="editor-splitpanes"
                 @resized="(e: any) => onVerticalSplitResize(e, col.id)"
               >
@@ -238,9 +248,9 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     @drop.prevent="(e) => onDrop(e, panel.id)"
                     @dragend="onDragEnd"
                   >
-                    <!-- Drag Handle Overlay for non-Properties panels (which handle their own) -->
+                    <!-- Drag Handle Overlay for fileManager panel -->
                     <div
-                      v-if="panel.type !== 'properties'"
+                      v-if="panel.type === 'fileManager'"
                       class="absolute top-0 left-0 right-0 h-8 z-10 cursor-grab active:cursor-grabbing flex justify-between items-center px-2 bg-transparent hover:bg-ui-bg-elevated/50 transition-colors"
                       draggable="true"
                       @dragstart="(e) => onDragStart(e, panel.id)"
@@ -253,7 +263,11 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     </div>
 
                     <FileManager v-if="panel.type === 'fileManager'" class="h-full pt-2" />
-                    <MonitorContainer v-else-if="panel.type === 'monitor'" class="h-full pt-2" />
+                    <MonitorContainer
+                      v-else-if="panel.type === 'monitor'"
+                      class="h-full"
+                      @panel-drag-start="(e) => onDragStart(e, panel.id)"
+                    />
                     <PropertiesPanel
                       v-else-if="panel.type === 'properties'"
                       class="h-full"
