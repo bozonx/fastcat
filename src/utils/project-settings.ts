@@ -35,6 +35,8 @@ export interface GranVideoEditorProjectSettings {
     useProxy: boolean;
     panX: number;
     panY: number;
+    zoom: number;
+    showGrid: boolean;
     toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
   };
   timelines: {
@@ -81,6 +83,8 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     useProxy: true,
     panX: 0,
     panY: 0,
+    zoom: 1,
+    showGrid: false,
     toolbarPosition: 'bottom',
   },
   timelines: {
@@ -183,6 +187,7 @@ export function normalizeProjectSettings(
   const useProxy = monitorInput.useProxy;
   const panX = Number(monitorInput.panX);
   const panY = Number(monitorInput.panY);
+  const zoom = Number(monitorInput.zoom);
   const defaultTransitionDurationUs = Number(transitionsInput.defaultDurationUs);
 
   const finalWidth =
@@ -281,6 +286,14 @@ export function normalizeProjectSettings(
         useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
       panX: Number.isFinite(panX) ? panX : DEFAULT_PROJECT_SETTINGS.monitor.panX,
       panY: Number.isFinite(panY) ? panY : DEFAULT_PROJECT_SETTINGS.monitor.panY,
+      zoom:
+        Number.isFinite(zoom) && zoom > 0
+          ? Math.min(20, Math.max(0.05, zoom))
+          : DEFAULT_PROJECT_SETTINGS.monitor.zoom,
+      showGrid:
+        monitorInput.showGrid !== undefined
+          ? Boolean(monitorInput.showGrid)
+          : DEFAULT_PROJECT_SETTINGS.monitor.showGrid,
       toolbarPosition: ['top', 'bottom', 'left', 'right'].includes(monitorInput.toolbarPosition)
         ? monitorInput.toolbarPosition
         : DEFAULT_PROJECT_SETTINGS.monitor.toolbarPosition,
