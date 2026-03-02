@@ -6,7 +6,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { TimelineTrack } from '~/timeline/types';
-import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemResize';
 import AppModal from '~/components/ui/AppModal.vue';
 import TimelineClip from './TimelineClip.vue';

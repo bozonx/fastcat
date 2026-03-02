@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
-import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import type { TimelineClipItem } from '~/timeline/types';
 

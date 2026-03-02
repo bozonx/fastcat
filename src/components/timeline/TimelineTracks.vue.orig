@@ -5,7 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
-import { timeUsToPx, pxToDeltaUs } from '~/composables/timeline/useTimelineInteraction';
+import { timeUsToPx, pxToDeltaUs } from '~/utils/timeline/geometry';
 import AppModal from '~/components/ui/AppModal.vue';
 
 const { t } = useI18n();

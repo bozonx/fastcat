@@ -9,10 +9,13 @@ import { useProjectStore } from '~/stores/project.store';
 import type { TimelineTrack } from '~/timeline/types';
 import {
   useTimelineInteraction,
+} from '~/composables/timeline/useTimelineInteraction';
+import {
   computeAnchoredScrollLeft,
   timeUsToPx,
   pxToTimeUs,
-} from '~/composables/timeline/useTimelineInteraction';
+  type TimelineZoomAnchor,
+} from '~/utils/timeline/geometry';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
@@ -53,9 +56,7 @@ const tracks = computed(
 
 const scrollEl = ref<HTMLElement | null>(null);
 
-const pendingZoomAnchor = ref<
-  import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor | null
->(null);
+const pendingZoomAnchor = ref<TimelineZoomAnchor | null>(null);
 
 const dragPreview = ref<{
   trackId: string;
@@ -82,7 +83,7 @@ function getViewportWidth(): number {
 
 function makePlayheadAnchor(params: {
   zoom: number;
-}): import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor {
+}): TimelineZoomAnchor {
   const viewportWidth = getViewportWidth();
   const prevScrollLeft = scrollEl.value?.scrollLeft ?? 0;
   const playheadPx = timeUsToPx(timelineStore.currentTime, params.zoom);
@@ -95,7 +96,7 @@ function makePlayheadAnchor(params: {
 
 function applyZoomWithAnchor(params: {
   nextZoom: number;
-  anchor: import('~/composables/timeline/useTimelineInteraction').TimelineZoomAnchor;
+  anchor: TimelineZoomAnchor;
 }) {
   const el = scrollEl.value;
   if (!el) {
