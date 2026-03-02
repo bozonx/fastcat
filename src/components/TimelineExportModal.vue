@@ -219,79 +219,94 @@ async function handleConfirm() {
       audioCodec.value as 'aac' | 'opus',
     );
 
-    if (saveAsDefaults.value) {
-      projectStore.projectSettings.project.width = normalizedExportWidth.value;
-      projectStore.projectSettings.project.height = normalizedExportHeight.value;
-      projectStore.projectSettings.project.fps = normalizedExportFps.value;
-      projectStore.projectSettings.project.resolutionFormat = resolutionFormat.value;
-      projectStore.projectSettings.project.orientation = orientation.value;
-      projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
-      projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
-      projectStore.projectSettings.exportDefaults.encoding.format = outputFormat.value;
-      projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
-      projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
-      projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
-      projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
-      projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
-        audioBitrateKbps.value;
-      projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
-      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
-        keyframeIntervalSec.value;
-      projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
-      projectStore.projectSettings.exportDefaults.encoding.metadata.title = metadataTitle.value;
-      projectStore.projectSettings.exportDefaults.encoding.metadata.author = metadataAuthor.value;
-      projectStore.projectSettings.exportDefaults.encoding.metadata.tags = metadataTags.value;
-      await projectStore.saveProjectSettings();
-    }
+    let exportSuccess = false;
+    try {
+      if (saveAsDefaults.value) {
+        projectStore.projectSettings.project.width = normalizedExportWidth.value;
+        projectStore.projectSettings.project.height = normalizedExportHeight.value;
+        projectStore.projectSettings.project.fps = normalizedExportFps.value;
+        projectStore.projectSettings.project.resolutionFormat = resolutionFormat.value;
+        projectStore.projectSettings.project.orientation = orientation.value;
+        projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
+        projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
+        projectStore.projectSettings.exportDefaults.encoding.format = outputFormat.value;
+        projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
+        projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
+        projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
+        projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
+        projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
+          audioBitrateKbps.value;
+        projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
+        projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
+          keyframeIntervalSec.value;
+        projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
+        projectStore.projectSettings.exportDefaults.encoding.metadata.title = metadataTitle.value;
+        projectStore.projectSettings.exportDefaults.encoding.metadata.author = metadataAuthor.value;
+        projectStore.projectSettings.exportDefaults.encoding.metadata.tags = metadataTags.value;
+        await projectStore.saveProjectSettings();
+      }
 
-    exportPhase.value = 'encoding';
-    await exportTimelineToFile(
-      {
-        format: outputFormat.value,
-        videoCodec: resolvedCodecs.videoCodec,
-        bitrate: bitrateBps.value,
-        audioBitrate: audioBitrateKbps.value * 1000,
-        audio: !excludeAudio.value,
-        audioCodec: resolvedCodecs.audioCodec,
-        width: normalizedExportWidth.value,
-        height: normalizedExportHeight.value,
-        fps: normalizedExportFps.value,
-        bitrateMode: bitrateMode.value,
-        keyframeIntervalSec: keyframeIntervalSec.value,
-        exportAlpha: exportAlpha.value,
-        metadata: {
-          title: metadataTitle.value,
-          author: metadataAuthor.value,
-          tags: metadataTags.value,
+      exportPhase.value = 'encoding';
+      await exportTimelineToFile(
+        {
+          format: outputFormat.value,
+          videoCodec: resolvedCodecs.videoCodec,
+          bitrate: bitrateBps.value,
+          audioBitrate: audioBitrateKbps.value * 1000,
+          audio: !excludeAudio.value,
+          audioCodec: resolvedCodecs.audioCodec,
+          width: normalizedExportWidth.value,
+          height: normalizedExportHeight.value,
+          fps: normalizedExportFps.value,
+          bitrateMode: bitrateMode.value,
+          keyframeIntervalSec: keyframeIntervalSec.value,
+          exportAlpha: exportAlpha.value,
+          metadata: {
+            title: metadataTitle.value,
+            author: metadataAuthor.value,
+            tags: metadataTags.value,
+          },
         },
-      },
-      fileHandle,
-      (progress) => {
-        exportProgress.value = progress;
-      },
-    );
-    rememberExportedFilename(outputFilename.value);
+        fileHandle,
+        (progress) => {
+          exportProgress.value = progress;
+        },
+      );
+      
+      exportSuccess = true;
+      rememberExportedFilename(outputFilename.value);
 
-    if (exportWarnings.value.length > 0) {
+      if (exportWarnings.value.length > 0) {
+        toast.add({
+          title: t('videoEditor.export.warningTitle', 'Export warnings'),
+          description: exportWarnings.value[0]!,
+          color: 'warning',
+          icon: 'i-heroicons-exclamation-triangle',
+        });
+      }
+
       toast.add({
-        title: t('videoEditor.export.warningTitle', 'Export warnings'),
-        description: exportWarnings.value[0]!,
-        color: 'warning',
-        icon: 'i-heroicons-exclamation-triangle',
+        title: t('videoEditor.export.successTitle', 'Export successful'),
+        description: t('videoEditor.export.successDesc', {
+          file: outputFilename.value,
+        }),
+        color: 'success',
+        icon: 'i-heroicons-check-circle',
       });
+
+      emit('exported');
+      isOpen.value = false;
+    } finally {
+      if (!exportSuccess) {
+        try {
+          await exportDir.removeEntry(outputFilename.value);
+        } catch (e) {
+          console.warn('Failed to clean up partial export file', e);
+        }
+        await preloadExportIndex(); // Reload cache since file was deleted
+        await validateFilename(); // Update validation UI
+      }
     }
-
-    toast.add({
-      title: t('videoEditor.export.successTitle', 'Export successful'),
-      description: t('videoEditor.export.successDesc', {
-        file: outputFilename.value,
-      }),
-      color: 'success',
-      icon: 'i-heroicons-check-circle',
-    });
-
-    emit('exported');
-    isOpen.value = false;
   } catch (err: unknown) {
     console.error('Export failed:', err);
     if (err instanceof Error && err.name === 'AbortError') {
