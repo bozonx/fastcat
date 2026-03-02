@@ -28,6 +28,8 @@ const isResetCommandConfirmOpen = ref(false);
 
 const searchQuery = ref('');
 
+const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
+
 function getCommandTitle(cmdId: HotkeyCommandId): string {
   const fallback = DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
   return t(`videoEditor.hotkeys.${cmdId}`, fallback);
@@ -215,7 +217,7 @@ function confirmReplaceDuplicate() {
 }
 
 const hotkeyGroups = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim();
+  const query = normalizedQuery.value;
   const groupIds = Array.from(new Set(DEFAULT_HOTKEYS.commands.map((c) => c.groupId)));
   return groupIds
     .map((groupId) => {
@@ -224,6 +226,7 @@ const hotkeyGroups = computed(() => {
         if (!query) return true;
         return getCommandTitle(c.id).toLowerCase().includes(query);
       });
+
       return {
         id: groupId,
         title: getCommandGroupTitle(groupId),
@@ -232,6 +235,24 @@ const hotkeyGroups = computed(() => {
     })
     .filter((g) => g.commands.length > 0);
 });
+
+function getTitleParts(cmdId: HotkeyCommandId) {
+  const title = getCommandTitle(cmdId);
+  const query = normalizedQuery.value;
+  if (!query) return [{ text: title, match: false }];
+
+  const lower = title.toLowerCase();
+  const idx = lower.indexOf(query);
+  if (idx === -1) return [{ text: title, match: false }];
+
+  const parts = [
+    { text: title.slice(0, idx), match: false },
+    { text: title.slice(idx, idx + query.length), match: true },
+    { text: title.slice(idx + query.length), match: false },
+  ];
+
+  return parts.filter((p) => p.text.length > 0);
+}
 
 const hotkeyConflicts = computed(() => {
   const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
@@ -423,7 +444,11 @@ defineExpose({
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center">
                       <span class="text-sm text-ui-text font-medium leading-tight">
-                        {{ cmd.title }}
+                        <template v-for="(part, idx) in getTitleParts(cmd.id)" :key="idx">
+                          <span :class="part.match ? 'text-primary-600 font-semibold' : ''">
+                            {{ part.text }}
+                          </span>
+                        </template>
                       </span>
                       <span
                         class="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
