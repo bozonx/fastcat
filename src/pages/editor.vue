@@ -249,20 +249,6 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     @drop.prevent="(e) => onDrop(e, panel.id)"
                     @dragend="onDragEnd"
                   >
-                    <!-- Drag Handle Overlay for fileManager panel -->
-                    <div
-                      v-if="panel.type === 'fileManager'"
-                      class="absolute top-0 left-0 right-0 h-8 z-10 cursor-grab active:cursor-grabbing flex justify-between items-center px-2 bg-transparent hover:bg-ui-bg-elevated/50 transition-colors"
-                      draggable="true"
-                      @dragstart="(e) => onDragStart(e, panel.id)"
-                    >
-                      <span
-                        class="text-xs text-ui-text-muted font-medium opacity-0 hover:opacity-100 transition-opacity flex items-center gap-1"
-                      >
-                        <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3" />
-                      </span>
-                    </div>
-
                     <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
                     <MonitorContainer
                       v-else-if="panel.type === 'monitor'"

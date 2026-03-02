@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -319,6 +319,37 @@ async function onDirectoryFileSelect(e: Event) {
 function handleFileManagerFilesSelect(entry: FsEntry) {
   emit('select', entry);
 }
+
+watch(
+  () => projectStore.currentProjectName,
+  async (name) => {
+    if (name) {
+      uiStore.restoreFileTreeStateOnce(name);
+    }
+    await loadProjectDirectory();
+
+    if (name) {
+      const handle = await getProjectRootDirHandle();
+      if (handle) {
+        const rootEntry: FsEntry = {
+          kind: 'directory',
+          name,
+          path: '',
+          handle,
+        };
+        uiStore.selectedFsEntry = {
+          kind: 'directory',
+          name,
+          path: '',
+          handle,
+        };
+        selectionStore.selectFsEntry(rootEntry);
+        emit('select', rootEntry);
+      }
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
