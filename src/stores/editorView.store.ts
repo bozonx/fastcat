@@ -130,48 +130,68 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     cutPanels.value = newPanels;
   }
 
-  function movePanel(
-    fromCol: number,
-    fromRow: number,
-    toCol: number,
-    toRow: number,
-    position: PanelPosition,
-  ) {
-    const panels = cutPanels.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
+  function movePanel(panelId: string, targetPanelId: string, position: PanelPosition) {
+    if (panelId === targetPanelId) return;
 
-    // Bounds check
-    if (!panels[fromCol] || !panels[fromCol]!.panels[fromRow]) return;
+    const cols = cutPanels.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
 
-    // Check if moving to exact same spot without split changes
-    if (fromCol === toCol && fromRow === toRow && (position === 'top' || position === 'bottom'))
+    // Find source
+    let fromColIdx = -1;
+    let fromRowIdx = -1;
+    for (let ci = 0; ci < cols.length; ci++) {
+      const ri = cols[ci]!.panels.findIndex((p) => p.id === panelId);
+      if (ri !== -1) {
+        fromColIdx = ci;
+        fromRowIdx = ri;
+        break;
+      }
+    }
+    if (fromColIdx === -1) return;
+
+    // Find target
+    let toColIdx = -1;
+    let toRowIdx = -1;
+    for (let ci = 0; ci < cols.length; ci++) {
+      const ri = cols[ci]!.panels.findIndex((p) => p.id === targetPanelId);
+      if (ri !== -1) {
+        toColIdx = ci;
+        toRowIdx = ri;
+        break;
+      }
+    }
+    if (toColIdx === -1) return;
+
+    // No-op: same position for row moves
+    if (
+      fromColIdx === toColIdx &&
+      fromRowIdx === toRowIdx &&
+      (position === 'top' || position === 'bottom')
+    )
       return;
 
-    // Remove the panel from its original position
-    const [movedPanel] = panels[fromCol]!.panels.splice(fromRow, 1);
+    // Remove source panel
+    const [movedPanel] = cols[fromColIdx]!.panels.splice(fromRowIdx, 1);
     if (!movedPanel) return;
 
-    // Adjust target indices if we removed an item from the same column before the target row
-    let adjustedToCol = toCol;
-    let adjustedToRow = toRow;
-    if (fromCol === toCol && fromRow < toRow) {
-      adjustedToRow -= 1;
+    // Re-find target after removal (target may have shifted if same column and source was before target)
+    let adjustedToColIdx = toColIdx;
+    let adjustedToRowIdx = toRowIdx;
+    if (fromColIdx === toColIdx && fromRowIdx < toRowIdx) {
+      adjustedToRowIdx -= 1;
     }
 
-    // Insert the panel at the new position
+    // Insert at new position
     if (position === 'left') {
-      panels.splice(adjustedToCol, 0, { id: `col-${generateId()}`, panels: [movedPanel] });
+      cols.splice(adjustedToColIdx, 0, { id: `col-${generateId()}`, panels: [movedPanel] });
     } else if (position === 'right') {
-      panels.splice(adjustedToCol + 1, 0, { id: `col-${generateId()}`, panels: [movedPanel] });
+      cols.splice(adjustedToColIdx + 1, 0, { id: `col-${generateId()}`, panels: [movedPanel] });
     } else if (position === 'top') {
-      if (!panels[adjustedToCol]) panels[adjustedToCol] = { id: `col-${generateId()}`, panels: [] };
-      panels[adjustedToCol]!.panels.splice(adjustedToRow, 0, movedPanel);
+      cols[adjustedToColIdx]!.panels.splice(adjustedToRowIdx, 0, movedPanel);
     } else if (position === 'bottom') {
-      if (!panels[adjustedToCol]) panels[adjustedToCol] = { id: `col-${generateId()}`, panels: [] };
-      panels[adjustedToCol]!.panels.splice(adjustedToRow + 1, 0, movedPanel);
+      cols[adjustedToColIdx]!.panels.splice(adjustedToRowIdx + 1, 0, movedPanel);
     }
 
-    // Clean up empty columns and update
-    cutPanels.value = panels.filter((col) => col && col.panels.length > 0);
+    cutPanels.value = cols.filter((col) => col.panels.length > 0);
   }
 
   const timelineHeightKey = computed(() =>
