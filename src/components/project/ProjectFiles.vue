@@ -284,7 +284,7 @@ function triggerFileUpload() {
   fileInput.value?.click();
 }
 
-function onSortModeChange(v: 'name' | 'modified') {
+function onSortModeChange(v: 'name' | 'type') {
   setSortMode(v);
   const selectedPath = uiStore.selectedFsEntry?.path;
   void loadProjectDirectory().then(() => {
@@ -431,7 +431,7 @@ watch(
             :search-input="false"
             :items="[
               { value: 'name', label: t('videoEditor.fileManager.sort.name', 'Name') },
-              { value: 'modified', label: t('videoEditor.fileManager.sort.modified', 'Modified') },
+              { value: 'type', label: t('videoEditor.fileManager.sort.type', 'Type') },
             ]"
             value-key="value"
             label-key="label"
