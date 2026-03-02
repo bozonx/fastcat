@@ -18,6 +18,11 @@ import {
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectSettingsStore } from './project-settings.store';
 import { createEditorViewModule } from './editorView.store';
+import { useMediaStore } from './media.store';
+import { useTimelineStore } from './timeline.store';
+import { useSelectionStore } from './selection.store';
+import { useFilesPageStore } from './filesPage.store';
+import { useHistoryStore } from './history.store';
 
 import { createProjectFsModule } from '~/stores/project/projectFs';
 import { createProjectMetaModule } from '~/stores/project/projectMeta';
@@ -70,6 +75,19 @@ export const useProjectStore = defineStore('project', () => {
     currentTimelinePath.value = null;
     currentFileName.value = null;
     clearProjectMetaState();
+
+    // Reset dependent stores when a project is closed
+    const mediaStore = useMediaStore();
+    const timelineStore = useTimelineStore();
+    const selectionStore = useSelectionStore();
+    const filesPageStore = useFilesPageStore();
+    const historyStore = useHistoryStore();
+
+    mediaStore.resetMediaState();
+    timelineStore.resetTimelineState();
+    selectionStore.clearSelection();
+    filesPageStore.selectedFolder = null;
+    historyStore.clear();
   }
 
   const timelinesModule = createProjectTimelinesModule({

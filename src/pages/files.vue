@@ -6,10 +6,12 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
+const selectionStore = useSelectionStore();
 const { currentProjectId } = storeToRefs(projectStore);
 const { t } = useI18n();
 
@@ -30,7 +32,7 @@ const { sizes, onResized } = usePersistedSplitpanes(
         <FileBrowser class="h-full" />
       </Pane>
       <Pane :size="sizes[2]" min-size="10">
-        <PropertiesPanel :entity="filesPageStore.selectedEntity" class="h-full" />
+        <PropertiesPanel :entity="selectionStore.selectedEntity" class="h-full" />
       </Pane>
     </Splitpanes>
   </ClientOnly>

@@ -11,7 +11,7 @@ import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';
 import Timeline from '~/components/Timeline.vue';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 // Vertical Splitpanes logic
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
@@ -19,6 +19,7 @@ import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocal
 const projectStore = useProjectStore();
 const { currentProjectId } = storeToRefs(projectStore);
 const filesPageStore = useFilesPageStore();
+const selectionStore = useSelectionStore();
 
 const defaultCutPanelSizes = computed(() => {
   const len = projectStore.cutPanels?.length || 0;
@@ -200,7 +201,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
               <FileBrowser class="h-full" />
             </Pane>
             <Pane :size="filesSizes[2]" min-size="10">
-              <PropertiesPanel :entity="filesPageStore.selectedEntity" @clear-selection="filesPageStore.clearSelection" class="h-full" />
+              <PropertiesPanel :entity="selectionStore.selectedEntity" @clear-selection="selectionStore.clearSelection" class="h-full" />
             </Pane>
           </Splitpanes>
 

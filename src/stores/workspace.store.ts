@@ -13,6 +13,14 @@ import {
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
 
+import { useProjectStore } from './project.store';
+import { useMediaStore } from './media.store';
+import { useTimelineStore } from './timeline.store';
+import { useSelectionStore } from './selection.store';
+import { useFilesPageStore } from './filesPage.store';
+import { useHistoryStore } from './history.store';
+import { useProxyStore } from './proxy.store';
+
 function getErrorMessage(e: unknown, fallback: string): string {
   if (!e || typeof e !== 'object') return fallback;
   if (!('message' in e)) return fallback;
@@ -155,6 +163,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     resetSettingsState();
 
     workspaceHandleStorage.value?.clear().catch(console.warn);
+
+    // Reset dependent stores when workspace is closed
+    const projectStore = useProjectStore();
+    projectStore.closeProject();
+
+    // Some stores are already reset by closeProject, but we do proxy here since it's workspace-level too
+    const proxyStore = useProxyStore();
+    proxyStore.generatingProxies.clear();
+    proxyStore.existingProxies.clear();
+    proxyStore.proxyProgress = {};
+    for (const [key, controller] of Object.entries(proxyStore.proxyAbortControllers)) {
+      controller.abort();
+    }
+    proxyStore.proxyAbortControllers = {};
+    proxyStore.activeWorkerPaths.clear();
   }
 
   async function init() {

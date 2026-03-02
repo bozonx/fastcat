@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useFilesPageStore, type FileViewMode, type FileSortField, type SortOrder } from '~/stores/filesPage.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -10,6 +11,7 @@ import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-typ
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 const filesPageStore = useFilesPageStore();
+const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const { readDirectory, getFileIcon, getProjectRootDirHandle } = useFileManager();
@@ -35,6 +37,7 @@ const resizeStartWidth = ref(0);
 
 async function loadFolderContent() {
   if (!filesPageStore.selectedFolder || !filesPageStore.selectedFolder.handle) {
+    cleanupObjectUrls();
     folderEntries.value = [];
     return;
   }
@@ -47,12 +50,22 @@ async function loadFolderContent() {
     // readDirectory already filters hidden files based on deps.showHiddenFiles(),
     // but just to be sure we also filter it here if needed.
     const filteredEntries = entries.filter(e => uiStore.showHiddenFiles || !e.name.startsWith('.'));
+    cleanupObjectUrls();
     folderEntries.value = await supplementEntries(filteredEntries);
   } catch (error) {
     console.error('Failed to load folder content:', error);
+    cleanupObjectUrls();
     folderEntries.value = [];
   } finally {
     isLoading.value = false;
+  }
+}
+
+function cleanupObjectUrls() {
+  for (const entry of folderEntries.value as ExtendedFsEntry[]) {
+    if (entry.objectUrl) {
+      URL.revokeObjectURL(entry.objectUrl);
+    }
   }
 }
 
@@ -398,7 +411,7 @@ function onCardSizeChange(e: Event) {
           v-for="entry in sortedEntries"
           :key="entry.path"
           class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
-          :class="{ 'bg-primary-500/10 border-primary-500/30': filesPageStore.selectedFile?.path === entry.path }"
+          :class="{ 'bg-primary-500/10 border-primary-500/30': selectionStore.selectedEntity?.source === 'fileManager' && selectionStore.selectedEntity.path === entry.path }"
           :style="{ width: `${filesPageStore.gridCardSize}px` }"
           @click="handleEntryClick(entry)"
         >
@@ -524,7 +537,7 @@ function onCardSizeChange(e: Event) {
               v-for="entry in (sortedEntries as ExtendedFsEntry[])"
               :key="entry.path"
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50"
-              :class="{ 'bg-primary-500/10': filesPageStore.selectedFile?.path === entry.path }"
+              :class="{ 'bg-primary-500/10': selectionStore.selectedEntity?.source === 'fileManager' && selectionStore.selectedEntity.path === entry.path }"
               @click="handleEntryClick(entry)"
             >
               <td class="py-2 px-3 flex items-center gap-2">
