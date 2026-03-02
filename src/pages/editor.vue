@@ -57,32 +57,26 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
 }
 
 // Drag and drop logic for dynamic panels
-const draggingPanel = ref<{ col: number; row: number } | null>(null);
-const dragOverPanel = ref<{ col: number; row: number } | null>(null);
+const draggingPanelId = ref<string | null>(null);
+const dragOverPanelId = ref<string | null>(null);
 const dropPosition = ref<'left' | 'right' | 'top' | 'bottom' | null>(null);
 
-function onDragStart(event: DragEvent, col: number, row: number) {
+function onDragStart(event: DragEvent, panelId: string) {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
-    // Use an invisible image or just let default ghost image
   }
-  draggingPanel.value = { col, row };
+  draggingPanelId.value = panelId;
 }
 
-function onDragOver(event: DragEvent, col: number, row: number) {
+function onDragOver(event: DragEvent, panelId: string) {
   event.preventDefault();
-  if (!draggingPanel.value) {
-    dragOverPanel.value = null;
-    dropPosition.value = null;
-    return;
-  }
-  if (draggingPanel.value.col === col && draggingPanel.value.row === row) {
-    dragOverPanel.value = null;
+  if (!draggingPanelId.value || draggingPanelId.value === panelId) {
+    dragOverPanelId.value = null;
     dropPosition.value = null;
     return;
   }
 
-  dragOverPanel.value = { col, row };
+  dragOverPanelId.value = panelId;
 
   const target = event.currentTarget as HTMLElement;
   const rect = target.getBoundingClientRect();
@@ -102,32 +96,25 @@ function onDragOver(event: DragEvent, col: number, row: number) {
   else dropPosition.value = 'bottom';
 }
 
-function onDragLeave(event: DragEvent, col: number, row: number) {
-  // Only clear if we actually leave the element, not when entering children
+function onDragLeave(event: DragEvent, panelId: string) {
   const target = event.currentTarget as HTMLElement;
   const relatedTarget = event.relatedTarget as Node | null;
   if (!target.contains(relatedTarget)) {
-    if (dragOverPanel.value?.col === col && dragOverPanel.value?.row === row) {
-      dragOverPanel.value = null;
+    if (dragOverPanelId.value === panelId) {
+      dragOverPanelId.value = null;
       dropPosition.value = null;
     }
   }
 }
 
-function onDrop(event: DragEvent, col: number, row: number) {
+function onDrop(event: DragEvent, targetPanelId: string) {
   event.preventDefault();
-  if (!draggingPanel.value || !dropPosition.value) {
+  if (!draggingPanelId.value || !dropPosition.value) {
     resetDragState();
     return;
   }
 
-  projectStore.movePanel(
-    draggingPanel.value.col,
-    draggingPanel.value.row,
-    col,
-    row,
-    dropPosition.value,
-  );
+  projectStore.movePanel(draggingPanelId.value, targetPanelId, dropPosition.value);
 
   resetDragState();
 }
@@ -137,36 +124,38 @@ function onDragEnd() {
 }
 
 function resetDragState() {
-  draggingPanel.value = null;
-  dragOverPanel.value = null;
+  draggingPanelId.value = null;
+  dragOverPanelId.value = null;
   dropPosition.value = null;
 }
 
 const verticalSplitSizesKey = computed(
   () => `gran-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
 );
-const verticalSplitSizes = ref<Record<number, number[]>>(
-  readLocalStorageJson<Record<number, number[]>>(verticalSplitSizesKey.value, {}),
+const verticalSplitSizes = ref<Record<string, number[]>>(
+  readLocalStorageJson<Record<string, number[]>>(verticalSplitSizesKey.value, {}),
 );
 
 watch(
   () => verticalSplitSizesKey.value,
   (key) => {
-    verticalSplitSizes.value = readLocalStorageJson<Record<number, number[]>>(key, {});
+    verticalSplitSizes.value = readLocalStorageJson<Record<string, number[]>>(key, {});
   },
 );
 
-function onVerticalSplitResize(event: any, colIndex: number) {
+function onVerticalSplitResize(event: any, colId: string) {
   const panes = event?.panes ?? event;
   if (Array.isArray(panes)) {
     const newSizes = panes.map((p: any) => p.size);
-    verticalSplitSizes.value[colIndex] = newSizes;
+    verticalSplitSizes.value[colId] = newSizes;
     writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
   }
 }
 
-function getVerticalSize(colIndex: number, rowIndex: number): number | undefined {
-  return verticalSplitSizes.value[colIndex]?.[rowIndex];
+function getVerticalSize(colId: string, rowIndex: number, totalRows: number): number | undefined {
+  const saved = verticalSplitSizes.value[colId];
+  if (!saved || saved.length !== totalRows) return undefined;
+  return saved[rowIndex];
 }
 </script>
 
@@ -222,40 +211,31 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
               <Splitpanes
                 horizontal
                 class="editor-splitpanes"
-                @resized="(e: any) => onVerticalSplitResize(e, colIndex)"
+                @resized="(e: any) => onVerticalSplitResize(e, col.id)"
               >
                 <Pane
                   v-for="(panel, rowIndex) in col.panels"
                   :key="panel.id"
-                  :size="getVerticalSize(colIndex, rowIndex) ?? 100 / col.panels.length"
+                  :size="getVerticalSize(col.id, rowIndex, col.panels.length) ?? 100 / col.panels.length"
                   min-size="5"
                 >
                   <div
                     class="h-full w-full relative transition-all duration-200"
                     :class="{
-                      'opacity-50':
-                        draggingPanel?.col === colIndex && draggingPanel?.row === rowIndex,
+                      'opacity-50': draggingPanelId === panel.id,
                       'border-l-2 border-l-primary-500':
-                        dragOverPanel?.col === colIndex &&
-                        dragOverPanel?.row === rowIndex &&
-                        dropPosition === 'left',
+                        dragOverPanelId === panel.id && dropPosition === 'left',
                       'border-r-2 border-r-primary-500':
-                        dragOverPanel?.col === colIndex &&
-                        dragOverPanel?.row === rowIndex &&
-                        dropPosition === 'right',
+                        dragOverPanelId === panel.id && dropPosition === 'right',
                       'border-t-2 border-t-primary-500':
-                        dragOverPanel?.col === colIndex &&
-                        dragOverPanel?.row === rowIndex &&
-                        dropPosition === 'top',
+                        dragOverPanelId === panel.id && dropPosition === 'top',
                       'border-b-2 border-b-primary-500':
-                        dragOverPanel?.col === colIndex &&
-                        dragOverPanel?.row === rowIndex &&
-                        dropPosition === 'bottom',
+                        dragOverPanelId === panel.id && dropPosition === 'bottom',
                     }"
                     @dragenter.prevent
-                    @dragover.prevent="(e) => onDragOver(e, colIndex, rowIndex)"
-                    @dragleave="(e) => onDragLeave(e, colIndex, rowIndex)"
-                    @drop.prevent="(e) => onDrop(e, colIndex, rowIndex)"
+                    @dragover.prevent="(e) => onDragOver(e, panel.id)"
+                    @dragleave="(e) => onDragLeave(e, panel.id)"
+                    @drop.prevent="(e) => onDrop(e, panel.id)"
                     @dragend="onDragEnd"
                   >
                     <!-- Drag Handle Overlay for non-Properties panels (which handle their own) -->
@@ -263,7 +243,7 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
                       v-if="panel.type !== 'properties'"
                       class="absolute top-0 left-0 right-0 h-8 z-10 cursor-grab active:cursor-grabbing flex justify-between items-center px-2 bg-transparent hover:bg-ui-bg-elevated/50 transition-colors"
                       draggable="true"
-                      @dragstart="(e) => onDragStart(e, colIndex, rowIndex)"
+                      @dragstart="(e) => onDragStart(e, panel.id)"
                     >
                       <span
                         class="text-xs text-ui-text-muted font-medium opacity-0 hover:opacity-100 transition-opacity flex items-center gap-1"
@@ -277,7 +257,7 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
                     <PropertiesPanel
                       v-else-if="panel.type === 'properties'"
                       class="h-full"
-                      @panel-drag-start="(e) => onDragStart(e, colIndex, rowIndex)"
+                      @panel-drag-start="(e) => onDragStart(e, panel.id)"
                     />
                     <div
                       v-else-if="panel.type === 'media'"
@@ -286,7 +266,7 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
                       <div
                         class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
                         draggable="true"
-                        @dragstart="(e) => onDragStart(e, colIndex, rowIndex)"
+                        @dragstart="(e) => onDragStart(e, panel.id)"
                       >
                         <div class="flex items-center gap-2">
                           <UIcon
@@ -330,7 +310,7 @@ function getVerticalSize(colIndex: number, rowIndex: number): number | undefined
                       <div
                         class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
                         draggable="true"
-                        @dragstart="(e) => onDragStart(e, colIndex, rowIndex)"
+                        @dragstart="(e) => onDragStart(e, panel.id)"
                       >
                         <div class="flex items-center gap-2">
                           <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
