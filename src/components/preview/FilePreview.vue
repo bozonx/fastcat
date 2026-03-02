@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MediaPlayer from '~/components/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
-import TextViewer from '~/components/preview/TextViewer.vue';
+import TextEditor from '~/components/preview/TextEditor.vue';
 
 const { t } = useI18n();
 
@@ -10,6 +10,7 @@ const props = defineProps<{
   mediaType: 'video' | 'audio' | 'image' | 'text' | 'unknown' | null;
   textContent?: string;
   alt?: string;
+  filePath?: string;
 }>();
 </script>
 
@@ -29,9 +30,10 @@ const props = defineProps<{
       class="w-full h-full"
     />
 
-    <TextViewer
+    <TextEditor
       v-else-if="props.mediaType === 'text'"
-      :content="props.textContent || ''"
+      :file-path="props.filePath || ''"
+      :initial-content="props.textContent || ''"
       class="w-full h-full"
     />
 

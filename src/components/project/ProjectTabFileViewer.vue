@@ -104,6 +104,7 @@ onUnmounted(() => {
       :url="currentUrl"
       :media-type="mediaType"
       :text-content="textContent"
+      :file-path="filePath"
       :alt="fileName"
     />
   </div>

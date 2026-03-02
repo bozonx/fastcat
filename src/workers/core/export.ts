@@ -419,12 +419,14 @@ export async function runExport(
     try {
       await runExportWithHardwareAcceleration('prefer-hardware', true);
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') throw e;
       await reportExportWarning(
         '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile.',
       );
       try {
         await runExportWithHardwareAcceleration('prefer-hardware', false);
       } catch (e2) {
+        if (e2 instanceof Error && e2.name === 'AbortError') throw e2;
         await reportExportWarning(
           '[Worker Export] Hardware acceleration export failed completely, retrying with software.',
         );

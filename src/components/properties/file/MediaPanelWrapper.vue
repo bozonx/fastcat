@@ -49,7 +49,8 @@ onUnmounted(() => {
       :is-unknown="props.mediaType === 'unknown'"
       :current-url="currentUrl"
       :media-type="props.mediaType"
-      text-content=""
+      :text-content="''"
+      :file-path="props.filePath"
       class="border-none w-full h-full flex-1 max-h-full min-h-0 absolute inset-0"
     />
   </div>
