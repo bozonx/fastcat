@@ -5,7 +5,7 @@ import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes'
 import { useProjectStore } from '~/stores/project.store';
 import { computed, ref, watch } from 'vue';
 
-import FileManager from '~/components/FileManager.vue';
+import Project from '~/components/Project.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
@@ -190,11 +190,11 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
             @resized="onFilesResize"
           >
             <Pane :size="filesSizes[0]" min-size="10">
-              <FileManager
+              <Project
                 folders-only
                 disable-sort
                 class="h-full"
-                @select="filesPageStore.selectFolder"
+                @resized="onFilesResize"
               />
             </Pane>
             <Pane :size="filesSizes[1]" min-size="10">
@@ -263,7 +263,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                       </span>
                     </div>
 
-                    <FileManager v-if="panel.type === 'fileManager'" class="h-full pt-2" />
+                    <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
                     <MonitorContainer
                       v-else-if="panel.type === 'monitor'"
                       class="h-full"
