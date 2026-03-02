@@ -83,6 +83,17 @@ const mediaStyle = computed(() => ({
   transformOrigin: 'center',
 }));
 
+const contextMenuItems = computed(() => [
+  [
+    {
+      label: t('granVideoEditor.preview.resetZoom', 'Reset Zoom & Pan'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => reset(),
+      click: () => reset(),
+    },
+  ],
+]);
+
 function onSeekStart() {
   isDragging.value = true;
   if (isPlaying.value) {
@@ -122,29 +133,34 @@ watch(
 <template>
   <div class="flex flex-col w-full h-full overflow-hidden rounded">
     <!-- Video -->
-    <div
+    <UContextMenu
       v-if="type === 'video'"
-      ref="containerRef"
-      class="flex-1 flex items-center justify-center min-h-0 bg-(--media-bg) relative overflow-hidden select-none"
-      @wheel="onWheel"
-      @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointerleave="onPointerUp"
+      :items="contextMenuItems"
+      class="flex-1 flex min-h-0"
     >
-      <video
-        ref="mediaElement"
-        :src="src"
-        class="max-w-full max-h-full object-contain transition-transform duration-75"
-        :style="mediaStyle"
-        @timeupdate="onTimeUpdate"
-        @loadedmetadata="onLoadedMetadata"
-        @play="onPlay"
-        @pause="onPause"
-        @ended="onPause"
-        @click="togglePlay"
-      ></video>
-    </div>
+      <div
+        ref="containerRef"
+        class="flex-1 flex w-full h-full items-center justify-center bg-(--media-bg) relative overflow-hidden select-none"
+        @wheel="onWheel"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointerleave="onPointerUp"
+      >
+        <video
+          ref="mediaElement"
+          :src="src"
+          class="max-w-full max-h-full object-contain transition-transform duration-75"
+          :style="mediaStyle"
+          @timeupdate="onTimeUpdate"
+          @loadedmetadata="onLoadedMetadata"
+          @play="onPlay"
+          @pause="onPause"
+          @ended="onPause"
+          @click="togglePlay"
+        ></video>
+      </div>
+    </UContextMenu>
 
     <!-- Audio -->
     <div v-else class="flex-1 flex flex-col min-h-0 bg-ui-bg">
