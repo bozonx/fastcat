@@ -184,6 +184,7 @@ export interface TimelineMarker {
 }
 
 export interface TimelineGranMetadata {
+  version?: number;
   docId?: string;
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];

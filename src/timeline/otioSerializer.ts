@@ -469,6 +469,7 @@ export function createDefaultTimelineDocument(params: {
     ],
     metadata: {
       gran: {
+        version: 0,
         docId: params.id,
         timebase: { fps: params.fps },
         markers: [],
@@ -609,6 +610,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
     },
     metadata: {
       gran: {
+        version: 0,
         docId: doc.id,
         timebase: doc.timebase,
         markers: coerceMarkers((doc as any)?.metadata?.gran?.markers),
@@ -724,6 +726,7 @@ export function parseTimelineFromOtio(
   });
 
   const docId = coerceId(granMeta?.docId, fallback.id);
+  const version = typeof granMeta?.version === 'number' ? granMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
   const markers = coerceMarkers(granMeta?.markers);
   const playheadUs =
@@ -737,6 +740,7 @@ export function parseTimelineFromOtio(
       ...(base.metadata ?? {}),
       gran: {
         ...(base.metadata?.gran ?? {}),
+        version,
         docId,
         timebase,
         markers,
@@ -754,6 +758,7 @@ export function parseTimelineFromOtio(
     tracks,
     metadata: {
       gran: {
+        version,
         docId,
         timebase,
         markers,
