@@ -461,6 +461,10 @@ function openAsTextPanel() {
     >
       <div class="flex flex-col">
         <PropertyRow
+          :label="t('granVideoEditor.timeline.version', 'Version')"
+          :value="timelineDocSummary.version ?? '-'"
+        />
+        <PropertyRow
           :label="t('common.duration', 'Duration')"
           :value="formatDurationSeconds((timelineDocSummary.durationUs ?? 0) / 1_000_000)"
         />
