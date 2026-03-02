@@ -26,8 +26,11 @@ const isResetAllHotkeysConfirmOpen = ref(false);
 const resetCommandConfirmTarget = ref<HotkeyCommandId | null>(null);
 const isResetCommandConfirmOpen = ref(false);
 
+const searchQuery = ref('');
+
 function getCommandTitle(cmdId: HotkeyCommandId): string {
-  return DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
+  const fallback = DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
+  return t(`videoEditor.hotkeys.${cmdId}`, fallback);
 }
 
 function getCommandGroupTitle(groupId: string): string {
@@ -212,12 +215,22 @@ function confirmReplaceDuplicate() {
 }
 
 const hotkeyGroups = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim();
   const groupIds = Array.from(new Set(DEFAULT_HOTKEYS.commands.map((c) => c.groupId)));
-  return groupIds.map((groupId) => ({
-    id: groupId,
-    title: getCommandGroupTitle(groupId),
-    commands: DEFAULT_HOTKEYS.commands.filter((c) => c.groupId === groupId),
-  }));
+  return groupIds
+    .map((groupId) => {
+      const commands = DEFAULT_HOTKEYS.commands.filter((c) => {
+        if (c.groupId !== groupId) return false;
+        if (!query) return true;
+        return getCommandTitle(c.id).toLowerCase().includes(query);
+      });
+      return {
+        id: groupId,
+        title: getCommandGroupTitle(groupId),
+        commands,
+      };
+    })
+    .filter((g) => g.commands.length > 0);
 });
 
 const hotkeyConflicts = computed(() => {
@@ -325,7 +338,20 @@ defineExpose({
       </div>
     </div>
 
-    <div class="flex flex-col gap-8">
+    <div class="px-1">
+      <UInput
+        v-model="searchQuery"
+        icon="i-heroicons-magnifying-glass"
+        :placeholder="t('common.search', 'Search')"
+        :disabled="isCapturingHotkey"
+      />
+    </div>
+
+    <div v-if="hotkeyGroups.length === 0" class="px-1 py-8 text-center text-sm text-ui-text-muted">
+      {{ t('common.noResults', 'No results found') }}
+    </div>
+
+    <div v-else class="flex flex-col gap-8">
       <div v-for="group in hotkeyGroups" :key="group.id" class="flex flex-col gap-3">
         <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest px-1">
           {{ group.title }}
