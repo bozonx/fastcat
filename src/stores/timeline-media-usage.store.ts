@@ -149,13 +149,13 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
 
       mediaPathToTimelines.value = computeMediaUsageByTimelineDocs(timelines).mediaPathToTimelines;
       lastScanAt.value = Date.now();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[TimelineMediaUsage] Error scanning timelines:', e);
       mediaPathToTimelines.value = {};
       if (e instanceof TimelineScanError) {
         error.value = `Scan failed: ${e.message} (${e.code})`;
       } else {
-        error.value = String(e?.message ?? e);
+        error.value = e instanceof Error ? e.message : String(e);
       }
       lastScanAt.value = null;
     } finally {

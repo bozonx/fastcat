@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import type { VideoColorSpaceInit } from 'webcodecs';
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';
@@ -25,7 +26,7 @@ export interface MediaMetadata {
     parsedCodec: string;
     fps: number;
     bitrate?: number;
-    colorSpace?: any;
+    colorSpace?: VideoColorSpaceInit;
   };
   audio?: {
     codec: string;

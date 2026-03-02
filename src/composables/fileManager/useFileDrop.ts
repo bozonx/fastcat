@@ -62,7 +62,7 @@ export function useFileDrop(options: UseFileDropOptions) {
 
     if (!moveRaw) return;
 
-    let parsed: any;
+    let parsed: { path?: unknown } | null;
     try {
       parsed = JSON.parse(moveRaw);
     } catch {

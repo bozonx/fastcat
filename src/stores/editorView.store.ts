@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { readLocalStorageJson, writeLocalStorageJson } from './ui/uiLocalStorage';
 import { getPanelSizesKey } from '~/composables/ui/usePersistedSplitpanes';
+import type { FsEntry } from '~/types/fs';
 import type { Ref } from 'vue';
 
 export type EditorView = 'files' | 'cut' | 'sound' | 'fullscreen';
@@ -18,7 +19,7 @@ export interface DynamicPanel {
   filePath?: string;
   fileContent?: string;
   mediaType?: 'video' | 'audio' | 'image' | 'unknown' | null;
-  fsEntry?: any; // To pass to EntryPreviewBox or logic
+  fsEntry?: FsEntry; // To pass to EntryPreviewBox or logic
 }
 
 export interface PanelColumn {
@@ -144,7 +145,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   }
 
   function addMediaPanel(
-    fsEntry: any,
+    fsEntry: FsEntry,
     mediaType: 'video' | 'audio' | 'image' | 'unknown' | null,
     title: string,
     targetPanelId?: string,

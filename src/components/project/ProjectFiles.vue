@@ -12,6 +12,7 @@ import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
+import type { FileAction as FileActionBase } from '~/composables/fileManager/useFileManagerModals';
 import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 
@@ -83,7 +84,16 @@ const {
   mediaCache: fileManager.mediaCache,
 });
 
-function onFileAction(action: any, entry: FsEntry) {
+type FileAction =
+  | FileActionBase
+  | 'createMarkdown'
+  | 'createTimeline'
+  | 'createOtioVersion'
+  | 'createProxyForFolder'
+  | 'cancelProxyForFolder'
+  | 'addToTimeline';
+
+function onFileAction(action: FileAction, entry: FsEntry) {
   if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
@@ -111,7 +121,7 @@ function onFileAction(action: any, entry: FsEntry) {
       }
     }
   } else {
-    onFileActionBase(action, entry);
+    onFileActionBase(action as FileActionBase, entry);
   }
 }
 
@@ -405,30 +415,36 @@ watch(
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="openCreateFolderModal(uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
+          @click="
+            openCreateFolderModal(
+              uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null,
+            )
+          "
         />
 
         <div class="ml-auto flex items-center">
-          <UDropdown
+          <UDropdownMenu
             :items="[
               [
                 {
                   label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
                   icon: 'i-heroicons-arrow-path',
                   disabled: isLoading || !projectStore.currentProjectName,
-                  click: loadProjectDirectory,
+                  onSelect: () => loadProjectDirectory(),
                 },
               ],
               [
                 {
                   label: t('videoEditor.fileManager.sort.name', 'Sort by name'),
-                  icon: sortMode === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
-                  click: () => onSortModeChange('name'),
+                  icon:
+                    sortMode === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+                  onSelect: () => onSortModeChange('name'),
                 },
                 {
                   label: t('videoEditor.fileManager.sort.type', 'Sort by type'),
-                  icon: sortMode === 'type' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
-                  click: () => onSortModeChange('type'),
+                  icon:
+                    sortMode === 'type' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+                  onSelect: () => onSortModeChange('type'),
                 },
               ],
               [
@@ -437,11 +453,11 @@ watch(
                     ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
                     : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
                   icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
-                  click: () => (uiStore.showHiddenFiles = !uiStore.showHiddenFiles),
+                  onSelect: () => (uiStore.showHiddenFiles = !uiStore.showHiddenFiles),
                 },
               ],
             ]"
-            :popper="{ placement: 'bottom-end' }"
+            :content="{ placement: 'bottom-end' }"
           >
             <UButton
               icon="i-heroicons-ellipsis-horizontal"
@@ -449,7 +465,7 @@ watch(
               variant="ghost"
               size="xs"
             />
-          </UDropdown>
+          </UDropdownMenu>
         </div>
       </div>
 

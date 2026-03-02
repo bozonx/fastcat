@@ -16,7 +16,7 @@ import {
   terminateExportWorker,
   restartExportWorker,
 } from '~/utils/video-editor/worker-client';
-import type { ClipTransform, TimelineTrackItem } from '~/timeline/types';
+import type { ClipTransform, TimelineTrackItem, ClipEffect } from '~/timeline/types';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
@@ -85,7 +85,7 @@ export async function toWorkerTimelineClips(
     trackKind?: 'video' | 'audio';
     visitedPaths?: Set<string>;
     parentOpacity?: number;
-    parentEffects?: any[];
+    parentEffects?: ClipEffect[];
   },
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];

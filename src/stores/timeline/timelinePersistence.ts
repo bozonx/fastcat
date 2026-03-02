@@ -107,8 +107,9 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       if (savedTimelineRevision < revisionToSave) {
         savedTimelineRevision = revisionToSave;
       }
-    } catch (e: any) {
-      deps.timelineSaveError.value = e?.message ?? 'Failed to save timeline file';
+    } catch (e: unknown) {
+      deps.timelineSaveError.value =
+        e instanceof Error ? e.message : 'Failed to save timeline file';
       console.warn('Failed to save timeline file', e);
     } finally {
       deps.isSavingTimeline.value = false;
@@ -175,7 +176,7 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       ) {
         deps.currentTime.value = parsed.metadata.gran.playheadUs;
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = fallback;

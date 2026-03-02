@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Ref } from 'vue';
+import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
@@ -31,7 +32,7 @@ interface MonitorDisplayState {
 
 interface MonitorStoreState {
   projectStore: {
-    projectSettings: any;
+    projectSettings: GranVideoEditorProjectSettings;
     getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   };
   timelineStore: {

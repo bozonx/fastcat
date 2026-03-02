@@ -255,8 +255,8 @@ export function createProxyService(params: {
     try {
       await dir.removeEntry(params.getProxyFileName(projectRelativePath));
       params.existingProxies.value.delete(projectRelativePath);
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to delete proxy', e);
       }
     }

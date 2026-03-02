@@ -193,8 +193,8 @@ async function handleConfirm() {
     try {
       await exportDir.getFileHandle(outputFilename.value);
       throw new Error('A file with this name already exists');
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name !== 'NotFoundError') {
         throw e;
       }
     }
@@ -202,8 +202,8 @@ async function handleConfirm() {
     let fileHandle: FileSystemFileHandle;
     try {
       fileHandle = await exportDir.getFileHandle(outputFilename.value, { create: true });
-    } catch (e: any) {
-      if (e?.name === 'NotAllowedError' || e?.name === 'InvalidModificationError') {
+    } catch (e: unknown) {
+      if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'InvalidModificationError')) {
         throw new Error('A file with this name already exists', { cause: e });
       }
       throw e;
@@ -288,13 +288,12 @@ async function handleConfirm() {
 
     emit('exported');
     isOpen.value = false;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Export failed:', err);
-    if (err?.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       exportError.value = t('videoEditor.export.errorCancelled', 'Export was cancelled');
     } else {
-      exportError.value =
-        err?.message || t('videoEditor.export.errorGeneric', 'An error occurred during export');
+      exportError.value = err instanceof Error ? err.message : t('videoEditor.export.error', 'Export failed');
     }
   } finally {
     isExporting.value = false;

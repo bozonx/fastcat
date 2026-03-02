@@ -151,7 +151,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       defaultErrorMessage: 'Failed to open project folder',
       toastTitle: 'Project error',
       toastDescription: () => error.value || 'Failed to open project folder',
-      ignoreError: (e: any) => e?.name === 'AbortError',
+      ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
 
     void timelineMediaUsageStore.refreshUsage();
@@ -293,8 +293,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
                   await parent.getDirectoryHandle(nn);
                 }
                 throw new Error(`Target name already exists: ${nn}`);
-              } catch (e: any) {
-                if (e?.name !== 'NotFoundError') throw e;
+              } catch (e: unknown) {
+                if (e instanceof Error && e.name !== 'NotFoundError') throw e;
               }
             },
             removeEntry: async ({ parentHandle, name, recursive }) => {

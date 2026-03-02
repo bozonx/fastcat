@@ -5,6 +5,8 @@ import { TEXT_EXTENSIONS } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { TimelineDocument } from '~/timeline/types';
+import type { FsEntry } from '~/types/fs';
+import type { MediaMetadata } from '~/stores/media.store';
 
 export type PreviewMode = 'original' | 'proxy';
 export type MediaType = 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
@@ -34,10 +36,16 @@ function computeTimelineSummary(doc: TimelineDocument) {
 }
 
 export function useEntryPreview(params: {
-  selectedFsEntry: Ref<any>;
+  selectedFsEntry: Ref<FsEntry | null>;
   previewMode: Ref<PreviewMode>;
   hasProxy: Ref<boolean>;
-  mediaStore: { getOrFetchMetadata: (...args: any[]) => Promise<unknown> };
+  mediaStore: {
+    getOrFetchMetadata: (
+      fileHandle: FileSystemFileHandle,
+      projectRelativePath: string,
+      options?: { forceRefresh?: boolean },
+    ) => Promise<MediaMetadata | null>;
+  };
   proxyStore: { getProxyFile: (path: string) => Promise<File | null> };
   onResetPreviewMode: (mode: PreviewMode) => void;
 }) {

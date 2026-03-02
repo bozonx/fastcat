@@ -12,7 +12,10 @@ export interface TimelineHydrationApi {
 }
 
 export function createTimelineHydration(deps: TimelineHydrationDeps): TimelineHydrationApi {
-  function hydrateClipSourceDuration(doc: TimelineDocument, cmd: TimelineCommand): TimelineDocument {
+  function hydrateClipSourceDuration(
+    doc: TimelineDocument,
+    cmd: TimelineCommand,
+  ): TimelineDocument {
     if (cmd.type !== 'trim_item' && cmd.type !== 'overlay_trim_item') return doc;
 
     const track = doc.tracks.find((t) => t.id === cmd.trackId);
@@ -32,7 +35,8 @@ export function createTimelineHydration(deps: TimelineHydrationDeps): TimelineHy
     const isImageLike = !hasVideo && !hasAudio;
 
     const durationS = Number(meta.duration);
-    const durationUs = Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+    const durationUs =
+      Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
 
     const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
     const needsIsImagePatch = isImageLike && !item.isImage;
@@ -46,7 +50,7 @@ export function createTimelineHydration(deps: TimelineHydrationDeps): TimelineHy
             ...t,
             items: t.items.map((it) => {
               if (it.id === item.id && it.kind === 'clip' && it.clipType === 'media') {
-                const patch: any = {};
+                const patch: { sourceDurationUs?: number; isImage?: boolean } = {};
                 if (needsSourceDurationPatch) patch.sourceDurationUs = durationUs;
                 if (needsIsImagePatch) patch.isImage = true;
                 return { ...it, ...patch };

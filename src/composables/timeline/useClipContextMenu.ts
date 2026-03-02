@@ -4,23 +4,44 @@ import type {
   TimelineTrackItem,
   TimelineClipItem,
   TimelineDocument,
+  ClipTransition,
 } from '~/timeline/types';
+import type { TimelineTrack as TimelineTrackType } from '~/timeline/types';
+import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
+import type {
+  TimelineCommand,
+  UpdateClipPropertiesCommand,
+  UpdateClipTransitionCommand,
+} from '~/timeline/commands';
 
 interface UseClipContextMenuOptions {
   track: Ref<TimelineTrack>;
   item: Ref<TimelineTrackItem>;
   timelineDoc: Ref<TimelineDocument | null>;
-  projectSettings: Ref<any>;
-  applyTimelineCommand: (cmd: any) => void;
-  updateClipProperties: (trackId: string, itemId: string, props: any) => void;
-  updateClipTransition: (trackId: string, itemId: string, props: any) => void;
+  projectSettings: Ref<GranVideoEditorProjectSettings>;
+  applyTimelineCommand: (cmd: TimelineCommand) => void;
+  updateClipProperties: (
+    trackId: string,
+    itemId: string,
+    props: UpdateClipPropertiesCommand['properties'],
+  ) => void;
+  updateClipTransition: (
+    trackId: string,
+    itemId: string,
+    props: { transitionIn?: ClipTransition | null; transitionOut?: ClipTransition | null },
+  ) => void;
   requestTimelineSave: (opts: { immediate: boolean }) => Promise<void>;
   selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' }) => void;
   clearSelection: () => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   emitOpenSpeedModal: (payload: { trackId: string; itemId: string; speed: number }) => void;
-  emitClipAction: (payload: any) => void;
-  t: (key: string, ...args: any[]) => string;
+  emitClipAction: (payload: {
+    action: string;
+    trackId: string;
+    itemId: string;
+    videoItemId?: string;
+  }) => void;
+  t: (key: string, ...args: (string | number)[]) => string;
 }
 
 export function useClipContextMenu(options: UseClipContextMenuOptions) {
@@ -48,7 +69,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       ];
     }
 
-    const mainGroup: any[] = [];
+    const mainGroup: { label: string; icon: string; onSelect: () => void; disabled?: boolean }[] =
+      [];
 
     if (item.kind === 'clip') {
       const clipItem = item as TimelineClipItem;
@@ -112,12 +134,12 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       const docTracks = options.timelineDoc.value?.tracks ?? [];
       const hasReturnFromVideoClip =
         track.kind === 'video' &&
-        Boolean((clipItem as any).audioFromVideoDisabled) &&
-        docTracks.some((t: any) =>
+        Boolean(clipItem.audioFromVideoDisabled) &&
+        docTracks.some((t: TimelineTrackType) =>
           t.kind !== 'audio'
             ? false
             : (t.items ?? []).some(
-                (it: any) =>
+                (it: TimelineTrackItem) =>
                   it.kind === 'clip' &&
                   it.linkedVideoClipId === clipItem.id &&
                   Boolean(it.lockToLinkedVideo),
@@ -184,29 +206,31 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       }
     }
 
-    const actionGroup: any[] = [
-      {
-        label: options.t('granVideoEditor.timeline.delete', 'Delete'),
-        icon: 'i-heroicons-trash',
-        disabled: item.kind === 'clip' && Boolean((item as TimelineClipItem).locked),
-        onSelect: () => {
-          options.clearSelection();
-          options.applyTimelineCommand({
-            type: 'delete_items',
-            trackId: track.id,
-            itemIds: [item.id],
-          });
+    const actionGroup: { label: string; icon: string; onSelect: () => void; disabled?: boolean }[] =
+      [
+        {
+          label: options.t('granVideoEditor.timeline.delete', 'Delete'),
+          icon: 'i-heroicons-trash',
+          disabled: item.kind === 'clip' && Boolean((item as TimelineClipItem).locked),
+          onSelect: () => {
+            options.clearSelection();
+            options.applyTimelineCommand({
+              type: 'delete_items',
+              trackId: track.id,
+              itemIds: [item.id],
+            });
+          },
         },
-      },
-    ];
+      ];
 
     const result = [];
     if (mainGroup.length > 0) result.push(mainGroup);
 
     if (item.kind === 'clip' && track.kind === 'video') {
-      const transitionGroup: any[] = [];
-      const hasIn = Boolean((item as any).transitionIn);
-      const hasOut = Boolean((item as any).transitionOut);
+      const clipItem = item as TimelineClipItem;
+      const hasIn = Boolean(clipItem.transitionIn);
+      const hasOut = Boolean(clipItem.transitionOut);
+      const transitionGroup: { label: string; icon: string; onSelect: () => void }[] = [];
 
       const defaultTransitionDurationUs = Math.max(
         0,
