@@ -83,9 +83,14 @@ function onDragOver(event: DragEvent, index: number) {
 }
 
 function onDragLeave(event: DragEvent, index: number) {
-  if (dragOverPanelIndex.value === index) {
-    dragOverPanelIndex.value = null;
-    dropPosition.value = null;
+  // Only clear if we actually leave the element, not when entering children
+  const target = event.currentTarget as HTMLElement;
+  const relatedTarget = event.relatedTarget as Node | null;
+  if (!target.contains(relatedTarget)) {
+    if (dragOverPanelIndex.value === index) {
+      dragOverPanelIndex.value = null;
+      dropPosition.value = null;
+    }
   }
 }
 
@@ -170,9 +175,10 @@ function resetDragState() {
                   'border-l-2 border-l-primary-500': dragOverPanelIndex === index && dropPosition === 'left',
                   'border-r-2 border-r-primary-500': dragOverPanelIndex === index && dropPosition === 'right'
                 }"
-                @dragover="(e) => onDragOver(e, index)"
+                @dragenter.prevent
+                @dragover.prevent="(e) => onDragOver(e, index)"
                 @dragleave="(e) => onDragLeave(e, index)"
-                @drop="(e) => onDrop(e, index)"
+                @drop.prevent="(e) => onDrop(e, index)"
                 @dragend="onDragEnd"
               >
                 <!-- Drag Handle Overlay for non-Properties panels (which handle their own) -->
@@ -195,7 +201,7 @@ function resetDragState() {
                        @dragstart="(e) => onDragStart(e, index)">
                     <div class="flex items-center gap-2">
                       <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
-                      <h3 class="font-bold truncate max-w-[200px]" :title="panel.title">{{ panel.title }}</h3>
+                      <h3 class="font-bold truncate max-w-50" :title="panel.title">{{ panel.title }}</h3>
                     </div>
                     <UButton size="xs" variant="ghost" color="neutral" icon="i-heroicons-x-mark" @click="projectStore.removePanel(panel.id)" />
                   </div>

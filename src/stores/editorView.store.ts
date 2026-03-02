@@ -85,7 +85,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       fromIndex < 0 ||
       fromIndex >= cutPanels.value.length ||
       toIndex < 0 ||
-      toIndex >= cutPanels.value.length ||
+      toIndex > cutPanels.value.length ||
       fromIndex === toIndex
     )
       return;
