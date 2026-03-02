@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
-import type { SelectedEntity } from '~/stores/selection.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 export type FileViewMode = 'grid' | 'list';
 export type FileSortField = 'name' | 'type' | 'size' | 'modified' | 'created';
@@ -34,8 +34,10 @@ function saveToStorage<T>(key: string, value: T): void {
 }
 
 export const useFilesPageStore = defineStore('filesPage', () => {
+  const selectionStore = useSelectionStore();
+
   const selectedFolder = ref<FsEntry | null>(null);
-  const selectedFile = ref<FsEntry | null>(null);
+
   const viewMode = ref<FileViewMode>(loadFromStorage('viewMode', 'grid'));
   const sortOption = ref<FileSortOption>(
     loadFromStorage('sortOption', { field: 'name', order: 'asc' }),
@@ -60,6 +62,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
   function selectFolder(entry: FsEntry | null) {
     if (entry && entry.kind === 'directory') {
       selectedFolder.value = entry;
+      selectionStore.selectFsEntry(entry);
     } else {
       selectedFolder.value = null;
     }
@@ -67,9 +70,12 @@ export const useFilesPageStore = defineStore('filesPage', () => {
 
   function selectFile(entry: FsEntry | null) {
     if (entry && entry.kind === 'file') {
-      selectedFile.value = entry;
+      selectionStore.selectFsEntry(entry);
     } else {
-      selectedFile.value = null;
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager' && selected.kind === 'file') {
+        selectionStore.clearSelection();
+      }
     }
   }
 
@@ -102,35 +108,15 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     selectedFolder.value = null;
   }
 
-  const selectedEntity = computed<SelectedEntity | null>(() => {
-    if (selectedFile.value) {
-      return {
-        source: 'fileManager',
-        kind: 'file',
-        path: selectedFile.value.path,
-        name: selectedFile.value.name,
-        entry: selectedFile.value,
-      };
-    }
-    if (selectedFolder.value) {
-      return {
-        source: 'fileManager',
-        kind: 'directory',
-        path: selectedFolder.value.path,
-        name: selectedFolder.value.name,
-        entry: selectedFolder.value,
-      };
-    }
-    return null;
-  });
-
   function clearSelection() {
-    selectedFile.value = null;
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source === 'fileManager' && selected.kind === 'file') {
+      selectionStore.clearSelection();
+    }
   }
 
   return {
     selectedFolder,
-    selectedFile,
     viewMode,
     sortOption,
     gridCardSize,
@@ -143,6 +129,5 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     setGridCardSize,
     setColumnWidth,
     navigateUp,
-    selectedEntity,
   };
 });

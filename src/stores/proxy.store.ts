@@ -46,6 +46,8 @@ export const useProxyStore = defineStore('proxy', () => {
     generatingProxies,
     existingProxies,
     proxyProgress,
+    proxyAbortControllers,
+    activeWorkerPaths,
     checkExistingProxies: service.checkExistingProxies,
     generateProxy: service.generateProxy,
     generateProxiesForFolder: service.generateProxiesForFolder,
