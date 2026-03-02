@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import MediaPlayer from '~/components/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
@@ -16,6 +16,20 @@ const props = defineProps<{
 }>();
 
 const isImageModalOpen = ref(false);
+
+function handleEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isImageModalOpen.value) {
+    isImageModalOpen.value = false;
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleEsc);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEsc);
+});
 </script>
 
 <template>
@@ -53,24 +67,39 @@ const isImageModalOpen = ref(false);
       </p>
     </div>
 
-    <UModal v-model="isImageModalOpen" fullscreen>
-      <div class="w-full h-full relative">
-        <UButton
-          color="white"
-          variant="ghost"
-          icon="i-heroicons-x-mark"
-          class="absolute top-4 right-4 z-10"
-          @click="isImageModalOpen = false"
-        />
-        <ImageViewer
-          v-if="props.mediaType === 'image' && props.url && isImageModalOpen"
-          :src="props.url"
-          :alt="props.alt"
-          is-modal
-          class="w-full h-full"
-          @close-modal="isImageModalOpen = false"
-        />
-      </div>
-    </UModal>
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition opacity-200 duration-200"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition opacity-200 duration-200"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isImageModalOpen"
+          class="fixed inset-0 bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm"
+          style="z-index: 99999;"
+        >
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-x-mark"
+            class="absolute top-4 right-4 text-white hover:bg-white/20"
+            size="xl"
+            style="z-index: 100000;"
+            @click="isImageModalOpen = false"
+          />
+          <ImageViewer
+            v-if="props.mediaType === 'image' && props.url"
+            :src="props.url"
+            :alt="props.alt"
+            is-modal
+            class="w-full h-full flex-1"
+            @close-modal="isImageModalOpen = false"
+          />
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
