@@ -5,7 +5,6 @@ export function useMonitorDisplay() {
   const projectStore = useProjectStore();
 
   const containerEl = ref<HTMLDivElement | null>(null);
-  const viewportEl = ref<HTMLDivElement | null>(null);
 
   const MIN_CANVAS_DIMENSION = 16;
   const MAX_CANVAS_DIMENSION = 7680;
@@ -38,21 +37,6 @@ export function useMonitorDisplay() {
     return Math.round(renderHeight.value * aspectRatio.value);
   });
 
-  function getCanvasWrapperStyle() {
-    return {
-      width: `${renderWidth.value}px`,
-      height: `${renderHeight.value}px`,
-      overflow: 'hidden',
-    };
-  }
-
-  function getCanvasInnerStyle() {
-    return {
-      width: `${renderWidth.value}px`,
-      height: `${renderHeight.value}px`,
-    };
-  }
-
   function updateCanvasDisplaySize() {
     // Canvas display size is fixed to the selected preview resolution.
     // Viewport clipping is handled by CSS overflow on the viewport container.
@@ -60,14 +44,11 @@ export function useMonitorDisplay() {
 
   return {
     containerEl,
-    viewportEl,
     exportWidth,
     exportHeight,
     renderWidth,
     renderHeight,
     aspectRatio,
-    getCanvasWrapperStyle,
-    getCanvasInnerStyle,
     updateCanvasDisplaySize,
   };
 }
