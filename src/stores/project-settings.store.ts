@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import PQueue from 'p-queue';
 
+import { createAutoSave } from '~/utils/autoSave';
 import {
   createDefaultProjectSettings,
   normalizeProjectSettings,
@@ -29,11 +29,36 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const getProjectDirHandle = ref<(() => Promise<FileSystemDirectoryHandle | null>) | null>(null);
   const getCurrentProjectName = ref<(() => string | null) | null>(null);
 
-  let persistProjectSettingsTimeout: number | null = null;
-  let projectSettingsRevision = 0;
-  let savedProjectSettingsRevision = 0;
+  const autoSave = createAutoSave({
+    doSave: async () => {
+      if (!workspaceStore.projectsHandle) return false;
+      if (!getCurrentProjectName.value?.()) return false;
+      if (isLoadingProjectSettings.value) return false;
 
-  const projectSettingsSaveQueue = new PQueue({ concurrency: 1 });
+      isSavingProjectSettings.value = true;
+
+      try {
+        await ensureRepo();
+        const repo: ProjectSettingsRepo | null = projectSettingsRepo.value;
+        if (!repo) return false;
+
+        await (repo as unknown as ProjectSettingsRepo).save(projectSettings.value);
+      } finally {
+        isSavingProjectSettings.value = false;
+      }
+    },
+    onError: (e) => {
+      const nuxtApp = useNuxtApp();
+      const toast = (nuxtApp as any).$toast;
+      if (toast) {
+        toast.error('Failed to save project settings', {
+          description: e instanceof Error ? e.message : 'Unknown error occurred',
+        });
+      } else {
+        console.warn('Failed to save project settings', e);
+      }
+    },
+  });
 
   function setContext(input: {
     getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
@@ -43,30 +68,21 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     getCurrentProjectName.value = input.getCurrentProjectName;
   }
 
-  function clearPersistProjectSettingsTimeout() {
-    if (typeof window === 'undefined') return;
-    if (persistProjectSettingsTimeout === null) return;
-    window.clearTimeout(persistProjectSettingsTimeout);
-    persistProjectSettingsTimeout = null;
-  }
-
   function closeProjectSettings() {
-    clearPersistProjectSettingsTimeout();
+    autoSave.reset();
     isLoadingProjectSettings.value = false;
     isSavingProjectSettings.value = false;
     projectSettingsRepo.value = null;
 
     projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
-    projectSettingsRevision = 0;
-    savedProjectSettingsRevision = 0;
   }
 
   function markProjectSettingsAsDirty() {
-    projectSettingsRevision += 1;
+    autoSave.markDirty();
   }
 
   function markProjectSettingsAsCleanForCurrentRevision() {
-    savedProjectSettingsRevision = projectSettingsRevision;
+    autoSave.markCleanForCurrentRevision();
   }
 
   async function ensureRepo(): Promise<ProjectSettingsRepo | null> {
@@ -102,61 +118,13 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
     } finally {
       isLoadingProjectSettings.value = false;
-      projectSettingsRevision = 0;
+      autoSave.reset();
       markProjectSettingsAsCleanForCurrentRevision();
     }
   }
 
-  async function persistProjectSettingsNow() {
-    if (!workspaceStore.projectsHandle) return;
-    if (!getCurrentProjectName.value?.()) return;
-    if (isLoadingProjectSettings.value) return;
-
-    if (savedProjectSettingsRevision >= projectSettingsRevision) return;
-
-    isSavingProjectSettings.value = true;
-    const revisionToSave = projectSettingsRevision;
-
-    try {
-      await ensureRepo();
-      const repo: ProjectSettingsRepo | null = projectSettingsRepo.value;
-      if (!repo) return;
-
-      await (repo as unknown as ProjectSettingsRepo).save(projectSettings.value);
-
-      if (savedProjectSettingsRevision < revisionToSave) {
-        savedProjectSettingsRevision = revisionToSave;
-      }
-    } catch (e) {
-      console.warn('Failed to save project settings', e);
-    } finally {
-      isSavingProjectSettings.value = false;
-    }
-  }
-
-  async function enqueueProjectSettingsSave() {
-    await projectSettingsSaveQueue.add(async () => {
-      await persistProjectSettingsNow();
-    });
-  }
-
   async function requestProjectSettingsSave(options?: { immediate?: boolean }) {
-    if (options?.immediate) {
-      clearPersistProjectSettingsTimeout();
-      await enqueueProjectSettingsSave();
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      await enqueueProjectSettingsSave();
-      return;
-    }
-
-    clearPersistProjectSettingsTimeout();
-    persistProjectSettingsTimeout = window.setTimeout(() => {
-      persistProjectSettingsTimeout = null;
-      void enqueueProjectSettingsSave();
-    }, 500);
+    await autoSave.requestSave(options);
   }
 
   async function saveProjectSettings() {
@@ -177,7 +145,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       console.warn('Failed to create project settings file', e);
     }
 
-    projectSettingsRevision = 0;
+    autoSave.reset();
     markProjectSettingsAsCleanForCurrentRevision();
   }
 
