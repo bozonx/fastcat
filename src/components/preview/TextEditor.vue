@@ -49,13 +49,12 @@ async function saveNow() {
       return;
     }
 
-    const createWritable = (handle as FileSystemFileHandle).createWritable;
-    if (typeof createWritable !== 'function') {
+    if (typeof (handle as any).createWritable !== 'function') {
       saveError.value = 'Writing is not supported';
       return;
     }
 
-    const writable = await createWritable.call(handle);
+    const writable = await (handle as any).createWritable();
     await writable.write(content.value);
     await writable.close();
 
