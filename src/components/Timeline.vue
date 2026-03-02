@@ -66,6 +66,18 @@ const dragPreview = ref<{
   kind: 'timeline-clip' | 'file';
 } | null>(null);
 
+const isRulerHovered = ref(false);
+let zoomTimeout: number | null = null;
+const isZooming = ref(false);
+
+watch(() => timelineStore.timelineZoom, () => {
+  isZooming.value = true;
+  if (zoomTimeout) clearTimeout(zoomTimeout);
+  zoomTimeout = window.setTimeout(() => {
+    isZooming.value = false;
+  }, 1000);
+});
+
 const {
   draggingMode,
   draggingItemId,
@@ -572,12 +584,29 @@ async function onDrop(e: DragEvent, trackId: string) {
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div class="flex flex-col h-full w-full relative">
-            <TimelineRuler
-              class="h-7 border-b border-ui-border bg-ui-bg-elevated z-10 cursor-pointer shrink-0"
-              :scroll-el="scrollEl"
-              @mousedown="onTimeRulerMouseDown"
-              @wheel="onTimelineRulerWheel"
-            />
+            <div class="relative group shrink-0 z-10" @mouseenter="isRulerHovered = true" @mouseleave="isRulerHovered = false">
+              <TimelineRuler
+                class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
+                :scroll-el="scrollEl"
+                @mousedown="onTimeRulerMouseDown"
+                @wheel="onTimelineRulerWheel"
+              />
+              <Transition
+                enter-active-class="transition-opacity duration-200"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-opacity duration-300"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+              >
+                <div
+                  v-if="isRulerHovered || isZooming"
+                  class="absolute top-full mt-1 right-2 px-1.5 py-0.5 text-[10px] font-mono rounded bg-ui-bg-elevated border border-ui-border text-ui-text-muted shadow-sm z-20 pointer-events-none"
+                >
+                  {{ Math.round(timelineStore.timelineZoom) }}%
+                </div>
+              </Transition>
+            </div>
             <div
               ref="scrollEl"
               class="w-full flex-1 overflow-x-auto overflow-y-hidden relative"
