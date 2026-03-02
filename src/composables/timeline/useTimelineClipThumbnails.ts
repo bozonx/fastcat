@@ -3,7 +3,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 

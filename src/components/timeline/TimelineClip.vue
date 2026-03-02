@@ -5,7 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
-import { timeUsToPx } from '~/composables/timeline/useTimelineInteraction';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import {
   clampHandlePx,

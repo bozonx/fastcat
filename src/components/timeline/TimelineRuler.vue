@@ -6,7 +6,7 @@ import {
   pxToTimeUs,
   timeUsToPx,
   zoomToPxPerSecond,
-} from '~/composables/timeline/useTimelineInteraction';
+} from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 import AppModal from '~/components/ui/AppModal.vue';
 

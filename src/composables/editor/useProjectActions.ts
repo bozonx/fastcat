@@ -10,53 +10,59 @@ export function useProjectActions() {
   const mediaStore = useMediaStore();
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
+  const toast = useToast();
 
-  /**
-   * Resets all stores related to the project without navigation
-   */
   function resetProjectState() {
     timelineStore.resetTimelineState();
     mediaStore.resetMediaState();
     projectStore.closeProject();
   }
 
-  /**
-   * Completely closes the current project and navigates to the start screen
-   */
   async function leaveProject() {
-    resetProjectState();
-    await navigateTo('/');
+    try {
+      resetProjectState();
+      await navigateTo('/');
+    } catch (e) {
+      toast.add({
+        color: 'red',
+        title: 'Failed to leave project',
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
-  /**
-   * Loads a specific timeline file and handles all side effects
-   */
   async function loadTimeline(path: string) {
     if (!projectStore.currentProjectName) return;
 
-    // 1. Update project store state
-    await projectStore.openTimelineFile(path);
-
-    // 2. Sync focus
-    focusStore.setActiveTimelinePath(path);
-
-    // 3. Load actual data
-    await timelineStore.loadTimeline();
-    void timelineStore.loadTimelineMetadata();
+    try {
+      await projectStore.openTimelineFile(path);
+      focusStore.setActiveTimelinePath(path);
+      await timelineStore.loadTimeline();
+      void timelineStore.loadTimelineMetadata();
+    } catch (e) {
+      toast.add({
+        color: 'red',
+        title: 'Failed to load timeline',
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
-  /**
-   * Opens a project by name and restores its last state
-   */
   async function openProject(name: string) {
-    resetProjectState();
+    try {
+      resetProjectState();
+      await projectStore.openProject(name);
+      uiStore.restoreFileTreeStateOnce(name);
 
-    await projectStore.openProject(name);
-    uiStore.restoreFileTreeStateOnce(name);
-
-    // Project store's openProject already sets currentTimelinePath to lastOpened or default
-    if (projectStore.currentTimelinePath) {
-      await loadTimeline(projectStore.currentTimelinePath);
+      if (projectStore.currentTimelinePath) {
+        await loadTimeline(projectStore.currentTimelinePath);
+      }
+    } catch (e) {
+      toast.add({
+        color: 'red',
+        title: 'Failed to open project',
+        description: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 

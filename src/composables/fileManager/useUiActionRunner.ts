@@ -5,9 +5,16 @@ export interface UiActionRunnerState {
   error: Ref<string | null>;
 }
 
+export interface ToastOptions {
+  title: string;
+  description?: string;
+  color?: 'primary' | 'neutral' | 'success' | 'warning' | 'error' | 'red';
+  icon?: string;
+}
+
 export interface UiActionRunnerDeps {
   toast: {
-    add: (options: any) => void;
+    add: (options: ToastOptions) => void;
   };
 }
 

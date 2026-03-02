@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { pxToDeltaUs } from './useTimelineInteraction';
+import { pxToDeltaUs } from '~/utils/timeline/geometry';
 import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
