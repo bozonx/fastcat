@@ -7,15 +7,11 @@ const props = defineProps<{
 
 <template>
   <div class="flex items-center justify-center w-full h-full bg-[#1a1a1a] overflow-auto p-4">
-    <div class="relative max-w-full max-h-full flex items-center justify-center shadow-lg">
-      <div class="absolute inset-0 checkerboard-bg z-0 rounded-sm"></div>
-      <img
-        :src="props.src"
-        :alt="props.alt || 'Image preview'"
-        class="max-w-full max-h-full z-10 rounded-sm"
-        style="display: block;"
-      />
-    </div>
+    <img
+      :src="props.src"
+      :alt="props.alt || 'Image preview'"
+      class="max-w-full max-h-full block checkerboard-bg"
+    />
   </div>
 </template>
 
@@ -32,5 +28,6 @@ const props = defineProps<{
     0 10px,
     10px -10px,
     -10px 0px;
+  background-repeat: repeat;
 }
 </style>

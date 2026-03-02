@@ -157,6 +157,20 @@ const rootContextMenuItems = computed(() => {
         onSelect: () => emit('createFolder', null),
       },
       {
+        label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+        icon: 'i-heroicons-document-plus',
+        onSelect: async () => {
+          const handle = await props.getProjectRootDirHandle();
+          if (!handle) return;
+          emit('action', 'createTimeline' as any, {
+            kind: 'directory',
+            name: projectStore.currentProjectName!,
+            path: '',
+            handle,
+          });
+        },
+      },
+      {
         label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
         onSelect: async () => {
