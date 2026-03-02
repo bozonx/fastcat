@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useProjectStore } from '~/stores/project.store';
+import { computed } from 'vue';
 
 import FileManager from '~/components/FileManager.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
@@ -15,10 +16,17 @@ const projectStore = useProjectStore();
 const { currentProjectId } = storeToRefs(projectStore);
 const filesPageStore = useFilesPageStore();
 
+const defaultCutPanelSizes = computed(() => {
+  const len = projectStore.cutPanels?.length || 0;
+  if (len === 0) return [];
+  const size = 100 / len;
+  return Array(len).fill(size);
+});
+
 const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitpanes(
-  'editor-cut-top',
+  'editor-cut-top-dynamic',
   currentProjectId,
-  [20, 60, 20],
+  defaultCutPanelSizes,
 );
 
 const { sizes: filesSizes, onResized: onFilesResize } = usePersistedSplitpanes(
@@ -70,16 +78,21 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             </Pane>
           </Splitpanes>
 
-          <!-- Cut View: FileManager + Monitor + Properties -->
+          <!-- Cut View: Dynamic Panels -->
           <Splitpanes v-else-if="projectStore.currentView === 'cut'" class="editor-splitpanes" @resized="onTopSplitResize">
-            <Pane :size="topSplitSizes[0]" min-size="5">
-              <FileManager class="h-full" />
-            </Pane>
-            <Pane :size="topSplitSizes[1]" min-size="10">
-              <MonitorContainer class="h-full" />
-            </Pane>
-            <Pane :size="topSplitSizes[2]" min-size="5">
-              <PropertiesPanel class="h-full" />
+            <Pane v-for="(panel, index) in projectStore.cutPanels" :key="panel.id" :size="topSplitSizes[index] ?? (100 / projectStore.cutPanels.length)" min-size="5">
+              <div class="h-full w-full relative">
+                <FileManager v-if="panel.type === 'fileManager'" class="h-full" />
+                <MonitorContainer v-else-if="panel.type === 'monitor'" class="h-full" />
+                <PropertiesPanel v-else-if="panel.type === 'properties'" class="h-full" />
+                <div v-else-if="panel.type === 'text'" class="h-full w-full bg-ui-bg-elevated p-4 overflow-auto border border-ui-border flex flex-col">
+                  <div class="flex justify-between items-center mb-2 pb-2 border-b border-ui-border text-sm">
+                    <h3 class="font-bold truncate" :title="panel.title">{{ panel.title }}</h3>
+                    <UButton size="xs" variant="ghost" color="neutral" icon="i-heroicons-x-mark" @click="projectStore.removePanel(panel.id)" />
+                  </div>
+                  <pre class="text-xs whitespace-pre-wrap flex-1">{{ panel.fileContent }}</pre>
+                </div>
+              </div>
             </Pane>
           </Splitpanes>
 
