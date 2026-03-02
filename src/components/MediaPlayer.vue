@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
+import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 
 const { t } = useI18n();
 
@@ -64,6 +65,24 @@ function formatTime(seconds: number) {
 const isDragging = ref(false);
 const wasPlayingBeforeDrag = ref(false);
 
+const containerRef = ref<HTMLElement | null>(null);
+
+const {
+  scale,
+  translateX,
+  translateY,
+  reset,
+  onWheel,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+} = useImagePanZoom(containerRef);
+
+const mediaStyle = computed(() => ({
+  transform: `translate(${translateX.value}px, ${translateY.value}px) scale(${scale.value})`,
+  transformOrigin: 'center',
+}));
+
 function onSeekStart() {
   isDragging.value = true;
   if (isPlaying.value) {
@@ -95,6 +114,7 @@ watch(
     currentTime.value = 0;
     progress.value = 0;
     duration.value = 0;
+    reset();
   },
 );
 </script>
@@ -104,12 +124,19 @@ watch(
     <!-- Video -->
     <div
       v-if="type === 'video'"
-      class="flex-1 flex items-center justify-center min-h-0 bg-(--media-bg) relative"
+      ref="containerRef"
+      class="flex-1 flex items-center justify-center min-h-0 bg-(--media-bg) relative overflow-hidden select-none"
+      @wheel="onWheel"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointerleave="onPointerUp"
     >
       <video
         ref="mediaElement"
         :src="src"
-        class="max-w-full max-h-full object-contain"
+        class="max-w-full max-h-full object-contain transition-transform duration-75"
+        :style="mediaStyle"
         @timeupdate="onTimeUpdate"
         @loadedmetadata="onLoadedMetadata"
         @play="onPlay"
