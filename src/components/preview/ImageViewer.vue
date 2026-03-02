@@ -37,7 +37,8 @@ const contextMenuItems = computed(() => [
     {
       label: 'Reset Zoom & Pan',
       icon: 'i-heroicons-arrow-path',
-      click: reset,
+      onSelect: () => reset(),
+      click: () => reset(),
     },
   ],
 ]);
