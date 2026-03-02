@@ -12,11 +12,13 @@ export interface ViewConfig {
 
 export interface DynamicPanel {
   id: string;
-  type: 'fileManager' | 'monitor' | 'properties' | 'text';
+  type: 'fileManager' | 'monitor' | 'properties' | 'text' | 'media';
   title?: string;
-  // If type is text, store file details
+  // If type is text or media, store file details
   filePath?: string;
   fileContent?: string;
+  mediaType?: 'video' | 'audio' | 'image' | 'unknown' | null;
+  fsEntry?: any; // To pass to EntryPreviewBox or logic
 }
 
 const viewConfigs: Record<EditorView, ViewConfig> = {
@@ -68,6 +70,24 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       type: 'text',
       filePath,
       fileContent,
+      title,
+    };
+
+    // Insert in the middle
+    const middleIndex = Math.floor(cutPanels.value.length / 2);
+    cutPanels.value.splice(middleIndex, 0, newPanel);
+  }
+
+  function addMediaPanel(
+    fsEntry: any,
+    mediaType: 'video' | 'audio' | 'image' | 'unknown' | null,
+    title: string,
+  ) {
+    const newPanel: DynamicPanel = {
+      id: `media-${Date.now()}`,
+      type: 'media',
+      filePath: fsEntry.path ?? fsEntry.name,
+      mediaType,
       title,
     };
 
@@ -142,6 +162,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     timelineHeight,
     cutPanels,
     addTextPanel,
+    addMediaPanel,
     removePanel,
     movePanel,
     setView,

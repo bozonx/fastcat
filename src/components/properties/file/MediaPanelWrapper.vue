@@ -1,0 +1,63 @@
+<script setup lang="ts">
+import { watch, ref, onUnmounted } from 'vue';
+import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
+import { useProjectStore } from '~/stores/project.store';
+
+const props = defineProps<{
+  filePath: string;
+  mediaType: 'video' | 'audio' | 'image' | 'unknown' | null;
+}>();
+
+const currentUrl = ref<string | null>(null);
+const projectStore = useProjectStore();
+
+async function loadPreviewMedia() {
+  if (currentUrl.value) {
+    URL.revokeObjectURL(currentUrl.value);
+    currentUrl.value = null;
+  }
+
+  if (!props.filePath) return;
+
+  try {
+    const handle = await projectStore.getFileHandleByPath(props.filePath);
+    if (!handle) return;
+
+    const fileToPlay = await handle.getFile();
+    if (props.mediaType === 'image' || props.mediaType === 'video' || props.mediaType === 'audio') {
+      currentUrl.value = URL.createObjectURL(fileToPlay);
+    }
+  } catch (e) {
+    console.error('Failed to load media for panel:', e);
+  }
+}
+
+watch(() => props.filePath, loadPreviewMedia, { immediate: true });
+
+onUnmounted(() => {
+  if (currentUrl.value) {
+    URL.revokeObjectURL(currentUrl.value);
+  }
+});
+</script>
+
+<template>
+  <div class="h-full w-full flex items-center justify-center bg-ui-bg-elevated relative">
+    <EntryPreviewBox
+      selected-entry-kind="file"
+      :is-otio="false"
+      :is-unknown="props.mediaType === 'unknown'"
+      :current-url="currentUrl"
+      :media-type="props.mediaType"
+      text-content=""
+      class="border-none w-full h-full flex-1 max-h-full min-h-0 absolute inset-0"
+    />
+  </div>
+</template>
+
+<style scoped>
+:deep(.w-full.h-64) {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+</style>

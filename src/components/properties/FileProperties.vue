@@ -156,8 +156,13 @@ function onDelete() {
 
 function openAsTextPanel() {
   const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'file' || mediaType.value !== 'text') return;
-  projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name);
+  if (!entry || entry.kind !== 'file') return;
+  
+  if (mediaType.value === 'text') {
+    projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name);
+  } else if (mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image') {
+    projectStore.addMediaPanel(entry, mediaType.value, entry.name);
+  }
 }
 </script>
 
@@ -316,7 +321,7 @@ function openAsTextPanel() {
       </div>
 
       <UButton
-        v-if="mediaType === 'text'"
+        v-if="mediaType === 'text' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'image'"
         size="xs"
         color="neutral"
         variant="soft"
