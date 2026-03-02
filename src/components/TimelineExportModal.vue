@@ -108,6 +108,7 @@ watch(
     exportProgress.value = 0;
     exportPhase.value = null;
     isExporting.value = false;
+    cancelRequested.value = false;
     saveAsDefaults.value = false;
 
     await loadCodecSupport();
@@ -302,6 +303,7 @@ async function handleConfirm() {
   } finally {
     isExporting.value = false;
     exportPhase.value = null;
+    cancelRequested.value = false;
   }
 }
 </script>
