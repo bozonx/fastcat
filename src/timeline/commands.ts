@@ -304,7 +304,9 @@ export function applyTimelineCommand(
       return overlayPlaceItem(doc, cmd);
     case 'overlay_trim_item':
       return overlayTrimItem(doc, cmd);
-    default:
-      return { next: doc };
+    default: {
+      const _exhaustiveCheck: never = cmd;
+      throw new Error(`Unhandled timeline command type: ${(_exhaustiveCheck as any).type}`);
+    }
   }
 }

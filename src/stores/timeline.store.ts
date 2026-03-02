@@ -153,56 +153,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   });
 
   const hydration = createTimelineHydration({
-    mediaMetadata: mediaMetadata as any,
+    mediaMetadata,
   });
-
-  function goToStart() {
-    currentTime.value = 0;
-  }
-
-  function goToEnd() {
-    const end = Number.isFinite(duration.value) ? Math.max(0, Math.round(duration.value)) : 0;
-    currentTime.value = end;
-  }
-
-  function setTimelineZoom(next: number) {
-    const parsed = Math.round(Number(next));
-    if (!Number.isFinite(parsed)) return;
-    timelineZoom.value = Math.min(100, Math.max(0, parsed));
-  }
-
-  function setAudioVolume(next: number) {
-    const parsed = Number(next);
-    if (!Number.isFinite(parsed)) return;
-    audioVolume.value = Math.min(2, Math.max(0, parsed));
-    if (audioVolume.value > 0 && audioMuted.value) {
-      audioMuted.value = false;
-    }
-  }
-
-  function setAudioMuted(next: boolean) {
-    audioMuted.value = Boolean(next);
-  }
-
-  function toggleAudioMuted() {
-    audioMuted.value = !audioMuted.value;
-  }
-
-  function setPlaybackGestureHandler(handler: ((nextPlaying: boolean) => void) | null) {
-    playbackGestureHandler.value = handler;
-  }
-
-  function togglePlayback() {
-    const nextPlaying = !isPlaying.value;
-    playbackGestureHandler.value?.(nextPlaying);
-    isPlaying.value = nextPlaying;
-  }
-
-  function stopPlayback() {
-    playbackGestureHandler.value?.(false);
-    isPlaying.value = false;
-    currentTime.value = 0;
-  }
 
   const commandService = createTimelineCommandService({
     getTimelineDoc: () => timelineDoc.value,
