@@ -82,13 +82,16 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     (legacyExportInput as Record<string, unknown>)?.encoding ??
     {};
 
-  const width = Number(projectInput?.width);
-  const height = Number(projectInput?.height);
-  const fps = Number(projectInput?.fps);
-  const bitrateMbps = Number(exportEncodingInput?.bitrateMbps);
-  const audioBitrateKbps = Number(exportEncodingInput?.audioBitrateKbps);
-  const format = exportEncodingInput?.format;
-  const keyframeIntervalSecRaw = Number(exportEncodingInput?.keyframeIntervalSec);
+  const projectInputRec = projectInput as Record<string, unknown>;
+  const exportEncodingInputRec = exportEncodingInput as Record<string, unknown>;
+
+  const width = Number(projectInputRec.width);
+  const height = Number(projectInputRec.height);
+  const fps = Number(projectInputRec.fps);
+  const bitrateMbps = Number(exportEncodingInputRec.bitrateMbps);
+  const audioBitrateKbps = Number(exportEncodingInputRec.audioBitrateKbps);
+  const format = exportEncodingInputRec.format;
+  const keyframeIntervalSecRaw = Number(exportEncodingInputRec.keyframeIntervalSec);
 
   const normalizedWidth =
     Number.isFinite(width) && width > 0
@@ -105,29 +108,31 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     normalizedHeight !== DEFAULT_USER_SETTINGS.projectDefaults.height;
 
   const resolutionFormat =
-    typeof projectInput?.resolutionFormat === 'string' &&
-    projectInput.resolutionFormat &&
+    typeof projectInputRec.resolutionFormat === 'string' &&
+    projectInputRec.resolutionFormat &&
     !isWidthHeightCustom
-      ? projectInput.resolutionFormat
+      ? projectInputRec.resolutionFormat
       : preset.resolutionFormat;
   const orientation =
-    (projectInput?.orientation === 'portrait' || projectInput?.orientation === 'landscape') &&
+    (projectInputRec.orientation === 'portrait' || projectInputRec.orientation === 'landscape') &&
     !isWidthHeightCustom
-      ? projectInput.orientation
+      ? projectInputRec.orientation
       : (preset.orientation as 'landscape' | 'portrait');
   const aspectRatio =
-    typeof projectInput?.aspectRatio === 'string' &&
-    projectInput.aspectRatio &&
+    typeof projectInputRec.aspectRatio === 'string' &&
+    projectInputRec.aspectRatio &&
     !isWidthHeightCustom
-      ? projectInput.aspectRatio
+      ? projectInputRec.aspectRatio
       : preset.aspectRatio;
   const isCustomResolution =
-    projectInput?.isCustomResolution !== undefined && !isWidthHeightCustom
-      ? Boolean(projectInput.isCustomResolution)
+    (projectInputRec as Record<string, unknown>).isCustomResolution !== undefined &&
+    !isWidthHeightCustom
+      ? Boolean((projectInputRec as Record<string, unknown>).isCustomResolution)
       : preset.isCustomResolution;
 
-  const audioChannels = projectInput?.audioChannels === 'mono' ? 'mono' : 'stereo';
-  const sampleRateRaw = Number(projectInput?.sampleRate);
+  const audioChannels =
+    (projectInputRec as Record<string, unknown>).audioChannels === 'mono' ? 'mono' : 'stereo';
+  const sampleRateRaw = Number((projectInputRec as Record<string, unknown>).sampleRate);
   const sampleRate =
     Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
       ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
@@ -144,7 +149,9 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
 
   const stopFramesInput = input.stopFrames ?? {};
   const qualityPercentRaw =
-    stopFramesInput?.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
+    (stopFramesInput as Record<string, unknown>).qualityPercent ??
+    input.stopFrameQualityPercent ??
+    input.stopFramesQuality;
   const qualityPercentParsed = Number(qualityPercentRaw);
   const stopFramesQualityPercent =
     Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
@@ -152,12 +159,16 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
 
   const optimizationInput = input.optimization ?? {};
-  const proxyResolution = optimizationInput.proxyResolution;
-  const proxyVideoBitrateMbps = Number(optimizationInput.proxyVideoBitrateMbps);
-  const proxyAudioBitrateKbps = Number(optimizationInput.proxyAudioBitrateKbps);
-  const proxyCopyOpusAudio = optimizationInput.proxyCopyOpusAudio;
-  const autoCreateProxies = optimizationInput.autoCreateProxies;
-  const proxyConcurrency = Number(optimizationInput.proxyConcurrency);
+  const proxyResolution = (optimizationInput as Record<string, unknown>).proxyResolution;
+  const proxyVideoBitrateMbps = Number(
+    (optimizationInput as Record<string, unknown>).proxyVideoBitrateMbps,
+  );
+  const proxyAudioBitrateKbps = Number(
+    (optimizationInput as Record<string, unknown>).proxyAudioBitrateKbps,
+  );
+  const proxyCopyOpusAudio = (optimizationInput as Record<string, unknown>).proxyCopyOpusAudio;
+  const autoCreateProxies = (optimizationInput as Record<string, unknown>).autoCreateProxies;
+  const proxyConcurrency = Number((optimizationInput as Record<string, unknown>).proxyConcurrency);
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
@@ -168,7 +179,9 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   };
 
   if (rawMouse && typeof rawMouse === 'object') {
-    const rawTimeline = (rawMouse as Record<string, unknown>).timeline;
+    const rawTimeline = (rawMouse as Record<string, unknown>).timeline as
+      | Record<string, unknown>
+      | undefined;
     if (rawTimeline && typeof rawTimeline === 'object') {
       const validTimelineActions = [
         'scroll_vertical',
@@ -186,12 +199,17 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       }
 
       const validMiddleClickActions = ['pan', 'none'];
-      if (validMiddleClickActions.includes(rawTimeline.middleClick)) {
-        normalizedMouse.timeline.middleClick = rawTimeline.middleClick as 'pan' | 'none';
+      const timelineMiddleClick = (rawTimeline as Record<string, unknown>).middleClick;
+      if (validMiddleClickActions.includes(timelineMiddleClick as string)) {
+        (normalizedMouse.timeline as Record<string, unknown>).middleClick = timelineMiddleClick as
+          | 'pan'
+          | 'none';
       }
     }
 
-    const rawMonitor = (rawMouse as Record<string, unknown>).monitor;
+    const rawMonitor = (rawMouse as Record<string, unknown>).monitor as
+      | Record<string, unknown>
+      | undefined;
     if (rawMonitor && typeof rawMonitor === 'object') {
       const validMonitorActions = ['zoom', 'scroll_vertical', 'scroll_horizontal', 'none'];
       for (const k of ['wheel', 'wheelShift']) {
@@ -203,8 +221,11 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       }
 
       const validMiddleClickActions = ['pan', 'none'];
-      if (validMiddleClickActions.includes(rawMonitor.middleClick)) {
-        normalizedMouse.monitor.middleClick = rawMonitor.middleClick as 'pan' | 'none';
+      const monitorMiddleClick = (rawMonitor as Record<string, unknown>).middleClick;
+      if (validMiddleClickActions.includes(monitorMiddleClick as string)) {
+        (normalizedMouse.monitor as Record<string, unknown>).middleClick = monitorMiddleClick as
+          | 'pan'
+          | 'none';
       }
     }
   }
@@ -259,26 +280,26 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       encoding: {
         format: format === 'webm' || format === 'mkv' ? format : 'mp4',
         videoCodec:
-          typeof exportEncodingInput?.videoCodec === 'string' &&
-          (exportEncodingInput.videoCodec as string).trim().length > 0
-            ? exportEncodingInput.videoCodec
+          typeof exportEncodingInputRec.videoCodec === 'string' &&
+          (exportEncodingInputRec.videoCodec as string).trim().length > 0
+            ? exportEncodingInputRec.videoCodec
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.videoCodec,
         bitrateMbps:
           Number.isFinite(bitrateMbps) && bitrateMbps > 0
             ? Math.min(200, Math.max(0.2, bitrateMbps))
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.bitrateMbps,
-        excludeAudio: Boolean(exportEncodingInput?.excludeAudio),
-        audioCodec: exportEncodingInput?.audioCodec === 'opus' ? 'opus' : 'aac',
+        excludeAudio: Boolean(exportEncodingInputRec.excludeAudio),
+        audioCodec: exportEncodingInputRec.audioCodec === 'opus' ? 'opus' : 'aac',
         audioBitrateKbps:
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
-        bitrateMode: exportEncodingInput?.bitrateMode === 'constant' ? 'constant' : 'variable',
+        bitrateMode: exportEncodingInputRec.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyframeIntervalSec:
           Number.isFinite(keyframeIntervalSecRaw) && keyframeIntervalSecRaw > 0
             ? Math.round(Math.min(60, Math.max(1, keyframeIntervalSecRaw)))
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
-        exportAlpha: Boolean(exportEncodingInput?.exportAlpha),
+        exportAlpha: Boolean(exportEncodingInputRec.exportAlpha),
       },
     },
     mouse: normalizedMouse,

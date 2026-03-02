@@ -157,7 +157,12 @@ function onDrop(event: DragEvent, targetPanelId: string) {
         } else {
           // Add as media panel
           projectStore.addMediaPanel(
-            { path: payload.path, name: payload.name },
+            {
+              kind: 'file',
+              path: payload.path,
+              name: payload.name,
+              handle: payload.handle as any,
+            },
             mediaType,
             payload.name,
             targetPanelId,

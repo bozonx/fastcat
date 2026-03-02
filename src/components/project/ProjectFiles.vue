@@ -457,7 +457,7 @@ watch(
                 },
               ],
             ]"
-            :content="{ placement: 'bottom-end' }"
+            :ui="{ content: 'bottom-end' }"
           >
             <UButton
               icon="i-heroicons-ellipsis-horizontal"

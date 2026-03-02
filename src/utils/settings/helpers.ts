@@ -1,4 +1,9 @@
-import { DEFAULT_USER_SETTINGS } from './defaults';
+import {
+  DEFAULT_USER_SETTINGS,
+  DEFAULT_WORKSPACE_SETTINGS,
+  type GranVideoEditorUserSettings,
+  type GranVideoEditorWorkspaceSettings,
+} from './defaults';
 
 export function getResolutionPreset(width: number, height: number) {
   const isPortrait = height > width;

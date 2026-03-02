@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { VideoColorSpaceInit } from 'webcodecs';
+
+interface VideoColorSpaceInit {
+  fullRange?: boolean;
+  matrix?: string;
+  primaries?: string;
+  transfer?: string;
+}
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';

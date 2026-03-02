@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useUiStore } from '~/stores/ui.store';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
@@ -18,6 +19,7 @@ export function useMonitorSnapshot(input: {
   rawWorkerTimelineClips: Ref<unknown>;
 }) {
   const toast = useToast();
+  const uiStore = useUiStore();
 
   const isSavingStopFrame = ref(false);
 
@@ -114,6 +116,8 @@ export function useMonitorSnapshot(input: {
         title: 'Snapshot created',
         description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
       });
+
+      uiStore.notifyFileManagerUpdate();
     } catch (err) {
       console.error('[Monitor] Failed to create stop frame snapshot', err);
       toast.add({

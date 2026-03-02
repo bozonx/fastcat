@@ -47,30 +47,48 @@ function handleRenameClip(newName: string) {
 async function handleSelectInFileManager() {
   if (props.clip.clipType !== 'media' || !props.clip.source?.path) return;
   const path = props.clip.source.path;
-  
-  // Use file manager to select
+
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-  const fm = useFileManager();
-  const entry = await fm.findEntryByPath(path);
-  
-  if (entry) {
-    const { useUiStore } = await import('~/stores/ui.store');
-    const uiStore = useUiStore();
-    uiStore.selectedFsEntry = {
-      kind: entry.kind,
-      name: entry.name,
-      path: entry.path,
-      handle: entry.handle,
-    };
-    selectionStore.selectFsEntry(entry);
-    
-    // Switch to files view to see the selection if needed
-    const { useProjectStore } = await import('~/stores/project.store');
-    const projectStore = useProjectStore();
-    if (projectStore.currentView !== 'files' && projectStore.currentView !== 'cut') {
-      projectStore.goToFiles();
+  const { useUiStore } = await import('~/stores/ui.store');
+  const { useProjectStore } = await import('~/stores/project.store');
+  const { useFocusStore } = await import('~/stores/focus.store');
+
+  const fileManager = useFileManager();
+  const uiStore = useUiStore();
+  const projectStore = useProjectStore();
+  const focusStore = useFocusStore();
+
+  // Make sure the file manager has up-to-date entries before trying to select.
+  await fileManager.loadProjectDirectory();
+
+  // Expand parent directories so the item becomes visible in the tree.
+  const parts = path.split('/').filter(Boolean);
+  let currentPath = '';
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    const p = parts[i];
+    if (!p) continue;
+    currentPath = currentPath ? `${currentPath}/${p}` : p;
+    const dirEntry = fileManager.findEntryByPath(currentPath);
+    if (dirEntry && dirEntry.kind === 'directory' && !dirEntry.expanded) {
+      await fileManager.toggleDirectory(dirEntry);
     }
   }
+
+  const entry = fileManager.findEntryByPath(path);
+  if (!entry) return;
+
+  if (projectStore.currentView !== 'files' && projectStore.currentView !== 'cut') {
+    projectStore.goToFiles();
+  }
+
+  uiStore.selectedFsEntry = {
+    kind: entry.kind,
+    name: entry.name,
+    path: entry.path,
+    handle: entry.handle,
+  };
+  selectionStore.selectFsEntry(entry);
+  focusStore.setTempFocus('left');
 }
 
 const mediaMeta = computed(() => {
