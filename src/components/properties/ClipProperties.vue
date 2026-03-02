@@ -99,7 +99,7 @@ const mediaMeta = computed(() => {
 function handleUpdateStartTime(val: number | string) {
   const newStartUs = Math.max(0, Math.round(Number(val) * 1_000_000));
   if (newStartUs === props.clip.timelineRange.startUs) return;
-  
+
   timelineStore.applyTimeline({
     type: 'move_item',
     trackId: props.clip.trackId,
@@ -112,7 +112,7 @@ function handleUpdateEndTime(val: number | string) {
   const newEndUs = Math.max(0, Math.round(Number(val) * 1_000_000));
   const currentEndUs = props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
   if (newEndUs === currentEndUs) return;
-  
+
   timelineStore.applyTimeline({
     type: 'trim_item',
     trackId: props.clip.trackId,
@@ -319,7 +319,10 @@ defineExpose({
               : '-'
           "
         />
-        <PropertyRow :label="t('videoEditor.fileManager.video.fps', 'FPS')" :value="mediaMeta.video.fps ?? '-'" />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.video.fps', 'FPS')"
+          :value="mediaMeta.video.fps ?? '-'"
+        />
       </template>
       <template v-if="mediaMeta?.audio">
         <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
@@ -330,8 +333,11 @@ defineExpose({
     </PropertySection>
 
     <PropertySection :title="t('granVideoEditor.clip.info', 'Clip Info')">
-      <PropertyRow :label="t('common.duration', 'Duration')" :value="formatTime(clip.timelineRange.durationUs)" />
-      
+      <PropertyRow
+        :label="t('common.duration', 'Duration')"
+        :value="formatTime(clip.timelineRange.durationUs)"
+      />
+
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }} (s)</span>
         <UInput
@@ -342,7 +348,7 @@ defineExpose({
           @update:model-value="handleUpdateStartTime"
         />
       </div>
-      
+
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }} (s)</span>
         <UInput
@@ -367,7 +373,10 @@ defineExpose({
       </div>
     </PropertySection>
 
-    <PropertySection v-else-if="clip.clipType === 'text'" :title="t('granVideoEditor.textClip.text', 'Text')">
+    <PropertySection
+      v-else-if="clip.clipType === 'text'"
+      :title="t('granVideoEditor.textClip.text', 'Text')"
+    >
       <div class="flex flex-col gap-2">
         <UTextarea
           :model-value="(clip as any).text"

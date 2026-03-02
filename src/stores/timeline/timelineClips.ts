@@ -1,5 +1,12 @@
 import type { Ref } from 'vue';
-import type { TimelineDocument, TimelineClipItem, ClipTransition, TextClipStyle, TimelineClipType, TimelineTrack } from '~/timeline/types';
+import type {
+  TimelineDocument,
+  TimelineClipItem,
+  ClipTransition,
+  TextClipStyle,
+  TimelineClipType,
+  TimelineTrack,
+} from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { getDocFps, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 
@@ -13,7 +20,10 @@ export interface TimelineClipsDeps {
     edge: 'in' | 'out';
   } | null>;
   currentTime: Ref<number>;
-  applyTimeline: (cmd: TimelineCommand, options?: { historyMode?: 'immediate' | 'debounced' }) => void;
+  applyTimeline: (
+    cmd: TimelineCommand,
+    options?: { historyMode?: 'immediate' | 'debounced' },
+  ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   resolveTargetVideoTrackIdForInsert: () => string;
   clearSelection: () => void;
@@ -177,7 +187,9 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       updateClipTransition(
         deps.selectedTransition.value.trackId,
         deps.selectedTransition.value.itemId,
-        deps.selectedTransition.value.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+        deps.selectedTransition.value.edge === 'in'
+          ? { transitionIn: null }
+          : { transitionOut: null },
       );
       deps.clearSelectedTransition();
       return;

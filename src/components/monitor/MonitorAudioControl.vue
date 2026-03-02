@@ -109,9 +109,7 @@ onBeforeUnmount(() => {
       @update:model-value="onVolumeUpdate"
     />
 
-    <span class="text-sm text-ui-text-muted tabular-nums min-w-12">
-      {{ volumePercent }}%
-    </span>
+    <span class="text-sm text-ui-text-muted tabular-nums min-w-12"> {{ volumePercent }}% </span>
   </div>
 
   <div
@@ -133,7 +131,10 @@ onBeforeUnmount(() => {
       "
       class="pointer-events-none"
     />
-    <span class="text-[10px] leading-none text-ui-text-muted tabular-nums text-center select-none" @click.stop="toggleMute">
+    <span
+      class="text-[10px] leading-none text-ui-text-muted tabular-nums text-center select-none"
+      @click.stop="toggleMute"
+    >
       {{ volumePercent }}%
     </span>
 
@@ -148,7 +149,9 @@ onBeforeUnmount(() => {
         >
           <div class="relative">
             <!-- Value badge -->
-            <div class="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg select-none whitespace-nowrap">
+            <div
+              class="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg select-none whitespace-nowrap"
+            >
               {{ volumePercent }}%
             </div>
 
@@ -189,7 +192,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .volume-panel-enter-active,
 .volume-panel-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .volume-panel-enter-from,

@@ -67,7 +67,10 @@ export function useImageExifInfo(options: UseImageExifInfoOptions) {
 
   const hasImageInfo = computed(() => {
     return Boolean(
-      imageResolution.value || imageCreateDate.value || imageLocationLink.value || imageCameraMake.value,
+      imageResolution.value ||
+      imageCreateDate.value ||
+      imageLocationLink.value ||
+      imageCameraMake.value,
     );
   });
 

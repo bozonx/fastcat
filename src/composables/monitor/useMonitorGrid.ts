@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import { useProjectStore } from '~/stores/project.store';
+import type { useProjectStore } from '~/stores/project.store';
 
 /**
  * Composable for the monitor 3x3 guide grid overlay.

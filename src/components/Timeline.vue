@@ -7,9 +7,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
 import type { TimelineTrack } from '~/timeline/types';
-import {
-  useTimelineInteraction,
-} from '~/composables/timeline/useTimelineInteraction';
+import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import {
   computeAnchoredScrollLeft,
   timeUsToPx,
@@ -78,13 +76,16 @@ const isRulerHovered = ref(false);
 let zoomTimeout: number | null = null;
 const isZooming = ref(false);
 
-watch(() => timelineStore.timelineZoom, () => {
-  isZooming.value = true;
-  if (zoomTimeout) clearTimeout(zoomTimeout);
-  zoomTimeout = window.setTimeout(() => {
-    isZooming.value = false;
-  }, 1000);
-});
+watch(
+  () => timelineStore.timelineZoom,
+  () => {
+    isZooming.value = true;
+    if (zoomTimeout) clearTimeout(zoomTimeout);
+    zoomTimeout = window.setTimeout(() => {
+      isZooming.value = false;
+    }, 1000);
+  },
+);
 
 const {
   draggingMode,
@@ -101,9 +102,7 @@ function getViewportWidth(): number {
   return scrollEl.value?.clientWidth ?? 0;
 }
 
-function makePlayheadAnchor(params: {
-  zoom: number;
-}): TimelineZoomAnchor {
+function makePlayheadAnchor(params: { zoom: number }): TimelineZoomAnchor {
   const viewportWidth = getViewportWidth();
   const prevScrollLeft = scrollEl.value?.scrollLeft ?? 0;
   const playheadPx = timeUsToPx(timelineStore.currentTime, params.zoom);
@@ -114,10 +113,7 @@ function makePlayheadAnchor(params: {
   };
 }
 
-function applyZoomWithAnchor(params: {
-  nextZoom: number;
-  anchor: TimelineZoomAnchor;
-}) {
+function applyZoomWithAnchor(params: { nextZoom: number; anchor: TimelineZoomAnchor }) {
   const el = scrollEl.value;
   if (!el) {
     timelineStore.setTimelineZoom(params.nextZoom);
@@ -575,8 +571,6 @@ async function onDrop(e: DragEvent, trackId: string) {
     }"
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
-
-
     <ClientOnly>
       <Splitpanes
         class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes"
@@ -592,7 +586,11 @@ async function onDrop(e: DragEvent, trackId: string) {
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div class="flex flex-col h-full w-full relative">
-            <div class="relative group shrink-0 z-10" @mouseenter="isRulerHovered = true" @mouseleave="isRulerHovered = false">
+            <div
+              class="relative group shrink-0 z-10"
+              @mouseenter="isRulerHovered = true"
+              @mouseleave="isRulerHovered = false"
+            >
               <TimelineRuler
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"

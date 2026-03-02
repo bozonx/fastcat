@@ -41,7 +41,9 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
   }
 
   function goToEnd() {
-    const end = Number.isFinite(deps.duration.value) ? Math.max(0, Math.round(deps.duration.value)) : 0;
+    const end = Number.isFinite(deps.duration.value)
+      ? Math.max(0, Math.round(deps.duration.value))
+      : 0;
     deps.currentTime.value = end;
   }
 

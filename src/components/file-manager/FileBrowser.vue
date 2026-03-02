@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useFilesPageStore, type FileViewMode, type FileSortField, type SortOrder } from '~/stores/filesPage.store';
+import {
+  useFilesPageStore,
+  type FileViewMode,
+  type FileSortField,
+  type SortOrder,
+} from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -49,7 +54,9 @@ async function loadFolderContent() {
     const entries = await readDirectory(handle, path);
     // readDirectory already filters hidden files based on deps.showHiddenFiles(),
     // but just to be sure we also filter it here if needed.
-    const filteredEntries = entries.filter(e => uiStore.showHiddenFiles || !e.name.startsWith('.'));
+    const filteredEntries = entries.filter(
+      (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
+    );
     cleanupObjectUrls();
     folderEntries.value = await supplementEntries(filteredEntries);
   } catch (error) {
@@ -96,18 +103,28 @@ async function loadParentFolders() {
   }
 }
 
-watch(() => uiStore.showHiddenFiles, async () => {
-  await loadFolderContent();
-});
+watch(
+  () => uiStore.showHiddenFiles,
+  async () => {
+    await loadFolderContent();
+  },
+);
 
-watch(() => filesPageStore.selectedFolder, async () => {
-  await loadFolderContent();
-  await loadParentFolders();
-}, { immediate: true });
+watch(
+  () => filesPageStore.selectedFolder,
+  async () => {
+    await loadFolderContent();
+    await loadParentFolders();
+  },
+  { immediate: true },
+);
 
-watch(() => uiStore.fileManagerUpdateCounter, async () => {
-  await loadFolderContent();
-});
+watch(
+  () => uiStore.fileManagerUpdateCounter,
+  async () => {
+    await loadFolderContent();
+  },
+);
 
 interface ExtendedFsEntry extends FsEntry {
   size?: number;
@@ -306,7 +323,9 @@ function onCardSizeChange(e: Event) {
 <template>
   <div class="flex flex-col h-full bg-ui-bg relative overflow-hidden">
     <!-- Toolbar -->
-    <div class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50">
+    <div
+      class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
+    >
       <div class="flex items-center gap-1">
         <UButton
           :color="filesPageStore.viewMode === 'grid' ? 'primary' : 'neutral'"
@@ -325,7 +344,11 @@ function onCardSizeChange(e: Event) {
       </div>
 
       <!-- Card size slider (only in grid view) -->
-      <div v-if="filesPageStore.viewMode === 'grid'" class="flex items-center gap-2 ml-2 w-32" :title="t('videoEditor.fileManager.cardScale', 'Масштаб карточек')">
+      <div
+        v-if="filesPageStore.viewMode === 'grid'"
+        class="flex items-center gap-2 ml-2 w-32"
+        :title="t('videoEditor.fileManager.cardScale', 'Масштаб карточек')"
+      >
         <WheelSlider
           :model-value="GRID_SIZES.indexOf(filesPageStore.gridCardSize)"
           :min="0"
@@ -334,31 +357,43 @@ function onCardSizeChange(e: Event) {
           class="flex-1 w-full"
           @update:model-value="(v) => filesPageStore.setGridCardSize(GRID_SIZES[v] || 120)"
         />
-        <span class="text-xs text-ui-text-muted w-10 shrink-0 text-right">{{ filesPageStore.gridCardSize }}px</span>
+        <span class="text-xs text-ui-text-muted w-10 shrink-0 text-right"
+          >{{ filesPageStore.gridCardSize }}px</span
+        >
       </div>
 
       <div class="ml-auto flex items-center gap-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
         <USelectMenu
-          :items="sortFields"
           v-model="filesPageStore.sortOption.field"
+          :items="sortFields"
           value-key="value"
           size="xs"
           class="w-32"
           :search-input="false"
         />
         <UButton
-          :icon="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
+          :icon="
+            filesPageStore.sortOption.order === 'asc'
+              ? 'i-heroicons-bars-arrow-up'
+              : 'i-heroicons-bars-arrow-down'
+          "
           variant="ghost"
           color="neutral"
           size="xs"
-          @click="filesPageStore.sortOption.order = filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'"
+          @click="
+            filesPageStore.sortOption.order =
+              filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
+          "
         />
       </div>
     </div>
 
     <!-- Navigation bar -->
-    <div v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''" class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0">
+    <div
+      v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''"
+      class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
+    >
       <UButton
         variant="ghost"
         color="neutral"
@@ -383,24 +418,42 @@ function onCardSizeChange(e: Event) {
           >
             {{ folder.name }}
           </button>
-          <UIcon v-if="index < parentFolders.length - 1" name="i-heroicons-chevron-right" class="w-3 h-3 text-ui-text-muted shrink-0" />
+          <UIcon
+            v-if="index < parentFolders.length - 1"
+            name="i-heroicons-chevron-right"
+            class="w-3 h-3 text-ui-text-muted shrink-0"
+          />
         </template>
       </div>
     </div>
 
     <!-- Main Content -->
     <div class="flex-1 overflow-auto p-4 content-scrollbar" @click.self="navigateToRoot">
-      <div v-if="isLoading" class="flex flex-col items-center justify-center h-full gap-4 text-ui-text-muted">
+      <div
+        v-if="isLoading"
+        class="flex flex-col items-center justify-center h-full gap-4 text-ui-text-muted"
+      >
         <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
         <span>{{ t('common.loading', 'Loading...') }}</span>
       </div>
 
-      <div v-else-if="!filesPageStore.selectedFolder" class="flex flex-col items-center justify-center h-full text-ui-text-muted gap-2">
+      <div
+        v-else-if="!filesPageStore.selectedFolder"
+        class="flex flex-col items-center justify-center h-full text-ui-text-muted gap-2"
+      >
         <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
-        <span>{{ t('videoEditor.fileManager.selectFolderHint', 'Select a folder in the sidebar to view its contents') }}</span>
+        <span>{{
+          t(
+            'videoEditor.fileManager.selectFolderHint',
+            'Select a folder in the sidebar to view its contents',
+          )
+        }}</span>
       </div>
 
-      <div v-else-if="folderEntries.length === 0" class="flex flex-col items-center justify-center h-full text-ui-text-muted gap-2">
+      <div
+        v-else-if="folderEntries.length === 0"
+        class="flex flex-col items-center justify-center h-full text-ui-text-muted gap-2"
+      >
         <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
         <span>{{ t('common.empty', 'Folder is empty') }}</span>
       </div>
@@ -411,11 +464,17 @@ function onCardSizeChange(e: Event) {
           v-for="entry in sortedEntries"
           :key="entry.path"
           class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
-          :class="{ 'bg-primary-500/10 border-primary-500/30': selectionStore.selectedEntity?.source === 'fileManager' && selectionStore.selectedEntity.path === entry.path }"
+          :class="{
+            'bg-primary-500/10 border-primary-500/30':
+              selectionStore.selectedEntity?.source === 'fileManager' &&
+              selectionStore.selectedEntity.path === entry.path,
+          }"
           :style="{ width: `${filesPageStore.gridCardSize}px` }"
           @click="handleEntryClick(entry)"
         >
-          <div class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden">
+          <div
+            class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
+          >
             <img
               v-if="entry.kind === 'file' && (entry as ExtendedFsEntry).objectUrl"
               :src="(entry as ExtendedFsEntry).objectUrl"
@@ -449,7 +508,11 @@ function onCardSizeChange(e: Event) {
                   {{ t('common.name', 'Name') }}
                   <UIcon
                     v-if="filesPageStore.sortOption.field === 'name'"
-                    :name="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
+                    :name="
+                      filesPageStore.sortOption.order === 'asc'
+                        ? 'i-heroicons-bars-arrow-up'
+                        : 'i-heroicons-bars-arrow-down'
+                    "
                     class="w-3 h-3"
                   />
                 </div>
@@ -467,7 +530,11 @@ function onCardSizeChange(e: Event) {
                   {{ t('common.type', 'Type') }}
                   <UIcon
                     v-if="filesPageStore.sortOption.field === 'type'"
-                    :name="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
+                    :name="
+                      filesPageStore.sortOption.order === 'asc'
+                        ? 'i-heroicons-bars-arrow-up'
+                        : 'i-heroicons-bars-arrow-down'
+                    "
                     class="w-3 h-3"
                   />
                 </div>
@@ -485,7 +552,11 @@ function onCardSizeChange(e: Event) {
                   {{ t('common.size', 'Size') }}
                   <UIcon
                     v-if="filesPageStore.sortOption.field === 'size'"
-                    :name="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
+                    :name="
+                      filesPageStore.sortOption.order === 'asc'
+                        ? 'i-heroicons-bars-arrow-up'
+                        : 'i-heroicons-bars-arrow-down'
+                    "
                     class="w-3 h-3"
                   />
                 </div>
@@ -503,7 +574,11 @@ function onCardSizeChange(e: Event) {
                   {{ t('common.created', 'Created') }}
                   <UIcon
                     v-if="filesPageStore.sortOption.field === 'created'"
-                    :name="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
+                    :name="
+                      filesPageStore.sortOption.order === 'asc'
+                        ? 'i-heroicons-bars-arrow-up'
+                        : 'i-heroicons-bars-arrow-down'
+                    "
                     class="w-3 h-3"
                   />
                 </div>
@@ -521,7 +596,11 @@ function onCardSizeChange(e: Event) {
                   {{ t('common.modified', 'Modified') }}
                   <UIcon
                     v-if="filesPageStore.sortOption.field === 'modified'"
-                    :name="filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down'"
+                    :name="
+                      filesPageStore.sortOption.order === 'asc'
+                        ? 'i-heroicons-bars-arrow-up'
+                        : 'i-heroicons-bars-arrow-down'
+                    "
                     class="w-3 h-3"
                   />
                 </div>
@@ -534,10 +613,14 @@ function onCardSizeChange(e: Event) {
           </thead>
           <tbody>
             <tr
-              v-for="entry in (sortedEntries as ExtendedFsEntry[])"
+              v-for="entry in sortedEntries as ExtendedFsEntry[]"
               :key="entry.path"
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50"
-              :class="{ 'bg-primary-500/10': selectionStore.selectedEntity?.source === 'fileManager' && selectionStore.selectedEntity.path === entry.path }"
+              :class="{
+                'bg-primary-500/10':
+                  selectionStore.selectedEntity?.source === 'fileManager' &&
+                  selectionStore.selectedEntity.path === entry.path,
+              }"
               @click="handleEntryClick(entry)"
             >
               <td class="py-2 px-3 flex items-center gap-2">
@@ -567,10 +650,18 @@ function onCardSizeChange(e: Event) {
     </div>
 
     <!-- Bottom Panel -->
-    <div class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-[10px] uppercase font-bold tracking-wider text-ui-text-muted">
+    <div
+      class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-[10px] uppercase font-bold tracking-wider text-ui-text-muted"
+    >
       <div v-if="filesPageStore.selectedFolder" class="flex items-center gap-4">
-        <span>{{ t('common.totalSize', 'Total Size') }}: <span class="text-ui-text">{{ stats.totalSize }}</span></span>
-        <span>{{ t('common.filesCount', 'Files') }}: <span class="text-ui-text">{{ stats.fileCount }}</span></span>
+        <span
+          >{{ t('common.totalSize', 'Total Size') }}:
+          <span class="text-ui-text">{{ stats.totalSize }}</span></span
+        >
+        <span
+          >{{ t('common.filesCount', 'Files') }}:
+          <span class="text-ui-text">{{ stats.fileCount }}</span></span
+        >
       </div>
     </div>
   </div>

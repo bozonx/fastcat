@@ -10,15 +10,8 @@ const props = defineProps<{
 
 const itemRef = computed(() => props.item);
 
-const {
-  chunks,
-  imageUrl,
-  isImage,
-  rootEl,
-  setChunkCanvas,
-  setChunkEl,
-  trimOffsetPx,
-} = useTimelineClipThumbnails({ item: itemRef });
+const { chunks, imageUrl, isImage, rootEl, setChunkCanvas, setChunkEl, trimOffsetPx } =
+  useTimelineClipThumbnails({ item: itemRef });
 
 const chunksWidthPx = computed(() => {
   return chunks.value.reduce((sum, c) => sum + c.widthPx, 0);

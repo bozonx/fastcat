@@ -17,7 +17,7 @@ describe('worker-clip-utils', () => {
           childFadeInUs: 100,
           parentFadeInUs: 0,
           parentLocalStartUs: 0,
-        })
+        }),
       ).toBe(100);
     });
 
@@ -27,7 +27,7 @@ describe('worker-clip-utils', () => {
           childFadeInUs: 100,
           parentFadeInUs: 500,
           parentLocalStartUs: 200,
-        })
+        }),
       ).toBe(300); // 500 - 200
     });
 
@@ -37,7 +37,7 @@ describe('worker-clip-utils', () => {
           childFadeInUs: 400,
           parentFadeInUs: 500,
           parentLocalStartUs: 200,
-        })
+        }),
       ).toBe(400); // max(400, 300)
     });
   });
@@ -50,7 +50,7 @@ describe('worker-clip-utils', () => {
           parentFadeOutUs: 0,
           parentLocalEndUs: 1000,
           parentDurationUs: 1000,
-        })
+        }),
       ).toBe(100);
     });
 
@@ -61,7 +61,7 @@ describe('worker-clip-utils', () => {
           parentFadeOutUs: 500,
           parentLocalEndUs: 1000,
           parentDurationUs: 1000,
-        })
+        }),
       ).toBe(500);
     });
   });
@@ -93,28 +93,28 @@ describe('worker-clip-utils', () => {
         resolveNestedMediaPath({
           nestedTimelinePath: 'timelines/sub/my.otio',
           mediaPath: 'clip.mp4',
-        })
+        }),
       ).toBe('timelines/sub/clip.mp4');
 
       expect(
         resolveNestedMediaPath({
           nestedTimelinePath: 'timelines/my.otio',
           mediaPath: '/absolute/clip.mp4',
-        })
+        }),
       ).toBe('/absolute/clip.mp4');
 
       expect(
         resolveNestedMediaPath({
           nestedTimelinePath: 'timelines/my.otio',
           mediaPath: `${VIDEO_DIR_NAME}/clip.mp4`,
-        })
+        }),
       ).toBe(`${VIDEO_DIR_NAME}/clip.mp4`);
 
       expect(
         resolveNestedMediaPath({
           nestedTimelinePath: 'my.otio',
           mediaPath: 'clip.mp4',
-        })
+        }),
       ).toBe('clip.mp4');
     });
   });

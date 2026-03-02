@@ -103,17 +103,12 @@ const { ext, generalInfoTitle, isHidden, isVideoOrAudio, mediaMeta, selectedPath
     mediaType,
   });
 
-const {
-  hasImageInfo,
-  imageCameraMake,
-  imageCreateDate,
-  imageLocationLink,
-  imageResolution,
-} = useImageExifInfo({
-  mediaType,
-  exifData,
-  imageDimensions,
-});
+const { hasImageInfo, imageCameraMake, imageCreateDate, imageLocationLink, imageResolution } =
+  useImageExifInfo({
+    mediaType,
+    exifData,
+    imageDimensions,
+  });
 
 const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsage({
   selectedFsEntry: selectedFsEntryRef,
@@ -157,10 +152,14 @@ function onDelete() {
 function openAsTextPanel() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'file') return;
-  
+
   if (mediaType.value === 'text') {
     projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name);
-  } else if (mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image') {
+  } else if (
+    mediaType.value === 'video' ||
+    mediaType.value === 'audio' ||
+    mediaType.value === 'image'
+  ) {
     projectStore.addMediaPanel(entry, mediaType.value, entry.name);
   }
 }
@@ -201,7 +200,11 @@ function openAsTextPanel() {
     </PropertySection>
 
     <PropertySection
-      v-if="fileInfo?.kind === 'directory' && !isProjectRootDir && (isFolderWithVideo || isGeneratingProxyForFolder)"
+      v-if="
+        fileInfo?.kind === 'directory' &&
+        !isProjectRootDir &&
+        (isFolderWithVideo || isGeneratingProxyForFolder)
+      "
       :title="t('videoEditor.fileManager.proxy.title', 'Proxy')"
     >
       <div class="flex gap-2">
@@ -252,7 +255,7 @@ function openAsTextPanel() {
           variant="soft"
           icon="i-heroicons-document-text"
           class="w-full"
-          @click="() => (uiStore as any).pendingFsEntryCreateMarkdown = props.selectedFsEntry"
+          @click="() => ((uiStore as any).pendingFsEntryCreateMarkdown = props.selectedFsEntry)"
         >
           {{ t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document') }}
         </UButton>
@@ -263,7 +266,7 @@ function openAsTextPanel() {
           variant="soft"
           icon="i-heroicons-document-plus"
           class="w-full"
-          @click="() => (uiStore as any).pendingFsEntryCreateTimeline = props.selectedFsEntry"
+          @click="() => ((uiStore as any).pendingFsEntryCreateTimeline = props.selectedFsEntry)"
         >
           {{ t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline') }}
         </UButton>
@@ -321,7 +324,12 @@ function openAsTextPanel() {
       </div>
 
       <UButton
-        v-if="mediaType === 'text' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'image'"
+        v-if="
+          mediaType === 'text' ||
+          mediaType === 'video' ||
+          mediaType === 'audio' ||
+          mediaType === 'image'
+        "
         size="xs"
         color="neutral"
         variant="soft"
@@ -339,7 +347,7 @@ function openAsTextPanel() {
         variant="soft"
         icon="i-heroicons-document-duplicate"
         class="w-full justify-center mt-2"
-        @click="() => (uiStore as any).pendingOtioCreateVersion = props.selectedFsEntry"
+        @click="() => ((uiStore as any).pendingOtioCreateVersion = props.selectedFsEntry)"
       >
         {{ t('granVideoEditor.timeline.createVersion', 'Create version') }}
       </UButton>
@@ -355,11 +363,7 @@ function openAsTextPanel() {
           :label="t('videoEditor.fileManager.image.resolution', 'Resolution')"
           :value="imageResolution"
         />
-        <PropertyRow
-          v-if="imageCreateDate"
-          label="CreateDate"
-          :value="imageCreateDate"
-        />
+        <PropertyRow v-if="imageCreateDate" label="CreateDate" :value="imageCreateDate" />
         <PropertyRow
           v-if="imageLocationLink"
           :label="t('videoEditor.fileManager.image.location', 'Location')"
@@ -386,36 +390,42 @@ function openAsTextPanel() {
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
       <div class="flex flex-col">
-      <PropertyRow
-        :label="t('common.duration', 'Duration')"
-        :value="formatDurationSeconds(mediaMeta?.duration)"
-      />
-      <PropertyRow
-        :label="t('videoEditor.fileManager.video.resolution', 'Resolution')"
-        :value="
-          mediaMeta?.video?.displayWidth && mediaMeta?.video?.displayHeight
-            ? `${mediaMeta.video.displayWidth}x${mediaMeta.video.displayHeight}`
-            : '-'
-        "
-      />
-      <PropertyRow :label="t('videoEditor.fileManager.video.fps', 'FPS')" :value="mediaMeta?.video?.fps ?? '-'" />
-      <PropertyRow :label="t('videoEditor.fileManager.video.container', 'Container')" :value="mediaMeta?.container ?? '-'" />
-      <PropertyRow
-        :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')"
-      >
-        {{ mediaMeta?.video?.parsedCodec ?? mediaMeta?.video?.codec ?? '-' }}
-        <span v-if="mediaMeta?.video?.bitrate">, {{ formatBitrate(mediaMeta.video.bitrate) }}</span>
-      </PropertyRow>
-      <PropertyRow
-        :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')"
-      >
-        {{ mediaMeta?.audio?.parsedCodec ?? mediaMeta?.audio?.codec ?? '-' }}
-        <span v-if="mediaMeta?.audio?.bitrate">, {{ formatBitrate(mediaMeta.audio.bitrate) }}</span>
-      </PropertyRow>
-      <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
-        {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
-        {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
-      </PropertyRow>
+        <PropertyRow
+          :label="t('common.duration', 'Duration')"
+          :value="formatDurationSeconds(mediaMeta?.duration)"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.video.resolution', 'Resolution')"
+          :value="
+            mediaMeta?.video?.displayWidth && mediaMeta?.video?.displayHeight
+              ? `${mediaMeta.video.displayWidth}x${mediaMeta.video.displayHeight}`
+              : '-'
+          "
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.video.fps', 'FPS')"
+          :value="mediaMeta?.video?.fps ?? '-'"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.video.container', 'Container')"
+          :value="mediaMeta?.container ?? '-'"
+        />
+        <PropertyRow :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')">
+          {{ mediaMeta?.video?.parsedCodec ?? mediaMeta?.video?.codec ?? '-' }}
+          <span v-if="mediaMeta?.video?.bitrate"
+            >, {{ formatBitrate(mediaMeta.video.bitrate) }}</span
+          >
+        </PropertyRow>
+        <PropertyRow :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')">
+          {{ mediaMeta?.audio?.parsedCodec ?? mediaMeta?.audio?.codec ?? '-' }}
+          <span v-if="mediaMeta?.audio?.bitrate"
+            >, {{ formatBitrate(mediaMeta.audio.bitrate) }}</span
+          >
+        </PropertyRow>
+        <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
+          {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
+          {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
+        </PropertyRow>
       </div>
     </div>
 
@@ -424,21 +434,24 @@ function openAsTextPanel() {
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
       <div class="flex flex-col">
-      <PropertyRow
-        :label="t('common.duration', 'Duration')"
-        :value="formatDurationSeconds(mediaMeta?.duration)"
-      />
-      <PropertyRow :label="t('videoEditor.fileManager.audio.format', 'Format')" :value="mediaMeta?.container ?? fileInfo?.mimeType ?? '-'" />
-      <PropertyRow
-        :label="t('videoEditor.fileManager.audio.codec', 'Audio codec')"
-      >
-        {{ mediaMeta?.audio?.parsedCodec ?? mediaMeta?.audio?.codec ?? '-' }}
-        <span v-if="mediaMeta?.audio?.bitrate">, {{ formatBitrate(mediaMeta.audio.bitrate) }}</span>
-      </PropertyRow>
-      <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
-        {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
-        {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
-      </PropertyRow>
+        <PropertyRow
+          :label="t('common.duration', 'Duration')"
+          :value="formatDurationSeconds(mediaMeta?.duration)"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.audio.format', 'Format')"
+          :value="mediaMeta?.container ?? fileInfo?.mimeType ?? '-'"
+        />
+        <PropertyRow :label="t('videoEditor.fileManager.audio.codec', 'Audio codec')">
+          {{ mediaMeta?.audio?.parsedCodec ?? mediaMeta?.audio?.codec ?? '-' }}
+          <span v-if="mediaMeta?.audio?.bitrate"
+            >, {{ formatBitrate(mediaMeta.audio.bitrate) }}</span
+          >
+        </PropertyRow>
+        <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
+          {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
+          {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
+        </PropertyRow>
       </div>
     </div>
 
@@ -447,25 +460,36 @@ function openAsTextPanel() {
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
       <div class="flex flex-col">
-      <PropertyRow
-        :label="t('common.duration', 'Duration')"
-        :value="formatDurationSeconds((timelineDocSummary.durationUs ?? 0) / 1_000_000)"
-      />
-      <PropertyRow
-        :label="t('videoEditor.fileManager.otio.videoTracks', 'Video tracks')"
-        :value="timelineDocSummary.videoTracks"
-      />
-      <PropertyRow
-        :label="t('videoEditor.fileManager.otio.audioTracks', 'Audio tracks')"
-        :value="timelineDocSummary.audioTracks"
-      />
-      <PropertyRow :label="t('videoEditor.fileManager.otio.clips', 'Clips')" :value="timelineDocSummary.clips" />
+        <PropertyRow
+          :label="t('common.duration', 'Duration')"
+          :value="formatDurationSeconds((timelineDocSummary.durationUs ?? 0) / 1_000_000)"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.otio.videoTracks', 'Video tracks')"
+          :value="timelineDocSummary.videoTracks"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.otio.audioTracks', 'Audio tracks')"
+          :value="timelineDocSummary.audioTracks"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.otio.clips', 'Clips')"
+          :value="timelineDocSummary.clips"
+        />
       </div>
     </div>
 
     <PropertySection v-if="fileInfo" :title="generalInfoTitle">
-      <PropertyRow v-if="selectedPath !== undefined && selectedPath !== null" :label="t('common.path', 'Path')" :value="selectedPath === '' ? '/' : selectedPath" />
-      <PropertyRow v-if="fileInfo.size !== undefined" :label="t('common.size', 'Size')" :value="formatBytes(fileInfo.size)" />
+      <PropertyRow
+        v-if="selectedPath !== undefined && selectedPath !== null"
+        :label="t('common.path', 'Path')"
+        :value="selectedPath === '' ? '/' : selectedPath"
+      />
+      <PropertyRow
+        v-if="fileInfo.size !== undefined"
+        :label="t('common.size', 'Size')"
+        :value="formatBytes(fileInfo.size)"
+      />
       <PropertyRow
         v-if="fileInfo.createdAt || fileInfo.lastModified"
         :label="t('common.created', 'Created')"
@@ -529,7 +553,8 @@ function openAsTextPanel() {
       <pre
         v-if="isMetaExpanded"
         class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-        >{{ metadataYaml }}</pre>
+        >{{ metadataYaml }}</pre
+      >
     </PropertySection>
 
     <PropertySection
@@ -557,7 +582,8 @@ function openAsTextPanel() {
       <pre
         v-if="isExifExpanded"
         class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-        >{{ exifYaml }}</pre>
+        >{{ exifYaml }}</pre
+      >
     </PropertySection>
   </div>
 </template>

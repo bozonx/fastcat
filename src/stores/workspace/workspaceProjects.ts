@@ -1,4 +1,4 @@
-import { type Ref } from 'vue';
+import type { Ref } from 'vue';
 import {
   VARDATA_DIR_NAME,
   VARDATA_PROJECTS_DIR_NAME,

@@ -5,9 +5,7 @@ export interface ProxyQueueModule {
   proxyQueue: Ref<PQueue>;
 }
 
-export function createProxyQueueModule(params: {
-  concurrency: Ref<number>;
-}): ProxyQueueModule {
+export function createProxyQueueModule(params: { concurrency: Ref<number> }): ProxyQueueModule {
   const proxyQueue = ref(markRaw(new PQueue({ concurrency: params.concurrency.value })));
 
   watch(

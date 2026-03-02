@@ -57,19 +57,12 @@ const {
   audioClipLayoutSignature,
 } = useMonitorTimeline();
 
-const {
-  containerEl,
-  renderWidth,
-  renderHeight,
-  updateCanvasDisplaySize,
-} = useMonitorDisplay();
+const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useMonitorDisplay();
 
 const viewportRef = ref<InstanceType<typeof MonitorViewport> | null>(null);
 
 // Forward the MonitorViewport's inner viewportEl to useMonitorCore for ResizeObserver
-const viewportEl = computed(
-  () => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null,
-);
+const viewportEl = computed(() => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null);
 
 const {
   isLoading,
@@ -232,7 +225,9 @@ const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
   rawWorkerTimelineClips,
 });
 
-const toolbarPosition = computed(() => projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom');
+const toolbarPosition = computed(
+  () => projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom',
+);
 
 const contextMenuItems = computed(() => {
   return [
@@ -323,236 +318,230 @@ const emit = defineEmits<{
       ]"
       @pointerdown.capture="focusStore.setMainFocus('monitor')"
     >
+      <!-- Video area: MonitorViewport handles pan/zoom/gestures -->
+      <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight">
+        <!-- WebGL/canvas container mounted at canvas resolution -->
+        <template #canvas>
+          <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
+        </template>
 
+        <!-- 3x3 guide grid SVG overlay, synced with viewport transform -->
+        <template #svg-overlay>
+          <g v-if="showGrid">
+            <line
+              v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
+              :key="i"
+              :x1="line.x1"
+              :y1="line.y1"
+              :x2="line.x2"
+              :y2="line.y2"
+              stroke="rgba(255,255,255,0.5)"
+              stroke-width="1"
+            />
+          </g>
+        </template>
 
-    <!-- Video area: MonitorViewport handles pan/zoom/gestures -->
-    <MonitorViewport
-      ref="viewportRef"
-      :render-width="renderWidth"
-      :render-height="renderHeight"
-    >
-      <!-- WebGL/canvas container mounted at canvas resolution -->
-      <template #canvas>
-        <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
-      </template>
+        <!-- Absolute overlays: empty state, loading, error, timecode -->
+        <template #default>
+          <div
+            v-if="videoItems.length === 0"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
+          >
+            <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
+            <p class="text-sm">
+              {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
+            </p>
+          </div>
 
-      <!-- 3x3 guide grid SVG overlay, synced with viewport transform -->
-      <template #svg-overlay>
-        <g v-if="showGrid">
-          <line
-            v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
-            :key="i"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            stroke="rgba(255,255,255,0.5)"
-            stroke-width="1"
-          />
-        </g>
-      </template>
+          <div
+            v-else-if="isLoading"
+            class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
+          >
+            <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
+          </div>
 
-      <!-- Absolute overlays: empty state, loading, error, timecode -->
-      <template #default>
-        <div
-          v-if="videoItems.length === 0"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
-        >
-          <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
-          <p class="text-sm">
-            {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
-          </p>
-        </div>
+          <div
+            v-else-if="loadError"
+            class="absolute inset-0 flex items-center justify-center text-red-500"
+          >
+            {{ loadError }}
+          </div>
 
-        <div
-          v-else-if="isLoading"
-          class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
-        >
-          <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
-        </div>
+          <span
+            ref="timecodeEl"
+            class="absolute bottom-3 right-3 text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded"
+          >
+            00:00:00:00 / 00:00:00:00
+          </span>
+        </template>
+      </MonitorViewport>
 
-        <div
-          v-else-if="loadError"
-          class="absolute inset-0 flex items-center justify-center text-red-500"
-        >
-          {{ loadError }}
-        </div>
-
-        <span
-          ref="timecodeEl"
-          class="absolute bottom-3 right-3 text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded"
-        >
-          00:00:00:00 / 00:00:00:00
-        </span>
-      </template>
-    </MonitorViewport>
-
-    <!-- Playback controls -->
-    <div
-      class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-ui-border shrink-0 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
-      :class="[
-        toolbarPosition === 'bottom' ? 'border-t' : '',
-        toolbarPosition === 'top' ? 'border-b' : '',
-        toolbarPosition === 'right' ? 'border-l' : '',
-        toolbarPosition === 'left' ? 'border-r' : '',
-        toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
-      ]"
-      draggable="true"
-      @dragstart="(e) => emit('panelDragStart', e)"
-    >
+      <!-- Playback controls -->
       <div
-        class="flex items-center gap-2 shrink-0"
-        :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
+        class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-ui-border shrink-0 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
+        :class="[
+          toolbarPosition === 'bottom' ? 'border-t' : '',
+          toolbarPosition === 'top' ? 'border-b' : '',
+          toolbarPosition === 'right' ? 'border-l' : '',
+          toolbarPosition === 'left' ? 'border-r' : '',
+          toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
+        ]"
+        draggable="true"
+        @dragstart="(e) => emit('panelDragStart', e)"
       >
-        <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom (100%)')">
+        <div
+          class="flex items-center gap-2 shrink-0"
+          :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
+        >
+          <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom (100%)')">
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              class="font-mono tabular-nums min-w-10 justify-center"
+              :label="`${zoomPercent}%`"
+              @click="resetZoom"
+            />
+          </UTooltip>
+
+          <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
+            <UButton
+              v-if="projectStore.projectSettings.monitor"
+              size="xs"
+              :color="useProxyInMonitor ? 'primary' : 'neutral'"
+              :variant="useProxyInMonitor ? 'soft' : 'ghost'"
+              icon="i-heroicons-bolt"
+              @click="projectStore.projectSettings.monitor.useProxy = !useProxyInMonitor"
+            />
+          </UTooltip>
+
+          <div class="w-17">
+            <USelectMenu
+              v-if="projectStore.projectSettings.monitor"
+              :model-value="
+                (previewResolutions.find(
+                  (r) => r.value === projectStore.projectSettings.monitor.previewResolution,
+                ) || previewResolutions[2]) as any
+              "
+              :items="previewResolutions"
+              value-key="value"
+              label-key="label"
+              size="2xs"
+              :search-input="false"
+              :ui="{ trigger: 'px-1 py-1 font-medium' }"
+              class="w-full"
+              @update:model-value="
+                (v: any) => {
+                  if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
+                }
+              "
+            >
+              <template #leading="{ modelValue }">
+                <UIcon
+                  v-if="(modelValue as any)?.isProject"
+                  name="i-heroicons-star-20-solid"
+                  class="w-3 h-3 text-primary-500 shrink-0"
+                  :title="t('granVideoEditor.monitor.projectResolutionHint')"
+                />
+              </template>
+              <template #item-label="{ item }">
+                <span
+                  :class="[
+                    item.value === projectStore.projectSettings.monitor?.previewResolution
+                      ? 'text-primary-500 font-medium'
+                      : '',
+                    'truncate text-xs',
+                  ]"
+                >
+                  {{ item.label }}
+                </span>
+              </template>
+              <template #item-trailing="{ item }">
+                <UIcon
+                  v-if="item.isProject"
+                  name="i-heroicons-star-20-solid"
+                  class="w-3 h-3 text-primary-500 shrink-0"
+                  :title="t('granVideoEditor.monitor.projectResolutionHint')"
+                />
+              </template>
+            </USelectMenu>
+          </div>
+
           <UButton
+            v-if="isFullscreen"
             size="xs"
             color="neutral"
             variant="ghost"
-            class="font-mono tabular-nums min-w-10 justify-center"
-            :label="`${zoomPercent}%`"
-            @click="resetZoom"
+            icon="i-heroicons-arrow-left"
+            :label="t('common.back', 'Back')"
+            @click="projectStore.goToCut()"
           />
-        </UTooltip>
 
-        <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
           <UButton
-            v-if="projectStore.projectSettings.monitor"
+            v-else
             size="xs"
-            :color="useProxyInMonitor ? 'primary' : 'neutral'"
-            :variant="useProxyInMonitor ? 'soft' : 'ghost'"
-            icon="i-heroicons-bolt"
-            @click="projectStore.projectSettings.monitor.useProxy = !useProxyInMonitor"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-arrows-pointing-out"
+            :title="t('granVideoEditor.monitor.fullscreen', 'Fullscreen')"
+            @click="projectStore.goToFullscreen()"
           />
-        </UTooltip>
+        </div>
 
-        <div class="w-17">
+        <UButton
+          size="md"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-arrow-uturn-left"
+          :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
+          :disabled="!canInteractPlayback"
+          @click="rewindToStart"
+        />
+
+        <UButton
+          size="md"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-backward"
+          :aria-label="t('granVideoEditor.monitor.playBackward', 'Play backward')"
+          :disabled="!canInteractPlayback"
+          @click="
+            setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
+          "
+        />
+
+        <UButton
+          size="md"
+          variant="solid"
+          color="primary"
+          :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
+          :aria-label="t('granVideoEditor.monitor.play', 'Play')"
+          :disabled="!canInteractPlayback"
+          @click="
+            setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
+          "
+        />
+
+        <div class="w-15">
           <USelectMenu
-            v-if="projectStore.projectSettings.monitor"
-            :model-value="
-              (previewResolutions.find(
-                (r) => r.value === projectStore.projectSettings.monitor.previewResolution,
-              ) || previewResolutions[2]) as any
-            "
-            :items="previewResolutions"
+            :model-value="selectedPlaybackSpeedOption as any"
+            :items="playbackSpeedOptions"
             value-key="value"
             label-key="label"
             size="2xs"
-            :search-input="false"
             :ui="{ trigger: 'px-1 py-1 font-medium' }"
             class="w-full"
-            @update:model-value="
-              (v: any) => {
-                if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
-              }
-            "
+            :disabled="!canInteractPlayback"
+            @update:model-value="onPlaybackSpeedChange"
           >
-            <template #leading="{ modelValue }">
-              <UIcon
-                v-if="(modelValue as any)?.isProject"
-                name="i-heroicons-star-20-solid"
-                class="w-3 h-3 text-primary-500 shrink-0"
-                :title="t('granVideoEditor.monitor.projectResolutionHint')"
-              />
-            </template>
             <template #item-label="{ item }">
-              <span
-                :class="[
-                  item.value === projectStore.projectSettings.monitor?.previewResolution
-                    ? 'text-primary-500 font-medium'
-                    : '',
-                  'truncate text-xs',
-                ]"
-              >
-                {{ item.label }}
-              </span>
-            </template>
-            <template #item-trailing="{ item }">
-              <UIcon
-                v-if="item.isProject"
-                name="i-heroicons-star-20-solid"
-                class="w-3 h-3 text-primary-500 shrink-0"
-                :title="t('granVideoEditor.monitor.projectResolutionHint')"
-              />
+              <span class="truncate text-xs">{{ item.label }}</span>
             </template>
           </USelectMenu>
         </div>
 
-        <UButton
-          v-if="isFullscreen"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-arrow-left"
-          :label="t('common.back', 'Back')"
-          @click="projectStore.goToCut()"
-        />
-
-        <UButton
-          v-else
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-arrows-pointing-out"
-          :title="t('granVideoEditor.monitor.fullscreen', 'Fullscreen')"
-          @click="projectStore.goToFullscreen()"
-        />
+        <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
       </div>
-
-      <UButton
-        size="md"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-arrow-uturn-left"
-        :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
-        :disabled="!canInteractPlayback"
-        @click="rewindToStart"
-      />
-
-      <UButton
-        size="md"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-backward"
-        :aria-label="t('granVideoEditor.monitor.playBackward', 'Play backward')"
-        :disabled="!canInteractPlayback"
-        @click="
-          setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
-        "
-      />
-
-      <UButton
-        size="md"
-        variant="solid"
-        color="primary"
-        :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
-        :aria-label="t('granVideoEditor.monitor.play', 'Play')"
-        :disabled="!canInteractPlayback"
-        @click="
-          setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
-        "
-      />
-
-      <div class="w-15">
-        <USelectMenu
-          :model-value="selectedPlaybackSpeedOption as any"
-          :items="playbackSpeedOptions"
-          value-key="value"
-          label-key="label"
-          size="2xs"
-          :ui="{ trigger: 'px-1 py-1 font-medium' }"
-          class="w-full"
-          :disabled="!canInteractPlayback"
-          @update:model-value="onPlaybackSpeedChange"
-        >
-          <template #item-label="{ item }">
-            <span class="truncate text-xs">{{ item.label }}</span>
-          </template>
-        </USelectMenu>
-      </div>
-
-      <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
-    </div>
     </div>
   </UContextMenu>
 </template>

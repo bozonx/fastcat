@@ -2,11 +2,7 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
-import {
-  pxToTimeUs,
-  timeUsToPx,
-  zoomToPxPerSecond,
-} from '~/utils/timeline/geometry';
+import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 import AppModal from '~/components/ui/AppModal.vue';
 
@@ -340,7 +336,7 @@ function onRulerContextMenu(e: MouseEvent) {
       @mousedown="$emit('mousedown', $event)"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
-  
+
       <div class="absolute inset-0 pointer-events-none">
         <div
           v-for="p in markerPoints"
@@ -363,7 +359,7 @@ function onRulerContextMenu(e: MouseEvent) {
         <div class="flex flex-col gap-3">
           <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
         </div>
-  
+
         <template #footer>
           <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
             {{ t('common.cancel', 'Cancel') }}

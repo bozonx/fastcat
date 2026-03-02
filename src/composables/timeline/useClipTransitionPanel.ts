@@ -20,28 +20,27 @@ interface UseClipTransitionPanelOptions {
 }
 
 export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
-  const durationSec = ref(options.transition.value ? options.transition.value.durationUs / 1_000_000 : 0.5);
+  const durationSec = ref(
+    options.transition.value ? options.transition.value.durationUs / 1_000_000 : 0.5,
+  );
   const selectedType = ref(options.transition.value?.type ?? 'dissolve');
   const selectedMode = ref<'blend' | 'composite'>(options.transition.value?.mode ?? 'blend');
   const selectedCurve = ref<'linear' | 'bezier'>(options.transition.value?.curve ?? 'linear');
 
   let isSyncingFromProps = false;
 
-  watch(
-    options.transition,
-    (t) => {
-      isSyncingFromProps = true;
-      if (t) {
-        selectedType.value = t.type;
-        durationSec.value = t.durationUs / 1_000_000;
-        selectedMode.value = t.mode ?? 'blend';
-        selectedCurve.value = t.curve ?? 'linear';
-      }
-      void Promise.resolve().then(() => {
-        isSyncingFromProps = false;
-      });
-    },
-  );
+  watch(options.transition, (t) => {
+    isSyncingFromProps = true;
+    if (t) {
+      selectedType.value = t.type;
+      durationSec.value = t.durationUs / 1_000_000;
+      selectedMode.value = t.mode ?? 'blend';
+      selectedCurve.value = t.curve ?? 'linear';
+    }
+    void Promise.resolve().then(() => {
+      isSyncingFromProps = false;
+    });
+  });
 
   const edgeIcon = computed(() =>
     options.edge.value === 'in'

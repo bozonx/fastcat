@@ -6,7 +6,9 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="grid grid-cols-[110px_1fr] gap-x-3 items-start py-1 px-2 -mx-2 rounded hover:bg-white/5 transition-colors cursor-default">
+  <div
+    class="grid grid-cols-[110px_1fr] gap-x-3 items-start py-1 px-2 -mx-2 rounded hover:bg-white/5 transition-colors cursor-default"
+  >
     <div class="text-xs text-ui-text-muted truncate">
       {{ props.label }}
     </div>

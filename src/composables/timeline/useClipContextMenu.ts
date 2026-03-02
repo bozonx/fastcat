@@ -5,8 +5,8 @@ import type {
   TimelineClipItem,
   TimelineDocument,
   ClipTransition,
+  TimelineTrack as TimelineTrackType,
 } from '~/timeline/types';
-import type { TimelineTrack as TimelineTrackType } from '~/timeline/types';
 import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
 import type {
   TimelineCommand,

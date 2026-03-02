@@ -316,7 +316,11 @@ watch(
         {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
       </label>
       <div class="w-full">
-        <UiAppButtonGroup v-model="audioCodec" :options="audioCodecOptions" :disabled="props.disabled" />
+        <UiAppButtonGroup
+          v-model="audioCodec"
+          :options="audioCodecOptions"
+          :disabled="props.disabled"
+        />
       </div>
     </div>
 

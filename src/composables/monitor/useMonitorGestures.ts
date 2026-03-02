@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useProjectStore } from '~/stores/project.store';
+import type { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const MIN_ZOOM = 0.05;

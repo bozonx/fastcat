@@ -1,4 +1,8 @@
-import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '../../../src/timeline/types';
+import type {
+  TimelineDocument,
+  TimelineTrack,
+  TimelineClipItem,
+} from '../../../src/timeline/types';
 
 export class TimelineBuilder {
   private doc: TimelineDocument;
@@ -35,7 +39,7 @@ export class TimelineBuilder {
       disabled?: boolean;
       audioGain?: number;
       freezeFrameSourceUs?: number;
-    }
+    },
   ) {
     const track = this.doc.tracks.find((t) => t.id === trackId);
     if (!track) throw new Error(`Track ${trackId} not found`);

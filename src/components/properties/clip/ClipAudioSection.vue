@@ -32,13 +32,17 @@ const { t } = useI18n();
     "
     class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
   >
-    <div class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1">
+    <div
+      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+    >
       {{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}
     </div>
 
     <div v-if="props.canEditAudioGain" class="space-y-1.5">
       <div class="flex items-center justify-between">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audio.volume', 'Volume') }}</span>
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.audio.volume', 'Volume')
+        }}</span>
         <span class="text-xs font-mono text-ui-text-muted">{{ props.audioGain.toFixed(3) }}x</span>
       </div>
       <WheelSlider
@@ -52,8 +56,12 @@ const { t } = useI18n();
 
     <div v-if="props.canEditAudioBalance" class="space-y-1.5">
       <div class="flex items-center justify-between">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audio.balance', 'Balance') }}</span>
-        <span class="text-xs font-mono text-ui-text-muted">{{ props.audioBalance.toFixed(2) }}</span>
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.audio.balance', 'Balance')
+        }}</span>
+        <span class="text-xs font-mono text-ui-text-muted">{{
+          props.audioBalance.toFixed(2)
+        }}</span>
       </div>
       <WheelSlider
         :model-value="props.audioBalance"
@@ -66,7 +74,9 @@ const { t } = useI18n();
 
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.in', 'Fade in') }}</span>
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.audioFade.in', 'Fade in')
+        }}</span>
         <UInput
           :model-value="props.audioFadeInSec"
           size="sm"
@@ -78,7 +88,9 @@ const { t } = useI18n();
         />
       </div>
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.audioFade.out', 'Fade out') }}</span>
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.audioFade.out', 'Fade out')
+        }}</span>
         <UInput
           :model-value="props.audioFadeOutSec"
           size="sm"

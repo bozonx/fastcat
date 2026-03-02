@@ -68,7 +68,10 @@ const curveOptions = computed(() => [
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2 font-semibold uppercase tracking-wide">
         <UIcon :name="edgeIcon" class="w-4 h-4 shrink-0 text-primary-400" />
-        <span>{{ edge === 'in' ? 'IN' : 'OUT' }} {{ t('granVideoEditor.timeline.transition.title') }}</span>
+        <span
+          >{{ edge === 'in' ? 'IN' : 'OUT' }}
+          {{ t('granVideoEditor.timeline.transition.title') }}</span
+        >
       </div>
       <UButton
         v-if="transition"
@@ -122,19 +125,13 @@ const curveOptions = computed(() => [
     <!-- Mode toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.mode') }}</span>
-      <AppButtonGroup
-        v-model="selectedMode"
-        :options="modeOptions"
-      />
+      <AppButtonGroup v-model="selectedMode" :options="modeOptions" />
     </div>
 
     <!-- Curve toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.curve') }}</span>
-      <AppButtonGroup
-        v-model="selectedCurve"
-        :options="curveOptions"
-      />
+      <AppButtonGroup v-model="selectedCurve" :options="curveOptions" />
     </div>
   </div>
 </template>
