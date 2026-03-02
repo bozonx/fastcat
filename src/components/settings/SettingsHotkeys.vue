@@ -385,16 +385,6 @@ defineExpose({
                       @click="startCapture(cmd.id)"
                     />
 
-                    <UButton
-                      size="xs"
-                      color="neutral"
-                      variant="ghost"
-                      icon="i-heroicons-arrow-path"
-                      class="h-6 w-6 rounded-full shrink-0 justify-center"
-                      :disabled="isCapturingHotkey"
-                      :aria-label="t('videoEditor.settings.hotkeysResetCommand', 'Reset')"
-                      @click="resetCommandBindings(cmd.id)"
-                    />
                   </div>
                   <div
                     v-if="isCapturingHotkey && captureTargetCommandId === cmd.id"
@@ -404,23 +394,38 @@ defineExpose({
                   </div>
                 </td>
                 <td class="p-3 py-2.5 align-middle">
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ cmd.title }}
-                  </span>
-                  <span
-                    class="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
-                    :class="
-                      isCommandCustom(cmd.id)
-                        ? 'border-primary-300 text-primary-700 bg-primary-50'
-                        : 'border-ui-border text-ui-text-muted bg-ui-bg'
-                    "
-                  >
-                    {{
-                      isCommandCustom(cmd.id)
-                        ? t('common.custom', 'Custom')
-                        : t('common.default', 'Default')
-                    }}
-                  </span>
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center">
+                      <span class="text-sm text-ui-text font-medium leading-tight">
+                        {{ cmd.title }}
+                      </span>
+                      <span
+                        class="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
+                        :class="
+                          isCommandCustom(cmd.id)
+                            ? 'border-primary-300 text-primary-700 bg-primary-50'
+                            : 'border-ui-border text-ui-text-muted bg-ui-bg'
+                        "
+                      >
+                        {{
+                          isCommandCustom(cmd.id)
+                            ? t('common.custom', 'Custom')
+                            : t('common.default', 'Default')
+                        }}
+                      </span>
+                    </div>
+
+                    <UButton
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      icon="i-heroicons-arrow-uturn-left"
+                      class="h-6 w-6 rounded-full shrink-0 justify-center opacity-0 focus-visible:opacity-100 group-hover:opacity-100 transition-opacity"
+                      :disabled="isCapturingHotkey"
+                      :aria-label="t('videoEditor.settings.hotkeysResetCommand', 'Reset')"
+                      @click="resetCommandBindings(cmd.id)"
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
