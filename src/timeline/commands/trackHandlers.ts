@@ -31,11 +31,32 @@ export function addTrack(doc: TimelineDocument, cmd: AddTrackCommand): TimelineC
   const existingVideo = doc.tracks.filter((t) => t.kind === 'video');
   const existingAudio = doc.tracks.filter((t) => t.kind === 'audio');
 
-  let nextTracks: TimelineTrack[];
-  if (cmd.kind === 'video') {
-    nextTracks = [track, ...existingVideo, ...existingAudio];
+  let nextTracks: TimelineTrack[] = [...doc.tracks];
+
+  if (cmd.insertBeforeId) {
+    const idx = nextTracks.findIndex((t) => t.id === cmd.insertBeforeId);
+    if (idx !== -1) {
+      nextTracks.splice(idx, 0, track);
+    } else {
+      // fallback
+      if (cmd.kind === 'video') nextTracks = [track, ...existingVideo, ...existingAudio];
+      else nextTracks = [...existingVideo, ...existingAudio, track];
+    }
+  } else if (cmd.insertAfterId) {
+    const idx = nextTracks.findIndex((t) => t.id === cmd.insertAfterId);
+    if (idx !== -1) {
+      nextTracks.splice(idx + 1, 0, track);
+    } else {
+      // fallback
+      if (cmd.kind === 'video') nextTracks = [track, ...existingVideo, ...existingAudio];
+      else nextTracks = [...existingVideo, ...existingAudio, track];
+    }
   } else {
-    nextTracks = [...existingVideo, ...existingAudio, track];
+    if (cmd.kind === 'video') {
+      nextTracks = [track, ...existingVideo, ...existingAudio];
+    } else {
+      nextTracks = [...existingVideo, ...existingAudio, track];
+    }
   }
 
   return {

@@ -298,44 +298,57 @@ function draw() {
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    class="relative w-full overflow-hidden"
-    @mousedown="$emit('mousedown', $event)"
+  <UContextMenu
+    :items="[
+      [
+        {
+          label: t('granVideoEditor.timeline.addMarker', 'Add marker'),
+          icon: 'i-heroicons-bookmark',
+          onSelect: () => timelineStore.addMarkerAtPlayhead(),
+        },
+      ],
+    ]"
+    class="w-full"
   >
-    <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
-
-    <div class="absolute inset-0 pointer-events-none">
-      <div
-        v-for="p in markerPoints"
-        :key="p.id"
-        class="absolute bottom-0 pointer-events-auto"
-        :style="{ left: `${Math.round(p.x)}px` }"
-      >
-        <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
-          <button
-            type="button"
-            class="w-2 h-3 -translate-x-1 bg-primary-500 rounded-sm shadow-sm"
-            :aria-label="'Marker'"
-            @dblclick.stop.prevent="openEditMarker(p.id)"
-            @mousedown.stop
-          />
-        </UTooltip>
+    <div
+      ref="containerRef"
+      class="relative w-full overflow-hidden"
+      @mousedown="$emit('mousedown', $event)"
+    >
+      <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
+  
+      <div class="absolute inset-0 pointer-events-none">
+        <div
+          v-for="p in markerPoints"
+          :key="p.id"
+          class="absolute bottom-0 pointer-events-auto"
+          :style="{ left: `${Math.round(p.x)}px` }"
+        >
+          <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+            <button
+              type="button"
+              class="w-2 h-3 -translate-x-1 bg-primary-500 rounded-sm shadow-sm"
+              :aria-label="'Marker'"
+              @dblclick.stop.prevent="openEditMarker(p.id)"
+              @mousedown.stop
+            />
+          </UTooltip>
+        </div>
       </div>
+      <AppModal v-if="editingMarker" v-model:open="isMarkerEditOpen" title="Marker">
+        <div class="flex flex-col gap-3">
+          <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
+        </div>
+  
+        <template #footer>
+          <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" @click="saveMarkerText">
+            {{ t('common.save', 'Save') }}
+          </UButton>
+        </template>
+      </AppModal>
     </div>
-    <AppModal v-if="editingMarker" v-model:open="isMarkerEditOpen" title="Marker">
-      <div class="flex flex-col gap-3">
-        <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
-      </div>
-
-      <template #footer>
-        <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
-          {{ t('common.cancel', 'Cancel') }}
-        </UButton>
-        <UButton color="primary" @click="saveMarkerText">
-          {{ t('common.save', 'Save') }}
-        </UButton>
-      </template>
-    </AppModal>
-  </div>
+  </UContextMenu>
 </template>

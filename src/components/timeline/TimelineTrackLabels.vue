@@ -131,6 +131,40 @@ function getTrackContextMenuItems(track: TimelineTrack) {
   return [
     [
       {
+        label: t('granVideoEditor.timeline.addVideoTrackAbove', 'Add video track above'),
+        icon: 'i-heroicons-video-camera',
+        onSelect: () => {
+          const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
+          timelineStore.addTrack('video', `Video ${idx}`, { insertBeforeId: track.id });
+        },
+      },
+      {
+        label: t('granVideoEditor.timeline.addVideoTrackBelow', 'Add video track below'),
+        icon: 'i-heroicons-video-camera',
+        onSelect: () => {
+          const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
+          timelineStore.addTrack('video', `Video ${idx}`, { insertAfterId: track.id });
+        },
+      },
+      {
+        label: t('granVideoEditor.timeline.addAudioTrackAbove', 'Add audio track above'),
+        icon: 'i-heroicons-musical-note',
+        onSelect: () => {
+          const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
+          timelineStore.addTrack('audio', `Audio ${idx}`, { insertBeforeId: track.id });
+        },
+      },
+      {
+        label: t('granVideoEditor.timeline.addAudioTrackBelow', 'Add audio track below'),
+        icon: 'i-heroicons-musical-note',
+        onSelect: () => {
+          const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
+          timelineStore.addTrack('audio', `Audio ${idx}`, { insertAfterId: track.id });
+        },
+      },
+    ],
+    [
+      {
         label: t('granVideoEditor.timeline.renameTrack', 'Rename track'),
         icon: 'i-heroicons-pencil',
         onSelect: () => openRename(track),
@@ -241,98 +275,115 @@ function toggleClipSnapMode() {
     class="h-full w-full shrink-0 border-r border-ui-border flex flex-col bg-ui-bg"
     v-bind="$attrs"
   >
-    <div
-      class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+    <UContextMenu
+      :items="[
+        [
+          {
+            label: t('granVideoEditor.timeline.addVideoTrack', 'Add video track'),
+            icon: 'i-heroicons-video-camera',
+            onSelect: addVideoTrack,
+          },
+          {
+            label: t('granVideoEditor.timeline.addAudioTrack', 'Add audio track'),
+            icon: 'i-heroicons-musical-note',
+            onSelect: addAudioTrack,
+          },
+        ],
+      ]"
     >
-      <UTooltip :text="t('granVideoEditor.timeline.addVideoTrack', 'Add video track')">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-video-camera"
-          @click="addVideoTrack"
-        />
-      </UTooltip>
-      <UTooltip :text="t('granVideoEditor.timeline.addAudioTrack', 'Add audio track')">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-musical-note"
-          @click="addAudioTrack"
-        />
-      </UTooltip>
-
-      <div class="flex items-center gap-0.5 ml-auto">
-        <UTooltip
-          :text="
-            settingsStore.overlapMode === 'pseudo'
-              ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode')
-              : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode')
-          "
-        >
+      <div
+        class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+      >
+        <UTooltip :text="t('granVideoEditor.timeline.addVideoTrack', 'Add video track')">
           <UButton
             size="xs"
-            :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
-            :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
-            icon="i-heroicons-squares-2x2"
-            :aria-label="
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-video-camera"
+            @click="addVideoTrack"
+          />
+        </UTooltip>
+        <UTooltip :text="t('granVideoEditor.timeline.addAudioTrack', 'Add audio track')">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-musical-note"
+            @click="addAudioTrack"
+          />
+        </UTooltip>
+
+        <div class="flex items-center gap-0.5 ml-auto">
+          <UTooltip
+            :text="
               settingsStore.overlapMode === 'pseudo'
-                ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode (active)')
-                : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode (no overlap)')
+                ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode')
+                : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode')
             "
-            @click="toggleOverlapMode"
-          />
-        </UTooltip>
+          >
+            <UButton
+              size="xs"
+              :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
+              :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
+              icon="i-heroicons-squares-2x2"
+              :aria-label="
+                settingsStore.overlapMode === 'pseudo'
+                  ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode (active)')
+                  : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode (no overlap)')
+              "
+              @click="toggleOverlapMode"
+            />
+          </UTooltip>
 
-        <div class="w-px h-3.5 bg-ui-border mx-0.5" />
+          <div class="w-px h-3.5 bg-ui-border mx-0.5" />
 
-        <UTooltip
-          :text="
-            settingsStore.frameSnapMode === 'frames'
-              ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames')
-              : t('granVideoEditor.timeline.frameSnapOff', 'Free placement')
-          "
-        >
-          <UButton
-            size="xs"
-            :variant="settingsStore.frameSnapMode === 'frames' ? 'solid' : 'ghost'"
-            :color="settingsStore.frameSnapMode === 'frames' ? 'primary' : 'neutral'"
-            icon="i-heroicons-film"
-            :aria-label="
+          <UTooltip
+            :text="
               settingsStore.frameSnapMode === 'frames'
-                ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames (active)')
-                : t('granVideoEditor.timeline.frameSnapOff', 'Free placement (no frame snap)')
+                ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames')
+                : t('granVideoEditor.timeline.frameSnapOff', 'Free placement')
             "
-            @click="toggleFrameSnapMode"
-          />
-        </UTooltip>
+          >
+            <UButton
+              size="xs"
+              :variant="settingsStore.frameSnapMode === 'frames' ? 'solid' : 'ghost'"
+              :color="settingsStore.frameSnapMode === 'frames' ? 'primary' : 'neutral'"
+              icon="i-heroicons-film"
+              :aria-label="
+                settingsStore.frameSnapMode === 'frames'
+                  ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames (active)')
+                  : t('granVideoEditor.timeline.frameSnapOff', 'Free placement (no frame snap)')
+              "
+              @click="toggleFrameSnapMode"
+            />
+          </UTooltip>
 
-        <UTooltip
-          :text="
-            settingsStore.clipSnapMode === 'clips'
-              ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
-              : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
-          "
-        >
-          <UButton
-            size="xs"
-            :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
-            :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
-            icon="i-heroicons-link"
-            :aria-label="
+          <UTooltip
+            :text="
               settingsStore.clipSnapMode === 'clips'
-                ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
+                ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
                 : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
             "
-            @click="toggleClipSnapMode"
-          />
-        </UTooltip>
-        
-        <div class="w-px h-3.5 bg-ui-border mx-0.5" />
-        
+          >
+            <UButton
+              size="xs"
+              :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
+              :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
+              icon="i-heroicons-link"
+              :aria-label="
+                settingsStore.clipSnapMode === 'clips'
+                  ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
+                  : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
+              "
+              @click="toggleClipSnapMode"
+            />
+          </UTooltip>
+          
+          <div class="w-px h-3.5 bg-ui-border mx-0.5" />
+          
+        </div>
       </div>
-    </div>
+    </UContextMenu>
     <div class="flex flex-col divide-y divide-ui-border flex-1">
       <UContextMenu
         v-for="track in tracks"
