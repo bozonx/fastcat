@@ -19,7 +19,7 @@ export function getPanelSizesKey(pageKey: string, projectId: string | null): str
 export function usePersistedSplitpanes(
   pageKey: string | Ref<string>,
   projectId: Ref<string | null>,
-  defaultSizes: number[],
+  defaultSizes: number[] | Ref<number[]>,
 ) {
   const getKey = () => {
     const keyString = isRef(pageKey) ? pageKey.value : pageKey;
@@ -27,25 +27,35 @@ export function usePersistedSplitpanes(
   };
 
   const key = ref(getKey());
-  const sizes = ref<number[]>([...defaultSizes]);
+  const sizes = ref<number[]>(isRef(defaultSizes) ? [...defaultSizes.value] : [...defaultSizes]);
   const isLoaded = ref(false);
 
   function loadSizes() {
     const newKey = getKey();
     key.value = newKey;
     const stored = readLocalStorageJson<number[] | null>(newKey, null);
-    if (stored && Array.isArray(stored) && stored.length === defaultSizes.length) {
+    const defaults = isRef(defaultSizes) ? defaultSizes.value : defaultSizes;
+
+    if (stored && Array.isArray(stored) && stored.length === defaults.length) {
       sizes.value = stored;
     } else {
-      sizes.value = [...defaultSizes];
+      sizes.value = [...defaults];
     }
     isLoaded.value = true;
   }
 
-  // Watch both projectId and pageKey if it's a ref
-  watch([() => projectId.value, isRef(pageKey) ? pageKey : () => pageKey], loadSizes, {
-    immediate: true,
-  });
+  // Watch projectId, pageKey, and defaultSizes to reload if length changes
+  watch(
+    [
+      () => projectId.value,
+      isRef(pageKey) ? pageKey : () => pageKey,
+      isRef(defaultSizes) ? () => defaultSizes.value.length : () => defaultSizes.length,
+    ],
+    loadSizes,
+    {
+      immediate: true,
+    },
+  );
 
   function onResized(event: { panes: { size: number }[] }) {
     if (Array.isArray(event?.panes)) {

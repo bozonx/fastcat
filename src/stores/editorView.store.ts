@@ -10,6 +10,15 @@ export interface ViewConfig {
   timelineHeight: number;
 }
 
+export interface DynamicPanel {
+  id: string;
+  type: 'fileManager' | 'monitor' | 'properties' | 'text';
+  title?: string;
+  // If type is text, store file details
+  filePath?: string;
+  fileContent?: string;
+}
+
 const viewConfigs: Record<EditorView, ViewConfig> = {
   files: { timelineHeight: 30 },
   cut: { timelineHeight: 40 },
@@ -19,6 +28,57 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
 
 export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   const currentView = ref<EditorView>('cut');
+
+  // Dynamic panels for cut view
+  const defaultCutPanels: DynamicPanel[] = [
+    { id: 'fileManager', type: 'fileManager' },
+    { id: 'monitor', type: 'monitor' },
+    { id: 'properties', type: 'properties' },
+  ];
+
+  const cutPanelsKey = computed(() => `gran-cut-panels-${projectIdRef.value ?? 'no-project'}`);
+  const cutPanels = ref<DynamicPanel[]>([...defaultCutPanels]);
+
+  // Load panels from local storage
+  watch(
+    () => cutPanelsKey.value,
+    (key) => {
+      const stored = readLocalStorageJson<DynamicPanel[] | null>(key, null);
+      if (stored && Array.isArray(stored) && stored.length > 0) {
+        cutPanels.value = stored;
+      } else {
+        cutPanels.value = [...defaultCutPanels];
+      }
+    },
+    { immediate: true },
+  );
+
+  // Save panels to local storage
+  watch(
+    cutPanels,
+    (panels) => {
+      writeLocalStorageJson(cutPanelsKey.value, panels);
+    },
+    { deep: true },
+  );
+
+  function addTextPanel(filePath: string, fileContent: string, title: string) {
+    const newPanel: DynamicPanel = {
+      id: `text-${Date.now()}`,
+      type: 'text',
+      filePath,
+      fileContent,
+      title,
+    };
+
+    // Insert in the middle
+    const middleIndex = Math.floor(cutPanels.value.length / 2);
+    cutPanels.value.splice(middleIndex, 0, newPanel);
+  }
+
+  function removePanel(id: string) {
+    cutPanels.value = cutPanels.value.filter((p) => p.id !== id);
+  }
 
   const timelineHeightKey = computed(() =>
     getPanelSizesKey(`timeline-height-${currentView.value}`, projectIdRef.value),
@@ -62,6 +122,9 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   return {
     currentView,
     timelineHeight,
+    cutPanels,
+    addTextPanel,
+    removePanel,
     setView,
     goToFiles,
     goToCut,

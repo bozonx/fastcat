@@ -153,6 +153,12 @@ function onDelete() {
   if (!entry) return;
   uiStore.pendingFsEntryDelete = entry;
 }
+
+function openAsTextPanel() {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'file' || mediaType.value !== 'text') return;
+  projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name);
+}
 </script>
 
 <template>
@@ -308,6 +314,18 @@ function onDelete() {
           {{ t('common.delete', 'Delete') }}
         </UButton>
       </div>
+
+      <UButton
+        v-if="mediaType === 'text'"
+        size="xs"
+        color="neutral"
+        variant="soft"
+        icon="i-heroicons-window"
+        class="w-full justify-center mt-2"
+        @click="openAsTextPanel"
+      >
+        {{ t('granVideoEditor.fileManager.actions.openAsPanel', 'Open as panel') }}
+      </UButton>
 
       <UButton
         v-if="isOtio"
