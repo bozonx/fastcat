@@ -82,7 +82,15 @@ function onDragStart(event: DragEvent, panelId: string) {
 
 function onDragOver(event: DragEvent, panelId: string) {
   event.preventDefault();
-  if (!draggingPanelId.value || draggingPanelId.value === panelId) {
+  
+  const isDraggingFile = event.dataTransfer?.types.includes('application/json') || event.dataTransfer?.types.includes('application/gran-file-manager-move');
+  const isDraggingPanel = !!draggingPanelId.value;
+
+  if (!isDraggingFile && !isDraggingPanel) {
+    return;
+  }
+
+  if (draggingPanelId.value === panelId) {
     dragOverPanelId.value = null;
     dropPosition.value = null;
     return;
@@ -121,6 +129,50 @@ function onDragLeave(event: DragEvent, panelId: string) {
 
 function onDrop(event: DragEvent, targetPanelId: string) {
   event.preventDefault();
+
+  // Try to parse file drag payload first
+  const fileDragData = event.dataTransfer?.getData('application/json') || event.dataTransfer?.getData('application/gran-file-manager-move');
+  if (fileDragData) {
+    try {
+      const payload = JSON.parse(fileDragData);
+      if (payload.kind === 'file' && dropPosition.value) {
+        // Find extension to determine type
+        const ext = payload.name?.split('.').pop()?.toLowerCase() ?? '';
+        let mediaType: 'video' | 'audio' | 'image' | 'unknown' = 'unknown';
+
+        if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) mediaType = 'video';
+        else if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) mediaType = 'audio';
+        else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext)) mediaType = 'image';
+
+        if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) {
+          // Add as text panel. Normally you'd read the content, but for now we'll just put a placeholder.
+          // Ideally we would read the file here, but keeping it simple for drop
+          projectStore.addTextPanel(
+            payload.path,
+            `File: ${payload.name}`,
+            payload.name,
+            targetPanelId,
+            dropPosition.value
+          );
+        } else {
+          // Add as media panel
+          projectStore.addMediaPanel(
+            { path: payload.path, name: payload.name },
+            mediaType,
+            payload.name,
+            targetPanelId,
+            dropPosition.value
+          );
+        }
+        resetDragState();
+        return;
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+  }
+
+  // Handle panel reordering
   if (!draggingPanelId.value || !dropPosition.value) {
     resetDragState();
     return;

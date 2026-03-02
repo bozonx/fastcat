@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, markRaw, ref, computed } from 'vue';
+import { onMounted, markRaw, ref, computed, watch, nextTick } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import {
   useProjectTabs,
@@ -47,6 +47,20 @@ const activeStaticComponent = computed(() => activeStaticTab.value?.component ??
 
 /** Whether the tab bar drop zone is active */
 const isDropTarget = ref(false);
+
+const tabContainerRef = ref<any>(null);
+
+watch(activeTabId, async (newId) => {
+  if (!newId) return;
+  await nextTick();
+  const container = tabContainerRef.value?.$el || tabContainerRef.value?.target || document.querySelector('.gran-project-tabs-container');
+  if (!container) return;
+
+  const activeEl = container.querySelector(`[data-tab-id="${newId}"]`) as HTMLElement;
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
+});
 
 function onTabBarDragOver(e: DragEvent) {
   const types = e.dataTransfer?.types ?? [];
@@ -146,7 +160,8 @@ onMounted(() => {
     >
       <VueDraggable
         v-model="tabsModel"
-        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
+        ref="tabContainerRef"
+        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1 gran-project-tabs-container"
         :animation="150"
         ghost-class="tab-ghost"
         item-key="id"
@@ -154,6 +169,7 @@ onMounted(() => {
         <div
           v-for="tab in tabsModel"
           :key="tab.id"
+          :data-tab-id="tab.id"
           class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
           :class="
             activeTabId === tab.id
