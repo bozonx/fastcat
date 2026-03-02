@@ -1,4 +1,4 @@
-import type { Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
 
@@ -27,6 +27,20 @@ export interface TimelineSelectionApi {
 }
 
 export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSelectionApi {
+  const itemToTrackMap = computed(() => {
+    const map = new Map<string, string>();
+    const doc = deps.timelineDoc.value;
+    if (!doc) return map;
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (item.kind === 'clip') {
+          map.set(item.id, track.id);
+        }
+      }
+    }
+    return map;
+  });
+
   function clearSelection() {
     deps.selectedItemIds.value = [];
     deps.selectedTransition.value = null;
@@ -69,12 +83,9 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
 
     const selectedId = deps.selectedItemIds.value[0];
     if (selectedId) {
-      for (const track of doc.tracks) {
-        for (const it of track.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.id !== selectedId) continue;
-          return { trackId: track.id, itemId: it.id };
-        }
+      const trackId = itemToTrackMap.value.get(selectedId);
+      if (trackId) {
+        return { trackId, itemId: selectedId };
       }
     }
 
@@ -102,12 +113,8 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
 
     const selectedId = deps.selectedItemIds.value[0];
     if (selectedId) {
-      for (const track of doc.tracks) {
-        for (const it of track.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.id === selectedId) return track.id;
-        }
-      }
+      const trackId = itemToTrackMap.value.get(selectedId);
+      if (trackId) return trackId;
     }
 
     return deps.selectedTrackId.value;

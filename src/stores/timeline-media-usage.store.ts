@@ -17,6 +17,16 @@ interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
+export class TimelineScanError extends Error {
+  constructor(
+    public readonly code: 'PROJECT_TOO_LARGE' | 'DIR_UNAVAILABLE' | 'UNKNOWN',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'TimelineScanError';
+  }
+}
+
 export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', () => {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
@@ -58,7 +68,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
 
       for await (const value of iterator) {
         if (seen >= maxEntries) {
-          throw new Error('Project too large to scan timelines');
+          throw new TimelineScanError('PROJECT_TOO_LARGE', 'Project too large to scan timelines');
         }
         seen += 1;
 
@@ -140,8 +150,13 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       mediaPathToTimelines.value = computeMediaUsageByTimelineDocs(timelines).mediaPathToTimelines;
       lastScanAt.value = Date.now();
     } catch (e: any) {
+      console.error('[TimelineMediaUsage] Error scanning timelines:', e);
       mediaPathToTimelines.value = {};
-      error.value = String(e?.message ?? e);
+      if (e instanceof TimelineScanError) {
+        error.value = `Scan failed: ${e.message} (${e.code})`;
+      } else {
+        error.value = String(e?.message ?? e);
+      }
       lastScanAt.value = null;
     } finally {
       isLoading.value = false;
