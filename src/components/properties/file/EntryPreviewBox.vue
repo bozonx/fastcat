@@ -11,6 +11,7 @@ const props = defineProps<{
   mediaType: 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
   textContent: string;
   filePath?: string;
+  fileName?: string;
 }>();
 </script>
 
@@ -40,6 +41,7 @@ const props = defineProps<{
         :media-type="props.mediaType"
         :text-content="props.textContent"
         :file-path="props.filePath"
+        :file-name="props.fileName"
       />
     </div>
   </div>

@@ -183,6 +183,7 @@ function openAsTextPanel() {
       :media-type="mediaType"
       :text-content="textContent"
       :file-path="selectedFsEntry?.path"
+      :file-name="selectedFsEntry?.name"
     />
 
     <PropertySection
