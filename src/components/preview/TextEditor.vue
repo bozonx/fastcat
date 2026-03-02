@@ -122,9 +122,12 @@ onUnmounted(() => {
 
     <TextEditorModal
       v-model:open="isModalOpen"
+      v-model:content="content"
       :file-path="props.filePath"
       :file-name="props.fileName || 'Text Editor'"
-      :initial-content="props.initialContent"
+      :is-saving="isSaving"
+      :save-error="saveError"
+      :last-saved-at="lastSavedAt"
     />
   </div>
 </template>
