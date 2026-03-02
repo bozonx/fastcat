@@ -15,11 +15,11 @@ const props = defineProps<{
   fileName?: string;
 }>();
 
-const isImageModalOpen = ref(false);
+const isFullscreenOpen = ref(false);
 
 function handleEsc(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isImageModalOpen.value) {
-    isImageModalOpen.value = false;
+  if (e.key === 'Escape' && isFullscreenOpen.value) {
+    isFullscreenOpen.value = false;
   }
 }
 
@@ -39,7 +39,7 @@ onUnmounted(() => {
       :src="props.url"
       :alt="props.alt"
       class="w-full h-full"
-      @open-modal="isImageModalOpen = true"
+      @open-modal="isFullscreenOpen = true"
     />
 
     <MediaPlayer
@@ -47,6 +47,7 @@ onUnmounted(() => {
       :src="props.url"
       :type="props.mediaType"
       class="w-full h-full"
+      @open-modal="isFullscreenOpen = true"
     />
 
     <TextEditor
@@ -77,7 +78,7 @@ onUnmounted(() => {
         leave-to-class="opacity-0"
       >
         <div
-          v-if="isImageModalOpen"
+          v-if="isFullscreenOpen"
           class="fixed inset-0 bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm"
           style="z-index: 40;"
         >
@@ -88,7 +89,7 @@ onUnmounted(() => {
             class="absolute top-4 right-4 text-white hover:bg-white/20"
             size="xl"
             style="z-index: 41;"
-            @click="isImageModalOpen = false"
+            @click="isFullscreenOpen = false"
           />
           <ImageViewer
             v-if="props.mediaType === 'image' && props.url"
@@ -96,7 +97,15 @@ onUnmounted(() => {
             :alt="props.alt"
             is-modal
             class="w-full h-full flex-1"
-            @close-modal="isImageModalOpen = false"
+            @close-modal="isFullscreenOpen = false"
+          />
+          <MediaPlayer
+            v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url"
+            :src="props.url"
+            :type="props.mediaType"
+            is-modal
+            class="w-full h-full flex-1 pb-8"
+            @close-modal="isFullscreenOpen = false"
           />
         </div>
       </Transition>
