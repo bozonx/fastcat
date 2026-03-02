@@ -6,6 +6,12 @@ const { t } = useI18n();
 const props = defineProps<{
   src: string;
   type: 'video' | 'audio';
+  isModal?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'open-modal'): void;
+  (e: 'close-modal'): void;
 }>();
 
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
@@ -181,16 +187,27 @@ watch(
       </div>
 
       <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <UButton
+            size="sm"
+            variant="solid"
+            color="primary"
+            :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
+            @click="togglePlay"
+          />
+          <span class="text-xs text-ui-text-muted font-mono">
+            {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+          </span>
+        </div>
+        
         <UButton
+          v-if="type === 'video'"
           size="sm"
-          variant="solid"
-          color="primary"
-          :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
-          @click="togglePlay"
+          variant="ghost"
+          color="neutral"
+          :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
+          @click="isModal ? emit('close-modal') : emit('open-modal')"
         />
-        <span class="text-xs text-ui-text-muted font-mono">
-          {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
-        </span>
       </div>
     </div>
   </div>
