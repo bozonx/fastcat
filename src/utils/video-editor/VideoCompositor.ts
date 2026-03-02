@@ -15,14 +15,14 @@ import {
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
 import { getTransitionManifest, easeInOutCubic } from '../../transitions';
-import type { TextClipStyle } from '~/timeline/types';
+import type { TextClipStyle, ClipEffect, ClipTransform, ClipTransition } from '~/timeline/types';
 import { VIDEO_CORE_LIMITS } from '../constants';
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
   timeS: number,
   firstTimestampS?: number,
-): Promise<any | null> {
+): Promise<unknown | null> {
   const primary = await sink.getSample(timeS).catch((e) => {
     const msg = String((e as any)?.message ?? e ?? '');
     const name = String((e as any)?.name ?? '');
@@ -90,26 +90,11 @@ export interface CompositorClip {
   text?: string;
   style?: TextClipStyle;
   opacity?: number;
-  effects?: any[];
-  transform?: {
-    scale?: { x: number; y: number; linked?: boolean };
-    rotationDeg?: number;
-    position?: { x: number; y: number };
-    anchor?: { preset: string; x?: number; y?: number };
-  };
+  effects?: ClipEffect[];
+  transform?: ClipTransform;
   effectFilters?: Map<string, Filter>;
-  transitionIn?: {
-    type: string;
-    durationUs: number;
-    mode?: 'blend' | 'composite';
-    curve?: 'linear' | 'bezier';
-  };
-  transitionOut?: {
-    type: string;
-    durationUs: number;
-    mode?: 'blend' | 'composite';
-    curve?: 'linear' | 'bezier';
-  };
+  transitionIn?: ClipTransition;
+  transitionOut?: ClipTransition;
 }
 
 export class VideoCompositor {

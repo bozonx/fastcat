@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue';
+import type { FsEntry } from '~/types/fs';
 
 export interface ProxyStoreLike {
   generatingProxies:
@@ -15,24 +16,22 @@ export interface ProxyStoreLike {
 }
 
 interface UseFileProxyFolderOptions {
-  selectedFsEntry: Ref<any>;
+  selectedFsEntry: Ref<FsEntry | null>;
   proxyStore: ProxyStoreLike;
   videoExtensions: readonly string[];
 }
 
 export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
   const generatingProxies = computed(() => {
-    const gp: any = options.proxyStore.generatingProxies as any;
-    return gp && typeof gp === 'object' && 'value' in gp
-      ? (gp.value as Set<string>)
-      : (gp as Set<string>);
+    const gp = options.proxyStore.generatingProxies;
+    return gp && typeof gp === 'object' && 'value' in gp ? gp.value : gp;
   });
 
   const isFolderWithVideo = computed(() => {
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'directory') return false;
     const children = Array.isArray(entry.children) ? entry.children : [];
-    return children.some((c: any) => {
+    return children.some((c: FsEntry) => {
       if (c?.kind !== 'file') return false;
       const name = typeof c?.name === 'string' ? c.name : '';
       const ext = name.split('.').pop()?.toLowerCase() ?? '';

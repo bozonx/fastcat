@@ -31,12 +31,13 @@ export function createUiActionRunner(state: UiActionRunnerState, deps: UiActionR
     state.isLoading.value = true;
     try {
       return await params.action();
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (params.ignoreError?.(e)) {
         return null;
       }
 
-      state.error.value = e?.message ?? params.defaultErrorMessage;
+      const message = e instanceof Error ? e.message : params.defaultErrorMessage;
+      state.error.value = message;
       deps.toast.add({
         color: 'red',
         title: params.toastTitle,

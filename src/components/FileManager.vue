@@ -284,9 +284,9 @@ watch(
         timelinesDirName: undefined,
       });
       await loadProjectDirectory();
-      
+
       const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
-      
+
       if (createdPath) {
         await projectStore.openTimelineFile(createdPath);
         await timelineStore.loadTimeline();
@@ -516,30 +516,36 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="openCreateFolderModal(uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
+          @click="
+            openCreateFolderModal(
+              uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null,
+            )
+          "
         />
 
         <div class="ml-auto flex items-center">
-          <UDropdown
+          <UDropdownMenu
             :items="[
               [
                 {
                   label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
                   icon: 'i-heroicons-arrow-path',
                   disabled: isLoading || !projectStore.currentProjectName,
-                  click: loadProjectDirectory,
+                  onSelect: () => loadProjectDirectory(),
                 },
               ],
               [
                 {
                   label: t('videoEditor.fileManager.sort.name', 'Sort by name'),
-                  icon: sortMode === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
-                  click: () => onSortModeChange('name'),
+                  icon:
+                    sortMode === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+                  onSelect: () => onSortModeChange('name'),
                 },
                 {
                   label: t('videoEditor.fileManager.sort.type', 'Sort by type'),
-                  icon: sortMode === 'type' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
-                  click: () => onSortModeChange('type'),
+                  icon:
+                    sortMode === 'type' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+                  onSelect: () => onSortModeChange('type'),
                 },
               ],
               [
@@ -548,11 +554,11 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
                     ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
                     : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
                   icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
-                  click: () => (uiStore.showHiddenFiles = !uiStore.showHiddenFiles),
+                  onSelect: () => (uiStore.showHiddenFiles = !uiStore.showHiddenFiles),
                 },
               ],
             ]"
-            :popper="{ placement: 'bottom-end' }"
+            :content="{ placement: 'bottom-end' }"
           >
             <UButton
               icon="i-heroicons-ellipsis-horizontal"
@@ -560,7 +566,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
               variant="ghost"
               size="xs"
             />
-          </UDropdown>
+          </UDropdownMenu>
         </div>
       </div>
 

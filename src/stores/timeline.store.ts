@@ -71,11 +71,27 @@ export const useTimelineStore = defineStore('timeline', () => {
   } | null>(null);
 
   // Wrapper for applyTimeline to resolve circular dependencies in setup
-  function applyTimeline(cmd: TimelineCommand, options?: any) {
+  function applyTimeline(
+    cmd: TimelineCommand,
+    options?: {
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      skipHistory?: boolean;
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+    },
+  ) {
     dispatcher.applyTimeline(cmd, options);
   }
 
-  function batchApplyTimeline(cmds: TimelineCommand[], options?: any) {
+  function batchApplyTimeline(
+    cmds: TimelineCommand[],
+    options?: {
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      skipHistory?: boolean;
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+    },
+  ) {
     dispatcher.batchApplyTimeline(cmds, options);
   }
 

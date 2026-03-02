@@ -10,6 +10,16 @@ import {
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
 
+export type FileAction =
+  | 'createFolder'
+  | 'upload'
+  | 'rename'
+  | 'delete'
+  | 'deleteProxy'
+  | 'createProxy'
+  | 'cancelProxy'
+  | 'openInNewTab';
+
 interface FileManagerActions {
   createFolder: (name: string, target?: FileSystemDirectoryHandle | null) => Promise<void>;
   renameEntry: (target: FsEntry, newName: string) => Promise<void>;
@@ -115,7 +125,7 @@ export function useFileManagerModals(actions: FileManagerActions) {
     renameTarget.value = null;
   }
 
-  function onFileAction(action: any, entry: FsEntry) {
+  function onFileAction(action: FileAction, entry: FsEntry) {
     if (action === 'createFolder') {
       openCreateFolderModal(entry);
     } else if (action === 'upload') {
@@ -141,12 +151,6 @@ export function useFileManagerModals(actions: FileManagerActions) {
     } else if (action === 'deleteProxy') {
       if (entry.kind === 'file' && entry.path) {
         void removeProxyCommand({ service: actions.mediaCache, projectRelativePath: entry.path });
-      }
-    } else if (action === 'createProxyForFolder') {
-      if (entry.kind === 'directory' && entry.path !== undefined) {
-        // This logic is long, maybe it should also be in proxyStore or useFileManager?
-        // For now let's keep it in the component or move it to a utility.
-        // Actually, let's keep it in onFileAction for now but simplifying it.
       }
     }
   }
