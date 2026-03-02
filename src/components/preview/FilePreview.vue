@@ -79,7 +79,7 @@ onUnmounted(() => {
         <div
           v-if="isImageModalOpen"
           class="fixed inset-0 bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm"
-          style="z-index: 99999;"
+          style="z-index: 40;"
         >
           <UButton
             color="neutral"
@@ -87,7 +87,7 @@ onUnmounted(() => {
             icon="i-heroicons-x-mark"
             class="absolute top-4 right-4 text-white hover:bg-white/20"
             size="xl"
-            style="z-index: 100000;"
+            style="z-index: 41;"
             @click="isImageModalOpen = false"
           />
           <ImageViewer
