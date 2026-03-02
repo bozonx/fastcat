@@ -128,41 +128,47 @@ function confirmDelete() {
 }
 
 function getTrackContextMenuItems(track: TimelineTrack) {
+  const addItems =
+    track.kind === 'video'
+      ? [
+          {
+            label: t('granVideoEditor.timeline.addVideoTrackAbove', 'Add video track above'),
+            icon: 'i-heroicons-video-camera',
+            onSelect: () => {
+              const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
+              timelineStore.addTrack('video', `Video ${idx}`, { insertBeforeId: track.id });
+            },
+          },
+          {
+            label: t('granVideoEditor.timeline.addVideoTrackBelow', 'Add video track below'),
+            icon: 'i-heroicons-video-camera',
+            onSelect: () => {
+              const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
+              timelineStore.addTrack('video', `Video ${idx}`, { insertAfterId: track.id });
+            },
+          },
+        ]
+      : [
+          {
+            label: t('granVideoEditor.timeline.addAudioTrackAbove', 'Add audio track above'),
+            icon: 'i-heroicons-musical-note',
+            onSelect: () => {
+              const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
+              timelineStore.addTrack('audio', `Audio ${idx}`, { insertBeforeId: track.id });
+            },
+          },
+          {
+            label: t('granVideoEditor.timeline.addAudioTrackBelow', 'Add audio track below'),
+            icon: 'i-heroicons-musical-note',
+            onSelect: () => {
+              const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
+              timelineStore.addTrack('audio', `Audio ${idx}`, { insertAfterId: track.id });
+            },
+          },
+        ];
+
   return [
-    [
-      {
-        label: t('granVideoEditor.timeline.addVideoTrackAbove', 'Add video track above'),
-        icon: 'i-heroicons-video-camera',
-        onSelect: () => {
-          const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
-          timelineStore.addTrack('video', `Video ${idx}`, { insertBeforeId: track.id });
-        },
-      },
-      {
-        label: t('granVideoEditor.timeline.addVideoTrackBelow', 'Add video track below'),
-        icon: 'i-heroicons-video-camera',
-        onSelect: () => {
-          const idx = props.tracks.filter((tr) => tr.kind === 'video').length + 1;
-          timelineStore.addTrack('video', `Video ${idx}`, { insertAfterId: track.id });
-        },
-      },
-      {
-        label: t('granVideoEditor.timeline.addAudioTrackAbove', 'Add audio track above'),
-        icon: 'i-heroicons-musical-note',
-        onSelect: () => {
-          const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
-          timelineStore.addTrack('audio', `Audio ${idx}`, { insertBeforeId: track.id });
-        },
-      },
-      {
-        label: t('granVideoEditor.timeline.addAudioTrackBelow', 'Add audio track below'),
-        icon: 'i-heroicons-musical-note',
-        onSelect: () => {
-          const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
-          timelineStore.addTrack('audio', `Audio ${idx}`, { insertAfterId: track.id });
-        },
-      },
-    ],
+    addItems,
     [
       {
         label: t('granVideoEditor.timeline.renameTrack', 'Rename track'),
@@ -232,6 +238,23 @@ function addAudioTrack() {
   const idx = props.tracks.filter((tr) => tr.kind === 'audio').length + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
+
+const emptyAreaContextMenuItems = computed(() => {
+  return [
+    [
+      {
+        label: t('granVideoEditor.timeline.addVideoTrack', 'Add video track'),
+        icon: 'i-heroicons-video-camera',
+        onSelect: addVideoTrack,
+      },
+      {
+        label: t('granVideoEditor.timeline.addAudioTrack', 'Add audio track'),
+        icon: 'i-heroicons-musical-note',
+        onSelect: addAudioTrack,
+      },
+    ],
+  ];
+});
 function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
   const isSecondary =
     (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
@@ -456,6 +479,10 @@ function toggleClipSnapMode() {
             @mousedown.stop.prevent="onResizeStart(track.id, $event)"
           />
         </div>
+      </UContextMenu>
+
+      <UContextMenu :items="emptyAreaContextMenuItems">
+        <div class="flex-1" />
       </UContextMenu>
     </div>
   </div>

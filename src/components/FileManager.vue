@@ -28,6 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const toast = useToast();
 
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
@@ -279,20 +280,42 @@ watch(
   async (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      const createdFileName = await createTimelineCommand({
-        projectDir: entry.handle as FileSystemDirectoryHandle,
-        timelinesDirName: undefined,
-      });
-      await loadProjectDirectory();
+      try {
+        const createdFileName = await createTimelineCommand({
+          projectDir: entry.handle as FileSystemDirectoryHandle,
+          timelinesDirName: undefined,
+        });
 
-      const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+        await loadProjectDirectory();
 
-      if (createdPath) {
-        await projectStore.openTimelineFile(createdPath);
-        await timelineStore.loadTimeline();
-        void timelineStore.loadTimelineMetadata();
+        const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+        const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
+        if (createdEntry) {
+          uiStore.selectedFsEntry = {
+            kind: createdEntry.kind,
+            name: createdEntry.name,
+            path: createdEntry.path,
+            handle: createdEntry.handle,
+          };
+          selectionStore.selectFsEntry(createdEntry);
+          emit('select', createdEntry);
+        }
+
+        if (createdPath) {
+          await projectStore.openTimelineFile(createdPath);
+          await timelineStore.loadTimeline();
+          void timelineStore.loadTimelineMetadata();
+        }
+      } catch (e: unknown) {
+        console.error('[FileManager] Failed to create timeline', e);
+        toast.add({
+          color: 'red',
+          title: 'Timeline error',
+          description: e instanceof Error ? e.message : 'Failed to create timeline',
+        });
+      } finally {
+        (uiStore as any).pendingFsEntryCreateTimeline = null;
       }
-      (uiStore as any).pendingFsEntryCreateTimeline = null;
     }
   },
 );
@@ -558,7 +581,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
                 },
               ],
             ]"
-            :content="{ placement: 'bottom-end' }"
+            :ui="{ content: 'bottom-end' }"
           >
             <UButton
               icon="i-heroicons-ellipsis-horizontal"

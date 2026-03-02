@@ -96,6 +96,8 @@ const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 
+const contextClickTimeUs = ref<number | null>(null);
+
 watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
   requestAnimationFrame(draw);
 });
@@ -295,6 +297,19 @@ function draw() {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
+
+function onRulerContextMenu(e: MouseEvent) {
+  const scroll = scrollLeft.value;
+  const rect = containerRef.value?.getBoundingClientRect();
+  if (!rect) {
+    contextClickTimeUs.value = null;
+    return;
+  }
+
+  const x = e.clientX - rect.left;
+  const timelinePx = scroll + x;
+  contextClickTimeUs.value = pxToTimeUs(timelinePx, zoom.value);
+}
 </script>
 
 <template>
@@ -304,7 +319,15 @@ function draw() {
         {
           label: t('granVideoEditor.timeline.addMarker', 'Add marker'),
           icon: 'i-heroicons-bookmark',
-          onSelect: () => timelineStore.addMarkerAtPlayhead(),
+          onSelect: () => {
+            const timeUs = contextClickTimeUs ?? currentTime;
+            timelineStore.applyTimeline({
+              type: 'add_marker',
+              id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+              timeUs,
+              text: '',
+            });
+          },
         },
       ],
     ]"
@@ -313,6 +336,7 @@ function draw() {
     <div
       ref="containerRef"
       class="relative w-full overflow-hidden"
+      @contextmenu.capture="onRulerContextMenu"
       @mousedown="$emit('mousedown', $event)"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />

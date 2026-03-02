@@ -59,20 +59,17 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     });
 
   function compareEntries(a: FsEntry, b: FsEntry): number {
+    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+
     const aIsHidden = a.name.startsWith('.');
     const bIsHidden = b.name.startsWith('.');
 
+    // Hidden entries should be at the top of their own group
     if (aIsHidden !== bIsHidden) {
       return aIsHidden ? -1 : 1;
     }
 
-    if (aIsHidden && bIsHidden) {
-      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-    }
-
-    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-
+    // Type sorting applies only for files; directories always sort by name
     if (deps.sortMode.value === 'type' && a.kind === 'file' && b.kind === 'file') {
       const aExt = a.name.includes('.') ? a.name.split('.').pop()?.toLowerCase() || '' : '';
       const bExt = b.name.includes('.') ? b.name.split('.').pop()?.toLowerCase() || '' : '';

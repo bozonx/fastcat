@@ -420,7 +420,27 @@ function getContextMenuItems(entry: FsEntry) {
                   ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
                 ]"
               >
+                <div 
+                  v-if="ctx.getEntryMeta(entry).generatingProxy" 
+                  class="w-4 h-4 shrink-0 relative flex items-center justify-center" 
+                  :title="`${ctx.getEntryMeta(entry).proxyProgress ?? 0}%`"
+                >
+                  <svg class="w-4 h-4 transform -rotate-90" viewBox="0 0 16 16">
+                    <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" class="text-ui-border" />
+                    <circle 
+                      cx="8" cy="8" r="6" 
+                      stroke="currentColor" 
+                      stroke-width="2" 
+                      fill="none" 
+                      class="text-amber-400 transition-all duration-300" 
+                      :stroke-dasharray="37.7" 
+                      :stroke-dashoffset="37.7 - (37.7 * (ctx.getEntryMeta(entry).proxyProgress ?? 0) / 100)" 
+                      stroke-linecap="round" 
+                    />
+                  </svg>
+                </div>
                 <UIcon
+                  v-else
                   :name="ctx.getFileIcon(entry)"
                   class="w-4 h-4 shrink-0 transition-colors"
                   :class="[
@@ -439,30 +459,12 @@ function getContextMenuItems(entry: FsEntry) {
                   ? 'font-medium text-ui-text group-hover:text-ui-text'
                   : 'text-ui-text group-hover:text-ui-text',
                 isDotEntry(entry) ? 'opacity-30' : '',
-                ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+                ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy ? 'text-(--color-success)!' : '',
+                ctx.getEntryMeta(entry).generatingProxy ? 'text-amber-400!' : ''
               ]"
             >
               {{ entry.name }}
             </span>
-
-            <!-- Proxy indicators -->
-            <template v-if="isVideo(entry)">
-              <div
-                v-if="ctx.getEntryMeta(entry).generatingProxy"
-                class="flex items-center gap-1 ml-2"
-              >
-                <UIcon
-                  name="i-heroicons-arrow-path"
-                  class="w-3.5 h-3.5 text-primary-400 animate-spin"
-                />
-                <span
-                  v-if="ctx.getEntryMeta(entry).proxyProgress !== undefined"
-                  class="text-xs text-primary-400 font-mono"
-                >
-                  {{ ctx.getEntryMeta(entry).proxyProgress }}%
-                </span>
-              </div>
-            </template>
           </div>
         </UContextMenu>
 
