@@ -10,10 +10,10 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
-import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
+import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
 import MonitorAudioControl from './MonitorAudioControl.vue';
+import MonitorViewport from './MonitorViewport.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -59,13 +59,17 @@ const {
 
 const {
   containerEl,
-  viewportEl,
   renderWidth,
   renderHeight,
-  getCanvasWrapperStyle,
-  getCanvasInnerStyle,
   updateCanvasDisplaySize,
 } = useMonitorDisplay();
+
+const viewportRef = ref<InstanceType<typeof MonitorViewport> | null>(null);
+
+// Forward the MonitorViewport's inner viewportEl to useMonitorCore for ResizeObserver
+const viewportEl = computed(
+  () => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null,
+);
 
 const {
   isLoading,
@@ -155,16 +159,17 @@ onMounted(() => {
   });
 });
 
-const {
-  isPreviewSelected,
-  workspaceStyle,
-  centerMonitor,
-  onPreviewPointerDown,
-  onViewportPointerDown,
-  onViewportPointerMove,
-  stopPan,
-  onViewportWheel,
-} = useMonitorGestures({ projectStore });
+const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
+
+const zoomPercent = computed(() => viewportRef.value?.zoomPercent ?? 100);
+
+function centerMonitor() {
+  viewportRef.value?.centerMonitor();
+}
+
+function resetZoom() {
+  viewportRef.value?.resetZoom();
+}
 
 function togglePlayback() {
   if (isLoading.value) return;
@@ -238,6 +243,21 @@ const contextMenuItems = computed(() => {
         onSelect: centerMonitor,
       },
       {
+        label: showGrid.value
+          ? t('granVideoEditor.monitor.hideGrid', 'Hide grid')
+          : t('granVideoEditor.monitor.showGrid', 'Show grid'),
+        icon: showGrid.value ? 'i-heroicons-check' : 'i-heroicons-squares-2x2',
+        onSelect: toggleGrid,
+      },
+      {
+        label: t('granVideoEditor.monitor.snapshot', 'Create snapshot'),
+        icon: 'i-heroicons-camera',
+        onSelect: createStopFrameSnapshot,
+        disabled: isSavingStopFrame.value || isLoading.value || Boolean(loadError.value),
+      },
+    ],
+    [
+      {
         label: t('granVideoEditor.monitor.toolbarTop', 'Панель сверху'),
         icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
@@ -305,46 +325,35 @@ const emit = defineEmits<{
     >
 
 
-    <!-- Video area -->
-    <div
-      ref="viewportEl"
-      class="flex-1 min-h-0 min-w-0 overflow-hidden relative"
-      @pointerdown="onViewportPointerDown"
-      @pointermove="onViewportPointerMove"
-      @pointerup="stopPan"
-      @pointercancel="stopPan"
-      @wheel="onViewportWheel"
+    <!-- Video area: MonitorViewport handles pan/zoom/gestures -->
+    <MonitorViewport
+      ref="viewportRef"
+      :render-width="renderWidth"
+      :render-height="renderHeight"
     >
-      <div class="absolute inset-0">
-        <div class="absolute inset-0" :style="workspaceStyle">
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div
-              class="shrink-0 relative"
-              :style="getCanvasWrapperStyle()"
-              @pointerdown="onPreviewPointerDown"
-            >
-              <div ref="containerEl" :style="getCanvasInnerStyle()" />
-              <svg
-                class="absolute inset-0 overflow-visible"
-                :width="renderWidth"
-                :height="renderHeight"
-                style="pointer-events: none"
-              >
-                <rect
-                  v-if="isPreviewSelected"
-                  x="0"
-                  y="0"
-                  :width="renderWidth"
-                  :height="renderHeight"
-                  fill="none"
-                  :stroke="'var(--selection-ring)'"
-                  stroke-width="2"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+      <!-- WebGL/canvas container mounted at canvas resolution -->
+      <template #canvas>
+        <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
+      </template>
 
+      <!-- 3x3 guide grid SVG overlay, synced with viewport transform -->
+      <template #svg-overlay>
+        <g v-if="showGrid">
+          <line
+            v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
+            :key="i"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+            stroke="rgba(255,255,255,0.5)"
+            stroke-width="1"
+          />
+        </g>
+      </template>
+
+      <!-- Absolute overlays: empty state, loading, error, timecode -->
+      <template #default>
         <div
           v-if="videoItems.length === 0"
           class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
@@ -375,8 +384,8 @@ const emit = defineEmits<{
         >
           00:00:00:00 / 00:00:00:00
         </span>
-      </div>
-    </div>
+      </template>
+    </MonitorViewport>
 
     <!-- Playback controls -->
     <div
@@ -395,15 +404,14 @@ const emit = defineEmits<{
         class="flex items-center gap-2 shrink-0"
         :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
       >
-        <UTooltip :text="t('granVideoEditor.monitor.snapshot', 'Create snapshot')">
+        <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom (100%)')">
           <UButton
             size="xs"
             color="neutral"
             variant="ghost"
-            icon="i-heroicons-camera"
-            :loading="isSavingStopFrame"
-            :disabled="isSavingStopFrame || isLoading || Boolean(loadError)"
-            @click="createStopFrameSnapshot"
+            class="font-mono tabular-nums min-w-10 justify-center"
+            :label="`${zoomPercent}%`"
+            @click="resetZoom"
           />
         </UTooltip>
 

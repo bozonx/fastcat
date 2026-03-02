@@ -2,7 +2,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
-export function useMonitorGestures(input: { projectStore: ReturnType<typeof useProjectStore> }) {
+const MIN_ZOOM = 0.05;
+const MAX_ZOOM = 20;
+const ZOOM_STEP_FACTOR = 0.001;
+
+export function useMonitorGestures(input: {
+  projectStore: ReturnType<typeof useProjectStore>;
+  viewportEl: Ref<HTMLElement | null>;
+}) {
   const workspaceStore = useWorkspaceStore();
 
   const isPreviewSelected = ref(false);
@@ -27,16 +34,37 @@ export function useMonitorGestures(input: { projectStore: ReturnType<typeof useP
     },
   });
 
-  const workspaceStyle = computed(() => {
-    return {
-      transform: `translate(${panX.value}px, ${panY.value}px)`,
-    };
+  const zoom = computed({
+    get: () => input.projectStore.projectSettings.monitor?.zoom ?? 1,
+    set: (v: number) => {
+      if (!input.projectStore.projectSettings.monitor) return;
+      input.projectStore.projectSettings.monitor.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v));
+    },
   });
+
+  const zoomPercent = computed(() => Math.round(zoom.value * 100));
+
+  const workspaceStyle = computed(() => ({
+    transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+    transformOrigin: '50% 50%',
+  }));
+
+  function resetView() {
+    if (!input.projectStore.projectSettings.monitor) return;
+    input.projectStore.projectSettings.monitor.panX = 0;
+    input.projectStore.projectSettings.monitor.panY = 0;
+    input.projectStore.projectSettings.monitor.zoom = 1;
+  }
 
   function centerMonitor() {
     if (!input.projectStore.projectSettings.monitor) return;
     input.projectStore.projectSettings.monitor.panX = 0;
     input.projectStore.projectSettings.monitor.panY = 0;
+  }
+
+  function resetZoom() {
+    if (!input.projectStore.projectSettings.monitor) return;
+    input.projectStore.projectSettings.monitor.zoom = 1;
   }
 
   function onPreviewPointerDown(event: PointerEvent) {
@@ -88,6 +116,30 @@ export function useMonitorGestures(input: { projectStore: ReturnType<typeof useP
     isPanning.value = false;
   }
 
+  function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {
+    const el = input.viewportEl.value;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const prevZoom = zoom.value;
+    const rawNext = prevZoom * (1 - params.delta * ZOOM_STEP_FACTOR);
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, rawNext));
+
+    // Viewport center in local coords
+    const vpCx = rect.width / 2;
+    const vpCy = rect.height / 2;
+
+    // Cursor position relative to viewport center
+    const cx = params.clientX - rect.left - vpCx;
+    const cy = params.clientY - rect.top - vpCy;
+
+    // Adjust pan so that the point under cursor stays fixed
+    const scale = nextZoom / prevZoom;
+    panX.value = cx + (panX.value - cx) * scale;
+    panY.value = cy + (panY.value - cy) * scale;
+    zoom.value = nextZoom;
+  }
+
   function onViewportWheel(e: WheelEvent) {
     if (e.defaultPrevented) return;
 
@@ -111,6 +163,7 @@ export function useMonitorGestures(input: { projectStore: ReturnType<typeof useP
 
     if (action === 'zoom') {
       e.preventDefault();
+      applyZoomAtPoint({ delta, clientX: e.clientX, clientY: e.clientY });
       return;
     }
 
@@ -137,8 +190,12 @@ export function useMonitorGestures(input: { projectStore: ReturnType<typeof useP
 
   return {
     isPreviewSelected,
+    zoom,
+    zoomPercent,
     workspaceStyle,
+    resetView,
     centerMonitor,
+    resetZoom,
     onPreviewPointerDown,
     onViewportPointerDown,
     onViewportPointerMove,
