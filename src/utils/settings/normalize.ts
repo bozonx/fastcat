@@ -191,6 +191,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).middleClick = rulerMiddleClick as
           | 'pan'
+          | 'move_playhead'
           | 'none';
       }
 
@@ -198,6 +199,21 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       if ((RULER_DOUBLE_CLICK_ACTIONS as readonly string[]).includes(rulerDoubleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).doubleClick = rulerDoubleClick as
           | 'add_marker'
+          | 'none';
+      }
+
+      const rulerDrag = rawRuler.drag;
+      if ((DRAG_ACTIONS as readonly string[]).includes(rulerDrag as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).drag = rulerDrag as
+          | 'pan'
+          | 'move_playhead'
+          | 'none';
+      }
+
+      const rulerShiftClick = rawRuler.shiftClick;
+      if ((SHIFT_CLICK_ACTIONS as readonly string[]).includes(rulerShiftClick as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).shiftClick = rulerShiftClick as
+          | 'add_marker_and_edit'
           | 'none';
       }
     }
