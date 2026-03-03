@@ -9,6 +9,11 @@ import {
   normalizeHotkeyCombo,
 } from '~/utils/hotkeys/hotkeyUtils';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  findDuplicateOwnerByContext,
+  getHotkeyConflicts,
+  isHotkeyConflicting,
+} from '~/utils/hotkeys/hotkeyConflicts';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -100,12 +105,12 @@ function confirmResetCommandHotkeys() {
 
 function findDuplicateOwner(combo: string, targetCmdId: HotkeyCommandId): HotkeyCommandId | null {
   const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
-  for (const cmd of DEFAULT_HOTKEYS.commands) {
-    if (cmd.id === targetCmdId) continue;
-    const bindings = effective[cmd.id];
-    if (bindings.includes(combo)) return cmd.id;
-  }
-  return null;
+  return findDuplicateOwnerByContext({
+    effective,
+    commands: DEFAULT_HOTKEYS.commands,
+    targetCmdId,
+    combo,
+  });
 }
 
 function finishCapture() {
@@ -256,20 +261,11 @@ function getTitleParts(cmdId: HotkeyCommandId) {
 
 const hotkeyConflicts = computed(() => {
   const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
-  const counts = new Map<string, number>();
-
-  for (const cmd of DEFAULT_HOTKEYS.commands) {
-    const list = effective[cmd.id] ?? [];
-    for (const combo of list) {
-      counts.set(combo, (counts.get(combo) ?? 0) + 1);
-    }
-  }
-
-  return counts;
+  return getHotkeyConflicts(effective);
 });
 
-function isConflicting(combo: string): boolean {
-  return (hotkeyConflicts.value.get(combo) ?? 0) > 1;
+function isConflicting(cmdId: HotkeyCommandId, combo: string): boolean {
+  return isHotkeyConflicting({ conflicts: hotkeyConflicts.value, cmdId, combo });
 }
 
 onBeforeUnmount(() => {
@@ -394,10 +390,10 @@ defineExpose({
                       class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80 transition-colors"
                       :class="{
                         'border-warning-400 text-warning-700 bg-warning-50/80':
-                          isConflicting(combo),
+                          isConflicting(cmd.id, combo),
                       }"
                       :title="
-                        isConflicting(combo)
+                        isConflicting(cmd.id, combo)
                           ? t(
                               'videoEditor.settings.hotkeysConflict',
                               'Conflict: used by another command',
