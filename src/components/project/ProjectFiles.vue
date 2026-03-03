@@ -100,7 +100,7 @@ function onFileAction(action: FileAction, entry: FsEntry) {
     }
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
-      (uiStore as any).pendingFsEntryCreateTimeline = entry;
+      void createTimelineInDirectory(entry);
     }
   } else if (action === 'createOtioVersion') {
     void createOtioVersion(entry);
@@ -281,6 +281,45 @@ function onDrop(e: DragEvent) {
 
   if (e.dataTransfer?.files) {
     handleFiles(e.dataTransfer.files);
+  }
+}
+
+async function createTimelineInDirectory(entry: FsEntry) {
+  if (entry.kind !== 'directory') return;
+
+  try {
+    const createdFileName = await createTimelineCommand({
+      projectDir: entry.handle as FileSystemDirectoryHandle,
+      timelinesDirName: undefined,
+    });
+
+    await loadProjectDirectory();
+
+    const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+    const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
+    if (createdEntry) {
+      uiStore.selectedFsEntry = {
+        kind: createdEntry.kind,
+        name: createdEntry.name,
+        path: createdEntry.path,
+        handle: createdEntry.handle,
+      };
+      selectionStore.selectFsEntry(createdEntry);
+      emit('select', createdEntry);
+    }
+
+    if (createdPath) {
+      await projectStore.openTimelineFile(createdPath);
+      await timelineStore.loadTimeline();
+      void timelineStore.loadTimelineMetadata();
+    }
+  } catch (e: unknown) {
+    console.error('[ProjectFiles] Failed to create timeline', e);
+    useToast().add({
+      color: 'red',
+      title: 'Timeline error',
+      description: e instanceof Error ? e.message : 'Failed to create timeline',
+    });
   }
 }
 

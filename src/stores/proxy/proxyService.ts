@@ -75,15 +75,23 @@ export function createProxyService(params: {
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) return;
 
+    const next = new Set(params.existingProxies.value);
     for (const path of paths) {
       if (!path.startsWith(`${VIDEO_DIR_NAME}/`)) continue;
       try {
-        await dir.getFileHandle(params.getProxyFileName(path));
-        params.existingProxies.value.add(path);
+        const handle = await dir.getFileHandle(params.getProxyFileName(path));
+        // Check that the proxy file is not empty (e.g. left by a cancelled generation)
+        const file = await handle.getFile();
+        if (file.size > 0) {
+          next.add(path);
+        } else {
+          next.delete(path);
+        }
       } catch {
-        params.existingProxies.value.delete(path);
+        next.delete(path);
       }
     }
+    params.existingProxies.value = next;
   }
 
   async function generateProxy(
@@ -91,8 +99,10 @@ export function createProxyService(params: {
     projectRelativePath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    if (params.generatingProxies.value.has(projectRelativePath)) return;
     if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
+
+    // Wait if currently generating (e.g. cancellation still in progress)
+    if (params.generatingProxies.value.has(projectRelativePath)) return;
 
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) throw new Error('Could not access proxies directory');
@@ -120,6 +130,8 @@ export function createProxyService(params: {
       }
     }
 
+    let proxyFileHandle: FileSystemFileHandle | null = null;
+
     try {
       await params.proxyQueue.value.add(async () => {
         try {
@@ -132,7 +144,7 @@ export function createProxyService(params: {
           params.activeWorkerPaths.value.add(projectRelativePath);
 
           const proxyFilename = params.getProxyFileName(projectRelativePath);
-          const targetHandle = await dir.getFileHandle(proxyFilename, { create: true });
+          proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
           const optimization = params.getOptimizationSettings();
 
@@ -204,9 +216,20 @@ export function createProxyService(params: {
             fps: meta.video?.fps || 30,
           };
 
-          await (client as any).exportTimeline(targetHandle, exportOptions, videoClips, audioClips);
+          await (client as any).exportTimeline(proxyFileHandle, exportOptions, videoClips, audioClips);
 
-          params.existingProxies.value.add(projectRelativePath);
+          params.existingProxies.value = new Set([...params.existingProxies.value, projectRelativePath]);
+        } catch (innerErr) {
+          // Remove the incomplete proxy file on abort or error
+          if (proxyFileHandle) {
+            try {
+              await dir.removeEntry(params.getProxyFileName(projectRelativePath));
+            } catch {
+              // Best-effort cleanup
+            }
+            proxyFileHandle = null;
+          }
+          throw innerErr;
         } finally {
           params.activeWorkerPaths.value.delete(projectRelativePath);
           params.generatingProxies.value.delete(projectRelativePath);
@@ -254,12 +277,18 @@ export function createProxyService(params: {
 
     try {
       await dir.removeEntry(params.getProxyFileName(projectRelativePath));
-      params.existingProxies.value.delete(projectRelativePath);
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to delete proxy', e);
+        return;
       }
+      // NotFoundError: file already gone, still clean up state
     }
+
+    // Replace with a new Set to guarantee Vue reactivity
+    const next = new Set(params.existingProxies.value);
+    next.delete(projectRelativePath);
+    params.existingProxies.value = next;
   }
 
   async function getProxyFileHandle(

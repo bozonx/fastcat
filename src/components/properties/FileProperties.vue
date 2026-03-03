@@ -209,39 +209,59 @@ function openAsTextPanel() {
       "
       :title="t('videoEditor.fileManager.proxy.title', 'Proxy')"
     >
-      <div class="flex gap-2">
-        <UButton
-          v-if="!proxyStore.generatingProxies.has(selectedPath ?? '')"
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-film"
-          class="flex-1"
-          @click="
-            () =>
-              proxyStore.generateProxy(
-                props.selectedFsEntry.handle as FileSystemFileHandle,
-                selectedPath!,
-              )
-          "
-        >
-          {{ t('videoEditor.fileManager.proxy.create', 'Create proxy') }}
-        </UButton>
-        <UButton
-          v-else
-          size="xs"
-          color="error"
-          variant="soft"
-          icon="i-heroicons-x-circle"
-          class="flex-1"
-          @click="() => proxyStore.cancelProxyGeneration(selectedPath!)"
-        >
-          {{
-            t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
-          }}
-        </UButton>
+      <div class="flex gap-2 flex-wrap">
+        <!-- Generating: show cancel button -->
+        <template v-if="proxyStore.generatingProxies.has(selectedPath ?? '')">
+          <UButton
+            size="xs"
+            color="error"
+            variant="soft"
+            icon="i-heroicons-x-circle"
+            class="flex-1"
+            @click="() => proxyStore.cancelProxyGeneration(selectedPath!)"
+          >
+            {{
+              t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
+            }}
+          </UButton>
+        </template>
+        <!-- Not generating: show create/regenerate/delete based on proxy existence -->
+        <template v-else>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="soft"
+            :icon="proxyStore.existingProxies.has(selectedPath ?? '') ? 'i-heroicons-arrow-path' : 'i-heroicons-film'"
+            class="flex-1"
+            @click="
+              () =>
+                proxyStore.generateProxy(
+                  props.selectedFsEntry.handle as FileSystemFileHandle,
+                  selectedPath!,
+                )
+            "
+          >
+            {{
+              proxyStore.existingProxies.has(selectedPath ?? '')
+                ? t('videoEditor.fileManager.proxy.regenerate', 'Regenerate proxy')
+                : t('videoEditor.fileManager.proxy.create', 'Create proxy')
+            }}
+          </UButton>
+          <UButton
+            v-if="proxyStore.existingProxies.has(selectedPath ?? '')"
+            size="xs"
+            color="error"
+            variant="soft"
+            icon="i-heroicons-trash"
+            class="flex-1"
+            @click="() => proxyStore.deleteProxy(selectedPath!)"
+          >
+            {{ t('videoEditor.fileManager.proxy.delete', 'Delete proxy') }}
+          </UButton>
+        </template>
       </div>
     </PropertySection>
+
 
     <PropertySection
       v-if="
