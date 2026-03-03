@@ -13,7 +13,10 @@ import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';
 import Timeline from '~/components/Timeline.vue';
+import ProjectHistory from '~/components/project/ProjectHistory.vue';
+import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import { useSelectionStore } from '~/stores/selection.store';
+import type { DynamicPanel } from '~/stores/editorView.store';
 
 // Vertical Splitpanes logic
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
@@ -139,11 +142,14 @@ function onDrop(event: DragEvent, targetPanelId: string) {
   if (staticTabRaw && dropPosition.value) {
     try {
       const payload = JSON.parse(staticTabRaw) as { tabId: string; label: string };
-      // Only 'files' tab maps to fileManager panel; others become their own placeholder
-      const panelType =
-        payload.tabId === 'files' ? 'fileManager' : payload.tabId === 'monitor' ? 'monitor' : 'fileManager';
+      const panelTypeMap: Record<string, DynamicPanel['type']> = {
+        files: 'fileManager',
+        history: 'history',
+        effects: 'effects',
+      };
+      const panelType = panelTypeMap[payload.tabId] ?? 'fileManager';
       projectStore.insertPanelAt(
-        { id: `static-${payload.tabId}-${Date.now()}`, type: panelType as any, title: payload.label },
+        { id: `static-${payload.tabId}-${Date.now()}`, type: panelType, title: payload.label },
         targetPanelId,
         dropPosition.value,
       );
@@ -356,7 +362,6 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     <Project
                       v-if="panel.type === 'fileManager'"
                       class="h-full pt-2"
-                      @tab-drag-start="(e: DragEvent, tabId: string) => onDragStart(e, panel.id)"
                     />
                     <MonitorContainer
                       v-else-if="panel.type === 'monitor'"
@@ -438,6 +443,64 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                       <pre class="text-xs whitespace-pre-wrap flex-1 mt-2">{{
                         panel.fileContent
                       }}</pre>
+                    </div>
+
+                    <!-- History panel (detached from Project tabs) -->
+                    <div
+                      v-else-if="panel.type === 'history'"
+                      class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+                    >
+                      <div
+                        class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
+                        draggable="true"
+                        @dragstart="(e) => onDragStart(e, panel.id)"
+                      >
+                        <div class="flex items-center gap-2">
+                          <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted" />
+                          <h3 class="font-bold truncate max-w-50">
+                            {{ panel.title || 'History' }}
+                          </h3>
+                        </div>
+                        <UButton
+                          size="xs"
+                          variant="ghost"
+                          color="neutral"
+                          icon="i-heroicons-x-mark"
+                          @click="projectStore.removePanel(panel.id)"
+                        />
+                      </div>
+                      <div class="flex-1 overflow-hidden min-h-0">
+                        <ProjectHistory class="h-full" />
+                      </div>
+                    </div>
+
+                    <!-- Effects panel (detached from Project tabs) -->
+                    <div
+                      v-else-if="panel.type === 'effects'"
+                      class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+                    >
+                      <div
+                        class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
+                        draggable="true"
+                        @dragstart="(e) => onDragStart(e, panel.id)"
+                      >
+                        <div class="flex items-center gap-2">
+                          <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted" />
+                          <h3 class="font-bold truncate max-w-50">
+                            {{ panel.title || 'Effects' }}
+                          </h3>
+                        </div>
+                        <UButton
+                          size="xs"
+                          variant="ghost"
+                          color="neutral"
+                          icon="i-heroicons-x-mark"
+                          @click="projectStore.removePanel(panel.id)"
+                        />
+                      </div>
+                      <div class="flex-1 overflow-hidden min-h-0">
+                        <ProjectEffects class="h-full" />
+                      </div>
                     </div>
                   </div>
                 </Pane>
