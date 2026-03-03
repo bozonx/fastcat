@@ -35,6 +35,23 @@ const rulerDoubleClickOptions = computed(() => {
   }));
 });
 
+const rulerDragOptions = computed(() => {
+  const labels: Record<string, string> = {
+    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
+    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return DRAG_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+});
+
+const rulerShiftClickOptions = computed(() => {
+  const labels: Record<string, string> = {
+    add_marker_and_edit: t('videoEditor.settings.mouseActionAddMarkerAndEdit', 'Add marker & Edit'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return SHIFT_CLICK_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+});
+
 const timelineWheelOptions = computed(() => {
   const labels: Record<string, string> = {
     scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
@@ -175,6 +192,48 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.doubleClick = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineDrag', 'Drag') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.drag"
+                    :items="rulerDragOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.drag = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineShiftClick', 'Shift + Click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.shiftClick"
+                    :items="rulerShiftClickOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.shiftClick = v?.value ?? v)
                     "
                   />
                 </td>

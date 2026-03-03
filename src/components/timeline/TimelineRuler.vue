@@ -17,6 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'pointerdown', event: PointerEvent): void;
+  (e: 'start-playhead-drag', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
   (e: 'dblclick-ruler', timeUs: number): void;
 }>();
@@ -148,8 +149,6 @@ const markerDragStartUs = ref(0);
 const contextMenuMarkerId = ref<string | null>(null);
 
 function onMarkerContextMenu(e: MouseEvent, markerId: string) {
-  e.preventDefault();
-  e.stopPropagation();
   selectMarker(markerId);
   contextMenuMarkerId.value = markerId;
 }
@@ -379,14 +378,41 @@ function onRulerDblClick(e: MouseEvent) {
 }
 
 function onRulerPointerDown(e: PointerEvent) {
-  if (e.button === 1) {
-    const settings = useWorkspaceStore().userSettings.mouse.ruler;
+  const settings = useWorkspaceStore().userSettings.mouse.ruler;
+
+  if (e.button === 1) { // Middle click
     if (settings.middleClick === 'pan') {
       emit('pointerdown', e);
       return;
     }
-  } else if (e.button === 0) {
-    emit('pointerdown', e);
+    if (settings.middleClick === 'move_playhead') {
+      timelineStore.currentTime = getTimeUsFromMouseEvent(e);
+      emit('pointerdown', e); // Pass to Timeline to trigger drag playhead
+    }
+  } else if (e.button === 0) { // Left click
+    if (e.shiftKey) {
+      if (settings.shiftClick === 'add_marker_and_edit') {
+        const timeUs = getTimeUsFromMouseEvent(e);
+        const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+        timelineStore.applyTimeline({
+          type: 'add_marker',
+          id: newMarkerId,
+          timeUs,
+          text: '',
+        });
+        openEditMarker(newMarkerId);
+      }
+      return;
+    }
+
+    if (settings.drag === 'pan') {
+      emit('pointerdown', e); // This will trigger seekByMouseEvent AND pan in Timeline
+    } else if (settings.drag === 'move_playhead') {
+      timelineStore.currentTime = getTimeUsFromMouseEvent(e);
+      emit('start-playhead-drag', e); // This will trigger startPlayheadDrag
+    } else {
+      emit('pointerdown', e); // default behavior
+    }
   }
 }
 
@@ -410,16 +436,18 @@ function onRulerWheel(e: WheelEvent) {
     :items="[
       [
         {
-          label: t('granVideoEditor.timeline.addMarker', 'Add marker'),
+          label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
           icon: 'i-heroicons-bookmark',
           onSelect: () => {
-            const timeUs = contextClickTimeUs ?? currentTime;
+            const timeUs = currentTime;
+            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
             timelineStore.applyTimeline({
               type: 'add_marker',
-              id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+              id: newMarkerId,
               timeUs,
               text: '',
             });
+            openEditMarker(newMarkerId);
           },
         },
       ],
@@ -484,7 +512,7 @@ function onRulerWheel(e: WheelEvent) {
               :aria-label="'Marker'"
               @dblclick.stop.prevent="openEditMarker(p.id)"
               @pointerdown.stop="onMarkerPointerDown($event, p.id)"
-              @contextmenu.stop.prevent="onMarkerContextMenu($event, p.id)"
+              @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
               @mousedown.stop
               @click.stop="selectMarker(p.id)"
             />

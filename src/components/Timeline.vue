@@ -570,6 +570,7 @@ async function onDrop(e: DragEvent, trackId: string) {
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"
                 @pointerdown="onTimeRulerPointerDown"
+                @start-playhead-drag="startPlayheadDrag"
                 @wheel="onTimelineRulerWheel"
               />
             </div>
