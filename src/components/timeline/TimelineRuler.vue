@@ -240,7 +240,7 @@ const markerPoints = computed(() => {
         width,
         isZone: m.durationUs !== undefined,
         text: m.text ?? '',
-        color: m.color,
+        color: m.color ?? '#eab308',
       };
     })
     .filter((p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20));

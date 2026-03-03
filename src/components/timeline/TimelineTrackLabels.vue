@@ -449,7 +449,7 @@ function toggleClipSnapMode() {
         </div>
       </div>
     </UContextMenu>
-    <div ref="labelsScrollContainer" class="flex-1 overflow-y-hidden overflow-x-hidden">
+    <div ref="labelsScrollContainer" class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container">
       <div class="flex flex-col divide-y divide-ui-border min-h-full">
         <UContextMenu
           v-for="track in tracks"
@@ -571,3 +571,13 @@ function toggleClipSnapMode() {
     </template>
   </AppModal>
 </template>
+
+<style scoped>
+/* Hide scrollbar while keeping scroll functionality for JS-synced scroll */
+.labels-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+.labels-scroll-container {
+  scrollbar-width: none;
+}
+</style>

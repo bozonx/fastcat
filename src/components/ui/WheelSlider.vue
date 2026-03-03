@@ -83,17 +83,14 @@ function onPointerDownCapture(event: PointerEvent) {
 <template>
   <!--
     Outer wrapper captures wheel on the full height so the user doesn't
-    need to aim at the slim slider track. The invisible overlay covers
-    the entire component and forwards wheel events without blocking clicks.
+    need to aim at the slim slider track.
   -->
   <div
-    class="relative"
+    class="relative py-3 -my-3"
     @wheel.prevent="onWheel"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >
     <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
-    <!-- Transparent full-height capture zone for wheel – does NOT block pointer events -->
-    <div class="absolute inset-0 -top-3 -bottom-3 pointer-events-none" aria-hidden="true" />
   </div>
 </template>
