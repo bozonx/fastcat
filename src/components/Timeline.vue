@@ -29,7 +29,6 @@ import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 const { t } = useI18n();
 const toast = useToast();
 
-
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
@@ -103,6 +102,8 @@ const {
   movePreview,
   onTimeRulerPointerDown,
   startPlayheadDrag,
+  onGlobalPointerMove,
+  onGlobalPointerUp,
   selectItem,
   startMoveItem,
   startTrimItem,
@@ -169,20 +170,26 @@ function onTimelinePointerDown(e: PointerEvent) {
     const settings = workspaceStore.userSettings.mouse.timeline;
 
     if (settings.middleClick === 'pan') {
-      const el = scrollEl.value;
-      if (!el) return;
-
-      isPanning.value = true;
-      panStartX.value = e.clientX;
-      panStartScrollLeft.value = el.scrollLeft;
-
-      (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
-      e.preventDefault();
+      startPan(e);
     }
   }
 }
 
+function startPan(e: PointerEvent) {
+  const el = scrollEl.value;
+  if (!el) return;
+
+  isPanning.value = true;
+  panStartX.value = e.clientX;
+  panStartScrollLeft.value = el.scrollLeft;
+
+  (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}
+
 function onTimelinePointerMove(e: PointerEvent) {
+  onGlobalPointerMove(e);
+
   if (!isPanning.value) return;
   const el = scrollEl.value;
   if (!el) return;
@@ -193,6 +200,8 @@ function onTimelinePointerMove(e: PointerEvent) {
 }
 
 function onTimelinePointerUp(e: PointerEvent) {
+  onGlobalPointerUp(e);
+
   if (!isPanning.value) return;
   isPanning.value = false;
   try {
@@ -564,13 +573,19 @@ async function onDrop(e: DragEvent, trackId: string) {
           />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
-          <div class="flex flex-col h-full w-full relative">
+          <div
+            class="flex flex-col h-full w-full relative"
+            @pointermove="onTimelinePointerMove"
+            @pointerup="onTimelinePointerUp"
+            @pointercancel="onTimelinePointerUp"
+          >
             <div class="relative shrink-0 z-10">
               <TimelineRuler
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"
                 @pointerdown="onTimeRulerPointerDown"
                 @start-playhead-drag="startPlayheadDrag"
+                @start-pan="startPan"
                 @wheel="onTimelineRulerWheel"
               />
             </div>
@@ -579,9 +594,6 @@ async function onDrop(e: DragEvent, trackId: string) {
               class="w-full flex-1 overflow-auto relative"
               @pointerdown.capture="onTimelinePointerDownCapture"
               @pointerdown.self="onTimelinePointerDown"
-              @pointermove="onTimelinePointerMove"
-              @pointerup="onTimelinePointerUp"
-              @pointercancel="onTimelinePointerUp"
               @click="onTimelineClick"
               @wheel="onTimelineWheel"
               @scroll="onScroll"

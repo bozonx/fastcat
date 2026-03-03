@@ -92,17 +92,8 @@ function onPointerDownCapture(event: PointerEvent) {
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >
-    <USlider
-      v-model="value"
-      :min="min"
-      :max="max"
-      :step="step"
-      :class="sliderClass"
-    />
+    <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
     <!-- Transparent full-height capture zone for wheel – does NOT block pointer events -->
-    <div
-      class="absolute inset-0 -top-3 -bottom-3 pointer-events-none"
-      aria-hidden="true"
-    />
+    <div class="absolute inset-0 -top-3 -bottom-3 pointer-events-none" aria-hidden="true" />
   </div>
 </template>

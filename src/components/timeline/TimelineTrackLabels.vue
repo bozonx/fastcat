@@ -449,10 +449,7 @@ function toggleClipSnapMode() {
         </div>
       </div>
     </UContextMenu>
-    <div
-      ref="labelsScrollContainer"
-      class="flex-1 overflow-y-hidden overflow-x-hidden"
-    >
+    <div ref="labelsScrollContainer" class="flex-1 overflow-y-hidden overflow-x-hidden">
       <div class="flex flex-col divide-y divide-ui-border min-h-full">
         <UContextMenu
           v-for="track in tracks"

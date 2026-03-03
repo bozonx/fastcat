@@ -6,8 +6,8 @@ defineProps<{
 </script>
 
 <template>
-  <svg 
-    class="transform -rotate-90" 
+  <svg
+    class="transform -rotate-90"
     :class="{
       'w-4 h-4': size === 'sm' || !size,
       'w-6 h-6': size === 'md',

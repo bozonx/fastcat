@@ -444,7 +444,10 @@ function getContextMenuItems(entry: FsEntry) {
                   class="w-4 h-4 shrink-0 relative flex items-center justify-center"
                   :title="`${ctx.getEntryMeta(entry).proxyProgress ?? 0}%`"
                 >
-                  <ProgressSpinner :progress="ctx.getEntryMeta(entry).proxyProgress ?? 0" size="sm" />
+                  <ProgressSpinner
+                    :progress="ctx.getEntryMeta(entry).proxyProgress ?? 0"
+                    size="sm"
+                  />
                 </div>
                 <UIcon
                   v-else

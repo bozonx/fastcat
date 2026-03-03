@@ -231,7 +231,11 @@ function openAsTextPanel() {
             size="xs"
             color="neutral"
             variant="soft"
-            :icon="proxyStore.existingProxies.has(selectedPath ?? '') ? 'i-heroicons-arrow-path' : 'i-heroicons-film'"
+            :icon="
+              proxyStore.existingProxies.has(selectedPath ?? '')
+                ? 'i-heroicons-arrow-path'
+                : 'i-heroicons-film'
+            "
             class="flex-1"
             @click="
               () =>

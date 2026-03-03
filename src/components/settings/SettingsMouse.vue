@@ -211,8 +211,7 @@ function resetDefaults() {
                     label-key="label"
                     class="w-full"
                     @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.ruler.drag = v?.value ?? v)
+                      (v: any) => (workspaceStore.userSettings.mouse.ruler.drag = v?.value ?? v)
                     "
                   />
                 </td>

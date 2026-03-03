@@ -157,28 +157,28 @@ function onMarkerPointerDown(e: PointerEvent, markerId: string) {
   if (e.button !== 0) return;
   e.stopPropagation();
   selectMarker(markerId);
-  
+
   const m = markers.value.find((x) => x.id === markerId);
   if (!m) return;
-  
+
   draggedMarkerId.value = markerId;
   markerDragStartX.value = e.clientX;
   markerDragStartUs.value = m.timeUs;
-  
+
   window.addEventListener('pointermove', onWindowPointerMove);
   window.addEventListener('pointerup', onWindowPointerUp);
 }
 
 function onWindowPointerMove(e: PointerEvent) {
   if (!draggedMarkerId.value) return;
-  
+
   const dx = e.clientX - markerDragStartX.value;
   const currentZoom = zoom.value;
-  
+
   const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
   const newPx = Math.max(0, startPx + dx);
   const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
-  
+
   timelineStore.updateMarker(draggedMarkerId.value, { timeUs: newUs });
 }
 
@@ -382,12 +382,13 @@ function onRulerPointerDown(e: PointerEvent) {
 
   if (e.button === 1) { // Middle click
     if (settings.middleClick === 'pan') {
-      emit('pointerdown', e);
+      emit('start-pan', e);
       return;
     }
     if (settings.middleClick === 'move_playhead') {
       timelineStore.currentTime = getTimeUsFromMouseEvent(e);
-      emit('pointerdown', e); // Pass to Timeline to trigger drag playhead
+      emit('start-playhead-drag', e); // Pass to Timeline to trigger drag playhead
+      return;
     }
   } else if (e.button === 0) { // Left click
     if (e.shiftKey) {
@@ -406,7 +407,7 @@ function onRulerPointerDown(e: PointerEvent) {
     }
 
     if (settings.drag === 'pan') {
-      emit('pointerdown', e); // This will trigger seekByMouseEvent AND pan in Timeline
+      emit('start-pan', e); // This will trigger pan in Timeline
     } else if (settings.drag === 'move_playhead') {
       timelineStore.currentTime = getTimeUsFromMouseEvent(e);
       emit('start-playhead-drag', e); // This will trigger startPlayheadDrag
@@ -419,13 +420,13 @@ function onRulerPointerDown(e: PointerEvent) {
 function onRulerWheel(e: WheelEvent) {
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
   const isSecondary = isSecondaryWheel(e);
-  
+
   const action = isSecondary ? settings.wheelSecondary : settings.wheel;
   if (action === 'none') {
     e.preventDefault();
     return;
   }
-  
+
   e.preventDefault();
   emit('wheel', e);
 }
@@ -478,7 +479,11 @@ function onRulerWheel(e: WheelEvent) {
         : []),
     ]"
     class="w-full"
-    @update:open="(val) => { if (!val) contextMenuMarkerId = null; }"
+    @update:open="
+      (val) => {
+        if (!val) contextMenuMarkerId = null;
+      }
+    "
   >
     <div
       ref="containerRef"
@@ -507,7 +512,7 @@ function onRulerWheel(e: WheelEvent) {
                 selectionStore.selectedEntity?.kind === 'marker' &&
                 selectionStore.selectedEntity.markerId === p.id
                   ? 'bg-primary-400 ring-2 ring-primary-400/50'
-                  : 'bg-primary-500'
+                  : 'bg-primary-500',
               ]"
               :aria-label="'Marker'"
               @dblclick.stop.prevent="openEditMarker(p.id)"
