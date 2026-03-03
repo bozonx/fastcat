@@ -235,7 +235,7 @@ function onTimelineRulerWheel(e: WheelEvent) {
     e.preventDefault();
 
     const prevZoom = timelineStore.timelineZoom;
-    const dir = delta < 0 ? -1 : 1;
+    const dir = delta < 0 ? 1 : -1;
     const step = 3;
     const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
 
@@ -635,25 +635,27 @@ async function onDrop(e: DragEvent, trackId: string) {
                 }"
                 @mousedown="startPlayheadDrag"
               ></div>
+
+              <!-- Zoom Indicator -->
+              <Transition
+                enter-active-class="transition-opacity duration-200"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-opacity duration-300"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+              >
+                <div
+                  v-if="isRulerHovered || isZooming"
+                  class="fixed bottom-12 right-6 px-2 py-1 text-xs font-mono rounded bg-ui-bg border border-ui-border text-ui-text shadow z-50 pointer-events-none"
+                >
+                  Zoom: x{{ zoomFactor }}
+                </div>
+              </Transition>
             </div>
           </div>
         </Pane>
       </Splitpanes>
-      <Transition
-        enter-active-class="transition-opacity duration-200"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition-opacity duration-300"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="isRulerHovered || isZooming"
-          class="absolute bottom-4 right-4 px-2 py-1 text-xs font-mono rounded bg-ui-bg border border-ui-border text-ui-text shadow z-50 pointer-events-none"
-        >
-          Zoom: x{{ zoomFactor }}
-        </div>
-      </Transition>
     </ClientOnly>
   </div>
 </template>

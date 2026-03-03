@@ -234,7 +234,6 @@ function openAsTextPanel() {
           variant="soft"
           icon="i-heroicons-x-circle"
           class="flex-1"
-          :loading="true"
           @click="() => proxyStore.cancelProxyGeneration(selectedPath!)"
         >
           {{ t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation') }}
@@ -308,7 +307,6 @@ function openAsTextPanel() {
           variant="soft"
           icon="i-heroicons-x-circle"
           class="w-full"
-          :loading="true"
           @click="stopProxyGenerationForSelectedFolder"
         >
           {{

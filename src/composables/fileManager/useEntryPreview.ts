@@ -1,7 +1,7 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import yaml from 'js-yaml';
 import { computeDirectorySize } from '~/utils/fs';
-import { TEXT_EXTENSIONS } from '~/utils/media-types';
+import { TEXT_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { TimelineDocument } from '~/timeline/types';
@@ -178,9 +178,14 @@ export function useEntryPreview(params: {
       }
 
       try {
+        const fileExt = entry.name.split('.').pop()?.toLowerCase() || '';
+        const extBasedType = getMediaTypeFromFilename(entry.name);
+        if (extBasedType !== 'unknown') {
+          mediaType.value = extBasedType === 'timeline' ? 'text' : extBasedType;
+        }
+
         const file = await (entry.handle as FileSystemFileHandle).getFile();
 
-        const fileExt = entry.name.split('.').pop()?.toLowerCase() || '';
         const textExtensions = TEXT_EXTENSIONS;
 
         if (fileExt === 'otio') {

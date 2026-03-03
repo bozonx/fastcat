@@ -65,7 +65,7 @@ onUnmounted(() => {
     />
 
     <div
-      v-else
+      v-else-if="props.mediaType === 'unknown'"
       class="flex flex-col items-center justify-center h-full w-full gap-3 text-ui-text-muted p-8 bg-ui-bg"
     >
       <UIcon name="i-heroicons-document" class="w-16 h-16" />

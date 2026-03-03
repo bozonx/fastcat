@@ -67,6 +67,23 @@ export function useMonitorGestures(input: {
     input.projectStore.projectSettings.monitor.zoom = 1;
   }
 
+  function onCustomZoom(e: Event) {
+    const detail = (e as CustomEvent).detail;
+    if (detail?.target !== 'monitor') return;
+
+    const prevZoom = zoom.value;
+    const zoomFactor = detail.dir > 0 ? 1.1 : 0.9;
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevZoom * zoomFactor));
+    zoom.value = nextZoom;
+  }
+
+  function onCustomZoomReset(e: Event) {
+    const detail = (e as CustomEvent).detail;
+    if (detail?.target !== 'monitor') return;
+
+    resetZoom();
+  }
+
   function onPreviewPointerDown(event: PointerEvent) {
     if (event.button !== 0) return;
     isPreviewSelected.value = true;
@@ -182,10 +199,14 @@ export function useMonitorGestures(input: {
 
   onMounted(() => {
     window.addEventListener('pointerup', onWindowPointerUp);
+    window.addEventListener('gran-zoom', onCustomZoom);
+    window.addEventListener('gran-zoom-reset', onCustomZoomReset);
   });
 
   onBeforeUnmount(() => {
     window.removeEventListener('pointerup', onWindowPointerUp);
+    window.removeEventListener('gran-zoom', onCustomZoom);
+    window.removeEventListener('gran-zoom-reset', onCustomZoomReset);
   });
 
   return {

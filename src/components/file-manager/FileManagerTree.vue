@@ -79,10 +79,16 @@ const proxyStore = useProxyStore();
 
 function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
   if (entry.kind !== 'directory') return false;
-  const dirPath = entry.path ?? '';
+  const dirPath = entry.path;
   for (const p of proxyStore.generatingProxies) {
-    if (!dirPath) return true;
-    if (p === dirPath || p.startsWith(`${dirPath}/`)) return true;
+    if (!dirPath) {
+      if (!p.includes('/')) return true;
+    } else {
+      if (p.startsWith(`${dirPath}/`)) {
+        const rel = p.slice(dirPath.length + 1);
+        if (!rel.includes('/')) return true;
+      }
+    }
   }
   return false;
 }
@@ -480,7 +486,7 @@ function getContextMenuItems(entry: FsEntry) {
                 ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy
                   ? 'text-(--color-success)!'
                   : '',
-                ctx.getEntryMeta(entry).generatingProxy ? 'text-amber-400!' : '',
+                ctx.getEntryMeta(entry).generatingProxy || isGeneratingProxyInDirectory(entry) ? 'text-amber-400!' : '',
               ]"
             >
               {{ entry.name }}
