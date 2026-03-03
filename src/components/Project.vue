@@ -43,6 +43,10 @@ const isDropTarget = ref(false);
 
 const tabContainerRef = ref<HTMLElement | null>(null);
 
+const emit = defineEmits<{
+  (e: 'tab-drag-start', event: DragEvent, tabId: string): void;
+}>();
+
 watch(activeTabId, async (newId) => {
   if (!newId) return;
 
@@ -58,9 +62,24 @@ watch(activeTabId, async (newId) => {
   }
 });
 
+function onStaticTabDragStart(e: DragEvent, tab: AnyProjectTab) {
+  if (isFileTab(tab)) return;
+  if (!e.dataTransfer) return;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData(
+    'static-tab-drag',
+    JSON.stringify({ tabId: tab.id, label: (tab as ProjectTab).label }),
+  );
+  emit('tab-drag-start', e, tab.id);
+}
+
 function onTabBarDragOver(e: DragEvent) {
   const types = e.dataTransfer?.types ?? [];
-  if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes('panel-drag')) {
+  if (
+    types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+    types.includes('panel-drag') ||
+    types.includes('static-tab-drag')
+  ) {
     e.preventDefault();
     isDropTarget.value = true;
   }
@@ -174,6 +193,8 @@ onMounted(() => {
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
           "
           :title="isFileTab(tab) ? tab.fileName : tab.label"
+          :draggable="!isFileTab(tab)"
+          @dragstart="!isFileTab(tab) ? onStaticTabDragStart($event, tab) : undefined"
           @click="setActiveTab(tab.id)"
         >
           <!-- Icon -->

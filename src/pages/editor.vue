@@ -88,8 +88,9 @@ function onDragOver(event: DragEvent, panelId: string) {
     event.dataTransfer?.types.includes('application/json') ||
     event.dataTransfer?.types.includes('application/gran-file-manager-move');
   const isDraggingPanel = !!draggingPanelId.value;
+  const isDraggingStaticTab = event.dataTransfer?.types.includes('static-tab-drag');
 
-  if (!isDraggingFile && !isDraggingPanel) {
+  if (!isDraggingFile && !isDraggingPanel && !isDraggingStaticTab) {
     return;
   }
 
@@ -133,6 +134,26 @@ function onDragLeave(event: DragEvent, panelId: string) {
 function onDrop(event: DragEvent, targetPanelId: string) {
   event.preventDefault();
 
+  // static-tab-drag: detach Files/Effects/History tab into a separate panel
+  const staticTabRaw = event.dataTransfer?.getData('static-tab-drag');
+  if (staticTabRaw && dropPosition.value) {
+    try {
+      const payload = JSON.parse(staticTabRaw) as { tabId: string; label: string };
+      // Only 'files' tab maps to fileManager panel; others become their own placeholder
+      const panelType =
+        payload.tabId === 'files' ? 'fileManager' : payload.tabId === 'monitor' ? 'monitor' : 'fileManager';
+      projectStore.insertPanelAt(
+        { id: `static-${payload.tabId}-${Date.now()}`, type: panelType as any, title: payload.label },
+        targetPanelId,
+        dropPosition.value,
+      );
+    } catch {
+      // ignore
+    }
+    resetDragState();
+    return;
+  }
+
   // Try to parse file drag payload first
   const fileDragData =
     event.dataTransfer?.getData('application/json') ||
@@ -151,8 +172,6 @@ function onDrop(event: DragEvent, targetPanelId: string) {
           mediaType = 'image';
 
         if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) {
-          // Add as text panel. Normally you'd read the content, but for now we'll just put a placeholder.
-          // Ideally we would read the file here, but keeping it simple for drop
           projectStore.addTextPanel(
             payload.path,
             `File: ${payload.name}`,
@@ -334,7 +353,11 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     @drop.prevent="(e) => onDrop(e, panel.id)"
                     @dragend="onDragEnd"
                   >
-                    <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
+                    <Project
+                      v-if="panel.type === 'fileManager'"
+                      class="h-full pt-2"
+                      @tab-drag-start="(e: DragEvent, tabId: string) => onDragStart(e, panel.id)"
+                    />
                     <MonitorContainer
                       v-else-if="panel.type === 'monitor'"
                       class="h-full"

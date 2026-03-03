@@ -99,8 +99,6 @@ const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 
-const contextClickTimeUs = ref<number | null>(null);
-
 watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
   requestAnimationFrame(draw);
 });
@@ -123,17 +121,15 @@ const markerDragStartX = ref(0);
 const markerDragStartUs = ref(0);
 const markerDragStartDurationUs = ref(0);
 
-const contextMenuMarkerId = ref<string | null>(null);
+const contextClickTimeUs = ref(0);
 
 function onContextMenuOpenChange(val: boolean) {
-  if (!val) contextMenuMarkerId.value = null;
+  if (!val) contextClickTimeUs.value = 0;
 }
 
 function onMarkerContextMenu(e: MouseEvent, markerId: string) {
   e.preventDefault();
-  e.stopPropagation();
   selectMarker(markerId);
-  contextMenuMarkerId.value = markerId;
 }
 
 function onMarkerPointerDown(e: PointerEvent, markerId: string, part: 'left' | 'right' = 'left') {
@@ -355,7 +351,6 @@ function getTimeUsFromMouseEvent(e: MouseEvent): number {
 }
 
 function onRulerContextMenu(e: MouseEvent) {
-  contextMenuMarkerId.value = null;
   contextClickTimeUs.value = getTimeUsFromMouseEvent(e);
 }
 
@@ -444,90 +439,44 @@ function onRulerWheel(e: WheelEvent) {
 
 <template>
   <UContextMenu
-    :items="
-      contextMenuMarkerId
-        ? [
-            [
-              ...(markers.find((m) => m.id === contextMenuMarkerId)?.durationUs !== undefined
-                ? [
-                    {
-                      label: t(
-                        'granVideoEditor.timeline.convertZoneToMarker',
-                        'Convert to normal marker',
-                      ),
-                      icon: 'i-heroicons-arrows-pointing-in',
-                      onSelect: () => {
-                        if (contextMenuMarkerId) {
-                          timelineStore.convertZoneToMarker(contextMenuMarkerId);
-                        }
-                      },
-                    },
-                  ]
-                : [
-                    {
-                      label: t(
-                        'granVideoEditor.timeline.convertMarkerToZone',
-                        'Convert to zone marker',
-                      ),
-                      icon: 'i-heroicons-arrows-pointing-out',
-                      onSelect: () => {
-                        if (contextMenuMarkerId) {
-                          timelineStore.convertMarkerToZone(contextMenuMarkerId);
-                        }
-                      },
-                    },
-                  ]),
-              {
-                label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
-                icon: 'i-heroicons-trash',
-                color: 'red',
-                onSelect: () => {
-                  if (contextMenuMarkerId) {
-                    deleteMarker(contextMenuMarkerId);
-                  }
-                },
-              },
-            ],
-          ]
-        : [
-            [
-              {
-                label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
-                icon: 'i-heroicons-bookmark',
-                onSelect: () => {
-                  const timeUs = currentTime;
-                  const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-                  timelineStore.applyTimeline({
-                    type: 'add_marker',
-                    id: newMarkerId,
-                    timeUs,
-                    text: '',
-                  });
-                  selectMarker(newMarkerId);
-                },
-              },
-              {
-                label: t(
-                  'granVideoEditor.timeline.addZoneMarkerAtPlayhead',
-                  'Add zone marker at playhead',
-                ),
-                icon: 'i-heroicons-arrows-right-left',
-                onSelect: () => {
-                  const timeUs = currentTime;
-                  const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-                  timelineStore.applyTimeline({
-                    type: 'add_marker',
-                    id: newMarkerId,
-                    timeUs,
-                    durationUs: 5_000_000,
-                    text: '',
-                  });
-                  selectMarker(newMarkerId);
-                },
-              },
-            ],
-          ]
-    "
+    :items="[
+      [
+        {
+          label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
+          icon: 'i-heroicons-bookmark',
+          onSelect: () => {
+            const timeUs = currentTime;
+            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+            timelineStore.applyTimeline({
+              type: 'add_marker',
+              id: newMarkerId,
+              timeUs,
+              text: '',
+            });
+            selectMarker(newMarkerId);
+          },
+        },
+        {
+          label: t(
+            'granVideoEditor.timeline.addZoneMarkerAtPlayhead',
+            'Add zone marker at playhead',
+          ),
+          icon: 'i-heroicons-arrows-right-left',
+          onSelect: () => {
+            const timeUs = currentTime;
+            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+            timelineStore.applyTimeline({
+              type: 'add_marker',
+              id: newMarkerId,
+              timeUs,
+              durationUs: 5_000_000,
+              text: '',
+            });
+            selectMarker(newMarkerId);
+          },
+        },
+      ],
+    ]"
     class="w-full"
     @update:open="onContextMenuOpenChange"
   >
@@ -553,58 +502,121 @@ function onRulerWheel(e: WheelEvent) {
           
           <!-- Left/Main Marker -->
           <div class="absolute bottom-0 left-0">
-            <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
-              <button
-                type="button"
-                class="-translate-x-1 relative z-10"
-                :class="[
-                  selectionStore.selectedEntity?.source === 'timeline' &&
-                  selectionStore.selectedEntity?.kind === 'marker' &&
-                  selectionStore.selectedEntity.markerId === p.id
-                    ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
-                    : (p.color ? '' : 'bg-primary-500'),
-                ]"
-                :style="p.color ? { color: p.color } : {}"
-                :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
-                @dblclick.stop.prevent="selectMarker(p.id)"
-                @pointerdown.stop="onMarkerPointerDown($event, p.id)"
-                @contextmenu.prevent.stop="onMarkerContextMenu($event, p.id)"
-                @mousedown.stop
-                @click.stop="selectMarker(p.id)"
-              >
-                <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0 0H10V9L5 14L0 9V0Z" :fill="p.color ?? '#3b82f6'" />
-                </svg>
-              </button>
-            </UTooltip>
+            <UContextMenu
+              :items="
+                p.isZone
+                  ? [
+                      [
+                        {
+                          label: t(
+                            'granVideoEditor.timeline.convertZoneToMarker',
+                            'Convert to normal marker',
+                          ),
+                          icon: 'i-heroicons-arrows-pointing-in',
+                          onSelect: () => timelineStore.convertZoneToMarker(p.id),
+                        },
+                        {
+                          label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+                          icon: 'i-heroicons-trash',
+                          color: 'red',
+                          onSelect: () => deleteMarker(p.id),
+                        },
+                      ],
+                    ]
+                  : [
+                      [
+                        {
+                          label: t(
+                            'granVideoEditor.timeline.convertMarkerToZone',
+                            'Convert to zone marker',
+                          ),
+                          icon: 'i-heroicons-arrows-pointing-out',
+                          onSelect: () => timelineStore.convertMarkerToZone(p.id),
+                        },
+                        {
+                          label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+                          icon: 'i-heroicons-trash',
+                          color: 'red',
+                          onSelect: () => deleteMarker(p.id),
+                        },
+                      ],
+                    ]
+              "
+            >
+              <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+                <button
+                  type="button"
+                  class="-translate-x-1 relative z-10"
+                  :class="[
+                    selectionStore.selectedEntity?.source === 'timeline' &&
+                    selectionStore.selectedEntity?.kind === 'marker' &&
+                    selectionStore.selectedEntity.markerId === p.id
+                      ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
+                      : (p.color ? '' : 'bg-primary-500'),
+                  ]"
+                  :style="p.color ? { color: p.color } : {}"
+                  :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
+                  @dblclick.stop.prevent="selectMarker(p.id)"
+                  @pointerdown.stop="onMarkerPointerDown($event, p.id)"
+                  @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
+                  @mousedown.stop
+                  @click.stop="selectMarker(p.id)"
+                >
+                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0H10V9L5 14L0 9V0Z" :fill="p.color ?? '#3b82f6'" />
+                  </svg>
+                </button>
+              </UTooltip>
+            </UContextMenu>
           </div>
           
           <!-- Right Marker (for zones) -->
           <div v-if="p.isZone" class="absolute bottom-0 right-0">
-            <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
-              <button
-                type="button"
-                class="translate-x-1 relative z-10"
-                :class="[
-                  selectionStore.selectedEntity?.source === 'timeline' &&
-                  selectionStore.selectedEntity?.kind === 'marker' &&
-                  selectionStore.selectedEntity.markerId === p.id
-                    ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
-                    : (p.color ? '' : 'bg-primary-500'),
-                ]"
-                :style="p.color ? { color: p.color } : {}"
-                aria-label="Zone Marker End"
-                @dblclick.stop.prevent="selectMarker(p.id)"
-                @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
-                @contextmenu.prevent.stop="onMarkerContextMenu($event, p.id)"
-                @mousedown.stop
-                @click.stop="selectMarker(p.id)"
-              >
-                <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0 0H10V9L5 14L0 9V0Z" :fill="p.color ?? '#3b82f6'" />
-                </svg>
-              </button>
-            </UTooltip>
+            <UContextMenu
+              :items="[
+                [
+                  {
+                    label: t(
+                      'granVideoEditor.timeline.convertZoneToMarker',
+                      'Convert to normal marker',
+                    ),
+                    icon: 'i-heroicons-arrows-pointing-in',
+                    onSelect: () => timelineStore.convertZoneToMarker(p.id),
+                  },
+                  {
+                    label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+                    icon: 'i-heroicons-trash',
+                    color: 'red',
+                    onSelect: () => deleteMarker(p.id),
+                  },
+                ],
+              ]"
+            >
+              <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+                <button
+                  type="button"
+                  class="translate-x-1 relative z-10"
+                  :class="[
+                    selectionStore.selectedEntity?.source === 'timeline' &&
+                    selectionStore.selectedEntity?.kind === 'marker' &&
+                    selectionStore.selectedEntity.markerId === p.id
+                      ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
+                      : (p.color ? '' : 'bg-primary-500'),
+                  ]"
+                  :style="p.color ? { color: p.color } : {}"
+                  aria-label="Zone Marker End"
+                  @dblclick.stop.prevent="selectMarker(p.id)"
+                  @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
+                  @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
+                  @mousedown.stop
+                  @click.stop="selectMarker(p.id)"
+                >
+                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0H10V9L5 14L0 9V0Z" :fill="p.color ?? '#3b82f6'" />
+                  </svg>
+                </button>
+              </UTooltip>
+            </UContextMenu>
           </div>
         </div>
       </div>
