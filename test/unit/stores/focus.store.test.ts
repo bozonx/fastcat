@@ -82,7 +82,7 @@ describe('FocusStore', () => {
     expect(store.canUseTimelineHotkeys).toBe(true);
 
     store.setTempFocus('left');
-    expect(store.canUsePlaybackHotkeys).toBe(false);
+    expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
   });
 });

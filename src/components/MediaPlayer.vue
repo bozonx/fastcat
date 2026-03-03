@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 
 const { t } = useI18n();
@@ -20,14 +20,87 @@ const isPlaying = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
 const progress = ref(0);
+const playbackSpeed = ref(1);
+
+const playerRootEl = ref<HTMLElement | null>(null);
+
+let reversePlaybackTimer: number | null = null;
+let reverseLastTs = 0;
+
+function clearReversePlaybackTimer() {
+  if (reversePlaybackTimer !== null) {
+    window.clearInterval(reversePlaybackTimer);
+    reversePlaybackTimer = null;
+  }
+  reverseLastTs = 0;
+}
 
 function togglePlay() {
   if (!mediaElement.value) return;
+
+  if (reversePlaybackTimer !== null) {
+    clearReversePlaybackTimer();
+    isPlaying.value = false;
+    return;
+  }
+
   if (isPlaying.value) {
     mediaElement.value.pause();
-  } else {
-    mediaElement.value.play();
+    return;
   }
+
+  void mediaElement.value.play();
+}
+
+function pauseAndClearPlayback() {
+  clearReversePlaybackTimer();
+  mediaElement.value?.pause();
+}
+
+function setForwardPlaybackSpeed(speed: number) {
+  if (!mediaElement.value) return;
+  pauseAndClearPlayback();
+  const nextSpeed = Number(speed);
+  playbackSpeed.value = Number.isFinite(nextSpeed) ? nextSpeed : 1;
+  mediaElement.value.playbackRate = Math.max(0.1, Math.abs(playbackSpeed.value));
+  void mediaElement.value.play();
+}
+
+function setBackwardPlaybackSpeed(speed: number) {
+  if (!mediaElement.value) return;
+
+  pauseAndClearPlayback();
+
+  const nextSpeed = Number(speed);
+  playbackSpeed.value = Number.isFinite(nextSpeed) ? -Math.abs(nextSpeed) : -1;
+  mediaElement.value.playbackRate = 1;
+
+  const absSpeed = Math.max(0.1, Number(speed) || 1);
+  reversePlaybackTimer = window.setInterval(() => {
+    if (!mediaElement.value) return;
+
+    const now = performance.now();
+    const dtMs = reverseLastTs > 0 ? now - reverseLastTs : 0;
+    reverseLastTs = now;
+
+    const dtSec = Math.max(0, dtMs / 1000);
+    const delta = dtSec * absSpeed;
+
+    const next = Math.max(0, mediaElement.value.currentTime - delta);
+    mediaElement.value.currentTime = next;
+    currentTime.value = next;
+
+    if (duration.value > 0) {
+      progress.value = (currentTime.value / duration.value) * 100;
+    }
+
+    if (next <= 0) {
+      pauseAndClearPlayback();
+      isPlaying.value = false;
+    }
+  }, 16);
+
+  isPlaying.value = true;
 }
 
 function onTimeUpdate() {
@@ -41,6 +114,7 @@ function onTimeUpdate() {
 function onLoadedMetadata() {
   if (!mediaElement.value) return;
   duration.value = mediaElement.value.duration;
+  playbackSpeed.value = 1;
 }
 
 function onPlay() {
@@ -49,7 +123,16 @@ function onPlay() {
 
 function onPause() {
   isPlaying.value = false;
+  clearReversePlaybackTimer();
 }
+
+const playbackSpeedLabel = computed(() => {
+  const s = playbackSpeed.value;
+  if (!Number.isFinite(s)) return null;
+  if (Math.abs(s - 1) < 1e-6) return null;
+  const normalized = Math.round(s * 100) / 100;
+  return `${normalized}x`;
+});
 
 function formatTime(seconds: number) {
   if (!seconds || isNaN(seconds)) return '00:00';
@@ -126,9 +209,64 @@ watch(
     currentTime.value = 0;
     progress.value = 0;
     duration.value = 0;
+    playbackSpeed.value = 1;
+    clearReversePlaybackTimer();
     reset();
   },
 );
+
+function shouldHandlePreviewPlaybackEvent() {
+  return Boolean(playerRootEl.value);
+}
+
+function onPreviewPlayback(e: CustomEvent) {
+  if (!shouldHandlePreviewPlaybackEvent()) return;
+  const detail = (e as CustomEvent).detail as
+    | { action: 'toggle' }
+    | { action: 'toStart' }
+    | { action: 'toEnd' }
+    | { action: 'set'; direction: 'forward' | 'backward'; speed: number };
+  if (!detail || typeof detail !== 'object') return;
+
+  if (detail.action === 'toggle') {
+    togglePlay();
+    return;
+  }
+
+  if (detail.action === 'toStart') {
+    if (!mediaElement.value) return;
+    pauseAndClearPlayback();
+    mediaElement.value.currentTime = 0;
+    currentTime.value = 0;
+    return;
+  }
+
+  if (detail.action === 'toEnd') {
+    if (!mediaElement.value) return;
+    pauseAndClearPlayback();
+    const end = Number.isFinite(mediaElement.value.duration) ? mediaElement.value.duration : 0;
+    mediaElement.value.currentTime = end;
+    currentTime.value = end;
+    return;
+  }
+
+  if (detail.action === 'set') {
+    if (detail.direction === 'forward') {
+      setForwardPlaybackSpeed(detail.speed);
+    } else {
+      setBackwardPlaybackSpeed(detail.speed);
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('gran-preview-playback', onPreviewPlayback as EventListener);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('gran-preview-playback', onPreviewPlayback as EventListener);
+  clearReversePlaybackTimer();
+});
 
 onMounted(() => {
   window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number; target?: string }>) => {
@@ -150,7 +288,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full h-full overflow-hidden rounded">
+  <div ref="playerRootEl" class="flex flex-col w-full h-full overflow-hidden rounded">
     <!-- Video -->
     <UContextMenu
       v-if="type === 'video'"
@@ -260,6 +398,12 @@ onUnmounted(() => {
           />
           <span class="text-xs text-ui-text-muted font-mono">
             {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+          </span>
+          <span
+            v-if="playbackSpeedLabel"
+            class="text-[10px] px-2 py-0.5 rounded-full border border-ui-border bg-ui-bg text-ui-text-muted font-mono"
+          >
+            {{ playbackSpeedLabel }}
           </span>
         </div>
         

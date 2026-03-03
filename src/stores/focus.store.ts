@@ -84,7 +84,12 @@ export const useFocusStore = defineStore('focus', () => {
   }
 
   const canUseTimelineHotkeys = computed(() => effectiveFocus.value === 'timeline');
-  const canUsePlaybackHotkeys = computed(() => effectiveFocus.value === 'monitor');
+  const canUsePlaybackHotkeys = computed(
+    () =>
+      effectiveFocus.value === 'monitor' ||
+      effectiveFocus.value === 'left' ||
+      effectiveFocus.value === 'right',
+  );
 
   return {
     mainFocus,
