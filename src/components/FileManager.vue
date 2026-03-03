@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -374,6 +374,24 @@ watch(
     }
   },
   { immediate: true },
+);
+
+// Sync: when another panel (e.g. FileBrowser) modifies files, refresh the tree
+let isReloadingFromCounter = false;
+watch(
+  () => uiStore.fileManagerUpdateCounter,
+  async () => {
+    if (isReloadingFromCounter) return;
+    isReloadingFromCounter = true;
+    try {
+      await loadProjectDirectory();
+    } finally {
+      // Wait for next tick so the counter increment from our own loadProjectDirectory
+      // is processed before we start listening again
+      await nextTick();
+      isReloadingFromCounter = false;
+    }
+  },
 );
 
 function onDragOver(e: DragEvent) {

@@ -665,9 +665,9 @@ async function onDrop(e: DragEvent, trackId: string) {
                 @drop="onDrop"
                 @dragover="onTrackDragOver"
                 @dragleave="onTrackDragLeave"
-                @move-item="startMoveItem"
+                @start-move-item="startMoveItem"
                 @select-item="selectItem"
-                @trim-item="startTrimItem"
+                @start-trim-item="startTrimItem"
                 @clip-action="onClipAction"
               />
             </div>
@@ -678,8 +678,13 @@ async function onDrop(e: DragEvent, trackId: string) {
               The ruler height (h-7 = 28px) is subtracted from top so the line starts below ruler.
             -->
             <div
-              class="absolute top-7 bottom-0 w-px bg-primary-500 cursor-ew-resize z-50 pointer-events-auto"
-              :style="{ left: `${Math.round(playheadLeft)}px`, transform: 'translateX(-0.5px)' }"
+              class="absolute top-7 bottom-0 pointer-events-auto cursor-ew-resize"
+              :style="{
+                left: `${Math.round(playheadLeft)}px`,
+                width: '1px',
+                zIndex: 50,
+                backgroundColor: 'var(--color-primary-500, #3b82f6)',
+              }"
               @pointerdown="startPlayheadDrag"
             />
 
@@ -695,8 +700,8 @@ async function onDrop(e: DragEvent, trackId: string) {
               >
                 <div
                   v-if="isZooming && zoomIndicatorStyle"
-                  class="fixed px-2 py-1 text-xs font-mono rounded bg-neutral-900/95 border border-white/10 text-white shadow-lg z-9999 pointer-events-none backdrop-blur-sm"
-                  :style="zoomIndicatorStyle"
+                  class="fixed px-2 py-1 text-xs font-mono rounded bg-neutral-900/95 border border-white/10 text-white shadow-lg pointer-events-none backdrop-blur-sm"
+                  :style="{ ...zoomIndicatorStyle, zIndex: 9999 }"
                 >
                   ×{{ zoomFactor }}
                 </div>

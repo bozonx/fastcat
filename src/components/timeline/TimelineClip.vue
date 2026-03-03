@@ -487,6 +487,7 @@ const { contextMenuItems } = useClipContextMenu({
           top: `${100 - (((item as any).audioGain ?? 1) / 2) * 100}%`,
         }"
         @mousedown.stop="
+          $event.button === 0 &&
           !Boolean((item as any).locked) &&
           emit(
             'startResizeVolume',

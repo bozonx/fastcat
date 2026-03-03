@@ -340,7 +340,6 @@ watch(
           @ended="onPause"
           @click="togglePlay"
           @dblclick.prevent="reset"
-          @contextmenu.prevent
         ></video>
       </div>
     </UContextMenu>

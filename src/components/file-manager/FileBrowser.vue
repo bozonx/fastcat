@@ -1114,101 +1114,106 @@ async function onPanelDrop(e: DragEvent) {
               </thead>
 
               <tbody>
-                <UContextMenu
+                <template
                   v-for="entry in sortedEntries as ExtendedFsEntry[]"
                   :key="entry.path"
-                  :items="getContextMenuItems(entry)"
-                  as="tr"
-                  class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
-                  :class="{
-                    'bg-primary-500/10':
-                      selectionStore.selectedEntity?.source === 'fileManager' &&
-                      selectionStore.selectedEntity.path === entry.path,
-                    'opacity-30': entry.name.startsWith('.'),
-                    'text-(--color-success)!':
-                      fileManager.mediaCache.hasProxy(entry.path || '') &&
-                      !proxyStore.generatingProxies.has(entry.path || ''),
-                    'text-amber-400!':
-                      proxyStore.generatingProxies.has(entry.path || '') ||
-                      isGeneratingProxyInDirectory(entry),
-                    'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
-                      dragOverEntryPath === (entry.path ?? null),
-                  }"
-                  :draggable="true"
-                  @dragstart="onEntryDragStart($event, entry)"
-                  @dragend="onEntryDragEnd"
-                  @dragover.prevent="onEntryDragOver($event, entry)"
-                  @dragleave="onEntryDragLeave($event, entry)"
-                  @drop.prevent="onEntryDrop($event, entry)"
-                  @click="handleEntryClick(entry)"
-                  @dblclick="
-                    entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
-                  "
                 >
-                  <td class="py-2 px-3 flex items-center gap-2">
-                    <div
-                      class="h-4 flex items-center justify-center shrink-0"
-                      :class="[
-                        entry.path &&
-                        timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
-                          ? 'border-b-2 border-red-500'
-                          : '',
-                      ]"
-                    >
-                      <ProgressSpinner
-                        v-if="proxyStore.generatingProxies.has(entry.path || '')"
-                        :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
-                        size="sm"
-                      />
-                      <UIcon
-                        v-else
-                        :name="getFileIcon(entry)"
-                        class="w-4 h-4 transition-colors"
-                        :class="[
-                          entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
-                          entry.name.startsWith('.') ? 'opacity-30' : '',
+                  <UContextMenu
+                    :items="getContextMenuItems(entry)"
+                  >
+                    <tr
+                      class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
+                      :class="{
+                        'bg-primary-500/10':
+                          selectionStore.selectedEntity?.source === 'fileManager' &&
+                          selectionStore.selectedEntity.path === entry.path,
+                        'opacity-30': entry.name.startsWith('.'),
+                        'text-(--color-success)!':
                           fileManager.mediaCache.hasProxy(entry.path || '') &&
-                          !proxyStore.generatingProxies.has(entry.path || '')
-                            ? 'text-(--color-success)!'
-                            : '',
+                          !proxyStore.generatingProxies.has(entry.path || ''),
+                        'text-amber-400!':
                           proxyStore.generatingProxies.has(entry.path || '') ||
-                          isGeneratingProxyInDirectory(entry)
-                            ? 'text-amber-400/90'
-                            : '',
-                        ]"
-                      />
-                    </div>
-                    <span
-                      class="truncate max-w-50 transition-colors"
-                      :class="[
-                        entry.name.startsWith('.') ? 'opacity-30' : '',
-                        fileManager.mediaCache.hasProxy(entry.path || '') &&
-                        !proxyStore.generatingProxies.has(entry.path || '')
-                          ? 'text-(--color-success)!'
-                          : '',
-                        proxyStore.generatingProxies.has(entry.path || '') ||
-                        isGeneratingProxyInDirectory(entry)
-                          ? 'text-amber-400!'
-                          : '',
-                      ]"
-                      :title="entry.name"
+                          isGeneratingProxyInDirectory(entry),
+                        'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
+                          dragOverEntryPath === (entry.path ?? null),
+                      }"
+                      :draggable="true"
+                      @dragstart="onEntryDragStart($event, entry)"
+                      @dragend="onEntryDragEnd"
+                      @dragover.prevent="onEntryDragOver($event, entry)"
+                      @dragleave="onEntryDragLeave($event, entry)"
+                      @drop.prevent="onEntryDrop($event, entry)"
+                      @click="handleEntryClick(entry)"
+                      @dblclick="
+                        entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
+                      "
                     >
-                      {{ entry.name }}
-                    </span>
-                  </td>
-                  <td class="py-2 px-3 text-ui-text-muted">
-                    {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
-                  </td>
-                  <td class="py-2 px-3 text-right text-ui-text-muted">
-                    {{ entry.kind === 'file' ? formatBytes(entry.size || 0) : '-' }}
-                  </td>
-                  <td class="py-2 px-3 text-ui-text-muted">
-                    {{ formatDate(entry.created) }}
-                  </td>
-                  <td class="py-2 px-3 text-ui-text-muted">
-                    {{ formatDate(entry.lastModified) }}
-                  </td>
-                </UContextMenu>
+                      <td class="py-2 px-3 flex items-center gap-2">
+                        <div
+                          class="h-4 flex items-center justify-center shrink-0"
+                          :class="[
+                            entry.path &&
+                            timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
+                              ? 'border-b-2 border-red-500'
+                              : '',
+                          ]"
+                        >
+                          <ProgressSpinner
+                            v-if="proxyStore.generatingProxies.has(entry.path || '')"
+                            :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
+                            size="sm"
+                          />
+                          <UIcon
+                            v-else
+                            :name="getFileIcon(entry)"
+                            class="w-4 h-4 transition-colors"
+                            :class="[
+                              entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
+                              entry.name.startsWith('.') ? 'opacity-30' : '',
+                              fileManager.mediaCache.hasProxy(entry.path || '') &&
+                              !proxyStore.generatingProxies.has(entry.path || '')
+                                ? 'text-(--color-success)!'
+                                : '',
+                              proxyStore.generatingProxies.has(entry.path || '') ||
+                              isGeneratingProxyInDirectory(entry)
+                                ? 'text-amber-400/90'
+                                : '',
+                            ]"
+                          />
+                        </div>
+                        <span
+                          class="truncate max-w-50 transition-colors"
+                          :class="[
+                            entry.name.startsWith('.') ? 'opacity-30' : '',
+                            fileManager.mediaCache.hasProxy(entry.path || '') &&
+                            !proxyStore.generatingProxies.has(entry.path || '')
+                              ? 'text-(--color-success)!'
+                              : '',
+                            proxyStore.generatingProxies.has(entry.path || '') ||
+                            isGeneratingProxyInDirectory(entry)
+                              ? 'text-amber-400!'
+                              : '',
+                          ]"
+                          :title="entry.name"
+                        >
+                          {{ entry.name }}
+                        </span>
+                      </td>
+                      <td class="py-2 px-3 text-ui-text-muted">
+                        {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
+                      </td>
+                      <td class="py-2 px-3 text-right text-ui-text-muted">
+                        {{ entry.kind === 'file' ? formatBytes(entry.size || 0) : '-' }}
+                      </td>
+                      <td class="py-2 px-3 text-ui-text-muted">
+                        {{ formatDate(entry.created) }}
+                      </td>
+                      <td class="py-2 px-3 text-ui-text-muted">
+                        {{ formatDate(entry.lastModified) }}
+                      </td>
+                    </tr>
+                  </UContextMenu>
+                </template>
 
                 <!-- Root drop zone row for list view -->
                 <tr
