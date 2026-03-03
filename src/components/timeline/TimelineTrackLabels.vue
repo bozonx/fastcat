@@ -298,7 +298,7 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
       const currentHeight = props.trackHeights[t.id] ?? DEFAULT_TRACK_HEIGHT;
       const nextHeight = Math.max(
         MIN_TRACK_HEIGHT,
-        Math.min(MAX_TRACK_HEIGHT, currentHeight + dir * step)
+        Math.min(MAX_TRACK_HEIGHT, currentHeight + dir * step),
       );
       emit('update:trackHeight', t.id, nextHeight);
     }

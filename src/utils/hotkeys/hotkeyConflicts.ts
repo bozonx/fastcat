@@ -66,24 +66,20 @@ export function getHotkeyConflicts(
   return { conflictsByCommand };
 }
 
-export function isHotkeyConflicting(
-  params: {
-    conflicts: HotkeyConflictsResult;
-    cmdId: HotkeyCommandId;
-    combo: string;
-  },
-): boolean {
+export function isHotkeyConflicting(params: {
+  conflicts: HotkeyConflictsResult;
+  cmdId: HotkeyCommandId;
+  combo: string;
+}): boolean {
   return params.conflicts.conflictsByCommand.get(params.cmdId)?.has(params.combo) ?? false;
 }
 
-export function findDuplicateOwnerByContext(
-  params: {
-    effective: Record<HotkeyCommandId, string[]>;
-    commands: readonly HotkeyCommandDefinition[];
-    targetCmdId: HotkeyCommandId;
-    combo: string;
-  },
-): HotkeyCommandId | null {
+export function findDuplicateOwnerByContext(params: {
+  effective: Record<HotkeyCommandId, string[]>;
+  commands: readonly HotkeyCommandDefinition[];
+  targetCmdId: HotkeyCommandId;
+  combo: string;
+}): HotkeyCommandId | null {
   const { effective, commands, targetCmdId, combo } = params;
   const targetGroupId = getCommandGroupId(commands, targetCmdId);
 

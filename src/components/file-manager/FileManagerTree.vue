@@ -282,7 +282,10 @@ function getContextMenuItems(entry: FsEntry) {
       if (isGeneratingProxyInDirectory(entry)) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+            label: t(
+              'videoEditor.fileManager.actions.cancelProxyGeneration',
+              'Cancel proxy generation',
+            ),
             icon: 'i-heroicons-x-circle',
             color: 'error',
             onSelect: () => emit('action', 'cancelProxyForFolder', entry),
@@ -291,7 +294,10 @@ function getContextMenuItems(entry: FsEntry) {
       } else {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+            label: t(
+              'videoEditor.fileManager.actions.createProxyForAll',
+              'Create proxy for all videos',
+            ),
             icon: 'i-heroicons-film',
             onSelect: () => emit('action', 'createProxyForFolder', entry),
           },
@@ -486,7 +492,9 @@ function getContextMenuItems(entry: FsEntry) {
                 ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy
                   ? 'text-(--color-success)!'
                   : '',
-                ctx.getEntryMeta(entry).generatingProxy || isGeneratingProxyInDirectory(entry) ? 'text-amber-400!' : '',
+                ctx.getEntryMeta(entry).generatingProxy || isGeneratingProxyInDirectory(entry)
+                  ? 'text-amber-400!'
+                  : '',
               ]"
             >
               {{ entry.name }}

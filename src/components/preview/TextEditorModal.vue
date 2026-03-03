@@ -18,11 +18,7 @@ const content = defineModel<string>('content', { default: '' });
 </script>
 
 <template>
-  <AppModal
-    v-model:open="isOpen"
-    :title="props.fileName"
-    :ui="{ content: 'max-w-4xl h-[80vh]' }"
-  >
+  <AppModal v-model:open="isOpen" :title="props.fileName" :ui="{ content: 'max-w-4xl h-[80vh]' }">
     <div class="flex flex-col h-full min-h-0">
       <div class="flex items-center justify-between px-1 py-2 text-xs shrink-0">
         <span class="text-ui-text-muted">Autosave enabled</span>

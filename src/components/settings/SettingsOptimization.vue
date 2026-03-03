@@ -16,12 +16,7 @@ function resetDefaults() {
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
       </div>
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="ghost"
-        @click="resetDefaults"
-      >
+      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>

@@ -236,7 +236,9 @@ function openAsTextPanel() {
           class="flex-1"
           @click="() => proxyStore.cancelProxyGeneration(selectedPath!)"
         >
-          {{ t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation') }}
+          {{
+            t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
+          }}
         </UButton>
       </div>
     </PropertySection>
@@ -297,7 +299,9 @@ function openAsTextPanel() {
           class="w-full"
           @click="generateProxiesForSelectedFolder"
         >
-          {{ t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos') }}
+          {{
+            t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos')
+          }}
         </UButton>
 
         <UButton

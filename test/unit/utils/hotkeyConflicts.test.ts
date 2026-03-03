@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { getHotkeyConflicts, isHotkeyConflicting, findDuplicateOwnerByContext } from '~/utils/hotkeys/hotkeyConflicts';
+import {
+  getHotkeyConflicts,
+  isHotkeyConflicting,
+  findDuplicateOwnerByContext,
+} from '~/utils/hotkeys/hotkeyConflicts';
 
 import type { HotkeyCommandDefinition, HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
@@ -26,7 +30,9 @@ describe('hotkeyConflicts', () => {
     expect(
       isHotkeyConflicting({ conflicts, cmdId: 'timeline.splitAtPlayhead', combo: 'Space' }),
     ).toBe(false);
-    expect(isHotkeyConflicting({ conflicts, cmdId: 'playback.toggle', combo: 'Space' })).toBe(false);
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'playback.toggle', combo: 'Space' })).toBe(
+      false,
+    );
   });
 
   it('treats same combo in general and timeline as conflict (general is global)', () => {

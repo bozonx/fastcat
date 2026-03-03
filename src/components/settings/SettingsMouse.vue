@@ -17,12 +17,7 @@ function resetDefaults() {
       <div class="text-sm font-semibold text-ui-text">
         {{ t('videoEditor.settings.userMouse', 'Mouse') }}
       </div>
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="ghost"
-        @click="resetDefaults"
-      >
+      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>
@@ -47,15 +42,24 @@ function resetDefaults() {
                     v-model="workspaceStore.userSettings.mouse.timeline.wheel"
                     :items="[
                       {
-                        label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollVertical',
+                          'Vertical scroll',
+                        ),
                         value: 'scroll_vertical',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollHorizontal',
+                          'Horizontal scroll',
+                        ),
                         value: 'scroll_horizontal',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                        label: t(
+                          'videoEditor.settings.mouseActionZoomHorizontal',
+                          'Horizontal zoom',
+                        ),
                         value: 'zoom_horizontal',
                       },
                       {
@@ -85,15 +89,24 @@ function resetDefaults() {
                     v-model="workspaceStore.userSettings.mouse.timeline.wheelShift"
                     :items="[
                       {
-                        label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollVertical',
+                          'Vertical scroll',
+                        ),
                         value: 'scroll_vertical',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollHorizontal',
+                          'Horizontal scroll',
+                        ),
                         value: 'scroll_horizontal',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                        label: t(
+                          'videoEditor.settings.mouseActionZoomHorizontal',
+                          'Horizontal zoom',
+                        ),
                         value: 'zoom_horizontal',
                       },
                       {
@@ -106,7 +119,8 @@ function resetDefaults() {
                     label-key="label"
                     class="w-full"
                     @update:model-value="
-                      (v: any) => (workspaceStore.userSettings.mouse.timeline.wheelShift = v?.value ?? v)
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.timeline.wheelShift = v?.value ?? v)
                     "
                   />
                 </td>
@@ -123,15 +137,24 @@ function resetDefaults() {
                     v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondary"
                     :items="[
                       {
-                        label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollVertical',
+                          'Vertical scroll',
+                        ),
                         value: 'scroll_vertical',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollHorizontal',
+                          'Horizontal scroll',
+                        ),
                         value: 'scroll_horizontal',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                        label: t(
+                          'videoEditor.settings.mouseActionZoomHorizontal',
+                          'Horizontal zoom',
+                        ),
                         value: 'zoom_horizontal',
                       },
                       {
@@ -154,7 +177,12 @@ function resetDefaults() {
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
                   <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineWheelSecondaryShift', 'Secondary wheel + Shift') }}
+                    {{
+                      t(
+                        'videoEditor.settings.mouseTimelineWheelSecondaryShift',
+                        'Secondary wheel + Shift',
+                      )
+                    }}
                   </span>
                 </td>
                 <td class="p-2 py-2.5 align-middle">
@@ -162,15 +190,24 @@ function resetDefaults() {
                     v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift"
                     :items="[
                       {
-                        label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollVertical',
+                          'Vertical scroll',
+                        ),
                         value: 'scroll_vertical',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollHorizontal',
+                          'Horizontal scroll',
+                        ),
                         value: 'scroll_horizontal',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+                        label: t(
+                          'videoEditor.settings.mouseActionZoomHorizontal',
+                          'Horizontal zoom',
+                        ),
                         value: 'zoom_horizontal',
                       },
                       {
@@ -184,7 +221,8 @@ function resetDefaults() {
                     class="w-full"
                     @update:model-value="
                       (v: any) =>
-                        (workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift = v?.value ?? v)
+                        (workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift =
+                          v?.value ?? v)
                     "
                   />
                 </td>
@@ -207,7 +245,8 @@ function resetDefaults() {
                     label-key="label"
                     class="w-full"
                     @update:model-value="
-                      (v: any) => (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
                     "
                   />
                 </td>
@@ -237,11 +276,17 @@ function resetDefaults() {
                     :items="[
                       { label: t('videoEditor.settings.mouseActionZoom', 'Zoom'), value: 'zoom' },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollVertical',
+                          'Vertical scroll',
+                        ),
                         value: 'scroll_vertical',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollHorizontal',
+                          'Horizontal scroll',
+                        ),
                         value: 'scroll_horizontal',
                       },
                       { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
@@ -268,11 +313,17 @@ function resetDefaults() {
                     :items="[
                       { label: t('videoEditor.settings.mouseActionZoom', 'Zoom'), value: 'zoom' },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollVertical',
+                          'Vertical scroll',
+                        ),
                         value: 'scroll_vertical',
                       },
                       {
-                        label: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+                        label: t(
+                          'videoEditor.settings.mouseActionScrollHorizontal',
+                          'Horizontal scroll',
+                        ),
                         value: 'scroll_horizontal',
                       },
                       { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
@@ -281,7 +332,8 @@ function resetDefaults() {
                     label-key="label"
                     class="w-full"
                     @update:model-value="
-                      (v: any) => (workspaceStore.userSettings.mouse.monitor.wheelShift = v?.value ?? v)
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.monitor.wheelShift = v?.value ?? v)
                     "
                   />
                 </td>
@@ -304,7 +356,8 @@ function resetDefaults() {
                     label-key="label"
                     class="w-full"
                     @update:model-value="
-                      (v: any) => (workspaceStore.userSettings.mouse.monitor.middleClick = v?.value ?? v)
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.monitor.middleClick = v?.value ?? v)
                     "
                   />
                 </td>

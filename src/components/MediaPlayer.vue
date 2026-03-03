@@ -293,12 +293,18 @@ onUnmounted(() => {
 
 onMounted(() => {
   window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number; target?: string }>) => {
-    if (e.detail?.target === 'preview' || document.activeElement?.closest('.media-player-container')) {
+    if (
+      e.detail?.target === 'preview' ||
+      document.activeElement?.closest('.media-player-container')
+    ) {
       onCustomZoom(e);
     }
   }) as EventListener);
   window.addEventListener('gran-zoom-reset', ((e: CustomEvent<{ target?: string }>) => {
-    if (e.detail?.target === 'preview' || document.activeElement?.closest('.media-player-container')) {
+    if (
+      e.detail?.target === 'preview' ||
+      document.activeElement?.closest('.media-player-container')
+    ) {
       reset();
     }
   }) as EventListener);
@@ -313,11 +319,7 @@ onUnmounted(() => {
 <template>
   <div ref="playerRootEl" class="flex flex-col w-full h-full overflow-hidden rounded">
     <!-- Video -->
-    <UContextMenu
-      v-if="type === 'video'"
-      :items="contextMenuItems"
-      class="flex-1 flex min-h-0"
-    >
+    <UContextMenu v-if="type === 'video'" :items="contextMenuItems" class="flex-1 flex min-h-0">
       <div
         ref="containerRef"
         class="media-player-container relative w-full h-full bg-black overflow-hidden flex items-center justify-center select-none outline-none"
@@ -429,7 +431,7 @@ onUnmounted(() => {
             {{ playbackSpeedLabel }}
           </span>
         </div>
-        
+
         <UButton
           v-if="type === 'video'"
           size="sm"
