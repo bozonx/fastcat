@@ -192,7 +192,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
 
     <!-- Preset Mode -->
     <template v-if="!localIsCustom">
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-4 gap-4">
         <div class="flex flex-col gap-2">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.orientation', 'Orientation') }}
@@ -202,7 +202,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             :options="orientationOptions as any"
             :disabled="disabled"
             :ui="{ base: 'px-2' }"
-            class="w-full"
+            class="w-full h-8"
           />
         </div>
 
@@ -235,13 +235,17 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             label-key="label"
           />
         </div>
-      </div>
 
-      <div
-        class="text-sm text-ui-text-muted font-medium bg-ui-bg-accent p-3 rounded flex justify-between items-center"
-      >
-        <span>{{ t('videoEditor.resolution.finalResolution', 'Final Resolution:') }}</span>
-        <span class="font-mono text-ui-text">{{ localWidth }} &times; {{ localHeight }}</span>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.resolution.finalResolution', 'Final Resolution:') }}
+          </label>
+          <div
+            class="text-sm text-ui-text font-mono font-medium bg-ui-bg-accent px-3 rounded flex items-center justify-center border border-ui-border/50 h-8"
+          >
+            {{ localWidth }} &times; {{ localHeight }}
+          </div>
+        </div>
       </div>
     </template>
 

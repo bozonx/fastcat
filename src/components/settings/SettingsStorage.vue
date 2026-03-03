@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import { DEFAULT_WORKSPACE_SETTINGS } from '~/utils/settings/defaults';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -44,12 +45,28 @@ async function confirmClearWorkspaceVardata() {
   isClearWorkspaceVardataConfirmOpen.value = false;
   await workspaceStore.clearVardata();
 }
+
+function resetDefaults() {
+  workspaceStore.workspaceSettings.proxyStorageLimitBytes = DEFAULT_WORKSPACE_SETTINGS.proxyStorageLimitBytes;
+  workspaceStore.workspaceSettings.cacheStorageLimitBytes = DEFAULT_WORKSPACE_SETTINGS.cacheStorageLimitBytes;
+  workspaceStore.workspaceSettings.thumbnailsStorageLimitBytes = DEFAULT_WORKSPACE_SETTINGS.thumbnailsStorageLimitBytes;
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="text-sm font-medium text-ui-text">
-      {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
+    <div class="flex items-center justify-between gap-3">
+      <div class="text-sm font-medium text-ui-text">
+        {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
+      </div>
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        @click="resetDefaults"
+      >
+        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+      </UButton>
     </div>
 
     <UiConfirmModal

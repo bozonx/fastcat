@@ -203,6 +203,47 @@ function openAsTextPanel() {
 
     <PropertySection
       v-if="
+        fileInfo?.kind === 'file' &&
+        !isProjectRootDir &&
+        (isVideoOrAudio || proxyStore.generatingProxies.has(selectedPath ?? ''))
+      "
+      :title="t('videoEditor.fileManager.proxy.title', 'Proxy')"
+    >
+      <div class="flex gap-2">
+        <UButton
+          v-if="!proxyStore.generatingProxies.has(selectedPath ?? '')"
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-film"
+          class="flex-1"
+          @click="
+            () =>
+              proxyStore.generateProxy(
+                props.selectedFsEntry.handle as FileSystemFileHandle,
+                selectedPath!,
+              )
+          "
+        >
+          {{ t('videoEditor.fileManager.proxy.create', 'Create proxy') }}
+        </UButton>
+        <UButton
+          v-else
+          size="xs"
+          color="error"
+          variant="soft"
+          icon="i-heroicons-x-circle"
+          class="flex-1"
+          :loading="true"
+          @click="() => proxyStore.cancelProxyGeneration(selectedPath!)"
+        >
+          {{ t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation') }}
+        </UButton>
+      </div>
+    </PropertySection>
+
+    <PropertySection
+      v-if="
         fileInfo?.kind === 'directory' &&
         !isProjectRootDir &&
         (isFolderWithVideo || isGeneratingProxyForFolder)
@@ -239,7 +280,42 @@ function openAsTextPanel() {
       v-if="fileInfo?.kind === 'directory'"
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-2 w-full">
+        <input
+          ref="uploadInputRef"
+          type="file"
+          multiple
+          class="hidden"
+          @change="onDirectoryFileSelect"
+        />
+
+        <UButton
+          v-if="isFolderWithVideo && !isGeneratingProxyForFolder"
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-film"
+          class="w-full"
+          @click="generateProxiesForSelectedFolder"
+        >
+          {{ t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos') }}
+        </UButton>
+
+        <UButton
+          v-if="isFolderWithVideo && isGeneratingProxyForFolder"
+          size="xs"
+          color="error"
+          variant="soft"
+          icon="i-heroicons-x-circle"
+          class="w-full"
+          :loading="true"
+          @click="stopProxyGenerationForSelectedFolder"
+        >
+          {{
+            t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
+          }}
+        </UButton>
+
         <UButton
           size="xs"
           color="neutral"
@@ -249,28 +325,6 @@ function openAsTextPanel() {
           @click="triggerDirectoryUpload"
         >
           {{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload files') }}
-        </UButton>
-
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-document-text"
-          class="w-full"
-          @click="() => ((uiStore as any).pendingFsEntryCreateMarkdown = props.selectedFsEntry)"
-        >
-          {{ t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document') }}
-        </UButton>
-
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-document-plus"
-          class="w-full"
-          @click="() => ((uiStore as any).pendingFsEntryCreateTimeline = props.selectedFsEntry)"
-        >
-          {{ t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline') }}
         </UButton>
 
         <div v-if="!isProjectRootDir" class="flex gap-2">

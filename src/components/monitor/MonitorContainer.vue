@@ -393,6 +393,16 @@ const emit = defineEmits<{
           class="flex items-center gap-2 shrink-0"
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
+          <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
+            <UButton
+              size="2xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-crosshair"
+              @click="centerMonitor"
+            />
+          </UTooltip>
+
           <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom (100%)')">
             <UButton
               size="xs"

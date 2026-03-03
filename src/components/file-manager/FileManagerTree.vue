@@ -101,6 +101,7 @@ function isSelected(entry: FsEntry): boolean {
 
 function getEntryIconClass(entry: FsEntry): string {
   if (isDotEntry(entry)) return 'opacity-30';
+  if (isGeneratingProxyInDirectory(entry)) return 'text-amber-400/90';
   if (entry.kind === 'directory') return 'text-ui-text-muted/80';
 
   const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
@@ -272,23 +273,24 @@ function getContextMenuItems(entry: FsEntry) {
     ]);
 
     if (hasVideos) {
-      items.push([
-        {
-          label: isGeneratingProxyInDirectory(entry)
-            ? t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
-            : t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
-          icon: isGeneratingProxyInDirectory(entry) ? 'i-heroicons-x-circle' : 'i-heroicons-film',
-          color: isGeneratingProxyInDirectory(entry) ? 'error' : undefined,
-          onSelect: () =>
-            emit(
-              'action',
-              (isGeneratingProxyInDirectory(entry)
-                ? 'cancelProxyForFolder'
-                : 'createProxyForFolder') as any,
-              entry,
-            ),
-        },
-      ]);
+      if (isGeneratingProxyInDirectory(entry)) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+            icon: 'i-heroicons-x-circle',
+            color: 'error',
+            onSelect: () => emit('action', 'cancelProxyForFolder', entry),
+          },
+        ]);
+      } else {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+            icon: 'i-heroicons-film',
+            onSelect: () => emit('action', 'createProxyForFolder', entry),
+          },
+        ]);
+      }
     }
   }
 
@@ -305,18 +307,17 @@ function getContextMenuItems(entry: FsEntry) {
     const hasProxy = meta.hasProxy;
     const generatingProxy = meta.generatingProxy;
 
-    items.push([
-      {
-        label: generatingProxy
-          ? t('videoEditor.fileManager.actions.generatingProxy', 'Generating Proxy...')
-          : hasProxy
+    if (!generatingProxy) {
+      items.push([
+        {
+          label: hasProxy
             ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
             : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
-        icon: generatingProxy ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
-        disabled: generatingProxy,
-        onSelect: () => emit('action', 'createProxy', entry),
-      },
-    ]);
+          icon: 'i-heroicons-film',
+          onSelect: () => emit('action', 'createProxy', entry),
+        },
+      ]);
+    }
 
     if (generatingProxy) {
       items.push([

@@ -9,6 +9,7 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 const props = defineProps<{
   isActive: boolean;
@@ -64,12 +65,26 @@ watch(
   },
   { immediate: true },
 );
+
+function resetDefaults() {
+  workspaceStore.userSettings.exportDefaults.encoding = { ...DEFAULT_USER_SETTINGS.exportDefaults.encoding };
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="text-sm font-medium text-ui-text">
-      {{ t('videoEditor.settings.userExport', 'Export defaults') }}
+    <div class="flex items-center justify-between gap-3">
+      <div class="text-sm font-medium text-ui-text">
+        {{ t('videoEditor.settings.userExport', 'Export defaults') }}
+      </div>
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        @click="resetDefaults"
+      >
+        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+      </UButton>
     </div>
 
     <MediaEncodingSettings

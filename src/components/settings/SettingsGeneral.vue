@@ -1,14 +1,31 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+function resetDefaults() {
+  workspaceStore.userSettings.locale = DEFAULT_USER_SETTINGS.locale;
+  workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
+  workspaceStore.userSettings.stopFrames.qualityPercent = DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="text-sm font-medium text-ui-text">
-      {{ t('videoEditor.settings.userGeneral', 'General') }}
+    <div class="flex items-center justify-between gap-3">
+      <div class="text-sm font-medium text-ui-text">
+        {{ t('videoEditor.settings.userGeneral', 'General') }}
+      </div>
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        @click="resetDefaults"
+      >
+        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+      </UButton>
     </div>
 
     <UFormField :label="t('videoEditor.settings.uiLanguage', 'Interface language')">
