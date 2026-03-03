@@ -26,6 +26,7 @@ const playerRootEl = ref<HTMLElement | null>(null);
 
 let reversePlaybackTimer: number | null = null;
 let reverseLastTs = 0;
+let suppressNextPause = false;
 
 function clearReversePlaybackTimer() {
   if (reversePlaybackTimer !== null) {
@@ -53,6 +54,7 @@ function togglePlay() {
 }
 
 function pauseAndClearPlayback() {
+  suppressNextPause = true;
   clearReversePlaybackTimer();
   mediaElement.value?.pause();
 }
@@ -122,6 +124,10 @@ function onPlay() {
 }
 
 function onPause() {
+  if (suppressNextPause) {
+    suppressNextPause = false;
+    return;
+  }
   isPlaying.value = false;
   clearReversePlaybackTimer();
 }
@@ -223,6 +229,7 @@ function onPreviewPlayback(e: CustomEvent) {
   if (!shouldHandlePreviewPlaybackEvent()) return;
   const detail = (e as CustomEvent).detail as
     | { action: 'toggle' }
+    | { action: 'toggle1' }
     | { action: 'toStart' }
     | { action: 'toEnd' }
     | { action: 'set'; direction: 'forward' | 'backward'; speed: number };
@@ -230,6 +237,20 @@ function onPreviewPlayback(e: CustomEvent) {
 
   if (detail.action === 'toggle') {
     togglePlay();
+    return;
+  }
+
+  if (detail.action === 'toggle1') {
+    if (!mediaElement.value) return;
+    if (isPlaying.value || reversePlaybackTimer !== null) {
+      pauseAndClearPlayback();
+      isPlaying.value = false;
+      playbackSpeed.value = 1;
+      mediaElement.value.playbackRate = 1;
+      return;
+    }
+
+    setForwardPlaybackSpeed(1);
     return;
   }
 
