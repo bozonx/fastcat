@@ -456,6 +456,9 @@ export function useEditorHotkeys() {
       if (!canUse) return;
 
       if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+        if (speedCmd.direction === 'backward') {
+          return;
+        }
         dispatchPreviewPlayback({ action: 'set', ...speedCmd });
         return;
       }
