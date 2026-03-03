@@ -560,9 +560,11 @@ const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootD
 
 function onEntryDragStart(e: DragEvent, entry: FsEntry) {
   if (!entry.path) return;
+  if (!e.dataTransfer) return;
 
+  e.dataTransfer.effectAllowed = 'copyMove';
   const movePayload = { name: entry.name, kind: entry.kind, path: entry.path };
-  e.dataTransfer?.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
+  e.dataTransfer.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
   // Mark as internal so the global overlay is not shown
   e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 
@@ -663,16 +665,43 @@ async function onPanelDrop(e: DragEvent) {
   uiStore.isFileManagerDragging = false;
   uiStore.isGlobalDragging = false;
 
+  const targetFolder = filesPageStore.selectedFolder;
+  const targetHandle = targetFolder?.handle as FileSystemDirectoryHandle | undefined;
+  const targetPath = targetFolder?.path ?? '';
+
+  // Internal file manager move (from tree or another browser panel)
+  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+  if (moveRaw) {
+    let parsed: { path?: unknown } | null;
+    try {
+      parsed = JSON.parse(moveRaw);
+    } catch {
+      return;
+    }
+    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
+    if (!sourcePath) return;
+
+    const source = findEntryByPath(sourcePath);
+    if (!source) return;
+
+    if (targetHandle) {
+      await moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
+    } else {
+      const rootHandle = await getProjectRootDirHandle();
+      if (rootHandle) {
+        await moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
+      }
+    }
+    await loadFolderContent();
+    return;
+  }
+
+  // External (OS) files
   const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
   if (droppedFiles.length === 0) return;
 
-  const targetFolder = filesPageStore.selectedFolder;
-  if (targetFolder?.handle) {
-    await handleFiles(
-      droppedFiles,
-      targetFolder.handle as FileSystemDirectoryHandle,
-      targetFolder.path ?? '',
-    );
+  if (targetHandle) {
+    await handleFiles(droppedFiles, targetHandle, targetPath);
   } else {
     await handleFiles(droppedFiles);
   }

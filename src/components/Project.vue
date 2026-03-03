@@ -7,6 +7,7 @@ import {
   isFileTab,
   type AnyProjectTab,
   type ProjectTab,
+  type ProjectFileTab,
 } from '~/composables/project/useProjectTabs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import ProjectFiles from '~/components/project/ProjectFiles.vue';
@@ -20,10 +21,13 @@ const { t } = useI18n();
 const { tabs, activeTabId, setActiveTab, initDefaultTab, reorderTabs, addFileTab, removeFileTab } =
   useProjectTabs();
 
-/** Mutable proxy for VueDraggable v-model */
-const tabsModel = computed({
-  get: () => tabs.value as AnyProjectTab[],
-  set: (val) => reorderTabs(val),
+/** Static tabs (not reorderable via VueDraggable — use native drag) */
+const staticTabs = computed(() => tabs.value.filter((t) => !isFileTab(t)) as ProjectTab[]);
+
+/** File tabs (reorderable via VueDraggable) */
+const fileTabsModel = computed({
+  get: () => tabs.value.filter((t) => isFileTab(t)) as ProjectFileTab[],
+  set: (val) => reorderTabs([...staticTabs.value, ...val]),
 });
 
 const activeFileTab = computed(() => {
@@ -175,15 +179,10 @@ onMounted(() => {
       @dragleave="onTabBarDragLeave"
       @drop="onTabBarDrop"
     >
-      <VueDraggable
-        v-model="tabsModel"
-        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1 gran-project-tabs-container"
-        :animation="150"
-        ghost-class="tab-ghost"
-        item-key="id"
-      >
+      <!-- Static tabs (draggable out of Project → separate panel) -->
+      <div class="flex items-center h-full px-1 gap-0.5 py-1 shrink-0">
         <div
-          v-for="tab in tabsModel"
+          v-for="tab in staticTabs"
           :key="tab.id"
           :data-tab-id="tab.id"
           class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
@@ -192,26 +191,51 @@ onMounted(() => {
               ? 'bg-primary-500/15 text-primary-400'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
           "
-          :title="isFileTab(tab) ? tab.fileName : tab.label"
-          :draggable="!isFileTab(tab)"
-          @dragstart="!isFileTab(tab) ? onStaticTabDragStart($event, tab) : undefined"
+          :title="tab.label"
+          draggable="true"
+          @dragstart="onStaticTabDragStart($event, tab)"
           @click="setActiveTab(tab.id)"
         >
-          <!-- Icon -->
           <UIcon
-            :name="isFileTab(tab) ? tab.icon : (tab.icon ?? 'i-heroicons-rectangle-stack')"
+            :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
+            class="w-3.5 h-3.5 shrink-0"
+            :class="activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+          />
+          <span class="text-[10px] font-semibold uppercase tracking-wider">
+            {{ tab.label }}
+          </span>
+        </div>
+      </div>
+
+      <!-- File tabs (reorderable via VueDraggable) -->
+      <VueDraggable
+        v-model="fileTabsModel"
+        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1 gran-project-tabs-container"
+        :animation="150"
+        ghost-class="tab-ghost"
+        item-key="id"
+      >
+        <div
+          v-for="tab in fileTabsModel"
+          :key="tab.id"
+          :data-tab-id="tab.id"
+          class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
+          :class="
+            activeTabId === tab.id
+              ? 'bg-primary-500/15 text-primary-400'
+              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
+          "
+          :title="tab.fileName"
+          @click="setActiveTab(tab.id)"
+        >
+          <UIcon
+            :name="tab.icon"
             class="w-3.5 h-3.5 shrink-0"
             :class="activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
           />
 
-          <!-- Label: static tabs show text, file tabs show icon only (with tooltip via :title) -->
-          <span v-if="!isFileTab(tab)" class="text-[10px] font-semibold uppercase tracking-wider">
-            {{ tab.label }}
-          </span>
-
           <!-- Close button for file tabs -->
           <button
-            v-if="isFileTab(tab)"
             class="ml-0.5 p-0.5 rounded hover:bg-red-500/15 hover:text-red-400 transition-colors"
             :title="t('common.close', 'Close')"
             @click.stop="removeFileTab(tab.id)"
