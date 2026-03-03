@@ -32,6 +32,9 @@ const registeredTabs = ref<ProjectTab[]>([]);
 /** Order of static tab IDs (persisted) */
 const staticTabsOrder = ref<string[]>(readLocalStorageJson<string[]>(STATIC_TABS_ORDER_KEY, []));
 
+/** Static tabs that are currently detached as panels (hidden from tab bar) */
+const hiddenStaticTabs = ref<Set<string>>(new Set());
+
 /** File tabs added by drag-drop (persisted, no FileSystemHandle — resolved at runtime) */
 const fileTabs = ref<ProjectFileTab[]>(readLocalStorageJson<ProjectFileTab[]>(FILE_TABS_KEY, []));
 
@@ -60,7 +63,7 @@ export function useProjectTabs() {
    * Static tabs are sorted according to staticTabsOrder; new ones appended.
    */
   const tabs = computed<AnyProjectTab[]>(() => {
-    const statics = registeredTabs.value;
+    const statics = registeredTabs.value.filter((t) => !hiddenStaticTabs.value.has(t.id));
     const order = staticTabsOrder.value;
 
     const sortedStatics = [...statics].sort((a, b) => {
@@ -151,5 +154,17 @@ export function useProjectTabs() {
     reorderTabs,
     addFileTab,
     removeFileTab,
+    hideStaticTab,
+    showStaticTab,
   };
+}
+
+/** Hide a static tab from the tab bar (detached as a panel) */
+export function hideStaticTab(tabId: string) {
+  hiddenStaticTabs.value.add(tabId);
+}
+
+/** Show a static tab in the tab bar (panel was closed) */
+export function showStaticTab(tabId: string) {
+  hiddenStaticTabs.value.delete(tabId);
 }

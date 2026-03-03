@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, markRaw, ref, computed, watch, nextTick } from 'vue';
-import { VueDraggable } from 'vue-draggable-plus';
 import {
   useProjectTabs,
   registerProjectTab,
@@ -77,11 +76,27 @@ function onStaticTabDragStart(e: DragEvent, tab: AnyProjectTab) {
   emit('tab-drag-start', e, tab.id);
 }
 
+function onFileTabDragStart(e: DragEvent, tab: ProjectFileTab) {
+  if (!e.dataTransfer) return;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData(
+    'file-tab-drag',
+    JSON.stringify({
+      tabId: tab.id,
+      filePath: tab.filePath,
+      fileName: tab.fileName,
+      mediaType: tab.mediaType,
+    }),
+  );
+}
+
 function onTabBarDragOver(e: DragEvent) {
   const types = e.dataTransfer?.types ?? [];
   if (
     types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+    types.includes('application/json') ||
     types.includes('panel-drag') ||
+    types.includes('file-tab-drag') ||
     types.includes('static-tab-drag')
   ) {
     e.preventDefault();
@@ -100,8 +115,10 @@ function onTabBarDragLeave(e: DragEvent) {
 function onTabBarDrop(e: DragEvent) {
   isDropTarget.value = false;
   e.preventDefault();
+  // Prevent event from bubbling to editor.vue panel drop handler
+  e.stopPropagation();
 
-  // Drop from FileManager tree (internal file drag)
+  // Drop from FileManager tree/browser (internal file drag)
   const movePayloadRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   if (movePayloadRaw) {
     try {
@@ -112,6 +129,36 @@ function onTabBarDrop(e: DragEvent) {
       }
     } catch {
       // ignore malformed payload
+    }
+    return;
+  }
+
+  // Fallback: file drag via application/json (e.g. from FileBrowser grid/list)
+  const jsonPayloadRaw = e.dataTransfer?.getData('application/json');
+  if (jsonPayloadRaw) {
+    try {
+      const payload = JSON.parse(jsonPayloadRaw) as { path?: string; name?: string; kind?: string };
+      if (payload.kind === 'file' && payload.path && payload.name) {
+        const tabId = addFileTab({ filePath: payload.path, fileName: payload.name });
+        setActiveTab(tabId);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Drop from file-tab-drag (re-docking a detached file tab)
+  const fileTabRaw = e.dataTransfer?.getData('file-tab-drag');
+  if (fileTabRaw) {
+    try {
+      const payload = JSON.parse(fileTabRaw) as { filePath: string; fileName: string };
+      if (payload.filePath && payload.fileName) {
+        const tabId = addFileTab({ filePath: payload.filePath, fileName: payload.fileName });
+        setActiveTab(tabId);
+      }
+    } catch {
+      // ignore
     }
     return;
   }
@@ -192,8 +239,8 @@ onMounted(() => {
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
           "
           :title="tab.label"
-          draggable="true"
-          @dragstart="onStaticTabDragStart($event, tab)"
+          :draggable="tab.id !== 'files'"
+          @dragstart="tab.id !== 'files' ? onStaticTabDragStart($event, tab) : undefined"
           @click="setActiveTab(tab.id)"
         >
           <UIcon
@@ -207,13 +254,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- File tabs (reorderable via VueDraggable) -->
-      <VueDraggable
-        v-model="fileTabsModel"
-        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1 gran-project-tabs-container"
-        :animation="150"
-        ghost-class="tab-ghost"
-        item-key="id"
+      <!-- File tabs (draggable out of Project → separate panel) -->
+      <div
+        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
       >
         <div
           v-for="tab in fileTabsModel"
@@ -226,6 +269,8 @@ onMounted(() => {
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
           "
           :title="tab.fileName"
+          draggable="true"
+          @dragstart="onFileTabDragStart($event, tab)"
           @click="setActiveTab(tab.id)"
         >
           <UIcon
@@ -243,7 +288,7 @@ onMounted(() => {
             <UIcon name="i-heroicons-x-mark" class="w-3 h-3" />
           </button>
         </div>
-      </VueDraggable>
+      </div>
 
       <!-- Drop hint when dragging over -->
       <div
@@ -279,11 +324,5 @@ onMounted(() => {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-.tab-ghost {
-  opacity: 0.3;
-  background: rgba(var(--color-primary-500), 0.1);
-  border-radius: 4px;
 }
 </style>
