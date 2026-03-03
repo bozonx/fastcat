@@ -48,6 +48,13 @@ const {
   startResizeTransition,
 } = useTimelineItemResize(() => props.tracks);
 
+const timelineWidthPx = computed(() => {
+  const d = timelineStore.duration;
+  const c = timelineStore.currentTime;
+  const maxUs = Math.max(d, c) + 30_000_000; // 30 seconds padding
+  return timeUsToPx(maxUs, timelineStore.timelineZoom);
+});
+
 const movePreviewResolved = computed(() => {
   const mp = props.movePreview;
   if (!mp) return null;
@@ -148,6 +155,7 @@ function selectTransition(
 <template>
   <div
     class="flex flex-col divide-y divide-ui-border min-h-full"
+    :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
     @pointerdown="
       if ($event.button !== 1 && $event.target === $event.currentTarget) {
         timelineStore.clearSelection();

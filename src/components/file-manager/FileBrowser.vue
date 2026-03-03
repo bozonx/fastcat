@@ -595,7 +595,7 @@ function onCardSizeChange(e: Event) {
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-          @click="loadProjectDirectory()"
+          @click="async () => { await loadProjectDirectory(); await loadFolderContent(); }"
         />
         <UButton
           :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
@@ -870,19 +870,42 @@ function onCardSizeChange(e: Event) {
                     'bg-primary-500/10':
                       selectionStore.selectedEntity?.source === 'fileManager' &&
                       selectionStore.selectedEntity.path === entry.path,
-                    'border-l-2 border-l-red-500':
-                      entry.path &&
-                      timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
+                    'opacity-30': entry.name.startsWith('.'),
+                    'text-(--color-success)!': fileManager.mediaCache.hasProxy(entry.path || '') && !proxyStore.generatingProxies.has(entry.path || ''),
+                    'text-amber-400!': proxyStore.generatingProxies.has(entry.path || '') || isGeneratingProxyInDirectory(entry),
                   }"
                   @click="handleEntryClick(entry)"
+                  @dblclick="entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined"
                 >
                   <td class="py-2 px-3 flex items-center gap-2">
-                    <UIcon
-                      :name="getFileIcon(entry)"
-                      class="w-4 h-4 shrink-0"
-                      :class="entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted'"
-                    />
-                    <span class="truncate max-w-50" :title="entry.name">{{ entry.name }}</span>
+                    <div
+                      class="h-4 flex items-center justify-center shrink-0"
+                      :class="[
+                        entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length ? 'border-b-2 border-red-500' : '',
+                      ]"
+                    >
+                      <UIcon
+                        :name="getFileIcon(entry)"
+                        class="w-4 h-4 transition-colors"
+                        :class="[
+                          entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
+                          entry.name.startsWith('.') ? 'opacity-30' : '',
+                          fileManager.mediaCache.hasProxy(entry.path || '') && !proxyStore.generatingProxies.has(entry.path || '') ? 'text-(--color-success)!' : '',
+                          proxyStore.generatingProxies.has(entry.path || '') || isGeneratingProxyInDirectory(entry) ? 'text-amber-400/90' : ''
+                        ]"
+                      />
+                    </div>
+                    <span 
+                      class="truncate max-w-50 transition-colors" 
+                      :class="[
+                        entry.name.startsWith('.') ? 'opacity-30' : '',
+                        fileManager.mediaCache.hasProxy(entry.path || '') && !proxyStore.generatingProxies.has(entry.path || '') ? 'text-(--color-success)!' : '',
+                        proxyStore.generatingProxies.has(entry.path || '') || isGeneratingProxyInDirectory(entry) ? 'text-amber-400!' : ''
+                      ]"
+                      :title="entry.name"
+                    >
+                      {{ entry.name }}
+                    </span>
                   </td>
                   <td class="py-2 px-3 text-ui-text-muted">
                     {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
@@ -919,6 +942,49 @@ function onCardSizeChange(e: Event) {
         >
       </div>
     </div>
+
+    <!-- Modals -->
+    <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
+    <RenameModal
+      v-model:open="isRenameModalOpen"
+      :initial-name="renameTarget?.name"
+      @rename="handleRename"
+    />
+    <UiConfirmModal
+      v-model:open="isDeleteConfirmModalOpen"
+      :title="t('common.delete', 'Delete')"
+      :description="
+        t(
+          'common.confirmDelete',
+          'Are you sure you want to delete this? This action cannot be undone.',
+        )
+      "
+      color="error"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="handleDeleteConfirm"
+    >
+      <div>
+        <div v-show="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTarget?.name }}
+        </div>
+        <div v-if="deleteTarget?.path" class="mt-1 text-xs text-ui-text-muted break-all">
+          {{
+            deleteTarget.kind === 'directory'
+              ? t('common.folder', 'Folder')
+              : t('common.file', 'File')
+          }}
+          ·
+          {{ deleteTarget.path }}
+        </div>
+      </div>
+    </UiConfirmModal>
+    <input
+      ref="directoryUploadInput"
+      type="file"
+      multiple
+      class="hidden"
+      @change="() => {}"
+    />
   </div>
 </template>
 

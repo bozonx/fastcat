@@ -30,6 +30,12 @@ const DEFAULT_TRACK_HEIGHT = 40;
 const MIN_TRACK_HEIGHT = 32;
 const MAX_TRACK_HEIGHT = 300;
 
+const labelsScrollContainer = ref<HTMLElement | null>(null);
+
+defineExpose({
+  labelsScrollContainer,
+});
+
 const resizingTrackId = ref<string | null>(null);
 const startY = ref(0);
 const startHeight = ref(0);
@@ -443,83 +449,88 @@ function toggleClipSnapMode() {
         </div>
       </div>
     </UContextMenu>
-    <div class="flex flex-col divide-y divide-ui-border flex-1">
-      <UContextMenu
-        v-for="track in tracks"
-        :key="track.id"
-        :items="getTrackContextMenuItems(track)"
-      >
-        <div
-          class="flex items-center px-2 text-xs font-medium cursor-pointer select-none relative group"
-          :class="
-            selectedTrackId === track.id
-              ? 'text-ui-text bg-ui-bg-accent'
-              : timelineStore.hoveredTrackId === track.id
-                ? 'text-ui-text bg-ui-bg-elevated/80'
-                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated'
-          "
-          :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
-          draggable="true"
-          @dragstart="onDragStart($event, track)"
-          @dragover.prevent
-          @drop.prevent="onDrop($event, track)"
-          @click="onSelectTrack(track.id)"
-          @contextmenu="onSelectTrack(track.id)"
-          @wheel="onTrackWheel($event, track)"
-          @mouseenter="timelineStore.hoveredTrackId = track.id"
-          @mouseleave="timelineStore.hoveredTrackId = null"
+    <div
+      ref="labelsScrollContainer"
+      class="flex-1 overflow-y-hidden overflow-x-hidden"
+    >
+      <div class="flex flex-col divide-y divide-ui-border min-h-full">
+        <UContextMenu
+          v-for="track in tracks"
+          :key="track.id"
+          :items="getTrackContextMenuItems(track)"
         >
-          <span class="truncate" :title="track.name">{{ track.name }}</span>
+          <div
+            class="flex items-center px-2 text-xs font-medium cursor-pointer select-none relative group"
+            :class="
+              selectedTrackId === track.id
+                ? 'text-ui-text bg-ui-bg-accent'
+                : timelineStore.hoveredTrackId === track.id
+                  ? 'text-ui-text bg-ui-bg-elevated/80'
+                  : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated'
+            "
+            :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
+            draggable="true"
+            @dragstart="onDragStart($event, track)"
+            @dragover.prevent
+            @drop.prevent="onDrop($event, track)"
+            @click="onSelectTrack(track.id)"
+            @contextmenu="onSelectTrack(track.id)"
+            @wheel="onTrackWheel($event, track)"
+            @mouseenter="timelineStore.hoveredTrackId = track.id"
+            @mouseleave="timelineStore.hoveredTrackId = null"
+          >
+            <span class="truncate" :title="track.name">{{ track.name }}</span>
 
-          <div class="ml-auto flex items-center gap-1">
-            <UButton
-              v-if="track.kind === 'video'"
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-              :aria-label="
-                t('granVideoEditor.timeline.toggleTrackVisibility', 'Toggle track visibility')
-              "
-              @pointerdown.prevent.stop
-              @mousedown.prevent.stop
-              @click="toggleVideoHidden(track, $event)"
-            />
+            <div class="ml-auto flex items-center gap-1">
+              <UButton
+                v-if="track.kind === 'video'"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                :aria-label="
+                  t('granVideoEditor.timeline.toggleTrackVisibility', 'Toggle track visibility')
+                "
+                @pointerdown.prevent.stop
+                @mousedown.prevent.stop
+                @click="toggleVideoHidden(track, $event)"
+              />
 
-            <UButton
-              size="xs"
-              variant="ghost"
-              :color="track.audioMuted ? 'error' : 'neutral'"
-              :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-              :aria-label="t('granVideoEditor.timeline.toggleTrackMute', 'Toggle track mute')"
-              @pointerdown.prevent.stop
-              @mousedown.prevent.stop
-              @click="toggleAudioMuted(track, $event)"
-            />
+              <UButton
+                size="xs"
+                variant="ghost"
+                :color="track.audioMuted ? 'error' : 'neutral'"
+                :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+                :aria-label="t('granVideoEditor.timeline.toggleTrackMute', 'Toggle track mute')"
+                @pointerdown.prevent.stop
+                @mousedown.prevent.stop
+                @click="toggleAudioMuted(track, $event)"
+              />
 
-            <UButton
-              size="xs"
-              variant="ghost"
-              :color="track.audioSolo ? 'primary' : 'neutral'"
-              icon="i-heroicons-musical-note"
-              :aria-label="t('granVideoEditor.timeline.toggleTrackSolo', 'Toggle track solo')"
-              @pointerdown.prevent.stop
-              @mousedown.prevent.stop
-              @click="toggleAudioSolo(track, $event)"
+              <UButton
+                size="xs"
+                variant="ghost"
+                :color="track.audioSolo ? 'primary' : 'neutral'"
+                icon="i-heroicons-musical-note"
+                :aria-label="t('granVideoEditor.timeline.toggleTrackSolo', 'Toggle track solo')"
+                @pointerdown.prevent.stop
+                @mousedown.prevent.stop
+                @click="toggleAudioSolo(track, $event)"
+              />
+            </div>
+
+            <!-- Bottom resize handle -->
+            <div
+              class="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-20 hover:bg-primary-500/50 transition-colors"
+              @mousedown.stop.prevent="onResizeStart(track.id, $event)"
             />
           </div>
+        </UContextMenu>
 
-          <!-- Bottom resize handle -->
-          <div
-            class="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-20 hover:bg-primary-500/50 transition-colors"
-            @mousedown.stop.prevent="onResizeStart(track.id, $event)"
-          />
-        </div>
-      </UContextMenu>
-
-      <UContextMenu :items="emptyAreaContextMenuItems">
-        <div class="flex-1" />
-      </UContextMenu>
+        <UContextMenu :items="emptyAreaContextMenuItems" class="flex-1">
+          <div class="w-full h-full" />
+        </UContextMenu>
+      </div>
     </div>
   </div>
 

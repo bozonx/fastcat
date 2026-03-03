@@ -334,6 +334,7 @@ watch(
           @pause="onPause"
           @ended="onPause"
           @click="togglePlay"
+          @dblclick.prevent="reset"
           @contextmenu.prevent
         ></video>
       </div>
