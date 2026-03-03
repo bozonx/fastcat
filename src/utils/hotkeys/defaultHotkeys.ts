@@ -7,6 +7,7 @@ export type HotkeyCommandId =
   | 'general.undo'
   | 'general.redo'
   | 'general.mute'
+  | 'general.addMarker'
   | 'general.volumeUp'
   | 'general.volumeDown'
   | 'general.fullscreen'
@@ -87,6 +88,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
     { id: 'general.mute', groupId: 'general', title: 'Toggle Mute' },
+    { id: 'general.addMarker', groupId: 'general', title: 'Create marker at playhead' },
     { id: 'general.volumeUp', groupId: 'general', title: 'Volume Up' },
     { id: 'general.volumeDown', groupId: 'general', title: 'Volume Down' },
 
@@ -196,6 +198,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.undo': [`${Mod}+Z`],
     'general.redo': [`${Mod}+Shift+Z`],
     'general.mute': [`${Mod}+Q`],
+    'general.addMarker': ['M'],
     'general.volumeUp': [`${Mod}+R`],
     'general.volumeDown': [`${Mod}+E`],
 

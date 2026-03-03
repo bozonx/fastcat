@@ -42,8 +42,13 @@ function getStepPrecision(step: number): number {
   return stepAsString.length - dotIndex - 1;
 }
 
-function onWheel(event: WheelEvent) {
-  const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+function onWheel(event: Event) {
+  const e = event as WheelEvent;
+  (e as any).preventDefault?.();
+
+  const deltaY = Number((e as any).deltaY ?? 0);
+  const deltaX = Number((e as any).deltaX ?? 0);
+  const delta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
   if (!Number.isFinite(delta) || delta === 0) return;
 
   const direction = delta < 0 ? 1 : -1;
@@ -51,9 +56,12 @@ function onWheel(event: WheelEvent) {
   const wheelStep = baseStep * Math.max(1, props.wheelStepMultiplier);
   const precision = getStepPrecision(baseStep);
 
-  const next = value.value + direction * wheelStep;
+  const current = Number(props.modelValue);
+  const safeCurrent = Number.isFinite(current) ? current : props.min;
+  const next = safeCurrent + direction * wheelStep;
   const rounded = Number(next.toFixed(precision));
-  value.value = rounded;
+  const clamped = Math.min(props.max, Math.max(props.min, rounded));
+  emit('update:modelValue', clamped);
 }
 
 function resetToDefault() {
@@ -87,7 +95,7 @@ function onPointerDownCapture(event: PointerEvent) {
   -->
   <div
     class="relative py-3 -my-3"
-    @wheel.prevent="onWheel"
+    @wheel="onWheel"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >

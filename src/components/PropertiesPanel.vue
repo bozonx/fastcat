@@ -232,7 +232,7 @@ function handleDeleteClip() {
 
           <FileProperties
             v-else-if="displayMode === 'file' && selectedFsEntry"
-            :entry="selectedFsEntry"
+            :selected-fs-entry="selectedFsEntry"
             :has-proxy="hasProxy"
             :preview-mode="previewMode"
             @update:preview-mode="(m) => (previewMode = m)"
