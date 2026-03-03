@@ -9,9 +9,19 @@ export type HotkeyCommandId =
   | 'general.mute'
   | 'general.volumeUp'
   | 'general.volumeDown'
-  | 'timeline.zoomIn'
-  | 'timeline.zoomOut'
-  | 'timeline.zoomReset'
+  | 'general.fullscreen'
+  | 'general.zoomIn'
+  | 'general.zoomOut'
+  | 'general.zoomReset'
+  | 'general.tab1'
+  | 'general.tab2'
+  | 'general.tab3'
+  | 'general.tab4'
+  | 'general.tab5'
+  | 'general.tab6'
+  | 'general.tab7'
+  | 'general.tab8'
+  | 'general.tab9'
   | 'timeline.trimToPlayheadLeft'
   | 'timeline.trimToPlayheadRight'
   | 'timeline.rippleTrimLeft'
@@ -30,15 +40,6 @@ export type HotkeyCommandId =
   | 'timeline.toggleVisibilityTrack'
   | 'timeline.toggleMuteTrack'
   | 'timeline.toggleSoloTrack'
-  | 'timeline.tab1'
-  | 'timeline.tab2'
-  | 'timeline.tab3'
-  | 'timeline.tab4'
-  | 'timeline.tab5'
-  | 'timeline.tab6'
-  | 'timeline.tab7'
-  | 'timeline.tab8'
-  | 'timeline.tab9'
   | 'playback.toggle'
   | 'playback.toStart'
   | 'playback.toEnd'
@@ -85,9 +86,20 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.volumeDown', groupId: 'general', title: 'Volume Down' },
     { id: 'playback.toggle', groupId: 'general', title: 'Play / pause (normal speed)' },
 
-    { id: 'timeline.zoomIn', groupId: 'timeline', title: 'Zoom in' },
-    { id: 'timeline.zoomOut', groupId: 'timeline', title: 'Zoom out' },
-    { id: 'timeline.zoomReset', groupId: 'timeline', title: 'Reset zoom' },
+    { id: 'general.fullscreen', groupId: 'general', title: 'Fullscreen' },
+    { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
+    { id: 'general.zoomOut', groupId: 'general', title: 'Zoom out' },
+    { id: 'general.zoomReset', groupId: 'general', title: 'Reset zoom' },
+    { id: 'general.tab1', groupId: 'general', title: 'Tab 1' },
+    { id: 'general.tab2', groupId: 'general', title: 'Tab 2' },
+    { id: 'general.tab3', groupId: 'general', title: 'Tab 3' },
+    { id: 'general.tab4', groupId: 'general', title: 'Tab 4' },
+    { id: 'general.tab5', groupId: 'general', title: 'Tab 5' },
+    { id: 'general.tab6', groupId: 'general', title: 'Tab 6' },
+    { id: 'general.tab7', groupId: 'general', title: 'Tab 7' },
+    { id: 'general.tab8', groupId: 'general', title: 'Tab 8' },
+    { id: 'general.tab9', groupId: 'general', title: 'Tab 9' },
+
     {
       id: 'timeline.trimToPlayheadLeft',
       groupId: 'timeline',
@@ -150,15 +162,6 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'timeline.toggleVisibilityTrack', groupId: 'timeline', title: 'Toggle track visibility' },
     { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Toggle track mute' },
     { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Toggle track solo' },
-    { id: 'timeline.tab1', groupId: 'timeline', title: 'Timeline Tab 1' },
-    { id: 'timeline.tab2', groupId: 'timeline', title: 'Timeline Tab 2' },
-    { id: 'timeline.tab3', groupId: 'timeline', title: 'Timeline Tab 3' },
-    { id: 'timeline.tab4', groupId: 'timeline', title: 'Timeline Tab 4' },
-    { id: 'timeline.tab5', groupId: 'timeline', title: 'Timeline Tab 5' },
-    { id: 'timeline.tab6', groupId: 'timeline', title: 'Timeline Tab 6' },
-    { id: 'timeline.tab7', groupId: 'timeline', title: 'Timeline Tab 7' },
-    { id: 'timeline.tab8', groupId: 'timeline', title: 'Timeline Tab 8' },
-    { id: 'timeline.tab9', groupId: 'timeline', title: 'Timeline Tab 9' },
 
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
@@ -190,9 +193,20 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.volumeUp': ['Ctrl+R'],
     'general.volumeDown': ['Ctrl+E'],
 
-    'timeline.zoomIn': ['='],
-    'timeline.zoomOut': ['-'],
-    'timeline.zoomReset': ['0', '.'],
+    'general.fullscreen': ['Ctrl+W'],
+    'general.zoomIn': ['='],
+    'general.zoomOut': ['-'],
+    'general.zoomReset': ['0', '.'],
+    'general.tab1': ['1'],
+    'general.tab2': ['2'],
+    'general.tab3': ['3'],
+    'general.tab4': ['4'],
+    'general.tab5': ['5'],
+    'general.tab6': ['6'],
+    'general.tab7': ['7'],
+    'general.tab8': ['8'],
+    'general.tab9': ['9'],
+
     'timeline.trimToPlayheadLeft': ['V'],
     'timeline.trimToPlayheadRight': ['C'],
     'timeline.rippleTrimLeft': ['E'],
@@ -211,15 +225,6 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.toggleVisibilityTrack': ['Shift+W'],
     'timeline.toggleMuteTrack': ['Shift+Q'],
     'timeline.toggleSoloTrack': ['B'],
-    'timeline.tab1': ['1'],
-    'timeline.tab2': ['2'],
-    'timeline.tab3': ['3'],
-    'timeline.tab4': ['4'],
-    'timeline.tab5': ['5'],
-    'timeline.tab6': ['6'],
-    'timeline.tab7': ['7'],
-    'timeline.tab8': ['8'],
-    'timeline.tab9': ['9'],
 
     'playback.toggle': ['Space'],
     'playback.toStart': ['Home'],

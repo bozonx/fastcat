@@ -148,6 +148,70 @@ export function useEditorHotkeys() {
       return;
     }
 
+    if (cmd === 'general.fullscreen') {
+      const { useEditorViewStore } = await import('~/stores/editorView.store');
+      const viewStore = useEditorViewStore();
+
+      if (focusStore.effectiveFocus === 'right') {
+        const entity = selectionStore.selectedEntity;
+        if (entity?.source === 'fileManager' && entity.kind === 'file') {
+          // Send event to open modal in FileProperties / FilePreview
+          window.dispatchEvent(new CustomEvent('gran-preview-fullscreen'));
+          return;
+        }
+      }
+
+      viewStore.goToFullscreen();
+      return;
+    }
+
+    if (cmd === 'general.zoomIn') {
+      // Zoom logic depends on focus
+      if (focusStore.effectiveFocus === 'timeline') {
+        startZoomHotkeyHold({ step: 3, keyCode: e.code });
+      } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+        // We'll dispatch a custom event that MediaPlayer/ImageViewer can listen to
+        window.dispatchEvent(new CustomEvent('gran-zoom', { detail: { dir: 1 } }));
+      } else if (focusStore.effectiveFocus === 'monitor') {
+        window.dispatchEvent(new CustomEvent('gran-zoom', { detail: { dir: 1 } }));
+      }
+      return;
+    }
+
+    if (cmd === 'general.zoomOut') {
+      if (focusStore.effectiveFocus === 'timeline') {
+        startZoomHotkeyHold({ step: -3, keyCode: e.code });
+      } else {
+        window.dispatchEvent(new CustomEvent('gran-zoom', { detail: { dir: -1 } }));
+      }
+      return;
+    }
+
+    if (cmd === 'general.zoomReset') {
+      if (focusStore.effectiveFocus === 'timeline') {
+        timelineStore.setTimelineZoom(50);
+      } else {
+        window.dispatchEvent(new CustomEvent('gran-zoom-reset'));
+      }
+      return;
+    }
+
+    // --- Timeline Tabs ---
+    if (cmd.startsWith('general.tab')) {
+      const tabIndexStr = cmd.replace('general.tab', '');
+      const tabIndex = parseInt(tabIndexStr, 10);
+      if (!isNaN(tabIndex)) {
+        const openPaths = projectStore.projectSettings.timelines.openPaths;
+        if (tabIndex > 0 && tabIndex <= openPaths.length) {
+          const path = openPaths[tabIndex - 1];
+          if (path) {
+            void loadTimeline(path);
+          }
+        }
+      }
+      return;
+    }
+
     if (cmd === 'timeline.trimToPlayheadLeft') {
       if (!focusStore.canUseTimelineHotkeys) return;
       void timelineStore.trimToPlayheadLeftNoRipple();
@@ -217,24 +281,6 @@ export function useEditorHotkeys() {
     if (cmd === 'timeline.splitAllAtPlayhead') {
       if (!focusStore.canUseTimelineHotkeys) return;
       void timelineStore.splitAllClipsAtPlayhead();
-      return;
-    }
-
-    if (cmd === 'timeline.zoomIn') {
-      if (!focusStore.canUseTimelineHotkeys) return;
-      startZoomHotkeyHold({ step: 3, keyCode: e.code });
-      return;
-    }
-
-    if (cmd === 'timeline.zoomOut') {
-      if (!focusStore.canUseTimelineHotkeys) return;
-      startZoomHotkeyHold({ step: -3, keyCode: e.code });
-      return;
-    }
-
-    if (cmd === 'timeline.zoomReset') {
-      if (!focusStore.canUseTimelineHotkeys) return;
-      timelineStore.setTimelineZoom(50);
       return;
     }
 

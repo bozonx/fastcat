@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 
 const props = defineProps<{
@@ -24,6 +24,7 @@ const {
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onCustomZoom,
 } = useImagePanZoom(containerRef);
 
 const imageStyle = computed(() => ({
@@ -51,13 +52,32 @@ function onClick(e: MouseEvent) {
     emit('open-modal');
   }
 }
+
+onMounted(() => {
+  window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number }>) => {
+    if (document.activeElement?.closest('.image-viewer-container')) {
+      onCustomZoom(e);
+    }
+  }) as EventListener);
+  window.addEventListener('gran-zoom-reset', () => {
+    if (document.activeElement?.closest('.image-viewer-container')) {
+      reset();
+    }
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('gran-zoom', onCustomZoom as EventListener);
+  window.removeEventListener('gran-zoom-reset', reset);
+});
 </script>
 
 <template>
   <UContextMenu :items="contextMenuItems" class="w-full h-full">
     <div
       ref="containerRef"
-      class="flex items-center justify-center w-full h-full bg-[#1a1a1a] overflow-hidden p-4 relative select-none"
+      class="image-viewer-container flex items-center justify-center w-full h-full bg-[#1a1a1a] overflow-hidden p-4 relative select-none outline-none"
+      tabindex="-1"
       @wheel="onWheel"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
