@@ -47,9 +47,12 @@ async function confirmClearWorkspaceVardata() {
 }
 
 function resetDefaults() {
-  workspaceStore.workspaceSettings.proxyStorageLimitBytes = DEFAULT_WORKSPACE_SETTINGS.proxyStorageLimitBytes;
-  workspaceStore.workspaceSettings.cacheStorageLimitBytes = DEFAULT_WORKSPACE_SETTINGS.cacheStorageLimitBytes;
-  workspaceStore.workspaceSettings.thumbnailsStorageLimitBytes = DEFAULT_WORKSPACE_SETTINGS.thumbnailsStorageLimitBytes;
+  workspaceStore.workspaceSettings.proxyStorageLimitBytes =
+    DEFAULT_WORKSPACE_SETTINGS.proxyStorageLimitBytes;
+  workspaceStore.workspaceSettings.cacheStorageLimitBytes =
+    DEFAULT_WORKSPACE_SETTINGS.cacheStorageLimitBytes;
+  workspaceStore.workspaceSettings.thumbnailsStorageLimitBytes =
+    DEFAULT_WORKSPACE_SETTINGS.thumbnailsStorageLimitBytes;
 }
 </script>
 
@@ -59,12 +62,7 @@ function resetDefaults() {
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
       </div>
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="ghost"
-        @click="resetDefaults"
-      >
+      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>

@@ -55,12 +55,18 @@ function onClick(e: MouseEvent) {
 
 onMounted(() => {
   window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number; target?: string }>) => {
-    if (e.detail?.target === 'preview' || document.activeElement?.closest('.image-viewer-container')) {
+    if (
+      e.detail?.target === 'preview' ||
+      document.activeElement?.closest('.image-viewer-container')
+    ) {
       onCustomZoom(e);
     }
   }) as EventListener);
   window.addEventListener('gran-zoom-reset', ((e: CustomEvent<{ target?: string }>) => {
-    if (e.detail?.target === 'preview' || document.activeElement?.closest('.image-viewer-container')) {
+    if (
+      e.detail?.target === 'preview' ||
+      document.activeElement?.closest('.image-viewer-container')
+    ) {
       reset();
     }
   }) as EventListener);

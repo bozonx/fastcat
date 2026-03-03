@@ -8,7 +8,8 @@ const workspaceStore = useWorkspaceStore();
 function resetDefaults() {
   workspaceStore.userSettings.locale = DEFAULT_USER_SETTINGS.locale;
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
-  workspaceStore.userSettings.stopFrames.qualityPercent = DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+  workspaceStore.userSettings.stopFrames.qualityPercent =
+    DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
 }
 </script>
 
@@ -18,12 +19,7 @@ function resetDefaults() {
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userGeneral', 'General') }}
       </div>
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="ghost"
-        @click="resetDefaults"
-      >
+      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>

@@ -272,7 +272,7 @@ async function handleConfirm() {
           exportProgress.value = progress;
         },
       );
-      
+
       exportSuccess = true;
       rememberExportedFilename(outputFilename.value);
 
