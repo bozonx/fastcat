@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import TimecodeInput from '~/components/common/TimecodeInput.vue';
 
 const props = defineProps<{
   markerId: string;
@@ -50,7 +51,7 @@ function handleUpdateColor(val: string) {
 
 function handleUpdateStartTime(val: number | string) {
   if (!marker.value) return;
-  const newStartUs = Math.max(0, Math.round(Number(val) * 1_000_000));
+  const newStartUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
   if (newStartUs === marker.value.timeUs) return;
 
   const patch: any = { timeUs: newStartUs };
@@ -65,7 +66,7 @@ function handleUpdateStartTime(val: number | string) {
 
 function handleUpdateEndTime(val: number | string) {
   if (!marker.value || !isZone.value) return;
-  const newEndUs = Math.max(0, Math.round(Number(val) * 1_000_000));
+  const newEndUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
   const currentStartUs = marker.value.timeUs;
   
   if (newEndUs <= currentStartUs) return;
@@ -136,23 +137,17 @@ function handleConvertMarker() {
       </div>
 
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ isZone ? t('common.start', 'Start Time') : t('common.position', 'Position') }} (s)</span>
-        <UInput
-          :model-value="marker.timeUs / 1_000_000"
-          size="sm"
-          type="number"
-          step="0.01"
+        <span class="text-xs text-ui-text-muted">{{ isZone ? t('common.start', 'Start Time') : t('common.position', 'Position') }}</span>
+        <TimecodeInput
+          :model-value="marker.timeUs"
           @update:model-value="handleUpdateStartTime"
         />
       </div>
 
       <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }} (s)</span>
-        <UInput
-          :model-value="(marker.timeUs + (marker.durationUs || 0)) / 1_000_000"
-          size="sm"
-          type="number"
-          step="0.01"
+        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }}</span>
+        <TimecodeInput
+          :model-value="marker.timeUs + (marker.durationUs || 0)"
           @update:model-value="handleUpdateEndTime"
         />
       </div>

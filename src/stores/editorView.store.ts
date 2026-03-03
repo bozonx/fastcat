@@ -279,6 +279,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     currentView,
     timelineHeight,
     cutPanels,
+    insertPanelAt,
     addTextPanel,
     addMediaPanel,
     removePanel,

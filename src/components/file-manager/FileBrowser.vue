@@ -22,6 +22,13 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import {
+  useDraggedFile,
+  INTERNAL_DRAG_TYPE,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
+import type { DraggedFileData } from '~/composables/useDraggedFile';
+import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -39,8 +46,11 @@ const {
   renameEntry,
   deleteEntry,
   handleFiles,
+  moveEntry,
+  findEntryByPath,
 } = fileManager;
 const { t } = useI18n();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const folderEntries = ref<FsEntry[]>([]);
 const isLoading = ref(false);
@@ -533,10 +543,151 @@ function onCardSizeChange(e: Event) {
     filesPageStore.setGridCardSize(GRID_SIZES[value] || 120);
   }
 }
+
+// --- Drag-and-drop within the browser panel ---
+
+const isDragOverPanel = ref(false);
+const dragOverEntryPath = ref<string | null>(null);
+
+const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
+  {
+    getProjectRootDirHandle,
+    findEntryByPath: (path) => findEntryByPath(path),
+    handleFiles,
+    moveEntry: (params) => moveEntry(params),
+  },
+);
+
+function onEntryDragStart(e: DragEvent, entry: FsEntry) {
+  if (!entry.path) return;
+
+  const movePayload = { name: entry.name, kind: entry.kind, path: entry.path };
+  e.dataTransfer?.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
+  // Mark as internal so the global overlay is not shown
+  e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
+
+  if (entry.kind !== 'file') return;
+
+  const isTimeline = entry.name.toLowerCase().endsWith('.otio');
+  const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
+  const data: DraggedFileData = { name: entry.name, kind, path: entry.path };
+  setDraggedFile(data);
+  e.dataTransfer?.setData('application/json', JSON.stringify(data));
+}
+
+function onEntryDragEnd() {
+  clearDraggedFile();
+  dragOverEntryPath.value = null;
+}
+
+function isDropTargetDir(entry: FsEntry): boolean {
+  return entry.kind === 'directory';
+}
+
+function onEntryDragOver(e: DragEvent, entry: FsEntry) {
+  if (!isDropTargetDir(entry)) return;
+  const types = e.dataTransfer?.types;
+  if (!types) return;
+  if (!types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) && !types.includes('Files')) return;
+  dragOverEntryPath.value = entry.path ?? null;
+  e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
+}
+
+function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
+  if (dragOverEntryPath.value !== (entry.path ?? null)) return;
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
+    dragOverEntryPath.value = null;
+  }
+}
+
+async function onEntryDrop(e: DragEvent, entry: FsEntry) {
+  if (!isDropTargetDir(entry)) return;
+  e.stopPropagation();
+  dragOverEntryPath.value = null;
+
+  // Snapshot synchronously before any await
+  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+  const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+
+  const targetHandle = entry.handle as FileSystemDirectoryHandle;
+  const targetPath = entry.path ?? '';
+
+  if (hasFiles && droppedFiles.length > 0) {
+    await handleFiles(droppedFiles, targetHandle, targetPath);
+    await loadFolderContent();
+    return;
+  }
+
+  if (!moveRaw) return;
+
+  let parsed: { path?: unknown } | null;
+  try {
+    parsed = JSON.parse(moveRaw);
+  } catch {
+    return;
+  }
+
+  const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
+  if (!sourcePath || sourcePath === targetPath) return;
+
+  const source = findEntryByPath(sourcePath);
+  if (!source) return;
+
+  await moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
+  await loadFolderContent();
+}
+
+// Drop for external (OS) files onto the current folder panel background
+function onPanelDragOver(e: DragEvent) {
+  const types = e.dataTransfer?.types;
+  if (!types) return;
+  if (types.includes('Files') || types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) {
+    isDragOverPanel.value = true;
+    uiStore.isFileManagerDragging = true;
+    e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
+  }
+}
+
+function onPanelDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
+    isDragOverPanel.value = false;
+    uiStore.isFileManagerDragging = false;
+  }
+}
+
+async function onPanelDrop(e: DragEvent) {
+  isDragOverPanel.value = false;
+  uiStore.isFileManagerDragging = false;
+  uiStore.isGlobalDragging = false;
+
+  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+  if (droppedFiles.length === 0) return;
+
+  const targetFolder = filesPageStore.selectedFolder;
+  if (targetFolder?.handle) {
+    await handleFiles(
+      droppedFiles,
+      targetFolder.handle as FileSystemDirectoryHandle,
+      targetFolder.path ?? '',
+    );
+  } else {
+    await handleFiles(droppedFiles);
+  }
+  await loadFolderContent();
+}
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg relative overflow-hidden">
+  <div
+    class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
+    :class="{ 'bg-primary-500/5 outline-2 outline-primary-500/30 -outline-offset-2': isDragOverPanel }"
+    @dragover.prevent="onPanelDragOver"
+    @dragleave="onPanelDragLeave"
+    @drop.prevent="onPanelDrop"
+  >
     <!-- Navigation bar -->
     <div
       v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''"
@@ -700,7 +851,7 @@ function onCardSizeChange(e: Event) {
           </div>
 
           <!-- Grid View -->
-          <div v-else-if="filesPageStore.viewMode === 'grid'" class="flex flex-wrap gap-2">
+          <div v-else-if="filesPageStore.viewMode === 'grid'" class="flex flex-wrap gap-2 content-start">
             <UContextMenu
               v-for="entry in sortedEntries"
               :key="entry.path"
@@ -715,8 +866,15 @@ function onCardSizeChange(e: Event) {
                   'border-b-2 border-b-red-500':
                     entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
                   'opacity-30': entry.name.startsWith('.'),
+                  'ring-2 ring-primary-500 bg-primary-500/20': dragOverEntryPath === (entry.path ?? null),
                 }"
                 :style="{ width: `${filesPageStore.gridCardSize}px` }"
+                :draggable="true"
+                @dragstart="onEntryDragStart($event, entry)"
+                @dragend="onEntryDragEnd"
+                @dragover.prevent="onEntryDragOver($event, entry)"
+                @dragleave="onEntryDragLeave($event, entry)"
+                @drop.prevent="onEntryDrop($event, entry)"
                 @click="handleEntryClick(entry)"
                 @dblclick="
                   entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
@@ -786,6 +944,19 @@ function onCardSizeChange(e: Event) {
                 </span>
               </div>
             </UContextMenu>
+
+            <!-- Root drop zone for grid view -->
+            <div
+              class="w-full flex items-center justify-center min-h-12 mt-2 rounded-lg transition-colors"
+              :class="{ 'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver }"
+              @dragover.prevent="onRootDragOver"
+              @dragleave.prevent="onRootDragLeave"
+              @drop.prevent="onRootDrop"
+            >
+              <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
+                {{ t('videoEditor.fileManager.actions.dropToRootHint', 'Release to upload into the project root') }}
+              </p>
+            </div>
           </div>
 
           <!-- List View -->
@@ -919,7 +1090,7 @@ function onCardSizeChange(e: Event) {
                   :key="entry.path"
                   :items="getContextMenuItems(entry)"
                   as="tr"
-                  class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50"
+                  class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
                   :class="{
                     'bg-primary-500/10':
                       selectionStore.selectedEntity?.source === 'fileManager' &&
@@ -931,7 +1102,15 @@ function onCardSizeChange(e: Event) {
                     'text-amber-400!':
                       proxyStore.generatingProxies.has(entry.path || '') ||
                       isGeneratingProxyInDirectory(entry),
+                    'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
+                      dragOverEntryPath === (entry.path ?? null),
                   }"
+                  :draggable="true"
+                  @dragstart="onEntryDragStart($event, entry)"
+                  @dragend="onEntryDragEnd"
+                  @dragover.prevent="onEntryDragOver($event, entry)"
+                  @dragleave="onEntryDragLeave($event, entry)"
+                  @drop.prevent="onEntryDrop($event, entry)"
                   @click="handleEntryClick(entry)"
                   @dblclick="
                     entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
@@ -1001,6 +1180,21 @@ function onCardSizeChange(e: Event) {
                     {{ formatDate(entry.lastModified) }}
                   </td>
                 </UContextMenu>
+
+                <!-- Root drop zone row for list view -->
+                <tr
+                  class="transition-colors"
+                  :class="{ 'bg-primary-500/10': isRootDropOver }"
+                  @dragover.prevent="onRootDragOver"
+                  @dragleave.prevent="onRootDragLeave"
+                  @drop.prevent="onRootDrop"
+                >
+                  <td colspan="5" class="py-3 px-3 text-center">
+                    <span v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
+                      {{ t('videoEditor.fileManager.actions.dropToRootHint', 'Release to upload into the project root') }}
+                    </span>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>

@@ -487,9 +487,14 @@ function coerceMarkers(raw: unknown): TimelineMarker[] {
     const timeUs = Number((item as any).timeUs);
     const text = typeof (item as any).text === 'string' ? String((item as any).text) : '';
     const color = typeof (item as any).color === 'string' ? String((item as any).color) : undefined;
+    const durationUsRaw = (item as any).durationUs;
+    const durationUs =
+      typeof durationUsRaw === 'number' && Number.isFinite(durationUsRaw)
+        ? Math.max(0, Math.round(durationUsRaw))
+        : undefined;
     if (!id) continue;
     if (!Number.isFinite(timeUs)) continue;
-    result.push({ id, timeUs: Math.max(0, Math.round(timeUs)), text, color });
+    result.push({ id, timeUs: Math.max(0, Math.round(timeUs)), durationUs, text, color });
   }
   result.sort((a, b) => a.timeUs - b.timeUs);
   return result;
