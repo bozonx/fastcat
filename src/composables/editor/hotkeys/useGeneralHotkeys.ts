@@ -60,6 +60,9 @@ export function useGeneralHotkeys(
         if (selected.kind === 'track') {
           timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });
           selectionStore.clearSelection();
+        } else if (selected.kind === 'marker') {
+          timelineStore.removeMarker(selected.markerId);
+          selectionStore.clearSelection();
         } else {
           timelineStore.deleteFirstSelectedItem();
         }

@@ -151,6 +151,10 @@ const markerDragStartDurationUs = ref(0);
 
 const contextMenuMarkerId = ref<string | null>(null);
 
+function onContextMenuOpenChange(val: boolean) {
+  if (!val) contextMenuMarkerId.value = null;
+}
+
 function onMarkerContextMenu(e: MouseEvent, markerId: string) {
   selectMarker(markerId);
   contextMenuMarkerId.value = markerId;
@@ -542,11 +546,7 @@ function onRulerWheel(e: WheelEvent) {
         : []),
     ]"
     class="w-full"
-    @update:open="
-      (val) => {
-        if (!val) contextMenuMarkerId = null;
-      }
-    "
+    @update:open="onContextMenuOpenChange"
   >
     <div
       ref="containerRef"
@@ -569,46 +569,50 @@ function onRulerWheel(e: WheelEvent) {
           <div v-if="p.isZone" class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none" />
           
           <!-- Left/Main Marker -->
-          <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text" class="absolute bottom-0 left-0">
-            <button
-              type="button"
-              class="w-2 h-3 -translate-x-1 rounded-sm shadow-sm relative z-10"
-              :class="[
-                selectionStore.selectedEntity?.source === 'timeline' &&
-                selectionStore.selectedEntity?.kind === 'marker' &&
-                selectionStore.selectedEntity.markerId === p.id
-                  ? 'bg-primary-400 ring-2 ring-primary-400/50'
-                  : 'bg-primary-500',
-              ]"
-              :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
-              @dblclick.stop.prevent="openEditMarker(p.id)"
-              @pointerdown.stop="onMarkerPointerDown($event, p.id)"
-              @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
-              @mousedown.stop
-              @click.stop="selectMarker(p.id)"
-            />
-          </UTooltip>
+          <div class="absolute bottom-0 left-0">
+            <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+              <button
+                type="button"
+                class="w-2 h-3 -translate-x-1 rounded-sm shadow-sm relative z-10"
+                :class="[
+                  selectionStore.selectedEntity?.source === 'timeline' &&
+                  selectionStore.selectedEntity?.kind === 'marker' &&
+                  selectionStore.selectedEntity.markerId === p.id
+                    ? 'bg-primary-400 ring-2 ring-primary-400/50'
+                    : 'bg-primary-500',
+                ]"
+                :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
+                @dblclick.stop.prevent="openEditMarker(p.id)"
+                @pointerdown.stop="onMarkerPointerDown($event, p.id)"
+                @contextmenu="onMarkerContextMenu($event, p.id)"
+                @mousedown.stop
+                @click.stop="selectMarker(p.id)"
+              />
+            </UTooltip>
+          </div>
           
           <!-- Right Marker (for zones) -->
-          <UTooltip v-if="p.isZone" :text="truncateForTooltip(p.text)" :disabled="!p.text" class="absolute bottom-0 right-0">
-            <button
-              type="button"
-              class="w-2 h-3 translate-x-1 rounded-sm shadow-sm relative z-10"
-              :class="[
-                selectionStore.selectedEntity?.source === 'timeline' &&
-                selectionStore.selectedEntity?.kind === 'marker' &&
-                selectionStore.selectedEntity.markerId === p.id
-                  ? 'bg-primary-400 ring-2 ring-primary-400/50'
-                  : 'bg-primary-500',
-              ]"
-              aria-label="Zone Marker End"
-              @dblclick.stop.prevent="openEditMarker(p.id)"
-              @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
-              @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
-              @mousedown.stop
-              @click.stop="selectMarker(p.id)"
-            />
-          </UTooltip>
+          <div v-if="p.isZone" class="absolute bottom-0 right-0">
+            <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+              <button
+                type="button"
+                class="w-2 h-3 translate-x-1 rounded-sm shadow-sm relative z-10"
+                :class="[
+                  selectionStore.selectedEntity?.source === 'timeline' &&
+                  selectionStore.selectedEntity?.kind === 'marker' &&
+                  selectionStore.selectedEntity.markerId === p.id
+                    ? 'bg-primary-400 ring-2 ring-primary-400/50'
+                    : 'bg-primary-500',
+                ]"
+                aria-label="Zone Marker End"
+                @dblclick.stop.prevent="openEditMarker(p.id)"
+                @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
+                @contextmenu="onMarkerContextMenu($event, p.id)"
+                @mousedown.stop
+                @click.stop="selectMarker(p.id)"
+              />
+            </UTooltip>
+          </div>
         </div>
       </div>
       <AppModal v-if="editingMarker" v-model:open="isMarkerEditOpen" title="Marker">
