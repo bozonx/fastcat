@@ -208,8 +208,8 @@ function selectTransition(
           selectionStore.clearSelection();
         }
       "
-      @mouseenter="timelineStore.hoverTrackId = track.id"
-      @mouseleave="timelineStore.hoverTrackId = null"
+      @mouseenter="timelineStore.hoveredTrackId = track.id"
+      @mouseleave="timelineStore.hoveredTrackId = null"
       @dragover.prevent="emit('dragover', $event, track.id)"
       @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"

@@ -5,6 +5,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 import AppModal from '~/components/ui/AppModal.vue';
+import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 
 const { t } = useI18n();
 
@@ -13,7 +14,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'mousedown', event: MouseEvent): void;
+  (e: 'pointerdown', event: PointerEvent): void;
+  (e: 'wheel', event: WheelEvent): void;
+  (e: 'dblclick-ruler', timeUs: number): void;
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -187,14 +190,11 @@ function draw() {
   const currentFps = fps.value;
   const pxPerSec = zoomToPxPerSecond(currentZoom);
 
-  // When zooming, we want the timeline ticks to stay anchored appropriately
-  // and maintain their spacing relative to the tracks
   const startPx = scrollLeft.value;
   const endPx = startPx + w;
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
 
-  // Determine intervals
   const MIN_DIST_PX = 90;
   const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
   let mainStepS = timeStepsS[timeStepsS.length - 1]!;
@@ -205,10 +205,9 @@ function draw() {
     }
   }
 
-  // Increase line visibility by adjusting stroke style
   ctx.fillStyle = textColor;
   ctx.strokeStyle = tickColor;
-  ctx.lineWidth = 1.5; // Thicker lines for visibility
+  ctx.lineWidth = 1.5;
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -218,17 +217,14 @@ function draw() {
 
   ctx.beginPath();
   for (let s = startS; s <= endS; s += mainStepS) {
-    // Exact position in pixels from timeline start, minus scroll offset
-    // This perfectly matches timeUsToPx which the tracks use
     const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
 
     if (x >= -50 && x <= w + 50) {
-      ctx.moveTo(x, h - 12); // Taller main ticks
+      ctx.moveTo(x, h - 12);
       ctx.lineTo(x, h);
       ctx.fillText(formatTime(s * 1_000_000, currentFps), x, 4);
     }
 
-    // Draw sub ticks
     if (mainStepS === 1) {
       const pxPerFrame = pxPerSec / currentFps;
       let frameStep = 1;
@@ -242,7 +238,7 @@ function draw() {
             timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
           ) + 0.5;
         if (frameX >= -50 && frameX <= w + 50) {
-          ctx.moveTo(frameX, h - 5); // Taller sub ticks
+          ctx.moveTo(frameX, h - 5);
           ctx.lineTo(frameX, h);
         }
       }
@@ -255,7 +251,7 @@ function draw() {
       for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
         const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
         if (subX >= -50 && subX <= w + 50) {
-          ctx.moveTo(subX, h - 5); // Taller sub ticks
+          ctx.moveTo(subX, h - 5);
           ctx.lineTo(subX, h);
         }
       }
@@ -263,48 +259,67 @@ function draw() {
   }
   ctx.stroke();
 
-  // Draw playhead head in the ruler for better visual continuity
+  // Playhead indicator in ruler
   const playheadPx = Math.round(timeUsToPx(currentTime.value, currentZoom) - startPx) + 0.5;
   if (playheadPx >= -10 && playheadPx <= w + 10) {
-    // Determine the exact color of primary-500 if possible, or use a fallback
     const styles = window.getComputedStyle(document.documentElement);
     const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
 
     ctx.beginPath();
     ctx.fillStyle = primaryColor;
 
-    // Draw an inverted triangle for the playhead
-    const pw = 10; // width
-    const ph = 10; // height
+    const pw = 10;
+    const ph = 10;
 
     ctx.moveTo(playheadPx - pw / 2, h - ph);
     ctx.lineTo(playheadPx + pw / 2, h - ph);
     ctx.lineTo(playheadPx, h);
     ctx.fill();
-
-    // Playhead line through the remaining bottom part of the ruler
-    ctx.beginPath();
-    ctx.strokeStyle = primaryColor;
-    ctx.lineWidth = 1;
-    ctx.moveTo(playheadPx, h);
-    ctx.lineTo(playheadPx, h);
-    ctx.stroke();
   }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-function onRulerContextMenu(e: MouseEvent) {
-  const scroll = scrollLeft.value;
+function getTimeUsFromMouseEvent(e: MouseEvent): number {
   const rect = containerRef.value?.getBoundingClientRect();
-  if (!rect) {
-    contextClickTimeUs.value = null;
-    return;
-  }
-
+  if (!rect) return 0;
   const x = e.clientX - rect.left;
-  const timelinePx = scroll + x;
-  contextClickTimeUs.value = pxToTimeUs(timelinePx, zoom.value);
+  return pxToTimeUs(scrollLeft.value + x, zoom.value);
+}
+
+function onRulerContextMenu(e: MouseEvent) {
+  contextClickTimeUs.value = getTimeUsFromMouseEvent(e);
+}
+
+// Single click: move playhead
+function onRulerClick(e: MouseEvent) {
+  if (e.button !== 0) return;
+  timelineStore.currentTime = getTimeUsFromMouseEvent(e);
+}
+
+// Double click: add marker at clicked position
+const lastClickTime = ref(0);
+const lastClickX = ref(0);
+
+function onRulerDblClick(e: MouseEvent) {
+  if (e.button !== 0) return;
+  const timeUs = getTimeUsFromMouseEvent(e);
+
+  timelineStore.applyTimeline({
+    type: 'add_marker',
+    id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+    timeUs,
+    text: '',
+  });
+}
+
+function onRulerPointerDown(e: PointerEvent) {
+  emit('pointerdown', e);
+}
+
+function onRulerWheel(e: WheelEvent) {
+  e.preventDefault();
+  emit('wheel', e);
 }
 </script>
 
@@ -331,9 +346,12 @@ function onRulerContextMenu(e: MouseEvent) {
   >
     <div
       ref="containerRef"
-      class="relative w-full overflow-hidden"
+      class="relative w-full overflow-hidden cursor-pointer"
       @contextmenu.capture="onRulerContextMenu"
-      @mousedown="$emit('mousedown', $event)"
+      @click="onRulerClick"
+      @dblclick="onRulerDblClick"
+      @pointerdown="onRulerPointerDown"
+      @wheel.prevent="onRulerWheel"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
 
@@ -351,6 +369,7 @@ function onRulerContextMenu(e: MouseEvent) {
               :aria-label="'Marker'"
               @dblclick.stop.prevent="openEditMarker(p.id)"
               @mousedown.stop
+              @click.stop
             />
           </UTooltip>
         </div>

@@ -262,41 +262,6 @@ function openAsTextPanel() {
       </div>
     </PropertySection>
 
-
-    <PropertySection
-      v-if="
-        fileInfo?.kind === 'directory' &&
-        !isProjectRootDir &&
-        (isFolderWithVideo || isGeneratingProxyForFolder)
-      "
-      :title="t('videoEditor.fileManager.proxy.title', 'Proxy')"
-    >
-      <div class="flex gap-2">
-        <UButton
-          v-if="!isGeneratingProxyForFolder"
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-film"
-          class="flex-1"
-          @click="generateProxiesForSelectedFolder"
-        >
-          {{ t('videoEditor.fileManager.proxy.create', 'Create proxy') }}
-        </UButton>
-        <UButton
-          v-else
-          size="xs"
-          color="red"
-          variant="soft"
-          icon="i-heroicons-stop"
-          class="flex-1"
-          @click="stopProxyGenerationForSelectedFolder"
-        >
-          {{ t('videoEditor.fileManager.proxy.stop', 'Stop proxy generation') }}
-        </UButton>
-      </div>
-    </PropertySection>
-
     <PropertySection
       v-if="fileInfo?.kind === 'directory'"
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"

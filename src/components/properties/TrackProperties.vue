@@ -121,6 +121,8 @@ function confirmDeleteTrack() {
           :min="0"
           :max="2"
           :step="0.001"
+          :wheel-step-multiplier="10"
+          :default-value="1"
           @update:model-value="(v: any) => (trackAudioGain = Number(v))"
         />
       </div>
@@ -139,6 +141,7 @@ function confirmDeleteTrack() {
           :min="-1"
           :max="1"
           :step="0.01"
+          :default-value="0"
           @update:model-value="(v: any) => (trackAudioBalance = Number(v))"
         />
       </div>

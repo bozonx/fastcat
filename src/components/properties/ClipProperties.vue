@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
@@ -24,6 +25,10 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const selectionStore = useSelectionStore();
+const editorViewStore = useEditorViewStore();
+const fileManager = useFileManager();
+const uiStore = useUiStore();
+const focusStore = useFocusStore();
 
 const isRenameModalOpen = ref(false);
 
@@ -49,16 +54,7 @@ async function handleSelectInFileManager() {
   if (props.clip.clipType !== 'media' || !props.clip.source?.path) return;
   const path = props.clip.source.path;
 
-  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-  const { useUiStore } = await import('~/stores/ui.store');
-  const { useFocusStore } = await import('~/stores/focus.store');
-
-  const fileManager = useFileManager();
-  const uiStore = useUiStore();
-  const editorViewStore = useEditorViewStore();
-  const focusStore = useFocusStore();
-
-  // Switch to files or cut view so the file manager is visible
+  // Switch to files view so the file manager is visible
   if (editorViewStore.currentView !== 'files' && editorViewStore.currentView !== 'cut') {
     editorViewStore.goToFiles();
   }
@@ -524,6 +520,7 @@ defineExpose({
         :min="0"
         :max="1"
         :step="0.01"
+        :default-value="1"
         @update:model-value="handleUpdateOpacity"
       />
     </div>
