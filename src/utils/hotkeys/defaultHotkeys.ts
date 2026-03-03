@@ -193,7 +193,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.volumeUp': ['Ctrl+R'],
     'general.volumeDown': ['Ctrl+E'],
 
-    'general.fullscreen': ['Ctrl+W'],
+    'general.fullscreen': ['Ctrl+G'],
     'general.zoomIn': ['='],
     'general.zoomOut': ['-'],
     'general.zoomReset': ['0', '.'],
