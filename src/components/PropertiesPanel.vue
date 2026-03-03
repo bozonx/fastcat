@@ -11,7 +11,9 @@ import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
+import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
+import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
@@ -64,12 +66,19 @@ const selectedTrack = computed<TimelineTrack | null>(() => {
   return tracks.find((t) => t.id === entity.trackId) ?? null;
 });
 
-const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'empty'>(() => {
+const selectedMarkerId = computed<string | null>(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'timeline' && entity.kind === 'marker') return entity.markerId;
+  return null;
+});
+
+const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'marker' | 'empty'>(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
 
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
 
@@ -223,10 +232,17 @@ function handleDeleteClip() {
 
           <FileProperties
             v-else-if="displayMode === 'file' && selectedFsEntry"
-            v-model:preview-mode="previewMode"
-            :selected-fs-entry="selectedFsEntry"
+            :entry="selectedFsEntry"
             :has-proxy="hasProxy"
+            :preview-mode="previewMode"
+            @update:preview-mode="(m) => (previewMode = m)"
           />
+          <MarkerProperties
+            v-else-if="displayMode === 'marker' && selectedMarkerId"
+            :marker-id="selectedMarkerId"
+          />
+          <div v-else class="flex flex-col items-center justify-center h-full text-ui-text-muted">
+          </div>
         </div>
       </div>
     </div>

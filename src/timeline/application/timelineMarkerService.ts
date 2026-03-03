@@ -13,7 +13,7 @@ export interface TimelineMarkerService {
   addZoneMarkerAtPlayhead: () => void;
   updateMarker: (
     markerId: string,
-    patch: { timeUs?: number; durationUs?: number | null; text?: string },
+    patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
   ) => void;
   removeMarker: (markerId: string) => void;
   convertMarkerToZone: (markerId: string) => void;
@@ -53,7 +53,7 @@ export function createTimelineMarkerService(
 
   function updateMarker(
     markerId: string,
-    patch: { timeUs?: number; durationUs?: number | null; text?: string },
+    patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
   ) {
     deps.applyTimeline({
       type: 'update_marker',
@@ -61,6 +61,7 @@ export function createTimelineMarkerService(
       timeUs: patch.timeUs,
       durationUs: patch.durationUs,
       text: patch.text,
+      color: patch.color,
     });
   }
 

@@ -222,6 +222,7 @@ export interface UpdateMarkerCommand {
   timeUs?: number;
   durationUs?: number | null;
   text?: string;
+  color?: string;
 }
 
 export interface RemoveMarkerCommand {
