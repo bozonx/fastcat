@@ -19,6 +19,8 @@ const isZone = computed(() => {
   return typeof marker.value?.durationUs === 'number';
 });
 
+const activeColor = computed(() => marker.value?.color ?? '#eab308');
+
 const COLORS = [
   { value: '#ef4444', label: 'Red' },
   { value: '#f97316', label: 'Orange' },
@@ -80,12 +82,35 @@ function handleDeleteMarker() {
   if (!marker.value) return;
   timelineStore.removeMarker(marker.value.id);
 }
+
+function handleConvertMarker() {
+  if (!marker.value) return;
+  if (isZone.value) {
+    timelineStore.convertZoneToMarker(marker.value.id);
+  } else {
+    timelineStore.convertMarkerToZone(marker.value.id);
+  }
+}
 </script>
 
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection :title="t('granVideoEditor.marker.actions', 'Actions')">
       <div class="flex gap-2 w-full">
+        <UButton
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-arrows-right-left"
+          class="flex-1 justify-center"
+          @click="handleConvertMarker"
+        >
+          {{
+            isZone
+              ? t('granVideoEditor.timeline.convertZoneToMarker', 'Convert to normal marker')
+              : t('granVideoEditor.timeline.convertMarkerToZone', 'Convert to zone marker')
+          }}
+        </UButton>
         <UButton
           size="xs"
           variant="soft"
@@ -139,7 +164,7 @@ function handleDeleteMarker() {
             v-for="c in COLORS"
             :key="c.value"
             class="w-6 h-6 rounded-full border border-ui-border-muted transition-transform hover:scale-110 flex items-center justify-center"
-            :class="{ 'ring-2 ring-primary-500 scale-110': (marker.color || '#eab308') === c.value }"
+            :class="{ 'ring-2 ring-primary-500 scale-110': activeColor === c.value }"
             :style="{ backgroundColor: c.value }"
             :title="c.label"
             @click="handleUpdateColor(c.value)"

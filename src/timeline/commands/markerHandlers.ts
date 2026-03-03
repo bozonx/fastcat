@@ -37,6 +37,7 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
     timeUs: Math.max(0, Math.round(cmd.timeUs)),
     durationUs: cmd.durationUs !== undefined ? Math.max(0, Math.round(cmd.durationUs)) : undefined,
     text: typeof cmd.text === 'string' ? cmd.text : '',
+    color: typeof (cmd as any).color === 'string' ? String((cmd as any).color) : '#eab308',
   };
 
   const next = [...markers, marker].sort((a, b) => a.timeUs - b.timeUs);
@@ -65,6 +66,7 @@ export function updateMarker(
           : Math.max(0, Math.round(Number(cmd.durationUs)))
         : prev.durationUs,
     text: cmd.text !== undefined ? String(cmd.text) : prev.text,
+    color: cmd.color !== undefined ? String(cmd.color) : (prev as any).color,
   };
 
   const nextMarkers = [...markers];

@@ -214,6 +214,7 @@ export interface AddMarkerCommand {
   timeUs: number;
   durationUs?: number;
   text?: string;
+  color?: string;
 }
 
 export interface UpdateMarkerCommand {

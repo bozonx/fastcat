@@ -57,11 +57,28 @@ const tracks = computed(
 );
 
 const scrollEl = ref<HTMLElement | null>(null);
+const trackAreaRef = ref<HTMLElement | null>(null);
 const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
 
+// Reactive scroll position for playhead calculation (DOM scrollLeft is not reactive)
+const scrollLeftRef = ref(0);
+
+// Playhead position in pixels from left of scrollable content
+const playheadPx = computed(() =>
+  timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
+);
+
+// Offset playhead relative to the track area viewport accounting for scroll
+const playheadLeft = computed(() => playheadPx.value - scrollLeftRef.value);
+
 function onScroll() {
-  if (!scrollEl.value || !timelineTrackLabelsRef.value?.labelsScrollContainer) return;
-  timelineTrackLabelsRef.value.labelsScrollContainer.scrollTop = scrollEl.value.scrollTop;
+  const el = scrollEl.value;
+  if (!el) return;
+  scrollLeftRef.value = el.scrollLeft;
+  // Sync label scroll with track scroll
+  if (timelineTrackLabelsRef.value?.labelsScrollContainer) {
+    timelineTrackLabelsRef.value.labelsScrollContainer.scrollTop = el.scrollTop;
+  }
 }
 
 const pendingZoomAnchor = ref<TimelineZoomAnchor | null>(null);
@@ -165,11 +182,16 @@ function onTimelineClick(e: MouseEvent) {
 }
 
 function onTimelinePointerDown(e: PointerEvent) {
-  if (e.button === 1) {
-    // Middle click
-    const settings = workspaceStore.userSettings.mouse.timeline;
+  // Middle-click pan is handled by onTrackAreaPointerDownCapture (capture phase)
+  // This handler is kept for future extension
+}
 
+function onTrackAreaPointerDownCapture(e: PointerEvent) {
+  // Capture middle-click pan at track-area level so it fires even over clip elements
+  if (e.button === 1) {
+    const settings = workspaceStore.userSettings.mouse.timeline;
     if (settings.middleClick === 'pan') {
+      e.preventDefault();
       startPan(e);
     }
   }
@@ -183,7 +205,12 @@ function startPan(e: PointerEvent) {
   panStartX.value = e.clientX;
   panStartScrollLeft.value = el.scrollLeft;
 
-  (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+  // Use trackAreaRef for pointer capture so pan works regardless of which element dispatched the event
+  try {
+    trackAreaRef.value?.setPointerCapture(e.pointerId);
+  } catch {
+    // ignore if pointer capture is unavailable
+  }
   e.preventDefault();
 }
 
@@ -205,7 +232,7 @@ function onTimelinePointerUp(e: PointerEvent) {
   if (!isPanning.value) return;
   isPanning.value = false;
   try {
-    (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
+    trackAreaRef.value?.releasePointerCapture(e.pointerId);
   } catch {
     // ignore
   }
@@ -364,6 +391,8 @@ watch(
       anchor,
     });
     el.scrollLeft = nextScrollLeft;
+    // Programmatic scrollLeft doesn't fire scroll event, update manually
+    scrollLeftRef.value = nextScrollLeft;
   },
   { flush: 'post' },
 );
@@ -574,10 +603,12 @@ async function onDrop(e: DragEvent, trackId: string) {
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div
+            ref="trackAreaRef"
             class="flex flex-col h-full w-full relative"
             @pointermove="onTimelinePointerMove"
             @pointerup="onTimelinePointerUp"
             @pointercancel="onTimelinePointerUp"
+            @pointerdown.capture="onTrackAreaPointerDownCapture"
           >
             <div class="relative shrink-0 z-10">
               <TimelineRuler
@@ -593,7 +624,6 @@ async function onDrop(e: DragEvent, trackId: string) {
               ref="scrollEl"
               class="w-full flex-1 overflow-auto relative"
               @pointerdown.capture="onTimelinePointerDownCapture"
-              @pointerdown.self="onTimelinePointerDown"
               @click="onTimelineClick"
               @wheel="onTimelineWheel"
               @scroll="onScroll"
@@ -615,16 +645,18 @@ async function onDrop(e: DragEvent, trackId: string) {
                 @trim-item="startTrimItem"
                 @clip-action="onClipAction"
               />
-
-              <!-- Playhead -->
-              <div
-                class="absolute top-0 bottom-0 w-px bg-primary-500 cursor-ew-resize pointer-events-auto"
-                :style="{
-                  left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
-                }"
-                @pointerdown="startPlayheadDrag"
-              ></div>
             </div>
+
+            <!--
+              Playhead overlay — positioned absolutely to the track-area container (not the
+              scroll container), so it stays above all clips and spans the full visible height.
+              The ruler height (h-7 = 28px) is subtracted from top so the line starts below ruler.
+            -->
+            <div
+              class="absolute top-7 bottom-0 w-px bg-primary-500 cursor-ew-resize z-50 pointer-events-auto"
+              :style="{ left: `${playheadLeft}px` }"
+              @pointerdown="startPlayheadDrag"
+            />
 
             <!-- Zoom Indicator (bottom-right of timeline) -->
             <Transition
@@ -636,8 +668,8 @@ async function onDrop(e: DragEvent, trackId: string) {
               leave-to-class="opacity-0"
             >
               <div
-                v-show="isZooming"
-                class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono rounded bg-ui-bg/90 border border-ui-border text-ui-text shadow-lg z-30 pointer-events-none backdrop-blur-sm"
+                v-if="isZooming"
+                class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono rounded bg-ui-bg/90 border border-ui-border text-ui-text shadow-lg z-50 pointer-events-none backdrop-blur-sm"
               >
                 ×{{ zoomFactor }}
               </div>
