@@ -28,9 +28,7 @@ import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 
 const { t } = useI18n();
 const toast = useToast();
-const emit = defineEmits<{
-  (e: 'scroll-vertical', delta: number): void;
-}>();
+
 
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
@@ -60,6 +58,12 @@ const tracks = computed(
 );
 
 const scrollEl = ref<HTMLElement | null>(null);
+const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
+
+function onScroll() {
+  if (!scrollEl.value || !timelineTrackLabelsRef.value?.labelsScrollContainer) return;
+  timelineTrackLabelsRef.value.labelsScrollContainer.scrollTop = scrollEl.value.scrollTop;
+}
 
 const pendingZoomAnchor = ref<TimelineZoomAnchor | null>(null);
 
@@ -120,36 +124,9 @@ function makePlayheadAnchor(params: { zoom: number }): TimelineZoomAnchor {
 }
 
 function applyZoomWithAnchor(params: { nextZoom: number; anchor: TimelineZoomAnchor }) {
-  const el = scrollEl.value;
-  if (!el) {
-    timelineStore.setTimelineZoom(params.nextZoom);
-    return;
-  }
-
-  const prevZoom = timelineStore.timelineZoom;
-  const nextZoom = params.nextZoom;
-  if (nextZoom === prevZoom) return;
-
-  const prevScrollLeft = el.scrollLeft;
-  const viewportWidth = el.clientWidth;
-
+  // Store anchor for the watcher to use
   pendingZoomAnchor.value = params.anchor;
-  timelineStore.setTimelineZoom(nextZoom);
-
-  requestAnimationFrame(() => {
-    const anchor = pendingZoomAnchor.value;
-    if (!anchor) return;
-    pendingZoomAnchor.value = null;
-
-    const nextScrollLeft = computeAnchoredScrollLeft({
-      prevZoom,
-      nextZoom,
-      prevScrollLeft,
-      viewportWidth,
-      anchor,
-    });
-    el.scrollLeft = nextScrollLeft;
-  });
+  timelineStore.setTimelineZoom(params.nextZoom);
 }
 
 const isPanning = ref(false);
@@ -291,8 +268,9 @@ function onTimelineWheel(e: WheelEvent) {
     if (!isShift && !isSecondary) return;
 
     e.preventDefault();
-    // Emit event to scroll vertical container to avoid DOM query in logic
-    emit('scroll-vertical', delta);
+    if (el) {
+      el.scrollTop += delta;
+    }
     return;
   }
 
@@ -347,6 +325,8 @@ function onTimelineWheel(e: WheelEvent) {
   }
 }
 
+// Single watcher handles scroll adjustment for ALL zoom changes
+// (wheel zoom, hotkeys, toolbar slider)
 watch(
   () => timelineStore.timelineZoom,
   (nextZoom, prevZoom) => {
@@ -357,20 +337,20 @@ watch(
 
     const prevScrollLeft = el.scrollLeft;
     const viewportWidth = el.clientWidth;
+    // Use pending anchor from applyZoomWithAnchor, or fallback to playhead-based anchor
     const anchor = pendingZoomAnchor.value ?? makePlayheadAnchor({ zoom: prevZoom });
     pendingZoomAnchor.value = null;
 
-    requestAnimationFrame(() => {
-      const nextScrollLeft = computeAnchoredScrollLeft({
-        prevZoom,
-        nextZoom,
-        prevScrollLeft,
-        viewportWidth,
-        anchor,
-      });
-      el.scrollLeft = nextScrollLeft;
+    const nextScrollLeft = computeAnchoredScrollLeft({
+      prevZoom,
+      nextZoom,
+      prevScrollLeft,
+      viewportWidth,
+      anchor,
     });
+    el.scrollLeft = nextScrollLeft;
   },
+  { flush: 'post' },
 );
 
 function clearDragPreview() {
@@ -570,6 +550,7 @@ async function onDrop(e: DragEvent, trackId: string) {
       >
         <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
           <TimelineTrackLabels
+            ref="timelineTrackLabelsRef"
             :tracks="tracks"
             :track-heights="trackHeights"
             class="h-full border-r border-ui-border"
@@ -588,7 +569,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             </div>
             <div
               ref="scrollEl"
-              class="w-full flex-1 overflow-x-auto overflow-y-hidden relative"
+              class="w-full flex-1 overflow-auto relative"
               @pointerdown.capture="onTimelinePointerDownCapture"
               @pointerdown.self="onTimelinePointerDown"
               @pointermove="onTimelinePointerMove"
@@ -596,6 +577,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               @pointercancel="onTimelinePointerUp"
               @click="onTimelineClick"
               @wheel="onTimelineWheel"
+              @scroll="onScroll"
             >
               <!-- Tracks -->
               <TimelineTracks
@@ -623,24 +605,24 @@ async function onDrop(e: DragEvent, trackId: string) {
                 }"
                 @pointerdown="startPlayheadDrag"
               ></div>
-
-              <!-- Zoom Indicator (bottom-right of timeline) -->
-              <Transition
-                enter-active-class="transition-opacity duration-200"
-                enter-from-class="opacity-0"
-                enter-to-class="opacity-100"
-                leave-active-class="transition-opacity duration-300"
-                leave-from-class="opacity-100"
-                leave-to-class="opacity-0"
-              >
-                <div
-                  v-if="isZooming"
-                  class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono rounded bg-ui-bg/90 border border-ui-border text-ui-text shadow-lg z-30 pointer-events-none backdrop-blur-sm"
-                >
-                  ×{{ zoomFactor }}
-                </div>
-              </Transition>
             </div>
+
+            <!-- Zoom Indicator (bottom-right of timeline) -->
+            <Transition
+              enter-active-class="transition-opacity duration-200"
+              enter-from-class="opacity-0"
+              enter-to-class="opacity-100"
+              leave-active-class="transition-opacity duration-300"
+              leave-from-class="opacity-100"
+              leave-to-class="opacity-0"
+            >
+              <div
+                v-show="isZooming"
+                class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono rounded bg-ui-bg/90 border border-ui-border text-ui-text shadow-lg z-30 pointer-events-none backdrop-blur-sm"
+              >
+                ×{{ zoomFactor }}
+              </div>
+            </Transition>
           </div>
         </Pane>
       </Splitpanes>

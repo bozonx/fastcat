@@ -254,9 +254,9 @@ const contextMenuItems = computed(() => {
   return [
     [
       {
-        label: t('granVideoEditor.monitor.center', 'Center'),
-        icon: 'i-heroicons-arrows-pointing-in',
-        onSelect: centerMonitor,
+        label: t('granVideoEditor.preview.resetZoom', 'Reset Zoom & Pan'),
+        icon: 'i-heroicons-arrow-path',
+        onSelect: () => viewportRef.value?.resetView(),
       },
       {
         label: showGrid.value
@@ -338,6 +338,7 @@ const emit = defineEmits<{
         },
       ]"
       @pointerdown.capture="focusStore.setMainFocus('monitor')"
+      @dblclick="centerMonitor()"
     >
       <!-- Video area: MonitorViewport handles pan/zoom/gestures -->
       <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight">
@@ -474,6 +475,7 @@ const emit = defineEmits<{
                   class="w-3 h-3 text-primary-500 shrink-0"
                   :title="t('granVideoEditor.monitor.projectResolutionHint')"
                 />
+                <span v-else class="w-3 h-3 shrink-0"></span>
               </template>
               <template #item-label="{ item }">
                 <span
@@ -489,7 +491,10 @@ const emit = defineEmits<{
               </template>
               <template #item-trailing="{ item }">
                 <UIcon
-                  v-if="item.isProject"
+                  v-if="
+                    item.isProject &&
+                    item.value !== projectStore.projectSettings.monitor?.previewResolution
+                  "
                   name="i-heroicons-star-20-solid"
                   class="w-3 h-3 text-primary-500 shrink-0"
                   :title="t('granVideoEditor.monitor.projectResolutionHint')"
