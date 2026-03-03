@@ -46,6 +46,7 @@ export function useEditorHotkeys() {
   function dispatchPreviewPlayback(
     detail:
       | { action: 'toggle' }
+      | { action: 'toggle1' }
       | { action: 'toStart' }
       | { action: 'toEnd' }
       | { action: 'set'; direction: 'forward' | 'backward'; speed: number },
@@ -378,6 +379,26 @@ export function useEditorHotkeys() {
       return;
     }
 
+    if (cmd === 'playback.toggle1') {
+      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+      if (!canUse) return;
+
+      if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+        dispatchPreviewPlayback({ action: 'toggle1' });
+        return;
+      }
+
+      if (timelineStore.isPlaying) {
+        timelineStore.togglePlayback();
+        timelineStore.setPlaybackSpeed(1);
+        return;
+      }
+
+      timelineStore.setPlaybackSpeed(1);
+      timelineStore.togglePlayback();
+      return;
+    }
+
     if (cmd === 'playback.toStart') {
       if (!focusStore.canUsePlaybackHotkeys) return;
 
@@ -432,9 +453,7 @@ export function useEditorHotkeys() {
 
     const speedCmd = playbackSpeedMap[cmd as HotkeyCommandId];
     if (speedCmd) {
-      const canUse =
-        focusStore.canUsePlaybackHotkeys ||
-        (cmd === 'playback.backward1' && focusStore.effectiveFocus === 'timeline');
+      const canUse = focusStore.canUsePlaybackHotkeys;
       if (!canUse) return;
 
       if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
@@ -442,7 +461,7 @@ export function useEditorHotkeys() {
         return;
       }
 
-      if (cmd === 'playback.backward1' && timelineStore.isPlaying) {
+      if (cmd === 'playback.backward1') {
         forceTimelinePlaybackSpeed(speedCmd);
       } else {
         setTimelinePlayback(speedCmd);

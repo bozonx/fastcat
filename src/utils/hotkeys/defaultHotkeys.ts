@@ -41,6 +41,7 @@ export type HotkeyCommandId =
   | 'timeline.toggleMuteTrack'
   | 'timeline.toggleSoloTrack'
   | 'playback.toggle'
+  | 'playback.toggle1'
   | 'playback.toStart'
   | 'playback.toEnd'
   | 'playback.forward1_25'
@@ -163,6 +164,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Toggle track solo' },
 
     { id: 'playback.toggle', groupId: 'playback', title: 'Play / pause (normal speed)' },
+    { id: 'playback.toggle1', groupId: 'playback', title: 'Play / pause (1x)' },
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
     { id: 'playback.forward1_25', groupId: 'playback', title: 'Forward x1.25' },
@@ -227,6 +229,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.toggleSoloTrack': ['B'],
 
     'playback.toggle': ['Space'],
+    'playback.toggle1': ['Shift+Space'],
     'playback.toStart': ['W', 'Home'],
     'playback.toEnd': ['T', 'End'],
     'playback.forward1_25': ['F'],
@@ -245,6 +248,6 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'playback.backward0_75': ['C'],
     'playback.forward0_5': ['Shift+V'],
     'playback.backward0_5': ['Shift+C'],
-    'playback.backward1': ['Shift+Space'],
+    'playback.backward1': ['A'],
   },
 };
