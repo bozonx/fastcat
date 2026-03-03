@@ -29,7 +29,16 @@ const uiStore = useUiStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const fileManager = useFileManager();
 const proxyStore = useProxyStore();
-const { readDirectory, getFileIcon, getProjectRootDirHandle, loadProjectDirectory, createFolder, renameEntry, deleteEntry, handleFiles } = fileManager;
+const {
+  readDirectory,
+  getFileIcon,
+  getProjectRootDirHandle,
+  loadProjectDirectory,
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  handleFiles,
+} = fileManager;
 const { t } = useI18n();
 
 const folderEntries = ref<FsEntry[]>([]);
@@ -595,14 +604,24 @@ function onCardSizeChange(e: Event) {
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-          @click="async () => { await loadProjectDirectory(); await loadFolderContent(); }"
+          @click="
+            async () => {
+              await loadProjectDirectory();
+              uiStore.notifyFileManagerUpdate();
+              await loadFolderContent();
+            }
+          "
         />
         <UButton
           :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="uiStore.showHiddenFiles ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files') : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files')"
+          :title="
+            uiStore.showHiddenFiles
+              ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
+              : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files')
+          "
           @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
         />
       </div>
@@ -694,9 +713,13 @@ function onCardSizeChange(e: Event) {
                     selectionStore.selectedEntity.path === entry.path,
                   'border-b-2 border-b-red-500':
                     entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
+                  'opacity-30': entry.name.startsWith('.'),
                 }"
                 :style="{ width: `${filesPageStore.gridCardSize}px` }"
                 @click="handleEntryClick(entry)"
+                @dblclick="
+                  entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
+                "
               >
                 <div
                   class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
@@ -712,6 +735,14 @@ function onCardSizeChange(e: Event) {
                     :name="getFileIcon(entry)"
                     :class="[
                       entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
+                      fileManager.mediaCache.hasProxy(entry.path || '') &&
+                      !proxyStore.generatingProxies.has(entry.path || '')
+                        ? 'text-(--color-success)!'
+                        : '',
+                      proxyStore.generatingProxies.has(entry.path || '') ||
+                      isGeneratingProxyInDirectory(entry)
+                        ? 'text-amber-400/90'
+                        : '',
                       {
                         'w-8 h-8': currentGridSizeName === 'xs',
                         'w-10 h-10': currentGridSizeName === 's',
@@ -723,12 +754,22 @@ function onCardSizeChange(e: Event) {
                   />
                 </div>
                 <span
-                  class="text-center break-all line-clamp-2 px-1"
-                  :class="{
-                    'text-[10px]': currentGridSizeName === 'xs',
-                    'text-xs': currentGridSizeName === 's' || currentGridSizeName === 'm',
-                    'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
-                  }"
+                  class="text-center break-all line-clamp-2 px-1 transition-colors"
+                  :class="[
+                    fileManager.mediaCache.hasProxy(entry.path || '') &&
+                    !proxyStore.generatingProxies.has(entry.path || '')
+                      ? 'text-(--color-success)!'
+                      : '',
+                    proxyStore.generatingProxies.has(entry.path || '') ||
+                    isGeneratingProxyInDirectory(entry)
+                      ? 'text-amber-400!'
+                      : '',
+                    {
+                      'text-[10px]': currentGridSizeName === 'xs',
+                      'text-xs': currentGridSizeName === 's' || currentGridSizeName === 'm',
+                      'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
+                    },
+                  ]"
                   :title="entry.name"
                 >
                   {{ entry.name }}
@@ -836,7 +877,10 @@ function onCardSizeChange(e: Event) {
 
                   <th
                     class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                    :style="{ width: `${filesPageStore.columnWidths.modified}px`, minWidth: '60px' }"
+                    :style="{
+                      width: `${filesPageStore.columnWidths.modified}px`,
+                      minWidth: '60px',
+                    }"
                     @click="handleSort('modified')"
                   >
                     <div class="flex items-center gap-1">
@@ -871,17 +915,26 @@ function onCardSizeChange(e: Event) {
                       selectionStore.selectedEntity?.source === 'fileManager' &&
                       selectionStore.selectedEntity.path === entry.path,
                     'opacity-30': entry.name.startsWith('.'),
-                    'text-(--color-success)!': fileManager.mediaCache.hasProxy(entry.path || '') && !proxyStore.generatingProxies.has(entry.path || ''),
-                    'text-amber-400!': proxyStore.generatingProxies.has(entry.path || '') || isGeneratingProxyInDirectory(entry),
+                    'text-(--color-success)!':
+                      fileManager.mediaCache.hasProxy(entry.path || '') &&
+                      !proxyStore.generatingProxies.has(entry.path || ''),
+                    'text-amber-400!':
+                      proxyStore.generatingProxies.has(entry.path || '') ||
+                      isGeneratingProxyInDirectory(entry),
                   }"
                   @click="handleEntryClick(entry)"
-                  @dblclick="entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined"
+                  @dblclick="
+                    entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
+                  "
                 >
                   <td class="py-2 px-3 flex items-center gap-2">
                     <div
                       class="h-4 flex items-center justify-center shrink-0"
                       :class="[
-                        entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length ? 'border-b-2 border-red-500' : '',
+                        entry.path &&
+                        timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
+                          ? 'border-b-2 border-red-500'
+                          : '',
                       ]"
                     >
                       <UIcon
@@ -890,17 +943,29 @@ function onCardSizeChange(e: Event) {
                         :class="[
                           entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
                           entry.name.startsWith('.') ? 'opacity-30' : '',
-                          fileManager.mediaCache.hasProxy(entry.path || '') && !proxyStore.generatingProxies.has(entry.path || '') ? 'text-(--color-success)!' : '',
-                          proxyStore.generatingProxies.has(entry.path || '') || isGeneratingProxyInDirectory(entry) ? 'text-amber-400/90' : ''
+                          fileManager.mediaCache.hasProxy(entry.path || '') &&
+                          !proxyStore.generatingProxies.has(entry.path || '')
+                            ? 'text-(--color-success)!'
+                            : '',
+                          proxyStore.generatingProxies.has(entry.path || '') ||
+                          isGeneratingProxyInDirectory(entry)
+                            ? 'text-amber-400/90'
+                            : '',
                         ]"
                       />
                     </div>
-                    <span 
-                      class="truncate max-w-50 transition-colors" 
+                    <span
+                      class="truncate max-w-50 transition-colors"
                       :class="[
                         entry.name.startsWith('.') ? 'opacity-30' : '',
-                        fileManager.mediaCache.hasProxy(entry.path || '') && !proxyStore.generatingProxies.has(entry.path || '') ? 'text-(--color-success)!' : '',
-                        proxyStore.generatingProxies.has(entry.path || '') || isGeneratingProxyInDirectory(entry) ? 'text-amber-400!' : ''
+                        fileManager.mediaCache.hasProxy(entry.path || '') &&
+                        !proxyStore.generatingProxies.has(entry.path || '')
+                          ? 'text-(--color-success)!'
+                          : '',
+                        proxyStore.generatingProxies.has(entry.path || '') ||
+                        isGeneratingProxyInDirectory(entry)
+                          ? 'text-amber-400!'
+                          : '',
                       ]"
                       :title="entry.name"
                     >
@@ -978,13 +1043,7 @@ function onCardSizeChange(e: Event) {
         </div>
       </div>
     </UiConfirmModal>
-    <input
-      ref="directoryUploadInput"
-      type="file"
-      multiple
-      class="hidden"
-      @change="() => {}"
-    />
+    <input ref="directoryUploadInput" type="file" multiple class="hidden" @change="() => {}" />
   </div>
 </template>
 

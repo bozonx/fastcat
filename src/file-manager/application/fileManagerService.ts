@@ -281,6 +281,8 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         }
       }
     }
+
+    deps.onDirectoryLoaded?.();
   }
 
   return {
