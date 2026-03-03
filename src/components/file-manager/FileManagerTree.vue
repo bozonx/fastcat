@@ -10,6 +10,7 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
+import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
 interface Props {
   entries: FsEntry[];
@@ -443,31 +444,7 @@ function getContextMenuItems(entry: FsEntry) {
                   class="w-4 h-4 shrink-0 relative flex items-center justify-center"
                   :title="`${ctx.getEntryMeta(entry).proxyProgress ?? 0}%`"
                 >
-                  <svg class="w-4 h-4 transform -rotate-90" viewBox="0 0 16 16">
-                    <circle
-                      cx="8"
-                      cy="8"
-                      r="6"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                      class="text-ui-border"
-                    />
-                    <circle
-                      cx="8"
-                      cy="8"
-                      r="6"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                      class="text-amber-400 transition-all duration-300"
-                      :stroke-dasharray="37.7"
-                      :stroke-dashoffset="
-                        37.7 - (37.7 * (ctx.getEntryMeta(entry).proxyProgress ?? 0)) / 100
-                      "
-                      stroke-linecap="round"
-                    />
-                  </svg>
+                  <ProgressSpinner :progress="ctx.getEntryMeta(entry).proxyProgress ?? 0" size="sm" />
                 </div>
                 <UIcon
                   v-else

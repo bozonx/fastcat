@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 import AppModal from '~/components/ui/AppModal.vue';
+import { useSelectionStore } from '~/stores/selection.store';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 
 const { t } = useI18n();
@@ -25,6 +26,7 @@ const containerRef = ref<HTMLElement | null>(null);
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const selectionStore = useSelectionStore();
 
 const width = ref(0);
 const height = ref(0);
@@ -129,6 +131,62 @@ function saveMarkerText() {
   if (!m) return;
   timelineStore.updateMarker(m.id, { text: markerTextDraft.value });
   isMarkerEditOpen.value = false;
+}
+
+function deleteMarker(markerId: string) {
+  timelineStore.removeMarker(markerId);
+}
+
+function selectMarker(markerId: string) {
+  selectionStore.selectTimelineMarker(markerId);
+}
+
+const draggedMarkerId = ref<string | null>(null);
+const markerDragStartX = ref(0);
+const markerDragStartUs = ref(0);
+
+const contextMenuMarkerId = ref<string | null>(null);
+
+function onMarkerContextMenu(e: MouseEvent, markerId: string) {
+  e.preventDefault();
+  e.stopPropagation();
+  selectMarker(markerId);
+  contextMenuMarkerId.value = markerId;
+}
+
+function onMarkerPointerDown(e: PointerEvent, markerId: string) {
+  if (e.button !== 0) return;
+  e.stopPropagation();
+  selectMarker(markerId);
+  
+  const m = markers.value.find((x) => x.id === markerId);
+  if (!m) return;
+  
+  draggedMarkerId.value = markerId;
+  markerDragStartX.value = e.clientX;
+  markerDragStartUs.value = m.timeUs;
+  
+  window.addEventListener('pointermove', onWindowPointerMove);
+  window.addEventListener('pointerup', onWindowPointerUp);
+}
+
+function onWindowPointerMove(e: PointerEvent) {
+  if (!draggedMarkerId.value) return;
+  
+  const dx = e.clientX - markerDragStartX.value;
+  const currentZoom = zoom.value;
+  
+  const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
+  const newPx = Math.max(0, startPx + dx);
+  const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
+  
+  timelineStore.updateMarker(draggedMarkerId.value, { timeUs: newUs });
+}
+
+function onWindowPointerUp() {
+  draggedMarkerId.value = null;
+  window.removeEventListener('pointermove', onWindowPointerMove);
+  window.removeEventListener('pointerup', onWindowPointerUp);
 }
 
 function truncateForTooltip(text: string): string {
@@ -365,8 +423,34 @@ function onRulerWheel(e: WheelEvent) {
           },
         },
       ],
+      ...(contextMenuMarkerId
+        ? [
+            [
+              {
+                label: t('granVideoEditor.timeline.editMarker', 'Edit marker'),
+                icon: 'i-heroicons-pencil',
+                onSelect: () => {
+                  if (contextMenuMarkerId) {
+                    openEditMarker(contextMenuMarkerId);
+                  }
+                },
+              },
+              {
+                label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+                icon: 'i-heroicons-trash',
+                color: 'red',
+                onSelect: () => {
+                  if (contextMenuMarkerId) {
+                    deleteMarker(contextMenuMarkerId);
+                  }
+                },
+              },
+            ],
+          ]
+        : []),
     ]"
     class="w-full"
+    @update:open="(val) => { if (!val) contextMenuMarkerId = null; }"
   >
     <div
       ref="containerRef"
@@ -389,11 +473,20 @@ function onRulerWheel(e: WheelEvent) {
           <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
             <button
               type="button"
-              class="w-2 h-3 -translate-x-1 bg-primary-500 rounded-sm shadow-sm"
+              class="w-2 h-3 -translate-x-1 rounded-sm shadow-sm"
+              :class="[
+                selectionStore.selectedEntity?.source === 'timeline' &&
+                selectionStore.selectedEntity?.kind === 'marker' &&
+                selectionStore.selectedEntity.markerId === p.id
+                  ? 'bg-primary-400 ring-2 ring-primary-400/50'
+                  : 'bg-primary-500'
+              ]"
               :aria-label="'Marker'"
               @dblclick.stop.prevent="openEditMarker(p.id)"
+              @pointerdown.stop="onMarkerPointerDown($event, p.id)"
+              @contextmenu.stop.prevent="onMarkerContextMenu($event, p.id)"
               @mousedown.stop
-              @click.stop
+              @click.stop="selectMarker(p.id)"
             />
           </UTooltip>
         </div>
