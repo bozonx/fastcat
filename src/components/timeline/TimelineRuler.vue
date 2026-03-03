@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 import AppModal from '~/components/ui/AppModal.vue';
@@ -303,21 +304,44 @@ const lastClickX = ref(0);
 
 function onRulerDblClick(e: MouseEvent) {
   if (e.button !== 0) return;
-  const timeUs = getTimeUsFromMouseEvent(e);
 
-  timelineStore.applyTimeline({
-    type: 'add_marker',
-    id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-    timeUs,
-    text: '',
-  });
+  const settings = useWorkspaceStore().userSettings.mouse.ruler;
+  if (settings.doubleClick === 'none') return;
+
+  if (settings.doubleClick === 'add_marker') {
+    const timeUs = getTimeUsFromMouseEvent(e);
+
+    timelineStore.applyTimeline({
+      type: 'add_marker',
+      id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+      timeUs,
+      text: '',
+    });
+  }
 }
 
 function onRulerPointerDown(e: PointerEvent) {
-  emit('pointerdown', e);
+  if (e.button === 1) {
+    const settings = useWorkspaceStore().userSettings.mouse.ruler;
+    if (settings.middleClick === 'pan') {
+      emit('pointerdown', e);
+      return;
+    }
+  } else if (e.button === 0) {
+    emit('pointerdown', e);
+  }
 }
 
 function onRulerWheel(e: WheelEvent) {
+  const settings = useWorkspaceStore().userSettings.mouse.ruler;
+  const isSecondary = isSecondaryWheel(e);
+  
+  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
+  if (action === 'none') {
+    e.preventDefault();
+    return;
+  }
+  
   e.preventDefault();
   emit('wheel', e);
 }

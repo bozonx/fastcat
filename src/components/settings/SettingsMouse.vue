@@ -1,10 +1,39 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import { TIMELINE_WHEEL_ACTIONS, MONITOR_WHEEL_ACTIONS, MIDDLE_CLICK_ACTIONS } from '~/utils/mouse';
+import {
+  TIMELINE_WHEEL_ACTIONS,
+  MONITOR_WHEEL_ACTIONS,
+  MIDDLE_CLICK_ACTIONS,
+  RULER_WHEEL_ACTIONS,
+  RULER_DOUBLE_CLICK_ACTIONS,
+} from '~/utils/mouse';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+const rulerWheelOptions = computed(() => {
+  const labels: Record<string, string> = {
+    zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return RULER_WHEEL_ACTIONS.map((action) => ({
+    label: labels[action] || action,
+    value: action,
+  }));
+});
+
+const rulerDoubleClickOptions = computed(() => {
+  const labels: Record<string, string> = {
+    add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return RULER_DOUBLE_CLICK_ACTIONS.map((action) => ({
+    label: labels[action] || action,
+    value: action,
+  }));
+});
 
 const timelineWheelOptions = computed(() => {
   const labels: Record<string, string> = {
@@ -42,6 +71,7 @@ const middleClickOptions = computed(() => {
 });
 
 function resetDefaults() {
+  workspaceStore.userSettings.mouse.ruler = { ...DEFAULT_USER_SETTINGS.mouse.ruler };
   workspaceStore.userSettings.mouse.timeline = { ...DEFAULT_USER_SETTINGS.mouse.timeline };
   workspaceStore.userSettings.mouse.monitor = { ...DEFAULT_USER_SETTINGS.mouse.monitor };
 }
@@ -59,6 +89,101 @@ function resetDefaults() {
     </div>
 
     <div class="flex flex-col gap-8">
+      <div class="flex flex-col gap-3">
+        <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest px-1">
+          {{ t('videoEditor.settings.mouseRuler', 'Ruler') }}
+        </div>
+
+        <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
+          <table class="w-full border-collapse">
+            <tbody class="divide-y divide-ui-border">
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.wheel"
+                    :items="rulerWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) => (workspaceStore.userSettings.mouse.ruler.wheel = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.wheelSecondary"
+                    :items="rulerWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.wheelSecondary = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.middleClick"
+                    :items="middleClickOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.middleClick = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseRulerDoubleClick', 'Double click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.doubleClick"
+                    :items="rulerDoubleClickOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.doubleClick = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="flex flex-col gap-3">
         <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest px-1">
           {{ t('videoEditor.settings.mouseTimeline', 'Timeline') }}

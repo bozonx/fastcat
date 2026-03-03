@@ -56,6 +56,12 @@ describe('settings normalization', () => {
   it('normalizes mouse settings and falls back to defaults for invalid values', () => {
     const normalized = normalizeUserSettings({
       mouse: {
+        ruler: {
+          wheel: 'invalid_action',
+          wheelSecondary: 'zoom_horizontal',
+          middleClick: 'none',
+          doubleClick: 'invalid_action',
+        },
         timeline: {
           wheel: 'zoom_vertical',
           wheelShift: 'invalid_action',
@@ -70,6 +76,11 @@ describe('settings normalization', () => {
         },
       },
     });
+
+    expect(normalized.mouse.ruler.wheel).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.wheelSecondary).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.middleClick).toBe('none');
+    expect(normalized.mouse.ruler.doubleClick).toBe('add_marker');
 
     expect(normalized.mouse.timeline.wheel).toBe('zoom_vertical');
     expect(normalized.mouse.timeline.wheelShift).toBe('scroll_horizontal');

@@ -171,11 +171,37 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
 
   const rawMouse = (raw as Record<string, unknown>).mouse;
   const normalizedMouse: GranVideoEditorUserSettings['mouse'] = {
+    ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
     timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
     monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
   };
 
   if (rawMouse && typeof rawMouse === 'object') {
+    const rawRuler = (rawMouse as Record<string, unknown>).ruler as
+      | Record<string, unknown>
+      | undefined;
+    if (rawRuler && typeof rawRuler === 'object') {
+      for (const k of ['wheel', 'wheelSecondary']) {
+        if ((RULER_WHEEL_ACTIONS as readonly string[]).includes(rawRuler[k] as string)) {
+          (normalizedMouse.ruler as Record<string, unknown>)[k] = rawRuler[k];
+        }
+      }
+
+      const rulerMiddleClick = rawRuler.middleClick;
+      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).middleClick = rulerMiddleClick as
+          | 'pan'
+          | 'none';
+      }
+
+      const rulerDoubleClick = rawRuler.doubleClick;
+      if ((RULER_DOUBLE_CLICK_ACTIONS as readonly string[]).includes(rulerDoubleClick as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).doubleClick = rulerDoubleClick as
+          | 'add_marker'
+          | 'none';
+      }
+    }
+
     const rawTimeline = (rawMouse as Record<string, unknown>).timeline as
       | Record<string, unknown>
       | undefined;
