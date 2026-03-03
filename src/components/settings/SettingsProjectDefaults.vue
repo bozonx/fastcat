@@ -1,15 +1,30 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import { createDefaultProjectDefaults } from '~/utils/settings/helpers';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+function resetDefaults() {
+  workspaceStore.userSettings.projectDefaults = createDefaultProjectDefaults();
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="text-sm font-medium text-ui-text">
-      {{ t('videoEditor.settings.userProject', 'Project defaults') }}
+    <div class="flex items-center justify-between gap-3">
+      <div class="text-sm font-medium text-ui-text">
+        {{ t('videoEditor.settings.userProject', 'Project defaults') }}
+      </div>
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        @click="resetDefaults"
+      >
+        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+      </UButton>
     </div>
 
     <MediaResolutionSettings

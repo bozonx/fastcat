@@ -1,14 +1,29 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+function resetDefaults() {
+  workspaceStore.userSettings.optimization = { ...DEFAULT_USER_SETTINGS.optimization };
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="text-sm font-medium text-ui-text">
-      {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
+    <div class="flex items-center justify-between gap-3">
+      <div class="text-sm font-medium text-ui-text">
+        {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
+      </div>
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        @click="resetDefaults"
+      >
+        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+      </UButton>
     </div>
 
     <div
@@ -41,6 +56,20 @@ const workspaceStore = useWorkspaceStore();
         />
       </UFormField>
 
+      <UFormField :label="t('videoEditor.settings.proxyConcurrency', 'Concurrency')">
+        <UInput
+          v-model.number="workspaceStore.userSettings.optimization.proxyConcurrency"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          max="16"
+          step="1"
+          class="w-full"
+        />
+      </UFormField>
+    </div>
+
+    <div class="grid grid-cols-4 gap-4">
       <UFormField
         :label="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
         :help="
@@ -69,18 +98,6 @@ const workspaceStore = useWorkspaceStore();
           min="32"
           max="512"
           step="32"
-          class="w-full"
-        />
-      </UFormField>
-
-      <UFormField :label="t('videoEditor.settings.proxyConcurrency', 'Concurrency')">
-        <UInput
-          v-model.number="workspaceStore.userSettings.optimization.proxyConcurrency"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          max="16"
-          step="1"
           class="w-full"
         />
       </UFormField>
