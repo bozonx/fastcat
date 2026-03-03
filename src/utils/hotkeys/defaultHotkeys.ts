@@ -163,7 +163,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Toggle track mute' },
     { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Toggle track solo' },
 
-    { id: 'playback.toggle', groupId: 'playback', title: 'Play / pause (normal speed)' },
+    { id: 'playback.toggle', groupId: 'playback', title: 'Play / Pause (keeps current speed)' },
     { id: 'playback.toggle1', groupId: 'playback', title: 'Play / pause (1x)' },
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },

@@ -83,7 +83,7 @@ export function useEditorHotkeys() {
     if (e.defaultPrevented) return;
     if (e.repeat) return;
 
-    if (document.querySelector('[role="dialog"]')) return;
+    if (document.querySelector('[role="dialog"]') && e.key !== 'Escape') return;
 
     if (e.key === 'Tab' && focusStore.tempFocus !== 'none') {
       e.preventDefault();
@@ -91,8 +91,8 @@ export function useEditorHotkeys() {
       return;
     }
 
-    if (isEditableTarget(e.target)) return;
-    if (isEditableTarget(document.activeElement)) return;
+    if (isEditableTarget(e.target) && e.key !== 'Escape') return;
+    if (isEditableTarget(document.activeElement) && e.key !== 'Escape') return;
 
     const combo = hotkeyFromKeyboardEvent(e);
     if (!combo) return;
