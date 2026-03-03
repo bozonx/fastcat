@@ -38,7 +38,7 @@ describe('hotkeyUtils', () => {
 
     it('returns null for empty or invalid input', () => {
       expect(parseHotkeyCombo('')).toBeNull();
-      // @ts-ignore
+      // @ts-expect-error test invalid input
       expect(parseHotkeyCombo(null)).toBeNull();
       expect(parseHotkeyCombo('Ctrl+')).toBeNull(); // Missing key
     });

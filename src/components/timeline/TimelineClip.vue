@@ -40,13 +40,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
-  (
-    e: 'startMoveItem',
-    event: PointerEvent,
-    trackId: string,
-    itemId: string,
-    startUs: number,
-  ): void;
+  (e: 'startMoveItem', event: PointerEvent, trackId: string, itemId: string, startUs: number): void;
   (
     e: 'startTrimItem',
     event: PointerEvent,

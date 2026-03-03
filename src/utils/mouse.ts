@@ -20,7 +20,10 @@ export const MIDDLE_CLICK_ACTIONS = ['pan', 'none'] as const;
  * (e.g. from a trackpad or shift+wheel).
  */
 export function isSecondaryWheel(e: WheelEvent): boolean {
-  return (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (e.deltaY === 0 && e.deltaX !== 0);
+  return (
+    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) ||
+    (e.deltaY === 0 && e.deltaX !== 0)
+  );
 }
 
 /**
