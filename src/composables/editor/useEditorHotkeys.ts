@@ -170,10 +170,13 @@ export function useEditorHotkeys() {
       if (focusStore.effectiveFocus === 'timeline') {
         startZoomHotkeyHold({ step: 3, keyCode: e.code });
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
-        // We'll dispatch a custom event that MediaPlayer/ImageViewer can listen to
-        window.dispatchEvent(new CustomEvent('gran-zoom', { detail: { dir: 1 } }));
+        window.dispatchEvent(
+          new CustomEvent('gran-zoom', { detail: { dir: 1, target: 'preview' } }),
+        );
       } else if (focusStore.effectiveFocus === 'monitor') {
-        window.dispatchEvent(new CustomEvent('gran-zoom', { detail: { dir: 1 } }));
+        window.dispatchEvent(
+          new CustomEvent('gran-zoom', { detail: { dir: 1, target: 'monitor' } }),
+        );
       }
       return;
     }
@@ -181,8 +184,14 @@ export function useEditorHotkeys() {
     if (cmd === 'general.zoomOut') {
       if (focusStore.effectiveFocus === 'timeline') {
         startZoomHotkeyHold({ step: -3, keyCode: e.code });
-      } else {
-        window.dispatchEvent(new CustomEvent('gran-zoom', { detail: { dir: -1 } }));
+      } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+        window.dispatchEvent(
+          new CustomEvent('gran-zoom', { detail: { dir: -1, target: 'preview' } }),
+        );
+      } else if (focusStore.effectiveFocus === 'monitor') {
+        window.dispatchEvent(
+          new CustomEvent('gran-zoom', { detail: { dir: -1, target: 'monitor' } }),
+        );
       }
       return;
     }
@@ -190,8 +199,10 @@ export function useEditorHotkeys() {
     if (cmd === 'general.zoomReset') {
       if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.setTimelineZoom(50);
-      } else {
-        window.dispatchEvent(new CustomEvent('gran-zoom-reset'));
+      } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+        window.dispatchEvent(new CustomEvent('gran-zoom-reset', { detail: { target: 'preview' } }));
+      } else if (focusStore.effectiveFocus === 'monitor') {
+        window.dispatchEvent(new CustomEvent('gran-zoom-reset', { detail: { target: 'monitor' } }));
       }
       return;
     }

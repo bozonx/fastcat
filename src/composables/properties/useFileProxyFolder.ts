@@ -59,10 +59,14 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
   async function stopProxyGenerationForSelectedFolder() {
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'directory' || !entry.path) return;
+    const dirPath = entry.path;
 
     for (const p of generatingProxies.value) {
-      if (p === entry.path || p.startsWith(`${entry.path}/`)) {
-        await options.proxyStore.cancelProxyGeneration(p);
+      if (p.startsWith(`${dirPath}/`)) {
+        const rel = p.slice(dirPath.length + 1);
+        if (!rel.includes('/')) {
+          await options.proxyStore.cancelProxyGeneration(p);
+        }
       }
     }
   }

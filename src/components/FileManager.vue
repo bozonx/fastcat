@@ -112,8 +112,11 @@ function onFileAction(action: any, entry: FsEntry) {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       const generatingProxies = proxyStore.generatingProxies;
       for (const p of generatingProxies) {
-        if (p === entry.path || p.startsWith(`${entry.path}/`)) {
-          void proxyStore.cancelProxyGeneration(p);
+        if (p.startsWith(`${entry.path}/`)) {
+          const rel = p.slice(entry.path.length + 1);
+          if (!rel.includes('/')) {
+            void proxyStore.cancelProxyGeneration(p);
+          }
         }
       }
     }
