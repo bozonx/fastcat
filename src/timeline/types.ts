@@ -180,6 +180,7 @@ export interface TimelineTrack {
 export interface TimelineMarker {
   id: string;
   timeUs: number;
+  durationUs?: number;
   text: string;
 }
 

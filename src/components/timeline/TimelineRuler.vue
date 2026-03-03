@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'pointerdown', event: PointerEvent): void;
   (e: 'start-playhead-drag', event: PointerEvent): void;
+  (e: 'start-pan', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
   (e: 'dblclick-ruler', timeUs: number): void;
 }>();
@@ -143,8 +144,10 @@ function selectMarker(markerId: string) {
 }
 
 const draggedMarkerId = ref<string | null>(null);
+const draggedMarkerPart = ref<'left' | 'right'>('left');
 const markerDragStartX = ref(0);
 const markerDragStartUs = ref(0);
+const markerDragStartDurationUs = ref(0);
 
 const contextMenuMarkerId = ref<string | null>(null);
 
@@ -153,7 +156,7 @@ function onMarkerContextMenu(e: MouseEvent, markerId: string) {
   contextMenuMarkerId.value = markerId;
 }
 
-function onMarkerPointerDown(e: PointerEvent, markerId: string) {
+function onMarkerPointerDown(e: PointerEvent, markerId: string, part: 'left' | 'right' = 'left') {
   if (e.button !== 0) return;
   e.stopPropagation();
   selectMarker(markerId);
@@ -162,8 +165,10 @@ function onMarkerPointerDown(e: PointerEvent, markerId: string) {
   if (!m) return;
 
   draggedMarkerId.value = markerId;
+  draggedMarkerPart.value = part;
   markerDragStartX.value = e.clientX;
   markerDragStartUs.value = m.timeUs;
+  markerDragStartDurationUs.value = m.durationUs ?? 0;
 
   window.addEventListener('pointermove', onWindowPointerMove);
   window.addEventListener('pointerup', onWindowPointerUp);
@@ -175,11 +180,31 @@ function onWindowPointerMove(e: PointerEvent) {
   const dx = e.clientX - markerDragStartX.value;
   const currentZoom = zoom.value;
 
-  const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
-  const newPx = Math.max(0, startPx + dx);
-  const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
-
-  timelineStore.updateMarker(draggedMarkerId.value, { timeUs: newUs });
+  if (draggedMarkerPart.value === 'left') {
+    const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
+    const newPx = Math.max(0, startPx + dx);
+    const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
+    
+    // If it's a zone, adjusting left should keep the right edge fixed by changing duration
+    const m = markers.value.find(x => x.id === draggedMarkerId.value);
+    if (m && m.durationUs !== undefined) {
+      const endUs = markerDragStartUs.value + markerDragStartDurationUs.value;
+      if (newUs < endUs) {
+        timelineStore.updateMarker(draggedMarkerId.value, { 
+          timeUs: newUs,
+          durationUs: endUs - newUs
+        });
+      }
+    } else {
+      timelineStore.updateMarker(draggedMarkerId.value, { timeUs: newUs });
+    }
+  } else if (draggedMarkerPart.value === 'right') {
+    const durationPx = timeUsToPx(markerDragStartDurationUs.value, currentZoom);
+    const newDurationPx = Math.max(10, durationPx + dx); // min width 10px
+    const newDurationUs = pxToTimeUs(newDurationPx, currentZoom);
+    
+    timelineStore.updateMarker(draggedMarkerId.value, { durationUs: newDurationUs });
+  }
 }
 
 function onWindowPointerUp() {
@@ -201,16 +226,19 @@ const markerPoints = computed(() => {
   const startPx = scrollLeft.value;
   const w = width.value;
 
-  return markers.value
+    return markers.value
     .map((m) => {
       const x = timeUsToPx(m.timeUs, currentZoom) - startPx;
+      const width = m.durationUs ? timeUsToPx(m.durationUs, currentZoom) : 0;
       return {
         id: m.id,
         x,
+        width,
+        isZone: m.durationUs !== undefined,
         text: m.text ?? '',
       };
     })
-    .filter((p) => p.x >= -20 && p.x <= w + 20);
+    .filter((p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20));
 });
 
 function formatTime(us: number, fpsValue: number): string {
@@ -451,6 +479,22 @@ function onRulerWheel(e: WheelEvent) {
             openEditMarker(newMarkerId);
           },
         },
+        {
+          label: t('granVideoEditor.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
+          icon: 'i-heroicons-arrows-right-left',
+          onSelect: () => {
+            const timeUs = currentTime;
+            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+            timelineStore.applyTimeline({
+              type: 'add_marker',
+              id: newMarkerId,
+              timeUs,
+              durationUs: 5_000_000,
+              text: '',
+            });
+            openEditMarker(newMarkerId);
+          },
+        },
       ],
       ...(contextMenuMarkerId
         ? [
@@ -464,6 +508,25 @@ function onRulerWheel(e: WheelEvent) {
                   }
                 },
               },
+              ...(markers.find(m => m.id === contextMenuMarkerId)?.durationUs !== undefined
+                ? [{
+                    label: t('granVideoEditor.timeline.convertZoneToMarker', 'Convert to normal marker'),
+                    icon: 'i-heroicons-arrows-pointing-in',
+                    onSelect: () => {
+                      if (contextMenuMarkerId) {
+                        timelineStore.convertZoneToMarker(contextMenuMarkerId);
+                      }
+                    },
+                  }]
+                : [{
+                    label: t('granVideoEditor.timeline.convertMarkerToZone', 'Convert to zone marker'),
+                    icon: 'i-heroicons-arrows-pointing-out',
+                    onSelect: () => {
+                      if (contextMenuMarkerId) {
+                        timelineStore.convertMarkerToZone(contextMenuMarkerId);
+                      }
+                    },
+                  }]),
               {
                 label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
                 icon: 'i-heroicons-trash',
@@ -500,13 +563,16 @@ function onRulerWheel(e: WheelEvent) {
         <div
           v-for="p in markerPoints"
           :key="p.id"
-          class="absolute bottom-0 pointer-events-auto"
-          :style="{ left: `${Math.round(p.x)}px` }"
+          class="absolute bottom-0 h-full pointer-events-auto"
+          :style="{ left: `${Math.round(p.x)}px`, width: p.isZone ? `${Math.round(p.width)}px` : 'auto' }"
         >
-          <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+          <div v-if="p.isZone" class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none" />
+          
+          <!-- Left/Main Marker -->
+          <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text" class="absolute bottom-0 left-0">
             <button
               type="button"
-              class="w-2 h-3 -translate-x-1 rounded-sm shadow-sm"
+              class="w-2 h-3 -translate-x-1 rounded-sm shadow-sm relative z-10"
               :class="[
                 selectionStore.selectedEntity?.source === 'timeline' &&
                 selectionStore.selectedEntity?.kind === 'marker' &&
@@ -514,9 +580,30 @@ function onRulerWheel(e: WheelEvent) {
                   ? 'bg-primary-400 ring-2 ring-primary-400/50'
                   : 'bg-primary-500',
               ]"
-              :aria-label="'Marker'"
+              :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
               @dblclick.stop.prevent="openEditMarker(p.id)"
               @pointerdown.stop="onMarkerPointerDown($event, p.id)"
+              @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
+              @mousedown.stop
+              @click.stop="selectMarker(p.id)"
+            />
+          </UTooltip>
+          
+          <!-- Right Marker (for zones) -->
+          <UTooltip v-if="p.isZone" :text="truncateForTooltip(p.text)" :disabled="!p.text" class="absolute bottom-0 right-0">
+            <button
+              type="button"
+              class="w-2 h-3 translate-x-1 rounded-sm shadow-sm relative z-10"
+              :class="[
+                selectionStore.selectedEntity?.source === 'timeline' &&
+                selectionStore.selectedEntity?.kind === 'marker' &&
+                selectionStore.selectedEntity.markerId === p.id
+                  ? 'bg-primary-400 ring-2 ring-primary-400/50'
+                  : 'bg-primary-500',
+              ]"
+              aria-label="Zone Marker End"
+              @dblclick.stop.prevent="openEditMarker(p.id)"
+              @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
               @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
               @mousedown.stop
               @click.stop="selectMarker(p.id)"
