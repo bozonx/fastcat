@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useEditorViewStore } from '~/stores/editorView.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
@@ -50,13 +51,17 @@ async function handleSelectInFileManager() {
 
   const { useFileManager } = await import('~/composables/fileManager/useFileManager');
   const { useUiStore } = await import('~/stores/ui.store');
-  const { useProjectStore } = await import('~/stores/project.store');
   const { useFocusStore } = await import('~/stores/focus.store');
 
   const fileManager = useFileManager();
   const uiStore = useUiStore();
-  const projectStore = useProjectStore();
+  const editorViewStore = useEditorViewStore();
   const focusStore = useFocusStore();
+
+  // Switch to files or cut view so the file manager is visible
+  if (editorViewStore.currentView !== 'files' && editorViewStore.currentView !== 'cut') {
+    editorViewStore.goToFiles();
+  }
 
   // Make sure the file manager has up-to-date entries before trying to select.
   await fileManager.loadProjectDirectory();
@@ -76,10 +81,6 @@ async function handleSelectInFileManager() {
 
   const entry = fileManager.findEntryByPath(path);
   if (!entry) return;
-
-  if (projectStore.currentView !== 'files' && projectStore.currentView !== 'cut') {
-    projectStore.goToFiles();
-  }
 
   uiStore.selectedFsEntry = {
     kind: entry.kind,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 interface WheelSliderProps {
   modelValue: number;
@@ -55,22 +55,35 @@ function onWheel(event: WheelEvent) {
   value.value = rounded;
 }
 
-function onDoubleClick(event: MouseEvent) {
+function resetToDefault() {
   if (props.defaultValue !== undefined) {
     value.value = props.defaultValue;
+  }
+}
+
+// Track double pointer-down for both mouse and touch/stylus
+const lastPointerDownTime = ref(0);
+const DOUBLE_CLICK_THRESHOLD_MS = 350;
+
+function onPointerDown(event: PointerEvent) {
+  const now = Date.now();
+  if (now - lastPointerDownTime.value < DOUBLE_CLICK_THRESHOLD_MS) {
+    resetToDefault();
+    lastPointerDownTime.value = 0;
+  } else {
+    lastPointerDownTime.value = now;
   }
 }
 </script>
 
 <template>
-  <div @wheel.prevent="onWheel" @dblclick="onDoubleClick">
+  <div @wheel.prevent="onWheel" @dblclick="resetToDefault" @pointerdown="onPointerDown">
     <USlider
       v-model="value"
       :min="min"
       :max="max"
       :step="step"
       :class="sliderClass"
-      @dblclick="onDoubleClick"
     />
   </div>
 </template>

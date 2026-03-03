@@ -41,10 +41,18 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
 
   const isGeneratingProxyForFolder = computed(() => {
     const entry = options.selectedFsEntry.value;
-    const path = typeof entry?.path === 'string' ? entry.path : '';
-    if (!path) return false;
+    if (!entry || entry.kind !== 'directory') return false;
+    const dirPath = typeof entry.path === 'string' ? entry.path : null;
 
-    return generatingProxies.value.has(path);
+    for (const p of generatingProxies.value) {
+      // Root folder: match files without slash
+      if (dirPath === null || dirPath === '') {
+        if (!p.includes('/')) return true;
+      } else if (p.startsWith(`${dirPath}/`)) {
+        return true;
+      }
+    }
+    return false;
   });
 
   async function generateProxiesForSelectedFolder() {
