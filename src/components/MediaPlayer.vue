@@ -242,11 +242,13 @@ function onPreviewPlayback(e: CustomEvent) {
 
   if (detail.action === 'toggle1') {
     if (!mediaElement.value) return;
-    if (isPlaying.value || reversePlaybackTimer !== null) {
-      pauseAndClearPlayback();
-      isPlaying.value = false;
-      playbackSpeed.value = 1;
+    if (reversePlaybackTimer !== null) {
+      clearReversePlaybackTimer();
+    }
+
+    if (isPlaying.value) {
       mediaElement.value.playbackRate = 1;
+      playbackSpeed.value = 1;
       return;
     }
 
