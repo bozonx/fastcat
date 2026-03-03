@@ -21,6 +21,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
+import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -536,6 +537,44 @@ function onCardSizeChange(e: Event) {
 
 <template>
   <div class="flex flex-col h-full bg-ui-bg relative overflow-hidden">
+    <!-- Navigation bar -->
+    <div
+      v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''"
+      class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
+    >
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        icon="i-heroicons-arrow-left"
+        @click="navigateBack"
+      />
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        icon="i-heroicons-arrow-up"
+        @click="navigateUp"
+      />
+
+      <div class="flex items-center gap-1 ml-2 overflow-x-auto">
+        <template v-for="(folder, index) in parentFolders" :key="folder.path">
+          <button
+            class="text-xs text-ui-text-muted hover:text-ui-text transition-colors shrink-0"
+            :class="{ 'text-ui-text font-medium': index === parentFolders.length - 1 }"
+            @click="navigateToFolder(index)"
+          >
+            {{ folder.name }}
+          </button>
+          <UIcon
+            v-if="index < parentFolders.length - 1"
+            name="i-heroicons-chevron-right"
+            class="w-3 h-3 text-ui-text-muted shrink-0"
+          />
+        </template>
+      </div>
+    </div>
+
     <!-- Toolbar -->
     <div
       class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
@@ -627,44 +666,6 @@ function onCardSizeChange(e: Event) {
       </div>
     </div>
 
-    <!-- Navigation bar -->
-    <div
-      v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''"
-      class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
-    >
-      <UButton
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        icon="i-heroicons-arrow-left"
-        @click="navigateBack"
-      />
-      <UButton
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        icon="i-heroicons-arrow-up"
-        @click="navigateUp"
-      />
-
-      <div class="flex items-center gap-1 ml-2 overflow-x-auto">
-        <template v-for="(folder, index) in parentFolders" :key="folder.path">
-          <button
-            class="text-xs text-ui-text-muted hover:text-ui-text transition-colors shrink-0"
-            :class="{ 'text-ui-text font-medium': index === parentFolders.length - 1 }"
-            @click="navigateToFolder(index)"
-          >
-            {{ folder.name }}
-          </button>
-          <UIcon
-            v-if="index < parentFolders.length - 1"
-            name="i-heroicons-chevron-right"
-            class="w-3 h-3 text-ui-text-muted shrink-0"
-          />
-        </template>
-      </div>
-    </div>
-
     <!-- Main Content -->
     <div class="flex-1 overflow-auto p-4 content-scrollbar" @click.self="navigateToRoot">
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
@@ -730,6 +731,15 @@ function onCardSizeChange(e: Event) {
                     :alt="entry.name"
                     class="max-w-full max-h-full object-contain"
                   />
+                  <div
+                    v-else-if="proxyStore.generatingProxies.has(entry.path || '')"
+                    class="relative flex items-center justify-center text-amber-400"
+                  >
+                    <ProgressSpinner
+                      :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
+                      size="md"
+                    />
+                  </div>
                   <UIcon
                     v-else
                     :name="getFileIcon(entry)"
@@ -937,7 +947,13 @@ function onCardSizeChange(e: Event) {
                           : '',
                       ]"
                     >
+                      <ProgressSpinner
+                        v-if="proxyStore.generatingProxies.has(entry.path || '')"
+                        :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
+                        size="sm"
+                      />
                       <UIcon
+                        v-else
                         :name="getFileIcon(entry)"
                         class="w-4 h-4 transition-colors"
                         :class="[

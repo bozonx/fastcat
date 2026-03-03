@@ -115,6 +115,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineItem,
     selectTimelineTrack,
     selectTimelineTransition,
+    selectTimelineMarker,
     selectFsEntry,
     clearSelection,
   };
