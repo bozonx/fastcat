@@ -29,6 +29,12 @@ export interface SelectedTimelineTransition extends SelectedEntityBase {
   edge: 'in' | 'out';
 }
 
+export interface SelectedTimelineMarker extends SelectedEntityBase {
+  source: 'timeline';
+  kind: 'marker';
+  markerId: string;
+}
+
 export interface SelectedFsEntry extends SelectedEntityBase {
   source: 'fileManager';
   kind: 'file' | 'directory';
@@ -49,6 +55,7 @@ export type SelectedEntity =
   | SelectedTimelineGap
   | SelectedTimelineTrack
   | SelectedTimelineTransition
+  | SelectedTimelineMarker
   | SelectedFsEntry;
 
 export const useSelectionStore = defineStore('selection', () => {
@@ -78,6 +85,14 @@ export const useSelectionStore = defineStore('selection', () => {
       trackId,
       itemId,
       edge,
+    };
+  }
+
+  function selectTimelineMarker(markerId: string) {
+    selectedEntity.value = {
+      source: 'timeline',
+      kind: 'marker',
+      markerId,
     };
   }
 

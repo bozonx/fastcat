@@ -43,6 +43,12 @@ export interface GranVideoEditorUserSettings {
     };
   };
   mouse: {
+    ruler: {
+      wheel: 'zoom_horizontal' | 'scroll_horizontal' | 'none';
+      wheelSecondary: 'zoom_horizontal' | 'scroll_horizontal' | 'none';
+      middleClick: 'pan' | 'none';
+      doubleClick: 'add_marker' | 'none';
+    };
     timeline: {
       wheel: 'scroll_vertical' | 'scroll_horizontal' | 'zoom_horizontal' | 'zoom_vertical' | 'none';
       wheelShift:
@@ -121,6 +127,12 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     },
   },
   mouse: {
+    ruler: {
+      wheel: 'zoom_horizontal',
+      wheelSecondary: 'scroll_horizontal',
+      middleClick: 'pan',
+      doubleClick: 'add_marker',
+    },
     timeline: {
       wheel: 'scroll_vertical',
       wheelShift: 'scroll_horizontal',

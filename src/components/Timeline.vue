@@ -210,8 +210,15 @@ function onTimelineRulerWheel(e: WheelEvent) {
   const delta = getWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
-  if (!isSecondary) {
-    // Primary wheel -> Zoom horizontal
+  const settings = workspaceStore.userSettings.mouse.ruler;
+  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
+
+  if (action === 'none') {
+    e.preventDefault();
+    return;
+  }
+
+  if (action === 'zoom_horizontal') {
     e.preventDefault();
 
     const prevZoom = timelineStore.timelineZoom;
@@ -232,8 +239,7 @@ function onTimelineRulerWheel(e: WheelEvent) {
         anchorViewportX: viewportX,
       },
     });
-  } else {
-    // Secondary wheel -> Scroll horizontal
+  } else if (action === 'scroll_horizontal') {
     e.preventDefault();
     el.scrollLeft += delta;
   }
