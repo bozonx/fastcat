@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import MediaPlayer from '~/components/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
+import { useUiStore } from '~/stores/ui.store';
 
 const { t } = useI18n();
+const uiStore = useUiStore();
 
 const props = defineProps<{
   url?: string | null;
@@ -17,17 +19,18 @@ const props = defineProps<{
 
 const isFullscreenOpen = ref(false);
 
-function openFullscreen() {
-  isFullscreenOpen.value = true;
-}
-
-function closeFullscreen() {
-  isFullscreenOpen.value = false;
-}
-
 function toggleFullscreen() {
   isFullscreenOpen.value = !isFullscreenOpen.value;
 }
+
+watch(
+  () => uiStore.previewFullscreenToggleTrigger,
+  (timestamp) => {
+    if (timestamp) {
+      toggleFullscreen();
+    }
+  },
+);
 
 function handleEsc(e: KeyboardEvent) {
   if (e.key === 'Escape' && isFullscreenOpen.value) {
@@ -37,16 +40,10 @@ function handleEsc(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleEsc);
-  window.addEventListener('gran-preview-fullscreen', openFullscreen);
-  window.addEventListener('gran-preview-fullscreen-close', closeFullscreen);
-  window.addEventListener('gran-preview-fullscreen-toggle', toggleFullscreen);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc);
-  window.removeEventListener('gran-preview-fullscreen', openFullscreen);
-  window.removeEventListener('gran-preview-fullscreen-close', closeFullscreen);
-  window.removeEventListener('gran-preview-fullscreen-toggle', toggleFullscreen);
 });
 </script>
 

@@ -115,14 +115,14 @@ export function useEditorHotkeys() {
   }
 
   onMounted(() => {
-    window.addEventListener('keydown', onGlobalKeydown, true);
-    window.addEventListener('keyup', onGlobalKeyup, true);
+    window.addEventListener('keydown', onGlobalKeydown);
+    window.addEventListener('keyup', onGlobalKeyup);
     window.addEventListener('blur', onGlobalBlur);
   });
 
   onUnmounted(() => {
-    window.removeEventListener('keydown', onGlobalKeydown, true);
-    window.removeEventListener('keyup', onGlobalKeyup, true);
+    window.removeEventListener('keydown', onGlobalKeydown);
+    window.removeEventListener('keyup', onGlobalKeyup);
     window.removeEventListener('blur', onGlobalBlur);
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();

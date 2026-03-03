@@ -20,9 +20,9 @@ describe('hotkeyUtils', () => {
     expect(isEditableTarget(div)).toBe(true);
   });
 
-  it('does not treat select as editable', () => {
+  it('treats select as editable', () => {
     const select = document.createElement('select');
-    expect(isEditableTarget(select)).toBe(false);
+    expect(isEditableTarget(select)).toBe(true);
   });
 
   it('does not treat buttons as editable', () => {

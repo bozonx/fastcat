@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
+import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore } from '~/stores/focus.store';
 
 const { t } = useI18n();
+const uiStore = useUiStore();
+const focusStore = useFocusStore();
 
 const props = defineProps<{
   src: string;
@@ -225,95 +229,84 @@ function shouldHandlePreviewPlaybackEvent() {
   return Boolean(playerRootEl.value);
 }
 
-function onPreviewPlayback(e: CustomEvent) {
-  if (!shouldHandlePreviewPlaybackEvent()) return;
-  const detail = (e as CustomEvent).detail as
-    | { action: 'toggle' }
-    | { action: 'toggle1' }
-    | { action: 'toStart' }
-    | { action: 'toEnd' }
-    | { action: 'set'; direction: 'forward' | 'backward'; speed: number };
-  if (!detail || typeof detail !== 'object') return;
+watch(
+  () => uiStore.previewPlaybackTrigger,
+  (detail) => {
+    if (!shouldHandlePreviewPlaybackEvent()) return;
+    if (!detail || !detail.timestamp) return;
 
-  if (detail.action === 'toggle') {
-    togglePlay();
-    return;
-  }
-
-  if (detail.action === 'toggle1') {
-    if (!mediaElement.value) return;
-    if (reversePlaybackTimer !== null) {
-      clearReversePlaybackTimer();
-    }
-
-    if (isPlaying.value) {
-      mediaElement.value.playbackRate = 1;
-      playbackSpeed.value = 1;
+    if (detail.action === 'toggle') {
+      togglePlay();
       return;
     }
 
-    setForwardPlaybackSpeed(1);
-    return;
-  }
+    if (detail.action === 'toggle1') {
+      if (!mediaElement.value) return;
+      if (reversePlaybackTimer !== null) {
+        clearReversePlaybackTimer();
+      }
 
-  if (detail.action === 'toStart') {
-    if (!mediaElement.value) return;
-    pauseAndClearPlayback();
-    mediaElement.value.currentTime = 0;
-    currentTime.value = 0;
-    return;
-  }
+      if (isPlaying.value) {
+        mediaElement.value.playbackRate = 1;
+        playbackSpeed.value = 1;
+        return;
+      }
 
-  if (detail.action === 'toEnd') {
-    if (!mediaElement.value) return;
-    pauseAndClearPlayback();
-    const end = Number.isFinite(mediaElement.value.duration) ? mediaElement.value.duration : 0;
-    mediaElement.value.currentTime = end;
-    currentTime.value = end;
-    return;
-  }
-
-  if (detail.action === 'set') {
-    if (detail.direction === 'forward') {
-      setForwardPlaybackSpeed(detail.speed);
-    } else {
-      setBackwardPlaybackSpeed(detail.speed);
+      if (!mediaElement.value) return;
+      pauseAndClearPlayback();
+      mediaElement.value.currentTime = 0;
+      currentTime.value = 0;
+    } else if (detail.action === 'toEnd') {
+      if (!mediaElement.value) return;
+      pauseAndClearPlayback();
+      const end = Number.isFinite(mediaElement.value.duration) ? mediaElement.value.duration : 0;
+      mediaElement.value.currentTime = end;
+      currentTime.value = end;
+    } else if (detail.action === 'set') {
+      if (detail.direction === 'forward') {
+        setForwardPlaybackSpeed(detail.speed ?? 1);
+      } else {
+        setBackwardPlaybackSpeed(detail.speed ?? 1);
+      }
     }
-  }
-}
+  },
+  { deep: true },
+);
 
-onMounted(() => {
-  window.addEventListener('gran-preview-playback', onPreviewPlayback as EventListener);
-});
+watch(
+  () => uiStore.previewZoomTrigger,
+  (trigger) => {
+    if (!trigger.timestamp) return;
+    if (!shouldHandlePreviewPlaybackEvent()) return;
 
-onUnmounted(() => {
-  window.removeEventListener('gran-preview-playback', onPreviewPlayback as EventListener);
-  clearReversePlaybackTimer();
-});
-
-onMounted(() => {
-  window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number; target?: string }>) => {
     if (
-      e.detail?.target === 'preview' ||
+      focusStore.effectiveFocus === 'right' ||
+      focusStore.effectiveFocus === 'left' ||
       document.activeElement?.closest('.media-player-container')
     ) {
-      onCustomZoom(e);
+      onCustomZoom(
+        new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
+      );
     }
-  }) as EventListener);
-  window.addEventListener('gran-zoom-reset', ((e: CustomEvent<{ target?: string }>) => {
+  },
+  { deep: true },
+);
+
+watch(
+  () => uiStore.previewZoomResetTrigger,
+  (timestamp) => {
+    if (!timestamp) return;
+    if (!shouldHandlePreviewPlaybackEvent()) return;
+
     if (
-      e.detail?.target === 'preview' ||
+      focusStore.effectiveFocus === 'right' ||
+      focusStore.effectiveFocus === 'left' ||
       document.activeElement?.closest('.media-player-container')
     ) {
       reset();
     }
-  }) as EventListener);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('gran-zoom', onCustomZoom as EventListener);
-  window.removeEventListener('gran-zoom-reset', reset as EventListener);
-});
+  },
+);
 </script>
 
 <template>

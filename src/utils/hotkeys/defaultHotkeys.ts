@@ -75,6 +75,10 @@ export interface DefaultHotkeysConfig {
   bindings: Record<HotkeyCommandId, HotkeyCombo[]>;
 }
 
+const isMac =
+  typeof navigator !== 'undefined' ? navigator.platform.toUpperCase().indexOf('MAC') >= 0 : false;
+const Mod = isMac ? 'Meta' : 'Ctrl';
+
 export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
   commands: [
     { id: 'general.focus', groupId: 'general', title: 'Focus' },
@@ -189,13 +193,13 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.focus': ['Tab'],
     'general.deselect': ['Escape'],
     'general.delete': ['Delete', 'X'],
-    'general.undo': ['Ctrl+Z'],
-    'general.redo': ['Ctrl+Shift+Z'],
-    'general.mute': ['Ctrl+Q'],
-    'general.volumeUp': ['Ctrl+R'],
-    'general.volumeDown': ['Ctrl+E'],
+    'general.undo': [`${Mod}+Z`],
+    'general.redo': [`${Mod}+Shift+Z`],
+    'general.mute': [`${Mod}+Q`],
+    'general.volumeUp': [`${Mod}+R`],
+    'general.volumeDown': [`${Mod}+E`],
 
-    'general.fullscreen': ['Ctrl+G'],
+    'general.fullscreen': [`${Mod}+G`],
     'general.zoomIn': ['='],
     'general.zoomOut': ['-'],
     'general.zoomReset': ['0', '.'],

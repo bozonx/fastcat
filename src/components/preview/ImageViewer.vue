@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
+import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore } from '~/stores/focus.store';
+
+const { t } = useI18n();
+const uiStore = useUiStore();
+const focusStore = useFocusStore();
 
 const props = defineProps<{
   src: string;
@@ -9,8 +15,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'open-modal': [];
-  'close-modal': [];
+  (e: 'open-modal'): void;
+  (e: 'close-modal'): void;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -36,7 +42,7 @@ const imageStyle = computed(() => ({
 const contextMenuItems = computed(() => [
   [
     {
-      label: 'Reset Zoom & Pan',
+      label: t('granVideoEditor.preview.resetZoom', 'Reset Zoom & Pan'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => reset(),
       click: () => reset(),
@@ -53,29 +59,51 @@ function onClick(e: MouseEvent) {
   }
 }
 
-onMounted(() => {
-  window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number; target?: string }>) => {
+watch(
+  () => props.src,
+  () => {
+    reset();
+  },
+);
+
+watch(
+  () => uiStore.previewZoomTrigger,
+  (trigger) => {
+    if (!trigger.timestamp) return;
+    if (!containerRef.value) return;
+
     if (
-      e.detail?.target === 'preview' ||
+      focusStore.effectiveFocus === 'right' ||
+      focusStore.effectiveFocus === 'left' ||
       document.activeElement?.closest('.image-viewer-container')
     ) {
-      onCustomZoom(e);
+      onCustomZoom(
+        new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
+      );
     }
-  }) as EventListener);
-  window.addEventListener('gran-zoom-reset', ((e: CustomEvent<{ target?: string }>) => {
+  },
+  { deep: true },
+);
+
+watch(
+  () => uiStore.previewZoomResetTrigger,
+  (timestamp) => {
+    if (!timestamp) return;
+    if (!containerRef.value) return;
+
     if (
-      e.detail?.target === 'preview' ||
+      focusStore.effectiveFocus === 'right' ||
+      focusStore.effectiveFocus === 'left' ||
       document.activeElement?.closest('.image-viewer-container')
     ) {
       reset();
     }
-  }) as EventListener);
-});
+  },
+);
 
-onUnmounted(() => {
-  window.removeEventListener('gran-zoom', onCustomZoom as EventListener);
-  window.removeEventListener('gran-zoom-reset', reset as EventListener);
-});
+onMounted(() => {});
+
+onUnmounted(() => {});
 </script>
 
 <template>

@@ -1,6 +1,7 @@
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useUiStore } from '~/stores/ui.store';
 
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 20;
@@ -11,6 +12,7 @@ export function useMonitorGestures(input: {
   viewportEl: Ref<HTMLElement | null>;
 }) {
   const workspaceStore = useWorkspaceStore();
+  const uiStore = useUiStore();
 
   const isPreviewSelected = ref(false);
 
@@ -67,12 +69,9 @@ export function useMonitorGestures(input: {
     input.projectStore.projectSettings.monitor.zoom = 1;
   }
 
-  function onCustomZoom(e: Event) {
-    const detail = (e as CustomEvent).detail;
-    if (detail?.target !== 'monitor') return;
-
+  function onCustomZoom(dir: number) {
     const prevZoom = zoom.value;
-    const zoomFactor = detail.dir > 0 ? 1.1 : 0.9;
+    const zoomFactor = dir > 0 ? 1.1 : 0.9;
     const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevZoom * zoomFactor));
     zoom.value = nextZoom;
   }
@@ -197,16 +196,29 @@ export function useMonitorGestures(input: {
     }
   }
 
+  watch(
+    () => uiStore.monitorZoomTrigger,
+    (trigger) => {
+      if (!trigger.timestamp) return;
+      onCustomZoom(trigger.dir);
+    },
+    { deep: true },
+  );
+
+  watch(
+    () => uiStore.monitorZoomResetTrigger,
+    (timestamp) => {
+      if (!timestamp) return;
+      resetZoom();
+    },
+  );
+
   onMounted(() => {
     window.addEventListener('pointerup', onWindowPointerUp);
-    window.addEventListener('gran-zoom', onCustomZoom);
-    window.addEventListener('gran-zoom-reset', onCustomZoomReset);
   });
 
   onBeforeUnmount(() => {
     window.removeEventListener('pointerup', onWindowPointerUp);
-    window.removeEventListener('gran-zoom', onCustomZoom);
-    window.removeEventListener('gran-zoom-reset', onCustomZoomReset);
   });
 
   return {
