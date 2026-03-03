@@ -389,7 +389,6 @@ export function useEditorHotkeys() {
       }
 
       if (timelineStore.isPlaying) {
-        timelineStore.togglePlayback();
         timelineStore.setPlaybackSpeed(1);
         return;
       }
