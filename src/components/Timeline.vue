@@ -79,7 +79,6 @@ const zoomFactor = computed(() => {
   return factor.toFixed(2);
 });
 
-const isRulerHovered = ref(false);
 let zoomTimeout: number | null = null;
 const isZooming = ref(false);
 
@@ -90,7 +89,7 @@ watch(
     if (zoomTimeout) clearTimeout(zoomTimeout);
     zoomTimeout = window.setTimeout(() => {
       isZooming.value = false;
-    }, 1000);
+    }, 1200);
   },
 );
 
@@ -579,11 +578,7 @@ async function onDrop(e: DragEvent, trackId: string) {
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div class="flex flex-col h-full w-full relative">
-            <div
-              class="relative group shrink-0 z-10"
-              @mouseenter="isRulerHovered = true"
-              @mouseleave="isRulerHovered = false"
-            >
+            <div class="relative shrink-0 z-10">
               <TimelineRuler
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"
@@ -629,7 +624,7 @@ async function onDrop(e: DragEvent, trackId: string) {
                 @pointerdown="startPlayheadDrag"
               ></div>
 
-              <!-- Zoom Indicator -->
+              <!-- Zoom Indicator (bottom-right of timeline) -->
               <Transition
                 enter-active-class="transition-opacity duration-200"
                 enter-from-class="opacity-0"
@@ -639,10 +634,10 @@ async function onDrop(e: DragEvent, trackId: string) {
                 leave-to-class="opacity-0"
               >
                 <div
-                  v-if="isRulerHovered || isZooming"
-                  class="fixed top-8 right-6 px-2 py-1 text-xs font-mono rounded bg-ui-bg border border-ui-border text-ui-text shadow z-50 pointer-events-none"
+                  v-if="isZooming"
+                  class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono rounded bg-ui-bg/90 border border-ui-border text-ui-text shadow-lg z-30 pointer-events-none backdrop-blur-sm"
                 >
-                  Zoom: x{{ zoomFactor }}
+                  ×{{ zoomFactor }}
                 </div>
               </Transition>
             </div>

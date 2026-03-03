@@ -50,6 +50,8 @@ const { t } = useI18n();
         :min="0"
         :max="2"
         :step="0.001"
+        :wheel-step-multiplier="10"
+        :default-value="1"
         @update:model-value="(v: unknown) => emit('updateAudioGain', Number(v))"
       />
     </div>
@@ -68,6 +70,7 @@ const { t } = useI18n();
         :min="-1"
         :max="1"
         :step="0.01"
+        :default-value="0"
         @update:model-value="(v: unknown) => emit('updateAudioBalance', Number(v))"
       />
     </div>

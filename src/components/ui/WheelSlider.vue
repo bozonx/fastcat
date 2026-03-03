@@ -6,6 +6,7 @@ interface WheelSliderProps {
   min: number;
   max: number;
   step?: number;
+  /** Extra CSS class forwarded to USlider */
   sliderClass?: string;
   wheelStepMultiplier?: number;
   defaultValue?: number;
@@ -61,13 +62,16 @@ function resetToDefault() {
   }
 }
 
-// Track double pointer-down for both mouse and touch/stylus
+// Double-pointer-down detection — works with mouse, touch, stylus.
+// We use capture so we catch the event even if USlider stops propagation.
 const lastPointerDownTime = ref(0);
-const DOUBLE_CLICK_THRESHOLD_MS = 350;
+const DOUBLE_CLICK_MS = 350;
 
-function onPointerDown(event: PointerEvent) {
+function onPointerDownCapture(event: PointerEvent) {
+  // Only primary button / primary touch
+  if (event.button !== 0 && event.pointerType === 'mouse') return;
   const now = Date.now();
-  if (now - lastPointerDownTime.value < DOUBLE_CLICK_THRESHOLD_MS) {
+  if (now - lastPointerDownTime.value < DOUBLE_CLICK_MS) {
     resetToDefault();
     lastPointerDownTime.value = 0;
   } else {
@@ -77,13 +81,28 @@ function onPointerDown(event: PointerEvent) {
 </script>
 
 <template>
-  <div @wheel.prevent="onWheel" @dblclick="resetToDefault" @pointerdown="onPointerDown">
+  <!--
+    Outer wrapper captures wheel on the full height so the user doesn't
+    need to aim at the slim slider track. The invisible overlay covers
+    the entire component and forwards wheel events without blocking clicks.
+  -->
+  <div
+    class="relative"
+    @wheel.prevent="onWheel"
+    @pointerdown.capture="onPointerDownCapture"
+    @dblclick.capture="resetToDefault"
+  >
     <USlider
       v-model="value"
       :min="min"
       :max="max"
       :step="step"
       :class="sliderClass"
+    />
+    <!-- Transparent full-height capture zone for wheel – does NOT block pointer events -->
+    <div
+      class="absolute inset-0 -top-3 -bottom-3 pointer-events-none"
+      aria-hidden="true"
     />
   </div>
 </template>

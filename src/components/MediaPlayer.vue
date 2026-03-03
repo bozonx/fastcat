@@ -312,7 +312,7 @@ watch(
 <template>
   <div ref="playerRootEl" class="flex flex-col w-full h-full overflow-hidden rounded">
     <!-- Video -->
-    <UContextMenu v-if="type === 'video'" :items="contextMenuItems" class="flex-1 flex min-h-0">
+    <UContextMenu v-if="type === 'video'" :items="contextMenuItems" class="flex-1 flex min-h-0" :ui="{ content: 'z-[9999]' }">
       <div
         ref="containerRef"
         class="media-player-container relative w-full h-full bg-black overflow-hidden flex items-center justify-center select-none outline-none"
