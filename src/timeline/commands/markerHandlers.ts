@@ -35,6 +35,7 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
   const marker: TimelineMarker = {
     id: cmd.id,
     timeUs: Math.max(0, Math.round(cmd.timeUs)),
+    durationUs: cmd.durationUs !== undefined ? Math.max(0, Math.round(cmd.durationUs)) : undefined,
     text: typeof cmd.text === 'string' ? cmd.text : '',
   };
 
@@ -57,6 +58,12 @@ export function updateMarker(
   const nextMarker: TimelineMarker = {
     ...prev,
     timeUs: cmd.timeUs !== undefined ? Math.max(0, Math.round(Number(cmd.timeUs))) : prev.timeUs,
+    durationUs:
+      cmd.durationUs !== undefined
+        ? cmd.durationUs === null
+          ? undefined
+          : Math.max(0, Math.round(Number(cmd.durationUs)))
+        : prev.durationUs,
     text: cmd.text !== undefined ? String(cmd.text) : prev.text,
   };
 

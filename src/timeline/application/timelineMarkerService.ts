@@ -10,8 +10,14 @@ export interface TimelineMarkerServiceDeps {
 export interface TimelineMarkerService {
   getMarkers: () => TimelineMarker[];
   addMarkerAtPlayhead: () => void;
-  updateMarker: (markerId: string, patch: { timeUs?: number; text?: string }) => void;
+  addZoneMarkerAtPlayhead: () => void;
+  updateMarker: (
+    markerId: string,
+    patch: { timeUs?: number; durationUs?: number | null; text?: string },
+  ) => void;
   removeMarker: (markerId: string) => void;
+  convertMarkerToZone: (markerId: string) => void;
+  convertZoneToMarker: (markerId: string) => void;
 }
 
 function generateMarkerId(): string {
@@ -35,11 +41,25 @@ export function createTimelineMarkerService(
     });
   }
 
-  function updateMarker(markerId: string, patch: { timeUs?: number; text?: string }) {
+  function addZoneMarkerAtPlayhead() {
+    deps.applyTimeline({
+      type: 'add_marker',
+      id: generateMarkerId(),
+      timeUs: deps.getCurrentTime(),
+      durationUs: 5_000_000, // 5 seconds
+      text: '',
+    });
+  }
+
+  function updateMarker(
+    markerId: string,
+    patch: { timeUs?: number; durationUs?: number | null; text?: string },
+  ) {
     deps.applyTimeline({
       type: 'update_marker',
       id: markerId,
       timeUs: patch.timeUs,
+      durationUs: patch.durationUs,
       text: patch.text,
     });
   }
@@ -48,10 +68,29 @@ export function createTimelineMarkerService(
     deps.applyTimeline({ type: 'remove_marker', id: markerId });
   }
 
+  function convertMarkerToZone(markerId: string) {
+    deps.applyTimeline({
+      type: 'update_marker',
+      id: markerId,
+      durationUs: 5_000_000, // 5 seconds
+    });
+  }
+
+  function convertZoneToMarker(markerId: string) {
+    deps.applyTimeline({
+      type: 'update_marker',
+      id: markerId,
+      durationUs: null,
+    });
+  }
+
   return {
     getMarkers,
     addMarkerAtPlayhead,
+    addZoneMarkerAtPlayhead,
     updateMarker,
     removeMarker,
+    convertMarkerToZone,
+    convertZoneToMarker,
   };
 }

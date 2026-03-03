@@ -212,6 +212,7 @@ export interface AddMarkerCommand {
   type: 'add_marker';
   id: string;
   timeUs: number;
+  durationUs?: number;
   text?: string;
 }
 
@@ -219,6 +220,7 @@ export interface UpdateMarkerCommand {
   type: 'update_marker';
   id: string;
   timeUs?: number;
+  durationUs?: number | null;
   text?: string;
 }
 
