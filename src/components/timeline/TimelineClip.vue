@@ -39,11 +39,17 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'selectItem', event: MouseEvent, itemId: string): void;
-  (e: 'startMoveItem', event: MouseEvent, trackId: string, itemId: string, startUs: number): void;
+  (e: 'selectItem', event: PointerEvent, itemId: string): void;
+  (
+    e: 'startMoveItem',
+    event: PointerEvent,
+    trackId: string,
+    itemId: string,
+    startUs: number,
+  ): void;
   (
     e: 'startTrimItem',
-    event: MouseEvent,
+    event: PointerEvent,
     payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ): void;
   (
@@ -276,12 +282,12 @@ const { contextMenuItems } = useClipContextMenu({
         left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
       }"
-      @mousedown="
+      @pointerdown="
         item.kind === 'clip' &&
         !Boolean((item as any).locked) &&
         emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
       "
-      @pointerdown="
+      @click="
         if ($event.button !== 1) {
           $event.stopPropagation();
           emit('selectItem', $event, item.id);
@@ -658,7 +664,7 @@ const { contextMenuItems } = useClipContextMenu({
       <div
         v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
         class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
-        @mousedown.stop="
+        @pointerdown.stop="
           emit('startTrimItem', $event, {
             trackId: item.trackId,
             itemId: item.id,
@@ -670,7 +676,7 @@ const { contextMenuItems } = useClipContextMenu({
       <div
         v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
         class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
-        @mousedown.stop="
+        @pointerdown.stop="
           emit('startTrimItem', $event, {
             trackId: item.trackId,
             itemId: item.id,

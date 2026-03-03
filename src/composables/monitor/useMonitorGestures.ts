@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
+import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 
@@ -90,14 +91,10 @@ export function useMonitorGestures(input: {
   }
 
   function onViewportPointerDown(event: PointerEvent) {
-    const settings = workspaceStore.userSettings?.mouse?.monitor ?? {
-      wheel: 'zoom',
-      wheelShift: 'scroll_horizontal',
-      middleClick: 'pan',
-    };
+    const settings = workspaceStore.userSettings.mouse.monitor;
 
     if (event.button === 1) {
-      if (settings?.middleClick === 'pan') {
+      if (settings.middleClick === 'pan') {
         isPanning.value = true;
         panStart.value = { x: event.clientX, y: event.clientY };
         panOrigin.value = { x: panX.value, y: panY.value };
@@ -160,11 +157,7 @@ export function useMonitorGestures(input: {
     if (e.defaultPrevented) return;
 
     const isShift = e.shiftKey;
-    const settings = workspaceStore.userSettings?.mouse?.monitor ?? {
-      wheel: 'zoom',
-      wheelShift: 'scroll_horizontal',
-      middleClick: 'pan',
-    };
+    const settings = workspaceStore.userSettings.mouse.monitor;
 
     const action = isShift ? settings.wheelShift : settings.wheel;
 
@@ -173,8 +166,7 @@ export function useMonitorGestures(input: {
       return;
     }
 
-    const isHorizontalScroll = e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY);
-    const delta = isHorizontalScroll ? e.deltaX : e.deltaY;
+    const delta = getWheelDelta(e);
     if (!Number.isFinite(delta) || delta === 0) return;
 
     if (action === 'zoom') {
@@ -184,12 +176,18 @@ export function useMonitorGestures(input: {
     }
 
     if (action === 'scroll_vertical') {
+      // Let native vertical scroll happen without modifiers unless shifted
+      if (!isShift && !isSecondaryWheel(e)) return;
+
       e.preventDefault();
       panY.value -= delta;
       return;
     }
 
     if (action === 'scroll_horizontal') {
+      // Let native horizontal scroll happen if trackpad
+      if (isSecondaryWheel(e) && !isShift) return;
+
       e.preventDefault();
       panX.value -= delta;
       return;
