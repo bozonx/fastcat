@@ -240,6 +240,7 @@ const markerPoints = computed(() => {
         width,
         isZone: m.durationUs !== undefined,
         text: m.text ?? '',
+        color: m.color,
       };
     })
     .filter((p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20));
@@ -566,7 +567,7 @@ function onRulerWheel(e: WheelEvent) {
           class="absolute bottom-0 h-full pointer-events-auto"
           :style="{ left: `${Math.round(p.x)}px`, width: p.isZone ? `${Math.round(p.width)}px` : 'auto' }"
         >
-          <div v-if="p.isZone" class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none" />
+          <div v-if="p.isZone" class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none" :style="p.color ? { backgroundColor: `${p.color}33`, borderColor: `${p.color}80` } : {}" />
           
           <!-- Left/Main Marker -->
           <div class="absolute bottom-0 left-0">
@@ -578,9 +579,10 @@ function onRulerWheel(e: WheelEvent) {
                   selectionStore.selectedEntity?.source === 'timeline' &&
                   selectionStore.selectedEntity?.kind === 'marker' &&
                   selectionStore.selectedEntity.markerId === p.id
-                    ? 'bg-primary-400 ring-2 ring-primary-400/50'
-                    : 'bg-primary-500',
+                    ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
+                    : (p.color ? '' : 'bg-primary-500'),
                 ]"
+                :style="p.color ? { backgroundColor: p.color } : {}"
                 :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
                 @dblclick.stop.prevent="openEditMarker(p.id)"
                 @pointerdown.stop="onMarkerPointerDown($event, p.id)"
@@ -601,9 +603,10 @@ function onRulerWheel(e: WheelEvent) {
                   selectionStore.selectedEntity?.source === 'timeline' &&
                   selectionStore.selectedEntity?.kind === 'marker' &&
                   selectionStore.selectedEntity.markerId === p.id
-                    ? 'bg-primary-400 ring-2 ring-primary-400/50'
-                    : 'bg-primary-500',
+                    ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
+                    : (p.color ? '' : 'bg-primary-500'),
                 ]"
+                :style="p.color ? { backgroundColor: p.color } : {}"
                 aria-label="Zone Marker End"
                 @dblclick.stop.prevent="openEditMarker(p.id)"
                 @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"

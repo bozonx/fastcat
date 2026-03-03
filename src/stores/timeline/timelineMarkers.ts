@@ -35,12 +35,16 @@ export function createTimelineMarkers(deps: TimelineMarkersDeps): TimelineMarker
     });
   }
 
-  function updateMarker(markerId: string, patch: { timeUs?: number; text?: string }) {
+  function updateMarker(
+    markerId: string,
+    patch: { timeUs?: number; text?: string; color?: string },
+  ) {
     deps.applyTimeline({
       type: 'update_marker',
       id: markerId,
       timeUs: patch.timeUs,
       text: patch.text,
+      color: patch.color,
     });
   }
 
