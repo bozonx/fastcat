@@ -549,7 +549,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           "
         />
 
-        <div class="ml-auto flex items-center">
+        <div v-if="!foldersOnly" class="ml-auto flex items-center">
           <UDropdownMenu
             :items="[
               [

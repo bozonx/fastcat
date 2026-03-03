@@ -14,7 +14,10 @@ const timelineWheelOptions = computed(() => {
     zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
-  return TIMELINE_WHEEL_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+  return TIMELINE_WHEEL_ACTIONS.map((action) => ({
+    label: labels[action] || action,
+    value: action,
+  }));
 });
 
 const monitorWheelOptions = computed(() => {
@@ -24,7 +27,10 @@ const monitorWheelOptions = computed(() => {
     scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
-  return MONITOR_WHEEL_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+  return MONITOR_WHEEL_ACTIONS.map((action) => ({
+    label: labels[action] || action,
+    value: action,
+  }));
 });
 
 const middleClickOptions = computed(() => {

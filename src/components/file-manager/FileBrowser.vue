@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, toRaw } from 'vue';
 import {
   useFilesPageStore,
   type FileViewMode,
@@ -15,16 +15,215 @@ import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
+import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
+import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import RenameModal from '~/components/common/RenameModal.vue';
+import { useProxyStore } from '~/stores/proxy.store';
+import { VIDEO_DIR_NAME } from '~/utils/constants';
+
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
-const { readDirectory, getFileIcon, getProjectRootDirHandle } = useFileManager();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
+const fileManager = useFileManager();
+const proxyStore = useProxyStore();
+const { readDirectory, getFileIcon, getProjectRootDirHandle, loadProjectDirectory, createFolder, renameEntry, deleteEntry, handleFiles } = fileManager;
 const { t } = useI18n();
 
 const folderEntries = ref<FsEntry[]>([]);
 const isLoading = ref(false);
 const parentFolders = ref<FsEntry[]>([]);
+
+const {
+  isCreateFolderModalOpen,
+  folderCreationTarget,
+  isRenameModalOpen,
+  renameTarget,
+  isDeleteConfirmModalOpen,
+  deleteTarget,
+  timelinesUsingDeleteTarget,
+  directoryUploadTarget,
+  directoryUploadInput,
+  openCreateFolderModal,
+  handleCreateFolder,
+  openDeleteConfirmModal,
+  handleDeleteConfirm,
+  handleRename,
+  onFileAction: onFileActionBase,
+} = useFileManagerModals({
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  loadProjectDirectory,
+  handleFiles,
+  mediaCache: fileManager.mediaCache,
+});
+
+function onFileAction(action: any, entry: FsEntry) {
+  if (action === 'createProxyForFolder') {
+    if (entry.kind === 'directory' && entry.path !== undefined) {
+      void proxyStore.generateProxiesForFolder({
+        dirHandle: entry.handle as FileSystemDirectoryHandle,
+        dirPath: entry.path,
+      });
+    }
+  } else if (action === 'cancelProxyForFolder') {
+    if (entry.kind === 'directory' && entry.path !== undefined) {
+      const generatingProxies = proxyStore.generatingProxies;
+      for (const p of generatingProxies) {
+        if (p.startsWith(`${entry.path}/`)) {
+          const rel = p.slice(entry.path.length + 1);
+          if (!rel.includes('/')) {
+            void proxyStore.cancelProxyGeneration(p);
+          }
+        }
+      }
+    }
+  } else {
+    onFileActionBase(action, entry);
+  }
+}
+
+function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  const dirPath = entry.path;
+  for (const p of proxyStore.generatingProxies) {
+    if (!dirPath) {
+      if (!p.includes('/')) return true;
+    } else {
+      if (p.startsWith(`${dirPath}/`)) {
+        const rel = p.slice(dirPath.length + 1);
+        if (!rel.includes('/')) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function folderHasVideos(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  return true; // We don't have deeply loaded children here, assume true to allow action
+}
+
+function isVideo(entry: FsEntry) {
+  return entry.kind === 'file' && entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
+}
+
+function getContextMenuItems(entry: FsEntry) {
+  const items = [];
+
+  if (entry.kind === 'directory') {
+    const hasVideos = folderHasVideos(entry);
+
+    items.push([
+      {
+        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+        icon: 'i-heroicons-folder-plus',
+        onSelect: () => onFileAction('createFolder', entry),
+      },
+      {
+        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+        icon: 'i-heroicons-arrow-up-tray',
+        onSelect: () => onFileAction('upload', entry),
+      },
+    ]);
+
+    if (hasVideos) {
+      if (isGeneratingProxyInDirectory(entry)) {
+        items.push([
+          {
+            label: t(
+              'videoEditor.fileManager.actions.cancelProxyGeneration',
+              'Cancel proxy generation',
+            ),
+            icon: 'i-heroicons-x-circle',
+            color: 'error',
+            onSelect: () => onFileAction('cancelProxyForFolder', entry),
+          },
+        ]);
+      } else {
+        items.push([
+          {
+            label: t(
+              'videoEditor.fileManager.actions.createProxyForAll',
+              'Create proxy for all videos',
+            ),
+            icon: 'i-heroicons-film',
+            onSelect: () => onFileAction('createProxyForFolder', entry),
+          },
+        ]);
+      }
+    }
+  }
+
+  items.push([
+    {
+      label: t('common.rename', 'Rename'),
+      icon: 'i-heroicons-pencil',
+      onSelect: () => onFileAction('rename', entry),
+    },
+  ]);
+
+  if (isVideo(entry)) {
+    const hasProxy = fileManager.mediaCache.hasProxy(entry.path!);
+    const generatingProxy = proxyStore.generatingProxies.has(entry.path!);
+
+    if (!generatingProxy) {
+      items.push([
+        {
+          label: hasProxy
+            ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
+            : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+          icon: 'i-heroicons-film',
+          onSelect: () => onFileAction('createProxy', entry),
+        },
+      ]);
+    }
+
+    if (generatingProxy) {
+      items.push([
+        {
+          label: t(
+            'videoEditor.fileManager.actions.cancelProxyGeneration',
+            'Cancel proxy generation',
+          ),
+          icon: 'i-heroicons-x-circle',
+          color: 'error',
+          onSelect: () => onFileAction('cancelProxy', entry),
+        },
+      ]);
+    }
+
+    if (hasProxy) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+          icon: 'i-heroicons-trash',
+          color: 'error',
+          onSelect: () => onFileAction('deleteProxy', entry),
+        },
+      ]);
+    }
+  }
+
+  items.push([
+    {
+      label: t('common.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      color: 'error',
+      onSelect: () => onFileAction('delete', entry),
+    },
+  ]);
+
+  return items;
+}
+
+const emptySpaceContextMenuItems = computed(() => {
+  if (!filesPageStore.selectedFolder) return [];
+  return getContextMenuItems(filesPageStore.selectedFolder);
+});
 
 const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.name', 'Name'), value: 'name' },
@@ -34,7 +233,13 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.modified', 'Modified'), value: 'modified' },
 ];
 
-const GRID_SIZES = [80, 100, 120, 150, 180, 220];
+const GRID_SIZES = [80, 100, 130, 160, 200];
+const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
+
+const currentGridSizeName = computed(() => {
+  const index = GRID_SIZES.indexOf(filesPageStore.gridCardSize);
+  return GRID_SIZE_NAMES[index] || 'm';
+});
 
 const resizingColumn = ref<string | null>(null);
 const resizeStartX = ref(0);
@@ -49,7 +254,7 @@ async function loadFolderContent() {
 
   isLoading.value = true;
   try {
-    const handle = filesPageStore.selectedFolder.handle as FileSystemDirectoryHandle;
+    const handle = toRaw(filesPageStore.selectedFolder.handle) as FileSystemDirectoryHandle;
     const path = filesPageStore.selectedFolder.path || '';
     const entries = await readDirectory(handle, path);
     // readDirectory already filters hidden files based on deps.showHiddenFiles(),
@@ -346,8 +551,8 @@ function onCardSizeChange(e: Event) {
       <!-- Card size slider (only in grid view) -->
       <div
         v-if="filesPageStore.viewMode === 'grid'"
-        class="flex items-center gap-2 ml-2 w-32"
-        :title="t('videoEditor.fileManager.cardScale', 'Масштаб карточек')"
+        class="flex items-center gap-2 ml-2 w-24"
+        :title="`${t('videoEditor.fileManager.cardScale', 'Масштаб карточек')}: ${currentGridSizeName}`"
       >
         <WheelSlider
           :model-value="GRID_SIZES.indexOf(filesPageStore.gridCardSize)"
@@ -355,11 +560,8 @@ function onCardSizeChange(e: Event) {
           :max="GRID_SIZES.length - 1"
           :step="1"
           class="flex-1 w-full"
-          @update:model-value="(v) => filesPageStore.setGridCardSize(GRID_SIZES[v] || 120)"
+          @update:model-value="(v: number) => filesPageStore.setGridCardSize(GRID_SIZES[v] || 130)"
         />
-        <span class="text-xs text-ui-text-muted w-10 shrink-0 text-right"
-          >{{ filesPageStore.gridCardSize }}px</span
-        >
       </div>
 
       <div class="ml-auto flex items-center gap-2">
@@ -385,6 +587,23 @@ function onCardSizeChange(e: Event) {
             filesPageStore.sortOption.order =
               filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
           "
+        />
+        <div class="w-px h-4 bg-ui-border mx-1"></div>
+        <UButton
+          icon="i-heroicons-arrow-path"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
+          @click="loadProjectDirectory()"
+        />
+        <UButton
+          :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="uiStore.showHiddenFiles ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files') : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files')"
+          @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
         />
       </div>
     </div>
@@ -429,224 +648,260 @@ function onCardSizeChange(e: Event) {
 
     <!-- Main Content -->
     <div class="flex-1 overflow-auto p-4 content-scrollbar" @click.self="navigateToRoot">
-      <div
-        v-if="isLoading"
-        class="flex flex-col items-center justify-center h-full gap-4 text-ui-text-muted"
-      >
-        <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
-        <span>{{ t('common.loading', 'Loading...') }}</span>
-      </div>
-
-      <div
-        v-else-if="!filesPageStore.selectedFolder"
-        class="flex flex-col items-center justify-center h-full text-ui-text-muted gap-2"
-      >
-        <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
-        <span>{{
-          t(
-            'videoEditor.fileManager.selectFolderHint',
-            'Select a folder in the sidebar to view its contents',
-          )
-        }}</span>
-      </div>
-
-      <div
-        v-else-if="folderEntries.length === 0"
-        class="flex flex-col items-center justify-center h-full text-ui-text-muted gap-2"
-      >
-        <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
-        <span>{{ t('common.empty', 'Folder is empty') }}</span>
-      </div>
-
-      <!-- Grid View -->
-      <div v-else-if="filesPageStore.viewMode === 'grid'" class="flex flex-wrap gap-2">
-        <div
-          v-for="entry in sortedEntries"
-          :key="entry.path"
-          class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
-          :class="{
-            'bg-primary-500/10 border-primary-500/30':
-              selectionStore.selectedEntity?.source === 'fileManager' &&
-              selectionStore.selectedEntity.path === entry.path,
-          }"
-          :style="{ width: `${filesPageStore.gridCardSize}px` }"
-          @click="handleEntryClick(entry)"
-        >
+      <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
+        <div class="min-h-full flex flex-col">
           <div
-            class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
+            v-if="isLoading"
+            class="flex flex-col items-center justify-center flex-1 gap-4 text-ui-text-muted"
           >
-            <img
-              v-if="entry.kind === 'file' && (entry as ExtendedFsEntry).objectUrl"
-              :src="(entry as ExtendedFsEntry).objectUrl"
-              :alt="entry.name"
-              class="max-w-full max-h-full object-contain"
-            />
-            <UIcon
-              v-else
-              :name="getFileIcon(entry)"
-              class="w-10 h-10"
-              :class="entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted'"
-            />
+            <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
+            <span>{{ t('common.loading', 'Loading...') }}</span>
           </div>
-          <span class="text-xs text-center break-all line-clamp-2 px-1" :title="entry.name">
-            {{ entry.name }}
-          </span>
-        </div>
-      </div>
 
-      <!-- List View -->
-      <div v-else class="flex flex-col w-full min-w-max">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="text-ui-text-muted border-b border-ui-border">
-              <th
-                class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                :style="{ width: `${filesPageStore.columnWidths.name}px`, minWidth: '60px' }"
-                @click="handleSort('name')"
-              >
-                <div class="flex items-center gap-1">
-                  {{ t('common.name', 'Name') }}
-                  <UIcon
-                    v-if="filesPageStore.sortOption.field === 'name'"
-                    :name="
-                      filesPageStore.sortOption.order === 'asc'
-                        ? 'i-heroicons-bars-arrow-up'
-                        : 'i-heroicons-bars-arrow-down'
-                    "
-                    class="w-3 h-3"
-                  />
-                </div>
-                <div
-                  class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                  @mousedown.stop="onResizeStart($event, 'name')"
-                />
-              </th>
-              <th
-                class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                :style="{ width: `${filesPageStore.columnWidths.type}px`, minWidth: '60px' }"
-                @click="handleSort('type')"
-              >
-                <div class="flex items-center gap-1">
-                  {{ t('common.type', 'Type') }}
-                  <UIcon
-                    v-if="filesPageStore.sortOption.field === 'type'"
-                    :name="
-                      filesPageStore.sortOption.order === 'asc'
-                        ? 'i-heroicons-bars-arrow-up'
-                        : 'i-heroicons-bars-arrow-down'
-                    "
-                    class="w-3 h-3"
-                  />
-                </div>
-                <div
-                  class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                  @mousedown.stop="onResizeStart($event, 'type')"
-                />
-              </th>
-              <th
-                class="py-2 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                :style="{ width: `${filesPageStore.columnWidths.size}px`, minWidth: '60px' }"
-                @click="handleSort('size')"
-              >
-                <div class="flex items-center justify-end gap-1">
-                  {{ t('common.size', 'Size') }}
-                  <UIcon
-                    v-if="filesPageStore.sortOption.field === 'size'"
-                    :name="
-                      filesPageStore.sortOption.order === 'asc'
-                        ? 'i-heroicons-bars-arrow-up'
-                        : 'i-heroicons-bars-arrow-down'
-                    "
-                    class="w-3 h-3"
-                  />
-                </div>
-                <div
-                  class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                  @mousedown.stop="onResizeStart($event, 'size')"
-                />
-              </th>
-              <th
-                class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                :style="{ width: `${filesPageStore.columnWidths.created}px`, minWidth: '60px' }"
-                @click="handleSort('created')"
-              >
-                <div class="flex items-center gap-1">
-                  {{ t('common.created', 'Created') }}
-                  <UIcon
-                    v-if="filesPageStore.sortOption.field === 'created'"
-                    :name="
-                      filesPageStore.sortOption.order === 'asc'
-                        ? 'i-heroicons-bars-arrow-up'
-                        : 'i-heroicons-bars-arrow-down'
-                    "
-                    class="w-3 h-3"
-                  />
-                </div>
-                <div
-                  class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                  @mousedown.stop="onResizeStart($event, 'created')"
-                />
-              </th>
-              <th
-                class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                :style="{ width: `${filesPageStore.columnWidths.modified}px`, minWidth: '60px' }"
-                @click="handleSort('modified')"
-              >
-                <div class="flex items-center gap-1">
-                  {{ t('common.modified', 'Modified') }}
-                  <UIcon
-                    v-if="filesPageStore.sortOption.field === 'modified'"
-                    :name="
-                      filesPageStore.sortOption.order === 'asc'
-                        ? 'i-heroicons-bars-arrow-up'
-                        : 'i-heroicons-bars-arrow-down'
-                    "
-                    class="w-3 h-3"
-                  />
-                </div>
-                <div
-                  class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                  @mousedown.stop="onResizeStart($event, 'modified')"
-                />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="entry in sortedEntries as ExtendedFsEntry[]"
+          <div
+            v-else-if="!filesPageStore.selectedFolder"
+            class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
+          >
+            <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
+            <span>{{
+              t(
+                'videoEditor.fileManager.selectFolderHint',
+                'Select a folder in the sidebar to view its contents',
+              )
+            }}</span>
+          </div>
+
+          <div
+            v-else-if="folderEntries.length === 0"
+            class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
+          >
+            <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
+            <span>{{ t('common.empty', 'Folder is empty') }}</span>
+          </div>
+
+          <!-- Grid View -->
+          <div v-else-if="filesPageStore.viewMode === 'grid'" class="flex flex-wrap gap-2">
+            <UContextMenu
+              v-for="entry in sortedEntries"
               :key="entry.path"
-              class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50"
-              :class="{
-                'bg-primary-500/10':
-                  selectionStore.selectedEntity?.source === 'fileManager' &&
-                  selectionStore.selectedEntity.path === entry.path,
-              }"
-              @click="handleEntryClick(entry)"
+              :items="getContextMenuItems(entry)"
             >
-              <td class="py-2 px-3 flex items-center gap-2">
-                <UIcon
-                  :name="getFileIcon(entry)"
-                  class="w-4 h-4 shrink-0"
-                  :class="entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted'"
-                />
-                <span class="truncate max-w-50" :title="entry.name">{{ entry.name }}</span>
-              </td>
-              <td class="py-2 px-3 text-ui-text-muted">
-                {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
-              </td>
-              <td class="py-2 px-3 text-right text-ui-text-muted">
-                {{ entry.kind === 'file' ? formatBytes(entry.size || 0) : '-' }}
-              </td>
-              <td class="py-2 px-3 text-ui-text-muted">
-                {{ formatDate(entry.created) }}
-              </td>
-              <td class="py-2 px-3 text-ui-text-muted">
-                {{ formatDate(entry.lastModified) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              <div
+                class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
+                :class="{
+                  'bg-primary-500/10 border-primary-500/30':
+                    selectionStore.selectedEntity?.source === 'fileManager' &&
+                    selectionStore.selectedEntity.path === entry.path,
+                  'border-b-2 border-b-red-500':
+                    entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
+                }"
+                :style="{ width: `${filesPageStore.gridCardSize}px` }"
+                @click="handleEntryClick(entry)"
+              >
+                <div
+                  class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
+                >
+                  <img
+                    v-if="entry.kind === 'file' && (entry as ExtendedFsEntry).objectUrl"
+                    :src="(entry as ExtendedFsEntry).objectUrl"
+                    :alt="entry.name"
+                    class="max-w-full max-h-full object-contain"
+                  />
+                  <UIcon
+                    v-else
+                    :name="getFileIcon(entry)"
+                    :class="[
+                      entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
+                      {
+                        'w-8 h-8': currentGridSizeName === 'xs',
+                        'w-10 h-10': currentGridSizeName === 's',
+                        'w-12 h-12': currentGridSizeName === 'm',
+                        'w-16 h-16': currentGridSizeName === 'l',
+                        'w-20 h-20': currentGridSizeName === 'xl',
+                      },
+                    ]"
+                  />
+                </div>
+                <span
+                  class="text-center break-all line-clamp-2 px-1"
+                  :class="{
+                    'text-[10px]': currentGridSizeName === 'xs',
+                    'text-xs': currentGridSizeName === 's' || currentGridSizeName === 'm',
+                    'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
+                  }"
+                  :title="entry.name"
+                >
+                  {{ entry.name }}
+                </span>
+              </div>
+            </UContextMenu>
+          </div>
+
+          <!-- List View -->
+          <div v-else class="flex flex-col w-full min-w-max">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="text-ui-text-muted border-b border-ui-border">
+                  <th
+                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+                    :style="{ width: `${filesPageStore.columnWidths.name}px`, minWidth: '60px' }"
+                    @click="handleSort('name')"
+                  >
+                    <div class="flex items-center gap-1">
+                      {{ t('common.name', 'Name') }}
+                      <UIcon
+                        v-if="filesPageStore.sortOption.field === 'name'"
+                        :name="
+                          filesPageStore.sortOption.order === 'asc'
+                            ? 'i-heroicons-bars-arrow-up'
+                            : 'i-heroicons-bars-arrow-down'
+                        "
+                        class="w-3 h-3"
+                      />
+                    </div>
+                    <div
+                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+                      @mousedown.stop="onResizeStart($event, 'name')"
+                    />
+                  </th>
+
+                  <th
+                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+                    :style="{ width: `${filesPageStore.columnWidths.type}px`, minWidth: '60px' }"
+                    @click="handleSort('type')"
+                  >
+                    <div class="flex items-center gap-1">
+                      {{ t('common.type', 'Type') }}
+                      <UIcon
+                        v-if="filesPageStore.sortOption.field === 'type'"
+                        :name="
+                          filesPageStore.sortOption.order === 'asc'
+                            ? 'i-heroicons-bars-arrow-up'
+                            : 'i-heroicons-bars-arrow-down'
+                        "
+                        class="w-3 h-3"
+                      />
+                    </div>
+                    <div
+                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+                      @mousedown.stop="onResizeStart($event, 'type')"
+                    />
+                  </th>
+
+                  <th
+                    class="py-2 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
+                    :style="{ width: `${filesPageStore.columnWidths.size}px`, minWidth: '60px' }"
+                    @click="handleSort('size')"
+                  >
+                    <div class="flex items-center justify-end gap-1">
+                      {{ t('common.size', 'Size') }}
+                      <UIcon
+                        v-if="filesPageStore.sortOption.field === 'size'"
+                        :name="
+                          filesPageStore.sortOption.order === 'asc'
+                            ? 'i-heroicons-bars-arrow-up'
+                            : 'i-heroicons-bars-arrow-down'
+                        "
+                        class="w-3 h-3"
+                      />
+                    </div>
+                    <div
+                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+                      @mousedown.stop="onResizeStart($event, 'size')"
+                    />
+                  </th>
+
+                  <th
+                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+                    :style="{ width: `${filesPageStore.columnWidths.created}px`, minWidth: '60px' }"
+                    @click="handleSort('created')"
+                  >
+                    <div class="flex items-center gap-1">
+                      {{ t('common.created', 'Created') }}
+                      <UIcon
+                        v-if="filesPageStore.sortOption.field === 'created'"
+                        :name="
+                          filesPageStore.sortOption.order === 'asc'
+                            ? 'i-heroicons-bars-arrow-up'
+                            : 'i-heroicons-bars-arrow-down'
+                        "
+                        class="w-3 h-3"
+                      />
+                    </div>
+                    <div
+                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+                      @mousedown.stop="onResizeStart($event, 'created')"
+                    />
+                  </th>
+
+                  <th
+                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+                    :style="{ width: `${filesPageStore.columnWidths.modified}px`, minWidth: '60px' }"
+                    @click="handleSort('modified')"
+                  >
+                    <div class="flex items-center gap-1">
+                      {{ t('common.modified', 'Modified') }}
+                      <UIcon
+                        v-if="filesPageStore.sortOption.field === 'modified'"
+                        :name="
+                          filesPageStore.sortOption.order === 'asc'
+                            ? 'i-heroicons-bars-arrow-up'
+                            : 'i-heroicons-bars-arrow-down'
+                        "
+                        class="w-3 h-3"
+                      />
+                    </div>
+                    <div
+                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+                      @mousedown.stop="onResizeStart($event, 'modified')"
+                    />
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <UContextMenu
+                  v-for="entry in sortedEntries as ExtendedFsEntry[]"
+                  :key="entry.path"
+                  :items="getContextMenuItems(entry)"
+                  as="tr"
+                  class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50"
+                  :class="{
+                    'bg-primary-500/10':
+                      selectionStore.selectedEntity?.source === 'fileManager' &&
+                      selectionStore.selectedEntity.path === entry.path,
+                    'border-l-2 border-l-red-500':
+                      entry.path &&
+                      timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
+                  }"
+                  @click="handleEntryClick(entry)"
+                >
+                  <td class="py-2 px-3 flex items-center gap-2">
+                    <UIcon
+                      :name="getFileIcon(entry)"
+                      class="w-4 h-4 shrink-0"
+                      :class="entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted'"
+                    />
+                    <span class="truncate max-w-50" :title="entry.name">{{ entry.name }}</span>
+                  </td>
+                  <td class="py-2 px-3 text-ui-text-muted">
+                    {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
+                  </td>
+                  <td class="py-2 px-3 text-right text-ui-text-muted">
+                    {{ entry.kind === 'file' ? formatBytes(entry.size || 0) : '-' }}
+                  </td>
+                  <td class="py-2 px-3 text-ui-text-muted">
+                    {{ formatDate(entry.created) }}
+                  </td>
+                  <td class="py-2 px-3 text-ui-text-muted">
+                    {{ formatDate(entry.lastModified) }}
+                  </td>
+                </UContextMenu>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </UContextMenu>
     </div>
 
     <!-- Bottom Panel -->
