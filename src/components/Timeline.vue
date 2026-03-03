@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
+import { useResizeObserver } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -71,13 +72,37 @@ const playheadPx = computed(() =>
 // Offset playhead relative to the track area viewport accounting for scroll
 const playheadLeft = computed(() => playheadPx.value - scrollLeftRef.value);
 
+// Zoom indicator fixed position (computed from trackAreaRef bounding rect)
+const zoomIndicatorStyle = ref<{ bottom: string; right: string } | null>(null);
+
+function updateZoomIndicatorPos() {
+  const el = trackAreaRef.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  zoomIndicatorStyle.value = {
+    bottom: `${window.innerHeight - rect.bottom + 8}px`,
+    right: `${window.innerWidth - rect.right + 12}px`,
+  };
+}
+
+useResizeObserver(trackAreaRef, updateZoomIndicatorPos);
+watch(trackAreaRef, updateZoomIndicatorPos);
+
 function onScroll() {
   const el = scrollEl.value;
   if (!el) return;
   scrollLeftRef.value = el.scrollLeft;
-  // Sync label scroll with track scroll
-  if (timelineTrackLabelsRef.value?.labelsScrollContainer) {
-    timelineTrackLabelsRef.value.labelsScrollContainer.scrollTop = el.scrollTop;
+  // Sync label scroll: use ratio to handle different clientHeights (labels has no horizontal scrollbar)
+  const labelsEl = timelineTrackLabelsRef.value?.labelsScrollContainer;
+  if (labelsEl) {
+    const maxScrollTop = el.scrollHeight - el.clientHeight;
+    const labelsMaxScrollTop = labelsEl.scrollHeight - labelsEl.clientHeight;
+    if (maxScrollTop > 0 && labelsMaxScrollTop > 0) {
+      const ratio = el.scrollTop / maxScrollTop;
+      labelsEl.scrollTop = Math.round(ratio * labelsMaxScrollTop);
+    } else {
+      labelsEl.scrollTop = el.scrollTop;
+    }
   }
 }
 
@@ -622,7 +647,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             </div>
             <div
               ref="scrollEl"
-              class="w-full flex-1 overflow-auto relative"
+              class="w-full flex-1 overflow-auto relative timeline-scroll-el"
               @pointerdown.capture="onTimelinePointerDownCapture"
               @click="onTimelineClick"
               @wheel="onTimelineWheel"
@@ -654,29 +679,43 @@ async function onDrop(e: DragEvent, trackId: string) {
             -->
             <div
               class="absolute top-7 bottom-0 w-px bg-primary-500 cursor-ew-resize z-50 pointer-events-auto"
-              :style="{ left: `${playheadLeft}px` }"
+              :style="{ left: `${Math.round(playheadLeft)}px`, transform: 'translateX(-0.5px)' }"
               @pointerdown="startPlayheadDrag"
             />
 
-            <!-- Zoom Indicator (bottom-right of timeline) -->
-            <Transition
-              enter-active-class="transition-opacity duration-200"
-              enter-from-class="opacity-0"
-              enter-to-class="opacity-100"
-              leave-active-class="transition-opacity duration-300"
-              leave-from-class="opacity-100"
-              leave-to-class="opacity-0"
-            >
-              <div
-                v-if="isZooming"
-                class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono rounded bg-ui-bg/90 border border-ui-border text-ui-text shadow-lg z-50 pointer-events-none backdrop-blur-sm"
+            <!-- Zoom Indicator (fixed position, outside overflow:hidden bounds) -->
+            <Teleport to="body">
+              <Transition
+                enter-active-class="transition-opacity duration-200"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-opacity duration-300"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
               >
-                ×{{ zoomFactor }}
-              </div>
-            </Transition>
+                <div
+                  v-if="isZooming && zoomIndicatorStyle"
+                  class="fixed px-2 py-1 text-xs font-mono rounded bg-neutral-900/95 border border-white/10 text-white shadow-lg z-9999 pointer-events-none backdrop-blur-sm"
+                  :style="zoomIndicatorStyle"
+                >
+                  ×{{ zoomFactor }}
+                </div>
+              </Transition>
+            </Teleport>
           </div>
         </Pane>
       </Splitpanes>
     </ClientOnly>
   </div>
 </template>
+
+<style scoped>
+/*
+  Use overlay-style scrollbars (drawn on top of content) to keep clientHeight
+  consistent between tracks scroll-el and labels panel (which has no scrollbar).
+  Falls back gracefully in browsers that don't support overlay.
+*/
+.timeline-scroll-el {
+  scrollbar-width: thin;
+}
+</style>

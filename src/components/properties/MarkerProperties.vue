@@ -163,11 +163,12 @@ function handleConvertMarker() {
           <button
             v-for="c in COLORS"
             :key="c.value"
+            type="button"
             class="w-6 h-6 rounded-full border border-ui-border-muted transition-transform hover:scale-110 flex items-center justify-center"
             :class="{ 'ring-2 ring-primary-500 scale-110': activeColor === c.value }"
             :style="{ backgroundColor: c.value }"
             :title="c.label"
-            @click="handleUpdateColor(c.value)"
+            @click.prevent="handleUpdateColor(c.value)"
           >
           </button>
         </div>

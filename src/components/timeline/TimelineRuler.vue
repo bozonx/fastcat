@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 import { useSelectionStore } from '~/stores/selection.store';
-import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
+import { isSecondaryWheel } from '~/utils/mouse';
 
 const { t } = useI18n();
 
@@ -209,7 +209,7 @@ const markerPoints = computed(() => {
     return markers.value
     .map((m) => {
       const x = timeUsToPx(m.timeUs, currentZoom) - startPx;
-      const width = m.durationUs ? timeUsToPx(m.durationUs, currentZoom) : 0;
+      const width = m.durationUs !== undefined ? timeUsToPx(m.durationUs, currentZoom) : 0;
       return {
         id: m.id,
         x,
@@ -366,9 +366,6 @@ function onRulerClick(e: MouseEvent) {
 }
 
 // Double click: add marker at clicked position
-const lastClickTime = ref(0);
-const lastClickX = ref(0);
-
 function onRulerDblClick(e: MouseEvent) {
   if (e.button !== 0) return;
 
@@ -535,6 +532,7 @@ function onRulerWheel(e: WheelEvent) {
       ref="containerRef"
       class="relative w-full overflow-hidden cursor-pointer"
       @contextmenu.capture="onRulerContextMenu"
+      @contextmenu.prevent
       @click="onRulerClick"
       @dblclick="onRulerDblClick"
       @pointerdown="onRulerPointerDown"

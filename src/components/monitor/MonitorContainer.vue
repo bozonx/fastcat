@@ -6,6 +6,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
@@ -21,6 +22,7 @@ const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
 const workspaceStore = useWorkspaceStore();
+const selectionStore = useSelectionStore();
 const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
 
 const playbackSpeedOptions = [
@@ -229,7 +231,8 @@ function handleSpeedWheel(e: WheelEvent) {
   }
 
   if (nextIndex !== idx) {
-    const nextSpeed = playbackSpeedOptions[nextIndex].value;
+    const nextSpeed = playbackSpeedOptions[nextIndex]?.value;
+    if (!nextSpeed) return;
     const direction = timelineStore.playbackSpeed < 0 ? -1 : 1;
     timelineStore.setPlaybackSpeed(nextSpeed * direction);
   }
@@ -249,6 +252,16 @@ const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
 const toolbarPosition = computed(
   () => projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom',
 );
+
+function createMarkerAtPlayhead() {
+  const existing = timelineStore.getMarkers();
+  timelineStore.addMarkerAtPlayhead();
+  const next = timelineStore.getMarkers();
+  const created = next.find((m) => !existing.some((x) => x.id === m.id)) ?? next[next.length - 1];
+  if (created) {
+    selectionStore.selectTimelineMarker(created.id);
+  }
+}
 
 const contextMenuItems = computed(() => {
   return [
@@ -415,6 +428,16 @@ const emit = defineEmits<{
           class="flex items-center gap-2 shrink-0"
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
+          <UTooltip :text="t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
+            <UButton
+              size="2xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-bookmark"
+              @click="createMarkerAtPlayhead"
+            />
+          </UTooltip>
+
           <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
             <UButton
               size="2xs"

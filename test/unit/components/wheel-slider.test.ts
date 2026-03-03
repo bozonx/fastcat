@@ -18,7 +18,15 @@ describe('WheelSlider', () => {
       },
     });
 
-    await wrapper.trigger('wheel', { deltaY: -100, deltaX: 0 });
+    await wrapper.vm.$nextTick();
+
+    const root = wrapper.find('div');
+
+    const ev = new Event('wheel', { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'deltaY', { value: -100 });
+    Object.defineProperty(ev, 'deltaX', { value: 0 });
+    root.element.dispatchEvent(ev);
+    await wrapper.vm.$nextTick();
 
     const emitted = wrapper.emitted('update:modelValue');
     expect(emitted).toBeTruthy();
@@ -40,7 +48,15 @@ describe('WheelSlider', () => {
       },
     });
 
-    await wrapper.trigger('wheel', { deltaY: 100, deltaX: 0 });
+    await wrapper.vm.$nextTick();
+
+    const root = wrapper.find('div');
+
+    const ev = new Event('wheel', { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'deltaY', { value: 100 });
+    Object.defineProperty(ev, 'deltaX', { value: 0 });
+    root.element.dispatchEvent(ev);
+    await wrapper.vm.$nextTick();
 
     const emitted = wrapper.emitted('update:modelValue');
     expect(emitted?.[0]).toEqual([49]);
@@ -61,7 +77,15 @@ describe('WheelSlider', () => {
       },
     });
 
-    await wrapper.trigger('wheel', { deltaY: -100, deltaX: 0 });
+    await wrapper.vm.$nextTick();
+
+    const root = wrapper.find('div');
+
+    const ev = new Event('wheel', { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'deltaY', { value: -100 });
+    Object.defineProperty(ev, 'deltaX', { value: 0 });
+    root.element.dispatchEvent(ev);
+    await wrapper.vm.$nextTick();
 
     const emitted = wrapper.emitted('update:modelValue');
     expect(emitted?.[0]).toEqual([100]);

@@ -18,6 +18,16 @@ export function useGeneralHotkeys(
   const projectStore = useProjectStore();
   const { loadTimeline } = useProjectActions();
 
+  function createMarkerAtPlayhead() {
+    const existing = timelineStore.getMarkers();
+    timelineStore.addMarkerAtPlayhead();
+    const next = timelineStore.getMarkers();
+    const created = next.find((m) => !existing.some((x) => x.id === m.id)) ?? next[next.length - 1];
+    if (created) {
+      selectionStore.selectTimelineMarker(created.id);
+    }
+  }
+
   function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
     volumeHoldRunner.startHold({
       keyCode: params.keyCode,
@@ -81,6 +91,11 @@ export function useGeneralHotkeys(
 
     'general.mute': () => {
       timelineStore.toggleAudioMuted();
+      return true;
+    },
+
+    'general.addMarker': () => {
+      createMarkerAtPlayhead();
       return true;
     },
 
