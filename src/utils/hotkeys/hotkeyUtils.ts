@@ -24,6 +24,16 @@ function normalizeKeyLabel(rawKey: string): string {
   if (lower === 'esc') return 'Escape';
   if (lower === 'del') return 'Delete';
 
+  if (key.startsWith('Key') && key.length === 4) {
+    return key.slice(3);
+  }
+  if (key.startsWith('Digit') && key.length === 6) {
+    return key.slice(5);
+  }
+  if (key.startsWith('Numpad') && key.length > 6) {
+    return `Numpad${key.slice(6)}`;
+  }
+
   if (lower.length === 1) {
     return lower.toUpperCase();
   }
@@ -87,7 +97,9 @@ export function normalizeHotkeyCombo(combo: HotkeyCombo): HotkeyCombo | null {
 }
 
 export function hotkeyFromKeyboardEvent(e: KeyboardEvent): HotkeyCombo | null {
-  const key = normalizeKeyLabel(e.key);
+  const useCode =
+    e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Numpad');
+  const key = normalizeKeyLabel(useCode ? e.code : e.key);
   if (!key) return null;
 
   if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta') {
