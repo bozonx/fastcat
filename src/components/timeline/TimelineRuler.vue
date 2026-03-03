@@ -130,6 +130,8 @@ function onContextMenuOpenChange(val: boolean) {
 }
 
 function onMarkerContextMenu(e: MouseEvent, markerId: string) {
+  e.preventDefault();
+  e.stopPropagation();
   selectMarker(markerId);
   contextMenuMarkerId.value = markerId;
 }
