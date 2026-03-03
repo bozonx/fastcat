@@ -216,9 +216,17 @@ export function createProxyService(params: {
             fps: meta.video?.fps || 30,
           };
 
-          await (client as any).exportTimeline(proxyFileHandle, exportOptions, videoClips, audioClips);
+          await (client as any).exportTimeline(
+            proxyFileHandle,
+            exportOptions,
+            videoClips,
+            audioClips,
+          );
 
-          params.existingProxies.value = new Set([...params.existingProxies.value, projectRelativePath]);
+          params.existingProxies.value = new Set([
+            ...params.existingProxies.value,
+            projectRelativePath,
+          ]);
         } catch (innerErr) {
           // Remove the incomplete proxy file on abort or error
           if (proxyFileHandle) {

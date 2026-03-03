@@ -113,13 +113,11 @@ export function useTimelineInteraction(
   }
 
   function onTimeRulerPointerDown(e: PointerEvent) {
-    if (e.button !== 0) return;
     seekByMouseEvent(e);
     startPlayheadDrag(e);
   }
 
   function startPlayheadDrag(e: PointerEvent) {
-    if (e.button !== 0) return;
     isDraggingPlayhead.value = true;
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
