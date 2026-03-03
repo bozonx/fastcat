@@ -159,7 +159,7 @@ function handleConvertMarker() {
 
       <div class="flex flex-col gap-1.5 mt-4">
         <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-5 gap-2">
           <button
             v-for="c in COLORS"
             :key="c.value"

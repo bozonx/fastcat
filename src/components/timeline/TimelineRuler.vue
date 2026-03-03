@@ -131,7 +131,6 @@ function onContextMenuOpenChange(val: boolean) {
 
 function onMarkerContextMenu(e: MouseEvent, markerId: string) {
   e.preventDefault();
-  e.stopPropagation();
   selectMarker(markerId);
   contextMenuMarkerId.value = markerId;
 }
@@ -355,6 +354,7 @@ function getTimeUsFromMouseEvent(e: MouseEvent): number {
 }
 
 function onRulerContextMenu(e: MouseEvent) {
+  e.preventDefault();
   contextMenuMarkerId.value = null;
   contextClickTimeUs.value = getTimeUsFromMouseEvent(e);
 }
@@ -374,13 +374,16 @@ function onRulerDblClick(e: MouseEvent) {
 
   if (settings.doubleClick === 'add_marker') {
     const timeUs = getTimeUsFromMouseEvent(e);
+    const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 
     timelineStore.applyTimeline({
       type: 'add_marker',
-      id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+      id: newMarkerId,
       timeUs,
       text: '',
     });
+
+    selectMarker(newMarkerId);
   }
 }
 
@@ -532,7 +535,6 @@ function onRulerWheel(e: WheelEvent) {
       ref="containerRef"
       class="relative w-full overflow-hidden cursor-pointer"
       @contextmenu.capture="onRulerContextMenu"
-      @contextmenu.prevent
       @click="onRulerClick"
       @dblclick="onRulerDblClick"
       @pointerdown="onRulerPointerDown"
@@ -554,7 +556,7 @@ function onRulerWheel(e: WheelEvent) {
             <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
               <button
                 type="button"
-                class="w-2 h-3 -translate-x-1 rounded-sm shadow-sm relative z-10"
+                class="-translate-x-1 relative z-10"
                 :class="[
                   selectionStore.selectedEntity?.source === 'timeline' &&
                   selectionStore.selectedEntity?.kind === 'marker' &&
@@ -562,14 +564,19 @@ function onRulerWheel(e: WheelEvent) {
                     ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
                     : (p.color ? '' : 'bg-primary-500'),
                 ]"
-                :style="p.color ? { backgroundColor: p.color } : {}"
+                :style="p.color ? { color: p.color } : {}"
                 :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
                 @dblclick.stop.prevent="selectMarker(p.id)"
                 @pointerdown.stop="onMarkerPointerDown($event, p.id)"
                 @contextmenu="onMarkerContextMenu($event, p.id)"
                 @mousedown.stop
                 @click.stop="selectMarker(p.id)"
-              />
+              >
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="0" width="4" height="9" rx="1" :fill="p.color ?? '#3b82f6'" />
+                  <path d="M5 14L0 9H10L5 14Z" :fill="p.color ?? '#3b82f6'" />
+                </svg>
+              </button>
             </UTooltip>
           </div>
           
@@ -578,7 +585,7 @@ function onRulerWheel(e: WheelEvent) {
             <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
               <button
                 type="button"
-                class="w-2 h-3 translate-x-1 rounded-sm shadow-sm relative z-10"
+                class="translate-x-1 relative z-10"
                 :class="[
                   selectionStore.selectedEntity?.source === 'timeline' &&
                   selectionStore.selectedEntity?.kind === 'marker' &&
@@ -586,14 +593,19 @@ function onRulerWheel(e: WheelEvent) {
                     ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
                     : (p.color ? '' : 'bg-primary-500'),
                 ]"
-                :style="p.color ? { backgroundColor: p.color } : {}"
+                :style="p.color ? { color: p.color } : {}"
                 aria-label="Zone Marker End"
                 @dblclick.stop.prevent="selectMarker(p.id)"
                 @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
                 @contextmenu="onMarkerContextMenu($event, p.id)"
                 @mousedown.stop
                 @click.stop="selectMarker(p.id)"
-              />
+              >
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="0" width="4" height="9" rx="1" :fill="p.color ?? '#3b82f6'" />
+                  <path d="M5 14L0 9H10L5 14Z" :fill="p.color ?? '#3b82f6'" />
+                </svg>
+              </button>
             </UTooltip>
           </div>
         </div>
