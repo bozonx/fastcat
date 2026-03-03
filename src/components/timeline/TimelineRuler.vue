@@ -558,8 +558,7 @@ function onRulerWheel(e: WheelEvent) {
                   :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
                   @dblclick.stop.prevent="selectMarker(p.id)"
                   @pointerdown.stop="onMarkerPointerDown($event, p.id)"
-                  @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
-                  @mousedown.stop
+                  @contextmenu.stop
                   @click.stop="selectMarker(p.id)"
                 >
                   <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -607,8 +606,7 @@ function onRulerWheel(e: WheelEvent) {
                   aria-label="Zone Marker End"
                   @dblclick.stop.prevent="selectMarker(p.id)"
                   @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
-                  @contextmenu.prevent="onMarkerContextMenu($event, p.id)"
-                  @mousedown.stop
+                  @contextmenu.stop
                   @click.stop="selectMarker(p.id)"
                 >
                   <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">

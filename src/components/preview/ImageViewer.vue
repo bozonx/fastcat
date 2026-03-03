@@ -125,7 +125,6 @@ onUnmounted(() => {});
         class="max-w-full max-h-full block checkerboard-bg transition-transform duration-75"
         :style="imageStyle"
         draggable="false"
-        @contextmenu.prevent
       />
     </div>
   </UContextMenu>

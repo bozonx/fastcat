@@ -48,82 +48,85 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="w-full h-full flex flex-col overflow-hidden">
-    <ImageViewer
-      v-if="props.mediaType === 'image' && props.url"
-      :src="props.url"
-      :alt="props.alt"
-      class="w-full h-full"
-      @open-modal="isFullscreenOpen = true"
-    />
+  <div class="w-full h-full flex flex-col overflow-hidden relative">
+    <Teleport to="body" :disabled="!isFullscreenOpen">
+      <div
+        v-if="isFullscreenOpen"
+        class="fixed inset-0 bg-black/95 backdrop-blur-sm pointer-events-none"
+        style="z-index: 40"
+      ></div>
 
-    <MediaPlayer
-      v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url"
-      :src="props.url"
-      :type="props.mediaType"
-      class="w-full h-full"
-      @open-modal="isFullscreenOpen = true"
-    />
-
-    <TextEditor
-      v-else-if="props.mediaType === 'text'"
-      :file-path="props.filePath || ''"
-      :file-name="props.fileName"
-      :initial-content="props.textContent || ''"
-      class="w-full h-full"
-    />
-
-    <div
-      v-else-if="props.mediaType === 'unknown'"
-      class="flex flex-col items-center justify-center h-full w-full gap-3 text-ui-text-muted p-8 bg-ui-bg"
-    >
-      <UIcon name="i-heroicons-document" class="w-16 h-16" />
-      <p class="text-sm text-center">
-        {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview') }}
-      </p>
-    </div>
-
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition opacity-200 duration-200"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition opacity-200 duration-200"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
+      <div
+        v-if="props.mediaType === 'image' && props.url"
+        :class="
+          isFullscreenOpen
+            ? 'fixed inset-0 flex flex-col items-center justify-center z-[41]'
+            : 'w-full h-full'
+        "
       >
-        <div
+        <UButton
           v-if="isFullscreenOpen"
-          class="fixed inset-0 bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm"
-          style="z-index: 40"
-        >
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-x-mark"
-            class="absolute top-4 right-4 text-white hover:bg-white/20"
-            size="xl"
-            style="z-index: 41"
-            @click="isFullscreenOpen = false"
-          />
-          <ImageViewer
-            v-if="props.mediaType === 'image' && props.url"
-            :src="props.url"
-            :alt="props.alt"
-            is-modal
-            class="w-full h-full flex-1"
-            @close-modal="isFullscreenOpen = false"
-          />
-          <MediaPlayer
-            v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url"
-            :src="props.url"
-            :type="props.mediaType"
-            is-modal
-            class="w-full h-full flex-1 pb-8"
-            @close-modal="isFullscreenOpen = false"
-          />
-        </div>
-      </Transition>
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-x-mark"
+          class="absolute top-4 right-4 text-white hover:bg-white/20 z-[42]"
+          size="xl"
+          @click="isFullscreenOpen = false"
+        />
+        <ImageViewer
+          :src="props.url"
+          :alt="props.alt"
+          :is-modal="isFullscreenOpen"
+          class="w-full h-full"
+          @open-modal="isFullscreenOpen = true"
+          @close-modal="isFullscreenOpen = false"
+        />
+      </div>
+
+      <div
+        v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url"
+        :class="
+          isFullscreenOpen
+            ? 'fixed inset-0 flex flex-col items-center justify-center z-[41] pb-8'
+            : 'w-full h-full flex flex-col min-h-0'
+        "
+      >
+        <UButton
+          v-if="isFullscreenOpen"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-x-mark"
+          class="absolute top-4 right-4 text-white hover:bg-white/20 z-[42]"
+          size="xl"
+          @click="isFullscreenOpen = false"
+        />
+        <MediaPlayer
+          :src="props.url"
+          :type="props.mediaType"
+          :is-modal="isFullscreenOpen"
+          class="w-full h-full"
+          @open-modal="isFullscreenOpen = true"
+          @close-modal="isFullscreenOpen = false"
+        />
+      </div>
+
+      <TextEditor
+        v-else-if="props.mediaType === 'text'"
+        :file-path="props.filePath || ''"
+        :file-name="props.fileName"
+        :initial-content="props.textContent || ''"
+        class="w-full h-full"
+      />
+
+      <div
+        v-else-if="props.mediaType === 'unknown'"
+        class="flex flex-col items-center justify-center h-full w-full gap-3 text-ui-text-muted p-8 bg-ui-bg"
+      >
+        <UIcon name="i-heroicons-document" class="w-16 h-16" />
+        <p class="text-sm text-center">
+          {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview') }}
+        </p>
+      </div>
     </Teleport>
   </div>
 </template>
