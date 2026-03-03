@@ -647,7 +647,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               >
                 <div
                   v-if="isRulerHovered || isZooming"
-                  class="fixed bottom-12 right-6 px-2 py-1 text-xs font-mono rounded bg-ui-bg border border-ui-border text-ui-text shadow z-50 pointer-events-none"
+                  class="fixed top-8 right-6 px-2 py-1 text-xs font-mono rounded bg-ui-bg border border-ui-border text-ui-text shadow z-50 pointer-events-none"
                 >
                   Zoom: x{{ zoomFactor }}
                 </div>

@@ -54,21 +54,21 @@ function onClick(e: MouseEvent) {
 }
 
 onMounted(() => {
-  window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number }>) => {
-    if (document.activeElement?.closest('.image-viewer-container')) {
+  window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number; target?: string }>) => {
+    if (e.detail?.target === 'preview' || document.activeElement?.closest('.image-viewer-container')) {
       onCustomZoom(e);
     }
   }) as EventListener);
-  window.addEventListener('gran-zoom-reset', () => {
-    if (document.activeElement?.closest('.image-viewer-container')) {
+  window.addEventListener('gran-zoom-reset', ((e: CustomEvent<{ target?: string }>) => {
+    if (e.detail?.target === 'preview' || document.activeElement?.closest('.image-viewer-container')) {
       reset();
     }
-  });
+  }) as EventListener);
 });
 
 onUnmounted(() => {
   window.removeEventListener('gran-zoom', onCustomZoom as EventListener);
-  window.removeEventListener('gran-zoom-reset', reset);
+  window.removeEventListener('gran-zoom-reset', reset as EventListener);
 });
 </script>
 

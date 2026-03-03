@@ -21,6 +21,14 @@ function openFullscreen() {
   isFullscreenOpen.value = true;
 }
 
+function closeFullscreen() {
+  isFullscreenOpen.value = false;
+}
+
+function toggleFullscreen() {
+  isFullscreenOpen.value = !isFullscreenOpen.value;
+}
+
 function handleEsc(e: KeyboardEvent) {
   if (e.key === 'Escape' && isFullscreenOpen.value) {
     isFullscreenOpen.value = false;
@@ -30,11 +38,15 @@ function handleEsc(e: KeyboardEvent) {
 onMounted(() => {
   window.addEventListener('keydown', handleEsc);
   window.addEventListener('gran-preview-fullscreen', openFullscreen);
+  window.addEventListener('gran-preview-fullscreen-close', closeFullscreen);
+  window.addEventListener('gran-preview-fullscreen-toggle', toggleFullscreen);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc);
   window.removeEventListener('gran-preview-fullscreen', openFullscreen);
+  window.removeEventListener('gran-preview-fullscreen-close', closeFullscreen);
+  window.removeEventListener('gran-preview-fullscreen-toggle', toggleFullscreen);
 });
 </script>
 

@@ -152,11 +152,17 @@ export function useEditorHotkeys() {
       const { useEditorViewStore } = await import('~/stores/editorView.store');
       const viewStore = useEditorViewStore();
 
-      if (focusStore.effectiveFocus === 'right') {
+      // Check if we are in monitor fullscreen mode
+      if (viewStore.currentView === 'fullscreen') {
+        viewStore.goToCut();
+        return;
+      }
+
+      if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
         const entity = selectionStore.selectedEntity;
         if (entity?.source === 'fileManager' && entity.kind === 'file') {
-          // Send event to open modal in FileProperties / FilePreview
-          window.dispatchEvent(new CustomEvent('gran-preview-fullscreen'));
+          // Send event to toggle modal in FileProperties / FilePreview
+          window.dispatchEvent(new CustomEvent('gran-preview-fullscreen-toggle'));
           return;
         }
       }
