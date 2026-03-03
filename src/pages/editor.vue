@@ -17,6 +17,7 @@ import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import type { DynamicPanel } from '~/stores/editorView.store';
+import { hideStaticTab, showStaticTab } from '~/composables/project/useProjectTabs';
 
 // Vertical Splitpanes logic
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
@@ -91,9 +92,11 @@ function onDragOver(event: DragEvent, panelId: string) {
     event.dataTransfer?.types.includes('application/json') ||
     event.dataTransfer?.types.includes('application/gran-file-manager-move');
   const isDraggingPanel = !!draggingPanelId.value;
-  const isDraggingStaticTab = event.dataTransfer?.types.includes('static-tab-drag');
+  const isDraggingTab =
+    event.dataTransfer?.types.includes('static-tab-drag') ||
+    event.dataTransfer?.types.includes('file-tab-drag');
 
-  if (!isDraggingFile && !isDraggingPanel && !isDraggingStaticTab) {
+  if (!isDraggingFile && !isDraggingPanel && !isDraggingTab) {
     return;
   }
 
@@ -150,6 +153,37 @@ function onDrop(event: DragEvent, targetPanelId: string) {
       const panelType = panelTypeMap[payload.tabId] ?? 'fileManager';
       projectStore.insertPanelAt(
         { id: `static-${payload.tabId}-${Date.now()}`, type: panelType, title: payload.label },
+        targetPanelId,
+        dropPosition.value,
+      );
+      // Hide from Project tab bar
+      hideStaticTab(payload.tabId);
+    } catch {
+      // ignore
+    }
+    resetDragState();
+    return;
+  }
+
+  // file-tab-drag: detach file tab into a separate media panel
+  const fileTabRaw = event.dataTransfer?.getData('file-tab-drag');
+  if (fileTabRaw && dropPosition.value) {
+    try {
+      const payload = JSON.parse(fileTabRaw) as {
+        tabId: string;
+        filePath: string;
+        fileName: string;
+        mediaType: string;
+      };
+      const mType = (payload.mediaType || 'unknown') as 'video' | 'audio' | 'image' | 'unknown';
+      projectStore.insertPanelAt(
+        {
+          id: `file-panel-${Date.now()}`,
+          type: 'media',
+          filePath: payload.filePath,
+          mediaType: mType,
+          title: payload.fileName,
+        },
         targetPanelId,
         dropPosition.value,
       );
@@ -227,6 +261,24 @@ function resetDragState() {
   draggingPanelId.value = null;
   dragOverPanelId.value = null;
   dropPosition.value = null;
+}
+
+/** Map panel types back to static tab IDs */
+const panelTypeToTabId: Record<string, string> = {
+  history: 'history',
+  effects: 'effects',
+  fileManager: 'files',
+};
+
+/**
+ * Close a panel and restore the corresponding Project tab if it's a detached static tab.
+ */
+function closePanelAndRestoreTab(panel: DynamicPanel) {
+  const tabId = panelTypeToTabId[panel.type];
+  if (tabId) {
+    showStaticTab(tabId);
+  }
+  projectStore.removePanel(panel.id);
 }
 
 // Changes on every structural change — forces Splitpanes to remount and pick up new sizes
@@ -407,7 +459,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="projectStore.removePanel(panel.id)"
+                          @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
                       <div class="flex-1 overflow-hidden min-h-0 relative">
@@ -437,7 +489,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="projectStore.removePanel(panel.id)"
+                          @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
                       <pre class="text-xs whitespace-pre-wrap flex-1 mt-2">{{
@@ -466,7 +518,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="projectStore.removePanel(panel.id)"
+                          @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
                       <div class="flex-1 overflow-hidden min-h-0">
@@ -495,7 +547,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="projectStore.removePanel(panel.id)"
+                          @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
                       <div class="flex-1 overflow-hidden min-h-0">
