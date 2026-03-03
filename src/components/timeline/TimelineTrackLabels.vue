@@ -6,8 +6,10 @@ import type { TimelineTrack } from '~/timeline/types';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
-defineOptions({ inheritAttrs: false });
+const { t } = useI18n();
 
 const props = defineProps<{
   tracks: TimelineTrack[];
@@ -21,7 +23,7 @@ const emit = defineEmits<{
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const settingsStore = useTimelineSettingsStore();
-const { t } = useI18n();
+const workspaceStore = useWorkspaceStore();
 
 const DEFAULT_TRACK_HEIGHT = 40;
 const MIN_TRACK_HEIGHT = 32;
@@ -256,20 +258,61 @@ const emptyAreaContextMenuItems = computed(() => {
   ];
 });
 function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
+  const isShift = e.shiftKey;
   const isSecondary =
     (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
 
-  // Allow vertical track scaling with shift key or primary wheel
+  const settings = workspaceStore.userSettings?.mouse?.timeline ?? {
+    wheel: 'scroll_vertical',
+    wheelShift: 'scroll_horizontal',
+    wheelSecondary: 'scroll_horizontal',
+    wheelSecondaryShift: 'zoom_vertical',
+    middleClick: 'pan',
+  };
+
+  let action = settings.wheel;
+  if (isSecondary && isShift) action = settings.wheelSecondaryShift;
+  else if (isSecondary) action = settings.wheelSecondary;
+  else if (isShift) action = settings.wheelShift;
+
+  if (action === 'none') {
+    e.preventDefault();
+    return;
+  }
+
+  // Calculate delta amount based on event
+  const delta = isSecondary ? e.deltaX : e.deltaY;
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  if (action === 'zoom_vertical') {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dir = delta < 0 ? 1 : -1;
+    const step = 10;
+
+    const docTracks = timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined;
+    if (!docTracks) return;
+
+    for (const t of docTracks) {
+      const currentHeight = props.trackHeights[t.id] ?? DEFAULT_TRACK_HEIGHT;
+      const nextHeight = Math.max(
+        MIN_TRACK_HEIGHT,
+        Math.min(MAX_TRACK_HEIGHT, currentHeight + dir * step)
+      );
+      emit('update:trackHeight', t.id, nextHeight);
+    }
+    return;
+  }
+
+  // Handle older behavior as fallback
   if (isSecondary || (!e.shiftKey && e.deltaY === 0)) return;
 
   e.preventDefault();
   e.stopPropagation();
 
-  const delta = e.deltaY || e.deltaX;
-  if (!Number.isFinite(delta) || delta === 0) return;
-
   const dir = delta < 0 ? 1 : -1;
-  const step = 10; // Use a moderate step for track resizing
+  const step = 10;
 
   const currentHeight = props.trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT;
   const nextHeight = Math.max(
