@@ -5,7 +5,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
-import AppModal from '~/components/ui/AppModal.vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 
@@ -110,31 +109,6 @@ watch(markers, () => {
   requestAnimationFrame(draw);
 });
 
-const isMarkerEditOpen = ref(false);
-const editingMarkerId = ref<string | null>(null);
-const markerTextDraft = ref('');
-
-const editingMarker = computed(() => {
-  const id = editingMarkerId.value;
-  if (!id) return null;
-  return markers.value.find((m) => m.id === id) ?? null;
-});
-
-function openEditMarker(markerId: string) {
-  const m = markers.value.find((x) => x.id === markerId) ?? null;
-  if (!m) return;
-  editingMarkerId.value = markerId;
-  markerTextDraft.value = m.text ?? '';
-  isMarkerEditOpen.value = true;
-}
-
-function saveMarkerText() {
-  const m = editingMarker.value;
-  if (!m) return;
-  timelineStore.updateMarker(m.id, { text: markerTextDraft.value });
-  isMarkerEditOpen.value = false;
-}
-
 function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
@@ -156,6 +130,8 @@ function onContextMenuOpenChange(val: boolean) {
 }
 
 function onMarkerContextMenu(e: MouseEvent, markerId: string) {
+  e.preventDefault();
+  e.stopPropagation();
   selectMarker(markerId);
   contextMenuMarkerId.value = markerId;
 }
@@ -379,6 +355,7 @@ function getTimeUsFromMouseEvent(e: MouseEvent): number {
 }
 
 function onRulerContextMenu(e: MouseEvent) {
+  contextMenuMarkerId.value = null;
   contextClickTimeUs.value = getTimeUsFromMouseEvent(e);
 }
 
@@ -434,7 +411,7 @@ function onRulerPointerDown(e: PointerEvent) {
           timeUs,
           text: '',
         });
-        openEditMarker(newMarkerId);
+        selectMarker(newMarkerId);
       }
       return;
     }
@@ -467,71 +444,39 @@ function onRulerWheel(e: WheelEvent) {
 
 <template>
   <UContextMenu
-    :items="[
-      [
-        {
-          label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
-          icon: 'i-heroicons-bookmark',
-          onSelect: () => {
-            const timeUs = currentTime;
-            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-            timelineStore.applyTimeline({
-              type: 'add_marker',
-              id: newMarkerId,
-              timeUs,
-              text: '',
-            });
-            openEditMarker(newMarkerId);
-          },
-        },
-        {
-          label: t('granVideoEditor.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
-          icon: 'i-heroicons-arrows-right-left',
-          onSelect: () => {
-            const timeUs = currentTime;
-            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-            timelineStore.applyTimeline({
-              type: 'add_marker',
-              id: newMarkerId,
-              timeUs,
-              durationUs: 5_000_000,
-              text: '',
-            });
-            openEditMarker(newMarkerId);
-          },
-        },
-      ],
-      ...(contextMenuMarkerId
+    :items="
+      contextMenuMarkerId
         ? [
             [
-              {
-                label: t('granVideoEditor.timeline.editMarker', 'Edit marker'),
-                icon: 'i-heroicons-pencil',
-                onSelect: () => {
-                  if (contextMenuMarkerId) {
-                    openEditMarker(contextMenuMarkerId);
-                  }
-                },
-              },
-              ...(markers.find(m => m.id === contextMenuMarkerId)?.durationUs !== undefined
-                ? [{
-                    label: t('granVideoEditor.timeline.convertZoneToMarker', 'Convert to normal marker'),
-                    icon: 'i-heroicons-arrows-pointing-in',
-                    onSelect: () => {
-                      if (contextMenuMarkerId) {
-                        timelineStore.convertZoneToMarker(contextMenuMarkerId);
-                      }
+              ...(markers.find((m) => m.id === contextMenuMarkerId)?.durationUs !== undefined
+                ? [
+                    {
+                      label: t(
+                        'granVideoEditor.timeline.convertZoneToMarker',
+                        'Convert to normal marker',
+                      ),
+                      icon: 'i-heroicons-arrows-pointing-in',
+                      onSelect: () => {
+                        if (contextMenuMarkerId) {
+                          timelineStore.convertZoneToMarker(contextMenuMarkerId);
+                        }
+                      },
                     },
-                  }]
-                : [{
-                    label: t('granVideoEditor.timeline.convertMarkerToZone', 'Convert to zone marker'),
-                    icon: 'i-heroicons-arrows-pointing-out',
-                    onSelect: () => {
-                      if (contextMenuMarkerId) {
-                        timelineStore.convertMarkerToZone(contextMenuMarkerId);
-                      }
+                  ]
+                : [
+                    {
+                      label: t(
+                        'granVideoEditor.timeline.convertMarkerToZone',
+                        'Convert to zone marker',
+                      ),
+                      icon: 'i-heroicons-arrows-pointing-out',
+                      onSelect: () => {
+                        if (contextMenuMarkerId) {
+                          timelineStore.convertMarkerToZone(contextMenuMarkerId);
+                        }
+                      },
                     },
-                  }]),
+                  ]),
               {
                 label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
                 icon: 'i-heroicons-trash',
@@ -544,8 +489,45 @@ function onRulerWheel(e: WheelEvent) {
               },
             ],
           ]
-        : []),
-    ]"
+        : [
+            [
+              {
+                label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
+                icon: 'i-heroicons-bookmark',
+                onSelect: () => {
+                  const timeUs = currentTime;
+                  const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+                  timelineStore.applyTimeline({
+                    type: 'add_marker',
+                    id: newMarkerId,
+                    timeUs,
+                    text: '',
+                  });
+                  selectMarker(newMarkerId);
+                },
+              },
+              {
+                label: t(
+                  'granVideoEditor.timeline.addZoneMarkerAtPlayhead',
+                  'Add zone marker at playhead',
+                ),
+                icon: 'i-heroicons-arrows-right-left',
+                onSelect: () => {
+                  const timeUs = currentTime;
+                  const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+                  timelineStore.applyTimeline({
+                    type: 'add_marker',
+                    id: newMarkerId,
+                    timeUs,
+                    durationUs: 5_000_000,
+                    text: '',
+                  });
+                  selectMarker(newMarkerId);
+                },
+              },
+            ],
+          ]
+    "
     class="w-full"
     @update:open="onContextMenuOpenChange"
   >
@@ -565,7 +547,7 @@ function onRulerWheel(e: WheelEvent) {
           v-for="p in markerPoints"
           :key="p.id"
           class="absolute bottom-0 h-full pointer-events-auto"
-          :style="{ left: `${Math.round(p.x)}px`, width: p.isZone ? `${Math.round(p.width)}px` : 'auto' }"
+          :style="{ left: `${p.x}px`, width: p.isZone ? `${p.width}px` : 'auto' }"
         >
           <div v-if="p.isZone" class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none" :style="p.color ? { backgroundColor: `${p.color}33`, borderColor: `${p.color}80` } : {}" />
           
@@ -584,7 +566,7 @@ function onRulerWheel(e: WheelEvent) {
                 ]"
                 :style="p.color ? { backgroundColor: p.color } : {}"
                 :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
-                @dblclick.stop.prevent="openEditMarker(p.id)"
+                @dblclick.stop.prevent="selectMarker(p.id)"
                 @pointerdown.stop="onMarkerPointerDown($event, p.id)"
                 @contextmenu="onMarkerContextMenu($event, p.id)"
                 @mousedown.stop
@@ -608,7 +590,7 @@ function onRulerWheel(e: WheelEvent) {
                 ]"
                 :style="p.color ? { backgroundColor: p.color } : {}"
                 aria-label="Zone Marker End"
-                @dblclick.stop.prevent="openEditMarker(p.id)"
+                @dblclick.stop.prevent="selectMarker(p.id)"
                 @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
                 @contextmenu="onMarkerContextMenu($event, p.id)"
                 @mousedown.stop
@@ -618,20 +600,6 @@ function onRulerWheel(e: WheelEvent) {
           </div>
         </div>
       </div>
-      <AppModal v-if="editingMarker" v-model:open="isMarkerEditOpen" title="Marker">
-        <div class="flex flex-col gap-3">
-          <UTextarea v-model="markerTextDraft" :rows="10" size="sm" />
-        </div>
-
-        <template #footer>
-          <UButton color="neutral" variant="ghost" @click="isMarkerEditOpen = false">
-            {{ t('common.cancel', 'Cancel') }}
-          </UButton>
-          <UButton color="primary" @click="saveMarkerText">
-            {{ t('common.save', 'Save') }}
-          </UButton>
-        </template>
-      </AppModal>
     </div>
   </UContextMenu>
 </template>

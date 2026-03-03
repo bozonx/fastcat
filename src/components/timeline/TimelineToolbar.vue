@@ -68,10 +68,6 @@ function addTextClip() {
   timelineStore.addTextClipAtPlayhead({ name: defaultName, text: defaultText });
 }
 
-function addMarker() {
-  timelineStore.addMarkerAtPlayhead();
-}
-
 async function splitClips() {
   await timelineStore.splitClipsAtPlayhead();
 }
@@ -155,15 +151,6 @@ function onZoomInput(e: Event) {
           @click="addTextClip"
         />
       </div>
-
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-bookmark"
-        :aria-label="t('granVideoEditor.timeline.addMarker', 'Add marker')"
-        @click="addMarker"
-      />
 
       <div class="w-px h-5 bg-ui-border mx-1.5" />
 
