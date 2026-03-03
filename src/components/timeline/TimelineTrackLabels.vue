@@ -259,13 +259,13 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
   const isSecondary =
     (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
 
-  // Only handle primary vertical scroll without shift
-  if (isSecondary || e.shiftKey) return;
+  // Allow vertical track scaling with shift key or primary wheel
+  if (isSecondary || (!e.shiftKey && e.deltaY === 0)) return;
 
   e.preventDefault();
   e.stopPropagation();
 
-  const delta = e.deltaY;
+  const delta = e.deltaY || e.deltaX;
   if (!Number.isFinite(delta) || delta === 0) return;
 
   const dir = delta < 0 ? 1 : -1;

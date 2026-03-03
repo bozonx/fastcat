@@ -17,6 +17,10 @@ const props = defineProps<{
 
 const isFullscreenOpen = ref(false);
 
+function openFullscreen() {
+  isFullscreenOpen.value = true;
+}
+
 function handleEsc(e: KeyboardEvent) {
   if (e.key === 'Escape' && isFullscreenOpen.value) {
     isFullscreenOpen.value = false;
@@ -25,10 +29,12 @@ function handleEsc(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleEsc);
+  window.addEventListener('gran-preview-fullscreen', openFullscreen);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc);
+  window.removeEventListener('gran-preview-fullscreen', openFullscreen);
 });
 </script>
 

@@ -70,6 +70,17 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     }
   }
 
+  function onCustomZoom(e: CustomEvent<{ dir: number }>) {
+    if (!containerRef.value) return;
+    const zoomFactor = e.detail.dir > 0 ? 1.1 : 0.9;
+    const newScale = Math.max(0.05, Math.min(scale.value * zoomFactor, 50));
+    scale.value = newScale;
+  }
+
+  function onCustomZoomReset() {
+    reset();
+  }
+
   return {
     scale,
     translateX,
@@ -79,5 +90,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onCustomZoom,
+    onCustomZoomReset,
   };
 }

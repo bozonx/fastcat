@@ -76,6 +76,7 @@ const {
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onCustomZoom,
 } = useImagePanZoom(containerRef);
 
 const mediaStyle = computed(() => ({
@@ -128,6 +129,24 @@ watch(
     reset();
   },
 );
+
+onMounted(() => {
+  window.addEventListener('gran-zoom', ((e: CustomEvent<{ dir: number }>) => {
+    if (document.activeElement?.closest('.media-player-container')) {
+      onCustomZoom(e);
+    }
+  }) as EventListener);
+  window.addEventListener('gran-zoom-reset', () => {
+    if (document.activeElement?.closest('.media-player-container')) {
+      reset();
+    }
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('gran-zoom', onCustomZoom as EventListener);
+  window.removeEventListener('gran-zoom-reset', reset);
+});
 </script>
 
 <template>
@@ -140,7 +159,8 @@ watch(
     >
       <div
         ref="containerRef"
-        class="flex-1 flex w-full h-full items-center justify-center bg-(--media-bg) relative overflow-hidden select-none"
+        class="media-player-container relative w-full h-full bg-black overflow-hidden flex items-center justify-center select-none outline-none"
+        tabindex="-1"
         @wheel="onWheel"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
