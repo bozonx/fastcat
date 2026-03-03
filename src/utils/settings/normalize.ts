@@ -1,9 +1,6 @@
-import {
-  DEFAULT_USER_SETTINGS,
-  DEFAULT_WORKSPACE_SETTINGS,
-  type GranVideoEditorUserSettings,
-  type GranVideoEditorWorkspaceSettings,
-} from './defaults';
+import { DEFAULT_USER_SETTINGS, DEFAULT_WORKSPACE_SETTINGS } from './defaults';
+import type { GranVideoEditorUserSettings, GranVideoEditorWorkspaceSettings } from './defaults';
+import { TIMELINE_WHEEL_ACTIONS, MONITOR_WHEEL_ACTIONS, MIDDLE_CLICK_ACTIONS } from '~/utils/mouse';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import { normalizeHotkeyCombo } from '../hotkeys/hotkeyUtils';
 import {
@@ -183,24 +180,20 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       | Record<string, unknown>
       | undefined;
     if (rawTimeline && typeof rawTimeline === 'object') {
-      const validTimelineActions = [
-        'scroll_vertical',
-        'scroll_horizontal',
-        'zoom_horizontal',
-        'zoom_vertical',
-        'none',
-      ];
       for (const k of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
-        if (validTimelineActions.includes((rawTimeline as Record<string, unknown>)[k] as string)) {
+        if (
+          (TIMELINE_WHEEL_ACTIONS as readonly string[]).includes(
+            (rawTimeline as Record<string, unknown>)[k] as string,
+          )
+        ) {
           (normalizedMouse.timeline as Record<string, unknown>)[k] = (
             rawTimeline as Record<string, unknown>
           )[k];
         }
       }
 
-      const validMiddleClickActions = ['pan', 'none'];
       const timelineMiddleClick = (rawTimeline as Record<string, unknown>).middleClick;
-      if (validMiddleClickActions.includes(timelineMiddleClick as string)) {
+      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(timelineMiddleClick as string)) {
         (normalizedMouse.timeline as Record<string, unknown>).middleClick = timelineMiddleClick as
           | 'pan'
           | 'none';
@@ -211,18 +204,20 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       | Record<string, unknown>
       | undefined;
     if (rawMonitor && typeof rawMonitor === 'object') {
-      const validMonitorActions = ['zoom', 'scroll_vertical', 'scroll_horizontal', 'none'];
       for (const k of ['wheel', 'wheelShift']) {
-        if (validMonitorActions.includes((rawMonitor as Record<string, unknown>)[k] as string)) {
+        if (
+          (MONITOR_WHEEL_ACTIONS as readonly string[]).includes(
+            (rawMonitor as Record<string, unknown>)[k] as string,
+          )
+        ) {
           (normalizedMouse.monitor as Record<string, unknown>)[k] = (
             rawMonitor as Record<string, unknown>
           )[k];
         }
       }
 
-      const validMiddleClickActions = ['pan', 'none'];
       const monitorMiddleClick = (rawMonitor as Record<string, unknown>).middleClick;
-      if (validMiddleClickActions.includes(monitorMiddleClick as string)) {
+      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(monitorMiddleClick as string)) {
         (normalizedMouse.monitor as Record<string, unknown>).middleClick = monitorMiddleClick as
           | 'pan'
           | 'none';

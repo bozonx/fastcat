@@ -73,8 +73,8 @@ const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
   (e: 'dragover', event: DragEvent, trackId: string): void;
   (e: 'dragleave', event: DragEvent, trackId: string): void;
-  (e: 'startMoveItem', event: MouseEvent, trackId: string, itemId: string, startUs: number): void;
-  (e: 'selectItem', event: MouseEvent, itemId: string): void;
+  (e: 'startMoveItem', event: PointerEvent, trackId: string, itemId: string, startUs: number): void;
+  (e: 'selectItem', event: PointerEvent, itemId: string): void;
   (
     e: 'clipAction',
     payload: {
@@ -86,7 +86,7 @@ const emit = defineEmits<{
   ): void;
   (
     e: 'startTrimItem',
-    event: MouseEvent,
+    event: PointerEvent,
     payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ): void;
 }>();
@@ -148,7 +148,7 @@ function selectTransition(
 <template>
   <div
     class="flex flex-col divide-y divide-ui-border min-h-full"
-    @mousedown="
+    @pointerdown="
       if ($event.button !== 1 && $event.target === $event.currentTarget) {
         timelineStore.clearSelection();
         selectionStore.clearSelection();
@@ -201,18 +201,18 @@ function selectTransition(
           : '',
       ]"
       :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
+      @pointerdown="
+        if ($event.button !== 1 && $event.target === $event.currentTarget) {
+          timelineStore.selectTrack(track.id);
+          timelineStore.clearSelection();
+          selectionStore.clearSelection();
+        }
+      "
+      @mouseenter="timelineStore.hoverTrackId = track.id"
+      @mouseleave="timelineStore.hoverTrackId = null"
       @dragover.prevent="emit('dragover', $event, track.id)"
       @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"
-      @mouseenter="timelineStore.hoveredTrackId = track.id"
-      @mouseleave="timelineStore.hoveredTrackId = null"
-      @mousedown="
-        if ($event.button !== 1 && $event.target === $event.currentTarget) {
-          timelineStore.clearSelection();
-          selectionStore.clearSelection();
-          timelineStore.selectTrack(null);
-        }
-      "
     >
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"

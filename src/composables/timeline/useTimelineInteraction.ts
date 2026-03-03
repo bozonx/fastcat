@@ -19,6 +19,7 @@ import {
   pickBestSnapCandidateUs,
   computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
+import { sanitizeFps } from '~/timeline/commands/utils';
 
 export { BASE_PX_PER_SECOND, timeUsToPx, pxToTimeUs, pxToDeltaUs, computeAnchoredScrollLeft };
 
@@ -111,26 +112,25 @@ export function useTimelineInteraction(
     timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
   }
 
-  function onTimeRulerMouseDown(e: MouseEvent) {
+  function onTimeRulerPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     seekByMouseEvent(e);
     startPlayheadDrag(e);
   }
 
-  function startPlayheadDrag(e: MouseEvent) {
+  function startPlayheadDrag(e: PointerEvent) {
     if (e.button !== 0) return;
     isDraggingPlayhead.value = true;
-    window.addEventListener('mousemove', onGlobalMouseMove);
-    window.addEventListener('mouseup', onGlobalMouseUp);
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
   }
 
-  function selectItem(e: MouseEvent, itemId: string) {
+  function selectItem(e: PointerEvent, itemId: string) {
     e.stopPropagation();
     timelineStore.toggleSelection(itemId, { multi: e.shiftKey || e.metaKey || e.ctrlKey });
   }
 
-  function startMoveItem(e: MouseEvent, trackId: string, itemId: string, startUs: number) {
+  function startMoveItem(e: PointerEvent, trackId: string, itemId: string, startUs: number) {
     if (e.button !== 0) return;
     e.stopPropagation();
 
@@ -179,13 +179,12 @@ export function useTimelineInteraction(
     };
     pendingMoveCommit.value = null;
 
-    window.addEventListener('mousemove', onGlobalMouseMove);
-    window.addEventListener('mouseup', onGlobalMouseUp);
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
   }
 
   function startTrimItem(
-    e: MouseEvent,
+    e: PointerEvent,
     input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ) {
     if (e.button !== 0) return;
@@ -224,8 +223,7 @@ export function useTimelineInteraction(
 
     dragCancelRequested.value = false;
 
-    window.addEventListener('mousemove', onGlobalMouseMove);
-    window.addEventListener('mouseup', onGlobalMouseUp);
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
   }
 
@@ -237,7 +235,7 @@ export function useTimelineInteraction(
 
     dragCancelRequested.value = true;
     e.preventDefault();
-    onGlobalMouseUp();
+    onGlobalPointerUp();
   }
 
   function applyDragFromPendingClientX() {
@@ -384,10 +382,10 @@ export function useTimelineInteraction(
     });
   }
 
-  function onGlobalMouseMove(e: MouseEvent) {
+  function onGlobalPointerMove(e: PointerEvent) {
     if (isDraggingPlayhead.value) {
       if (e.buttons === 0) {
-        onGlobalMouseUp();
+        onGlobalPointerUp(e);
         return;
       }
       const scrollerRect = scrollEl.value?.getBoundingClientRect();
@@ -404,7 +402,7 @@ export function useTimelineInteraction(
     if (!mode || !trackId || !itemId) return;
 
     if (e.buttons === 0) {
-      onGlobalMouseUp();
+      onGlobalPointerUp(e);
       return;
     }
 
@@ -413,7 +411,14 @@ export function useTimelineInteraction(
     scheduleDragApply();
   }
 
-  function onGlobalMouseUp() {
+  function onGlobalPointerUp(e?: PointerEvent) {
+    if (e) {
+      try {
+        (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    }
     const cancel = dragCancelRequested.value;
     dragCancelRequested.value = false;
 
@@ -475,8 +480,6 @@ export function useTimelineInteraction(
     dragStartSnapshot.value = null;
     lastDragAppliedCmd.value = null;
 
-    window.removeEventListener('mousemove', onGlobalMouseMove);
-    window.removeEventListener('mouseup', onGlobalMouseUp);
     window.removeEventListener('keydown', onGlobalKeyDown);
   }
 
@@ -487,8 +490,6 @@ export function useTimelineInteraction(
       cancelAnimationFrame(dragRafId);
       dragRafId = null;
     }
-    window.removeEventListener('mousemove', onGlobalMouseMove);
-    window.removeEventListener('mouseup', onGlobalMouseUp);
     window.removeEventListener('keydown', onGlobalKeyDown);
   });
 
@@ -497,7 +498,9 @@ export function useTimelineInteraction(
     draggingMode,
     draggingItemId,
     movePreview,
-    onTimeRulerMouseDown,
+    onTimeRulerPointerDown,
+    onGlobalPointerMove,
+    onGlobalPointerUp,
     startPlayheadDrag,
     selectItem,
     startMoveItem,

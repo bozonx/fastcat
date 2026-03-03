@@ -1,9 +1,39 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import { TIMELINE_WHEEL_ACTIONS, MONITOR_WHEEL_ACTIONS, MIDDLE_CLICK_ACTIONS } from '~/utils/mouse';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+const timelineWheelOptions = computed(() => {
+  const labels: Record<string, string> = {
+    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+    zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+    zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return TIMELINE_WHEEL_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+});
+
+const monitorWheelOptions = computed(() => {
+  const labels: Record<string, string> = {
+    zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
+    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return MONITOR_WHEEL_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+});
+
+const middleClickOptions = computed(() => {
+  const labels: Record<string, string> = {
+    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return MIDDLE_CLICK_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+});
 
 function resetDefaults() {
   workspaceStore.userSettings.mouse.timeline = { ...DEFAULT_USER_SETTINGS.mouse.timeline };
@@ -40,34 +70,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.timeline.wheel"
-                    :items="[
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollVertical',
-                          'Vertical scroll',
-                        ),
-                        value: 'scroll_vertical',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollHorizontal',
-                          'Horizontal scroll',
-                        ),
-                        value: 'scroll_horizontal',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionZoomHorizontal',
-                          'Horizontal zoom',
-                        ),
-                        value: 'zoom_horizontal',
-                      },
-                      {
-                        label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-                        value: 'zoom_vertical',
-                      },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="timelineWheelOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -87,34 +90,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.timeline.wheelShift"
-                    :items="[
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollVertical',
-                          'Vertical scroll',
-                        ),
-                        value: 'scroll_vertical',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollHorizontal',
-                          'Horizontal scroll',
-                        ),
-                        value: 'scroll_horizontal',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionZoomHorizontal',
-                          'Horizontal zoom',
-                        ),
-                        value: 'zoom_horizontal',
-                      },
-                      {
-                        label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-                        value: 'zoom_vertical',
-                      },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="timelineWheelOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -135,34 +111,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondary"
-                    :items="[
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollVertical',
-                          'Vertical scroll',
-                        ),
-                        value: 'scroll_vertical',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollHorizontal',
-                          'Horizontal scroll',
-                        ),
-                        value: 'scroll_horizontal',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionZoomHorizontal',
-                          'Horizontal zoom',
-                        ),
-                        value: 'zoom_horizontal',
-                      },
-                      {
-                        label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-                        value: 'zoom_vertical',
-                      },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="timelineWheelOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -188,34 +137,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift"
-                    :items="[
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollVertical',
-                          'Vertical scroll',
-                        ),
-                        value: 'scroll_vertical',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollHorizontal',
-                          'Horizontal scroll',
-                        ),
-                        value: 'scroll_horizontal',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionZoomHorizontal',
-                          'Horizontal zoom',
-                        ),
-                        value: 'zoom_horizontal',
-                      },
-                      {
-                        label: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-                        value: 'zoom_vertical',
-                      },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="timelineWheelOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -237,10 +159,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.timeline.middleClick"
-                    :items="[
-                      { label: t('videoEditor.settings.mouseActionPan', 'Pan'), value: 'pan' },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="middleClickOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -273,24 +192,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.monitor.wheel"
-                    :items="[
-                      { label: t('videoEditor.settings.mouseActionZoom', 'Zoom'), value: 'zoom' },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollVertical',
-                          'Vertical scroll',
-                        ),
-                        value: 'scroll_vertical',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollHorizontal',
-                          'Horizontal scroll',
-                        ),
-                        value: 'scroll_horizontal',
-                      },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="monitorWheelOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -310,24 +212,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.monitor.wheelShift"
-                    :items="[
-                      { label: t('videoEditor.settings.mouseActionZoom', 'Zoom'), value: 'zoom' },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollVertical',
-                          'Vertical scroll',
-                        ),
-                        value: 'scroll_vertical',
-                      },
-                      {
-                        label: t(
-                          'videoEditor.settings.mouseActionScrollHorizontal',
-                          'Horizontal scroll',
-                        ),
-                        value: 'scroll_horizontal',
-                      },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="monitorWheelOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"
@@ -348,10 +233,7 @@ function resetDefaults() {
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.monitor.middleClick"
-                    :items="[
-                      { label: t('videoEditor.settings.mouseActionPan', 'Pan'), value: 'pan' },
-                      { label: t('videoEditor.settings.mouseActionNone', 'None'), value: 'none' },
-                    ]"
+                    :items="middleClickOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"

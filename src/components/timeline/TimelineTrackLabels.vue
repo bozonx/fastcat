@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
+import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -259,16 +260,9 @@ const emptyAreaContextMenuItems = computed(() => {
 });
 function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
   const isShift = e.shiftKey;
-  const isSecondary =
-    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
+  const isSecondary = isSecondaryWheel(e);
 
-  const settings = workspaceStore.userSettings?.mouse?.timeline ?? {
-    wheel: 'scroll_vertical',
-    wheelShift: 'scroll_horizontal',
-    wheelSecondary: 'scroll_horizontal',
-    wheelSecondaryShift: 'zoom_vertical',
-    middleClick: 'pan',
-  };
+  const settings = workspaceStore.userSettings.mouse.timeline;
 
   let action = settings.wheel;
   if (isSecondary && isShift) action = settings.wheelSecondaryShift;
@@ -281,7 +275,7 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
   }
 
   // Calculate delta amount based on event
-  const delta = isSecondary ? e.deltaX : e.deltaY;
+  const delta = getWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
   if (action === 'zoom_vertical') {

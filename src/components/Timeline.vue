@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
@@ -19,6 +20,7 @@ import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage } from '@vueuse/core';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
+import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -26,7 +28,12 @@ import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 
 const { t } = useI18n();
 const toast = useToast();
+const emit = defineEmits<{
+  (e: 'scroll-vertical', delta: number): void;
+}>();
+
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
@@ -91,7 +98,7 @@ const {
   draggingMode,
   draggingItemId,
   movePreview,
-  onTimeRulerMouseDown,
+  onTimeRulerPointerDown,
   startPlayheadDrag,
   selectItem,
   startMoveItem,
@@ -183,10 +190,9 @@ function onTimelineClick(e: MouseEvent) {
 function onTimelinePointerDown(e: PointerEvent) {
   if (e.button === 1) {
     // Middle click
-    const workspaceStore = useWorkspaceStore();
-    const settings = workspaceStore.userSettings?.mouse?.timeline;
+    const settings = workspaceStore.userSettings.mouse.timeline;
 
-    if (settings?.middleClick === 'pan') {
+    if (settings.middleClick === 'pan') {
       const el = scrollEl.value;
       if (!el) return;
 
@@ -224,10 +230,8 @@ function onTimelineRulerWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
-  const isSecondary =
-    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
-
-  const delta = isSecondary ? e.deltaX : e.deltaY;
+  const isSecondary = isSecondaryWheel(e);
+  const delta = getWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
   if (!isSecondary) {
@@ -264,17 +268,9 @@ function onTimelineWheel(e: WheelEvent) {
   if (!el) return;
 
   const isShift = e.shiftKey;
-  const isSecondary =
-    (e.deltaX !== 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) || (!e.deltaY && e.deltaX !== 0);
+  const isSecondary = isSecondaryWheel(e);
 
-  const workspaceStore = useWorkspaceStore();
-  const settings = workspaceStore.userSettings?.mouse?.timeline ?? {
-    wheel: 'scroll_vertical',
-    wheelShift: 'scroll_horizontal',
-    wheelSecondary: 'scroll_horizontal',
-    wheelSecondaryShift: 'zoom_vertical',
-    middleClick: 'pan',
-  };
+  const settings = workspaceStore.userSettings.mouse.timeline;
 
   let action = settings.wheel;
   if (isSecondary && isShift) action = settings.wheelSecondaryShift;
@@ -287,7 +283,7 @@ function onTimelineWheel(e: WheelEvent) {
   }
 
   // Calculate delta amount based on event
-  const delta = isSecondary ? e.deltaX : e.deltaY;
+  const delta = getWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
   if (action === 'scroll_vertical') {
@@ -296,11 +292,8 @@ function onTimelineWheel(e: WheelEvent) {
     if (!isShift && !isSecondary) return;
 
     e.preventDefault();
-    // Use the Splitpanes content element for vertical scrolling
-    const splitpanesEl = document.querySelector('.editor-splitpanes') as HTMLElement;
-    if (splitpanesEl) {
-      splitpanesEl.scrollTop += delta;
-    }
+    // Emit event to scroll vertical container to avoid DOM query in logic
+    emit('scroll-vertical', delta);
     return;
   }
 
@@ -594,7 +587,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               <TimelineRuler
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"
-                @mousedown="onTimeRulerMouseDown"
+                @pointerdown="onTimeRulerPointerDown"
                 @wheel="onTimelineRulerWheel"
               />
             </div>
@@ -602,7 +595,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               ref="scrollEl"
               class="w-full flex-1 overflow-x-auto overflow-y-hidden relative"
               @pointerdown.capture="onTimelinePointerDownCapture"
-              @pointerdown="onTimelinePointerDown"
+              @pointerdown.self="onTimelinePointerDown"
               @pointermove="onTimelinePointerMove"
               @pointerup="onTimelinePointerUp"
               @pointercancel="onTimelinePointerUp"
@@ -621,9 +614,9 @@ async function onDrop(e: DragEvent, trackId: string) {
                 @drop="onDrop"
                 @dragover="onTrackDragOver"
                 @dragleave="onTrackDragLeave"
-                @start-move-item="startMoveItem"
+                @move-item="startMoveItem"
                 @select-item="selectItem"
-                @start-trim-item="startTrimItem"
+                @trim-item="startTrimItem"
                 @clip-action="onClipAction"
               />
 
@@ -633,7 +626,7 @@ async function onDrop(e: DragEvent, trackId: string) {
                 :style="{
                   left: `${timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)}px`,
                 }"
-                @mousedown="startPlayheadDrag"
+                @pointerdown="startPlayheadDrag"
               ></div>
 
               <!-- Zoom Indicator -->
