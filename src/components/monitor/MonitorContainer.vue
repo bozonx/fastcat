@@ -214,6 +214,27 @@ function onPlaybackSpeedChange(v: any) {
   }
 }
 
+function handleSpeedWheel(e: WheelEvent) {
+  if (!canInteractPlayback.value) return;
+
+  const currentAbs = Math.abs(timelineStore.playbackSpeed);
+  const currentIndex = playbackSpeedOptions.findIndex((o) => o.value === currentAbs);
+  const idx = currentIndex >= 0 ? currentIndex : 2;
+
+  let nextIndex = idx;
+  if (e.deltaY < 0) {
+    nextIndex = Math.min(playbackSpeedOptions.length - 1, idx + 1);
+  } else if (e.deltaY > 0) {
+    nextIndex = Math.max(0, idx - 1);
+  }
+
+  if (nextIndex !== idx) {
+    const nextSpeed = playbackSpeedOptions[nextIndex].value;
+    const direction = timelineStore.playbackSpeed < 0 ? -1 : 1;
+    timelineStore.setPlaybackSpeed(nextSpeed * direction);
+  }
+}
+
 const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
   projectStore,
   timelineStore,
@@ -518,6 +539,7 @@ const emit = defineEmits<{
           @click="
             setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
           "
+          @wheel.prevent="handleSpeedWheel"
         />
 
         <UButton
@@ -530,6 +552,7 @@ const emit = defineEmits<{
           @click="
             setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
           "
+          @wheel.prevent="handleSpeedWheel"
         />
 
         <div class="w-15">
@@ -539,10 +562,12 @@ const emit = defineEmits<{
             value-key="value"
             label-key="label"
             size="2xs"
+            :search-input="false"
             :ui="{ trigger: 'px-1 py-1 font-medium' }"
             class="w-full"
             :disabled="!canInteractPlayback"
             @update:model-value="onPlaybackSpeedChange"
+            @wheel.prevent="handleSpeedWheel"
           >
             <template #item-label="{ item }">
               <span class="truncate text-xs">{{ item.label }}</span>
