@@ -122,21 +122,27 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   if (el.isContentEditable) return true;
 
   const tag = el.tagName;
-  if (tag === 'TEXTAREA') return true;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
 
   if (tag !== 'INPUT') return false;
 
   const input = el as HTMLInputElement;
   const type = (input.type || '').toLowerCase();
-  if (!type) return true;
+  if (!type) return true; // Default input is text
 
-  return (
-    type === 'text' ||
-    type === 'search' ||
-    type === 'password' ||
-    type === 'email' ||
-    type === 'tel' ||
-    type === 'url' ||
-    type === 'number'
-  );
+  // Allow global hotkeys for non-text inputs
+  const nonTextTypes = [
+    'checkbox',
+    'radio',
+    'button',
+    'submit',
+    'reset',
+    'color',
+    'file',
+    'image',
+    'hidden',
+  ];
+  if (nonTextTypes.includes(type)) return false;
+
+  return true; // text, search, password, email, number, date, etc.
 }

@@ -45,6 +45,51 @@ export const useUiStore = defineStore('ui', () => {
     setFileTreePathExpanded,
   } = fileTreeModule;
 
+  const fsSidebarWidth = ref(0);
+  const previewZoomTrigger = ref({ dir: 0, timestamp: 0 });
+  const previewZoomResetTrigger = ref(0);
+  const monitorZoomTrigger = ref({ dir: 0, timestamp: 0 });
+  const monitorZoomResetTrigger = ref(0);
+  const previewPlaybackTrigger = ref<{
+    action: 'toggle' | 'toggle1' | 'toStart' | 'toEnd' | 'set' | '';
+    speed?: number;
+    direction?: 'forward' | 'backward' | '';
+    timestamp: number;
+  }>({ action: '', speed: 0, direction: '', timestamp: 0 });
+  const previewFullscreenToggleTrigger = ref(0);
+
+  function setFsSidebarWidth(width: number) {
+    fsSidebarWidth.value = width;
+  }
+
+  function triggerPreviewZoom(dir: 1 | -1) {
+    previewZoomTrigger.value = { dir, timestamp: Date.now() };
+  }
+
+  function triggerPreviewZoomReset() {
+    previewZoomResetTrigger.value = Date.now();
+  }
+
+  function triggerMonitorZoom(dir: 1 | -1) {
+    monitorZoomTrigger.value = { dir, timestamp: Date.now() };
+  }
+
+  function triggerMonitorZoomReset() {
+    monitorZoomResetTrigger.value = Date.now();
+  }
+
+  function triggerPreviewPlayback(
+    action: 'toggle' | 'toggle1' | 'toStart' | 'toEnd' | 'set',
+    speed?: number,
+    direction?: 'forward' | 'backward',
+  ) {
+    previewPlaybackTrigger.value = { action, speed, direction, timestamp: Date.now() };
+  }
+
+  function togglePreviewFullscreen() {
+    previewFullscreenToggleTrigger.value = Date.now();
+  }
+
   return {
     selectedFsEntry,
     isGlobalDragging,
@@ -55,6 +100,24 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryCreateMarkdown,
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,
+
+    fsSidebarWidth,
+    setFsSidebarWidth,
+
+    previewZoomTrigger,
+    previewZoomResetTrigger,
+    monitorZoomTrigger,
+    monitorZoomResetTrigger,
+    previewPlaybackTrigger,
+    previewFullscreenToggleTrigger,
+
+    triggerPreviewZoom,
+    triggerPreviewZoomReset,
+    triggerMonitorZoom,
+    triggerMonitorZoomReset,
+    triggerPreviewPlayback,
+    togglePreviewFullscreen,
+
     showHiddenFiles,
     fileManagerUpdateCounter,
     notifyFileManagerUpdate,

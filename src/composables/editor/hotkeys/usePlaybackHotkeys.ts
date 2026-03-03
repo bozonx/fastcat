@@ -1,46 +1,12 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 export function usePlaybackHotkeys() {
   const timelineStore = useTimelineStore();
   const focusStore = useFocusStore();
-
-  function dispatchPreviewPlayback(
-    detail:
-      | { action: 'toggle' }
-      | { action: 'toggle1' }
-      | { action: 'toStart' }
-      | { action: 'toEnd' }
-      | { action: 'set'; direction: 'forward' | 'backward'; speed: number },
-  ) {
-    window.dispatchEvent(new CustomEvent('gran-preview-playback', { detail }));
-  }
-
-  function setTimelinePlayback(params: { direction: 'forward' | 'backward'; speed: number }) {
-    const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
-
-    if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
-      timelineStore.togglePlayback();
-      return;
-    }
-
-    timelineStore.setPlaybackSpeed(finalSpeed);
-    if (!timelineStore.isPlaying) {
-      timelineStore.togglePlayback();
-    }
-  }
-
-  function forceTimelinePlaybackSpeed(params: {
-    direction: 'forward' | 'backward';
-    speed: number;
-  }) {
-    const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
-    timelineStore.setPlaybackSpeed(finalSpeed);
-    if (!timelineStore.isPlaying) {
-      timelineStore.togglePlayback();
-    }
-  }
+  const uiStore = useUiStore();
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'playback.toggle': () => {
@@ -48,7 +14,7 @@ export function usePlaybackHotkeys() {
       if (!canUse) return false;
 
       if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
-        dispatchPreviewPlayback({ action: 'toggle' });
+        uiStore.triggerPreviewPlayback('toggle');
         return true;
       }
 
@@ -61,7 +27,7 @@ export function usePlaybackHotkeys() {
       if (!canUse) return false;
 
       if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
-        dispatchPreviewPlayback({ action: 'toggle1' });
+        uiStore.triggerPreviewPlayback('toggle1');
         return true;
       }
 
@@ -79,7 +45,7 @@ export function usePlaybackHotkeys() {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
       if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
-        dispatchPreviewPlayback({ action: 'toStart' });
+        uiStore.triggerPreviewPlayback('toStart');
         return true;
       }
 
@@ -91,7 +57,7 @@ export function usePlaybackHotkeys() {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
       if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
-        dispatchPreviewPlayback({ action: 'toEnd' });
+        uiStore.triggerPreviewPlayback('toEnd');
         return true;
       }
 
@@ -128,6 +94,31 @@ export function usePlaybackHotkeys() {
     'playback.backward1': { direction: 'backward', speed: 1 },
   };
 
+  function setTimelinePlayback(params: { direction: 'forward' | 'backward'; speed: number }) {
+    const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
+
+    if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
+      timelineStore.togglePlayback();
+      return;
+    }
+
+    timelineStore.setPlaybackSpeed(finalSpeed);
+    if (!timelineStore.isPlaying) {
+      timelineStore.togglePlayback();
+    }
+  }
+
+  function forceTimelinePlaybackSpeed(params: {
+    direction: 'forward' | 'backward';
+    speed: number;
+  }) {
+    const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
+    timelineStore.setPlaybackSpeed(finalSpeed);
+    if (!timelineStore.isPlaying) {
+      timelineStore.togglePlayback();
+    }
+  }
+
   for (const [cmd, speedCmd] of Object.entries(playbackSpeedMap)) {
     handlers[cmd as HotkeyCommandId] = () => {
       const canUse = focusStore.canUsePlaybackHotkeys;
@@ -137,7 +128,7 @@ export function usePlaybackHotkeys() {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }
-        dispatchPreviewPlayback({ action: 'set', ...speedCmd });
+        uiStore.triggerPreviewPlayback('set', speedCmd.speed, speedCmd.direction);
         return true;
       }
 

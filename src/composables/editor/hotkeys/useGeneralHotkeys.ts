@@ -95,13 +95,9 @@ export function useGeneralHotkeys(
       if (focusStore.effectiveFocus === 'timeline') {
         startZoomHotkeyHold({ step: 3, keyCode: e.code });
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
-        window.dispatchEvent(
-          new CustomEvent('gran-zoom', { detail: { dir: 1, target: 'preview' } }),
-        );
+        uiStore.triggerPreviewZoom(1);
       } else if (focusStore.effectiveFocus === 'monitor') {
-        window.dispatchEvent(
-          new CustomEvent('gran-zoom', { detail: { dir: 1, target: 'monitor' } }),
-        );
+        uiStore.triggerMonitorZoom(1);
       }
       return true;
     },
@@ -110,13 +106,9 @@ export function useGeneralHotkeys(
       if (focusStore.effectiveFocus === 'timeline') {
         startZoomHotkeyHold({ step: -3, keyCode: e.code });
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
-        window.dispatchEvent(
-          new CustomEvent('gran-zoom', { detail: { dir: -1, target: 'preview' } }),
-        );
+        uiStore.triggerPreviewZoom(-1);
       } else if (focusStore.effectiveFocus === 'monitor') {
-        window.dispatchEvent(
-          new CustomEvent('gran-zoom', { detail: { dir: -1, target: 'monitor' } }),
-        );
+        uiStore.triggerMonitorZoom(-1);
       }
       return true;
     },
@@ -125,9 +117,9 @@ export function useGeneralHotkeys(
       if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.setTimelineZoom(50);
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
-        window.dispatchEvent(new CustomEvent('gran-zoom-reset', { detail: { target: 'preview' } }));
+        uiStore.triggerPreviewZoomReset();
       } else if (focusStore.effectiveFocus === 'monitor') {
-        window.dispatchEvent(new CustomEvent('gran-zoom-reset', { detail: { target: 'monitor' } }));
+        uiStore.triggerMonitorZoomReset();
       }
       return true;
     },
@@ -145,7 +137,7 @@ export function useGeneralHotkeys(
     if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
       const entity = selectionStore.selectedEntity;
       if (entity?.source === 'fileManager' && entity.kind === 'file') {
-        window.dispatchEvent(new CustomEvent('gran-preview-fullscreen-toggle'));
+        uiStore.togglePreviewFullscreen();
         return true;
       }
     }
