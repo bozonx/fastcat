@@ -62,6 +62,15 @@ export function useGeneralHotkeys(
       return true;
     },
 
+    'general.rename': () => {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager') {
+        (uiStore as any).pendingFsEntryRename = selected.entry;
+        return true;
+      }
+      return false;
+    },
+
     'general.delete': () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {

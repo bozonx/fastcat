@@ -31,6 +31,8 @@ interface FileManagerActions {
     targetDirPath?: string,
   ) => Promise<void>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
+  onAfterRename?: () => void;
+  onAfterDelete?: () => void;
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
@@ -67,15 +69,16 @@ export function useFileManagerActions(actions: FileManagerActions) {
       stopRename();
       return;
     }
-    
+
     await actions.renameEntry(entry, trimmed);
     stopRename();
+    actions.onAfterRename?.();
   }
 
   async function handleCreateAutoFolder(
     targetDirHandle: FileSystemDirectoryHandle | null,
     targetDirPath: string,
-    existingNames: string[]
+    existingNames: string[],
   ) {
     const baseName = t('common.folderBaseName', 'Папка');
     let index = 1;
@@ -86,9 +89,9 @@ export function useFileManagerActions(actions: FileManagerActions) {
     } while (existingNames.includes(newName));
 
     await actions.createFolder(newName, targetDirHandle);
-    
+
     const createdPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
-    
+
     // Set editing path so it opens rename mode automatically
     editingEntryPath.value = createdPath;
   }
@@ -116,6 +119,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
       selectionStore.clearSelection();
     }
 
+    actions.onAfterDelete?.();
+
     setTimeout(() => {
       isDeleteConfirmModalOpen.value = false;
       setTimeout(() => {
@@ -126,11 +131,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
   function onFileAction(action: FileAction, entry: FsEntry, getExistingNames?: () => string[]) {
     if (action === 'createFolder') {
-      const existingNames = getExistingNames ? getExistingNames() : (entry.children?.map(c => c.name) || []);
+      const existingNames = getExistingNames
+        ? getExistingNames()
+        : entry.children?.map((c) => c.name) || [];
       void handleCreateAutoFolder(
-        entry.kind === 'directory' ? entry.handle as FileSystemDirectoryHandle : null,
+        entry.kind === 'directory' ? (entry.handle as FileSystemDirectoryHandle) : null,
         entry.path ?? '',
-        existingNames
+        existingNames,
       );
     } else if (action === 'upload') {
       if (entry.kind !== 'directory') return;

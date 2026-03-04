@@ -124,8 +124,9 @@ export function useTimelineInteraction(
   }
 
   function selectItem(e: PointerEvent, itemId: string) {
-    // Do NOT stopPropagation — allow event to bubble to onTimelineClick
-    // for playhead positioning (it has drag-distance detection).
+    // STOP propagation — do NOT allow event to bubble to onTimelineClick
+    // to prevent playhead from moving when clicking on a clip.
+    e.stopPropagation();
     const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
     timelineStore.toggleSelection(itemId, { multi: isMulti });
   }
