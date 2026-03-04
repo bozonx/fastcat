@@ -17,6 +17,8 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
 import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
+import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -37,6 +39,7 @@ const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
+const { addFileTab, setActiveTab } = useProjectTabs();
 
 const fileManager = useFileManager();
 const {
@@ -99,6 +102,21 @@ function onFileAction(action: any, entry: FsEntry) {
     if (entry.kind === 'directory') {
       (uiStore as any).pendingFsEntryCreateTimeline = entry;
     }
+  } else if (action === 'openAsPanel') {
+    if (entry.kind !== 'file') return;
+    const mediaType = getMediaTypeFromFilename(entry.name);
+    if (mediaType === 'text') {
+      projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);
+    } else if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
+      projectStore.addMediaPanel(entry, mediaType, entry.name);
+    }
+  } else if (action === 'openAsProjectTab') {
+    if (entry.kind !== 'file' || !entry.path) return;
+    const mediaType = getMediaTypeFromFilename(entry.name);
+    if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image' && mediaType !== 'text')
+      return;
+    const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
+    setActiveTab(tabId);
   } else if (action === 'createOtioVersion') {
     void createOtioVersion(entry);
   } else if (action === 'createProxyForFolder') {
@@ -274,6 +292,17 @@ watch(
       renameTarget.value = entry;
       isRenameModalOpen.value = true;
       (uiStore as any).pendingFsEntryRename = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateFolder,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry && entry.kind === 'directory') {
+      openCreateFolderModal(entry);
+      (uiStore as any).pendingFsEntryCreateFolder = null;
     }
   },
 );

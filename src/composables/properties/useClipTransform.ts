@@ -3,7 +3,7 @@ import type { ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/type
 
 interface UseClipTransformOptions {
   clip: Ref<TimelineClipItem>;
-  trackKind: Ref<TrackKind>;
+  trackKind?: Ref<TrackKind>;
   updateTransform: (next: ClipTransform) => void;
 }
 
@@ -63,7 +63,13 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
 
 export function useClipTransform(options: UseClipTransformOptions) {
   const canEditTransform = computed(() => {
-    return options.trackKind.value === 'video';
+    if (options.trackKind) {
+      return options.trackKind.value === 'video';
+    }
+
+    const trackId = options.clip.value.trackId;
+    if (typeof trackId !== 'string') return false;
+    return trackId.startsWith('v');
   });
 
   const anchorPresetOptions = computed(() => [

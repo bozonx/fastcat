@@ -11,6 +11,7 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 interface Props {
   entries: FsEntry[];
@@ -53,7 +54,9 @@ const emit = defineEmits<{
       | 'createProxyForFolder'
       | 'cancelProxyForFolder'
       | 'createOtioVersion'
-      | 'createMarkdown',
+      | 'createMarkdown'
+      | 'openAsPanel'
+      | 'openAsProjectTab',
     entry: FsEntry,
   ): void;
   (
@@ -121,6 +124,12 @@ function getEntryIconClass(entry: FsEntry): string {
 
 function isVideo(entry: FsEntry) {
   return entry.kind === 'file' && entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
+}
+
+function isOpenableMediaFile(entry: FsEntry): boolean {
+  if (entry.kind !== 'file') return false;
+  const type = getMediaTypeFromFilename(entry.name);
+  return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
 }
 
 function onEntryClick(entry: FsEntry) {
@@ -240,7 +249,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
 function folderHasVideos(entry: FsEntry): boolean {
   if (entry.kind !== 'directory') return false;
-  if (!entry.children) return true; // Assume true if not loaded yet, or we can be conservative
+  if (!entry.children) return false;
   return entry.children.some((child) => {
     if (child.kind === 'file') {
       const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
@@ -314,6 +323,21 @@ function getContextMenuItems(entry: FsEntry) {
       onSelect: () => emit('action', 'rename', entry),
     },
   ]);
+
+  if (isOpenableMediaFile(entry)) {
+    items.push([
+      {
+        label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
+        icon: 'i-heroicons-window',
+        onSelect: () => emit('action', 'openAsPanel', entry),
+      },
+      {
+        label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+        icon: 'i-heroicons-squares-plus',
+        onSelect: () => emit('action', 'openAsProjectTab', entry),
+      },
+    ]);
+  }
 
   if (isVideo(entry)) {
     const meta = ctx.getEntryMeta(entry);
