@@ -104,6 +104,7 @@ function onFileAction(action: any, entry: FsEntry) {
     }
   } else if (action === 'openAsPanel') {
     if (entry.kind !== 'file') return;
+    projectStore.goToCut();
     const type = getMediaTypeFromFilename(entry.name);
     if (type === 'text') {
       projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);

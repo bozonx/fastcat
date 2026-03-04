@@ -113,6 +113,7 @@ function onFileAction(action: any, entry: FsEntry) {
     directoryUploadInput.value?.click();
   } else if (action === 'openAsPanel') {
     if (entry.kind !== 'file') return;
+    projectStore.goToCut();
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
       projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);
