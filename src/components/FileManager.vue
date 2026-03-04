@@ -69,6 +69,7 @@ const {
   editingEntryPath,
   commitRename,
   stopRename,
+  startRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
@@ -88,8 +89,17 @@ const {
 // openFileInfoModal is now handled entirely within useFileManagerActions
 
 function onFileAction(action: any, entry: FsEntry) {
-  if (action === 'createFolder') {
-    onFileActionBase("createFolder", entry, () => fileManager.rootEntries.value.map(e => e.name));
+  if (action === 'refresh') {
+    void loadProjectDirectory().then(() => uiStore.notifyFileManagerUpdate());
+    return;
+  } else if (action === 'createFolder') {
+    const target: FsEntry = entry ?? {
+      kind: 'directory',
+      name: '',
+      path: '',
+      handle: null as any,
+    };
+    onFileActionBase('createFolder', target, () => fileManager.rootEntries.value.map((e) => e.name));
   } else if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
@@ -288,8 +298,7 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry) {
-      renameTarget.value = entry;
-      isRenameModalOpen.value = true;
+      startRename(entry);
       (uiStore as any).pendingFsEntryRename = null;
     }
   },
@@ -603,9 +612,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
           @click="
-            onFileAction('createFolder', 
-              uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null,
-            )
+            onFileAction('createFolder', (uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null) as FsEntry)
           "
         />
 
@@ -678,7 +685,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         :handle-files="handleFiles"
         @toggle="toggleDirectory"
         @action="onFileAction"
-        @create-folder="(entry) => onFileAction('createFolder', entry)"
+        @create-folder="(entry: FsEntry | null) => onFileAction('createFolder', entry as FsEntry)"
         @select="handleFileManagerFilesSelect"
       />
       <FileManagerEffects
@@ -693,9 +700,6 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 
     <!-- Timeline Toolbar at the bottom of the panel -->
     <TimelineToolbar v-if="!foldersOnly" />
-
-
-    />
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"

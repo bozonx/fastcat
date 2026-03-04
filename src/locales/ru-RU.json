@@ -432,6 +432,8 @@
       "clipMoveFailed": "Не удалось переместить клип",
       "disableClip": "Отключить клип",
       "enableClip": "Включить клип",
+      "muteClip": "Выключить звук",
+      "unmuteClip": "Включить звук",
       "lockClip": "Заблокировать клип",
       "unlockClip": "Разблокировать клип",
       "speed": "Скорость...",
@@ -446,6 +448,7 @@
       "removeTransitionOut": "Убрать переход в конце",
       "freezeFrame": "Заморозить кадр",
       "resetFreezeFrame": "Сбросить заморозку кадра",
+      "noMedia": "Нет медиа",
       "transition": {
         "title": "Переход",
         "duration": "Длительность (секунды)",

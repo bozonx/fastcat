@@ -109,6 +109,7 @@ interface TimelineClipBase {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
+  audioMuted?: boolean;
   audioFromVideoDisabled?: boolean;
   linkedVideoClipId?: string;
   lockToLinkedVideo?: boolean;

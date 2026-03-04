@@ -212,15 +212,7 @@ const rootContextMenuItems = computed(() => {
         label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
         icon: 'i-heroicons-arrow-path',
         disabled: props.isLoading,
-        onSelect: async () => {
-          const name = projectStore.currentProjectName;
-          if (!name) return;
-          try {
-            uiStore.notifyFileManagerUpdate();
-          } catch (e) {
-            console.error(e);
-          }
-        },
+        onSelect: () => emit('action', 'refresh' as any, { kind: 'directory', name: '', path: '', handle: null as any }),
       },
     ],
   ];

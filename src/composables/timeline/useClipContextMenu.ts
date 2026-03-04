@@ -87,6 +87,22 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         },
       });
 
+      const hasAudio = options.track.value.kind === 'audio' || clipItem.clipType === 'media' || clipItem.clipType === 'timeline';
+      if (hasAudio) {
+        mainGroup.push({
+          label: clipItem.audioMuted
+            ? options.t('granVideoEditor.timeline.unmuteClip', 'Unmute')
+            : options.t('granVideoEditor.timeline.muteClip', 'Mute'),
+          icon: clipItem.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+          onSelect: async () => {
+            options.updateClipProperties(track.id, clipItem.id, {
+              audioMuted: !clipItem.audioMuted,
+            });
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
       mainGroup.push({
         label: clipItem.locked
           ? options.t('granVideoEditor.timeline.unlockClip', 'Unlock clip')

@@ -981,7 +981,8 @@ export function updateClipProperties(
       'audioGain' in nextProps ||
       'audioBalance' in nextProps ||
       'audioFadeInUs' in nextProps ||
-      'audioFadeOutUs' in nextProps
+      'audioFadeOutUs' in nextProps ||
+      'audioMuted' in nextProps
     ) {
       finalTracks = updateLinkedLockedAudio(
         { ...doc, tracks: finalTracks },
@@ -992,6 +993,7 @@ export function updateClipProperties(
           audioBalance: (updated.item as any).audioBalance,
           audioFadeInUs: (updated.item as any).audioFadeInUs,
           audioFadeOutUs: (updated.item as any).audioFadeOutUs,
+          audioMuted: (updated.item as any).audioMuted,
         }),
       );
     }

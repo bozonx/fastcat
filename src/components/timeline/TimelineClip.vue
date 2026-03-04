@@ -295,6 +295,12 @@ const itemRef = computed(() => props.item);
 const timelineDocRef = computed(() => timelineStore.timelineDoc);
 const projectSettingsRef = computed(() => projectStore.projectSettings);
 
+const isMediaMissing = computed(() => {
+  if (!clipItem.value || (clipItem.value.clipType !== 'media' && clipItem.value.clipType !== 'timeline'))
+    return false;
+  return mediaStore.missingPaths[clipItem.value.source.path] === true;
+});
+
 const { contextMenuItems } = useClipContextMenu({
   track: trackRef,
   item: itemRef,
@@ -330,6 +336,7 @@ const { contextMenuItems } = useClipContextMenu({
         clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden))
           ? 'opacity-40'
           : '',
+        isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
         ...getClipClass(item, track),
       ]"
@@ -349,6 +356,35 @@ const { contextMenuItems } = useClipContextMenu({
         }
       "
     >
+      <!-- Missing Media Overlay -->
+      <div
+        v-if="isMediaMissing"
+        class="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none"
+      >
+        <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-white mb-1" />
+        <span v-if="clipWidthPx > 60" class="text-[10px] font-bold uppercase tracking-wider">
+          {{ t('granVideoEditor.timeline.noMedia', 'No media') }}
+        </span>
+      </div>
+
+      <!-- Muted / Disabled Overlay -->
+      <div
+        v-if="clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing"
+        class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+      >
+        <div v-if="clipItem.audioMuted" class="bg-black/30 rounded-full p-1.5">
+          <UIcon
+            name="i-heroicons-speaker-x-mark"
+            class="w-6 h-6 text-white/90"
+          />
+        </div>
+        <div v-else-if="clipItem.disabled" class="bg-black/30 rounded-full p-1">
+          <UIcon
+            :name="track.kind === 'audio' ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-eye-slash'"
+            class="w-4 h-4 text-white/80"
+          />
+        </div>
+      </div>
       <!-- Audio Fade Layer -->
       <div
         v-if="clipItem && clipHasAudio(item, track) && !shouldCollapseFades(item)"
