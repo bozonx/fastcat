@@ -8,6 +8,7 @@ import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -358,22 +359,20 @@ defineExpose({
 
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }} (s)</span>
-        <UInput
+        <WheelNumberInput
           :model-value="clip.timelineRange.startUs / 1_000_000"
           size="sm"
-          type="number"
-          step="0.01"
+          :step="0.01"
           @update:model-value="handleUpdateStartTime"
         />
       </div>
 
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }} (s)</span>
-        <UInput
+        <WheelNumberInput
           :model-value="(clip.timelineRange.startUs + clip.timelineRange.durationUs) / 1_000_000"
           size="sm"
-          type="number"
-          step="0.01"
+          :step="0.01"
           @update:model-value="handleUpdateEndTime"
         />
       </div>
@@ -408,11 +407,10 @@ defineExpose({
             <span class="text-xs text-ui-text-muted">{{
               t('granVideoEditor.textClip.fontSize', 'Font size')
             }}</span>
-            <UInput
+            <WheelNumberInput
               :model-value="Number((clip as any).style?.fontSize ?? 64)"
               size="sm"
-              type="number"
-              step="1"
+              :step="1"
               @update:model-value="(v: any) => handleUpdateTextStyle({ fontSize: Number(v) })"
             />
           </div>
@@ -464,11 +462,10 @@ defineExpose({
             <span class="text-xs text-ui-text-muted">{{
               t('granVideoEditor.textClip.lineHeight', 'Line height')
             }}</span>
-            <UInput
+            <WheelNumberInput
               :model-value="Number((clip as any).style?.lineHeight ?? 1.2)"
               size="sm"
-              type="number"
-              step="0.1"
+              :step="0.1"
               @update:model-value="(v: any) => handleUpdateTextStyle({ lineHeight: Number(v) })"
             />
           </div>
@@ -476,11 +473,10 @@ defineExpose({
             <span class="text-xs text-ui-text-muted">{{
               t('granVideoEditor.textClip.letterSpacing', 'Letter spacing')
             }}</span>
-            <UInput
+            <WheelNumberInput
               :model-value="Number((clip as any).style?.letterSpacing ?? 0)"
               size="sm"
-              type="number"
-              step="1"
+              :step="1"
               @update:model-value="(v: any) => handleUpdateTextStyle({ letterSpacing: Number(v) })"
             />
           </div>
@@ -502,11 +498,10 @@ defineExpose({
           <span class="text-xs text-ui-text-muted">{{
             t('granVideoEditor.textClip.padding', 'Padding')
           }}</span>
-          <UInput
+          <WheelNumberInput
             :model-value="Number((clip as any).style?.padding ?? 60)"
             size="sm"
-            type="number"
-            step="1"
+            :step="1"
             @update:model-value="(v: any) => handleUpdateTextStyle({ padding: Number(v) })"
           />
         </div>
@@ -582,51 +577,68 @@ defineExpose({
         {{ t('granVideoEditor.clip.transform.title', 'Transform') }}
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleX', 'Scale X') }}</span>
-          <UInput v-model.number="transformScaleX" size="sm" type="number" step="0.01" />
+          <WheelNumberInput v-model="transformScaleX" size="sm" :step="1" />
         </div>
-        <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleY', 'Scale Y') }}</span>
-          <UInput v-model.number="transformScaleY" size="sm" type="number" step="0.01" />
+        
+        <div class="flex items-center justify-center pb-1">
+          <UButton
+            :icon="transformScaleLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
+            size="2xs"
+            color="neutral"
+            variant="ghost"
+            :class="[transformScaleLinked ? 'text-ui-primary' : 'text-ui-text-muted']"
+            @click="transformScaleLinked = !transformScaleLinked"
+          />
         </div>
-      </div>
 
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-ui-text">{{ t('granVideoEditor.clip.transform.linkedScale', 'Linked scale') }}</span>
-        <UCheckbox v-model="transformScaleLinked" />
+        <div v-if="!transformScaleLinked" class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleY', 'Scale Y') }}</span>
+          <WheelNumberInput v-model="transformScaleY" size="sm" :step="1" />
+        </div>
+        <div v-else class="flex flex-col gap-0.5">
+          <!-- Placeholder to keep layout stable when linked -->
+        </div>
       </div>
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.rotation', 'Rotation (deg)') }}</span>
-        <UInput v-model.number="transformRotationDeg" size="sm" type="number" step="0.1" />
+        <WheelNumberInput v-model="transformRotationDeg" size="sm" :step="0.1" />
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionX', 'Position X') }}</span>
-          <UInput v-model.number="transformPosX" size="sm" type="number" step="1" />
+          <WheelNumberInput v-model="transformPosX" size="sm" :step="1" />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionY', 'Position Y') }}</span>
-          <UInput v-model.number="transformPosY" size="sm" type="number" step="1" />
+          <WheelNumberInput v-model="transformPosY" size="sm" :step="1" />
         </div>
       </div>
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchor', 'Anchor') }}</span>
-        <USelect v-model="transformAnchorPreset" :options="anchorPresetOptions" size="sm" />
+        <USelectMenu 
+          v-model="transformAnchorPreset" 
+          :options="anchorPresetOptions" 
+          value-key="value"
+          label-key="label"
+          size="sm" 
+          :popper="{ placement: 'bottom-end', strategy: 'fixed' }"
+        />
       </div>
 
       <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchorX', 'Anchor X (0..1)') }}</span>
-          <UInput v-model.number="transformAnchorX" size="sm" type="number" step="0.01" />
+          <WheelNumberInput v-model="transformAnchorX" size="sm" :step="0.01" />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchorY', 'Anchor Y (0..1)') }}</span>
-          <UInput v-model.number="transformAnchorY" size="sm" type="number" step="0.01" />
+          <WheelNumberInput v-model="transformAnchorY" size="sm" :step="0.01" />
         </div>
       </div>
     </div>

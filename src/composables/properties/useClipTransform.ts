@@ -17,7 +17,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
   const scaleRaw = tr.scale ?? {};
   const scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
   const scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
-  const linked = Boolean(scaleRaw.linked);
+  const linked = scaleRaw.linked !== undefined ? Boolean(scaleRaw.linked) : true;
 
   const positionRaw = tr.position ?? {};
   const posX =
@@ -121,12 +121,13 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformScaleX = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).scale?.x ?? 1;
+      const x = getSafeTransform(options.clip.value).scale?.x ?? 1;
+      return Number((x * 100).toFixed(1));
     },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
       const linked = Boolean(current.scale?.linked);
-      const x = clampNumber(val, 0.001, 1000);
+      const x = clampNumber(val / 100, 0.001, 1000);
       const y = linked ? x : (current.scale?.y ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
@@ -134,12 +135,13 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformScaleY = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).scale?.y ?? 1;
+      const y = getSafeTransform(options.clip.value).scale?.y ?? 1;
+      return Number((y * 100).toFixed(1));
     },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
       const linked = Boolean(current.scale?.linked);
-      const y = clampNumber(val, 0.001, 1000);
+      const y = clampNumber(val / 100, 0.001, 1000);
       const x = linked ? y : (current.scale?.x ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },

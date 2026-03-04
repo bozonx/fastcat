@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import WheelSlider from '~/components/ui/WheelSlider.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const props = defineProps<{
   canEditAudioFades: boolean;
@@ -80,28 +81,26 @@ const { t } = useI18n();
         <span class="text-xs text-ui-text-muted">{{
           t('granVideoEditor.clip.audioFade.in', 'Fade in')
         }}</span>
-        <UInput
+        <WheelNumberInput
           :model-value="props.audioFadeInSec"
           size="sm"
-          type="number"
-          step="0.01"
+          :step="0.01"
           :min="0"
           :max="props.audioFadeInMaxSec"
-          @update:model-value="(v: unknown) => emit('updateAudioFadeInSec', Number(v))"
+          @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
         />
       </div>
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
           t('granVideoEditor.clip.audioFade.out', 'Fade out')
         }}</span>
-        <UInput
+        <WheelNumberInput
           :model-value="props.audioFadeOutSec"
           size="sm"
-          type="number"
-          step="0.01"
+          :step="0.01"
           :min="0"
           :max="props.audioFadeOutMaxSec"
-          @update:model-value="(v: unknown) => emit('updateAudioFadeOutSec', Number(v))"
+          @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
         />
       </div>
     </div>

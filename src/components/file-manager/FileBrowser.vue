@@ -84,7 +84,6 @@ const {
 });
 
 function onFileAction(action: any, entry: FsEntry) {
-  console.log('[FileBrowser] onFileAction', action, entry);
   if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -133,6 +132,13 @@ function onFileAction(action: any, entry: FsEntry) {
   }
 }
 
+async function refreshFileTree() {
+  folderSizes.value = {};
+  await loadProjectDirectory();
+  uiStore.notifyFileManagerUpdate();
+  await loadFolderContent();
+}
+
 function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
   if (entry.kind !== 'directory') return false;
   const dirPath = entry.path;
@@ -173,18 +179,12 @@ function getContextMenuItems(entry: FsEntry) {
       {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
-        onSelect: () => {
-          console.log('[FileBrowser] createFolder onSelect', entry);
-          onFileAction('createFolder', entry);
-        },
+        onSelect: () => onFileAction('createFolder', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
         icon: 'i-heroicons-arrow-up-tray',
-        onSelect: () => {
-          console.log('[FileBrowser] upload onSelect', entry);
-          onFileAction('upload', entry);
-        },
+        onSelect: () => onFileAction('upload', entry),
       },
     ]);
 
@@ -928,14 +928,7 @@ async function onPanelDrop(e: DragEvent) {
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-          @click="
-            async () => {
-              folderSizes.value = {};
-              await loadProjectDirectory();
-              uiStore.notifyFileManagerUpdate();
-              await loadFolderContent();
-            }
-          "
+          @click="refreshFileTree"
         />
         <UButton
           :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
@@ -1317,7 +1310,7 @@ async function onPanelDrop(e: DragEvent) {
                             <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-ui-text-muted" />
                           </div>
                           <template v-else-if="folderSizes[entry.path || ''] !== undefined">
-                            {{ formatBytes(folderSizes[entry.path || '']) }}
+                            {{ formatBytes(folderSizes[entry.path || ''] ?? 0) }}
                           </template>
                           <template v-else>
                             -
