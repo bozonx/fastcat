@@ -20,7 +20,7 @@ import {
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
-import { useLocalStorage } from '@vueuse/core';
+import { useLocalStorage, useResizeObserver } from '@vueuse/core';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 
@@ -65,6 +65,18 @@ const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | nu
 
 // Reactive scroll position for playhead calculation (DOM scrollLeft is not reactive)
 const scrollLeftRef = ref(0);
+
+// Height of horizontal scrollbar in scrollEl (used to compensate labels panel height)
+const scrollbarHeight = ref(0);
+useResizeObserver(
+  () => scrollEl.value,
+  () => {
+    const el = scrollEl.value;
+    if (el) {
+      scrollbarHeight.value = el.offsetHeight - el.clientHeight;
+    }
+  },
+);
 
 // Playhead position in pixels from left of scrollable content
 const playheadPx = computed(() =>
@@ -708,6 +720,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             ref="timelineTrackLabelsRef"
             :tracks="tracks"
             :track-heights="trackHeights"
+            :scrollbar-compensation="scrollbarHeight"
             class="h-full border-r border-ui-border"
             @update:track-height="updateTrackHeight"
             @scroll="onLabelsScroll"

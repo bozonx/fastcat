@@ -123,7 +123,8 @@
     "video": "Видео",
     "undo": "Отменить",
     "redo": "Вернуть",
-    "toggleMute": "Вкл/выкл звук"
+    "toggleMute": "Вкл/выкл звук",
+    "properties": "Свойства"
   },
   "videoEditor": {
     "settings": {
@@ -163,6 +164,7 @@
       "proxyConcurrency": "Потоков генерации"
     },
     "projectSettings": {
+      "title": "Настройки проекта",
       "note": "Настройки сохраняются в .gran/project.settings.json",
       "resolutionAndFps": "Разрешение и FPS",
       "export": "Экспорт по умолчанию",
@@ -428,6 +430,8 @@
     "timeline": {
       "addMarker": "Добавить маркер",
       "addMarkerAtPlayhead": "Добавить маркер на курсор",
+      "addZoneMarkerAtPlayhead": "Добавить маркер зоны на курсор",
+      "addTextClip": "Добавить текстовый клип",
       "splitClips": "Разрезать клипы по курсору",
       "rippleTrimLeft": "Обрезать слева со сдвигом",
       "rippleTrimRight": "Обрезать справа со сдвигом",

@@ -71,27 +71,29 @@ useHead({
     @drop.prevent="onGlobalDrop"
   >
     <div class="flex flex-col flex-1 h-full min-h-0 relative">
-      <!-- Loading Screen -->
-      <LoadingScreen v-if="isStartingUp" />
-
-      <!-- Welcome / Select Folder Screen -->
-      <WelcomeScreen v-else-if="!workspaceStore.workspaceHandle" />
-
-      <!-- Projects List Screen -->
-      <ProjectsScreen v-else-if="!projectStore.currentProjectName" />
-
-      <!-- Editor Screen -->
-      <template v-else>
+      <!-- Main Content (NuxtPage) -->
+      <div v-show="!isStartingUp && workspaceStore.workspaceHandle && projectStore.currentProjectName" class="flex-1 min-h-0 relative">
         <EditorHeader
           @open-project-settings="isProjectSettingsOpen = true"
           @open-editor-settings="isEditorSettingsOpen = true"
         />
-
         <slot />
+      </div>
 
-        <!-- Modals -->
-        <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
-        <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
+      <!-- Startup Screens (Overlays) -->
+      <template v-if="isStartingUp">
+        <LoadingScreen />
+      </template>
+      <template v-else-if="!workspaceStore.workspaceHandle">
+        <WelcomeScreen />
+      </template>
+      <template v-else-if="!projectStore.currentProjectName">
+        <ProjectsScreen />
+      </template>
+
+      <!-- Modals -->
+      <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
+      <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
 
         <!-- Drag Overlay Hint -->
         <div
@@ -128,9 +130,8 @@ useHead({
                 </p>
               </div>
             </div>
-          </div>
         </div>
-      </template>
+      </div>
     </div>
   </div>
 </template>

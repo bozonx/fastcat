@@ -123,7 +123,8 @@
     "video": "Video",
     "undo": "Undo",
     "redo": "Redo",
-    "toggleMute": "Toggle Mute"
+    "toggleMute": "Toggle Mute",
+    "properties": "Properties"
   },
   "videoEditor": {
     "settings": {
@@ -163,6 +164,7 @@
       "proxyConcurrency": "Proxy concurrency"
     },
     "projectSettings": {
+      "title": "Project Settings",
       "note": "Settings are saved to .gran/project.settings.json",
       "resolutionAndFps": "Resolution & FPS",
       "export": "Export defaults",
@@ -428,6 +430,7 @@
       "addTextClip": "Add text clip",
       "addMarker": "Add marker",
       "addMarkerAtPlayhead": "Add marker at playhead",
+      "addZoneMarkerAtPlayhead": "Add zone marker at playhead",
       "splitClips": "Split clips at playhead",
       "rippleTrimLeft": "Ripple trim left",
       "rippleTrimRight": "Ripple trim right",

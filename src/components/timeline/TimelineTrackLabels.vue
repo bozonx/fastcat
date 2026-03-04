@@ -16,6 +16,7 @@ const { t } = useI18n();
 const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
+  scrollbarCompensation?: number;
 }>();
 
 const emit = defineEmits<{
@@ -478,6 +479,7 @@ function toggleClipSnapMode() {
     <div
       ref="labelsScrollContainer"
       class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
+      :style="scrollbarCompensation ? { marginBottom: `${scrollbarCompensation}px` } : {}"
       @scroll="emit('scroll', $event)"
     >
       <div class="flex flex-col min-h-full pb-16">
