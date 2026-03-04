@@ -21,7 +21,6 @@ function clipHasAudio(item: TimelineTrackItem, track: TimelineTrack): boolean {
 }
 
 function trackHasAudio(track: TimelineTrack): boolean {
-  if (track.kind === 'audio') return true;
   return track.items.some((item) => clipHasAudio(item, track));
 }
 
@@ -29,6 +28,15 @@ const audioTracks = computed(() => {
   const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
   return docTracks.filter(trackHasAudio);
 });
+
+const selectedTrackId = computed(() => timelineStore.selectedTrackId);
+const selectedItemIds = computed(() => timelineStore.selectedItemIds);
+
+function isTrackSelected(track: TimelineTrack): boolean {
+  if (selectedTrackId.value === track.id) return true;
+  // Check if any clip in this track is selected
+  return track.items.some(item => selectedItemIds.value.includes(item.id));
+}
 </script>
 
 <template>
@@ -38,20 +46,21 @@ const audioTracks = computed(() => {
     </div>
     
     <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 flex gap-4 min-h-0">
+      <!-- Main Bus -->
+      <AudioMixerMain />
+
+      <!-- Divider -->
+      <div v-if="audioTracks.length > 0" class="w-px bg-ui-border shrink-0 my-2" />
+
       <!-- Tracks -->
       <div class="flex gap-2">
         <AudioMixerTrack
           v-for="track in audioTracks"
           :key="track.id"
           :track="track"
+          :is-selected="isTrackSelected(track)"
         />
       </div>
-
-      <!-- Divider -->
-      <div v-if="audioTracks.length > 0" class="w-px bg-ui-border shrink-0 my-2" />
-
-      <!-- Main Bus -->
-      <AudioMixerMain />
     </div>
   </div>
 </template>

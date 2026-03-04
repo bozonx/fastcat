@@ -5,7 +5,7 @@ import { getPanelSizesKey } from '~/composables/ui/usePersistedSplitpanes';
 import type { FsEntry } from '~/types/fs';
 import type { Ref } from 'vue';
 
-export type EditorView = 'files' | 'cut' | 'sound' | 'fullscreen';
+export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen';
 
 export interface ViewConfig {
   timelineHeight: number;
@@ -33,6 +33,7 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
   files: { timelineHeight: 30 },
   cut: { timelineHeight: 40 },
   sound: { timelineHeight: 60 },
+  export: { timelineHeight: 30 },
   fullscreen: { timelineHeight: 0 },
 };
 
@@ -271,6 +272,10 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     currentView.value = 'sound';
   }
 
+  function goToExport() {
+    currentView.value = 'export';
+  }
+
   function goToFullscreen() {
     currentView.value = 'fullscreen';
   }
@@ -288,6 +293,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     goToFiles,
     goToCut,
     goToSound,
+    goToExport,
     goToFullscreen,
   };
 }

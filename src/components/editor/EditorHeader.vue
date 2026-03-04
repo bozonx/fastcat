@@ -97,6 +97,17 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
         >
           Звук
         </button>
+        <button
+          class="px-3 py-1 rounded text-sm font-medium transition-colors"
+          :class="
+            projectStore.currentView === 'export'
+              ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
+              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+          "
+          @click="projectStore.goToExport()"
+        >
+          Экспорт
+        </button>
       </div>
 
       <div class="w-px h-4 bg-ui-border mx-1" />
@@ -108,15 +119,6 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
         icon="i-heroicons-cog-6-tooth"
         :title="t('videoEditor.settings.title', 'Editor settings')"
         @click="$emit('open-editor-settings')"
-      />
-      <UButton
-        size="sm"
-        variant="soft"
-        color="primary"
-        icon="i-heroicons-arrow-down-tray"
-        :disabled="timelineStore.duration <= 0"
-        :label="t('videoEditor.export.confirm', 'Export')"
-        @click="$emit('open-export-modal')"
       />
     </div>
   </div>

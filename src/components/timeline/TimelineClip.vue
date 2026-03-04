@@ -343,7 +343,7 @@ const { contextMenuItems } = useClipContextMenu({
         ...getClipClass(item, track),
       ]"
       :style="{
-        left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
+        left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
       }"
       @pointerdown="
