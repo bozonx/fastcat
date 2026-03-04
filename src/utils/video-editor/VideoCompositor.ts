@@ -1480,6 +1480,7 @@ export class VideoCompositor {
     })();
 
     const explicitWidth = typeof (style as any).width === 'number' && Number.isFinite((style as any).width) && (style as any).width > 0 ? (style as any).width : undefined;
+    const contentWidth = explicitWidth !== undefined ? Math.max(1, explicitWidth - padding.left - padding.right) : undefined;
 
     const safeW = Math.max(1, canvas.width);
     const safeH = Math.max(1, canvas.height);
@@ -1490,7 +1491,7 @@ export class VideoCompositor {
     const paragraphs = rawText.split(/\r?\n/g);
 
     const wrapLine = (line: string): string[] => {
-      if (explicitWidth === undefined) return [line];
+      if (contentWidth === undefined) return [line];
       const trimmed = String(line);
       if (trimmed.length === 0) return [''];
 
@@ -1502,7 +1503,7 @@ export class VideoCompositor {
         const next = curr.length > 0 ? `${curr} ${w}` : w;
         const width =
           ctx.measureText(next).width + Math.max(0, next.length - 1) * Math.max(0, letterSpacing);
-        if (width <= explicitWidth || curr.length === 0) {
+        if (width <= contentWidth || curr.length === 0) {
           curr = next;
           continue;
         }
@@ -1522,7 +1523,7 @@ export class VideoCompositor {
       if (w > maxLineWidth) maxLineWidth = w;
     }
 
-    const textBlockW = explicitWidth !== undefined ? explicitWidth : maxLineWidth;
+    const textBlockW = contentWidth !== undefined ? contentWidth : maxLineWidth;
     const textBlockH = lines.length * lineHeightPx;
 
     let textBlockLeft = 0;
@@ -1545,7 +1546,7 @@ export class VideoCompositor {
 
     const bgX = textBlockLeft - padding.left;
     const bgY = startY - padding.top;
-    const bgW = textBlockW + padding.left + padding.right;
+    const bgW = explicitWidth !== undefined ? explicitWidth : (textBlockW + padding.left + padding.right);
     const bgH = textBlockH + padding.top + padding.bottom;
 
     if (backgroundColor.length > 0) {
@@ -1573,11 +1574,14 @@ export class VideoCompositor {
         return;
       }
 
-      if (ctx.textAlign === 'center' || ctx.textAlign === 'right') {
+      ctx.save();
+      ctx.textAlign = 'left';
+
+      if (align === 'center' || align === 'right') {
         const baseWidth = ctx.measureText(text).width;
         const extra = Math.max(0, text.length - 1) * letterSpacing;
         const total = baseWidth + extra;
-        const leftX = ctx.textAlign === 'center' ? x - total / 2 : x - total;
+        const leftX = align === 'center' ? x - total / 2 : x - total;
 
         let dx = leftX;
         for (let i = 0; i < text.length; i++) {
@@ -1585,6 +1589,7 @@ export class VideoCompositor {
           ctx.fillText(ch, dx, y);
           dx += ctx.measureText(ch).width + letterSpacing;
         }
+        ctx.restore();
         return;
       }
 
@@ -1594,11 +1599,13 @@ export class VideoCompositor {
         ctx.fillText(ch, dx, y);
         dx += ctx.measureText(ch).width + letterSpacing;
       }
+      ctx.restore();
     };
 
+    const yOffset = (lineHeightPx - fontSize) / 2;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
-      const y = startY + i * lineHeightPx;
+      const y = startY + i * lineHeightPx + yOffset;
       drawWithLetterSpacing(line, startX, y);
     }
 
