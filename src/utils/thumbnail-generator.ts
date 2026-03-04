@@ -33,6 +33,32 @@ class ThumbnailGenerator {
   private queue: ThumbnailTask[] = [];
   private activeTasks = new Set<string>();
   private cache = new Map<string, string[]>(); // hash -> array of blob urls
+  private readonly maxCacheEntries = 50;
+
+  private touchCacheEntry(id: string) {
+    const urls = this.cache.get(id);
+    if (!urls) return;
+    this.cache.delete(id);
+    this.cache.set(id, urls);
+  }
+
+  private evictCacheIfNeeded() {
+    while (this.cache.size > this.maxCacheEntries) {
+      const oldestKey = this.cache.keys().next().value as string | undefined;
+      if (!oldestKey) return;
+      const urls = this.cache.get(oldestKey);
+      if (urls) {
+        for (const url of urls) {
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            // ignore
+          }
+        }
+      }
+      this.cache.delete(oldestKey);
+    }
+  }
 
   addTask(task: ThumbnailTask) {
     if (this.queue.some((t) => t.id === task.id) || this.activeTasks.has(task.id)) {
@@ -41,6 +67,7 @@ class ThumbnailGenerator {
 
     // Check if we already generated it
     if (this.cache.has(task.id)) {
+      this.touchCacheEntry(task.id);
       const urls = this.cache.get(task.id)!;
       urls.forEach((url, index) => {
         const time = index * TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
@@ -112,6 +139,8 @@ class ThumbnailGenerator {
       }
 
       this.cache.set(task.id, urls);
+      this.touchCacheEntry(task.id);
+      this.evictCacheIfNeeded();
       task.onComplete?.();
       return true;
     } catch (e: any) {
@@ -214,6 +243,8 @@ class ThumbnailGenerator {
             const urls = this.cache.get(task.id) ?? [];
             urls.push(thumbUrl);
             this.cache.set(task.id, urls);
+            this.touchCacheEntry(task.id);
+            this.evictCacheIfNeeded();
 
             framesProcessed++;
             task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);

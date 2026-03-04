@@ -238,8 +238,12 @@ onMounted(() => {
       @dragleave="onTabBarDragLeave"
       @drop="onTabBarDrop"
     >
-      <!-- Static tabs (draggable out of Project → separate panel) -->
-      <div class="flex items-center h-full px-1 gap-0.5 py-1 shrink-0">
+      <!-- All tabs in a single scrollable container -->
+      <div
+        ref="tabContainerRef"
+        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
+      >
+        <!-- Static tabs -->
         <div
           v-for="tab in staticTabs"
           :key="tab.id"
@@ -264,13 +268,8 @@ onMounted(() => {
             {{ tab.label }}
           </span>
         </div>
-      </div>
 
-      <!-- File tabs (draggable out of Project → separate panel) -->
-      <div
-        ref="tabContainerRef"
-        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
-      >
+        <!-- File tabs -->
         <div
           v-for="tab in fileTabsModel"
           :key="tab.id"

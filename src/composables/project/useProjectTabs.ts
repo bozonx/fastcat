@@ -38,6 +38,9 @@ const hiddenStaticTabs = ref<Set<string>>(new Set());
 /** File tabs added by drag-drop (persisted, no FileSystemHandle — resolved at runtime) */
 const fileTabs = ref<ProjectFileTab[]>(readLocalStorageJson<ProjectFileTab[]>(FILE_TABS_KEY, []));
 
+/** Shared active tab ID across all consumers */
+const activeTabId = ref<string | null>(null);
+
 watch(staticTabsOrder, (val) => writeLocalStorageJson(STATIC_TABS_ORDER_KEY, val), { deep: true });
 
 watch(fileTabs, (val) => writeLocalStorageJson(FILE_TABS_KEY, val), { deep: true });
@@ -56,8 +59,6 @@ export function unregisterProjectTab(tabId: string) {
 }
 
 export function useProjectTabs() {
-  const activeTabId = ref<string | null>(null);
-
   /**
    * All tabs in display order: static tabs (sorted by user) + file tabs.
    * Static tabs are sorted according to staticTabsOrder; new ones appended.
