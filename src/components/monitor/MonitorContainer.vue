@@ -15,6 +15,7 @@ import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorViewport from './MonitorViewport.vue';
+import MonitorTransformBox from './MonitorTransformBox.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -374,6 +375,11 @@ const emit = defineEmits<{
               stroke-width="1"
             />
           </g>
+
+          <MonitorTransformBox
+            :render-width="renderWidth"
+            :render-height="renderHeight"
+          />
         </template>
 
         <!-- Absolute overlays: empty state, loading, error, timecode -->

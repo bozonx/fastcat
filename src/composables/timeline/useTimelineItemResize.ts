@@ -56,6 +56,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
       timelineStore.updateClipProperties(trackId, itemId, {
         audioGain: newVol,
+        audioMuted: false,
       });
     }
 

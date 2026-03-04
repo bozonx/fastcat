@@ -325,6 +325,8 @@ const { contextMenuItems } = useClipContextMenu({
 <template>
   <UContextMenu :items="contextMenuItems">
     <div
+      :data-clip-id="item.kind === 'clip' ? item.id : undefined"
+      :data-gap-id="item.kind === 'gap' ? item.id : undefined"
       class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 cursor-pointer select-none transition-shadow group/clip"
       :class="[
         timelineStore.selectedItemIds.includes(item.id)
@@ -344,12 +346,12 @@ const { contextMenuItems } = useClipContextMenu({
         left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
       }"
-      @pointerdown.stop="
+      @pointerdown="
         clipItem &&
         !Boolean(clipItem.locked) &&
         emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
       "
-      @click.stop="
+      @click="
         if ($event.button !== 1) {
           emit('selectItem', $event, item.id);
           selectionStore.selectTimelineItem(track.id, item.id, item.kind as 'clip' | 'gap');
@@ -566,13 +568,13 @@ const { contextMenuItems } = useClipContextMenu({
 
       <!-- Volume Control Line -->
       <div
-        v-if="clipItem && clipHasAudio(item, track) && !clipItem.audioMuted"
-        class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center"
+        v-if="clipItem && clipHasAudio(item, track)"
+        class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity"
         :class="[
           !Boolean(clipItem.locked) ? 'cursor-ns-resize' : '',
-          clipItem.audioGain !== undefined && Math.abs(clipItem.audioGain - 1) > 0.001
-            ? 'opacity-100'
-            : timelineStore.selectedItemIds.includes(item.id)
+          clipItem.audioMuted && !timelineStore.selectedItemIds.includes(item.id)
+            ? 'opacity-0 group-hover/clip:opacity-100'
+            : (clipItem.audioGain !== undefined && Math.abs(clipItem.audioGain - 1) > 0.001) || timelineStore.selectedItemIds.includes(item.id)
               ? 'opacity-100'
               : 'opacity-0 group-hover/clip:opacity-100',
           (isDraggingCurrentItem || isMovePreviewCurrentItem) && resizeVolume?.itemId !== item.id
