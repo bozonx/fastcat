@@ -46,6 +46,10 @@
   --clip-adjustment-border: rgba(245, 158, 11, 0.60);
   --clip-adjustment-bg-hover: rgba(245, 158, 11, 0.50);
 
+  --clip-text-bg: rgba(236, 72, 153, 0.40);
+  --clip-text-border: rgba(236, 72, 153, 0.60);
+  --clip-text-bg-hover: rgba(236, 72, 153, 0.50);
+
   /* === Overlays / indicators === */
   --overlay-bg: rgba(0, 0, 0, 0.40);
   --clip-lower-tri: rgba(0, 0, 0, 0.35);

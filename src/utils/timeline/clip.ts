@@ -32,6 +32,14 @@ export function getClipClass(item: TimelineTrackItem, track: TimelineTrack): str
       'hover:bg-[var(--clip-adjustment-bg-hover)]',
     ];
   }
+  if (clipItem.clipType === 'text') {
+    return [
+      ...baseClasses,
+      'bg-[var(--clip-text-bg)]',
+      'border-[var(--clip-text-border)]',
+      'hover:bg-[var(--clip-text-bg-hover)]',
+    ];
+  }
   if (track.kind === 'audio') {
     return [
       ...baseClasses,
@@ -47,10 +55,6 @@ export function getClipClass(item: TimelineTrackItem, track: TimelineTrack): str
     'border-[var(--clip-video-border)]',
     'hover:bg-[var(--clip-video-bg-hover)]',
   ];
-}
-
-export function getClipLowerTriColor(_item: TimelineTrackItem, _track: TimelineTrack): string {
-  return 'var(--clip-lower-tri)';
 }
 
 export function clampHandlePx(px: number, clipPx: number): number {

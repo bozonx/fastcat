@@ -5,7 +5,6 @@ import type {
   TimelineClipItem,
   TimelineDocument,
   ClipTransition,
-  TimelineTrack as TimelineTrackType,
 } from '~/timeline/types';
 import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
 import type {
@@ -36,7 +35,7 @@ interface UseClipContextMenuOptions {
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   emitOpenSpeedModal: (payload: { trackId: string; itemId: string; speed: number }) => void;
   emitClipAction: (payload: {
-    action: string;
+    action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
     trackId: string;
     itemId: string;
     videoItemId?: string;
@@ -135,7 +134,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       const hasReturnFromVideoClip =
         track.kind === 'video' &&
         Boolean(clipItem.audioFromVideoDisabled) &&
-        docTracks.some((t: TimelineTrackType) =>
+        docTracks.some((t: TimelineTrack) =>
           t.kind !== 'audio'
             ? false
             : (t.items ?? []).some(

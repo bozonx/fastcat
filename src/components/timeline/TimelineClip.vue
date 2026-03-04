@@ -7,12 +7,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
-import {
-  clampHandlePx,
-  getClipClass,
-  getClipLowerTriColor,
-  transitionSvgParts,
-} from '~/utils/timeline/clip';
+import { clampHandlePx, getClipClass, transitionSvgParts } from '~/utils/timeline/clip';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -37,6 +32,13 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+interface ClipActionPayload {
+  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
+  trackId: string;
+  itemId: string;
+  videoItemId?: string;
+}
 
 const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
@@ -75,9 +77,14 @@ const emit = defineEmits<{
     event: MouseEvent,
     payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
   ): void;
-  (e: 'clipAction', payload: any): void;
+  (e: 'clipAction', payload: ClipActionPayload): void;
   (e: 'openSpeedModal', payload: { trackId: string; itemId: string; speed: number }): void;
 }>();
+
+// Narrowed clip reference — null when item is a gap
+const clipItem = computed<TimelineClipItem | null>(() =>
+  props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
+);
 
 const clipWidthPx = computed(() => {
   return Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom));
@@ -159,6 +166,16 @@ function getPrevClipForItem(
   return clips[idx - 1] ?? null;
 }
 
+function getNextClipForItem(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+): TimelineClipItem | null {
+  const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
+  const idx = clips.findIndex((c) => c.id === item.id);
+  if (idx < 0 || idx >= clips.length - 1) return null;
+  return clips[idx + 1] ?? null;
+}
+
 function isCrossfadeTransitionIn(track: TimelineTrack, item: TimelineClipItem): boolean {
   if (track.kind !== 'video') return false;
   const prev = getPrevClipForItem(track, item);
@@ -213,10 +230,6 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
     return null;
   }
 
-  if (mode === 'composite') {
-    // Basic check for composite: simplified as in original Tracks
-    return null;
-  }
   return null;
 }
 
@@ -225,7 +238,30 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   const clip = item as TimelineClipItem;
   const tr = clip.transitionOut;
   if (!tr) return null;
-  // Simplified composite check logic can go here if needed
+  const mode = tr.mode ?? 'blend';
+
+  if (mode === 'blend') {
+    const next = getNextClipForItem(track, item);
+    if (!next)
+      return t(
+        'granVideoEditor.timeline.transition.errorNoNextClip',
+        'No next clip to blend with',
+      );
+    const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+    const gapUs = next.timelineRange.startUs - clipEndUs;
+    if (gapUs > 1_000)
+      return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
+        gapSeconds: (gapUs / 1e6).toFixed(2),
+      });
+    const clipDurS = clip.timelineRange.durationUs / 1e6;
+    const needS = tr.durationUs / 1e6;
+    if (clipDurS < needS)
+      return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: clipDurS.toFixed(2),
+      });
+  }
+
   return null;
 }
 
@@ -263,13 +299,13 @@ const { contextMenuItems } = useClipContextMenu({
         timelineStore.selectedItemIds.includes(item.id)
           ? 'ring-2 ring-(--selection-ring) z-20 shadow-lg'
           : '',
-        item.kind === 'clip' && typeof (item as any).freezeFrameSourceUs === 'number'
+        clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        item.kind === 'clip' && (Boolean((item as any).disabled) || Boolean(track.videoHidden))
+        clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden))
           ? 'opacity-40'
           : '',
-        item.kind === 'clip' && Boolean((item as any).locked) ? 'cursor-not-allowed' : '',
+        clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
         ...getClipClass(item, track),
       ]"
       :style="{
@@ -277,8 +313,8 @@ const { contextMenuItems } = useClipContextMenu({
         width: `${clipWidthPx}px`,
       }"
       @pointerdown="
-        item.kind === 'clip' &&
-        !Boolean((item as any).locked) &&
+        clipItem &&
+        !Boolean(clipItem.locked) &&
         emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
       "
       @click="
@@ -291,14 +327,14 @@ const { contextMenuItems } = useClipContextMenu({
     >
       <!-- Audio Fade Layer -->
       <div
-        v-if="item.kind === 'clip' && clipHasAudio(item, track) && !shouldCollapseFades(item)"
+        v-if="clipItem && clipHasAudio(item, track) && !shouldCollapseFades(item)"
         class="absolute inset-0 pointer-events-none overflow-hidden rounded"
         style="z-index: 25"
       >
         <svg
           v-if="
-            (item as any).audioFadeInUs > 0 &&
-            (item as any).audioFadeInUs <= item.timelineRange.durationUs
+            (clipItem.audioFadeInUs ?? 0) > 0 &&
+            (clipItem.audioFadeInUs ?? 0) <= item.timelineRange.durationUs
           "
           class="absolute left-0 top-0 h-full"
           preserveAspectRatio="none"
@@ -308,7 +344,7 @@ const { contextMenuItems } = useClipContextMenu({
               Math.max(
                 0,
                 timeUsToPx(
-                  Math.max(0, Math.round(Number((item as any).audioFadeInUs) || 0)),
+                  Math.max(0, Math.round(Number(clipItem.audioFadeInUs) || 0)),
                   timelineStore.timelineZoom,
                 ),
               ),
@@ -321,8 +357,8 @@ const { contextMenuItems } = useClipContextMenu({
 
         <svg
           v-if="
-            (item as any).audioFadeOutUs > 0 &&
-            (item as any).audioFadeOutUs <= item.timelineRange.durationUs
+            (clipItem.audioFadeOutUs ?? 0) > 0 &&
+            (clipItem.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs
           "
           class="absolute right-0 top-0 h-full"
           preserveAspectRatio="none"
@@ -332,7 +368,7 @@ const { contextMenuItems } = useClipContextMenu({
               Math.max(
                 0,
                 timeUsToPx(
-                  Math.max(0, Math.round(Number((item as any).audioFadeOutUs) || 0)),
+                  Math.max(0, Math.round(Number(clipItem.audioFadeOutUs) || 0)),
                   timelineStore.timelineZoom,
                 ),
               ),
@@ -347,9 +383,9 @@ const { contextMenuItems } = useClipContextMenu({
       <!-- Fade Handles -->
       <template
         v-if="
-          item.kind === 'clip' &&
+          clipItem &&
           clipHasAudio(item, track) &&
-          !Boolean((item as any).locked) &&
+          !Boolean(clipItem.locked) &&
           !shouldCollapseFades(item)
         "
       >
@@ -365,7 +401,7 @@ const { contextMenuItems } = useClipContextMenu({
               Math.min(
                 Math.max(
                   0,
-                  timeUsToPx((item as any).audioFadeInUs || 0, timelineStore.timelineZoom),
+                  timeUsToPx(clipItem.audioFadeInUs || 0, timelineStore.timelineZoom),
                 ),
                 clipWidthPx,
               ),
@@ -379,7 +415,7 @@ const { contextMenuItems } = useClipContextMenu({
               track.id,
               item.id,
               'in',
-              (item as any).audioFadeInUs || 0,
+              clipItem.audioFadeInUs || 0,
             )
           "
         >
@@ -398,7 +434,7 @@ const { contextMenuItems } = useClipContextMenu({
               Math.min(
                 Math.max(
                   0,
-                  timeUsToPx((item as any).audioFadeOutUs || 0, timelineStore.timelineZoom),
+                  timeUsToPx(clipItem.audioFadeOutUs || 0, timelineStore.timelineZoom),
                 ),
                 clipWidthPx,
               ),
@@ -412,7 +448,7 @@ const { contextMenuItems } = useClipContextMenu({
               track.id,
               item.id,
               'out',
-              (item as any).audioFadeOutUs || 0,
+              clipItem.audioFadeOutUs || 0,
             )
           "
         >
@@ -423,7 +459,7 @@ const { contextMenuItems } = useClipContextMenu({
       <!-- Collapsed Indicators -->
       <div
         v-if="
-          item.kind === 'clip' &&
+          clipItem &&
           (shouldCollapseTransitions(item) ||
             (clipHasAudio(item, track) && shouldCollapseFades(item)))
         "
@@ -434,7 +470,7 @@ const { contextMenuItems } = useClipContextMenu({
             clipWidthPx >= 30 &&
             clipHasAudio(item, track) &&
             shouldCollapseFades(item) &&
-            (item as any).audioFadeInUs > 0
+            (clipItem.audioFadeInUs ?? 0) > 0
           "
           class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm"
           title="Fade In"
@@ -445,7 +481,7 @@ const { contextMenuItems } = useClipContextMenu({
           v-if="
             clipHasAudio(item, track) &&
             shouldCollapseFades(item) &&
-            (item as any).audioFadeOutUs > 0
+            (clipItem.audioFadeOutUs ?? 0) > 0
           "
           class="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm"
           title="Fade Out"
@@ -453,14 +489,14 @@ const { contextMenuItems } = useClipContextMenu({
           <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-gray-800" />
         </div>
         <div
-          v-if="shouldCollapseTransitions(item) && (item as any).transitionIn"
+          v-if="shouldCollapseTransitions(item) && clipItem.transitionIn"
           class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm"
           title="Transition In"
         >
           <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-white" />
         </div>
         <div
-          v-if="shouldCollapseTransitions(item) && (item as any).transitionOut"
+          v-if="shouldCollapseTransitions(item) && clipItem.transitionOut"
           class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm"
           title="Transition Out"
         >
@@ -470,11 +506,11 @@ const { contextMenuItems } = useClipContextMenu({
 
       <!-- Volume Control Line -->
       <div
-        v-if="item.kind === 'clip' && clipHasAudio(item, track)"
+        v-if="clipItem && clipHasAudio(item, track)"
         class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center"
         :class="[
-          !Boolean((item as any).locked) ? 'cursor-ns-resize' : '',
-          (item as any).audioGain !== undefined && Math.abs((item as any).audioGain - 1) > 0.001
+          !Boolean(clipItem.locked) ? 'cursor-ns-resize' : '',
+          clipItem.audioGain !== undefined && Math.abs(clipItem.audioGain - 1) > 0.001
             ? 'opacity-100'
             : timelineStore.selectedItemIds.includes(item.id)
               ? 'opacity-100'
@@ -484,17 +520,17 @@ const { contextMenuItems } = useClipContextMenu({
             : '',
         ]"
         :style="{
-          top: `${100 - (((item as any).audioGain ?? 1) / 2) * 100}%`,
+          top: `${100 - (((clipItem.audioGain ?? 1) / 2) * 100)}%`,
         }"
         @mousedown.stop="
           $event.button === 0 &&
-          !Boolean((item as any).locked) &&
+          !Boolean(clipItem.locked) &&
           emit(
             'startResizeVolume',
             $event,
             track.id,
             item.id,
-            (item as any).audioGain ?? 1,
+            clipItem.audioGain ?? 1,
             trackHeight,
           )
         "
@@ -512,19 +548,19 @@ const { contextMenuItems } = useClipContextMenu({
               : resizeVolume?.itemId === item.id
                 ? 'opacity-100 z-50'
                 : 'opacity-0 group-hover/clip:opacity-100',
-            ((item as any).audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',
+            (clipItem.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',
           ]"
         >
-          {{ Math.round(((item as any).audioGain ?? 1) * 100) }}%
+          {{ Math.round((clipItem.audioGain ?? 1) * 100) }}%
         </div>
       </div>
 
       <!-- Speed Indicator -->
       <div
-        v-if="item.kind === 'clip' && Math.abs(((item as any).speed ?? 1) - 1) > 0.0001"
+        v-if="clipItem && Math.abs((clipItem.speed ?? 1) - 1) > 0.0001"
         class="absolute top-0.5 right-0.5 px-1 py-0.5 rounded bg-(--overlay-bg) text-[10px] leading-none font-mono z-40"
       >
-        x{{ Number((item as any).speed ?? 1).toFixed(2) }}
+        x{{ Number(clipItem.speed ?? 1).toFixed(2) }}
       </div>
 
       <!-- Main Content -->
@@ -534,21 +570,19 @@ const { contextMenuItems } = useClipContextMenu({
         <TimelineAudioWaveform v-if="isAudio(item)" :item="item as any" />
 
         <div
-          v-if="item.kind === 'clip' && !shouldCollapseTransitions(item)"
+          v-if="clipItem && !shouldCollapseTransitions(item)"
           class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none"
         >
-          <span class="truncate text-[10px] leading-tight opacity-70" :title="item.name">
-            {{ item.name }}
+          <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">
+            {{ clipItem.name }}
           </span>
         </div>
 
         <!-- Transition In -->
         <div
-          v-if="
-            item.kind === 'clip' && (item as any).transitionIn && !shouldCollapseTransitions(item)
-          "
+          v-if="clipItem?.transitionIn && !shouldCollapseTransitions(item)"
           class="absolute left-0 top-0 bottom-0 z-10"
-          :style="{ width: `${transitionUsToPx((item as any).transitionIn.durationUs)}px` }"
+          :style="{ width: `${transitionUsToPx(clipItem.transitionIn.durationUs)}px` }"
         >
           <button
             type="button"
@@ -568,9 +602,9 @@ const { contextMenuItems } = useClipContextMenu({
               })
             "
           >
-            <template v-if="!isCrossfadeTransitionIn(track, item as any)">
+            <template v-if="!isCrossfadeTransitionIn(track, clipItem)">
               <svg
-                v-if="((item as any).transitionIn.mode ?? 'blend') === 'blend'"
+                v-if="(clipItem.transitionIn.mode ?? 'blend') === 'blend'"
                 class="w-full h-full block"
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
@@ -583,7 +617,7 @@ const { contextMenuItems } = useClipContextMenu({
               </template>
             </template>
             <div
-              v-if="!Boolean((item as any).locked)"
+              v-if="!Boolean(clipItem.locked)"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
               @mousedown.stop="
                 emit(
@@ -592,7 +626,7 @@ const { contextMenuItems } = useClipContextMenu({
                   item.trackId,
                   item.id,
                   'in',
-                  (item as any).transitionIn.durationUs,
+                  clipItem.transitionIn!.durationUs,
                 )
               "
             />
@@ -601,11 +635,9 @@ const { contextMenuItems } = useClipContextMenu({
 
         <!-- Transition Out -->
         <div
-          v-if="
-            item.kind === 'clip' && (item as any).transitionOut && !shouldCollapseTransitions(item)
-          "
+          v-if="clipItem?.transitionOut && !shouldCollapseTransitions(item)"
           class="absolute right-0 top-0 bottom-0 z-10"
-          :style="{ width: `${transitionUsToPx((item as any).transitionOut.durationUs)}px` }"
+          :style="{ width: `${transitionUsToPx(clipItem.transitionOut.durationUs)}px` }"
         >
           <button
             type="button"
@@ -626,7 +658,7 @@ const { contextMenuItems } = useClipContextMenu({
             "
           >
             <svg
-              v-if="((item as any).transitionOut.mode ?? 'blend') === 'blend'"
+              v-if="(clipItem.transitionOut.mode ?? 'blend') === 'blend'"
               class="w-full h-full block"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"
@@ -638,7 +670,7 @@ const { contextMenuItems } = useClipContextMenu({
               <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
             </template>
             <div
-              v-if="!Boolean((item as any).locked)"
+              v-if="!Boolean(clipItem.locked)"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
               @mousedown.stop="
                 emit(
@@ -647,7 +679,7 @@ const { contextMenuItems } = useClipContextMenu({
                   item.trackId,
                   item.id,
                   'out',
-                  (item as any).transitionOut.durationUs,
+                  clipItem.transitionOut!.durationUs,
                 )
               "
             />
@@ -657,7 +689,7 @@ const { contextMenuItems } = useClipContextMenu({
 
       <!-- Trim Handles -->
       <div
-        v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
+        v-if="clipItem && !Boolean(clipItem.locked)"
         class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
         @pointerdown.stop="
           emit('startTrimItem', $event, {
@@ -669,7 +701,7 @@ const { contextMenuItems } = useClipContextMenu({
         "
       />
       <div
-        v-if="item.kind === 'clip' && !Boolean((item as any).locked)"
+        v-if="clipItem && !Boolean(clipItem.locked)"
         class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
         @pointerdown.stop="
           emit('startTrimItem', $event, {
