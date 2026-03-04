@@ -337,15 +337,24 @@
       },
       "transform": {
         "title": "Трансформация",
-        "scaleX": "Масштаб X",
-        "scaleY": "Масштаб Y",
+        "scale": "Масштаб (%)",
+        "scaleX": "Масштаб X (%)",
+        "scaleY": "Масштаб Y (%)",
         "linkedScale": "Связанный масштаб",
         "rotation": "Поворот (градусы)",
-        "positionX": "Позиция X",
-        "positionY": "Позиция Y",
+        "positionX": "Позиция X (px)",
+        "positionY": "Позиция Y (px)",
         "anchor": "Точка привязки",
         "anchorX": "Точка X (0..1)",
-        "anchorY": "Точка Y (0..1)"
+        "anchorY": "Точка Y (0..1)",
+        "anchorPreset": {
+          "center": "По центру",
+          "topLeft": "Верх лево",
+          "topRight": "Верх право",
+          "bottomLeft": "Низ лево",
+          "bottomRight": "Низ право",
+          "custom": "Свой"
+        }
       }
     },
     "welcome": {

@@ -1136,7 +1136,7 @@ export class VideoCompositor {
         case 'custom': {
           const ax = typeof anchor?.x === 'number' && Number.isFinite(anchor.x) ? anchor.x : 0.5;
           const ay = typeof anchor?.y === 'number' && Number.isFinite(anchor.y) ? anchor.y : 0.5;
-          return { x: Math.max(0, Math.min(1, ax)), y: Math.max(0, Math.min(1, ay)) };
+          return { x: ax, y: ay };
         }
         case 'center':
         default:
@@ -1330,7 +1330,7 @@ export class VideoCompositor {
         case 'custom': {
           const ax = typeof anchor?.x === 'number' && Number.isFinite(anchor.x) ? anchor.x : 0.5;
           const ay = typeof anchor?.y === 'number' && Number.isFinite(anchor.y) ? anchor.y : 0.5;
-          return { x: Math.max(0, Math.min(1, ax)), y: Math.max(0, Math.min(1, ay)) };
+          return { x: ax, y: ay };
         }
         case 'center':
         default:

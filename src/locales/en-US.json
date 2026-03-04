@@ -333,15 +333,24 @@
       },
       "transform": {
         "title": "Transform",
-        "scaleX": "Scale X",
-        "scaleY": "Scale Y",
+        "scale": "Scale (%)",
+        "scaleX": "Scale X (%)",
+        "scaleY": "Scale Y (%)",
         "linkedScale": "Linked scale",
         "rotation": "Rotation (deg)",
-        "positionX": "Position X",
-        "positionY": "Position Y",
+        "positionX": "Position X (px)",
+        "positionY": "Position Y (px)",
         "anchor": "Anchor",
         "anchorX": "Anchor X (0..1)",
-        "anchorY": "Anchor Y (0..1)"
+        "anchorY": "Anchor Y (0..1)",
+        "anchorPreset": {
+          "center": "Center",
+          "topLeft": "Top Left",
+          "topRight": "Top Right",
+          "bottomLeft": "Bottom Left",
+          "bottomRight": "Bottom Right",
+          "custom": "Custom"
+        }
       }
     },
     "welcome": {

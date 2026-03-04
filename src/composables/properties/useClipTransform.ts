@@ -56,7 +56,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
     rotationDeg: clampNumber(rotationDeg, -36000, 36000),
     anchor:
       preset === 'custom'
-        ? { preset, x: clampNumber(anchorX, 0, 1), y: clampNumber(anchorY, 0, 1) }
+        ? { preset, x: clampNumber(anchorX, -100, 100), y: clampNumber(anchorY, -100, 100) }
         : { preset },
   };
 }
@@ -72,13 +72,27 @@ export function useClipTransform(options: UseClipTransformOptions) {
     return trackId.startsWith('v');
   });
 
+  const { t } = useI18n();
+
   const anchorPresetOptions = computed(() => [
-    { value: 'center', label: 'Center' },
-    { value: 'topLeft', label: 'Top Left' },
-    { value: 'topRight', label: 'Top Right' },
-    { value: 'bottomLeft', label: 'Bottom Left' },
-    { value: 'bottomRight', label: 'Bottom Right' },
-    { value: 'custom', label: 'Custom' },
+    { value: 'center', label: t('granVideoEditor.clip.transform.anchorPreset.center', 'Center') },
+    {
+      value: 'topLeft',
+      label: t('granVideoEditor.clip.transform.anchorPreset.topLeft', 'Top Left'),
+    },
+    {
+      value: 'topRight',
+      label: t('granVideoEditor.clip.transform.anchorPreset.topRight', 'Top Right'),
+    },
+    {
+      value: 'bottomLeft',
+      label: t('granVideoEditor.clip.transform.anchorPreset.bottomLeft', 'Bottom Left'),
+    },
+    {
+      value: 'bottomRight',
+      label: t('granVideoEditor.clip.transform.anchorPreset.bottomRight', 'Bottom Right'),
+    },
+    { value: 'custom', label: t('granVideoEditor.clip.transform.anchorPreset.custom', 'Custom') },
   ]);
 
   function updateSelectedClipTransform(patch: Partial<ClipTransform>) {
@@ -220,7 +234,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       updateSelectedClipTransform({
         anchor: {
           preset: 'custom',
-          x: clampNumber(val, 0, 1),
+          x: clampNumber(val, -100, 100),
           y: current.anchor?.y ?? 0.5,
         },
       });
@@ -238,7 +252,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
         anchor: {
           preset: 'custom',
           x: current.anchor?.x ?? 0.5,
-          y: clampNumber(val, 0, 1),
+          y: clampNumber(val, -100, 100),
         },
       });
     },
