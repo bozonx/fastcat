@@ -37,7 +37,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const timelineStore = useTimelineStore();
 
   const STORE_TIME_SYNC_MS = 100;
-  const AUDIO_LEVELS_SYNC_MS = 50; // Faster sync for audio levels
+  const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
   const PLAYBACK_SEEK_EPSILON_US = 25_000;
 
   let playbackLoopId = 0;
@@ -175,19 +175,40 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   function updateAudioLevels() {
     if (!isPlaying.value || isUnmounted) return;
 
-    // Update master levels
-    const newLevels = { ...timelineStore.audioLevels };
-    newLevels['master'] = audioEngine.getLevels(); 
+    const prevLevels = timelineStore.audioLevels;
+    const nextLevels = { ...prevLevels };
+    const masterLevels = audioEngine.getLevels();
+    nextLevels['master'] = masterLevels;
 
     // Update track levels
     const tracks = timelineStore.timelineDoc?.tracks || [];
     for (const track of tracks) {
       if (track.kind === 'audio' || track.kind === 'video') {
-        newLevels[track.id] = audioEngine.getLevels(track.id); 
+        nextLevels[track.id] = audioEngine.getLevels(track.id);
       }
     }
 
-    timelineStore.audioLevels = newLevels;
+    function approxEqual(a: number, b: number) {
+      return Math.abs(a - b) <= 0.2;
+    }
+
+    let changed = false;
+    for (const [id, levels] of Object.entries(nextLevels)) {
+      const prev = prevLevels[id];
+      if (!prev) {
+        changed = true;
+        break;
+      }
+      if (!approxEqual(prev.rmsDb, levels.rmsDb) || !approxEqual(prev.peakDb, levels.peakDb)) {
+        changed = true;
+        break;
+      }
+    }
+    if (!changed && Object.keys(prevLevels).length === Object.keys(nextLevels).length) {
+      return;
+    }
+
+    timelineStore.audioLevels = nextLevels;
   }
 
   watch(

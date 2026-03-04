@@ -284,25 +284,21 @@ function getContextMenuItems(entry: FsEntry) {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => emit('action', 'createFolder', entry),
-        onClick: () => emit('action', 'createFolder', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
         icon: 'i-heroicons-document-plus',
         onSelect: () => emit('action', 'createTimeline' as any, entry),
-        onClick: () => emit('action', 'createTimeline' as any, entry),
       },
       {
         label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
         onSelect: () => emit('action', 'createMarkdown', entry),
-        onClick: () => emit('action', 'createMarkdown', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
         icon: 'i-heroicons-arrow-up-tray',
         onSelect: () => emit('action', 'upload', entry),
-        onClick: () => emit('action', 'upload', entry),
       },
     ]);
 
@@ -408,13 +404,11 @@ function getContextMenuItems(entry: FsEntry) {
       label: t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
       onSelect: () => emit('action', 'rename', entry),
-      onClick: () => emit('action', 'rename', entry),
     },
     {
       label: t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
       onSelect: () => emit('action', 'delete', entry),
-      onClick: () => emit('action', 'delete', entry),
     },
   ]);
 

@@ -3,7 +3,9 @@ import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useProjectStore } from '~/stores/project.store';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
+import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 import Project from '~/components/Project.vue';
 import ProjectFiles from '~/components/project/ProjectFiles.vue';

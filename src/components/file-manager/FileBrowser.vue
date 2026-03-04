@@ -347,13 +347,11 @@ function getContextMenuItems(entry: FsEntry) {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => onFileAction('createFolder', entry),
-        onClick: () => onFileAction('createFolder', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
         icon: 'i-heroicons-arrow-up-tray',
         onSelect: () => onFileAction('upload', entry),
-        onClick: () => onFileAction('upload', entry),
       },
     ]);
 
