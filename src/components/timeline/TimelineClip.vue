@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -87,29 +87,55 @@ const clipItem = computed<TimelineClipItem | null>(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
 );
 
+let activeTransitionPointerMove: ((e: PointerEvent) => void) | null = null;
+let activeTransitionPointerUp: ((e?: PointerEvent) => void) | null = null;
+
+function clearActiveTransitionPointerListeners() {
+  if (activeTransitionPointerMove) {
+    window.removeEventListener('pointermove', activeTransitionPointerMove);
+    activeTransitionPointerMove = null;
+  }
+  if (activeTransitionPointerUp) {
+    window.removeEventListener('pointerup', activeTransitionPointerUp as any);
+    activeTransitionPointerUp = null;
+  }
+}
+
 function onTransitionPointerdown(e: PointerEvent) {
   if (!clipItem.value || Boolean(clipItem.value.locked)) return;
   const startX = e.clientX;
   const startY = e.clientY;
 
+  clearActiveTransitionPointerListeners();
+
   function onPointerMove(ev: PointerEvent) {
     const dx = Math.abs(ev.clientX - startX);
     const dy = Math.abs(ev.clientY - startY);
     if (dx > 3 || dy > 3) {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      emit('startMoveItem', ev, props.item.trackId, props.item.id, props.item.timelineRange.startUs);
+      clearActiveTransitionPointerListeners();
+      emit(
+        'startMoveItem',
+        ev,
+        props.item.trackId,
+        props.item.id,
+        props.item.timelineRange.startUs,
+      );
     }
   }
 
   function onPointerUp() {
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
+    clearActiveTransitionPointerListeners();
   }
 
+  activeTransitionPointerMove = onPointerMove;
+  activeTransitionPointerUp = onPointerUp;
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
 }
+
+onBeforeUnmount(() => {
+  clearActiveTransitionPointerListeners();
+});
 
 const clipWidthPx = computed(() => {
   return Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom));
@@ -268,10 +294,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   if (mode === 'blend') {
     const next = getNextClipForItem(track, item);
     if (!next)
-      return t(
-        'granVideoEditor.timeline.transition.errorNoNextClip',
-        'No next clip to blend with',
-      );
+      return t('granVideoEditor.timeline.transition.errorNoNextClip', 'No next clip to blend with');
     const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
     if (gapUs > 1_000)
@@ -296,7 +319,10 @@ const timelineDocRef = computed(() => timelineStore.timelineDoc);
 const projectSettingsRef = computed(() => projectStore.projectSettings);
 
 const isMediaMissing = computed(() => {
-  if (!clipItem.value || (clipItem.value.clipType !== 'media' && clipItem.value.clipType !== 'timeline'))
+  if (
+    !clipItem.value ||
+    (clipItem.value.clipType !== 'media' && clipItem.value.clipType !== 'timeline')
+  )
     return false;
   return mediaStore.missingPaths[clipItem.value.source.path] === true;
 });
@@ -335,9 +361,7 @@ const { contextMenuItems } = useClipContextMenu({
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden))
-          ? 'opacity-40'
-          : '',
+        clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden)) ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
         ...getClipClass(item, track),
@@ -375,10 +399,7 @@ const { contextMenuItems } = useClipContextMenu({
         class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
       >
         <div v-if="clipItem.audioMuted" class="bg-black/30 rounded-full p-1.5">
-          <UIcon
-            name="i-heroicons-speaker-x-mark"
-            class="w-6 h-6 text-white/90"
-          />
+          <UIcon name="i-heroicons-speaker-x-mark" class="w-6 h-6 text-white/90" />
         </div>
         <div v-else-if="clipItem.disabled" class="bg-black/30 rounded-full p-1">
           <UIcon
@@ -461,24 +482,14 @@ const { contextMenuItems } = useClipContextMenu({
           :style="{
             left: `${clampHandlePx(
               Math.min(
-                Math.max(
-                  0,
-                  timeUsToPx(clipItem.audioFadeInUs || 0, timelineStore.timelineZoom),
-                ),
+                Math.max(0, timeUsToPx(clipItem.audioFadeInUs || 0, timelineStore.timelineZoom)),
                 clipWidthPx,
               ),
               clipWidthPx,
             )}px`,
           }"
           @pointerdown.stop.prevent="
-            emit(
-              'startResizeFade',
-              $event,
-              track.id,
-              item.id,
-              'in',
-              clipItem.audioFadeInUs || 0,
-            )
+            emit('startResizeFade', $event, track.id, item.id, 'in', clipItem.audioFadeInUs || 0)
           "
         >
           <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
@@ -494,24 +505,14 @@ const { contextMenuItems } = useClipContextMenu({
           :style="{
             right: `${clampHandlePx(
               Math.min(
-                Math.max(
-                  0,
-                  timeUsToPx(clipItem.audioFadeOutUs || 0, timelineStore.timelineZoom),
-                ),
+                Math.max(0, timeUsToPx(clipItem.audioFadeOutUs || 0, timelineStore.timelineZoom)),
                 clipWidthPx,
               ),
               clipWidthPx,
             )}px`,
           }"
           @pointerdown.stop.prevent="
-            emit(
-              'startResizeFade',
-              $event,
-              track.id,
-              item.id,
-              'out',
-              clipItem.audioFadeOutUs || 0,
-            )
+            emit('startResizeFade', $event, track.id, item.id, 'out', clipItem.audioFadeOutUs || 0)
           "
         >
           <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
@@ -574,7 +575,8 @@ const { contextMenuItems } = useClipContextMenu({
           !Boolean(clipItem.locked) ? 'cursor-ns-resize' : '',
           clipItem.audioMuted && !timelineStore.selectedItemIds.includes(item.id)
             ? 'opacity-0 group-hover/clip:opacity-100'
-            : (clipItem.audioGain !== undefined && Math.abs(clipItem.audioGain - 1) > 0.001) || timelineStore.selectedItemIds.includes(item.id)
+            : (clipItem.audioGain !== undefined && Math.abs(clipItem.audioGain - 1) > 0.001) ||
+                timelineStore.selectedItemIds.includes(item.id)
               ? 'opacity-100'
               : 'opacity-0 group-hover/clip:opacity-100',
           (isDraggingCurrentItem || isMovePreviewCurrentItem) && resizeVolume?.itemId !== item.id
@@ -582,19 +584,12 @@ const { contextMenuItems } = useClipContextMenu({
             : '',
         ]"
         :style="{
-          top: `${100 - (((clipItem.audioGain ?? 1) / 2) * 100)}%`,
+          top: `${100 - ((clipItem.audioGain ?? 1) / 2) * 100}%`,
         }"
         @pointerdown.stop.prevent="
           $event.button === 0 &&
           !Boolean(clipItem.locked) &&
-          emit(
-            'startResizeVolume',
-            $event,
-            track.id,
-            item.id,
-            clipItem.audioGain ?? 1,
-            trackHeight,
-          )
+          emit('startResizeVolume', $event, track.id, item.id, clipItem.audioGain ?? 1, trackHeight)
         "
         @dblclick.stop.prevent="
           !Boolean(clipItem.locked) &&

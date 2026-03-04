@@ -243,11 +243,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)') }}
       </label>
-      <WheelNumberInput
-        v-model="bitrateMbps"
-        :min="0.2"
-        :step="0.1"
-      />
+      <WheelNumberInput v-model="bitrateMbps" :min="0.2" :step="0.1" />
       <span class="text-xs text-ui-text-muted">
         {{
           t(
@@ -278,12 +274,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)') }}
       </label>
-      <WheelNumberInput
-        v-model="keyframeIntervalSec"
-        :min="1"
-        :max="10"
-        :step="1"
-      />
+      <WheelNumberInput v-model="keyframeIntervalSec" :min="1" :max="10" :step="1" />
     </div>
 
     <label v-if="outputFormat === 'webm'" class="flex items-center gap-3 cursor-pointer">
@@ -319,11 +310,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
       </label>
-      <WheelNumberInput
-        v-model="audioBitrateKbps"
-        :min="32"
-        :step="16"
-      />
+      <WheelNumberInput v-model="audioBitrateKbps" :min="32" :step="16" />
       <span class="text-xs text-ui-text-muted">
         {{
           t(

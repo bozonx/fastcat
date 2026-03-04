@@ -6,8 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
-import { VIDEO_EXTENSIONS } from '~/utils/media-types';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { VIDEO_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatAudioChannels } from '~/utils/audio';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -153,23 +152,28 @@ function openAsProjectTab() {
 function createSubfolder() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  ;(uiStore as any).pendingFsEntryCreateFolder = entry;
+  (uiStore as any).pendingFsEntryCreateFolder = entry;
 }
 
 function createTimelineInFolder() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  ;(uiStore as any).pendingFsEntryCreateTimeline = entry;
+  (uiStore as any).pendingFsEntryCreateTimeline = entry;
 }
 
 function createMarkdownInFolder() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  ;(uiStore as any).pendingFsEntryCreateMarkdown = entry;
+  (uiStore as any).pendingFsEntryCreateMarkdown = entry;
 }
 
 const canOpenAsPanel = computed(() => {
-  return mediaType.value === 'text' || mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
+  return (
+    mediaType.value === 'text' ||
+    mediaType.value === 'video' ||
+    mediaType.value === 'audio' ||
+    mediaType.value === 'image'
+  );
 });
 
 const canOpenAsProjectTab = computed(() => {
@@ -309,14 +313,20 @@ function openAsTextPanel() {
           },
           {
             id: 'createProxyForAll',
-            label: t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+            label: t(
+              'videoEditor.fileManager.actions.createProxyForAll',
+              'Create proxy for all videos',
+            ),
             icon: 'i-heroicons-film',
             hidden: !isFolderWithVideo || isGeneratingProxyForFolder,
             onClick: () => generateProxiesForSelectedFolder(),
           },
           {
             id: 'cancelProxyForAll',
-            label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+            label: t(
+              'videoEditor.fileManager.actions.cancelProxyGeneration',
+              'Cancel proxy generation',
+            ),
             icon: 'i-heroicons-x-circle',
             color: 'error',
             hidden: !isFolderWithVideo || !isGeneratingProxyForFolder,
@@ -375,7 +385,10 @@ function openAsTextPanel() {
           },
           {
             id: 'cancelProxy',
-            label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+            label: t(
+              'videoEditor.fileManager.actions.cancelProxyGeneration',
+              'Cancel proxy generation',
+            ),
             icon: 'i-heroicons-x-circle',
             color: 'error',
             hidden: !showVideoProxyActions || !isGeneratingProxyForFile,

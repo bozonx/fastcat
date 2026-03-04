@@ -94,11 +94,7 @@ function resetDefaults() {
           )
         "
       >
-        <WheelNumberInput
-          v-model="proxyLimitGb"
-          :min="1"
-          :step="1"
-        />
+        <WheelNumberInput v-model="proxyLimitGb" :min="1" :step="1" />
       </UFormField>
 
       <UFormField
@@ -107,11 +103,7 @@ function resetDefaults() {
           t('videoEditor.settings.cacheLimitHelp', 'Total limit for cached data in this workspace')
         "
       >
-        <WheelNumberInput
-          v-model="cacheLimitGb"
-          :min="1"
-          :step="1"
-        />
+        <WheelNumberInput v-model="cacheLimitGb" :min="1" :step="1" />
       </UFormField>
 
       <UFormField
@@ -123,11 +115,7 @@ function resetDefaults() {
           )
         "
       >
-        <WheelNumberInput
-          v-model="thumbnailsLimitGb"
-          :min="1"
-          :step="1"
-        />
+        <WheelNumberInput v-model="thumbnailsLimitGb" :min="1" :step="1" />
       </UFormField>
     </div>
 

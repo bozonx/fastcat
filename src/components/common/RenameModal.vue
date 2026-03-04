@@ -41,7 +41,7 @@ watch(
 function handleSubmit() {
   const trimmed = name.value.trim();
   if (!trimmed) return;
-  
+
   emit('rename', trimmed);
   isOpen.value = false;
 }
@@ -50,7 +50,7 @@ function handleSubmit() {
 <template>
   <UModal v-model:open="isOpen" :title="title || t('common.rename', 'Rename')">
     <template #body>
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <form class="space-y-4" @submit.prevent="handleSubmit">
         <UFormField :label="t('common.name', 'Name')">
           <UInput
             ref="inputRef"
@@ -61,21 +61,13 @@ function handleSubmit() {
         </UFormField>
       </form>
     </template>
-    
+
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          @click="isOpen = false"
-        >
+        <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton
-          color="primary"
-          :disabled="!name.trim()"
-          @click="handleSubmit"
-        >
+        <UButton color="primary" :disabled="!name.trim()" @click="handleSubmit">
           {{ t('common.save', 'Save') }}
         </UButton>
       </div>

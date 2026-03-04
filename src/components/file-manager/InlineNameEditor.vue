@@ -36,7 +36,7 @@ onMounted(() => {
       inputRef.value.focus();
       // Scroll into view
       inputRef.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      
+
       if (!props.isFolder) {
         const lastDot = props.initialName.lastIndexOf('.');
         if (lastDot > 0) {
@@ -54,9 +54,9 @@ onMounted(() => {
 function finish() {
   if (isFinished) return;
   isFinished = true;
-  
+
   const name = currentName.value.trim();
-  
+
   if (!name) {
     toast.add({
       color: 'red',
@@ -66,7 +66,7 @@ function finish() {
     emit('cancel');
     return;
   }
-  
+
   if (invalidCharsRegex.test(name)) {
     toast.add({
       color: 'red',
@@ -76,7 +76,7 @@ function finish() {
     emit('cancel');
     return;
   }
-  
+
   if (name !== props.initialName && props.existingNames.includes(name)) {
     toast.add({
       color: 'red',
@@ -86,7 +86,7 @@ function finish() {
     emit('cancel');
     return;
   }
-  
+
   if (name === props.initialName) {
     emit('cancel');
     return;

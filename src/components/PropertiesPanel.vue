@@ -241,8 +241,10 @@ function handleDeleteClip() {
             v-else-if="displayMode === 'marker' && selectedMarkerId"
             :marker-id="selectedMarkerId"
           />
-          <div v-else class="flex flex-col items-center justify-center h-full text-ui-text-muted">
-          </div>
+          <div
+            v-else
+            class="flex flex-col items-center justify-center h-full text-ui-text-muted"
+          ></div>
         </div>
       </div>
     </div>

@@ -153,8 +153,6 @@ function confirmDeleteTrack() {
       @update:effects="handleUpdateTrackEffects"
     />
 
-
-
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"
       :title="t('granVideoEditor.timeline.deleteTrack', 'Delete track')"

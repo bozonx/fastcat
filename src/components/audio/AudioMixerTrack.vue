@@ -47,15 +47,15 @@ function toggleSolo() {
 </script>
 
 <template>
-  <div 
+  <div
     class="flex flex-col items-center w-20 bg-ui-bg-muted border rounded-lg py-2 shrink-0 h-full transition-colors"
-    :class="[
-      isSelected ? 'border-primary-500 bg-ui-bg-elevated' : 'border-ui-border'
-    ]"
+    :class="[isSelected ? 'border-primary-500 bg-ui-bg-elevated' : 'border-ui-border']"
   >
     <!-- Pan -->
     <div class="w-full px-2 mb-2 flex flex-col items-center">
-      <span class="text-[10px] text-ui-text-muted mb-1">{{ pan === 0 ? 'C' : (pan < 0 ? `L${Math.round(-pan*100)}` : `R${Math.round(pan*100)}`) }}</span>
+      <span class="text-[10px] text-ui-text-muted mb-1">{{
+        pan === 0 ? 'C' : pan < 0 ? `L${Math.round(-pan * 100)}` : `R${Math.round(pan * 100)}`
+      }}</span>
       <WheelSlider
         v-model="pan"
         :min="-1"
@@ -69,10 +69,7 @@ function toggleSolo() {
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative my-2 min-h-25">
-      <DbSlider 
-        v-model="volume"
-        :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb"
-      />
+      <DbSlider v-model="volume" :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb" />
     </div>
 
     <!-- DB Value -->

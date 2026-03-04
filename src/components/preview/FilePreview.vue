@@ -124,7 +124,9 @@ onUnmounted(() => {
       >
         <UIcon name="i-heroicons-document" class="w-16 h-16" />
         <p class="text-sm text-center">
-          {{ t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview') }}
+          {{
+            t('granVideoEditor.preview.unsupported', 'Unsupported file format for visual preview')
+          }}
         </p>
       </div>
     </Teleport>

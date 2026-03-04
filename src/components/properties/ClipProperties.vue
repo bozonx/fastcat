@@ -256,9 +256,7 @@ function toggleTransition(edge: 'in' | 'out') {
   } else {
     const defaultDurationUs = Math.max(
       0,
-      Math.round(
-        Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000),
-      ),
+      Math.round(Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000)),
     );
     const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
     const suggestedDurationUs =
@@ -294,7 +292,6 @@ function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
     },
   });
 }
-
 
 defineExpose({
   isRenameModalOpen,
@@ -447,7 +444,9 @@ defineExpose({
             size="sm"
             :step="10"
             :min="0"
-            @update:model-value="(v: any) => handleUpdateTextStyle({ width: v > 0 ? Number(v) : undefined })"
+            @update:model-value="
+              (v: any) => handleUpdateTextStyle({ width: v > 0 ? Number(v) : undefined })
+            "
           />
         </div>
 
@@ -529,12 +528,14 @@ defineExpose({
             t('granVideoEditor.textClip.padding', 'Padding')
           }}</span>
           <WheelNumberInput
-            :model-value="(() => {
-              const p = (clip as any).style?.padding;
-              if (typeof p === 'number' && Number.isFinite(p)) return p;
-              if (p && typeof p === 'object') return p.top ?? p.x ?? p.y ?? 60;
-              return 60;
-            })()"
+            :model-value="
+              (() => {
+                const p = (clip as any).style?.padding;
+                if (typeof p === 'number' && Number.isFinite(p)) return p;
+                if (p && typeof p === 'object') return p.top ?? p.x ?? p.y ?? 60;
+                return 60;
+              })()
+            "
             size="sm"
             :step="1"
             :min="0"
@@ -635,10 +636,14 @@ defineExpose({
 
       <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ transformScaleLinked ? t('granVideoEditor.clip.transform.scale', 'Scale (%)') : t('granVideoEditor.clip.transform.scaleX', 'Scale X (%)') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            transformScaleLinked
+              ? t('granVideoEditor.clip.transform.scale', 'Scale (%)')
+              : t('granVideoEditor.clip.transform.scaleX', 'Scale X (%)')
+          }}</span>
           <WheelNumberInput v-model="transformScaleX" size="sm" :step="1" />
         </div>
-        
+
         <div class="flex items-center justify-center pb-1">
           <UButton
             :icon="transformScaleLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
@@ -651,7 +656,9 @@ defineExpose({
         </div>
 
         <div v-if="!transformScaleLinked" class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleY', 'Scale Y (%)') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.clip.transform.scaleY', 'Scale Y (%)')
+          }}</span>
           <WheelNumberInput v-model="transformScaleY" size="sm" :step="1" />
         </div>
         <div v-else class="flex flex-col gap-0.5">
@@ -660,40 +667,52 @@ defineExpose({
       </div>
 
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.rotation', 'Rotation (deg)') }}</span>
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.transform.rotation', 'Rotation (deg)')
+        }}</span>
         <WheelNumberInput v-model="transformRotationDeg" size="sm" :step="1" />
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionX', 'Position X (px)') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.clip.transform.positionX', 'Position X (px)')
+          }}</span>
           <WheelNumberInput v-model="transformPosX" size="sm" :step="1" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionY', 'Position Y (px)') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.clip.transform.positionY', 'Position Y (px)')
+          }}</span>
           <WheelNumberInput v-model="transformPosY" size="sm" :step="1" />
         </div>
       </div>
 
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchor', 'Anchor') }}</span>
-        <USelectMenu 
-          v-model="transformAnchorPreset" 
-          :items="anchorPresetOptions" 
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.transform.anchor', 'Anchor')
+        }}</span>
+        <USelectMenu
+          v-model="transformAnchorPreset"
+          :items="anchorPresetOptions"
           value-key="value"
           label-key="label"
-          size="sm" 
+          size="sm"
           class="w-full"
         />
       </div>
 
       <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchorX', 'Anchor X (0..1)') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.clip.transform.anchorX', 'Anchor X (0..1)')
+          }}</span>
           <WheelNumberInput v-model="transformAnchorX" size="sm" :step="0.01" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchorY', 'Anchor Y (0..1)') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.clip.transform.anchorY', 'Anchor Y (0..1)')
+          }}</span>
           <WheelNumberInput v-model="transformAnchorY" size="sm" :step="0.01" />
         </div>
       </div>

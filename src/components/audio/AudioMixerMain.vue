@@ -21,15 +21,14 @@ function toggleMute() {
 </script>
 
 <template>
-  <div class="flex flex-col items-center w-24 bg-ui-bg-accent border border-primary/30 rounded-lg py-2 shrink-0 h-full">
+  <div
+    class="flex flex-col items-center w-24 bg-ui-bg-accent border border-primary/30 rounded-lg py-2 shrink-0 h-full"
+  >
     <div class="text-xs font-bold text-primary-400 mb-4 mt-2">MAIN</div>
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25">
-      <DbSlider 
-        v-model="volume" 
-        :level-db="timelineStore.audioLevels?.['master']?.peakDb"
-      />
+      <DbSlider v-model="volume" :level-db="timelineStore.audioLevels?.['master']?.peakDb" />
     </div>
 
     <!-- DB Value -->
@@ -52,9 +51,7 @@ function toggleMute() {
 
     <!-- Label -->
     <div class="w-full px-1 text-center py-1 mt-auto">
-      <div class="text-[10px] font-bold text-ui-text uppercase">
-        Master
-      </div>
+      <div class="text-[10px] font-bold text-ui-text uppercase">Master</div>
     </div>
   </div>
 </template>
