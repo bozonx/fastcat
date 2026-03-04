@@ -2,7 +2,17 @@ import { ColorMatrixFilter } from 'pixi.js';
 import type { EffectManifest } from '../../core/registry';
 
 export interface ColorMatrixParams {
-  filterType: 'none' | 'sepia' | 'negative' | 'blackAndWhite' | 'browni' | 'vintage' | 'kodachrome' | 'technicolor' | 'polaroid' | 'lsd';
+  filterType:
+    | 'none'
+    | 'sepia'
+    | 'negative'
+    | 'blackAndWhite'
+    | 'browni'
+    | 'vintage'
+    | 'kodachrome'
+    | 'technicolor'
+    | 'polaroid'
+    | 'lsd';
 }
 
 export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
@@ -36,7 +46,7 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
   updateFilter: (filter, values) => {
     const f = filter as ColorMatrixFilter;
     f.reset();
-    
+
     switch (values.filterType) {
       case 'sepia':
         f.sepia(false);
@@ -65,6 +75,48 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
       case 'lsd':
         f.lsd(false);
         break;
+    }
+
+    // Workaround for PixiJS v8 bug: some presets use 0-255 range for offsets instead of 0-1
+    const m = [...f.matrix] as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+    let needsFix = false;
+    // Check offsets (column 4)
+    if (
+      Math.abs(m[4] || 0) > 1 ||
+      Math.abs(m[9] || 0) > 1 ||
+      Math.abs(m[14] || 0) > 1 ||
+      Math.abs(m[19] || 0) > 1
+    ) {
+      needsFix = true;
+    }
+
+    if (needsFix) {
+      m[4] = (m[4] || 0) / 255;
+      m[9] = (m[9] || 0) / 255;
+      m[14] = (m[14] || 0) / 255;
+      m[19] = (m[19] || 0) / 255;
+      f.matrix = m as any;
     }
   },
 };
