@@ -152,6 +152,7 @@ export function useMonitorTimeline() {
         kind: 'clip',
         clipType: 'media',
         id: item.id,
+        trackId: item.trackId,
         layer: 0,
         speed: sanitizeSpeed((item as any).speed),
         audioGain: item.audioGain,

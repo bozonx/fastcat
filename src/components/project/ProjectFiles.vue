@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -498,6 +498,21 @@ watch(
     }
   },
   { immediate: true },
+);
+
+let isReloadingFromCounter = false;
+watch(
+  () => uiStore.fileManagerUpdateCounter,
+  async () => {
+    if (isReloadingFromCounter) return;
+    isReloadingFromCounter = true;
+    try {
+      await loadProjectDirectory();
+    } finally {
+      await nextTick();
+      isReloadingFromCounter = false;
+    }
+  },
 );
 </script>
 
