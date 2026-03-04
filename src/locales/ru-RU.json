@@ -312,6 +312,13 @@
     }
   },
   "granVideoEditor": {
+    "effects": {
+      "tabs": {
+        "video": "Видео",
+        "transitions": "Переходы",
+        "audio": "Аудио"
+      }
+    },
     "clip": {
       "actions": "Действия",
       "info": "Информация о клипе",
