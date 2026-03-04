@@ -37,6 +37,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const timelineStore = useTimelineStore();
 
   const STORE_TIME_SYNC_MS = 100;
+  const AUDIO_LEVELS_SYNC_MS = 50; // Faster sync for audio levels
   const PLAYBACK_SEEK_EPSILON_US = 25_000;
 
   let playbackLoopId = 0;
@@ -45,6 +46,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const uiCurrentTimeUs = ref(0);
   let renderAccumulatorMs = 0;
   let storeSyncAccumulatorMs = 0;
+  let audioLevelsAccumulatorMs = 0;
   let isUnmounted = false;
   let suppressStoreSeekWatch = false;
   let timecodeEl: HTMLElement | null = null;
@@ -115,6 +117,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     lastFrameTimeMs = timestamp;
     renderAccumulatorMs += deltaMs;
     storeSyncAccumulatorMs += deltaMs;
+    audioLevelsAccumulatorMs += deltaMs;
 
     let newTimeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
 
@@ -149,6 +152,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       storeSyncAccumulatorMs = 0;
       uiCurrentTimeUs.value = newTimeUs;
       updateStoreTime(newTimeUs);
+    }
+
+    if (audioLevelsAccumulatorMs >= AUDIO_LEVELS_SYNC_MS) {
+      audioLevelsAccumulatorMs = 0;
       updateAudioLevels();
     }
 
@@ -170,13 +177,13 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
     // Update master levels
     const newLevels = { ...timelineStore.audioLevels };
-    newLevels['master'] = audioEngine.getLevels();
+    newLevels['master'] = audioEngine.getLevels(); 
 
     // Update track levels
     const tracks = timelineStore.timelineDoc?.tracks || [];
     for (const track of tracks) {
       if (track.kind === 'audio' || track.kind === 'video') {
-        newLevels[track.id] = audioEngine.getLevels(track.id);
+        newLevels[track.id] = audioEngine.getLevels(track.id); 
       }
     }
 
@@ -202,6 +209,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         setLocalTimeFromStore();
         renderAccumulatorMs = 0;
         storeSyncAccumulatorMs = 0;
+        audioLevelsAccumulatorMs = 0;
 
         audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed);
 

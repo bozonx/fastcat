@@ -11,6 +11,7 @@ import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
+import TimecodeInput from '~/components/common/TimecodeInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
@@ -104,8 +105,8 @@ const mediaMeta = computed(() => {
   return mediaStore.mediaMetadata[props.clip.source.path] || null;
 });
 
-function handleUpdateStartTime(val: number | string) {
-  const newStartUs = Math.max(0, Math.round(Number(val) * 1_000_000));
+function handleUpdateStartTime(val: number) {
+  const newStartUs = Math.max(0, Math.round(val));
   if (newStartUs === props.clip.timelineRange.startUs) return;
 
   timelineStore.applyTimeline({
@@ -116,8 +117,8 @@ function handleUpdateStartTime(val: number | string) {
   });
 }
 
-function handleUpdateEndTime(val: number | string) {
-  const newEndUs = Math.max(0, Math.round(Number(val) * 1_000_000));
+function handleUpdateEndTime(val: number) {
+  const newEndUs = Math.max(0, Math.round(val));
   const currentEndUs = props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
   if (newEndUs === currentEndUs) return;
 
@@ -127,6 +128,20 @@ function handleUpdateEndTime(val: number | string) {
     itemId: props.clip.id,
     edge: 'end',
     deltaUs: newEndUs - currentEndUs,
+  });
+}
+
+function handleUpdateDuration(val: number) {
+  const newDurationUs = Math.max(1, Math.round(val));
+  const currentDurationUs = props.clip.timelineRange.durationUs;
+  if (newDurationUs === currentDurationUs) return;
+
+  timelineStore.applyTimeline({
+    type: 'trim_item',
+    trackId: props.clip.trackId,
+    itemId: props.clip.id,
+    edge: 'end',
+    deltaUs: newDurationUs - currentDurationUs,
   });
 }
 
@@ -280,10 +295,6 @@ function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
   });
 }
 
-function formatTime(us: number): string {
-  if (!us) return '0.00s';
-  return (us / 1_000_000).toFixed(2) + 's';
-}
 
 defineExpose({
   isRenameModalOpen,
@@ -354,27 +365,26 @@ defineExpose({
     </PropertySection>
 
     <PropertySection :title="t('granVideoEditor.clip.info', 'Clip Info')">
-      <PropertyRow
-        :label="t('common.duration', 'Duration')"
-        :value="formatTime(clip.timelineRange.durationUs)"
-      />
+      <div class="flex flex-col gap-0.5 mt-2">
+        <span class="text-xs text-ui-text-muted">{{ t('common.duration', 'Duration') }}</span>
+        <TimecodeInput
+          :model-value="clip.timelineRange.durationUs"
+          @update:model-value="handleUpdateDuration"
+        />
+      </div>
 
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }} (s)</span>
-        <WheelNumberInput
-          :model-value="clip.timelineRange.startUs / 1_000_000"
-          size="sm"
-          :step="0.01"
+        <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
+        <TimecodeInput
+          :model-value="clip.timelineRange.startUs"
           @update:model-value="handleUpdateStartTime"
         />
       </div>
 
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }} (s)</span>
-        <WheelNumberInput
-          :model-value="(clip.timelineRange.startUs + clip.timelineRange.durationUs) / 1_000_000"
-          size="sm"
-          :step="0.01"
+        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }}</span>
+        <TimecodeInput
+          :model-value="clip.timelineRange.startUs + clip.timelineRange.durationUs"
           @update:model-value="handleUpdateEndTime"
         />
       </div>

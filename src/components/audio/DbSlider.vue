@@ -43,19 +43,19 @@ function percentToDb(percent: number): number {
 const fillPercent = computed(() => dbToPercent(currentDb.value));
 const levelPercent = computed(() => props.levelDb !== undefined ? dbToPercent(props.levelDb) : 0);
 
+const levelColor = computed(() => {
+  const db = props.levelDb ?? -60;
+  if (db > 6) return 'bg-red-500';
+  if (db > 0) return 'bg-yellow-500';
+  return 'bg-green-500';
+});
+
 // Color logic:
 // Green: <= 0 dB
 // Yellow: 0 to 6 dB
 // Red: > 6 dB
 const fillColor = computed(() => {
   const db = currentDb.value;
-  if (db > 6) return 'bg-red-500/50';
-  if (db > 0) return 'bg-yellow-500/50';
-  return 'bg-green-500/50';
-});
-
-const levelColor = computed(() => {
-  const db = props.levelDb ?? -60;
   if (db > 6) return 'bg-red-500';
   if (db > 0) return 'bg-yellow-500';
   return 'bg-green-500';
@@ -106,13 +106,13 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
 </script>
 
 <template>
-  <div class="flex h-full w-full justify-center py-2 select-none" @wheel="onWheel">
+  <div class="flex h-full w-full justify-center py-2 select-none gap-1" @wheel="onWheel">
     <!-- Ticks -->
-    <div class="relative h-full w-8 mr-1">
+    <div class="relative h-full w-6">
       <div 
         v-for="tick in ticks" 
         :key="tick"
-        class="absolute right-0 flex items-center justify-end w-full translate-y-[-50%]"
+        class="absolute right-0 flex items-center justify-end w-full translate-y-[50%]"
         :style="{ bottom: `${dbToPercent(tick)}%` }"
       >
         <span 
@@ -138,37 +138,37 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
       </div>
     </div>
 
+    <!-- VU Meter -->
+    <div class="relative h-full w-1.5 shrink-0 bg-ui-bg-dark border border-ui-border rounded-sm overflow-hidden">
+      <div 
+        v-if="levelDb !== undefined && levelDb > -60"
+        class="absolute bottom-0 left-0 right-0 transition-all duration-75"
+        :class="levelColor"
+        :style="{ height: `${levelPercent}%` }"
+      ></div>
+    </div>
+
     <!-- Slider track -->
     <div 
       ref="sliderRef"
-      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-full cursor-ns-resize overflow-hidden"
+      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize"
       @mousedown="onMouseDown"
       @dblclick="onDoubleClick"
     >
-      <!-- Real-time Level Indicator -->
-      <div 
-        v-if="levelDb !== undefined"
-        class="absolute bottom-0 left-0 right-0 transition-all duration-75"
-        :class="[levelColor]"
-        :style="{ height: `${levelPercent}%` }"
-      ></div>
-
       <!-- Volume Set Fill -->
       <div 
-        class="absolute bottom-0 left-0 right-0 transition-colors duration-200"
-        :class="[fillColor]"
+        class="absolute bottom-0 left-0 right-0 transition-colors duration-200 rounded-b-sm"
+        :class="[fillColor, fillPercent === 100 ? 'rounded-t-sm' : '']"
         :style="{ height: `${fillPercent}%` }"
       ></div>
       
       <!-- Thumb -->
       <div 
-        class="absolute left-1/2 -translate-x-1/2 w-6 h-3 bg-white border border-gray-300 shadow-sm rounded-sm z-20 pointer-events-none"
+        class="absolute left-1/2 -translate-x-1/2 w-6 h-3 bg-white border border-gray-300 shadow-sm rounded-sm z-20 pointer-events-none flex flex-col justify-center items-center gap-px"
         :style="{ bottom: `calc(${fillPercent}% - 6px)` }"
       >
-        <div class="w-full h-full flex flex-col justify-center items-center gap-px">
-          <div class="w-3 h-px bg-gray-400"></div>
-          <div class="w-3 h-px bg-gray-400"></div>
-        </div>
+        <div class="w-3 h-px bg-gray-400"></div>
+        <div class="w-3 h-px bg-gray-400"></div>
       </div>
       
       <!-- 0 dB indicator line inside track -->

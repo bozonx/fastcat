@@ -274,6 +274,8 @@ function selectTransition(
                     trackId: track.id,
                     itemIds: [item.id],
                   });
+                  timelineStore.clearSelection();
+                  selectionStore.clearSelection();
                 },
               },
             ],
@@ -281,7 +283,12 @@ function selectTransition(
         >
           <div
             :data-gap-id="item.id"
-            class="absolute inset-y-0 rounded border border-dashed border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40 text-ui-text-muted transition-colors z-10 cursor-pointer select-none"
+            class="absolute inset-y-0 rounded border border-dashed transition-colors z-10 cursor-pointer select-none"
+            :class="
+              timelineStore.selectedItemIds.includes(item.id)
+                ? 'border-primary-500 bg-primary-500/15 hover:bg-primary-500/25'
+                : 'border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40'
+            "
             :style="{
               left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
               width: `${Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
