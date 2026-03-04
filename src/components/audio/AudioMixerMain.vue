@@ -17,6 +17,17 @@ const isMuted = computed(() => timelineStore.audioMuted);
 function toggleMute() {
   timelineStore.audioMuted = !timelineStore.audioMuted;
 }
+
+function onVolumeWheel(event: Event) {
+  const e = event as WheelEvent;
+  e.preventDefault();
+  const deltaY = e.deltaY;
+  if (!Number.isFinite(deltaY) || deltaY === 0) return;
+  const direction = deltaY < 0 ? 1 : -1;
+  const step = 0.05;
+  const newValue = Math.min(3, Math.max(0, volume.value + direction * step));
+  volume.value = Number(newValue.toFixed(2));
+}
 </script>
 
 <template>
@@ -24,15 +35,14 @@ function toggleMute() {
     <div class="text-xs font-bold text-primary-400 mb-4 mt-2">MAIN</div>
 
     <!-- Volume Slider (Vertical) -->
-    <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25">
-      <input
-        type="range"
-        orient="vertical"
-        v-model.number="volume"
-        min="0"
-        max="3"
-        step="0.01"
-        class="vertical-slider h-full w-4"
+    <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25" @wheel="onVolumeWheel">
+      <USlider
+        v-model="volume"
+        orientation="vertical"
+        :min="0"
+        :max="3"
+        :step="0.01"
+        class="h-full"
         @dblclick="volume = 1"
       />
     </div>
@@ -63,30 +73,3 @@ function toggleMute() {
     </div>
   </div>
 </template>
-
-<style scoped>
-.vertical-slider {
-  writing-mode: bt-lr; /* IE */
-  -webkit-appearance: slider-vertical; /* WebKit */
-  appearance: slider-vertical;
-  width: 8px;
-  cursor: pointer;
-  outline: none;
-}
-.vertical-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: var(--color-primary-500);
-  border-radius: 50%;
-  cursor: pointer;
-}
-.vertical-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  background: var(--color-primary-500);
-  border-radius: 50%;
-  cursor: pointer;
-}
-</style>
