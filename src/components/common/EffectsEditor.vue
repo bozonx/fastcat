@@ -136,6 +136,17 @@ function handleRemoveEffect(effectId: string) {
                 @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
               />
             </div>
+            <div v-else-if="control.kind === 'select'" class="flex flex-col gap-1">
+              <span class="text-xs text-ui-text-muted">{{ control.label }}</span>
+              <USelect
+                :model-value="(effect as any)[control.key]"
+                :items="control.options"
+                size="sm"
+                value-key="value"
+                label-key="label"
+                @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
+              />
+            </div>
           </template>
         </div>
       </div>

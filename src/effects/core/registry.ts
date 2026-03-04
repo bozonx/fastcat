@@ -23,7 +23,13 @@ export type EffectControl<T> =
       step: number;
       format?: (v: number) => string;
     }
-  | { kind: 'toggle'; key: keyof T; label: string };
+  | { kind: 'toggle'; key: keyof T; label: string }
+  | {
+      kind: 'select';
+      key: keyof T;
+      label: string;
+      options: { label: string; value: string | number }[];
+    };
 
 export interface BaseClipEffect {
   id: string;
