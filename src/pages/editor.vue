@@ -567,11 +567,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
             @resized="onSoundResize"
           >
             <Pane :size="soundSizes[0]" min-size="10">
-              <div
-                class="h-full bg-ui-bg-elevated/50 p-4 border border-ui-border rounded flex flex-col items-center justify-center text-ui-text-muted"
-              >
-                <h3 class="font-bold mb-2">Звук: Панель 1</h3>
-              </div>
+              <AudioMixer />
             </Pane>
             <Pane :size="soundSizes[1]" min-size="10">
               <MonitorContainer class="h-full" />

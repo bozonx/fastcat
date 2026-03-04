@@ -94,7 +94,10 @@ const {
 // openFileInfoModal is now handled entirely within useFileManagerModals
 
 function onFileAction(action: any, entry: FsEntry) {
-  if (action === 'createMarkdown') {
+  console.log('[FileManager] onFileAction', action, entry);
+  if (action === 'createFolder') {
+    openCreateFolderModal(entry);
+  } else if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
     }
@@ -102,6 +105,9 @@ function onFileAction(action: any, entry: FsEntry) {
     if (entry.kind === 'directory') {
       (uiStore as any).pendingFsEntryCreateTimeline = entry;
     }
+  } else if (action === 'upload') {
+    directoryUploadTarget.value = entry;
+    directoryUploadInput.value?.click();
   } else if (action === 'openAsPanel') {
     if (entry.kind !== 'file') return;
     const mediaType = getMediaTypeFromFilename(entry.name);

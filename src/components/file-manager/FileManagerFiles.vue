@@ -141,7 +141,12 @@ const emit = defineEmits<{
       | 'upload'
       | 'createProxyForFolder'
       | 'cancelProxyForFolder'
-      | 'createMarkdown',
+      | 'createMarkdown'
+      | 'createTimeline'
+      | 'createFolder'
+      | 'openAsPanel'
+      | 'openAsProjectTab'
+      | 'createOtioVersion',
     entry: FsEntry,
   ): void;
   (e: 'createFolder', entry: FsEntry | null): void;
