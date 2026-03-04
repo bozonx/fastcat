@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, inject, computed } from 'vue';
-import type { ContextMenuItem } from '@nuxt/ui';
+import { ref, inject } from 'vue';
 import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
@@ -99,14 +98,6 @@ function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
 }
 
 const isDragOver = ref<string | null>(null);
-const contextMenuItems = ref<ContextMenuItem[][]>([]);
-const contextMenuTargetEntry = ref<FsEntry | null>(null);
-
-function showContextMenu(e: Event, entry: FsEntry) {
-  e.preventDefault();
-  contextMenuTargetEntry.value = entry;
-  contextMenuItems.value = getContextMenuItems(entry);
-}
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
@@ -279,21 +270,25 @@ function getContextMenuItems(entry: FsEntry) {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => emit('action', 'createFolder', entry),
+        onClick: () => emit('action', 'createFolder', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
         icon: 'i-heroicons-document-plus',
         onSelect: () => emit('action', 'createTimeline' as any, entry),
+        onClick: () => emit('action', 'createTimeline' as any, entry),
       },
       {
         label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
         onSelect: () => emit('action', 'createMarkdown', entry),
+        onClick: () => emit('action', 'createMarkdown', entry),
       },
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
         icon: 'i-heroicons-arrow-up-tray',
         onSelect: () => emit('action', 'upload', entry),
+        onClick: () => emit('action', 'upload', entry),
       },
     ]);
 
@@ -399,11 +394,13 @@ function getContextMenuItems(entry: FsEntry) {
       label: t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
       onSelect: () => emit('action', 'rename', entry),
+      onClick: () => emit('action', 'rename', entry),
     },
     {
       label: t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
       onSelect: () => emit('action', 'delete', entry),
+      onClick: () => emit('action', 'delete', entry),
     },
   ]);
 
@@ -444,7 +441,6 @@ function getContextMenuItems(entry: FsEntry) {
             @drop.prevent="onDropDir($event, entry)"
             @click="onEntryClick(entry)"
             @dblclick="entry.kind === 'directory' ? emit('toggle', entry) : null"
-            @contextmenu="showContextMenu($event, entry)"
           >
             <!-- Chevron for directories -->
             <UIcon

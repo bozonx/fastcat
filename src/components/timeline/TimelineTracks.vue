@@ -9,6 +9,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemResize';
 import AppModal from '~/components/ui/AppModal.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import TimelineClip from './TimelineClip.vue';
 
 const { t } = useI18n();
@@ -189,7 +190,7 @@ function selectTransition(
           }}</span>
         </div>
 
-        <UInput v-model.number="speedModalSpeed" type="number" :min="0.1" :max="10" :step="0.05" />
+        <WheelNumberInput v-model="speedModalSpeed" :min="0.1" :max="10" :step="0.05" />
       </div>
 
       <template #footer>

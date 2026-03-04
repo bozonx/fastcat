@@ -94,7 +94,6 @@ const {
 // openFileInfoModal is now handled entirely within useFileManagerModals
 
 function onFileAction(action: any, entry: FsEntry) {
-  console.log('[FileManager] onFileAction', action, entry);
   if (action === 'createFolder') {
     openCreateFolderModal(entry);
   } else if (action === 'createMarkdown') {

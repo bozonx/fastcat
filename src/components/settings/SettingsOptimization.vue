@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -52,14 +53,11 @@ function resetDefaults() {
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.proxyConcurrency', 'Concurrency')">
-        <UInput
-          v-model.number="workspaceStore.userSettings.optimization.proxyConcurrency"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          max="16"
-          step="1"
-          class="w-full"
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.optimization.proxyConcurrency"
+          :min="1"
+          :max="16"
+          :step="1"
         />
       </UFormField>
     </div>
@@ -74,26 +72,20 @@ function resetDefaults() {
           )
         "
       >
-        <UInput
-          v-model.number="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
-          type="number"
-          inputmode="numeric"
-          min="0.1"
-          max="50"
-          step="0.1"
-          class="w-full"
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
+          :min="0.1"
+          :max="50"
+          :step="0.1"
         />
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')">
-        <UInput
-          v-model.number="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
-          type="number"
-          inputmode="numeric"
-          min="32"
-          max="512"
-          step="32"
-          class="w-full"
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
+          :min="32"
+          :max="512"
+          :step="16"
         />
       </UFormField>
     </div>

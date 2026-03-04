@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
 export interface FormatOption {
@@ -242,15 +243,10 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)') }}
       </label>
-      <UInput
-        v-model.number="bitrateMbps"
-        type="number"
-        inputmode="decimal"
-        min="0.2"
-        step="0.1"
-        size="sm"
-        :disabled="props.disabled"
-        class="w-full"
+      <WheelNumberInput
+        v-model="bitrateMbps"
+        :min="0.2"
+        :step="0.1"
       />
       <span class="text-xs text-ui-text-muted">
         {{
@@ -282,16 +278,11 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)') }}
       </label>
-      <UInput
-        v-model.number="keyframeIntervalSec"
-        type="number"
-        inputmode="numeric"
-        min="1"
-        max="10"
-        step="1"
-        size="sm"
-        :disabled="props.disabled"
-        class="w-full"
+      <WheelNumberInput
+        v-model="keyframeIntervalSec"
+        :min="1"
+        :max="10"
+        :step="1"
       />
     </div>
 
@@ -328,15 +319,10 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
       </label>
-      <UInput
-        v-model.number="audioBitrateKbps"
-        type="number"
-        inputmode="numeric"
-        min="32"
-        step="16"
-        size="sm"
-        :disabled="props.disabled"
-        class="w-full"
+      <WheelNumberInput
+        v-model="audioBitrateKbps"
+        :min="32"
+        :step="16"
       />
       <span class="text-xs text-ui-text-muted">
         {{

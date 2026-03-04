@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -49,12 +50,11 @@ function resetDefaults() {
       :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
       :help="t('videoEditor.settings.stopFramesQualityHint', 'WebP quality (1-100)')"
     >
-      <UInput
-        v-model.number="workspaceStore.userSettings.stopFrames.qualityPercent"
-        type="number"
-        min="1"
-        max="100"
-        step="1"
+      <WheelNumberInput
+        v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
+        :min="1"
+        :max="100"
+        :step="1"
       />
     </UFormField>
 

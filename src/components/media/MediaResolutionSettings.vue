@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -256,30 +257,24 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.export.width', 'Width') }}
           </label>
-          <UInput
-            v-model.number="localWidth"
-            type="number"
-            inputmode="numeric"
-            min="2"
-            step="2"
-            size="sm"
-            class="w-full"
+          <WheelNumberInput
+            v-model="localWidth"
+            :min="2"
+            :step="2"
             :disabled="disabled"
+            class="flex-1"
           />
         </div>
         <div class="flex flex-col gap-2">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.export.height', 'Height') }}
           </label>
-          <UInput
-            v-model.number="localHeight"
-            type="number"
-            inputmode="numeric"
-            min="2"
-            step="2"
-            size="sm"
-            class="w-full"
+          <WheelNumberInput
+            v-model="localHeight"
+            :min="2"
+            :step="2"
             :disabled="disabled"
+            class="flex-1"
           />
         </div>
       </div>
@@ -297,15 +292,11 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.fps', 'FPS') }}
       </label>
-      <UInput
-        v-model.number="localFps"
-        type="number"
-        inputmode="numeric"
-        min="1"
-        max="240"
-        step="1"
-        size="sm"
-        class="w-full"
+      <WheelNumberInput
+        v-model="localFps"
+        :min="1"
+        :max="240"
+        :step="1"
         :disabled="disabled"
       />
     </div>

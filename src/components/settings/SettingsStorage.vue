@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import { DEFAULT_WORKSPACE_SETTINGS } from '~/utils/settings/defaults';
 
 const { t } = useI18n();
@@ -93,13 +94,10 @@ function resetDefaults() {
           )
         "
       >
-        <UInput
-          v-model.number="proxyLimitGb"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          step="1"
-          class="w-full"
+        <WheelNumberInput
+          v-model="proxyLimitGb"
+          :min="1"
+          :step="1"
         />
       </UFormField>
 
@@ -109,13 +107,10 @@ function resetDefaults() {
           t('videoEditor.settings.cacheLimitHelp', 'Total limit for cached data in this workspace')
         "
       >
-        <UInput
-          v-model.number="cacheLimitGb"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          step="1"
-          class="w-full"
+        <WheelNumberInput
+          v-model="cacheLimitGb"
+          :min="1"
+          :step="1"
         />
       </UFormField>
 
@@ -128,13 +123,10 @@ function resetDefaults() {
           )
         "
       >
-        <UInput
-          v-model.number="thumbnailsLimitGb"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          step="1"
-          class="w-full"
+        <WheelNumberInput
+          v-model="thumbnailsLimitGb"
+          :min="1"
+          :step="1"
         />
       </UFormField>
     </div>
