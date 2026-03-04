@@ -50,6 +50,7 @@ const {
 });
 
 const modeOptions = computed(() => [
+  { value: 'blend_previous', label: t('granVideoEditor.timeline.transition.modeBlendPrevious') },
   { value: 'blend', label: t('granVideoEditor.timeline.transition.modeBlend') },
   { value: 'composite', label: t('granVideoEditor.timeline.transition.modeComposite') },
 ]);

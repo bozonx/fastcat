@@ -74,17 +74,42 @@ const emit = defineEmits<{
   ): void;
   (
     e: 'selectTransition',
-    event: MouseEvent,
+    event: MouseEvent | PointerEvent,
     payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
   ): void;
   (e: 'clipAction', payload: ClipActionPayload): void;
   (e: 'openSpeedModal', payload: { trackId: string; itemId: string; speed: number }): void;
+  (e: 'resetVolume', trackId: string, itemId: string): void;
 }>();
 
 // Narrowed clip reference — null when item is a gap
 const clipItem = computed<TimelineClipItem | null>(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
 );
+
+function onTransitionPointerdown(e: PointerEvent) {
+  if (!clipItem.value || Boolean(clipItem.value.locked)) return;
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  function onPointerMove(ev: PointerEvent) {
+    const dx = Math.abs(ev.clientX - startX);
+    const dy = Math.abs(ev.clientY - startY);
+    if (dx > 3 || dy > 3) {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      emit('startMoveItem', ev, props.item.trackId, props.item.id, props.item.timelineRange.startUs);
+    }
+  }
+
+  function onPointerUp() {
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+  }
+
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+}
 
 const clipWidthPx = computed(() => {
   return Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom));
@@ -319,7 +344,6 @@ const { contextMenuItems } = useClipContextMenu({
       "
       @click="
         if ($event.button !== 1) {
-          $event.stopPropagation();
           emit('selectItem', $event, item.id);
           selectionStore.selectTimelineItem(track.id, item.id, item.kind as 'clip' | 'gap');
         }
@@ -534,6 +558,12 @@ const { contextMenuItems } = useClipContextMenu({
             trackHeight,
           )
         "
+        @dblclick.stop.prevent="
+          !Boolean(clipItem.locked) &&
+          (() => {
+            emit('resetVolume', track.id, item.id);
+          })()
+        "
       >
         <div
           class="w-full h-[1.5px] bg-yellow-400 pointer-events-none opacity-80"
@@ -594,7 +624,7 @@ const { contextMenuItems } = useClipContextMenu({
                   ? 'ring-2 ring-inset ring-orange-500 z-10'
                   : '',
             ]"
-            @pointerdown.stop
+            @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               emit('selectTransition', $event, {
                 trackId: item.trackId,
@@ -650,7 +680,7 @@ const { contextMenuItems } = useClipContextMenu({
                   ? 'ring-2 ring-inset ring-orange-500 z-10'
                   : '',
             ]"
-            @pointerdown.stop
+            @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               emit('selectTransition', $event, {
                 trackId: item.trackId,

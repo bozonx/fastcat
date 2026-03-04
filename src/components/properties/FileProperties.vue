@@ -7,6 +7,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
 import { VIDEO_EXTENSIONS } from '~/utils/media-types';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatAudioChannels } from '~/utils/audio';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -17,6 +18,8 @@ import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUs
 import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
+import EntryActions from '~/components/properties/file/EntryActions.vue';
+import { useProjectTabs } from '~/composables/project/useProjectTabs';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -35,6 +38,7 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
+const { addFileTab, setActiveTab } = useProjectTabs();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
@@ -95,13 +99,12 @@ const {
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
-const { ext, generalInfoTitle, isHidden, isVideoOrAudio, mediaMeta, selectedPath } =
-  useFilePropertiesBasics({
-    selectedFsEntry: selectedFsEntryRef,
-    fileInfo,
-    isOtio,
-    mediaType,
-  });
+const { ext, generalInfoTitle, isHidden, mediaMeta, selectedPath } = useFilePropertiesBasics({
+  selectedFsEntry: selectedFsEntryRef,
+  fileInfo,
+  isOtio,
+  mediaType,
+});
 
 const { hasImageInfo, imageCameraMake, imageCreateDate, imageLocationLink, imageResolution } =
   useImageExifInfo({
@@ -136,6 +139,60 @@ async function copyToClipboard(text: string) {
     console.error('Failed to copy to clipboard', e);
   }
 }
+
+function openAsProjectTab() {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'file' || !entry.path) return;
+  const type = getMediaTypeFromFilename(entry.name);
+  if (type !== 'video' && type !== 'audio' && type !== 'image' && type !== 'text') return;
+  const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
+  setActiveTab(tabId);
+}
+
+function createSubfolder() {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'directory') return;
+  ;(uiStore as any).pendingFsEntryCreateFolder = entry;
+}
+
+function createTimelineInFolder() {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'directory') return;
+  ;(uiStore as any).pendingFsEntryCreateTimeline = entry;
+}
+
+function createMarkdownInFolder() {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'directory') return;
+  ;(uiStore as any).pendingFsEntryCreateMarkdown = entry;
+}
+
+const canOpenAsPanel = computed(() => {
+  return mediaType.value === 'text' || mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
+});
+
+const canOpenAsProjectTab = computed(() => {
+  return canOpenAsPanel.value;
+});
+
+const isVideoFile = computed(() => mediaType.value === 'video');
+
+const showVideoProxyActions = computed(() => {
+  if (isProjectRootDir.value) return false;
+  if (!isVideoFile.value) return false;
+  if (!selectedPath.value) return false;
+  return true;
+});
+
+const isGeneratingProxyForFile = computed(() => {
+  if (!showVideoProxyActions.value) return false;
+  return proxyStore.generatingProxies.has(selectedPath.value!);
+});
+
+const hasExistingProxyForFile = computed(() => {
+  if (!showVideoProxyActions.value) return false;
+  return proxyStore.existingProxies.has(selectedPath.value!);
+});
 
 function onRename() {
   const entry = props.selectedFsEntry;
@@ -202,202 +259,142 @@ function openAsTextPanel() {
     </PropertySection>
 
     <PropertySection
-      v-if="
-        fileInfo?.kind === 'file' &&
-        !isProjectRootDir &&
-        (isVideoOrAudio || proxyStore.generatingProxies.has(selectedPath ?? ''))
-      "
-      :title="t('videoEditor.fileManager.proxy.title', 'Proxy')"
-    >
-      <div class="flex gap-2 flex-wrap">
-        <!-- Generating: show cancel button -->
-        <template v-if="proxyStore.generatingProxies.has(selectedPath ?? '')">
-          <UButton
-            size="xs"
-            color="error"
-            variant="soft"
-            icon="i-heroicons-x-circle"
-            class="flex-1"
-            @click="() => proxyStore.cancelProxyGeneration(selectedPath!)"
-          >
-            {{
-              t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
-            }}
-          </UButton>
-        </template>
-        <!-- Not generating: show create/regenerate/delete based on proxy existence -->
-        <template v-else>
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="soft"
-            :icon="
-              proxyStore.existingProxies.has(selectedPath ?? '')
-                ? 'i-heroicons-arrow-path'
-                : 'i-heroicons-film'
-            "
-            class="flex-1"
-            @click="
-              () =>
-                proxyStore.generateProxy(
-                  props.selectedFsEntry.handle as FileSystemFileHandle,
-                  selectedPath!,
-                )
-            "
-          >
-            {{
-              proxyStore.existingProxies.has(selectedPath ?? '')
-                ? t('videoEditor.fileManager.proxy.regenerate', 'Regenerate proxy')
-                : t('videoEditor.fileManager.proxy.create', 'Create proxy')
-            }}
-          </UButton>
-          <UButton
-            v-if="proxyStore.existingProxies.has(selectedPath ?? '')"
-            size="xs"
-            color="error"
-            variant="soft"
-            icon="i-heroicons-trash"
-            class="flex-1"
-            @click="() => proxyStore.deleteProxy(selectedPath!)"
-          >
-            {{ t('videoEditor.fileManager.proxy.delete', 'Delete proxy') }}
-          </UButton>
-        </template>
-      </div>
-    </PropertySection>
-
-    <PropertySection
       v-if="fileInfo?.kind === 'directory'"
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
-      <div class="flex flex-col gap-2 w-full">
-        <input
-          ref="uploadInputRef"
-          type="file"
-          multiple
-          class="hidden"
-          @change="onDirectoryFileSelect"
-        />
-
-        <UButton
-          v-if="isFolderWithVideo && !isGeneratingProxyForFolder"
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-film"
-          class="w-full"
-          @click="generateProxiesForSelectedFolder"
-        >
-          {{
-            t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos')
-          }}
-        </UButton>
-
-        <UButton
-          v-if="isFolderWithVideo && isGeneratingProxyForFolder"
-          size="xs"
-          color="error"
-          variant="soft"
-          icon="i-heroicons-x-circle"
-          class="w-full"
-          @click="stopProxyGenerationForSelectedFolder"
-        >
-          {{
-            t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation')
-          }}
-        </UButton>
-
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-arrow-up-tray"
-          class="w-full"
-          @click="triggerDirectoryUpload"
-        >
-          {{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload files') }}
-        </UButton>
-
-        <div v-if="!isProjectRootDir" class="flex gap-2">
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-pencil"
-            class="flex-1"
-            @click="onRename"
-          >
-            {{ t('common.rename', 'Rename') }}
-          </UButton>
-          <UButton
-            size="xs"
-            color="red"
-            variant="soft"
-            icon="i-heroicons-trash"
-            class="flex-1"
-            @click="onDelete"
-          >
-            {{ t('common.delete', 'Delete') }}
-          </UButton>
-        </div>
-      </div>
+      <EntryActions
+        :primary-actions="[
+          {
+            id: 'rename',
+            title: t('common.rename', 'Rename'),
+            icon: 'i-heroicons-pencil',
+            disabled: isProjectRootDir,
+            onClick: onRename,
+          },
+          {
+            id: 'delete',
+            title: t('common.delete', 'Delete'),
+            icon: 'i-heroicons-trash',
+            disabled: isProjectRootDir,
+            onClick: onDelete,
+          },
+          {
+            id: 'upload',
+            title: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+            icon: 'i-heroicons-arrow-up-tray',
+            onClick: triggerDirectoryUpload,
+          },
+        ]"
+        :secondary-actions="[
+          {
+            id: 'createSubfolder',
+            label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+            icon: 'i-heroicons-folder-plus',
+            onClick: createSubfolder,
+          },
+          {
+            id: 'createTimeline',
+            label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+            icon: 'i-heroicons-document-plus',
+            onClick: createTimelineInFolder,
+          },
+          {
+            id: 'createMarkdown',
+            label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+            icon: 'i-heroicons-document-text',
+            onClick: createMarkdownInFolder,
+          },
+          {
+            id: 'createProxyForAll',
+            label: t('videoEditor.fileManager.actions.createProxyForAll', 'Create proxy for all videos'),
+            icon: 'i-heroicons-film',
+            hidden: !isFolderWithVideo || isGeneratingProxyForFolder,
+            onClick: () => generateProxiesForSelectedFolder(),
+          },
+          {
+            id: 'cancelProxyForAll',
+            label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+            icon: 'i-heroicons-x-circle',
+            color: 'error',
+            hidden: !isFolderWithVideo || !isGeneratingProxyForFolder,
+            onClick: () => stopProxyGenerationForSelectedFolder(),
+          },
+        ]"
+      />
     </PropertySection>
 
     <PropertySection
       v-else-if="fileInfo?.kind === 'file'"
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
-      <div class="flex gap-2 w-full">
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-pencil"
-          class="flex-1"
-          @click="onRename"
-        >
-          {{ t('common.rename', 'Rename') }}
-        </UButton>
-        <UButton
-          size="xs"
-          color="red"
-          variant="soft"
-          icon="i-heroicons-trash"
-          class="flex-1"
-          @click="onDelete"
-        >
-          {{ t('common.delete', 'Delete') }}
-        </UButton>
-      </div>
-
-      <UButton
-        v-if="
-          mediaType === 'text' ||
-          mediaType === 'video' ||
-          mediaType === 'audio' ||
-          mediaType === 'image'
-        "
-        size="xs"
-        color="neutral"
-        variant="soft"
-        icon="i-heroicons-window"
-        class="w-full justify-center mt-2"
-        @click="openAsTextPanel"
-      >
-        {{ t('granVideoEditor.fileManager.actions.openAsPanel', 'Open as panel') }}
-      </UButton>
-
-      <UButton
-        v-if="isOtio"
-        size="xs"
-        color="neutral"
-        variant="soft"
-        icon="i-heroicons-document-duplicate"
-        class="w-full justify-center mt-2"
-        @click="() => ((uiStore as any).pendingOtioCreateVersion = props.selectedFsEntry)"
-      >
-        {{ t('granVideoEditor.timeline.createVersion', 'Create version') }}
-      </UButton>
+      <EntryActions
+        :primary-actions="[
+          {
+            id: 'rename',
+            title: t('common.rename', 'Rename'),
+            icon: 'i-heroicons-pencil',
+            onClick: onRename,
+          },
+          {
+            id: 'delete',
+            title: t('common.delete', 'Delete'),
+            icon: 'i-heroicons-trash',
+            onClick: onDelete,
+          },
+          {
+            id: 'openAsPanel',
+            title: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
+            icon: 'i-heroicons-window',
+            hidden: !canOpenAsPanel,
+            onClick: openAsTextPanel,
+          },
+          {
+            id: 'openAsProjectTab',
+            title: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+            icon: 'i-heroicons-squares-plus',
+            hidden: !canOpenAsProjectTab,
+            onClick: openAsProjectTab,
+          },
+        ]"
+        :secondary-actions="[
+          {
+            id: 'createProxy',
+            label: hasExistingProxyForFile
+              ? t('videoEditor.fileManager.proxy.regenerate', 'Regenerate proxy')
+              : t('videoEditor.fileManager.proxy.create', 'Create proxy'),
+            icon: hasExistingProxyForFile ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
+            hidden: !showVideoProxyActions || isGeneratingProxyForFile,
+            onClick: () =>
+              proxyStore.generateProxy(
+                props.selectedFsEntry.handle as FileSystemFileHandle,
+                selectedPath!,
+              ),
+          },
+          {
+            id: 'cancelProxy',
+            label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel proxy generation'),
+            icon: 'i-heroicons-x-circle',
+            color: 'error',
+            hidden: !showVideoProxyActions || !isGeneratingProxyForFile,
+            onClick: () => proxyStore.cancelProxyGeneration(selectedPath!),
+          },
+          {
+            id: 'deleteProxy',
+            label: t('videoEditor.fileManager.proxy.delete', 'Delete proxy'),
+            icon: 'i-heroicons-trash',
+            color: 'error',
+            hidden: !showVideoProxyActions || !hasExistingProxyForFile,
+            onClick: () => proxyStore.deleteProxy(selectedPath!),
+          },
+          {
+            id: 'createOtioVersion',
+            label: t('granVideoEditor.timeline.createVersion', 'Create version'),
+            icon: 'i-heroicons-document-duplicate',
+            hidden: !isOtio,
+            onClick: () => ((uiStore as any).pendingOtioCreateVersion = props.selectedFsEntry),
+          },
+        ]"
+      />
     </PropertySection>
 
     <div
@@ -580,7 +577,7 @@ function openAsTextPanel() {
     </div>
 
     <PropertySection
-      v-if="fileInfo?.kind === 'file' && isVideoOrAudio && metadataYaml"
+      v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"
       :title="t('common.meta', 'Meta')"
     >
       <div class="flex gap-2">

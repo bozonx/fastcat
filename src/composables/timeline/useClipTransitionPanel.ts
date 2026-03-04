@@ -24,7 +24,9 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     options.transition.value ? options.transition.value.durationUs / 1_000_000 : 0.5,
   );
   const selectedType = ref(options.transition.value?.type ?? 'dissolve');
-  const selectedMode = ref<'blend' | 'composite'>(options.transition.value?.mode ?? 'blend');
+  const selectedMode = ref<'blend' | 'blend_previous' | 'composite'>(
+    options.transition.value?.mode ?? 'blend',
+  );
   const selectedCurve = ref<'linear' | 'bezier'>(options.transition.value?.curve ?? 'linear');
 
   let isSyncingFromProps = false;

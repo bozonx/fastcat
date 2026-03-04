@@ -142,8 +142,15 @@ async function saveSpeedModal() {
   await timelineStore.requestTimelineSave({ immediate: true });
 }
 
+async function resetVolume(trackId: string, itemId: string) {
+  timelineStore.updateClipProperties(trackId, itemId, {
+    audioGain: 1,
+  });
+  await timelineStore.requestTimelineSave({ immediate: true });
+}
+
 function selectTransition(
-  e: MouseEvent,
+  e: MouseEvent | PointerEvent,
   input: { trackId: string; itemId: string; edge: 'in' | 'out' },
 ) {
   e.stopPropagation();
@@ -312,6 +319,7 @@ function selectTransition(
           @open-speed-modal="
             (payload) => openSpeedModal(payload.trackId, payload.itemId, payload.speed)
           "
+          @reset-volume="(tId, id) => resetVolume(tId, id)"
         />
       </template>
     </div>

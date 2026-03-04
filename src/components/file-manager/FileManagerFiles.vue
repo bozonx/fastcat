@@ -152,6 +152,20 @@ const rootContextMenuItems = computed(() => {
   return [
     [
       {
+        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+        icon: 'i-heroicons-arrow-up-tray',
+        onSelect: async () => {
+          const handle = await props.getProjectRootDirHandle();
+          if (!handle) return;
+          emit('action', 'upload', {
+            kind: 'directory',
+            name: projectStore.currentProjectName!,
+            path: '',
+            handle,
+          });
+        },
+      },
+      {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => emit('createFolder', null),

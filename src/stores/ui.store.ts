@@ -27,6 +27,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const pendingFsEntryDelete = ref<unknown>(null);
   const pendingFsEntryRename = ref<unknown>(null);
+  const pendingFsEntryCreateFolder = ref<unknown>(null);
   const pendingFsEntryCreateMarkdown = ref<unknown>(null);
   const pendingFsEntryCreateTimeline = ref<unknown>(null);
   const pendingOtioCreateVersion = ref<unknown>(null);
@@ -97,6 +98,7 @@ export const useUiStore = defineStore('ui', () => {
     fileTreeExpandedPaths,
     pendingFsEntryDelete,
     pendingFsEntryRename,
+    pendingFsEntryCreateFolder,
     pendingFsEntryCreateMarkdown,
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,

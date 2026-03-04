@@ -29,6 +29,7 @@ import {
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
+import { useProjectTabs } from '~/composables/project/useProjectTabs';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -37,6 +38,7 @@ const uiStore = useUiStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const fileManager = useFileManager();
 const proxyStore = useProxyStore();
+const { addFileTab, setActiveTab } = useProjectTabs();
 const {
   readDirectory,
   getFileIcon,
@@ -101,6 +103,20 @@ function onFileAction(action: any, entry: FsEntry) {
         }
       }
     }
+  } else if (action === 'openAsPanel') {
+    if (entry.kind !== 'file') return;
+    const type = getMediaTypeFromFilename(entry.name);
+    if (type === 'text') {
+      projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);
+    } else if (type === 'video' || type === 'audio' || type === 'image') {
+      projectStore.addMediaPanel(entry, type, entry.name);
+    }
+  } else if (action === 'openAsProjectTab') {
+    if (entry.kind !== 'file' || !entry.path) return;
+    const type = getMediaTypeFromFilename(entry.name);
+    if (type !== 'video' && type !== 'audio' && type !== 'image' && type !== 'text') return;
+    const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
+    setActiveTab(tabId);
   } else {
     onFileActionBase(action, entry);
   }
@@ -124,7 +140,12 @@ function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
 
 function folderHasVideos(entry: FsEntry): boolean {
   if (entry.kind !== 'directory') return false;
-  return true; // We don't have deeply loaded children here, assume true to allow action
+  const children = Array.isArray(entry.children) ? entry.children : [];
+  return children.some((child) => {
+    if (child.kind !== 'file') return false;
+    const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
+    return ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
+  });
 }
 
 function isVideo(entry: FsEntry) {
@@ -185,6 +206,25 @@ function getContextMenuItems(entry: FsEntry) {
       onSelect: () => onFileAction('rename', entry),
     },
   ]);
+
+  if (entry.kind === 'file') {
+    const type = getMediaTypeFromFilename(entry.name);
+    const canOpen = type === 'video' || type === 'audio' || type === 'image' || type === 'text';
+    if (canOpen) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
+          icon: 'i-heroicons-window',
+          onSelect: () => onFileAction('openAsPanel', entry),
+        },
+        {
+          label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+          icon: 'i-heroicons-squares-plus',
+          onSelect: () => onFileAction('openAsProjectTab', entry),
+        },
+      ]);
+    }
+  }
 
   if (isVideo(entry)) {
     const hasProxy = fileManager.mediaCache.hasProxy(entry.path!);

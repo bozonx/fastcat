@@ -217,6 +217,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 backgroundColor: c.backgroundColor,
                 text: (c as any).text,
                 style: (c as any).style,
+                transitionIn: c.transitionIn,
+                transitionOut: c.transitionOut,
               }) as any,
           );
 
@@ -437,6 +439,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             backgroundColor: c.backgroundColor,
             text: (c as any).text,
             style: (c as any).style,
+            transitionIn: c.transitionIn,
+            transitionOut: c.transitionOut,
           }) as any,
       );
 

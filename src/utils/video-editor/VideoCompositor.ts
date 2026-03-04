@@ -849,7 +849,7 @@ export class VideoCompositor {
 
       for (const clip of active) {
         const tr = clip.transitionIn;
-        if (!tr || (tr.mode ?? 'blend') !== 'blend' || tr.durationUs <= 0) continue;
+        if (!tr || tr.mode !== 'blend_previous' || tr.durationUs <= 0) continue;
         const localTimeUs = timeUs - clip.startUs;
         if (localTimeUs >= tr.durationUs) continue;
 
@@ -945,7 +945,7 @@ export class VideoCompositor {
       // In composite mode, the clip fades in over lower tracks only; prev clip on same layer must not show.
       for (const clip of active) {
         const tr = clip.transitionIn;
-        if (!tr || (tr.mode ?? 'blend') !== 'composite' || tr.durationUs <= 0) continue;
+        if (!tr || (tr.mode !== 'blend' && tr.mode !== 'composite') || tr.durationUs <= 0) continue;
         const localTimeUs = timeUs - clip.startUs;
         if (localTimeUs >= tr.durationUs) continue;
         const prevClip = this.findPrevClipOnLayer(clip);
