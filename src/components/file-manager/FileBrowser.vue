@@ -113,7 +113,9 @@ function onFileAction(action: any, entry: FsEntry) {
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
   } else if (action === 'createFolder') {
-    onFileActionBase('createFolder', entry, () => folderEntries.value.map((e) => e.name));
+    const existingNames = folderEntries.value.map((e) => e.name);
+    onFileActionBase('createFolder', entry, () => existingNames);
+    void loadFolderContent();
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
       (uiStore as any).pendingFsEntryCreateTimeline = entry;
@@ -762,6 +764,23 @@ function onPanelDragLeave(e: DragEvent) {
   }
 }
 
+async function onDirectoryUploadChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const files = input.files ? Array.from(input.files) : [];
+  input.value = '';
+
+  const entry = directoryUploadTarget.value;
+  if (!entry || entry.kind !== 'directory') return;
+  if (files.length === 0) return;
+
+  if (!entry.path) {
+    await handleFiles(files);
+  } else {
+    await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  }
+  await loadFolderContent();
+}
+
 async function onPanelDrop(e: DragEvent) {
   isDragOverPanel.value = false;
   uiStore.isFileManagerDragging = false;
@@ -1008,7 +1027,9 @@ async function onPanelDrop(e: DragEvent) {
                 @drop.prevent="onEntryDrop($event, entry)"
                 @click="handleEntryClick(entry)"
                 @dblclick="
-                  entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
+                  entry.kind === 'directory'
+                    ? filesPageStore.selectFolder(entry)
+                    : onFileAction('rename', entry)
                 "
               >
                 <div
@@ -1052,7 +1073,16 @@ async function onPanelDrop(e: DragEvent) {
                     ]"
                   />
                 </div>
+                <InlineNameEditor
+                  v-if="editingEntryPath === entry.path"
+                  :initial-name="entry.name"
+                  :is-folder="entry.kind === 'directory'"
+                  :existing-names="folderEntries.map(e => e.name)"
+                  @save="(name) => commitRename(entry, name)"
+                  @cancel="stopRename"
+                />
                 <span
+                  v-else
                   class="text-center break-all line-clamp-2 px-1 transition-colors"
                   :class="[
                     fileManager.mediaCache.hasProxy(entry.path || '') &&
@@ -1250,7 +1280,9 @@ async function onPanelDrop(e: DragEvent) {
                       @drop.prevent="onEntryDrop($event, entry)"
                       @click="handleEntryClick(entry)"
                       @dblclick="
-                        entry.kind === 'directory' ? filesPageStore.selectFolder(entry) : undefined
+                        entry.kind === 'directory'
+                          ? filesPageStore.selectFolder(entry)
+                          : onFileAction('rename', entry)
                       "
                     >
                       <td class="py-2 px-3 flex items-center gap-2">
@@ -1286,7 +1318,16 @@ async function onPanelDrop(e: DragEvent) {
                             ]"
                           />
                         </div>
+                        <InlineNameEditor
+                          v-if="editingEntryPath === entry.path"
+                          :initial-name="entry.name"
+                          :is-folder="entry.kind === 'directory'"
+                          :existing-names="folderEntries.map(e => e.name)"
+                          @save="(name) => commitRename(entry, name)"
+                          @cancel="stopRename"
+                        />
                         <span
+                          v-else
                           class="truncate max-w-50 transition-colors"
                           :class="[
                             entry.name.startsWith('.') ? 'opacity-30' : '',
@@ -1380,7 +1421,6 @@ async function onPanelDrop(e: DragEvent) {
     </div>
 
     <!-- Modals -->
-    />
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"
       :title="t('common.delete', 'Delete')"
@@ -1409,7 +1449,13 @@ async function onPanelDrop(e: DragEvent) {
         </div>
       </div>
     </UiConfirmModal>
-    <input ref="directoryUploadInput" type="file" multiple class="hidden" @change="() => {}" />
+    <input
+      ref="directoryUploadInput"
+      type="file"
+      multiple
+      class="hidden"
+      @change="onDirectoryUploadChange"
+    />
   </div>
 </template>
 

@@ -67,6 +67,7 @@ export interface FileManagerCreateDeps {
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryMoved?: () => void | Promise<void>;
   onDirectoryLoaded?: () => void;
+  mediaStore: ReturnType<typeof useMediaStore>;
 }
 
 export function createFileManager(deps: FileManagerCreateDeps) {
@@ -237,6 +238,12 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
+  async function triggerMediaIntegrityCheck() {
+    await timelineMediaUsageStore.refreshUsage();
+    const usedPaths = Object.keys(timelineMediaUsageStore.mediaPathToTimelines);
+    await deps.mediaStore.revalidateMissingMedia(usedPaths);
+  }
+
   async function deleteEntry(target: FsEntry) {
     await runWithUiFeedback({
       action: async () => {
@@ -265,6 +272,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         });
 
         await loadProjectDirectory();
+        await triggerMediaIntegrityCheck();
       },
       defaultErrorMessage: 'Failed to delete',
       toastTitle: 'Delete error',
@@ -309,6 +317,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         }
 
         await loadProjectDirectory();
+        await triggerMediaIntegrityCheck();
       },
       defaultErrorMessage: 'Failed to rename',
       toastTitle: 'Rename error',
@@ -383,6 +392,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         );
 
         await loadProjectDirectory();
+        await triggerMediaIntegrityCheck();
       },
       defaultErrorMessage: 'Failed to move',
       toastTitle: 'Move error',
@@ -488,6 +498,7 @@ export function useFileManager() {
     rootEntries,
     sortMode,
     showHiddenFiles,
+    mediaStore,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
     setFileTreePathExpanded: (path, expanded) => {
       const projectName = projectStore.currentProjectName;

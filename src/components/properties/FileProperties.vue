@@ -20,6 +20,7 @@ import { useFilePropertiesBasics } from '~/composables/properties/useFilePropert
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -39,6 +40,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
+const fileManager = useFileManager();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
@@ -67,15 +69,12 @@ async function onDirectoryFileSelect(e: Event) {
   input.value = '';
   if (!files || files.length === 0) return;
 
-  const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-  const fm = useFileManager();
-
   if (isProjectRootDir.value) {
-    await fm.handleFiles(files);
+    await fileManager.handleFiles(files);
   } else {
-    await fm.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+    await fileManager.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
   }
-  await fm.loadProjectDirectory();
+  await fileManager.loadProjectDirectory();
 }
 
 const {

@@ -174,6 +174,19 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  async function revalidateMissingMedia(usedPaths: string[]) {
+    const results = await Promise.all(
+      usedPaths.map(async (path) => {
+        const handle = await projectStore.getFileHandleByPath(path);
+        return { path, exists: Boolean(handle) };
+      }),
+    );
+
+    for (const { path, exists } of results) {
+      missingPaths.value[path] = !exists;
+    }
+  }
+
   return {
     mediaMetadata,
     missingPaths,
@@ -181,5 +194,6 @@ export const useMediaStore = defineStore('media', () => {
     getOrFetchMetadata,
     resetMediaState,
     setAudioPeaks,
+    revalidateMissingMedia,
   };
 });
