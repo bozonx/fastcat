@@ -6,9 +6,39 @@ export interface DisplacementParams {
   scaleY: number;
 }
 
-// Создаем простую текстуру для смещения (в реальном приложении лучше использовать загруженную текстуру шума)
-const displacementSprite = new Sprite(Texture.WHITE);
-displacementSprite.texture.baseTexture.wrapMode = 'repeat';
+// Генерируем текстуру с волнистым узором для красивого искажения,
+// используем типизированный массив (буфер), так как canvas недоступен в Web Worker'ах
+function createDisplacementTexture(): Texture {
+  const width = 256;
+  const height = 256;
+  const data = new Uint8Array(width * height * 4);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Простой градиентный шум / волны на основе синусов
+      const v = (Math.sin(x * 0.05) + Math.cos(y * 0.05)) * 0.5 + 0.5;
+      const val = Math.floor(v * 255);
+
+      const i = (y * width + x) * 4;
+      data[i] = val; // R (влияет на X)
+      data[i + 1] = val; // G (влияет на Y)
+      data[i + 2] = val; // B
+      data[i + 3] = 255; // A
+    }
+  }
+
+  return Texture.from({
+    resource: data,
+    width,
+    height,
+  });
+}
+
+const displacementSprite = new Sprite(createDisplacementTexture());
+// Для Pixi v8 настраиваем повторение текстуры
+if (displacementSprite.texture.source) {
+  displacementSprite.texture.source.addressMode = 'repeat';
+}
 
 export const displacementManifest: EffectManifest<DisplacementParams> = {
   type: 'displacement',
@@ -25,7 +55,7 @@ export const displacementManifest: EffectManifest<DisplacementParams> = {
       key: 'scaleX',
       label: 'Смещение X',
       min: 0,
-      max: 100,
+      max: 200,
       step: 1,
     },
     {
@@ -33,11 +63,11 @@ export const displacementManifest: EffectManifest<DisplacementParams> = {
       key: 'scaleY',
       label: 'Смещение Y',
       min: 0,
-      max: 100,
+      max: 200,
       step: 1,
     },
   ],
-  createFilter: () => new DisplacementFilter(displacementSprite, 20),
+  createFilter: () => new DisplacementFilter({ sprite: displacementSprite, scale: 20 }),
   updateFilter: (filter, values) => {
     const f = filter as DisplacementFilter;
     if (values.scaleX !== undefined) {
