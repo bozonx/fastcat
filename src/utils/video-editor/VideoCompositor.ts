@@ -1375,8 +1375,12 @@ export class VideoCompositor {
 
     const anchorOffsetX = input.normalizedAnchor.x * input.targetW;
     const anchorOffsetY = input.normalizedAnchor.y * input.targetH;
-    input.clip.sprite.x = input.baseX + anchorOffsetX + input.posX;
-    input.clip.sprite.y = input.baseY + anchorOffsetY + input.posY;
+
+    const stageScaleX = this.width / 1920;
+    const stageScaleY = this.height / 1080;
+
+    input.clip.sprite.x = input.baseX + anchorOffsetX + input.posX * stageScaleX;
+    input.clip.sprite.y = input.baseY + anchorOffsetY + input.posY * stageScaleY;
   }
 
   private drawTextClip(clip: CompositorClip) {
@@ -1402,11 +1406,14 @@ export class VideoCompositor {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const renderScale = canvas.height / 1080;
+
     const style = clip.style ?? {};
-    const fontSize =
+    const baseFontSize =
       typeof style.fontSize === 'number' && Number.isFinite(style.fontSize)
         ? Math.max(1, Math.min(1000, Math.round(style.fontSize)))
         : 64;
+    const fontSize = Math.max(1, Math.round(baseFontSize * renderScale));
     const fontFamily =
       typeof style.fontFamily === 'string' && style.fontFamily.length > 0
         ? style.fontFamily
@@ -1435,10 +1442,11 @@ export class VideoCompositor {
         : 1.2;
     const lineHeightPx = Math.max(1, Math.round(fontSize * lineHeightMultiplier));
 
-    const letterSpacing =
+    const baseLetterSpacing =
       typeof style.letterSpacing === 'number' && Number.isFinite(style.letterSpacing)
         ? Math.max(-1000, Math.min(1000, style.letterSpacing))
         : 0;
+    const letterSpacing = Math.round(baseLetterSpacing * renderScale);
 
     const backgroundColor =
       typeof style.backgroundColor === 'string' && style.backgroundColor.trim().length > 0
@@ -1479,7 +1487,13 @@ export class VideoCompositor {
       return { top: 60, right: 60, bottom: 60, left: 60 };
     })();
 
-    const explicitWidth = typeof (style as any).width === 'number' && Number.isFinite((style as any).width) && (style as any).width > 0 ? (style as any).width : undefined;
+    padding.top = Math.round(padding.top * renderScale);
+    padding.right = Math.round(padding.right * renderScale);
+    padding.bottom = Math.round(padding.bottom * renderScale);
+    padding.left = Math.round(padding.left * renderScale);
+
+    const explicitWidthRaw = typeof (style as any).width === 'number' && Number.isFinite((style as any).width) && (style as any).width > 0 ? (style as any).width : undefined;
+    const explicitWidth = explicitWidthRaw !== undefined ? Math.round(explicitWidthRaw * renderScale) : undefined;
     const contentWidth = explicitWidth !== undefined ? Math.max(1, explicitWidth - padding.left - padding.right) : undefined;
 
     const safeW = Math.max(1, canvas.width);

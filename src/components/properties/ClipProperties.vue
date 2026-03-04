@@ -423,6 +423,7 @@ defineExpose({
               :model-value="Number((clip as any).style?.fontSize ?? 64)"
               size="sm"
               :step="1"
+              :min="1"
               @update:model-value="(v: any) => handleUpdateTextStyle({ fontSize: Number(v) })"
             />
           </div>
@@ -445,6 +446,7 @@ defineExpose({
             :model-value="Number((clip as any).style?.width ?? 0)"
             size="sm"
             :step="10"
+            :min="0"
             @update:model-value="(v: any) => handleUpdateTextStyle({ width: v > 0 ? Number(v) : undefined })"
           />
         </div>
@@ -527,9 +529,15 @@ defineExpose({
             t('granVideoEditor.textClip.padding', 'Padding')
           }}</span>
           <WheelNumberInput
-            :model-value="Number((clip as any).style?.padding ?? 60)"
+            :model-value="(() => {
+              const p = (clip as any).style?.padding;
+              if (typeof p === 'number' && Number.isFinite(p)) return p;
+              if (p && typeof p === 'object') return p.top ?? p.x ?? p.y ?? 60;
+              return 60;
+            })()"
             size="sm"
             :step="1"
+            :min="0"
             @update:model-value="(v: any) => handleUpdateTextStyle({ padding: Number(v) })"
           />
         </div>

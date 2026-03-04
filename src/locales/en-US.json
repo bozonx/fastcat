@@ -241,6 +241,7 @@
         "showHiddenFiles": "Show hidden files",
         "hideHiddenFiles": "Hide hidden files",
         "dropZone": "Move to folder",
+        "cancelProxyGeneration": "Cancel proxy generation",
         "title": "Actions"
       },
       "projectRoot": {

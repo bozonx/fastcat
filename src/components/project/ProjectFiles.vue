@@ -406,7 +406,11 @@ async function onDirectoryFileSelect(e: Event) {
   if (!entry || entry.kind !== 'directory') return;
   if (!files || files.length === 0) return;
 
-  await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  if (!entry.path) {
+    await handleFiles(files);
+  } else {
+    await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  }
   await loadProjectDirectory();
 }
 

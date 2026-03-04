@@ -91,21 +91,21 @@ function onContainerKeyDown(e: KeyboardEvent) {
     } else if (e.key === 'ArrowLeft') {
       nextIndex = Math.max(currentIndex - 1, 0);
     } else if (e.key === 'ArrowDown') {
-      if (isGrid) {
+      if (isGrid && items[0]) {
         // Find columns count by looking at items in the first row
         const firstTop = items[0].offsetTop;
         let cols = 0;
-        while (cols < items.length && items[cols].offsetTop === firstTop) cols++;
+        while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
         cols = cols || 1;
         nextIndex = Math.min(currentIndex + cols, items.length - 1);
       } else {
         nextIndex = Math.min(currentIndex + 1, items.length - 1);
       }
     } else if (e.key === 'ArrowUp') {
-      if (isGrid) {
+      if (isGrid && items[0]) {
         const firstTop = items[0].offsetTop;
         let cols = 0;
-        while (cols < items.length && items[cols].offsetTop === firstTop) cols++;
+        while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
         cols = cols || 1;
         nextIndex = Math.max(currentIndex - cols, 0);
       } else {
@@ -114,7 +114,10 @@ function onContainerKeyDown(e: KeyboardEvent) {
     }
 
     if (nextIndex !== currentIndex) {
-      items[nextIndex].focus();
+      const item = items[nextIndex];
+      if (item) {
+        item.focus();
+      }
     }
   }
 }

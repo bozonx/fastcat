@@ -19,6 +19,7 @@ interface Props {
   entries: FsEntry[];
   depth: number;
   foldersOnly?: boolean;
+  isFilesPage?: boolean;
 }
 
 interface TreeContext {
@@ -32,7 +33,7 @@ interface TreeContext {
   };
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
@@ -333,9 +334,18 @@ function getContextMenuItems(entry: FsEntry) {
     }
   }
 
-  if (isOpenableMediaFile(entry)) {
+  if (isOpenableMediaFile(entry) && !props.isFilesPage) {
     items.push([
-      
+      {
+        label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
+        icon: 'i-heroicons-window',
+        onSelect: () => emit('action', 'openAsPanel', entry),
+      },
+      {
+        label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+        icon: 'i-heroicons-squares-plus',
+        onSelect: () => emit('action', 'openAsProjectTab', entry),
+      },
     ]);
   }
 
@@ -528,6 +538,7 @@ function getContextMenuItems(entry: FsEntry) {
             :entries="entry.children"
             :depth="depth + 1"
             :folders-only="foldersOnly"
+            :is-files-page="isFilesPage"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"
