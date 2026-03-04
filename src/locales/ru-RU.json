@@ -310,13 +310,32 @@
   },
   "granVideoEditor": {
     "clip": {
+      "actions": "Действия",
+      "info": "Информация о клипе",
+      "opacity": "Прозрачность",
+      "showInFileManager": "Показать в файловом менеджере",
       "audio": {
-        "volume": "Громкость"
+        "volume": "Громкость",
+        "balance": "Баланс"
       },
       "audioFade": {
         "title": "Фейды звука",
         "fadeIn": "Фейд в начале",
-        "fadeOut": "Фейд в конце"
+        "fadeOut": "Фейд в конце",
+        "in": "Фейд в начале",
+        "out": "Фейд в конце"
+      },
+      "transform": {
+        "title": "Трансформация",
+        "scaleX": "Масштаб X",
+        "scaleY": "Масштаб Y",
+        "linkedScale": "Связанный масштаб",
+        "rotation": "Поворот (градусы)",
+        "positionX": "Позиция X",
+        "positionY": "Позиция Y",
+        "anchor": "Точка привязки",
+        "anchorX": "Точка X (0..1)",
+        "anchorY": "Точка Y (0..1)"
       }
     },
     "welcome": {
@@ -412,7 +431,13 @@
         "title": "Переход",
         "duration": "Длительность (секунды)",
         "panelIn": "Переход в начале",
-        "panelOut": "Переход в конце"
+        "panelOut": "Переход в конце",
+        "errorNoPreviousClip": "Нет предыдущего клипа для перехода",
+        "errorNoNextClip": "Нет следующего клипа для перехода",
+        "errorPrevClipTooShort": "Предыдущий клип слишком короткий для перехода (нужно {need}с, есть {have}с)",
+        "errorClipTooShort": "Клип слишком короткий для перехода (нужно {need}с, есть {have}с)",
+        "errorGapBetweenClips": "Зазор между клипами ({gapSeconds}с) мешает смешиванию",
+        "errorPrevHandleTooShort": "Хвост предыдущего клипа слишком короткий (нужно {needSeconds}с, есть {haveSeconds}с)"
       }
     },
     "textClip": {

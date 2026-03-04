@@ -1,8 +1,9 @@
 import { computed, type Ref } from 'vue';
-import type { ClipTransform, TimelineClipItem } from '~/timeline/types';
+import type { ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/types';
 
 interface UseClipTransformOptions {
   clip: Ref<TimelineClipItem>;
+  trackKind: Ref<TrackKind>;
   updateTransform: (next: ClipTransform) => void;
 }
 
@@ -62,7 +63,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
 
 export function useClipTransform(options: UseClipTransformOptions) {
   const canEditTransform = computed(() => {
-    return options.clip.value.trackId.startsWith('v');
+    return options.trackKind.value === 'video';
   });
 
   const anchorPresetOptions = computed(() => [

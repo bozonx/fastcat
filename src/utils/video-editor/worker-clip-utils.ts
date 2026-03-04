@@ -7,14 +7,19 @@ import {
 } from '~/utils/constants';
 
 export function cloneEffects<T>(effects: T): T {
+  if (effects === null || effects === undefined) return effects;
   try {
     if (typeof structuredClone === 'function') {
       return structuredClone(effects);
     }
   } catch {
-    // ignore
+    // ignore and fallback
   }
-  return effects;
+  try {
+    return JSON.parse(JSON.stringify(effects)) as T;
+  } catch {
+    return effects;
+  }
 }
 
 export function clonePlain<T>(value: T): T {

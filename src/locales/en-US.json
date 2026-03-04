@@ -306,13 +306,32 @@
   },
   "granVideoEditor": {
     "clip": {
+      "actions": "Actions",
+      "info": "Clip Info",
+      "opacity": "Opacity",
+      "showInFileManager": "Show in File Manager",
       "audio": {
-        "volume": "Volume"
+        "volume": "Volume",
+        "balance": "Balance"
       },
       "audioFade": {
         "title": "Audio fades",
         "fadeIn": "Fade in",
-        "fadeOut": "Fade out"
+        "fadeOut": "Fade out",
+        "in": "Fade in",
+        "out": "Fade out"
+      },
+      "transform": {
+        "title": "Transform",
+        "scaleX": "Scale X",
+        "scaleY": "Scale Y",
+        "linkedScale": "Linked scale",
+        "rotation": "Rotation (deg)",
+        "positionX": "Position X",
+        "positionY": "Position Y",
+        "anchor": "Anchor",
+        "anchorX": "Anchor X (0..1)",
+        "anchorY": "Anchor Y (0..1)"
       }
     },
     "welcome": {
@@ -422,7 +441,11 @@
         "curveLinear": "Linear",
         "curveBezier": "Bezier",
         "errorPrevClipTooShort": "Previous clip is too short for this transition (needs {need}s, has {have}s)",
-        "errorNoPreviousClip": "No previous clip found for transition"
+        "errorNoPreviousClip": "No previous clip found for transition",
+        "errorNoNextClip": "No next clip found for transition",
+        "errorClipTooShort": "Clip is too short for this transition (needs {need}s, has {have}s)",
+        "errorGapBetweenClips": "Gap between clips ({gapSeconds}s) prevents blending",
+        "errorPrevHandleTooShort": "Previous clip handle too short (needs {needSeconds}s, has {haveSeconds}s)"
       }
     },
     "textClip": {

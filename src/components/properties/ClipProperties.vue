@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import type { TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
@@ -23,6 +24,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const selectionStore = useSelectionStore();
 const editorViewStore = useEditorViewStore();
@@ -33,6 +35,14 @@ const focusStore = useFocusStore();
 const isRenameModalOpen = ref(false);
 
 const clipRef = computed(() => props.clip);
+
+const clipTrack = computed<TimelineTrack | undefined>(() =>
+  timelineStore.timelineDoc?.tracks.find((t) => t.id === props.clip.trackId),
+);
+
+const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video');
+
+const isVideoTrack = computed(() => clipTrackKind.value === 'video');
 
 function handleDeleteClip() {
   timelineStore.deleteSelectedItems(props.clip.trackId);
@@ -172,6 +182,7 @@ const {
   transformScaleY,
 } = useClipTransform({
   clip: clipRef,
+  trackKind: clipTrackKind,
   updateTransform: (next) => {
     timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transform: next });
   },
@@ -225,15 +236,25 @@ function toggleTransition(edge: 'in' | 'out') {
   if (current) {
     handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition: null });
   } else {
-    // Basic defaults
+    const defaultDurationUs = Math.max(
+      0,
+      Math.round(
+        Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000),
+      ),
+    );
+    const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
+    const suggestedDurationUs =
+      clipDurationUs > 0 && clipDurationUs < defaultDurationUs
+        ? Math.round(clipDurationUs * 0.3)
+        : defaultDurationUs;
+
     const transition = {
       type: 'dissolve',
-      durationUs: 1_000_000,
+      durationUs: suggestedDurationUs,
       mode: 'blend' as const,
       curve: 'linear' as const,
     };
     handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition });
-    // Optionally select it right away
     timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
   }
 }
@@ -493,7 +514,7 @@ defineExpose({
     </PropertySection>
 
     <ClipTransitionsSection
-      :is-video-track="clip.trackId.startsWith('v')"
+      :is-video-track="isVideoTrack"
       :transition-in="(clip as any).transitionIn ?? null"
       :transition-out="(clip as any).transitionOut ?? null"
       :clip-duration-us="clip.timelineRange.durationUs"
@@ -558,53 +579,53 @@ defineExpose({
       <div
         class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
       >
-        Transform
+        {{ t('granVideoEditor.clip.transform.title', 'Transform') }}
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Scale X</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleX', 'Scale X') }}</span>
           <UInput v-model.number="transformScaleX" size="sm" type="number" step="0.01" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Scale Y</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleY', 'Scale Y') }}</span>
           <UInput v-model.number="transformScaleY" size="sm" type="number" step="0.01" />
         </div>
       </div>
 
       <div class="flex items-center justify-between">
-        <span class="text-sm text-ui-text">Linked scale</span>
+        <span class="text-sm text-ui-text">{{ t('granVideoEditor.clip.transform.linkedScale', 'Linked scale') }}</span>
         <UCheckbox v-model="transformScaleLinked" />
       </div>
 
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">Rotation (deg)</span>
+        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.rotation', 'Rotation (deg)') }}</span>
         <UInput v-model.number="transformRotationDeg" size="sm" type="number" step="0.1" />
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Position X</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionX', 'Position X') }}</span>
           <UInput v-model.number="transformPosX" size="sm" type="number" step="1" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Position Y</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionY', 'Position Y') }}</span>
           <UInput v-model.number="transformPosY" size="sm" type="number" step="1" />
         </div>
       </div>
 
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">Anchor</span>
+        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchor', 'Anchor') }}</span>
         <USelect v-model="transformAnchorPreset" :options="anchorPresetOptions" size="sm" />
       </div>
 
       <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Anchor X (0..1)</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchorX', 'Anchor X (0..1)') }}</span>
           <UInput v-model.number="transformAnchorX" size="sm" type="number" step="0.01" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Anchor Y (0..1)</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchorY', 'Anchor Y (0..1)') }}</span>
           <UInput v-model.number="transformAnchorY" size="sm" type="number" step="0.01" />
         </div>
       </div>
