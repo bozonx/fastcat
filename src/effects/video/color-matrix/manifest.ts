@@ -13,6 +13,7 @@ export interface ColorMatrixParams {
     | 'technicolor'
     | 'polaroid'
     | 'lsd';
+  intensity: number;
 }
 
 export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
@@ -22,6 +23,7 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
   icon: 'i-heroicons-swatch',
   defaultValues: {
     filterType: 'none',
+    intensity: 1,
   },
   controls: [
     {
@@ -41,11 +43,21 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
         { label: 'LSD', value: 'lsd' },
       ],
     },
+    {
+      kind: 'slider',
+      key: 'intensity',
+      label: 'Интенсивность',
+      min: 0,
+      max: 1,
+      step: 0.01,
+      format: (v) => `${Math.round(v * 100)}%`,
+    },
   ],
   createFilter: () => new ColorMatrixFilter(),
   updateFilter: (filter, values) => {
     const f = filter as ColorMatrixFilter;
     f.reset();
+    f.alpha = values.intensity ?? 1;
 
     switch (values.filterType) {
       case 'sepia':
