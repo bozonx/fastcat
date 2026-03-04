@@ -579,7 +579,7 @@ defineExpose({
 
       <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleX', 'Scale X') }}</span>
+          <span class="text-xs text-ui-text-muted">{{ transformScaleLinked ? t('granVideoEditor.clip.transform.scale', 'Scale (%)') : t('granVideoEditor.clip.transform.scaleX', 'Scale X (%)') }}</span>
           <WheelNumberInput v-model="transformScaleX" size="sm" :step="1" />
         </div>
         
@@ -595,7 +595,7 @@ defineExpose({
         </div>
 
         <div v-if="!transformScaleLinked" class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleY', 'Scale Y') }}</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.scaleY', 'Scale Y (%)') }}</span>
           <WheelNumberInput v-model="transformScaleY" size="sm" :step="1" />
         </div>
         <div v-else class="flex flex-col gap-0.5">
@@ -605,16 +605,16 @@ defineExpose({
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.rotation', 'Rotation (deg)') }}</span>
-        <WheelNumberInput v-model="transformRotationDeg" size="sm" :step="0.1" />
+        <WheelNumberInput v-model="transformRotationDeg" size="sm" :step="1" />
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionX', 'Position X') }}</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionX', 'Position X (px)') }}</span>
           <WheelNumberInput v-model="transformPosX" size="sm" :step="1" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionY', 'Position Y') }}</span>
+          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.positionY', 'Position Y (px)') }}</span>
           <WheelNumberInput v-model="transformPosY" size="sm" :step="1" />
         </div>
       </div>
