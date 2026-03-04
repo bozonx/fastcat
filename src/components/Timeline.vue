@@ -9,6 +9,7 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useProjectStore } from '~/stores/project.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
+import { isTimelineTextDropFileName } from '~/utils/timeline/textDrop';
 import {
   computeAnchoredScrollLeft,
   timeUsToPx,
@@ -85,17 +86,8 @@ function onLabelsScroll() {
     return;
   }
 
-  const maxScrollTop = el.scrollHeight - el.clientHeight;
-  const labelsMaxScrollTop = labelsEl.scrollHeight - labelsEl.clientHeight;
-  
-  if (maxScrollTop > 0 && labelsMaxScrollTop > 0) {
-    const ratio = labelsEl.scrollTop / labelsMaxScrollTop;
-    isTimelineScrolling.value = true;
-    el.scrollTop = Math.round(ratio * maxScrollTop);
-  } else {
-    isTimelineScrolling.value = true;
-    el.scrollTop = labelsEl.scrollTop;
-  }
+  isTimelineScrolling.value = true;
+  el.scrollTop = labelsEl.scrollTop;
 }
 
 const isTimelineScrolling = ref(false);
@@ -104,8 +96,7 @@ function onScroll() {
   const el = scrollEl.value;
   if (!el) return;
   scrollLeftRef.value = el.scrollLeft;
-  
-  // Sync label scroll: use ratio to handle different clientHeights
+
   const labelsEl = timelineTrackLabelsRef.value?.labelsScrollContainer;
   if (labelsEl) {
     if (isTimelineScrolling.value) {
@@ -113,16 +104,8 @@ function onScroll() {
       return;
     }
 
-    const maxScrollTop = el.scrollHeight - el.clientHeight;
-    const labelsMaxScrollTop = labelsEl.scrollHeight - labelsEl.clientHeight;
-    if (maxScrollTop > 0 && labelsMaxScrollTop > 0) {
-      const ratio = el.scrollTop / maxScrollTop;
-      isLabelsScrolling.value = true;
-      labelsEl.scrollTop = Math.round(ratio * labelsMaxScrollTop);
-    } else {
-      isLabelsScrolling.value = true;
-      labelsEl.scrollTop = el.scrollTop;
-    }
+    isLabelsScrolling.value = true;
+    labelsEl.scrollTop = el.scrollTop;
   }
 }
 
@@ -463,7 +446,20 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
 
   const file = draggedFile.value;
   if (!file) {
-    clearDragPreview();
+    const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+    const first = droppedFiles[0] ?? null;
+    if (!first || !isTimelineTextDropFileName(first.name)) {
+      clearDragPreview();
+      return;
+    }
+
+    dragPreview.value = {
+      trackId,
+      startUs,
+      label: first.name,
+      durationUs: 5_000_000,
+      kind: 'timeline-clip',
+    };
     return;
   }
 
@@ -539,6 +535,53 @@ async function onClipAction(payload: {
 async function onDrop(e: DragEvent, trackId: string) {
   clearDragPreview();
   const startUs = getDropStartUs(e);
+
+  // Snapshot files synchronously - dataTransfer can become empty after await
+  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+  const textFiles = droppedFiles.filter((f) => isTimelineTextDropFileName(f.name));
+  if (textFiles.length > 0) {
+    try {
+      const baseStartUs = startUs ?? timelineStore.currentTime;
+      let cursorStartUs = baseStartUs;
+      const durationUs = 5_000_000;
+
+      for (const f of textFiles) {
+        const text = await f.text();
+        timelineStore.addVirtualClipToTrack({
+          trackId,
+          startUs: cursorStartUs,
+          clipType: 'text',
+          name: f.name,
+          text,
+        });
+        cursorStartUs += durationUs;
+      }
+
+      await timelineStore.requestTimelineSave({ immediate: true });
+
+      toast.add({
+        title: 'Clip Added',
+        description:
+          textFiles.length === 1
+            ? `${textFiles[0]!.name} added to track`
+            : `${textFiles.length} text clips added to track`,
+        icon: 'i-heroicons-check-circle',
+        color: 'success',
+      });
+
+      void timelineMediaUsageStore.refreshUsage();
+    } catch (err: any) {
+      toast.add({
+        title: t('common.error', 'Error'),
+        description: String(err?.message ?? err ?? ''),
+        icon: 'i-heroicons-exclamation-triangle',
+        color: 'error',
+      });
+    } finally {
+      clearDraggedFile();
+    }
+    return;
+  }
 
   let parsed: any = null;
   const raw = e.dataTransfer?.getData('application/json');
@@ -709,8 +752,9 @@ async function onDrop(e: DragEvent, trackId: string) {
               The ruler height (h-7 = 28px) is subtracted from top so the line starts below ruler.
             -->
             <div
-              class="absolute top-7 bottom-0 pointer-events-auto cursor-ew-resize"
+              class="absolute bottom-0 pointer-events-auto cursor-ew-resize"
               :style="{
+                top: '27px',
                 left: `${playheadLeft}px`,
                 width: '1px',
                 zIndex: 50,

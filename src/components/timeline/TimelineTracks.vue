@@ -162,7 +162,7 @@ function selectTransition(
 
 <template>
   <div
-    class="flex flex-col divide-y divide-ui-border min-h-full pb-16"
+    class="flex flex-col min-h-full pb-16"
     :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
     @pointerdown="
       if ($event.button !== 1 && $event.target === $event.currentTarget) {
@@ -209,7 +209,7 @@ function selectTransition(
       v-for="track in tracks"
       :key="track.id"
       :data-track-id="track.id"
-      class="flex items-center px-2 relative transition-colors"
+      class="flex items-center px-2 relative transition-colors border-b border-ui-border"
       :class="[
         timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : '',
         timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id
