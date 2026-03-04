@@ -65,6 +65,7 @@ const {
   editingEntryPath,
   commitRename,
   stopRename,
+  startRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
@@ -398,6 +399,77 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 }
 
 watch(
+  () => uiStore.pendingFsEntryDelete,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry) {
+      openDeleteConfirmModal(entry);
+      uiStore.pendingFsEntryDelete = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryRename,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry) {
+      startRename(entry);
+      (uiStore as any).pendingFsEntryRename = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateFolder,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry && entry.kind === 'directory') {
+      onFileActionBase("createFolder", entry, () => fileManager.rootEntries.value.map(e => e.name));
+      (uiStore as any).pendingFsEntryCreateFolder = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateTimeline,
+  async (value) => {
+    const entry = value as FsEntry | null;
+    if (entry && entry.kind === 'directory') {
+      void createTimelineInDirectory(entry);
+      (uiStore as any).pendingFsEntryCreateTimeline = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateMarkdown,
+  async (value) => {
+    const entry = value as FsEntry | null;
+    if (entry && entry.kind === 'directory') {
+      const handle = entry.handle
+        ? (entry.handle as FileSystemDirectoryHandle)
+        : await getProjectRootDirHandle();
+      if (handle) {
+        void createMarkdownInDirectory({ ...entry, handle });
+      }
+      (uiStore as any).pendingFsEntryCreateMarkdown = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingOtioCreateVersion,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (entry) {
+      void createOtioVersion(entry);
+      (uiStore as any).pendingOtioCreateVersion = null;
+    }
+  },
+);
+
+watch(
   () => projectStore.currentProjectName,
   async (name) => {
     if (name) {
@@ -482,7 +554,7 @@ watch(
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="onFileAction('createFolder', uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
+          @click="onFileAction('createFolder', (uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null) as FsEntry)"
         />
 
         <div class="ml-auto flex items-center">
