@@ -25,6 +25,7 @@ import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
+import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -695,6 +696,13 @@ async function onDrop(e: DragEvent, trackId: string) {
               />
             </div>
 
+            <!-- Grid lines overlaid on tracks area, below ruler -->
+            <TimelineGrid
+              class="absolute left-0 right-0 bottom-0 pointer-events-none"
+              :style="{ top: '28px' }"
+              :scroll-el="scrollEl"
+            />
+
             <!--
               Playhead overlay — positioned absolutely to the track-area container (not the
               scroll container), so it stays above all clips and spans the full visible height.
@@ -722,7 +730,8 @@ async function onDrop(e: DragEvent, trackId: string) {
             >
               <div
                 v-if="isZooming"
-                class="absolute bottom-3 right-3 px-2.5 py-1 text-xs font-mono rounded-md bg-neutral-900/90 text-neutral-100 shadow-lg pointer-events-none z-50 select-none"
+                class="absolute bottom-4 right-5 px-3 py-1.5 text-sm font-mono font-semibold rounded-lg bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
+                :style="{ zIndex: 60 }"
               >
                 {{ zoomFactor }}
               </div>

@@ -224,7 +224,6 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
 
     const selectedSet = new Set(deps.selectedItemIds.value);
     let targetTrack: TimelineTrack | null = null;
-    const targetItems: TimelineClipItem[] = [];
 
     for (const track of doc.tracks) {
       for (const item of track.items) {
@@ -237,25 +236,23 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     }
 
     if (!targetTrack) return;
-    for (const item of targetTrack.items) {
-      if (selectedSet.has(item.id) && item.kind === 'clip') {
-        targetItems.push(item);
-      }
-    }
 
-    if (targetItems.length === 0) return;
-
+    // Collect selected items (both clips and gaps)
     let startUs = Infinity;
     let endUs = -Infinity;
-    for (const item of targetItems) {
+    const itemIds: string[] = [];
+
+    for (const item of targetTrack.items) {
+      if (!selectedSet.has(item.id)) continue;
+      itemIds.push(item.id);
       startUs = Math.min(startUs, item.timelineRange.startUs);
       endUs = Math.max(endUs, item.timelineRange.startUs + item.timelineRange.durationUs);
     }
 
-    if (startUs < endUs) {
-      deps.rippleDeleteRange({ trackIds: [targetTrack.id], startUs, endUs });
-      deps.clearSelection();
-    }
+    if (itemIds.length === 0 || startUs >= endUs) return;
+
+    deps.rippleDeleteRange({ trackIds: [targetTrack.id], startUs, endUs });
+    deps.clearSelection();
   }
 
   function addVirtualClipAtPlayhead(input: {
