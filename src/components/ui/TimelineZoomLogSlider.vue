@@ -12,7 +12,7 @@ const props = withDefaults(
   }>(),
   {
     min: 0,
-    max: 100,
+    max: 110,
     step: 1,
     sliderClass: '',
   },

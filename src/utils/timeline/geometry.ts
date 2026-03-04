@@ -3,9 +3,9 @@ export const BASE_PX_PER_SECOND = 10;
 export function zoomToPxPerSecond(zoom: number) {
   const parsed = Number(zoom);
   const safePos = Number.isFinite(parsed) ? parsed : 50;
-  const pos = Math.min(100, Math.max(0, safePos));
+  const pos = Math.min(110, Math.max(0, safePos));
 
-  const exponent = (pos - 50) / 10;
+  const exponent = (pos - 50) / 7;
   const factor = Math.pow(2, exponent);
   return BASE_PX_PER_SECOND * factor;
 }

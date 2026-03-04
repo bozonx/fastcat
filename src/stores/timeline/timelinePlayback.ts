@@ -50,7 +50,7 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
   function setTimelineZoom(next: number) {
     const parsed = Math.round(Number(next));
     if (!Number.isFinite(parsed)) return;
-    deps.timelineZoom.value = Math.min(100, Math.max(0, parsed));
+    deps.timelineZoom.value = Math.min(110, Math.max(0, parsed));
   }
 
   function setAudioVolume(next: number) {

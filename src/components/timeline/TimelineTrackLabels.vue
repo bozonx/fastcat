@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
@@ -64,9 +64,10 @@ function onGlobalMouseUp() {
 }
 
 const isConfirmDeleteOpen = ref(false);
-const isRenameOpen = ref(false);
-const renameValue = ref('');
 const contextTrackId = ref<string | null>(null);
+const editingTrackId = ref<string | null>(null);
+const renameValue = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
 
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 
@@ -103,19 +104,30 @@ const canDeleteSelectedTrackWithoutConfirm = computed(() =>
   Boolean(selectedTrack.value && selectedTrack.value.items.length === 0),
 );
 
-function openRename(track: TimelineTrack) {
+async function openRename(track: TimelineTrack) {
   contextTrackId.value = track.id;
   onSelectTrack(track.id);
   renameValue.value = track.name;
-  isRenameOpen.value = true;
+  editingTrackId.value = track.id;
+
+  await nextTick();
+  if (renameInput.value) {
+    renameInput.value.focus();
+    renameInput.value.select();
+  }
 }
 
 function confirmRename() {
-  if (!selectedTrack.value) return;
+  if (!editingTrackId.value || !selectedTrack.value) return;
   const next = renameValue.value.trim();
-  if (!next) return;
-  timelineStore.renameTrack(selectedTrack.value.id, next);
-  isRenameOpen.value = false;
+  if (next) {
+    timelineStore.renameTrack(selectedTrack.value.id, next);
+  }
+  cancelRename();
+}
+
+function cancelRename() {
+  editingTrackId.value = null;
   contextTrackId.value = null;
 }
 
@@ -477,7 +489,26 @@ function toggleClipSnapMode() {
             @mouseenter="timelineStore.hoveredTrackId = track.id"
             @mouseleave="timelineStore.hoveredTrackId = null"
           >
-            <span class="truncate" :title="track.name">{{ track.name }}</span>
+            <div
+              class="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-transparent transition-colors group/name"
+              :class="[
+                editingTrackId === track.id
+                  ? 'bg-ui-bg-elevated border-ui-border-accent'
+                  : 'hover:border-ui-border-accent/40',
+              ]"
+              @click.stop="openRename(track)"
+            >
+              <input
+                v-if="editingTrackId === track.id"
+                ref="renameInput"
+                v-model="renameValue"
+                class="w-full bg-transparent border-none outline-none text-xs font-medium p-0 m-0 block"
+                @keydown.enter.stop="confirmRename"
+                @keydown.esc.stop="cancelRename"
+                @blur="confirmRename"
+              />
+              <span v-else class="truncate block" :title="track.name">{{ track.name }}</span>
+            </div>
 
             <div class="ml-auto flex items-center gap-1">
               <UButton
@@ -548,29 +579,7 @@ function toggleClipSnapMode() {
     @confirm="confirmDelete"
   />
 
-  <AppModal
-    v-if="selectedTrack"
-    v-model:open="isRenameOpen"
-    :title="t('granVideoEditor.timeline.renameTrackTitle', 'Rename track')"
-  >
-    <div class="flex flex-col gap-3">
-      <UInput
-        v-model="renameValue"
-        size="sm"
-        :placeholder="t('granVideoEditor.timeline.trackName', 'Track name')"
-        @keydown.enter.prevent="confirmRename"
-      />
-    </div>
 
-    <template #footer>
-      <UButton color="neutral" variant="ghost" @click="isRenameOpen = false">
-        {{ t('common.cancel', 'Cancel') }}
-      </UButton>
-      <UButton color="primary" @click="confirmRename">
-        {{ t('common.save', 'Save') }}
-      </UButton>
-    </template>
-  </AppModal>
 </template>
 
 <style scoped>
