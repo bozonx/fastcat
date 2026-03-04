@@ -233,17 +233,30 @@ function onPointerMove(e: PointerEvent) {
   } else if (dragType === 'anchor') {
     // Update custom anchor
     // We convert local motion scaled to anchor domain (0-1)
-    const w = layout.value.targetW * dragStartTransform.scaleX;
-    const h = layout.value.targetH * dragStartTransform.scaleY;
+    const W = layout.value.targetW;
+    const H = layout.value.targetH;
     
+    // Reverse the unrotated dx, dy 
     const rad = -dragStartTransform.rotationDeg * Math.PI / 180;
     const ldx = dx * Math.cos(rad) - dy * Math.sin(rad);
     const ldy = dx * Math.sin(rad) + dy * Math.cos(rad);
 
-    const dAx = ldx / w;
-    const dAy = ldy / h;
+    const W_scaled = (dragStartTransform.scaleX !== 0 ? (W * dragStartTransform.scaleX) : W);
+    const H_scaled = (dragStartTransform.scaleY !== 0 ? (H * dragStartTransform.scaleY) : H);
+
+    const dAx = ldx / W_scaled;
+    const dAy = ldy / H_scaled;
     
-    updateTransform({ anchor: { preset: 'custom', x: dragStartTransform.ax + dAx, y: dragStartTransform.ay + dAy }});
+    const newAx = dragStartTransform.ax + dAx;
+    const newAy = dragStartTransform.ay + dAy;
+
+    const deltaPosX = dx - dAx * W;
+    const deltaPosY = dy - dAy * H;
+    
+    updateTransform({ 
+      anchor: { preset: 'custom', x: newAx, y: newAy },
+      position: { x: dragStartTransform.posX + deltaPosX, y: dragStartTransform.posY + deltaPosY }
+    });
   }
 }
 
@@ -255,7 +268,7 @@ function onPointerUp(e: PointerEvent) {
   // If clicked without dragging, toggle mode
   const dx = e.clientX - dragStartPos.x;
   const dy = e.clientY - dragStartPos.y;
-  if (Math.abs(dx) < 3 && Math.abs(dy) < 3 && dragType === 'translate') {
+  if (Math.abs(dx) < 3 && Math.abs(dy) < 3 && (dragType === 'translate' || dragType === 'rotate')) {
     mode.value = mode.value === 'scale' ? 'rotate' : 'scale';
   }
 }

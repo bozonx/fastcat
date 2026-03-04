@@ -80,13 +80,29 @@ export function useFileManagerActions(actions: FileManagerActions) {
     targetDirPath: string,
     existingNames: string[],
   ) {
+    const usedNames = new Set(existingNames);
+    if (targetDirHandle) {
+      try {
+        const iterator =
+          (targetDirHandle as any).values?.() ?? (targetDirHandle as any).entries?.();
+        if (iterator) {
+          for await (const value of iterator) {
+            const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
+            usedNames.add(handle.name);
+          }
+        }
+      } catch {
+        // ignore and fallback to existing names snapshot
+      }
+    }
+
     const baseName = t('common.folderBaseName', 'Папка');
     let index = 1;
     let newName = '';
     do {
       newName = `${baseName}_${index.toString().padStart(3, '0')}`;
       index++;
-    } while (existingNames.includes(newName));
+    } while (usedNames.has(newName));
 
     await actions.createFolder(newName, targetDirHandle);
 

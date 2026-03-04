@@ -75,6 +75,7 @@ async function onDirectoryFileSelect(e: Event) {
     await fileManager.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
   }
   await fileManager.loadProjectDirectory();
+  uiStore.notifyFileManagerUpdate();
 }
 
 const {
@@ -208,6 +209,8 @@ function onDelete() {
 function openAsTextPanel() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'file') return;
+
+  projectStore.goToCut();
 
   if (mediaType.value === 'text') {
     projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name);

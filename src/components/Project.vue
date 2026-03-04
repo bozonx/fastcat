@@ -104,6 +104,17 @@ function onTabBarDragOver(e: DragEvent) {
   }
 }
 
+function onTabsWheel(e: WheelEvent) {
+  const container = tabContainerRef.value;
+  if (!container) return;
+
+  const horizontalDelta = Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY;
+  if (horizontalDelta === 0) return;
+
+  e.preventDefault();
+  container.scrollLeft += horizontalDelta;
+}
+
 function onTabBarDragLeave(e: DragEvent) {
   const currentTarget = e.currentTarget as HTMLElement | null;
   const related = e.relatedTarget as Node | null;
@@ -256,7 +267,9 @@ onMounted(() => {
 
       <!-- File tabs (draggable out of Project → separate panel) -->
       <div
+        ref="tabContainerRef"
         class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
+        @wheel="onTabsWheel"
       >
         <div
           v-for="tab in fileTabsModel"
