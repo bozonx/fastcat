@@ -124,7 +124,25 @@
     "undo": "Отменить",
     "redo": "Вернуть",
     "toggleMute": "Вкл/выкл звук",
-    "properties": "Свойства"
+    "properties": "Свойства",
+    "folderBaseName": "Папка",
+    "created": "Создано",
+    "sortBy": "Сортировка",
+    "empty": "Папка пуста",
+    "totalSize": "Общий размер",
+    "filesCount": "Файлов",
+    "validation": {
+      "required": "Имя обязательно",
+      "invalidName": "Имя содержит недопустимые символы",
+      "exists": "Имя уже существует"
+    },
+    "namePlaceholder": "Введите имя...",
+    "position": "Позиция",
+    "end": "Время конца",
+    "color": "Цвет",
+    "path": "Путь",
+    "updated": "Обновлено",
+    "show": "Показать"
   },
   "videoEditor": {
     "settings": {
@@ -204,7 +222,9 @@
       "clearTempWorkspaceAction": "Очистить",
       "clearTempWorkspaceHint": "Освободить место... Удаляет все временные файлы прокси, превью и кэша.",
       "codecUnsupportedTitle": "Кодек не поддерживается",
-      "codecUnsupportedDesc": "Ваш браузер не поддерживает аппаратное ускорение для этого кодека. Производительность может быть снижена."
+      "codecUnsupportedDesc": "Ваш браузер не поддерживает аппаратное ускорение для этого кодека. Производительность может быть снижена.",
+      "hotkeysCapturing": "Запись...",
+      "hotkeysResetCommand": "Сбросить"
     },
     "projectSettings": {
       "title": "Настройки проекта",
@@ -214,7 +234,15 @@
       "deleteProject": "Удалить проект",
       "deleteProjectConfirmTitle": "Удалить проект?",
       "deleteProjectConfirmDescription": "Это навсегда удалит папку проекта и все её содержимое. Это действие нельзя отменить.",
-      "deleteProjectAction": "Удалить"
+      "deleteProjectAction": "Удалить",
+      "applied": "Настройки проекта применены",
+      "clearTempTitle": "Очистка временных файлов",
+      "clearTempConfirm": "Очистить",
+      "storage": "Хранилище",
+      "clearTemp": "Очистить временные файлы",
+      "clearTempAction": "Очистить",
+      "reset": "Сбросить по умолчанию",
+      "apply": "Применить настройки"
     },
     "resolution": {
       "customResolution": "Точное разрешение",
@@ -230,7 +258,8 @@
         "2": {
           "7k": "2.7K (QHD)"
         },
-        "4k": "4K (UHD)"
+        "4k": "4K (UHD)",
+        "480p": "480p (Предпросмотр)"
       },
       "aspect": {
         "16_9": "16:9",
@@ -294,6 +323,40 @@
       "info": {
         "title": "Информация о файле",
         "metadata": "Метаданные"
+      },
+      "skipOtio": {
+        "title": "Пропущенные файлы проекта"
+      },
+      "delete": {
+        "usedWarning": "Этот файл используется в таймлайнах:"
+      },
+      "cardScale": "Масштаб карточек",
+      "video": {
+        "resolution": "Разрешение",
+        "fps": "FPS",
+        "container": "Контейнер",
+        "videoCodec": "Видео кодек",
+        "audioCodec": "Аудио кодек"
+      },
+      "audio": {
+        "channels": "Каналы",
+        "format": "Формат",
+        "codec": "Аудио кодек"
+      },
+      "proxy": {
+        "regenerate": "Перегенерировать прокси",
+        "create": "Создать прокси",
+        "delete": "Удалить прокси"
+      },
+      "image": {
+        "resolution": "Разрешение",
+        "location": "Местоположение",
+        "camera": "Камера"
+      },
+      "otio": {
+        "videoTracks": "Видео дорожки",
+        "audioTracks": "Аудио дорожки",
+        "clips": "Клипов"
       }
     },
     "export": {
@@ -326,7 +389,23 @@
       "codec": {
         "aac": "AAC",
         "opus": "Opus"
-      }
+      },
+      "error": "Ошибка экспорта",
+      "preset": {
+        "optimal": "Оптимально",
+        "social": "Социальные сети",
+        "high": "Высокое качество",
+        "lossless": "Без потерь (визуально)",
+        "custom": "Свой"
+      },
+      "presetLabel": "Пресет",
+      "bitrateMode": "Режим битрейта",
+      "keyframeInterval": "Интервал ключевых кадров (GOP, сек)",
+      "exportAlpha": "Экспорт альфа-канала",
+      "metadata": "Метаданные",
+      "metadataTitle": "Заголовок",
+      "metadataAuthor": "Автор",
+      "metadataTags": "Теги"
     },
     "hotkeys": {
       "general": {
@@ -397,6 +476,16 @@
         "backward0_5": "Назад x0.5 (только монитор)",
         "backward1": "Назад x1 (только монитор)"
       }
+    },
+    "projectTabs": {
+      "dropHint": "Добавить как вкладку"
+    },
+    "audio": {
+      "stereo": "Стерео",
+      "mono": "Моно",
+      "audioSettings": "Настройки аудио",
+      "channels": "Каналы",
+      "sampleRate": "Частота дискретизации"
     }
   },
   "granVideoEditor": {
@@ -405,7 +494,12 @@
         "video": "Видео",
         "transitions": "Переходы",
         "audio": "Аудио"
-      }
+      },
+      "title": "Эффекты",
+      "add": "Добавить",
+      "empty": "Эффектов нет",
+      "trackTitle": "Эффекты дорожки",
+      "clipTitle": "Эффекты клипа"
     },
     "clip": {
       "actions": "Действия",
@@ -464,7 +558,8 @@
       "noSelection": "Ничего не выбрано",
       "audioTrack": "Аудиодорожка",
       "usedInTimelines": "Используется в таймлайнах",
-      "resetZoom": "Сбросить зум и панораму"
+      "resetZoom": "Сбросить зум и панораму",
+      "renameClip": "Переименовать клип"
     },
     "monitor": {
       "snapshot": "Снимок",
@@ -555,7 +650,15 @@
         "errorClipTooShort": "Клип слишком короткий для перехода (нужно {need}с, есть {have}с)",
         "errorGapBetweenClips": "Зазор между клипами ({gapSeconds}с) мешает смешиванию",
         "errorPrevHandleTooShort": "Хвост предыдущего клипа слишком короткий (нужно {needSeconds}с, есть {haveSeconds}с)"
-      }
+      },
+      "deleteTrackConfirm": "Дорожка не пуста. Удалить?",
+      "convertZoneToMarker": "Преобразовать в обычный маркер",
+      "convertMarkerToZone": "Преобразовать в маркер зоны",
+      "transitions": "Переходы",
+      "deleteMarker": "Удалить маркер",
+      "speedValue": "Скорость",
+      "adjustmentClipDefaultName": "Корректировка",
+      "backgroundClipDefaultName": "Фон"
     },
     "textClip": {
       "text": "Текст",
@@ -567,6 +670,19 @@
       "backgroundColor": "Фон",
       "padding": "Отступы",
       "width": "Ширина блока"
+    },
+    "track": {
+      "actions": "Действия",
+      "audio": {
+        "title": "Аудио дорожки",
+        "volume": "Громкость",
+        "balance": "Баланс"
+      }
+    },
+    "marker": {
+      "actions": "Действия",
+      "info": "Инфо маркера",
+      "text": "Текст"
     }
   },
   "navigation": {
