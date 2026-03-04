@@ -84,6 +84,7 @@ const {
 });
 
 function onFileAction(action: any, entry: FsEntry) {
+  console.log('[FileBrowser] onFileAction', action, entry);
   if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -172,12 +173,18 @@ function getContextMenuItems(entry: FsEntry) {
       {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
-        onSelect: () => onFileAction('createFolder', entry),
+        onSelect: () => {
+          console.log('[FileBrowser] createFolder onSelect', entry);
+          onFileAction('createFolder', entry);
+        },
       },
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
         icon: 'i-heroicons-arrow-up-tray',
-        onSelect: () => onFileAction('upload', entry),
+        onSelect: () => {
+          console.log('[FileBrowser] upload onSelect', entry);
+          onFileAction('upload', entry);
+        },
       },
     ]);
 

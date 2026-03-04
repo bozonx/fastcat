@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, inject } from 'vue';
+import { ref, inject, computed } from 'vue';
+import type { ContextMenuItem } from '@nuxt/ui';
 import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
@@ -98,6 +99,14 @@ function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
 }
 
 const isDragOver = ref<string | null>(null);
+const contextMenuItems = ref<ContextMenuItem[][]>([]);
+const contextMenuTargetEntry = ref<FsEntry | null>(null);
+
+function showContextMenu(e: Event, entry: FsEntry) {
+  e.preventDefault();
+  contextMenuTargetEntry.value = entry;
+  contextMenuItems.value = getContextMenuItems(entry);
+}
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
@@ -435,6 +444,7 @@ function getContextMenuItems(entry: FsEntry) {
             @drop.prevent="onDropDir($event, entry)"
             @click="onEntryClick(entry)"
             @dblclick="entry.kind === 'directory' ? emit('toggle', entry) : null"
+            @contextmenu="showContextMenu($event, entry)"
           >
             <!-- Chevron for directories -->
             <UIcon
