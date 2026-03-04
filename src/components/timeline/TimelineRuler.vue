@@ -341,11 +341,12 @@ function draw() {
 
     const pw = 10;
     const ph = 10;
+    const tipX = playheadX + 0.5;
 
     // Triangle pointing down, touching the bottom edge of the ruler
-    ctx.moveTo(playheadX - pw / 2, h - ph);
-    ctx.lineTo(playheadX + pw / 2, h - ph);
-    ctx.lineTo(playheadX, h);
+    ctx.moveTo(tipX - pw / 2, h - ph);
+    ctx.lineTo(tipX + pw / 2, h - ph);
+    ctx.lineTo(tipX, h);
     ctx.fill();
 
     // Draw a 1px vertical line from triangle tip to bottom edge for precise alignment

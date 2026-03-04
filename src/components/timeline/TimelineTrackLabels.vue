@@ -69,22 +69,25 @@ const contextTrackId = ref<string | null>(null);
 const renameValue = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
 
-watch(() => timelineStore.renamingTrackId, async (newId) => {
-  if (newId) {
-    const track = props.tracks.find(t => t.id === newId);
-    if (track) {
-      renameValue.value = track.name;
-      await nextTick();
-      if (renameInput.value) {
-        renameInput.value.focus();
-        // Give browser a tiny bit of time to settle focus
-        setTimeout(() => {
-          renameInput.value?.select();
-        }, 30);
+watch(
+  () => timelineStore.renamingTrackId,
+  async (newId) => {
+    if (newId) {
+      const track = props.tracks.find((t) => t.id === newId);
+      if (track) {
+        renameValue.value = track.name;
+        await nextTick();
+        if (renameInput.value) {
+          renameInput.value.focus();
+          // Give browser a tiny bit of time to settle focus
+          setTimeout(() => {
+            renameInput.value?.select();
+          }, 30);
+        }
       }
     }
-  }
-});
+  },
+);
 
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 
@@ -472,15 +475,19 @@ function toggleClipSnapMode() {
         </div>
       </div>
     </UContextMenu>
-    <div ref="labelsScrollContainer" class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container" @scroll="emit('scroll', $event)">
-      <div class="flex flex-col divide-y divide-ui-border min-h-full pb-16">
+    <div
+      ref="labelsScrollContainer"
+      class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
+      @scroll="emit('scroll', $event)"
+    >
+      <div class="flex flex-col min-h-full pb-16">
         <UContextMenu
           v-for="track in tracks"
           :key="track.id"
           :items="getTrackContextMenuItems(track)"
         >
           <div
-            class="flex items-center px-2 text-xs font-medium cursor-pointer select-none relative group"
+            class="flex items-center px-2 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border"
             :class="
               selectedTrackId === track.id
                 ? 'text-ui-text bg-ui-bg-accent'
@@ -510,7 +517,11 @@ function toggleClipSnapMode() {
             >
               <input
                 v-if="timelineStore.renamingTrackId === track.id"
-                :ref="(el) => { if (el) renameInput = el as HTMLInputElement }"
+                :ref="
+                  (el) => {
+                    if (el) renameInput = el as HTMLInputElement;
+                  }
+                "
                 v-model="renameValue"
                 class="w-full bg-transparent border-none outline-none text-xs font-medium p-0 m-0 block"
                 @keydown.enter.stop="confirmRename"
@@ -588,8 +599,6 @@ function toggleClipSnapMode() {
     :confirm-text="t('common.delete', 'Delete')"
     @confirm="confirmDelete"
   />
-
-
 </template>
 
 <style scoped>
