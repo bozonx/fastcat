@@ -21,6 +21,7 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 const props = defineProps<{
   foldersOnly?: boolean;
   disableSort?: boolean;
+  isFilesPage?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -688,6 +689,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         @stop-rename="stopRename"
         v-if="activeTab === 'files'"
         :folders-only="foldersOnly"
+        :is-files-page="isFilesPage"
         :is-dragging="isDragging"
         :is-loading="isLoading"
         :is-api-supported="isApiSupported"

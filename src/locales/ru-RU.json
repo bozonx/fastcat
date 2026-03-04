@@ -245,6 +245,7 @@
         "showHiddenFiles": "Показать скрытые файлы",
         "hideHiddenFiles": "Скрыть скрытые файлы",
         "dropZone": "Переместить в папку",
+        "cancelProxyGeneration": "Отменить генерацию прокси",
         "title": "Действия"
       },
       "projectRoot": {

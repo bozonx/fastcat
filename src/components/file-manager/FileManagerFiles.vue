@@ -92,6 +92,7 @@ const props = defineProps<{
   isDragging: boolean;
   isLoading: boolean;
   isApiSupported: boolean;
+  isFilesPage?: boolean;
   rootEntries: FsEntry[];
   getFileIcon: (entry: FsEntry) => string;
   findEntryByPath: (path: string) => FsEntry | null;
@@ -356,6 +357,7 @@ async function onEntrySelect(entry: FsEntry) {
             :entries="rootEntries"
             :depth="0"
             :folders-only="foldersOnly"
+            :is-files-page="isFilesPage"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"

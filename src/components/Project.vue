@@ -108,7 +108,7 @@ function onTabsWheel(e: WheelEvent) {
   const container = tabContainerRef.value;
   if (!container) return;
 
-  const horizontalDelta = Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY;
+  const horizontalDelta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   if (horizontalDelta === 0) return;
 
   e.preventDefault();

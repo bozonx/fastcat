@@ -26,6 +26,7 @@ const props = defineProps<{
   selectedFsEntry: any;
   previewMode: 'original' | 'proxy';
   hasProxy: boolean;
+  isFilesPage?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -342,6 +343,20 @@ function openAsTextPanel() {
             title: t('common.delete', 'Delete'),
             icon: 'i-heroicons-trash',
             onClick: onDelete,
+          },
+          {
+            id: 'openAsPanel',
+            title: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
+            icon: 'i-heroicons-window',
+            hidden: !canOpenAsPanel || props.isFilesPage,
+            onClick: openAsTextPanel,
+          },
+          {
+            id: 'openAsProjectTab',
+            title: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+            icon: 'i-heroicons-squares-plus',
+            hidden: !canOpenAsProjectTab || props.isFilesPage,
+            onClick: openAsProjectTab,
           },
         ]"
         :secondary-actions="[

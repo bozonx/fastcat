@@ -28,11 +28,11 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', onGlobalKeyDown);
+  window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', onGlobalKeyDown);
+  window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
 });
 </script>
 
@@ -43,15 +43,16 @@ onUnmounted(() => {
         <FileManager
           folders-only
           disable-sort
+          :is-files-page="true"
           class="h-full"
           @select="filesPageStore.selectFolder"
         />
       </Pane>
       <Pane :size="sizes[1]" min-size="10">
-        <FileBrowser class="h-full" />
+        <FileBrowser :is-files-page="true" class="h-full" />
       </Pane>
       <Pane :size="sizes[2]" min-size="10">
-        <PropertiesPanel :entity="selectionStore.selectedEntity" class="h-full" />
+        <PropertiesPanel :is-files-page="true" :entity="selectionStore.selectedEntity" class="h-full" />
       </Pane>
     </Splitpanes>
   </ClientOnly>
