@@ -10,6 +10,7 @@ import { useProjectStore } from '~/stores/project.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { isTimelineTextDropFileName } from '~/utils/timeline/textDrop';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 import {
   computeAnchoredScrollLeft,
   timeUsToPx,
@@ -640,12 +641,31 @@ async function onDrop(e: DragEvent, trackId: string) {
         startUs: startUs ?? undefined,
       });
     } else {
-      await timelineStore.addClipToTimelineFromPath({
-        trackId,
-        name,
-        path,
-        startUs: startUs ?? undefined,
-      });
+      const mediaType = getMediaTypeFromFilename(name || path || '');
+      if (mediaType === 'text' && path) {
+        const handle = await projectStore.getFileHandleByPath(path);
+        if (handle && handle.kind === 'file') {
+          const file = await (handle as FileSystemFileHandle).getFile();
+          const text = await file.text();
+          timelineStore.addVirtualClipToTrack({
+            trackId,
+            startUs: startUs ?? timelineStore.currentTime,
+            clipType: 'text',
+            name,
+            text,
+          });
+          await timelineStore.requestTimelineSave({ immediate: true });
+        } else {
+          throw new Error('Could not read text file');
+        }
+      } else {
+        await timelineStore.addClipToTimelineFromPath({
+          trackId,
+          name,
+          path: path!,
+          startUs: startUs ?? undefined,
+        });
+      }
     }
 
     toast.add({

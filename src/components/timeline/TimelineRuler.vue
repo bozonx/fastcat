@@ -46,14 +46,15 @@ onMounted(() => {
   // Theme override removed to favor manual adjustment above
 });
 
+// Always read width from own container to match canvas CSS dimensions exactly.
+// Using scrollEl width causes canvas stretching when a vertical scrollbar is present,
+// because scrollEl.contentRect.width < container CSS width.
 useResizeObserver(containerRef, (entries) => {
   const entry = entries[0];
   if (entry) {
+    width.value = entry.contentRect.width;
     height.value = entry.contentRect.height;
-    if (!props.scrollEl) {
-      width.value = entry.contentRect.width;
-      draw();
-    }
+    draw();
   }
 });
 
@@ -76,17 +77,6 @@ watch(
     }
   },
   { immediate: true },
-);
-
-useResizeObserver(
-  () => props.scrollEl,
-  (entries) => {
-    const entry = entries[0];
-    if (entry) {
-      width.value = entry.contentRect.width;
-      draw();
-    }
-  },
 );
 
 onUnmounted(() => {

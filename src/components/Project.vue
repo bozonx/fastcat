@@ -233,6 +233,7 @@ onMounted(() => {
     <div
       class="flex items-center border-b border-ui-border shrink-0 select-none transition-colors duration-150 min-h-[36px]"
       :class="isDropTarget ? 'bg-primary-500/10 border-primary-500/50' : ''"
+      @wheel="onTabsWheel"
       @dragover="onTabBarDragOver"
       @dragleave="onTabBarDragLeave"
       @drop="onTabBarDrop"
@@ -269,7 +270,6 @@ onMounted(() => {
       <div
         ref="tabContainerRef"
         class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
-        @wheel="onTabsWheel"
       >
         <div
           v-for="tab in fileTabsModel"

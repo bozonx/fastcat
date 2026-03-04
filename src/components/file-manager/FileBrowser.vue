@@ -383,16 +383,7 @@ function getContextMenuItems(entry: FsEntry) {
     const canOpen = type === 'video' || type === 'audio' || type === 'image' || type === 'text';
     if (canOpen) {
       items.push([
-        {
-          label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-          icon: 'i-heroicons-window',
-          onSelect: () => onFileAction('openAsPanel', entry),
-        },
-        {
-          label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-          icon: 'i-heroicons-squares-plus',
-          onSelect: () => onFileAction('openAsProjectTab', entry),
-        },
+        
       ]);
     }
   }

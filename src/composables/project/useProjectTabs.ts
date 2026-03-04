@@ -106,7 +106,10 @@ export function useProjectTabs() {
     const { filePath, fileName } = params;
 
     const existing = fileTabs.value.find((t) => t.filePath === filePath);
-    if (existing) return existing.id;
+    if (existing) {
+      activeTabId.value = existing.id;
+      return existing.id;
+    }
 
     const mediaType = getMediaTypeFromFilename(fileName);
     const mappedType =
@@ -125,6 +128,7 @@ export function useProjectTabs() {
     };
 
     fileTabs.value = [...fileTabs.value, tab];
+    activeTabId.value = tab.id;
     return tab.id;
   }
 

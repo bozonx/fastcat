@@ -343,20 +343,6 @@ function openAsTextPanel() {
             icon: 'i-heroicons-trash',
             onClick: onDelete,
           },
-          {
-            id: 'openAsPanel',
-            title: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-            icon: 'i-heroicons-window',
-            hidden: !canOpenAsPanel,
-            onClick: openAsTextPanel,
-          },
-          {
-            id: 'openAsProjectTab',
-            title: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-            icon: 'i-heroicons-squares-plus',
-            hidden: !canOpenAsProjectTab,
-            onClick: openAsProjectTab,
-          },
         ]"
         :secondary-actions="[
           {

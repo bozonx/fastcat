@@ -209,7 +209,8 @@
       },
       "sort": {
         "name": "Name",
-        "modified": "Modified"
+        "modified": "Modified",
+        "type": "Type"
       },
       "history": {
         "undo": "Undo",
@@ -234,9 +235,16 @@
         "deleteProxy": "Delete proxy",
         "generatingProxy": "Generating proxy...",
         "dropToFolderHint": "Drag to the File Manager on the left to upload to a specific folder",
+        "createProxyForAll": "Create proxy for all videos",
+        "showHiddenFiles": "Show hidden files",
+        "hideHiddenFiles": "Hide hidden files",
         "dropZone": "Move to folder",
-        "toggleHiddenFiles": "Show/Hide hidden files",
-        "createProxyForAll": "Create proxy for all videos"
+        "title": "Actions"
+      },
+      "projectRoot": {
+        "title": "Project root",
+        "project": "Project",
+        "freeSpace": "Free space"
       },
       "proxyReady": "Proxy available",
       "preview": {
@@ -381,7 +389,9 @@
       "noFile": "No file selected",
       "unsupported": "Unsupported file format",
       "noSelection": "No item selected",
-      "audioTrack": "Audio Track"
+      "audioTrack": "Audio Track",
+      "usedInTimelines": "Used in timelines",
+      "resetZoom": "Reset Zoom & Pan"
     },
     "monitor": {
       "title": "Monitor",
@@ -401,7 +411,15 @@
       "audioMute": "Mute",
       "audioUnmute": "Unmute",
       "audioVolume": "Audio volume",
-      "center": "Center"
+      "center": "Center",
+      "showGrid": "Show grid",
+      "hideGrid": "Hide grid",
+      "toolbarTop": "Toolbar Top",
+      "toolbarRight": "Toolbar Right",
+      "toolbarBottom": "Toolbar Bottom",
+      "toolbarLeft": "Toolbar Left",
+      "resetZoom": "Reset zoom (100%)",
+      "fullscreen": "Fullscreen"
     },
     "timeline": {
       "dropClip": "Drop clip here",
@@ -409,6 +427,7 @@
       "addBackgroundClip": "Add background clip",
       "addTextClip": "Add text clip",
       "addMarker": "Add marker",
+      "addMarkerAtPlayhead": "Add marker at playhead",
       "splitClips": "Split clips at playhead",
       "rippleTrimLeft": "Ripple trim left",
       "rippleTrimRight": "Ripple trim right",
@@ -420,7 +439,11 @@
       "stop": "Stop",
       "zoom": "Zoom",
       "addVideoTrack": "Add video track",
+      "addVideoTrackAbove": "Add video track above",
+      "addVideoTrackBelow": "Add video track below",
       "addAudioTrack": "Add audio track",
+      "addAudioTrackAbove": "Add audio track above",
+      "addAudioTrackBelow": "Add audio track below",
       "toggleTrackVisibility": "Toggle track visibility",
       "toggleTrackMute": "Toggle track mute",
       "toggleTrackSolo": "Toggle track solo",
@@ -450,9 +473,14 @@
       "freezeFrame": "Freeze frame",
       "resetFreezeFrame": "Reset freeze frame",
       "noMedia": "No media",
-      "overlayModeNone": "No overlay",
-      "frameSnapOn": "Frame snap on",
-      "clipSnapOn": "Clip snap on",
+      "createVersion": "Create version",
+      "version": "Version",
+      "overlayModePseudo": "Pseudo-overlay mode",
+      "overlayModeNone": "Normal mode",
+      "frameSnapOn": "Snap to frames",
+      "frameSnapOff": "Free placement",
+      "clipSnapOn": "Snap to clips",
+      "clipSnapOff": "No clip snapping",
       "transition": {
         "title": "Transition",
         "duration": "Duration (seconds)",

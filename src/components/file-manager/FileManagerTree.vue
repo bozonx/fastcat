@@ -335,16 +335,7 @@ function getContextMenuItems(entry: FsEntry) {
 
   if (isOpenableMediaFile(entry)) {
     items.push([
-      {
-        label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-        icon: 'i-heroicons-window',
-        onSelect: () => emit('action', 'openAsPanel', entry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-        icon: 'i-heroicons-squares-plus',
-        onSelect: () => emit('action', 'openAsProjectTab', entry),
-      },
+      
     ]);
   }
 
