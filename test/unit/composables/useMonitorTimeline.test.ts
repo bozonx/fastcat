@@ -65,6 +65,7 @@ describe('useMonitorTimeline', () => {
             {
               id: 'item1',
               kind: 'clip',
+              trackId: '2',
               source: { path: 'test1.mp4' },
               timelineRange: { startUs: 0, durationUs: 1000 },
               sourceRange: { startUs: 0, durationUs: 1000 },
@@ -84,6 +85,7 @@ describe('useMonitorTimeline', () => {
             {
               id: 'audio1',
               kind: 'clip',
+              trackId: '1',
               source: { path: 'test1.mp3' },
               timelineRange: { startUs: 0, durationUs: 1000 },
               sourceRange: { startUs: 0, durationUs: 1000 },
@@ -107,9 +109,11 @@ describe('useMonitorTimeline', () => {
     expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.source?.path).toBe(
       'test1.mp3',
     );
+    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.trackId).toBe('1');
     expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path).toBe(
       'test1.mp4',
     );
+    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.trackId).toBe('2');
   });
 
   it('assigns inverted layers so first track (top in UI) renders on top', () => {

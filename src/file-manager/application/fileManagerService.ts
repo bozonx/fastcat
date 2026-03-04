@@ -265,6 +265,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     await expandPersistedDirectories();
 
     if (deps.hasPersistedFileTreeState?.()) {
+      deps.onDirectoryLoaded?.();
       return;
     }
 
