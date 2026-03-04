@@ -160,7 +160,7 @@ const rootContextMenuItems = computed(() => {
           emit('action', 'upload', {
             kind: 'directory',
             name: projectStore.currentProjectName!,
-            path: '',
+            path: undefined,
             handle,
           });
         },

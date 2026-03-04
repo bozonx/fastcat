@@ -316,14 +316,6 @@ function getContextMenuItems(entry: FsEntry) {
     }
   }
 
-  items.push([
-    {
-      label: t('common.rename', 'Rename'),
-      icon: 'i-heroicons-pencil',
-      onSelect: () => emit('action', 'rename', entry),
-    },
-  ]);
-
   if (isOpenableMediaFile(entry)) {
     items.push([
       {
@@ -395,15 +387,20 @@ function getContextMenuItems(entry: FsEntry) {
 
   items.push([
     {
+      label: t('common.rename', 'Rename'),
+      icon: 'i-heroicons-pencil',
+      onSelect: () => emit('action', 'rename', entry),
+    },
+    {
       label: t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      color: 'error',
       onSelect: () => emit('action', 'delete', entry),
     },
   ]);
 
   return items;
 }
+
 </script>
 
 <template>
