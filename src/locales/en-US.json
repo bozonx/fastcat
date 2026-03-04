@@ -124,7 +124,25 @@
     "undo": "Undo",
     "redo": "Redo",
     "toggleMute": "Toggle Mute",
-    "properties": "Properties"
+    "properties": "Properties",
+    "folderBaseName": "Folder",
+    "created": "Created",
+    "sortBy": "Sort by",
+    "empty": "Folder is empty",
+    "totalSize": "Total Size",
+    "filesCount": "Files",
+    "validation": {
+      "required": "Name is required.",
+      "invalidName": "Name contains invalid characters.",
+      "exists": "Name already exists."
+    },
+    "namePlaceholder": "Enter name...",
+    "position": "Position",
+    "end": "End Time",
+    "color": "Color",
+    "path": "Path",
+    "updated": "Updated",
+    "show": "Show"
   },
   "videoEditor": {
     "settings": {
@@ -204,7 +222,9 @@
       "clearTempWorkspaceAction": "Clear",
       "clearTempWorkspaceHint": "Removes all files from vardata in this workspace",
       "codecUnsupportedTitle": "Codec not supported",
-      "codecUnsupportedDesc": "Your browser does not support hardware acceleration for this codec. Performance may be degraded."
+      "codecUnsupportedDesc": "Your browser does not support hardware acceleration for this codec. Performance may be degraded.",
+      "hotkeysCapturing": "Listening",
+      "hotkeysResetCommand": "Reset"
     },
     "projectSettings": {
       "title": "Project Settings",
@@ -214,7 +234,15 @@
       "deleteProject": "Delete Project",
       "deleteProjectConfirmTitle": "Delete Project?",
       "deleteProjectConfirmDescription": "This will permanently delete the project folder and all its contents. This action cannot be undone.",
-      "deleteProjectAction": "Delete"
+      "deleteProjectAction": "Delete",
+      "applied": "Project settings applied",
+      "clearTempTitle": "Clear temporary files",
+      "clearTempConfirm": "Clear",
+      "storage": "Storage",
+      "clearTemp": "Clear temporary files",
+      "clearTempAction": "Clear",
+      "reset": "Reset to Defaults",
+      "apply": "Apply Settings"
     },
     "resolution": {
       "customResolution": "Custom Resolution",
@@ -230,7 +258,8 @@
         "2": {
           "7k": "2.7K (QHD)"
         },
-        "4k": "4K (UHD)"
+        "4k": "4K (UHD)",
+        "480p": "480p (Preview)"
       },
       "aspect": {
         "16_9": "16:9",
@@ -290,6 +319,40 @@
       "info": {
         "title": "File Information",
         "metadata": "Metadata"
+      },
+      "skipOtio": {
+        "title": "Project files skipped"
+      },
+      "delete": {
+        "usedWarning": "This file is used in timelines:"
+      },
+      "cardScale": "Card scale",
+      "video": {
+        "resolution": "Resolution",
+        "fps": "FPS",
+        "container": "Container",
+        "videoCodec": "Video codec",
+        "audioCodec": "Audio codec"
+      },
+      "audio": {
+        "channels": "Channels",
+        "format": "Format",
+        "codec": "Audio codec"
+      },
+      "proxy": {
+        "regenerate": "Regenerate proxy",
+        "create": "Create proxy",
+        "delete": "Delete proxy"
+      },
+      "image": {
+        "resolution": "Resolution",
+        "location": "Location",
+        "camera": "Camera"
+      },
+      "otio": {
+        "videoTracks": "Video tracks",
+        "audioTracks": "Audio tracks",
+        "clips": "Clips"
       }
     },
     "export": {
@@ -322,7 +385,23 @@
       "codec": {
         "aac": "AAC",
         "opus": "Opus"
-      }
+      },
+      "error": "Export failed",
+      "preset": {
+        "optimal": "Optimal",
+        "social": "Social Media",
+        "high": "High Quality",
+        "lossless": "Visually Lossless",
+        "custom": "Custom"
+      },
+      "presetLabel": "Preset",
+      "bitrateMode": "Bitrate Mode",
+      "keyframeInterval": "Keyframe Interval (GOP Size, sec)",
+      "exportAlpha": "Export Alpha Channel",
+      "metadata": "Metadata",
+      "metadataTitle": "Title",
+      "metadataAuthor": "Author",
+      "metadataTags": "Tags"
     },
     "hotkeys": {
       "general": {
@@ -393,6 +472,16 @@
         "backward0_5": "Backward x0.5 (Monitor only)",
         "backward1": "Backward x1 (Monitor only)"
       }
+    },
+    "projectTabs": {
+      "dropHint": "Add as tab"
+    },
+    "audio": {
+      "stereo": "Stereo",
+      "mono": "Mono",
+      "audioSettings": "Audio settings",
+      "channels": "Channels",
+      "sampleRate": "Sample Rate"
     }
   },
   "granVideoEditor": {
@@ -401,7 +490,12 @@
         "video": "Video",
         "transitions": "Transitions",
         "audio": "Audio"
-      }
+      },
+      "title": "Effects",
+      "add": "Add",
+      "empty": "No effects",
+      "trackTitle": "Track effects",
+      "clipTitle": "Clip effects"
     },
     "clip": {
       "actions": "Actions",
@@ -460,7 +554,8 @@
       "noSelection": "No item selected",
       "audioTrack": "Audio Track",
       "usedInTimelines": "Used in timelines",
-      "resetZoom": "Reset Zoom & Pan"
+      "resetZoom": "Reset Zoom & Pan",
+      "renameClip": "Rename clip"
     },
     "monitor": {
       "snapshot": "Snapshot",
@@ -551,7 +646,15 @@
         "errorClipTooShort": "Clip is too short for this transition (needs {need}s, has {have}s)",
         "errorGapBetweenClips": "Gap between clips ({gapSeconds}s) prevents blending",
         "errorPrevHandleTooShort": "Previous clip handle too short (needs {needSeconds}s, has {haveSeconds}s)"
-      }
+      },
+      "deleteTrackConfirm": "This track contains clips. Delete it?",
+      "convertZoneToMarker": "Convert to normal marker",
+      "convertMarkerToZone": "Convert to zone marker",
+      "transitions": "Transitions",
+      "deleteMarker": "Delete marker",
+      "speedValue": "Speed",
+      "adjustmentClipDefaultName": "Adjustment",
+      "backgroundClipDefaultName": "Background"
     },
     "textClip": {
       "text": "Text",
@@ -563,6 +666,19 @@
       "backgroundColor": "Background",
       "padding": "Padding",
       "width": "Width"
+    },
+    "track": {
+      "actions": "Actions",
+      "audio": {
+        "title": "Track audio",
+        "volume": "Volume",
+        "balance": "Balance"
+      }
+    },
+    "marker": {
+      "actions": "Actions",
+      "info": "Marker Info",
+      "text": "Text"
     }
   },
   "navigation": {
