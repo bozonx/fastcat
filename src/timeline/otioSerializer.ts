@@ -329,6 +329,7 @@ function parseClipItem(input: {
       typeof granMeta?.audioFadeOutUs === 'number' && Number.isFinite(granMeta.audioFadeOutUs)
         ? Math.max(0, Math.round(granMeta.audioFadeOutUs))
         : undefined,
+    audioMuted: granMeta?.audioMuted !== undefined ? Boolean(granMeta.audioMuted) : undefined,
     audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
     freezeFrameSourceUs:
       clipType === 'media' &&
@@ -564,6 +565,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             audioGain: item.audioGain,
             audioFadeInUs: item.audioFadeInUs,
             audioFadeOutUs: item.audioFadeOutUs,
+            audioMuted: item.audioMuted,
             audioFromVideoDisabled:
               item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,

@@ -54,6 +54,7 @@ export interface TimelineClipsApi {
         | 'audioBalance'
         | 'audioFadeInUs'
         | 'audioFadeOutUs'
+        | 'audioMuted'
       >
     > & {
       backgroundColor?: string;

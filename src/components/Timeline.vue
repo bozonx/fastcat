@@ -196,6 +196,8 @@ function onTimelineClick(e: MouseEvent) {
   if (target?.closest('button')) return;
   if (target?.closest('.cursor-ew-resize')) return;
   if (target?.closest('.cursor-ns-resize')) return;
+  if (target?.closest('[data-clip-id]')) return;
+  if (target?.closest('[data-gap-id]')) return;
 
   const el = scrollEl.value;
   if (!el) return;
