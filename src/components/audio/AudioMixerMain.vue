@@ -24,9 +24,10 @@ function toggleMute() {
     <div class="text-xs font-bold text-primary-400 mb-4 mt-2">MAIN</div>
 
     <!-- Volume Slider (Vertical) -->
-    <div class="flex-1 w-full flex justify-center relative mb-4 min-h-[100px]">
+    <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25">
       <input
         type="range"
+        orient="vertical"
         v-model.number="volume"
         min="0"
         max="3"

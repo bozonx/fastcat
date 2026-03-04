@@ -239,7 +239,7 @@ function selectTransition(
             : 'bg-ui-bg-accent border border-ui-border'
         "
         :style="{
-          left: `${2 + timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
+          left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
           width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
         }"
       >
@@ -250,7 +250,7 @@ function selectTransition(
         v-if="movePreviewResolved && movePreviewResolved.trackId === track.id"
         class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
         :style="{
-          left: `${2 + timeUsToPx(movePreviewResolved.startUs, timelineStore.timelineZoom)}px`,
+          left: `${timeUsToPx(movePreviewResolved.startUs, timelineStore.timelineZoom)}px`,
           width: `${Math.max(2, timeUsToPx(movePreviewResolved.durationUs, timelineStore.timelineZoom))}px`,
         }"
       >
@@ -283,7 +283,7 @@ function selectTransition(
             :data-gap-id="item.id"
             class="absolute inset-y-0 rounded border border-dashed border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40 text-ui-text-muted transition-colors z-10 cursor-pointer select-none"
             :style="{
-              left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
+              left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
               width: `${Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
             }"
             @pointerdown="
