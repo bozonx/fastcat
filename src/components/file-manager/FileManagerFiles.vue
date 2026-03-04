@@ -47,6 +47,7 @@ function onContainerDragLeave(e: DragEvent) {
 }
 
 const props = defineProps<{
+  editingEntryPath?: string | null;
   foldersOnly?: boolean;
   isDragging: boolean;
   isLoading: boolean;
@@ -72,7 +73,7 @@ const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
-provide('fileManagerTreeCtx', {
+provide("fileManagerTreeCtx", {
   getFileIcon: props.getFileIcon,
   selectedPath,
   getEntryMeta,
@@ -150,6 +151,8 @@ const emit = defineEmits<{
     entry: FsEntry,
   ): void;
   (e: 'createFolder', entry: FsEntry | null): void;
+  (e: 'commitRename', entry: FsEntry, newName: string): void;
+  (e: 'stopRename'): void;
 }>();
 
 const rootContextMenuItems = computed(() => {
@@ -308,6 +311,9 @@ async function onEntrySelect(entry: FsEntry) {
         <!-- File tree -->
         <div v-else class="flex flex-col flex-1">
           <FileManagerTree
+            :editing-entry-path="editingEntryPath"
+            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
+            @stop-rename="emit('stopRename')"
             :entries="rootEntries"
             :depth="0"
             :folders-only="foldersOnly"

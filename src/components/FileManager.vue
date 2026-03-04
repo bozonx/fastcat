@@ -5,16 +5,14 @@ import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
-import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerEffects from '~/components/file-manager/FileManagerEffects.vue';
 import FileManagerHistory from '~/components/file-manager/FileManagerHistory.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
+import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
@@ -67,22 +65,18 @@ const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const {
-  isCreateFolderModalOpen,
-  folderCreationTarget, // still needed for template binding if used there
-  isRenameModalOpen,
-  renameTarget,
   isDeleteConfirmModalOpen,
+  editingEntryPath,
+  commitRename,
+  stopRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
   directoryUploadInput,
-  openCreateFolderModal,
-  handleCreateFolder,
   openDeleteConfirmModal,
   handleDeleteConfirm,
-  handleRename,
   onFileAction: onFileActionBase,
-} = useFileManagerModals({
+} = useFileManagerActions({
   createFolder,
   renameEntry,
   deleteEntry,
@@ -91,11 +85,11 @@ const {
   mediaCache: fileManager.mediaCache,
 });
 
-// openFileInfoModal is now handled entirely within useFileManagerModals
+// openFileInfoModal is now handled entirely within useFileManagerActions
 
 function onFileAction(action: any, entry: FsEntry) {
   if (action === 'createFolder') {
-    openCreateFolderModal(entry);
+    onFileActionBase("createFolder", entry, () => fileManager.rootEntries.value.map(e => e.name));
   } else if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
@@ -306,7 +300,7 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      openCreateFolderModal(entry);
+      onFileActionBase("createFolder", entry, () => fileManager.rootEntries.value.map(e => e.name));
       (uiStore as any).pendingFsEntryCreateFolder = null;
     }
   },
@@ -609,7 +603,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
           @click="
-            openCreateFolderModal(
+            onFileAction('createFolder', 
               uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null,
             )
           "
@@ -667,6 +661,9 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 
       <!-- Content -->
       <FileManagerFiles
+        :editing-entry-path="editingEntryPath"
+        @commit-rename="commitRename"
+        @stop-rename="stopRename"
         v-if="activeTab === 'files'"
         :folders-only="foldersOnly"
         :is-dragging="isDragging"
@@ -681,7 +678,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         :handle-files="handleFiles"
         @toggle="toggleDirectory"
         @action="onFileAction"
-        @create-folder="openCreateFolderModal"
+        @create-folder="(entry) => onFileAction('createFolder', entry)"
         @select="handleFileManagerFilesSelect"
       />
       <FileManagerEffects
@@ -697,12 +694,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
     <!-- Timeline Toolbar at the bottom of the panel -->
     <TimelineToolbar v-if="!foldersOnly" />
 
-    <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
 
-    <RenameModal
-      v-model:open="isRenameModalOpen"
-      :initial-name="renameTarget?.name"
-      @rename="handleRename"
     />
 
     <UiConfirmModal

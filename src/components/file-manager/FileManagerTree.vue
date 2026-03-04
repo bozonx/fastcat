@@ -10,10 +10,12 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
+import InlineNameEditor from "~/components/file-manager/InlineNameEditor.vue";
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 interface Props {
+  editingEntryPath?: string | null;
   entries: FsEntry[];
   depth: number;
   foldersOnly?: boolean;
@@ -40,6 +42,8 @@ const ctx = inject<TreeContext>('fileManagerTreeCtx', {
 
 const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
+  (e: 'commitRename', entry: FsEntry, newName: string): void;
+  (e: 'stopRename'): void;
   (e: 'select', entry: FsEntry): void;
   (
     e: 'action',
@@ -440,7 +444,7 @@ function getContextMenuItems(entry: FsEntry) {
             @dragleave.prevent="onDragLeaveDir($event, entry)"
             @drop.prevent="onDropDir($event, entry)"
             @click="onEntryClick(entry)"
-            @dblclick="entry.kind === 'directory' ? emit('toggle', entry) : null"
+            @dblclick.stop="emit('action', 'rename', entry)"
           >
             <!-- Chevron for directories -->
             <UIcon
@@ -489,6 +493,14 @@ function getContextMenuItems(entry: FsEntry) {
             </div>
 
             <!-- Name -->
+            <InlineNameEditor
+              v-if="editingEntryPath === entry.path"
+              :initial-name="entry.name"
+              :is-folder="entry.kind === 'directory'"
+              :existing-names="(entries || []).map(e => e.name)"
+              @save="(name) => emit('commitRename', entry, name)"
+              @cancel="emit('stopRename')"
+            />
             <span
               class="text-sm truncate transition-colors"
               :class="[
@@ -512,6 +524,9 @@ function getContextMenuItems(entry: FsEntry) {
         <!-- Children -->
         <div v-if="entry.kind === 'directory' && entry.expanded && entry.children">
           <FileManagerTree
+            :editing-entry-path="editingEntryPath"
+            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
+            @stop-rename="emit('stopRename')"
             :entries="entry.children"
             :depth="depth + 1"
             :folders-only="foldersOnly"
