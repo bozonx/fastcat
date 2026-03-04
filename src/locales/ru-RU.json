@@ -209,7 +209,8 @@
       },
       "sort": {
         "name": "По имени",
-        "modified": "По дате"
+        "modified": "По дате",
+        "type": "По типу"
       },
       "history": {
         "undo": "Отменить",
@@ -238,9 +239,16 @@
         "deleteProxy": "Удалить прокси",
         "generatingProxy": "Генерация прокси...",
         "dropToFolderHint": "Перетащите в файловый менеджер слева, чтобы загрузить в конкретную папку",
+        "createProxyForAll": "Создать прокси для всех видео",
+        "showHiddenFiles": "Показать скрытые файлы",
+        "hideHiddenFiles": "Скрыть скрытые файлы",
         "dropZone": "Переместить в папку",
-        "toggleHiddenFiles": "Показать/скрыть скрытые файлы",
-        "createProxyForAll": "Создать прокси для всех видео"
+        "title": "Действия"
+      },
+      "projectRoot": {
+        "title": "Корень проекта",
+        "project": "Проект",
+        "freeSpace": "Свободное место"
       },
       "proxyReady": "Прокси готово",
       "preview": {
@@ -385,7 +393,9 @@
       "noFile": "Файл не выбран",
       "unsupported": "Формат не поддерживается",
       "noSelection": "Ничего не выбрано",
-      "audioTrack": "Аудиодорожка"
+      "audioTrack": "Аудиодорожка",
+      "usedInTimelines": "Используется в таймлайнах",
+      "resetZoom": "Сбросить зум и панораму"
     },
     "monitor": {
       "title": "Монитор",
@@ -404,10 +414,20 @@
       "projectResolutionHint": "Разрешение проекта",
       "audioMute": "Выключить звук",
       "audioUnmute": "Включить звук",
-      "audioVolume": "Громкость аудио"
+      "audioVolume": "Громкость аудио",
+      "center": "По центру",
+      "showGrid": "Показать сетку",
+      "hideGrid": "Скрыть сетку",
+      "toolbarTop": "Панель сверху",
+      "toolbarRight": "Панель справа",
+      "toolbarBottom": "Панель снизу",
+      "toolbarLeft": "Панель слева",
+      "resetZoom": "Сбросить зум (100%)",
+      "fullscreen": "Полноэкранный режим"
     },
     "timeline": {
       "addMarker": "Добавить маркер",
+      "addMarkerAtPlayhead": "Добавить маркер на курсор",
       "splitClips": "Разрезать клипы по курсору",
       "rippleTrimLeft": "Обрезать слева со сдвигом",
       "rippleTrimRight": "Обрезать справа со сдвигом",
@@ -420,8 +440,12 @@
       "pause": "Пауза",
       "stop": "Стоп",
       "zoom": "Масштаб",
-      "addVideoTrack": "Добавить видео дорожку",
-      "addAudioTrack": "Добавить аудио дорожку",
+      "addVideoTrack": "Добавить видеодорожку",
+      "addVideoTrackAbove": "Добавить видеодорожку сверху",
+      "addVideoTrackBelow": "Добавить видеодорожку снизу",
+      "addAudioTrack": "Добавить аудиодорожку",
+      "addAudioTrackAbove": "Добавить аудиодорожку сверху",
+      "addAudioTrackBelow": "Добавить аудиодорожку снизу",
       "toggleTrackVisibility": "Показать/скрыть дорожку",
       "toggleTrackMute": "Вкл/выкл звук дорожки",
       "toggleTrackSolo": "Соло дорожки",
@@ -451,6 +475,14 @@
       "freezeFrame": "Заморозить кадр",
       "resetFreezeFrame": "Сбросить заморозку кадра",
       "noMedia": "Нет медиа",
+      "createVersion": "Создать версию",
+      "version": "Версия",
+      "overlayModePseudo": "Режим наложения",
+      "overlayModeNone": "Обычный режим",
+      "frameSnapOn": "Привязка к кадрам",
+      "frameSnapOff": "Свободное перемещение",
+      "clipSnapOn": "Привязка к клипам",
+      "clipSnapOff": "Без привязки к клипам",
       "transition": {
         "title": "Переход",
         "duration": "Длительность (секунды)",

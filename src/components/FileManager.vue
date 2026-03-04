@@ -469,6 +469,13 @@ function onDrop(e: DragEvent) {
 }
 
 async function onCreateTimeline() {
+  const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+
+  if (selectedDir) {
+    ;(uiStore as any).pendingFsEntryCreateTimeline = selectedDir;
+    return;
+  }
+
   const createdPath = await createTimeline();
   if (!createdPath) return;
 
@@ -496,7 +503,14 @@ function onFileSelect(e: Event) {
   if (target.files) {
     const files = Array.from(target.files);
     target.value = '';
-    handleFiles(files);
+
+    const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+    if (!selectedDir || !selectedDir.path) {
+      handleFiles(files);
+      return;
+    }
+
+    handleFiles(files, selectedDir.handle as FileSystemDirectoryHandle, selectedDir.path);
   }
 }
 

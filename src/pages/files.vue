@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import FileManager from '~/components/FileManager.vue';
@@ -8,6 +9,7 @@ import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
+import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
@@ -16,6 +18,22 @@ const { currentProjectId } = storeToRefs(projectStore);
 const { t } = useI18n();
 
 const { sizes, onResized } = usePersistedSplitpanes('files', currentProjectId, [20, 60, 20]);
+
+function onGlobalKeyDown(e: KeyboardEvent) {
+  if (e.key !== 'Backspace') return;
+  if (isEditableTarget(e.target)) return;
+
+  e.preventDefault();
+  window.history.back();
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeyDown);
+});
 </script>
 
 <template>

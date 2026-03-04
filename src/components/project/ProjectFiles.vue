@@ -151,6 +151,8 @@ function onFileAction(action: FileAction, entry: FsEntry) {
     }
   } else if (action === 'addToTimeline') {
     onFileActionBase(action as FileActionBase, entry);
+  } else {
+    onFileActionBase(action as FileActionBase, entry);
   }
 }
 
@@ -350,6 +352,13 @@ async function createTimelineInDirectory(entry: FsEntry) {
 }
 
 async function onCreateTimeline() {
+  const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+
+  if (selectedDir) {
+    await createTimelineInDirectory(selectedDir);
+    return;
+  }
+
   const createdPath = await createTimeline();
   if (!createdPath) return;
 
@@ -377,7 +386,14 @@ function onFileSelect(e: Event) {
   if (target.files) {
     const files = Array.from(target.files);
     target.value = '';
-    handleFiles(files);
+
+    const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+    if (!selectedDir || !selectedDir.path) {
+      handleFiles(files);
+      return;
+    }
+
+    handleFiles(files, selectedDir.handle as FileSystemDirectoryHandle, selectedDir.path);
   }
 }
 
