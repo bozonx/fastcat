@@ -27,6 +27,46 @@ const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
+function onContainerKeyDown(e: KeyboardEvent) {
+  const container = scrollEl.value;
+  if (!container) return;
+
+  const activeEl = document.activeElement as HTMLElement;
+  if (activeEl?.tagName === 'INPUT') return;
+
+  const items = Array.from(container.querySelectorAll<HTMLElement>('[tabindex="0"]'));
+  if (items.length === 0) return;
+
+  const currentIndex = items.indexOf(activeEl);
+
+  if (['ArrowDown', 'ArrowUp'].includes(e.key)) {
+    e.preventDefault();
+
+    if (currentIndex === -1) {
+      items[0]?.focus();
+      return;
+    }
+
+    let nextIndex = currentIndex;
+
+    if (e.key === 'ArrowDown') {
+      nextIndex = Math.min(currentIndex + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      nextIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    if (nextIndex !== currentIndex) {
+      const el = items[nextIndex];
+      if (el) el.focus();
+    }
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    // Optional: Left/Right to expand/collapse
+    // For now we just let the component handle standard enter/space if we want, but left/right could also trigger the chevron click.
+    // The node needs a way to expose toggle, which we emit. But we can't easily emit toggle from here without knowing the entry.
+    // We can leave left/right alone for now or handle it.
+  }
+}
+
 const {
   onDragOver: autoScrollDragOver,
   onDragLeave: autoScrollDragLeave,
@@ -73,7 +113,7 @@ const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
-provide("fileManagerTreeCtx", {
+provide('fileManagerTreeCtx', {
   getFileIcon: props.getFileIcon,
   selectedPath,
   getEntryMeta,
@@ -214,7 +254,13 @@ const rootContextMenuItems = computed(() => {
         label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
         icon: 'i-heroicons-arrow-path',
         disabled: props.isLoading,
-        onSelect: () => emit('action', 'refresh' as any, { kind: 'directory', name: '', path: '', handle: null as any }),
+        onSelect: () =>
+          emit('action', 'refresh' as any, {
+            kind: 'directory',
+            name: '',
+            path: '',
+            handle: null as any,
+          }),
       },
     ],
   ];
@@ -274,6 +320,7 @@ async function onEntrySelect(entry: FsEntry) {
     @dragleave="onContainerDragLeave"
     @drop.capture="onContainerDrop"
     @drop="onContainerDrop"
+    @keydown="onContainerKeyDown"
   >
     <UContextMenu :items="rootContextMenuItems">
       <div class="min-w-full w-max min-h-full flex flex-col" @pointerdown.self="selectProjectRoot">
@@ -306,11 +353,11 @@ async function onEntrySelect(entry: FsEntry) {
         <div v-else class="flex flex-col flex-1">
           <FileManagerTree
             :editing-entry-path="editingEntryPath"
-            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
-            @stop-rename="emit('stopRename')"
             :entries="rootEntries"
             :depth="0"
             :folders-only="foldersOnly"
+            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
+            @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
             @action="(action, entry) => emit('action', action as any, entry)"

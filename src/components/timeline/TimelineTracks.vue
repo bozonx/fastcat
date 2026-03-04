@@ -162,7 +162,7 @@ function selectTransition(
 
 <template>
   <div
-    class="flex flex-col divide-y divide-ui-border min-h-full pb-6"
+    class="flex flex-col divide-y divide-ui-border min-h-full pb-16"
     :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
     @pointerdown="
       if ($event.button !== 1 && $event.target === $event.currentTarget) {

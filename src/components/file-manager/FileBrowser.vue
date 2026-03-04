@@ -54,6 +54,67 @@ const {
 const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
+const rootContainer = ref<HTMLElement | null>(null);
+
+function onContainerKeyDown(e: KeyboardEvent) {
+  const container = rootContainer.value;
+  if (!container) return;
+
+  // We only want to handle keys if focus is within our container
+  // and not inside an input field (e.g. InlineNameEditor)
+  const activeEl = document.activeElement as HTMLElement;
+  if (activeEl?.tagName === 'INPUT') return;
+
+  const items = Array.from(container.querySelectorAll<HTMLElement>('[tabindex="0"]'));
+
+  if (items.length === 0) return;
+
+  const currentIndex = items.indexOf(activeEl);
+
+  if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+
+    if (currentIndex === -1) {
+      items[0]?.focus();
+      return;
+    }
+
+    let nextIndex = currentIndex;
+    const isGrid = filesPageStore.viewMode === 'grid';
+
+    if (e.key === 'ArrowRight') {
+      nextIndex = Math.min(currentIndex + 1, items.length - 1);
+    } else if (e.key === 'ArrowLeft') {
+      nextIndex = Math.max(currentIndex - 1, 0);
+    } else if (e.key === 'ArrowDown') {
+      if (isGrid) {
+        // Find columns count by looking at items in the first row
+        const firstTop = items[0].offsetTop;
+        let cols = 0;
+        while (cols < items.length && items[cols].offsetTop === firstTop) cols++;
+        cols = cols || 1;
+        nextIndex = Math.min(currentIndex + cols, items.length - 1);
+      } else {
+        nextIndex = Math.min(currentIndex + 1, items.length - 1);
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (isGrid) {
+        const firstTop = items[0].offsetTop;
+        let cols = 0;
+        while (cols < items.length && items[cols].offsetTop === firstTop) cols++;
+        cols = cols || 1;
+        nextIndex = Math.max(currentIndex - cols, 0);
+      } else {
+        nextIndex = Math.max(currentIndex - 1, 0);
+      }
+    }
+
+    if (nextIndex !== currentIndex) {
+      items[nextIndex].focus();
+    }
+  }
+}
+
 const folderEntries = ref<FsEntry[]>([]);
 const isLoading = ref(false);
 const parentFolders = ref<FsEntry[]>([]);
@@ -78,8 +139,12 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
-  onAfterRename: () => { void loadFolderContent(); },
-  onAfterDelete: () => { void loadFolderContent(); },
+  onAfterRename: () => {
+    void loadFolderContent();
+  },
+  onAfterDelete: () => {
+    void loadFolderContent();
+  },
 });
 
 function onFileAction(action: any, entry: FsEntry) {
@@ -427,7 +492,7 @@ async function calculateFolderSize(path: string, handle: FileSystemDirectoryHand
     let totalSize = 0;
 
     async function calc(dirHandle: FileSystemDirectoryHandle) {
-      // @ts-ignore
+      // @ts-expect-error Types for FileSystemDirectoryHandle values iterator may be incomplete
       for await (const entry of dirHandle.values()) {
         if (entry.kind === 'file') {
           try {
@@ -656,11 +721,26 @@ const stats = computed(() => {
 });
 
 function handleEntryClick(entry: FsEntry) {
+  filesPageStore.selectFile(entry);
+}
+
+function handleEntryDoubleClick(entry: FsEntry) {
   if (entry.kind === 'directory') {
-    filesPageStore.selectFolder(entry);
+    filesPageStore.openFolder(entry);
   } else {
-    filesPageStore.selectFile(entry);
+    if (entry.name.toLowerCase().endsWith('.otio')) {
+      if (entry.path) {
+        // Find a way to open timeline, for now just call onFileAction('openAsProjectTab') or emit select
+      }
+    } else {
+      onFileAction('openAsProjectTab', entry);
+    }
   }
+}
+
+function handleEntryEnter(entry: FsEntry) {
+  filesPageStore.selectFile(entry);
+  handleEntryDoubleClick(entry);
 }
 
 function formatDate(timestamp?: number) {
@@ -1067,7 +1147,12 @@ async function onPanelDrop(e: DragEvent) {
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-auto p-4 content-scrollbar" @click.self="navigateToRoot">
+    <div
+      ref="rootContainer"
+      class="flex-1 overflow-auto p-4 content-scrollbar"
+      @click.self="navigateToRoot"
+      @keydown="onContainerKeyDown"
+    >
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col">
           <div
@@ -1123,17 +1208,16 @@ async function onPanelDrop(e: DragEvent) {
                 }"
                 :style="{ width: `${filesPageStore.gridCardSize}px` }"
                 :draggable="true"
+                tabindex="0"
                 @dragstart="onEntryDragStart($event, entry)"
                 @dragend="onEntryDragEnd"
                 @dragover.prevent="onEntryDragOver($event, entry)"
                 @dragleave="onEntryDragLeave($event, entry)"
                 @drop.prevent="onEntryDrop($event, entry)"
                 @click="handleEntryClick(entry)"
-                @dblclick="
-                  entry.kind === 'directory'
-                    ? filesPageStore.selectFolder(entry)
-                    : onFileAction('rename', entry)
-                "
+                @dblclick="handleEntryDoubleClick(entry)"
+                @keydown.enter.prevent="handleEntryEnter(entry)"
+                @keydown.space.prevent="handleEntryEnter(entry)"
               >
                 <div
                   class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
@@ -1180,7 +1264,7 @@ async function onPanelDrop(e: DragEvent) {
                   v-if="editingEntryPath === entry.path"
                   :initial-name="entry.name"
                   :is-folder="entry.kind === 'directory'"
-                  :existing-names="folderEntries.map(e => e.name)"
+                  :existing-names="folderEntries.map((e) => e.name)"
                   @save="(name) => commitRename(entry, name)"
                   @cancel="stopRename"
                 />
@@ -1188,21 +1272,20 @@ async function onPanelDrop(e: DragEvent) {
                   v-else
                   class="text-center break-all line-clamp-2 px-1 transition-colors"
                   :class="[
-                    fileManager.mediaCache.hasProxy(entry.path || '') &&
-                    !proxyStore.generatingProxies.has(entry.path || '')
-                      ? 'text-(--color-success)!'
-                      : '',
-                    proxyStore.generatingProxies.has(entry.path || '') ||
-                    isGeneratingProxyInDirectory(entry)
-                      ? 'text-amber-400!'
-                      : '',
+                    entry.kind === 'directory'
+                      ? 'font-medium text-ui-text group-hover:text-primary-400'
+                      : 'text-ui-text',
+                    entry.name.startsWith('.') ? 'opacity-50' : '',
                     {
-                      'text-[10px]': currentGridSizeName === 'xs',
-                      'text-xs': currentGridSizeName === 's' || currentGridSizeName === 'm',
+                      'text-xs':
+                        currentGridSizeName === 'xs' ||
+                        currentGridSizeName === 's' ||
+                        currentGridSizeName === 'm',
                       'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
                     },
                   ]"
                   :title="entry.name"
+                  @dblclick.stop="onFileAction('rename', entry)"
                 >
                   {{ entry.name }}
                 </span>
@@ -1376,17 +1459,16 @@ async function onPanelDrop(e: DragEvent) {
                           dragOverEntryPath === (entry.path ?? null),
                       }"
                       :draggable="true"
+                      tabindex="0"
                       @dragstart="onEntryDragStart($event, entry)"
                       @dragend="onEntryDragEnd"
                       @dragover.prevent="onEntryDragOver($event, entry)"
                       @dragleave="onEntryDragLeave($event, entry)"
                       @drop.prevent="onEntryDrop($event, entry)"
                       @click="handleEntryClick(entry)"
-                      @dblclick="
-                        entry.kind === 'directory'
-                          ? filesPageStore.selectFolder(entry)
-                          : onFileAction('rename', entry)
-                      "
+                      @dblclick="handleEntryDoubleClick(entry)"
+                      @keydown.enter.prevent="handleEntryEnter(entry)"
+                      @keydown.space.prevent="handleEntryEnter(entry)"
                     >
                       <td class="py-2 px-3 flex items-center gap-2">
                         <div
@@ -1425,7 +1507,7 @@ async function onPanelDrop(e: DragEvent) {
                           v-if="editingEntryPath === entry.path"
                           :initial-name="entry.name"
                           :is-folder="entry.kind === 'directory'"
-                          :existing-names="folderEntries.map(e => e.name)"
+                          :existing-names="folderEntries.map((e) => e.name)"
                           @save="(name) => commitRename(entry, name)"
                           @cancel="stopRename"
                         />
@@ -1444,6 +1526,7 @@ async function onPanelDrop(e: DragEvent) {
                               : '',
                           ]"
                           :title="entry.name"
+                          @dblclick.stop="onFileAction('rename', entry)"
                         >
                           {{ entry.name }}
                         </span>

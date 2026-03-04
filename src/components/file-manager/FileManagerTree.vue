@@ -10,7 +10,7 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
-import InlineNameEditor from "~/components/file-manager/InlineNameEditor.vue";
+import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
@@ -138,6 +138,15 @@ function isOpenableMediaFile(entry: FsEntry): boolean {
 
 function onEntryClick(entry: FsEntry) {
   emit('select', entry);
+}
+
+function onEntryEnter(entry: FsEntry) {
+  if (entry.kind === 'directory') {
+    emit('toggle', entry);
+    emit('select', entry);
+  } else {
+    emit('select', entry);
+  }
 }
 
 function onCaretClick(e: MouseEvent, entry: FsEntry) {
@@ -410,7 +419,6 @@ function getContextMenuItems(entry: FsEntry) {
 
   return items;
 }
-
 </script>
 
 <template>
@@ -436,8 +444,8 @@ function getContextMenuItems(entry: FsEntry) {
             :aria-level="depth + 1"
             role="treeitem"
             tabindex="0"
-            @keydown.enter="onEntryClick(entry)"
-            @keydown.space.prevent="onEntryClick(entry)"
+            @keydown.enter.prevent="onEntryEnter(entry)"
+            @keydown.space.prevent="onEntryEnter(entry)"
             @dragstart="onDragStart($event, entry)"
             @dragend="onDragEnd()"
             @dragover.prevent="onDragOverDir($event, entry)"
@@ -497,7 +505,7 @@ function getContextMenuItems(entry: FsEntry) {
               v-if="editingEntryPath === entry.path"
               :initial-name="entry.name"
               :is-folder="entry.kind === 'directory'"
-              :existing-names="(entries || []).map(e => e.name)"
+              :existing-names="(entries || []).map((e) => e.name)"
               @save="(name) => emit('commitRename', entry, name)"
               @cancel="emit('stopRename')"
             />
@@ -526,11 +534,11 @@ function getContextMenuItems(entry: FsEntry) {
         <div v-if="entry.kind === 'directory' && entry.expanded && entry.children">
           <FileManagerTree
             :editing-entry-path="editingEntryPath"
-            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
-            @stop-rename="emit('stopRename')"
             :entries="entry.children"
             :depth="depth + 1"
             :folders-only="foldersOnly"
+            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
+            @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"
             @select="emit('select', $event)"
             @action="(action, childEntry) => emit('action', action, childEntry)"

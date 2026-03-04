@@ -45,7 +45,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     deep: true,
   });
 
-  function selectFolder(entry: FsEntry | null) {
+  function openFolder(entry: FsEntry | null) {
     if (entry && entry.kind === 'directory') {
       selectedFolder.value = entry;
       selectionStore.selectFsEntry(entry);
@@ -54,15 +54,24 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     }
   }
 
-  function selectFile(entry: FsEntry | null) {
-    if (entry && entry.kind === 'file') {
+  function selectItem(entry: FsEntry | null) {
+    if (entry) {
       selectionStore.selectFsEntry(entry);
     } else {
       const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager' && selected.kind === 'file') {
+      if (selected?.source === 'fileManager') {
         selectionStore.clearSelection();
       }
     }
+  }
+
+  // Legacy wrappers for backward compatibility if needed, but we will replace them
+  function selectFolder(entry: FsEntry | null) {
+    openFolder(entry);
+  }
+
+  function selectFile(entry: FsEntry | null) {
+    selectItem(entry);
   }
 
   function setViewMode(mode: FileViewMode) {
@@ -94,6 +103,8 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     sortOption,
     gridCardSize,
     columnWidths,
+    openFolder,
+    selectItem,
     selectFolder,
     selectFile,
     clearSelection,
