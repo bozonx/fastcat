@@ -344,12 +344,12 @@ const { contextMenuItems } = useClipContextMenu({
         left: `${2 + timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
       }"
-      @pointerdown="
+      @pointerdown.stop="
         clipItem &&
         !Boolean(clipItem.locked) &&
         emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
       "
-      @click="
+      @click.stop="
         if ($event.button !== 1) {
           emit('selectItem', $event, item.id);
           selectionStore.selectTimelineItem(track.id, item.id, item.kind as 'clip' | 'gap');
@@ -566,7 +566,7 @@ const { contextMenuItems } = useClipContextMenu({
 
       <!-- Volume Control Line -->
       <div
-        v-if="clipItem && clipHasAudio(item, track)"
+        v-if="clipItem && clipHasAudio(item, track) && !clipItem.audioMuted"
         class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center"
         :class="[
           !Boolean(clipItem.locked) ? 'cursor-ns-resize' : '',

@@ -135,6 +135,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         | 'audioBalance'
         | 'audioFadeInUs'
         | 'audioFadeOutUs'
+        | 'audioMuted'
       >
     > & {
       backgroundColor?: string;
@@ -398,10 +399,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
 
-    const prevGain =
-      typeof item.audioGain === 'number' && Number.isFinite(item.audioGain) ? item.audioGain : 1;
-    const nextGain = prevGain === 0 ? 1 : 0;
-    updateClipProperties(target.trackId, target.itemId, { audioGain: nextGain });
+    updateClipProperties(target.trackId, target.itemId, { audioMuted: !item.audioMuted });
     await deps.requestTimelineSave({ immediate: true });
   }
 

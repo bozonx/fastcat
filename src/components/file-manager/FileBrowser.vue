@@ -62,6 +62,7 @@ const {
   editingEntryPath,
   commitRename,
   stopRename,
+  startRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
@@ -76,6 +77,8 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
+  onAfterRename: () => { void loadFolderContent(); },
+  onAfterDelete: () => { void loadFolderContent(); },
 });
 
 function onFileAction(action: any, entry: FsEntry) {
@@ -135,6 +138,19 @@ async function refreshFileTree() {
   uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 }
+
+watch(
+  () => (uiStore as any).pendingFsEntryRename,
+  (value) => {
+    const entry = value as FsEntry | null;
+    if (!entry) return;
+    const inCurrentFolder = folderEntries.value.some((e) => e.path === entry.path);
+    if (inCurrentFolder) {
+      startRename(entry);
+      (uiStore as any).pendingFsEntryRename = null;
+    }
+  },
+);
 
 function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
   if (entry.kind !== 'directory') return false;

@@ -4,6 +4,7 @@ export type HotkeyCommandId =
   | 'general.focus'
   | 'general.deselect'
   | 'general.delete'
+  | 'general.rename'
   | 'general.undo'
   | 'general.redo'
   | 'general.mute'
@@ -85,6 +86,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.focus', groupId: 'general', title: 'Focus' },
     { id: 'general.deselect', groupId: 'general', title: 'Deselect' },
     { id: 'general.delete', groupId: 'general', title: 'Delete' },
+    { id: 'general.rename', groupId: 'general', title: 'Rename' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
     { id: 'general.mute', groupId: 'general', title: 'Toggle Mute' },
@@ -195,6 +197,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.focus': ['Tab'],
     'general.deselect': ['Escape'],
     'general.delete': ['Delete', 'X'],
+    'general.rename': ['F2'],
     'general.undo': [`${Mod}+Z`],
     'general.redo': [`${Mod}+Shift+Z`],
     'general.mute': [`${Mod}+Q`],

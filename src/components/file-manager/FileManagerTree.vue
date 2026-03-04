@@ -502,6 +502,7 @@ function getContextMenuItems(entry: FsEntry) {
               @cancel="emit('stopRename')"
             />
             <span
+              v-else
               class="text-sm truncate transition-colors"
               :class="[
                 isSelected(entry)
