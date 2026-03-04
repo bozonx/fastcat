@@ -125,7 +125,18 @@ export function useTimelineInteraction(
 
   function selectItem(e: PointerEvent, itemId: string) {
     e.stopPropagation();
-    timelineStore.toggleSelection(itemId, { multi: e.shiftKey || e.metaKey || e.ctrlKey });
+    const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
+    timelineStore.toggleSelection(itemId, { multi: isMulti });
+
+    // Move playhead to click position (like clicking empty timeline area)
+    if (!isMulti) {
+      const el = scrollEl.value;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left + el.scrollLeft;
+        timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
+      }
+    }
   }
 
   function startMoveItem(e: PointerEvent, trackId: string, itemId: string, startUs: number) {

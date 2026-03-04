@@ -31,7 +31,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   } | null>(null);
 
   function startResizeVolume(
-    e: MouseEvent,
+    e: PointerEvent,
     trackId: string,
     itemId: string,
     currentVolume: number,
@@ -47,7 +47,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       trackHeight: clipHeight,
     };
 
-    function onMouseMove(ev: MouseEvent) {
+    function onPointerMove(ev: PointerEvent) {
       if (!resizeVolume.value) return;
       const dy = ev.clientY - resizeVolume.value.startY;
       const deltaVol = -(dy / resizeVolume.value.trackHeight) * 2;
@@ -59,21 +59,21 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       });
     }
 
-    function onMouseUp() {
+    function onPointerUp() {
       if (resizeVolume.value) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeVolume.value = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
     }
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
   }
 
   function startResizeFade(
-    e: MouseEvent,
+    e: PointerEvent,
     trackId: string,
     itemId: string,
     edge: 'in' | 'out',
@@ -89,7 +89,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       startFadeUs: currentFadeUs,
     };
 
-    function onMouseMove(ev: MouseEvent) {
+    function onPointerMove(ev: PointerEvent) {
       if (!resizeFade.value) return;
       const dx = ev.clientX - resizeFade.value.startX;
       const sign = edge === 'in' ? 1 : -1;
@@ -118,17 +118,17 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       });
     }
 
-    function onMouseUp() {
+    function onPointerUp() {
       if (resizeFade.value) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeFade.value = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
     }
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
   }
 
   function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
@@ -216,7 +216,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   }
 
   function startResizeTransition(
-    e: MouseEvent,
+    e: PointerEvent,
     trackId: string,
     itemId: string,
     edge: 'in' | 'out',
@@ -232,7 +232,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       startDurationUs: currentDurationUs,
     };
 
-    function onMouseMove(ev: MouseEvent) {
+    function onPointerMove(ev: PointerEvent) {
       if (!resizeTransition.value) return;
       const dx = ev.clientX - resizeTransition.value.startX;
       const sign = edge === 'in' ? 1 : -1;
@@ -274,14 +274,14 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       });
     }
 
-    function onMouseUp() {
+    function onPointerUp() {
       resizeTransition.value = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
     }
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
   }
 
   return {

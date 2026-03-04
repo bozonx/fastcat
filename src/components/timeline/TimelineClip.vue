@@ -50,7 +50,7 @@ const emit = defineEmits<{
   ): void;
   (
     e: 'startResizeVolume',
-    event: MouseEvent,
+    event: PointerEvent,
     trackId: string,
     itemId: string,
     gain: number,
@@ -58,7 +58,7 @@ const emit = defineEmits<{
   ): void;
   (
     e: 'startResizeFade',
-    event: MouseEvent,
+    event: PointerEvent,
     trackId: string,
     itemId: string,
     edge: 'in' | 'out',
@@ -66,7 +66,7 @@ const emit = defineEmits<{
   ): void;
   (
     e: 'startResizeTransition',
-    event: MouseEvent,
+    event: PointerEvent,
     trackId: string,
     itemId: string,
     edge: 'in' | 'out',
@@ -408,7 +408,7 @@ const { contextMenuItems } = useClipContextMenu({
               clipWidthPx,
             )}px`,
           }"
-          @mousedown.stop="
+          @pointerdown.stop.prevent="
             emit(
               'startResizeFade',
               $event,
@@ -441,7 +441,7 @@ const { contextMenuItems } = useClipContextMenu({
               clipWidthPx,
             )}px`,
           }"
-          @mousedown.stop="
+          @pointerdown.stop.prevent="
             emit(
               'startResizeFade',
               $event,
@@ -522,7 +522,7 @@ const { contextMenuItems } = useClipContextMenu({
         :style="{
           top: `${100 - (((clipItem.audioGain ?? 1) / 2) * 100)}%`,
         }"
-        @mousedown.stop="
+        @pointerdown.stop.prevent="
           $event.button === 0 &&
           !Boolean(clipItem.locked) &&
           emit(
@@ -594,6 +594,7 @@ const { contextMenuItems } = useClipContextMenu({
                   ? 'ring-2 ring-inset ring-orange-500 z-10'
                   : '',
             ]"
+            @pointerdown.stop
             @click.stop="
               emit('selectTransition', $event, {
                 trackId: item.trackId,
@@ -619,7 +620,7 @@ const { contextMenuItems } = useClipContextMenu({
             <div
               v-if="!Boolean(clipItem.locked)"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-              @mousedown.stop="
+              @pointerdown.stop.prevent="
                 emit(
                   'startResizeTransition',
                   $event,
@@ -649,6 +650,7 @@ const { contextMenuItems } = useClipContextMenu({
                   ? 'ring-2 ring-inset ring-orange-500 z-10'
                   : '',
             ]"
+            @pointerdown.stop
             @click.stop="
               emit('selectTransition', $event, {
                 trackId: item.trackId,
@@ -672,7 +674,7 @@ const { contextMenuItems } = useClipContextMenu({
             <div
               v-if="!Boolean(clipItem.locked)"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-              @mousedown.stop="
+              @pointerdown.stop.prevent="
                 emit(
                   'startResizeTransition',
                   $event,

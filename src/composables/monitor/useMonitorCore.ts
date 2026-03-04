@@ -253,7 +253,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           const payload = cloneWorkerPayload(flattenedClips);
           const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(flattenedAudio);
-          timelineStore.duration = Math.max(maxDuration, audioDuration);
+          // Keep store duration at least as large as current value to avoid clamping
+          // when disabled clips are excluded from the worker payload.
+          timelineStore.duration = Math.max(
+            timelineStore.duration,
+            maxDuration,
+            audioDuration,
+          );
           lastBuiltLayoutSignature = clipLayoutSignature.value;
           scheduleRender(getRenderTimeForLayoutUpdate());
         } catch (error) {
@@ -530,11 +536,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       lastBuiltSourceSignature = clipSourceSignature.value;
       lastBuiltLayoutSignature = clipLayoutSignature.value;
 
-      timelineStore.duration = normalizeTimeUs(Math.max(maxDuration, audioDuration));
-      updateStoreTime(timelineStore.currentTime);
-      timelineStore.isPlaying = false;
+      // Keep store duration at least as large as current value to avoid clamping
+      // when disabled clips are excluded from the worker payload.
+      timelineStore.duration = normalizeTimeUs(
+        Math.max(timelineStore.duration, maxDuration, audioDuration),
+      );
 
-      // Render at current time to avoid surprising playhead jumps.
+      // Render at current time without clamping — the dispatchers already
+      // keep duration including disabled clips.
       scheduleRender(getRenderTimeForLayoutUpdate());
     } catch (e: any) {
       console.error('Failed to build timeline components', e);
