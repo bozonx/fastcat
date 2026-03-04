@@ -69,7 +69,10 @@ function toggleSolo() {
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative my-2 min-h-25">
-      <DbSlider v-model="volume" />
+      <DbSlider 
+        v-model="volume"
+        :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb"
+      />
     </div>
 
     <!-- DB Value -->

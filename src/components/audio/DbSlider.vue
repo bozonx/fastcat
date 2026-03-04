@@ -5,6 +5,7 @@ const props = defineProps<{
   modelValue: number; // linear amplitude
   maxDb?: number; // default: +12
   minDb?: number; // default: -60
+  levelDb?: number; // current audio level in dB
 }>();
 
 const emit = defineEmits<{
@@ -40,6 +41,7 @@ function percentToDb(percent: number): number {
 }
 
 const fillPercent = computed(() => dbToPercent(currentDb.value));
+const levelPercent = computed(() => props.levelDb !== undefined ? dbToPercent(props.levelDb) : 0);
 
 // Color logic:
 // Green: <= 0 dB
@@ -47,6 +49,13 @@ const fillPercent = computed(() => dbToPercent(currentDb.value));
 // Red: > 6 dB
 const fillColor = computed(() => {
   const db = currentDb.value;
+  if (db > 6) return 'bg-red-500/50';
+  if (db > 0) return 'bg-yellow-500/50';
+  return 'bg-green-500/50';
+});
+
+const levelColor = computed(() => {
+  const db = props.levelDb ?? -60;
   if (db > 6) return 'bg-red-500';
   if (db > 0) return 'bg-yellow-500';
   return 'bg-green-500';
@@ -132,14 +141,22 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
     <!-- Slider track -->
     <div 
       ref="sliderRef"
-      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-full cursor-ns-resize"
+      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-full cursor-ns-resize overflow-hidden"
       @mousedown="onMouseDown"
       @dblclick="onDoubleClick"
     >
-      <!-- Fill -->
+      <!-- Real-time Level Indicator -->
       <div 
-        class="absolute bottom-0 left-0 right-0 rounded-b-full transition-colors duration-200"
-        :class="[fillColor, fillPercent === 100 ? 'rounded-t-full' : '']"
+        v-if="levelDb !== undefined"
+        class="absolute bottom-0 left-0 right-0 transition-all duration-75"
+        :class="[levelColor]"
+        :style="{ height: `${levelPercent}%` }"
+      ></div>
+
+      <!-- Volume Set Fill -->
+      <div 
+        class="absolute bottom-0 left-0 right-0 transition-colors duration-200"
+        :class="[fillColor]"
         :style="{ height: `${fillPercent}%` }"
       ></div>
       
