@@ -59,6 +59,7 @@ export interface WorkerTimelineClip {
   kind: 'clip';
   clipType: 'media' | 'adjustment' | 'background' | 'text';
   id: string;
+  trackId?: string;
   layer: number;
   speed?: number;
   audioGain?: number;
@@ -110,6 +111,7 @@ export async function toWorkerTimelineClips(
       kind: 'clip',
       clipType: clipType === 'timeline' ? 'media' : clipType,
       id: item.id,
+      trackId: item.trackId,
       layer:
         options?.layer ??
         (typeof (item as any).layer === 'number' && Number.isFinite((item as any).layer)

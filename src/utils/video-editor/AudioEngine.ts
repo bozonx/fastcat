@@ -10,6 +10,7 @@ const logger = createDevLogger('AudioEngine');
 
 export interface AudioEngineClip {
   id: string;
+  trackId?: string;
   sourcePath: string;
   fileHandle: FileSystemFileHandle;
   startUs: number;
@@ -66,6 +67,9 @@ export class AudioEngine {
   private decodeInFlightCount = 0;
   private readonly maxDecodeConcurrency = 2;
   private currentVolume = 1;
+
+  private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
+  private analyserData = new Float32Array(2048);
 
   constructor() {}
 
@@ -185,6 +189,12 @@ export class AudioEngine {
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = this.currentVolume;
       this.masterGain.connect(this.ctx.destination);
+
+      const masterAnalyser = this.ctx.createAnalyser();
+      masterAnalyser.fftSize = 2048;
+      this.masterGain.connect(masterAnalyser);
+      this.analyserNodes.set('master', masterAnalyser);
+
       if (this.ctx.destination) {
         this.ctx.destination.channelCount = channelCount;
       }
@@ -235,6 +245,34 @@ export class AudioEngine {
       this.stopAllNodes();
       this.play(currentTimeUs);
     }
+  }
+
+  getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
+    if (!this.ctx || !this.isPlaying) return { rmsDb: -60, peakDb: -60 };
+
+    const id = trackId || 'master';
+    const analyser = this.analyserNodes.get(id);
+    if (!analyser) return { rmsDb: -60, peakDb: -60 };
+
+    analyser.getFloatTimeDomainData(this.analyserData);
+
+    let sumSquares = 0;
+    let peak = 0;
+    const len = this.analyserData.length;
+    for (let i = 0; i < len; i++) {
+      const val = this.analyserData[i];
+      if (!val) continue; // handle NaN/undefined
+      const abs = Math.abs(val);
+      sumSquares += abs * abs;
+      if (abs > peak) peak = abs;
+    }
+
+    const rms = Math.sqrt(sumSquares / len);
+
+    return {
+      rmsDb: rms > 0.001 ? 20 * Math.log10(rms) : -60,
+      peakDb: peak > 0.001 ? 20 * Math.log10(peak) : -60,
+    };
   }
 
   private async ensureDecoded(sourceKey: string, fileHandle: FileSystemFileHandle) {
@@ -552,7 +590,19 @@ export class AudioEngine {
       sourceNode.connect(clipGain);
     }
 
-    clipGain.connect(this.masterGain);
+    if (clip.trackId) {
+      let trackAnalyser = this.analyserNodes.get(clip.trackId);
+      if (!trackAnalyser) {
+        trackAnalyser = this.ctx.createAnalyser();
+        trackAnalyser.fftSize = 2048;
+        this.analyserNodes.set(clip.trackId, trackAnalyser);
+      }
+      clipGain.connect(trackAnalyser);
+      // We still need to connect the analyser to master so audio gets heard
+      trackAnalyser.connect(this.masterGain);
+    } else {
+      clipGain.connect(this.masterGain);
+    }
 
     // Apply clip-local fade envelope (in timeline time, not buffer time).
     // Since playbackRate is set, the node plays `durationToPlayS / speed` seconds in context time,
@@ -668,6 +718,7 @@ export class AudioEngine {
     }
     this.decodedCache.clear();
     this.decodeInFlight.clear();
+    this.analyserNodes.clear();
 
     if (this.decodeWorker) {
       this.decodeWorker.terminate();

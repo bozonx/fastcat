@@ -20,7 +20,6 @@ import LoadingScreen from '~/components/startup/LoadingScreen.vue';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
 import EditorHeader from '~/components/editor/EditorHeader.vue';
-import TimelineExportModal from '~/components/TimelineExportModal.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
 
@@ -33,7 +32,6 @@ const focusStore = useFocusStore();
 
 const { onGlobalDragOver, onGlobalDragLeave, onGlobalDrop } = useGlobalDragAndDrop();
 
-const isExportModalOpen = ref(false);
 const isEditorSettingsOpen = ref(false);
 const isProjectSettingsOpen = ref(false);
 const isStartingUp = ref(true);
@@ -87,13 +85,11 @@ useHead({
         <EditorHeader
           @open-project-settings="isProjectSettingsOpen = true"
           @open-editor-settings="isEditorSettingsOpen = true"
-          @open-export-modal="isExportModalOpen = true"
         />
 
         <slot />
 
         <!-- Modals -->
-        <TimelineExportModal v-model:open="isExportModalOpen" @exported="() => {}" />
         <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
         <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
 

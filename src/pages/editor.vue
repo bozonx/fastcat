@@ -15,6 +15,7 @@ import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vu
 import Timeline from '~/components/Timeline.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
+import ExportForm from '~/components/export/ExportForm.vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import type { DynamicPanel } from '~/stores/editorView.store';
 import { hideStaticTab, showStaticTab } from '~/composables/project/useProjectTabs';
@@ -50,6 +51,12 @@ const { sizes: soundSizes, onResized: onSoundResize } = usePersistedSplitpanes(
   'editor-sound-top',
   currentProjectId,
   [75, 25],
+);
+
+const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes(
+  'editor-export-top',
+  currentProjectId,
+  [40, 60],
 );
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {
@@ -570,6 +577,20 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
               <AudioMixer />
             </Pane>
             <Pane :size="soundSizes[1]" min-size="10">
+              <MonitorContainer class="h-full" />
+            </Pane>
+          </Splitpanes>
+
+          <!-- Export View: Export Form + Monitor -->
+          <Splitpanes
+            v-else-if="projectStore.currentView === 'export'"
+            class="editor-splitpanes"
+            @resized="onExportResize"
+          >
+            <Pane :size="exportSizes[0]" min-size="20">
+              <ExportForm class="h-full" />
+            </Pane>
+            <Pane :size="exportSizes[1]" min-size="20">
               <MonitorContainer class="h-full" />
             </Pane>
           </Splitpanes>
