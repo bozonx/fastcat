@@ -149,6 +149,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       storeSyncAccumulatorMs = 0;
       uiCurrentTimeUs.value = newTimeUs;
       updateStoreTime(newTimeUs);
+      updateAudioLevels();
     }
 
     const fps = sanitizeFps(getFps());
@@ -162,6 +163,24 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     if (isPlaying.value) {
       playbackLoopId = requestAnimationFrame(updatePlayback);
     }
+  }
+
+  function updateAudioLevels() {
+    if (!isPlaying.value || isUnmounted) return;
+
+    // Update master levels
+    const newLevels = { ...timelineStore.audioLevels };
+    newLevels['master'] = audioEngine.getLevels();
+
+    // Update track levels
+    const tracks = timelineStore.timelineDoc?.tracks || [];
+    for (const track of tracks) {
+      if (track.kind === 'audio' || track.kind === 'video') {
+        newLevels[track.id] = audioEngine.getLevels(track.id);
+      }
+    }
+
+    timelineStore.audioLevels = newLevels;
   }
 
   watch(

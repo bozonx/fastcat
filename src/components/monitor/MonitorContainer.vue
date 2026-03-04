@@ -159,6 +159,10 @@ const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
 const zoomPercent = computed(() => viewportRef.value?.zoomPercent ?? 100);
 
+const isReadonly = computed(
+  () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
+);
+
 function centerMonitor() {
   viewportRef.value?.centerMonitor();
 }
@@ -377,6 +381,7 @@ const emit = defineEmits<{
           </g>
 
           <MonitorTransformBox
+            v-if="!isReadonly"
             :render-width="renderWidth"
             :render-height="renderHeight"
           />

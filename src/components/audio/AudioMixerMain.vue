@@ -26,7 +26,10 @@ function toggleMute() {
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25">
-      <DbSlider v-model="volume" />
+      <DbSlider 
+        v-model="volume" 
+        :level-db="timelineStore.audioLevels?.['master']?.peakDb"
+      />
     </div>
 
     <!-- DB Value -->

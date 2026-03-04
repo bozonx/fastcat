@@ -57,6 +57,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const duration = ref(0);
   const audioVolume = ref(1);
   const audioMuted = ref(false);
+  const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(50);
@@ -231,6 +232,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration.value = 0;
     audioVolume.value = 1;
     audioMuted.value = false;
+    audioLevels.value = {};
     timelineZoom.value = 50;
     selection.clearSelection();
     selection.selectTrack(null);
@@ -361,6 +363,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration,
     audioVolume,
     audioMuted,
+    audioLevels,
     playbackSpeed,
     timelineZoom,
     selectedItemIds,
