@@ -265,6 +265,55 @@ const resizingColumn = ref<string | null>(null);
 const resizeStartX = ref(0);
 const resizeStartWidth = ref(0);
 
+const folderSizes = ref<Record<string, number>>({});
+const folderSizesLoading = ref<Record<string, boolean>>({});
+
+async function calculateFolderSize(path: string, handle: FileSystemDirectoryHandle) {
+  if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
+  
+  folderSizesLoading.value[path] = true;
+  try {
+    let totalSize = 0;
+    
+    async function calc(dirHandle: FileSystemDirectoryHandle) {
+      // @ts-ignore
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file') {
+          try {
+            const file = await entry.getFile();
+            totalSize += file.size;
+          } catch {
+            // skip
+          }
+        } else if (entry.kind === 'directory') {
+          await calc(entry);
+        }
+      }
+    }
+    
+    await calc(handle);
+    folderSizes.value[path] = totalSize;
+  } catch (error) {
+    console.error('Failed to calculate folder size:', error);
+  } finally {
+    folderSizesLoading.value[path] = false;
+  }
+}
+
+watch(
+  () => [folderEntries.value, filesPageStore.viewMode],
+  () => {
+    if (filesPageStore.viewMode === 'list') {
+      for (const entry of folderEntries.value) {
+        if (entry.kind === 'directory' && entry.path) {
+          void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
+        }
+      }
+    }
+  },
+  { immediate: true }
+);
+
 async function loadFolderContent() {
   if (!filesPageStore.selectedFolder || !filesPageStore.selectedFolder.handle) {
     cleanupObjectUrls();
@@ -421,7 +470,9 @@ const sortedEntries = computed(() => {
     if (field === 'name') {
       result = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     } else if (field === 'size') {
-      result = (a.size || 0) - (b.size || 0);
+      const aSize = a.kind === 'file' ? (a.size || 0) : (folderSizes.value[a.path || ''] || 0);
+      const bSize = b.kind === 'file' ? (b.size || 0) : (folderSizes.value[b.path || ''] || 0);
+      result = aSize - bSize;
     } else if (field === 'modified') {
       result = (a.lastModified || 0) - (b.lastModified || 0);
     } else if (field === 'created') {
@@ -825,6 +876,7 @@ async function onPanelDrop(e: DragEvent) {
           :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
           @click="
             async () => {
+              folderSizes.value = {};
               await loadProjectDirectory();
               uiStore.notifyFileManagerUpdate();
               await loadFolderContent();
@@ -1203,7 +1255,23 @@ async function onPanelDrop(e: DragEvent) {
                         {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
                       </td>
                       <td class="py-2 px-3 text-right text-ui-text-muted">
-                        {{ entry.kind === 'file' ? formatBytes(entry.size || 0) : '-' }}
+                        <template v-if="entry.kind === 'file'">
+                          {{ formatBytes(entry.size || 0) }}
+                        </template>
+                        <template v-else-if="entry.kind === 'directory'">
+                          <div v-if="folderSizesLoading[entry.path || '']" class="flex justify-end">
+                            <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-ui-text-muted" />
+                          </div>
+                          <template v-else-if="folderSizes[entry.path || ''] !== undefined">
+                            {{ formatBytes(folderSizes[entry.path || '']) }}
+                          </template>
+                          <template v-else>
+                            -
+                          </template>
+                        </template>
+                        <template v-else>
+                          -
+                        </template>
                       </td>
                       <td class="py-2 px-3 text-ui-text-muted">
                         {{ formatDate(entry.created) }}
