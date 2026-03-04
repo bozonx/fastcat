@@ -117,6 +117,16 @@ function onFileAction(action: any, entry: FsEntry) {
     if (type !== 'video' && type !== 'audio' && type !== 'image' && type !== 'text') return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
+  } else if (action === 'createFolder') {
+    openCreateFolderModal(entry);
+  } else if (action === 'createTimeline') {
+    if (entry.kind === 'directory') {
+      (uiStore as any).pendingFsEntryCreateTimeline = entry;
+    }
+  } else if (action === 'createMarkdown') {
+    if (entry.kind === 'directory') {
+      (uiStore as any).pendingFsEntryCreateMarkdown = entry;
+    }
   } else {
     onFileActionBase(action, entry);
   }
@@ -199,14 +209,6 @@ function getContextMenuItems(entry: FsEntry) {
     }
   }
 
-  items.push([
-    {
-      label: t('common.rename', 'Rename'),
-      icon: 'i-heroicons-pencil',
-      onSelect: () => onFileAction('rename', entry),
-    },
-  ]);
-
   if (entry.kind === 'file') {
     const type = getMediaTypeFromFilename(entry.name);
     const canOpen = type === 'video' || type === 'audio' || type === 'image' || type === 'text';
@@ -269,6 +271,11 @@ function getContextMenuItems(entry: FsEntry) {
   }
 
   items.push([
+    {
+      label: t('common.rename', 'Rename'),
+      icon: 'i-heroicons-pencil',
+      onSelect: () => onFileAction('rename', entry),
+    },
     {
       label: t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',

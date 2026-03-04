@@ -313,8 +313,13 @@ watch(
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
       try {
+        const projectDir = entry.handle
+          ? (entry.handle as FileSystemDirectoryHandle)
+          : await getProjectRootDirHandle();
+        if (!projectDir) throw new Error('No directory handle found');
+
         const createdFileName = await createTimelineCommand({
-          projectDir: entry.handle as FileSystemDirectoryHandle,
+          projectDir,
           timelinesDirName: undefined,
         });
 
@@ -354,10 +359,15 @@ watch(
 
 watch(
   () => (uiStore as any).pendingFsEntryCreateMarkdown,
-  (value) => {
+  async (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      void createMarkdownInDirectory(entry);
+      const handle = entry.handle
+        ? (entry.handle as FileSystemDirectoryHandle)
+        : await getProjectRootDirHandle();
+      if (handle) {
+        void createMarkdownInDirectory({ ...entry, handle });
+      }
       (uiStore as any).pendingFsEntryCreateMarkdown = null;
     }
   },
@@ -490,7 +500,11 @@ async function onDirectoryFileSelect(e: Event) {
   if (!entry || entry.kind !== 'directory') return;
   if (!files || files.length === 0) return;
 
-  await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  if (!entry.path) {
+    await handleFiles(files);
+  } else {
+    await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+  }
   await loadProjectDirectory();
 }
 

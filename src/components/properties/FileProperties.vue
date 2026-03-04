@@ -268,14 +268,14 @@ function openAsTextPanel() {
             id: 'rename',
             title: t('common.rename', 'Rename'),
             icon: 'i-heroicons-pencil',
-            disabled: isProjectRootDir,
+            hidden: isProjectRootDir,
             onClick: onRename,
           },
           {
             id: 'delete',
             title: t('common.delete', 'Delete'),
             icon: 'i-heroicons-trash',
-            disabled: isProjectRootDir,
+            hidden: isProjectRootDir,
             onClick: onDelete,
           },
           {
