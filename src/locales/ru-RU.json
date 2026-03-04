@@ -479,7 +479,8 @@
       "lineHeight": "Высота строки",
       "letterSpacing": "Межбуквенный интервал",
       "backgroundColor": "Фон",
-      "padding": "Отступы"
+      "padding": "Отступы",
+      "width": "Ширина блока"
     }
   },
   "navigation": {

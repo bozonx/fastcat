@@ -5,7 +5,6 @@ import type { TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import RenameModal from '~/components/common/RenameModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const props = defineProps<{
@@ -15,7 +14,6 @@ const props = defineProps<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
-const isRenameModalOpen = ref(false);
 const isDeleteConfirmOpen = ref(false);
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
@@ -82,7 +80,7 @@ function confirmDeleteTrack() {
           color="neutral"
           icon="i-heroicons-pencil"
           class="flex-1 justify-center"
-          @click="isRenameModalOpen = true"
+          @click="timelineStore.renamingTrackId = track.id"
         >
           {{ t('common.rename', 'Rename') }}
         </UButton>
@@ -155,12 +153,7 @@ function confirmDeleteTrack() {
       @update:effects="handleUpdateTrackEffects"
     />
 
-    <RenameModal
-      v-model:open="isRenameModalOpen"
-      :title="t('granVideoEditor.timeline.renameTrack', 'Rename track')"
-      :current-name="track.name"
-      @rename="handleRenameTrack"
-    />
+
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"

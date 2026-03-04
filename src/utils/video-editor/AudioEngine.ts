@@ -252,7 +252,9 @@ export class AudioEngine {
 
     const id = trackId || 'master';
     const analyser = this.analyserNodes.get(id);
-    if (!analyser) return { rmsDb: -60, peakDb: -60 };
+    if (!analyser) {
+      return { rmsDb: -60, peakDb: -60 };
+    }
 
     analyser.getFloatTimeDomainData(this.analyserData);
 
@@ -598,7 +600,6 @@ export class AudioEngine {
         this.analyserNodes.set(clip.trackId, trackAnalyser);
       }
       clipGain.connect(trackAnalyser);
-      // We still need to connect the analyser to master so audio gets heard
       trackAnalyser.connect(this.masterGain);
     } else {
       clipGain.connect(this.masterGain);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref, nextTick, watch } from 'vue';
+
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
@@ -65,9 +66,25 @@ function onGlobalMouseUp() {
 
 const isConfirmDeleteOpen = ref(false);
 const contextTrackId = ref<string | null>(null);
-const editingTrackId = ref<string | null>(null);
 const renameValue = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
+
+watch(() => timelineStore.renamingTrackId, async (newId) => {
+  if (newId) {
+    const track = props.tracks.find(t => t.id === newId);
+    if (track) {
+      renameValue.value = track.name;
+      await nextTick();
+      if (renameInput.value) {
+        renameInput.value.focus();
+        // Give browser a tiny bit of time to settle focus
+        setTimeout(() => {
+          renameInput.value?.select();
+        }, 30);
+      }
+    }
+  }
+});
 
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 
@@ -107,18 +124,11 @@ const canDeleteSelectedTrackWithoutConfirm = computed(() =>
 async function openRename(track: TimelineTrack) {
   contextTrackId.value = track.id;
   onSelectTrack(track.id);
-  renameValue.value = track.name;
-  editingTrackId.value = track.id;
-
-  await nextTick();
-  if (renameInput.value) {
-    renameInput.value.focus();
-    renameInput.value.select();
-  }
+  timelineStore.renamingTrackId = track.id;
 }
 
 function confirmRename() {
-  if (!editingTrackId.value || !selectedTrack.value) return;
+  if (!timelineStore.renamingTrackId || !selectedTrack.value) return;
   const next = renameValue.value.trim();
   if (next) {
     timelineStore.renameTrack(selectedTrack.value.id, next);
@@ -127,7 +137,7 @@ function confirmRename() {
 }
 
 function cancelRename() {
-  editingTrackId.value = null;
+  timelineStore.renamingTrackId = null;
   contextTrackId.value = null;
 }
 
@@ -490,17 +500,17 @@ function toggleClipSnapMode() {
             @mouseleave="timelineStore.hoveredTrackId = null"
           >
             <div
-              class="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-transparent transition-colors group/name"
+              class="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-dashed border-transparent transition-colors group/name cursor-text"
               :class="[
-                editingTrackId === track.id
-                  ? 'bg-ui-bg-elevated border-ui-border-accent'
-                  : 'hover:border-ui-border-accent/40',
+                timelineStore.renamingTrackId === track.id
+                  ? 'bg-ui-bg-elevated border-solid border-ui-border-accent'
+                  : 'hover:border-ui-border-accent/60',
               ]"
               @click.stop="openRename(track)"
             >
               <input
-                v-if="editingTrackId === track.id"
-                ref="renameInput"
+                v-if="timelineStore.renamingTrackId === track.id"
+                :ref="(el) => { if (el) renameInput = el as HTMLInputElement }"
                 v-model="renameValue"
                 class="w-full bg-transparent border-none outline-none text-xs font-medium p-0 m-0 block"
                 @keydown.enter.stop="confirmRename"

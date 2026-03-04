@@ -481,7 +481,8 @@
       "lineHeight": "Line height",
       "letterSpacing": "Letter spacing",
       "backgroundColor": "Background",
-      "padding": "Padding"
+      "padding": "Padding",
+      "width": "Width"
     }
   },
   "navigation": {

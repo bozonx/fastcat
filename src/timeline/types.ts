@@ -20,6 +20,7 @@ export interface TimelineSourceRef {
 export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background' | 'text';
 
 export interface TextClipStyle {
+  width?: number;
   fontFamily?: string;
   fontSize?: number;
   fontWeight?: string | number;

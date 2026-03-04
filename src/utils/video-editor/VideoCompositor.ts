@@ -1479,29 +1479,18 @@ export class VideoCompositor {
       return { top: 60, right: 60, bottom: 60, left: 60 };
     })();
 
+    const explicitWidth = typeof (style as any).width === 'number' && Number.isFinite((style as any).width) && (style as any).width > 0 ? (style as any).width : undefined;
+
     const safeW = Math.max(1, canvas.width);
     const safeH = Math.max(1, canvas.height);
-    const boxX = Math.max(0, padding.left);
-    const boxY = Math.max(0, padding.top);
-    const boxW = Math.max(1, safeW - Math.max(0, padding.left) - Math.max(0, padding.right));
-    const boxH = Math.max(1, safeH - Math.max(0, padding.top) - Math.max(0, padding.bottom));
 
-    if (backgroundColor.length > 0) {
-      ctx.save();
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(boxX, boxY, boxW, boxH);
-      ctx.restore();
-    }
-
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
-    ctx.textBaseline = 'top';
     ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
 
     const rawText = String(clip.text ?? '');
     const paragraphs = rawText.split(/\r?\n/g);
 
     const wrapLine = (line: string): string[] => {
+      if (explicitWidth === undefined) return [line];
       const trimmed = String(line);
       if (trimmed.length === 0) return [''];
 
@@ -1513,7 +1502,7 @@ export class VideoCompositor {
         const next = curr.length > 0 ? `${curr} ${w}` : w;
         const width =
           ctx.measureText(next).width + Math.max(0, next.length - 1) * Math.max(0, letterSpacing);
-        if (width <= boxW || curr.length === 0) {
+        if (width <= explicitWidth || curr.length === 0) {
           curr = next;
           continue;
         }
@@ -1525,15 +1514,58 @@ export class VideoCompositor {
     };
 
     const lines = paragraphs.flatMap((p) => wrapLine(p));
-    const textBlockH = lines.length * lineHeightPx;
-    const startY =
-      verticalAlign === 'top'
-        ? boxY
-        : verticalAlign === 'bottom'
-          ? boxY + Math.max(0, boxH - textBlockH)
-          : boxY + Math.max(0, (boxH - textBlockH) / 2);
 
-    const startX = align === 'left' ? boxX : align === 'right' ? boxX + boxW : boxX + boxW / 2;
+    let maxLineWidth = 0;
+    for (const line of lines) {
+      if (line.length === 0) continue;
+      const w = ctx.measureText(line).width + Math.max(0, line.length - 1) * Math.max(0, letterSpacing);
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
+
+    const textBlockW = explicitWidth !== undefined ? explicitWidth : maxLineWidth;
+    const textBlockH = lines.length * lineHeightPx;
+
+    let textBlockLeft = 0;
+    if (align === 'left') {
+      textBlockLeft = padding.left;
+    } else if (align === 'right') {
+      textBlockLeft = safeW - padding.right - textBlockW;
+    } else {
+      textBlockLeft = (safeW - textBlockW) / 2;
+    }
+
+    let startY = 0;
+    if (verticalAlign === 'top') {
+      startY = padding.top;
+    } else if (verticalAlign === 'bottom') {
+      startY = safeH - padding.bottom - textBlockH;
+    } else {
+      startY = (safeH - textBlockH) / 2;
+    }
+
+    const bgX = textBlockLeft - padding.left;
+    const bgY = startY - padding.top;
+    const bgW = textBlockW + padding.left + padding.right;
+    const bgH = textBlockH + padding.top + padding.bottom;
+
+    if (backgroundColor.length > 0) {
+      ctx.save();
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(bgX, bgY, bgW, bgH);
+      ctx.restore();
+    }
+
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'top';
+    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+    const startX =
+      align === 'left'
+        ? textBlockLeft
+        : align === 'right'
+          ? textBlockLeft + textBlockW
+          : textBlockLeft + textBlockW / 2;
 
     const drawWithLetterSpacing = (text: string, x: number, y: number) => {
       if (!Number.isFinite(letterSpacing) || letterSpacing === 0) {
