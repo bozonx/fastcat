@@ -308,6 +308,13 @@
     }
   },
   "granVideoEditor": {
+    "effects": {
+      "tabs": {
+        "video": "Video",
+        "transitions": "Transitions",
+        "audio": "Audio"
+      }
+    },
     "clip": {
       "actions": "Actions",
       "info": "Clip Info",
