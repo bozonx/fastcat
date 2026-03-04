@@ -439,15 +439,29 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.textClip.width', 'Text width (0 - auto)')
+          }}</span>
+          <WheelNumberInput
+            :model-value="Number((clip as any).style?.width ?? 0)"
+            size="sm"
+            :step="10"
+            @update:model-value="(v: any) => handleUpdateTextStyle({ width: v > 0 ? Number(v) : undefined })"
+          />
+        </div>
+
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
             t('granVideoEditor.textClip.align', 'Align')
           }}</span>
-          <USelect
+          <USelectMenu
             :model-value="String((clip as any).style?.align ?? 'center')"
-            :options="[
+            :items="[
               { value: 'left', label: 'Left' },
               { value: 'center', label: 'Center' },
               { value: 'right', label: 'Right' },
             ]"
+            value-key="value"
+            label-key="label"
             size="sm"
             @update:model-value="(v: any) => handleUpdateTextStyle({ align: v })"
           />
@@ -457,13 +471,15 @@ defineExpose({
           <span class="text-xs text-ui-text-muted">{{
             t('granVideoEditor.textClip.verticalAlign', 'Vertical align')
           }}</span>
-          <USelect
+          <USelectMenu
             :model-value="String((clip as any).style?.verticalAlign ?? 'middle')"
-            :options="[
+            :items="[
               { value: 'top', label: 'Top' },
               { value: 'middle', label: 'Middle' },
               { value: 'bottom', label: 'Bottom' },
             ]"
+            value-key="value"
+            label-key="label"
             size="sm"
             @update:model-value="(v: any) => handleUpdateTextStyle({ verticalAlign: v })"
           />
