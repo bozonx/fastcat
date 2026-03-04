@@ -58,6 +58,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const audioVolume = ref(1);
   const audioMuted = ref(false);
   const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});
+
+  // Provide getter/setter for reactivity since Vue does not always catch dynamic property additions deeply out of the box in setup
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(50);
