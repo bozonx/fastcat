@@ -199,12 +199,12 @@ export function overlayTrimItem(
   const prevSourceDurationUs = Math.max(0, Math.round(moved.sourceRange.durationUs));
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
 
-  const maxSourceDurationUs =
-    moved.clipType === 'media' && !moved.isImage
-      ? Math.max(0, Math.round(moved.sourceDurationUs))
-      : Number.POSITIVE_INFINITY;
+  const hasFixedSourceDuration = moved.clipType === 'media' && !moved.isImage;
+  const maxSourceDurationUs = hasFixedSourceDuration
+    ? Math.max(0, Math.round(moved.sourceDurationUs))
+    : Number.POSITIVE_INFINITY;
 
-  const minSourceStartUs = 0;
+  const minSourceStartUs = hasFixedSourceDuration ? 0 : Number.NEGATIVE_INFINITY;
   const maxSourceEndUs = maxSourceDurationUs;
 
   let nextTimelineStartUs = prevTimelineStartUs;
@@ -1247,12 +1247,15 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   const prevSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs));
 
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
-  const maxSourceDurationUs =
-    item.clipType === 'media' && !item.isImage
-      ? Math.max(0, Math.round(item.sourceDurationUs))
-      : Number.POSITIVE_INFINITY;
 
-  const minSourceStartUs = 0;
+  // For clips with fixed source duration (non-image media), use actual source limits.
+  // For infinite-source clips (images, virtual clips), allow unlimited expansion.
+  const hasFixedSourceDuration = item.clipType === 'media' && !item.isImage;
+  const maxSourceDurationUs = hasFixedSourceDuration
+    ? Math.max(0, Math.round(item.sourceDurationUs))
+    : Number.POSITIVE_INFINITY;
+
+  const minSourceStartUs = hasFixedSourceDuration ? 0 : Number.NEGATIVE_INFINITY;
   const maxSourceEndUs = maxSourceDurationUs;
 
   let nextTimelineStartUs = prevTimelineStartUs;
