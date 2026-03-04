@@ -181,6 +181,8 @@ const {
   transformScaleLinked,
   transformScaleX,
   transformScaleY,
+  toggleFlipHorizontal,
+  toggleFlipVertical,
 } = useClipTransform({
   clip: clipRef,
   trackKind: clipTrackKind,
@@ -572,9 +574,29 @@ defineExpose({
       class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
     >
       <div
-        class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+        class="flex items-center justify-between text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
       >
-        {{ t('granVideoEditor.clip.transform.title', 'Transform') }}
+        <span>{{ t('granVideoEditor.clip.transform.title', 'Transform') }}</span>
+        <div class="flex items-center gap-1">
+          <UButton
+            icon="i-heroicons-arrows-right-left"
+            size="2xs"
+            color="neutral"
+            variant="ghost"
+            class="text-ui-text-muted hover:text-ui-text"
+            :title="t('granVideoEditor.clip.transform.flipHorizontal', 'Flip Horizontal')"
+            @click="toggleFlipHorizontal"
+          />
+          <UButton
+            icon="i-heroicons-arrows-up-down"
+            size="2xs"
+            color="neutral"
+            variant="ghost"
+            class="text-ui-text-muted hover:text-ui-text"
+            :title="t('granVideoEditor.clip.transform.flipVertical', 'Flip Vertical')"
+            @click="toggleFlipVertical"
+          />
+        </div>
       </div>
 
       <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">

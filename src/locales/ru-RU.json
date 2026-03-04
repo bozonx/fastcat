@@ -354,7 +354,9 @@
           "bottomLeft": "Низ лево",
           "bottomRight": "Низ право",
           "custom": "Свой"
-        }
+        },
+        "flipHorizontal": "Отразить по горизонтали",
+        "flipVertical": "Отразить по вертикали"
       }
     },
     "welcome": {

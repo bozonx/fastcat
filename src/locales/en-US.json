@@ -350,7 +350,9 @@
           "bottomLeft": "Bottom Left",
           "bottomRight": "Bottom Right",
           "custom": "Custom"
-        }
+        },
+        "flipHorizontal": "Flip Horizontal",
+        "flipVertical": "Flip Vertical"
       }
     },
     "welcome": {

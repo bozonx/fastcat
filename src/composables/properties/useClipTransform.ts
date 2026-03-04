@@ -45,8 +45,8 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
 
   return {
     scale: {
-      x: clampNumber(scaleX, 0.001, 1000),
-      y: clampNumber(scaleY, 0.001, 1000),
+      x: scaleX === 0 ? 0.001 : clampNumber(scaleX, -1000, 1000),
+      y: scaleY === 0 ? 0.001 : clampNumber(scaleY, -1000, 1000),
       linked,
     },
     position: {
@@ -141,8 +141,10 @@ export function useClipTransform(options: UseClipTransformOptions) {
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
       const linked = Boolean(current.scale?.linked);
-      const x = clampNumber(val / 100, 0.001, 1000);
-      const y = linked ? x : (current.scale?.y ?? 1);
+      let x = val / 100;
+      x = x === 0 ? 0.001 : clampNumber(x, -1000, 1000);
+      const absY = Math.abs(current.scale?.y ?? 1);
+      const y = linked ? (Math.sign(current.scale?.y ?? 1) * Math.abs(x)) : (current.scale?.y ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
   });
@@ -155,8 +157,10 @@ export function useClipTransform(options: UseClipTransformOptions) {
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
       const linked = Boolean(current.scale?.linked);
-      const y = clampNumber(val / 100, 0.001, 1000);
-      const x = linked ? y : (current.scale?.x ?? 1);
+      let y = val / 100;
+      y = y === 0 ? 0.001 : clampNumber(y, -1000, 1000);
+      const absX = Math.abs(current.scale?.x ?? 1);
+      const x = linked ? (Math.sign(current.scale?.x ?? 1) * Math.abs(y)) : (current.scale?.x ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
   });
@@ -258,9 +262,27 @@ export function useClipTransform(options: UseClipTransformOptions) {
     },
   });
 
+  function toggleFlipHorizontal() {
+    const current = getSafeTransform(options.clip.value);
+    const x = -(current.scale?.x ?? 1);
+    const y = current.scale?.y ?? 1;
+    const linked = Boolean(current.scale?.linked);
+    updateSelectedClipTransform({ scale: { x, y, linked } });
+  }
+
+  function toggleFlipVertical() {
+    const current = getSafeTransform(options.clip.value);
+    const x = current.scale?.x ?? 1;
+    const y = -(current.scale?.y ?? 1);
+    const linked = Boolean(current.scale?.linked);
+    updateSelectedClipTransform({ scale: { x, y, linked } });
+  }
+
   return {
     anchorPresetOptions,
     canEditTransform,
+    toggleFlipHorizontal,
+    toggleFlipVertical,
     transformAnchorPreset,
     transformAnchorX,
     transformAnchorY,
