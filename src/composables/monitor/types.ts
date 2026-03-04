@@ -2,6 +2,7 @@ export interface WorkerTimelineClip {
   kind: 'clip';
   clipType: 'media' | 'adjustment' | 'background' | 'text';
   id: string;
+  trackId?: string;
   layer: number;
   speed?: number;
   audioGain?: number;

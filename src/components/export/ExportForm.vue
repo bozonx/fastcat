@@ -5,7 +5,6 @@ import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
-import AppModal from '~/components/ui/AppModal.vue';
 import { BASE_VIDEO_CODEC_OPTIONS, resolveVideoCodecOptions } from '~/utils/webcodecs';
 import {
   useTimelineExport,
@@ -14,14 +13,7 @@ import {
   getExt,
 } from '~/composables/timeline/useTimelineExport';
 
-interface Props {
-  open: boolean;
-}
-
-const props = defineProps<Props>();
-
 const emit = defineEmits<{
-  'update:open': [value: boolean];
   exported: [];
 }>();
 
@@ -74,11 +66,6 @@ const {
   cancelRequested,
 } = useTimelineExport();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit('update:open', v),
-});
-
 function getFormatOptions(): readonly FormatOption[] {
   return [
     { value: 'mp4', label: 'MP4' },
@@ -98,9 +85,9 @@ function getPhaseLabel() {
 }
 
 watch(
-  () => props.open,
+  () => projectStore.currentView,
   async (val) => {
-    if (!val) return;
+    if (val !== 'export') return;
 
     exportError.value = null;
     exportWarnings.value = [];
@@ -142,6 +129,7 @@ watch(
     outputFilename.value = await getNextAvailableFilename(timelineBase, getExt(outputFormat.value));
     await validateFilename();
   },
+  { immediate: true },
 );
 
 watch(outputFormat, async (fmt) => {
@@ -149,7 +137,7 @@ watch(outputFormat, async (fmt) => {
   videoCodec.value = codecConfig.videoCodec;
   audioCodec.value = codecConfig.audioCodec;
 
-  if (!props.open) return;
+  if (projectStore.currentView !== 'export') return;
 
   try {
     const base = outputFilename.value.replace(/\.[^.]+$/, '');
@@ -170,7 +158,7 @@ watch(outputFormat, async (fmt) => {
 });
 
 watch(outputFilename, async () => {
-  if (!props.open) return;
+  if (projectStore.currentView !== 'export') return;
   try {
     await validateFilename();
   } catch {
@@ -295,7 +283,6 @@ async function handleConfirm() {
       });
 
       emit('exported');
-      isOpen.value = false;
     } finally {
       if (!exportSuccess) {
         try {
@@ -324,13 +311,14 @@ async function handleConfirm() {
 </script>
 
 <template>
-  <AppModal
-    v-model:open="isOpen"
-    :prevent-close="isExporting"
-    :title="t('videoEditor.export.title', 'Export Timeline')"
-    :ui="{ content: 'sm:max-w-lg' }"
-  >
-    <div class="flex flex-col gap-6">
+  <div class="flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar">
+    <div class="mb-6 flex items-center justify-between">
+      <h2 class="text-xl font-semibold text-ui-text">
+        {{ t('videoEditor.export.title', 'Export Timeline') }}
+      </h2>
+    </div>
+
+    <div class="flex flex-col gap-6 max-w-2xl">
       <div class="flex flex-col gap-1.5">
         <UFormField
           :label="t('videoEditor.export.filename', 'Filename')"
@@ -403,7 +391,7 @@ async function handleConfirm() {
       </div>
     </div>
 
-    <template #footer>
+    <div class="mt-8 pt-6 border-t border-ui-border">
       <div class="flex flex-col gap-3 w-full">
         <div v-if="isExporting" class="flex flex-col gap-2">
           <div class="flex justify-between text-xs text-ui-text-muted">
@@ -427,7 +415,7 @@ async function handleConfirm() {
             :label="t('common.cancel', 'Cancel')"
             :loading="cancelRequested"
             :disabled="cancelRequested"
-            @click="isExporting ? cancelExport() : (isOpen = false)"
+            @click="isExporting ? cancelExport() : undefined"
           />
           <UButton
             color="primary"
@@ -443,6 +431,6 @@ async function handleConfirm() {
           />
         </div>
       </div>
-    </template>
-  </AppModal>
+    </div>
+  </div>
 </template>

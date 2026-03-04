@@ -231,6 +231,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                     ? 'timeline'
                     : c.clipType,
                 id: c.id,
+                trackId: c.trackId,
                 speed: (c as any).speed,
                 audioGain: (c as any).audioGain,
                 audioBalance: (c as any).audioBalance,
@@ -257,11 +258,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           const audioDuration = computeAudioDurationUs(flattenedAudio);
           // Keep store duration at least as large as current value to avoid clamping
           // when disabled clips are excluded from the worker payload.
-          timelineStore.duration = Math.max(
-            timelineStore.duration,
-            maxDuration,
-            audioDuration,
-          );
+          timelineStore.duration = Math.max(timelineStore.duration, maxDuration, audioDuration);
           lastBuiltLayoutSignature = clipLayoutSignature.value;
           scheduleRender(getRenderTimeForLayoutUpdate());
         } catch (error) {
@@ -282,6 +279,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               if (!handle) return null;
               return {
                 id: clip.id,
+                trackId: clip.trackId,
                 sourcePath: getAudioSourceKey(path),
                 fileHandle: handle,
                 startUs: clip.timelineRange.startUs,
@@ -451,6 +449,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             clipType:
               c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
             id: c.id,
+            trackId: c.trackId,
             audioBalance: (c as any).audioBalance,
             speed: (c as any).speed,
             audioGain: (c as any).audioGain,
@@ -517,6 +516,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               if (!handle) return null;
               return {
                 id: clip.id,
+                trackId: clip.trackId,
                 sourcePath: getAudioSourceKey(path),
                 fileHandle: handle,
                 startUs: clip.timelineRange.startUs,
