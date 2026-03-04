@@ -138,8 +138,8 @@ const dragPreview = ref<{
 
 const zoomFactor = computed(() => {
   const zoom = timelineStore.timelineZoom;
-  const pos = Math.min(100, Math.max(0, zoom));
-  const exponent = (pos - 50) / 10;
+  const pos = Math.min(110, Math.max(0, zoom));
+  const exponent = (pos - 50) / 7;
   const factor = Math.pow(2, exponent);
   // Show as "x1.25" format
   return `x${factor.toFixed(2)}`;
@@ -308,7 +308,7 @@ function onTimelineRulerWheel(e: WheelEvent) {
     const prevZoom = timelineStore.timelineZoom;
     const dir = delta < 0 ? 1 : -1;
     const step = 3;
-    const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
+    const nextZoom = Math.min(110, Math.max(0, Math.round(prevZoom + dir * step)));
 
     const rect = el.getBoundingClientRect();
     const viewportX = e.clientX - rect.left;
@@ -379,7 +379,7 @@ function onTimelineWheel(e: WheelEvent) {
     const prevZoom = timelineStore.timelineZoom;
     const dir = delta < 0 ? 1 : -1;
     const step = 3;
-    const nextZoom = Math.min(100, Math.max(0, Math.round(prevZoom + dir * step)));
+    const nextZoom = Math.min(110, Math.max(0, Math.round(prevZoom + dir * step)));
 
     const rect = el.getBoundingClientRect();
     const viewportX = e.clientX - rect.left;
@@ -730,7 +730,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             >
               <div
                 v-if="isZooming"
-                class="absolute bottom-4 right-5 px-3 py-1.5 text-sm font-mono font-semibold rounded-lg bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
+                class="absolute bottom-12 right-5 px-3 py-1.5 text-sm font-mono font-semibold rounded-lg bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
                 :style="{ zIndex: 60 }"
               >
                 {{ zoomFactor }}
