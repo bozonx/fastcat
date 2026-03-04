@@ -38,16 +38,27 @@ const audioPeaks = computed(() => {
 
 const isExtracting = ref(false);
 
+let isUnmounted = false;
+let extractCallId = 0;
+
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
   if (audioPeaks.value || isExtracting.value) return;
+
+  const callId = ++extractCallId;
+  const urlAtStart = fileUrl.value;
+  let engine: AudioEngine | null = null;
 
   try {
     isExtracting.value = true;
     const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
     if (!fileHandle) return;
 
-    const engine = new AudioEngine();
+    if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+      return;
+    }
+
+    engine = new AudioEngine();
 
     // Use a fixed max length that represents a reasonable resolution (e.g., 8000 samples per second of audio max, or just a fixed large number)
     // Actually, for a timeline, we need enough resolution for the maximum zoom level.
@@ -61,7 +72,9 @@ const extractPeaks = async () => {
       precision: 10000,
     });
 
-    engine.destroy();
+    if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+      return;
+    }
 
     if (peaks) {
       mediaStore.setAudioPeaks(fileUrl.value, peaks);
@@ -70,6 +83,11 @@ const extractPeaks = async () => {
   } catch (err) {
     console.error('Failed to extract audio peaks:', err);
   } finally {
+    try {
+      engine?.destroy();
+    } catch {
+      // ignore
+    }
     isExtracting.value = false;
   }
 };
@@ -85,10 +103,13 @@ watch(
 );
 
 onMounted(() => {
+  isUnmounted = false;
   void extractPeaks();
 });
 
 onBeforeUnmount(() => {
+  isUnmounted = true;
+  extractCallId += 1;
   chunkObserver?.disconnect();
   chunkObserver = null;
   resizeObserver?.disconnect();

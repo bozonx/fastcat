@@ -1,10 +1,24 @@
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { pxToDeltaUs } from '~/utils/timeline/geometry';
 import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineStore = useTimelineStore();
+
+  let activePointerMove: ((e: PointerEvent) => void) | null = null;
+  let activePointerUp: ((e?: PointerEvent) => void) | null = null;
+
+  function clearActivePointerListeners() {
+    if (activePointerMove) {
+      window.removeEventListener('pointermove', activePointerMove);
+      activePointerMove = null;
+    }
+    if (activePointerUp) {
+      window.removeEventListener('pointerup', activePointerUp as any);
+      activePointerUp = null;
+    }
+  }
 
   const resizeTransition = ref<{
     trackId: string;
@@ -47,6 +61,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       trackHeight: clipHeight,
     };
 
+    clearActivePointerListeners();
+
     function onPointerMove(ev: PointerEvent) {
       if (!resizeVolume.value) return;
       const dy = ev.clientY - resizeVolume.value.startY;
@@ -65,10 +81,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeVolume.value = null;
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+      clearActivePointerListeners();
     }
 
+    activePointerMove = onPointerMove;
+    activePointerUp = onPointerUp;
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
   }
@@ -89,6 +106,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       startX: e.clientX,
       startFadeUs: currentFadeUs,
     };
+
+    clearActivePointerListeners();
 
     function onPointerMove(ev: PointerEvent) {
       if (!resizeFade.value) return;
@@ -124,10 +143,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeFade.value = null;
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+      clearActivePointerListeners();
     }
 
+    activePointerMove = onPointerMove;
+    activePointerUp = onPointerUp;
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
   }
@@ -233,6 +253,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       startDurationUs: currentDurationUs,
     };
 
+    clearActivePointerListeners();
+
     function onPointerMove(ev: PointerEvent) {
       if (!resizeTransition.value) return;
       const dx = ev.clientX - resizeTransition.value.startX;
@@ -276,14 +298,25 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     }
 
     function onPointerUp() {
+      if (resizeTransition.value) {
+        timelineStore.requestTimelineSave({ immediate: true });
+      }
       resizeTransition.value = null;
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+      clearActivePointerListeners();
     }
 
+    activePointerMove = onPointerMove;
+    activePointerUp = onPointerUp;
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
   }
+
+  onBeforeUnmount(() => {
+    clearActivePointerListeners();
+    resizeTransition.value = null;
+    resizeFade.value = null;
+    resizeVolume.value = null;
+  });
 
   return {
     resizeTransition,

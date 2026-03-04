@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch } from 'vue';
+import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
@@ -64,6 +64,11 @@ function onGlobalMouseUp() {
   window.removeEventListener('mousemove', onGlobalMouseMove);
   window.removeEventListener('mouseup', onGlobalMouseUp);
 }
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onGlobalMouseMove);
+  window.removeEventListener('mouseup', onGlobalMouseUp);
+});
 
 const isConfirmDeleteOpen = ref(false);
 const contextTrackId = ref<string | null>(null);

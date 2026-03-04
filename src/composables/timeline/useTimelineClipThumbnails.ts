@@ -54,6 +54,8 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
 
+  let isUnmounted = false;
+
   const intervalSeconds = TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
   const intervalUs = intervalSeconds * 1_000_000;
 
@@ -298,6 +300,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
       projectRelativePath: fileUrl.value,
       duration: duration.value,
       onProgress: (progress, path, time) => {
+        if (isUnmounted) return;
         const secondKey = Math.round(time);
         const newMap = new Map(thumbnailsBySecond.value);
         if (!newMap.has(secondKey)) {
@@ -315,9 +318,11 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         }
       },
       onComplete: () => {
+        if (isUnmounted) return;
         isGenerating.value = false;
       },
       onError: (err) => {
+        if (isUnmounted) return;
         console.error('Thumbnail generation error:', err);
         isGenerating.value = false;
       },
@@ -325,12 +330,17 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
   };
 
   onMounted(() => {
+    isUnmounted = false;
     if (options.item.value.clipType === 'media' && !isImage.value) {
       generate();
     }
   });
 
   onBeforeUnmount(() => {
+    isUnmounted = true;
+    if (clipHash.value) {
+      thumbnailGenerator.cancelTask(clipHash.value);
+    }
     chunkObserver?.disconnect();
     chunkObserver = null;
     resizeObserver?.disconnect();
