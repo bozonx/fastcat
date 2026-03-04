@@ -51,7 +51,8 @@ function handleUpdateColor(val: string) {
 
 function handleUpdateStartTime(val: number | string) {
   if (!marker.value) return;
-  const newStartUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
+  const newStartUs =
+    typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
   if (newStartUs === marker.value.timeUs) return;
 
   const patch: any = { timeUs: newStartUs };
@@ -60,7 +61,7 @@ function handleUpdateStartTime(val: number | string) {
     const newDurationUs = Math.max(0, endUs - newStartUs);
     patch.durationUs = newDurationUs;
   }
-  
+
   timelineStore.updateMarker(marker.value.id, patch);
 }
 
@@ -68,9 +69,9 @@ function handleUpdateEndTime(val: number | string) {
   if (!marker.value || !isZone.value) return;
   const newEndUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
   const currentStartUs = marker.value.timeUs;
-  
+
   if (newEndUs <= currentStartUs) return;
-  
+
   const newDurationUs = newEndUs - currentStartUs;
   if (newDurationUs === marker.value.durationUs) return;
 
@@ -127,7 +128,9 @@ function handleConvertMarker() {
 
     <PropertySection :title="t('granVideoEditor.marker.info', 'Marker Info')">
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.marker.text', 'Text') }}</span>
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.marker.text', 'Text')
+        }}</span>
         <UTextarea
           :model-value="marker.text"
           size="sm"
@@ -137,11 +140,10 @@ function handleConvertMarker() {
       </div>
 
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ isZone ? t('common.start', 'Start Time') : t('common.position', 'Position') }}</span>
-        <TimecodeInput
-          :model-value="marker.timeUs"
-          @update:model-value="handleUpdateStartTime"
-        />
+        <span class="text-xs text-ui-text-muted">{{
+          isZone ? t('common.start', 'Start Time') : t('common.position', 'Position')
+        }}</span>
+        <TimecodeInput :model-value="marker.timeUs" @update:model-value="handleUpdateStartTime" />
       </div>
 
       <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
@@ -164,8 +166,7 @@ function handleConvertMarker() {
             :style="{ backgroundColor: c.value }"
             :title="c.label"
             @click.prevent="handleUpdateColor(c.value)"
-          >
-          </button>
+          ></button>
         </div>
       </div>
     </PropertySection>

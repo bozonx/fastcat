@@ -97,12 +97,12 @@ function handleWheel(e: WheelEvent) {
 function stepValue(direction: number, isFrame: boolean) {
   const currentUs = isFocused.value ? parseTimecode(localValue.value, fps.value) : props.modelValue;
   const validUs = isNaN(currentUs) ? props.modelValue : currentUs;
-  
+
   const frameUs = 1_000_000 / fps.value;
   const stepUs = isFrame ? frameUs : 1_000_000; // frame or 1 second
-  
+
   const newUs = Math.max(0, validUs + direction * stepUs);
-  
+
   if (isFocused.value) {
     localValue.value = formatTimecode(newUs, fps.value);
     commitValue();
@@ -128,16 +128,16 @@ function stepValue(direction: number, isFrame: boolean) {
           <button
             type="button"
             class="flex-1 px-1 hover:bg-ui-bg-muted flex items-center justify-center text-ui-text-muted hover:text-ui-text transition-colors"
-            @click="stepValue(1, true)"
             tabindex="-1"
+            @click="stepValue(1, true)"
           >
             <UIcon name="i-heroicons-chevron-up" class="w-3 h-3" />
           </button>
           <button
             type="button"
             class="flex-1 px-1 hover:bg-ui-bg-muted flex items-center justify-center text-ui-text-muted hover:text-ui-text transition-colors border-t border-ui-border-muted"
-            @click="stepValue(-1, true)"
             tabindex="-1"
+            @click="stepValue(-1, true)"
           >
             <UIcon name="i-heroicons-chevron-down" class="w-3 h-3" />
           </button>

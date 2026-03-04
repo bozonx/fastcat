@@ -35,7 +35,7 @@ const selectedItemIds = computed(() => timelineStore.selectedItemIds);
 function isTrackSelected(track: TimelineTrack): boolean {
   if (selectedTrackId.value === track.id) return true;
   // Check if any clip in this track is selected
-  return track.items.some(item => selectedItemIds.value.includes(item.id));
+  return track.items.some((item) => selectedItemIds.value.includes(item.id));
 }
 </script>
 
@@ -44,7 +44,7 @@ function isTrackSelected(track: TimelineTrack): boolean {
     <div class="px-4 py-2 border-b border-ui-border bg-ui-bg-elevated shrink-0">
       <h3 class="font-medium text-sm text-ui-text">Микшер</h3>
     </div>
-    
+
     <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 flex gap-4 min-h-0">
       <!-- Main Bus -->
       <AudioMixerMain />

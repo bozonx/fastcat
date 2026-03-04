@@ -659,6 +659,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     }
     if (layoutDebounceTimer !== null) {
       clearTimeout(layoutDebounceTimer);
+      layoutDebounceTimer = null;
     }
 
     try {

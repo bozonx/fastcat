@@ -29,7 +29,7 @@ function dbToLinear(db: number): number {
 
 const currentDb = computed({
   get: () => linearToDb(props.modelValue),
-  set: (db: number) => emit('update:modelValue', dbToLinear(db))
+  set: (db: number) => emit('update:modelValue', dbToLinear(db)),
 });
 
 function dbToPercent(db: number): number {
@@ -41,7 +41,7 @@ function percentToDb(percent: number): number {
 }
 
 const fillPercent = computed(() => dbToPercent(currentDb.value));
-const levelPercent = computed(() => props.levelDb !== undefined ? dbToPercent(props.levelDb) : 0);
+const levelPercent = computed(() => (props.levelDb !== undefined ? dbToPercent(props.levelDb) : 0));
 
 const levelColor = computed(() => {
   const db = props.levelDb ?? -60;
@@ -109,38 +109,40 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
   <div class="flex h-full w-full justify-center py-2 select-none gap-1" @wheel="onWheel">
     <!-- Ticks -->
     <div class="relative h-full w-6">
-      <div 
-        v-for="tick in ticks" 
+      <div
+        v-for="tick in ticks"
         :key="tick"
         class="absolute right-0 flex items-center justify-end w-full translate-y-[50%]"
         :style="{ bottom: `${dbToPercent(tick)}%` }"
       >
-        <span 
+        <span
           class="text-[9px] font-mono leading-none mr-1"
           :class="{
-            'text-green-500 font-bold': tick === 0, 
-            'text-yellow-500': tick > 0 && tick <= 6, 
+            'text-green-500 font-bold': tick === 0,
+            'text-yellow-500': tick > 0 && tick <= 6,
             'text-red-500': tick > 6,
-            'text-ui-text-muted': tick < 0
+            'text-ui-text-muted': tick < 0,
           }"
         >
           {{ tick > 0 ? '+' : '' }}{{ tick }}
         </span>
-        <div 
+        <div
           class="w-1.5 h-px"
           :class="{
-            'bg-green-500': tick === 0, 
-            'bg-yellow-500': tick > 0 && tick <= 6, 
+            'bg-green-500': tick === 0,
+            'bg-yellow-500': tick > 0 && tick <= 6,
             'bg-red-500': tick > 6,
-            'bg-ui-border': tick < 0
+            'bg-ui-border': tick < 0,
           }"
         ></div>
       </div>
     </div>
 
     <!-- VU Meter -->
-    <div class="relative h-full w-1.5 shrink-0 bg-ui-bg-dark border border-ui-border rounded-sm overflow-hidden">
-      <div 
+    <div
+      class="relative h-full w-1.5 shrink-0 bg-ui-bg-dark border border-ui-border rounded-sm overflow-hidden"
+    >
+      <div
         v-if="levelDb !== undefined && levelDb > -60"
         class="absolute bottom-0 left-0 right-0 transition-all duration-75"
         :class="levelColor"
@@ -149,30 +151,30 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
     </div>
 
     <!-- Slider track -->
-    <div 
+    <div
       ref="sliderRef"
       class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize"
       @mousedown="onMouseDown"
       @dblclick="onDoubleClick"
     >
       <!-- Volume Set Fill -->
-      <div 
+      <div
         class="absolute bottom-0 left-0 right-0 transition-colors duration-200 rounded-b-sm"
         :class="[fillColor, fillPercent === 100 ? 'rounded-t-sm' : '']"
         :style="{ height: `${fillPercent}%` }"
       ></div>
-      
+
       <!-- Thumb -->
-      <div 
+      <div
         class="absolute left-1/2 -translate-x-1/2 w-6 h-3 bg-white border border-gray-300 shadow-sm rounded-sm z-20 pointer-events-none flex flex-col justify-center items-center gap-px"
         :style="{ bottom: `calc(${fillPercent}% - 6px)` }"
       >
         <div class="w-3 h-px bg-gray-400"></div>
         <div class="w-3 h-px bg-gray-400"></div>
       </div>
-      
+
       <!-- 0 dB indicator line inside track -->
-      <div 
+      <div
         class="absolute left-0 right-0 h-0.5 bg-green-500/50 z-10 pointer-events-none translate-y-[50%]"
         :style="{ bottom: `${dbToPercent(0)}%` }"
       ></div>

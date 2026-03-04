@@ -18,6 +18,7 @@ import Timeline from '~/components/Timeline.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
+import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import type { DynamicPanel } from '~/stores/editorView.store';
 import { hideStaticTab, showStaticTab } from '~/composables/project/useProjectTabs';
@@ -29,6 +30,7 @@ const projectStore = useProjectStore();
 const { currentProjectId } = storeToRefs(projectStore);
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
+const focusStore = useFocusStore();
 
 const defaultCutPanelSizes = computed(() => {
   const len = projectStore.cutPanels?.length || 0;
@@ -60,6 +62,66 @@ const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes
   currentProjectId,
   [40, 60],
 );
+
+const { getProjectRootDirHandle } = useFileManager();
+
+async function navigateToParentFolder() {
+  const folder = filesPageStore.selectedFolder;
+  if (!folder) return;
+
+  const currentPath = folder.path ?? '';
+  if (!currentPath) return;
+
+  const rootHandle = await getProjectRootDirHandle();
+  if (!rootHandle) return;
+
+  const parts = currentPath.split('/').filter(Boolean);
+  if (parts.length <= 1) {
+    filesPageStore.selectFolder({
+      kind: 'directory',
+      name: projectStore.currentProjectName || '',
+      path: '',
+      handle: rootHandle,
+    });
+  } else {
+    const parentParts = parts.slice(0, -1);
+    let currentHandle: FileSystemDirectoryHandle = rootHandle;
+    for (const part of parentParts) {
+      try {
+        currentHandle = await currentHandle.getDirectoryHandle(part);
+      } catch {
+        return;
+      }
+    }
+    filesPageStore.selectFolder({
+      kind: 'directory',
+      name: parentParts[parentParts.length - 1] || '',
+      path: parentParts.join('/'),
+      handle: currentHandle,
+    });
+  }
+}
+
+function onGlobalKeyDown(e: KeyboardEvent) {
+  if (e.key !== 'Backspace') return;
+  if (isEditableTarget(e.target)) return;
+  if (projectStore.currentView !== 'files') return;
+
+  // If focus is on the timeline, let useTimelineHotkeys handle it (rippleDelete)
+  if (focusStore.effectiveFocus === 'timeline') return;
+
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  void navigateToParentFolder();
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
+});
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {
   if (
@@ -420,10 +482,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     @drop.prevent="(e) => onDrop(e, panel.id)"
                     @dragend="onDragEnd"
                   >
-                    <Project
-                      v-if="panel.type === 'fileManager'"
-                      class="h-full pt-2"
-                    />
+                    <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
                     <MonitorContainer
                       v-else-if="panel.type === 'monitor'"
                       class="h-full"

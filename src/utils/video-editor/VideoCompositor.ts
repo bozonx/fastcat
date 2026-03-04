@@ -1492,9 +1492,18 @@ export class VideoCompositor {
     padding.bottom = Math.round(padding.bottom * renderScale);
     padding.left = Math.round(padding.left * renderScale);
 
-    const explicitWidthRaw = typeof (style as any).width === 'number' && Number.isFinite((style as any).width) && (style as any).width > 0 ? (style as any).width : undefined;
-    const explicitWidth = explicitWidthRaw !== undefined ? Math.round(explicitWidthRaw * renderScale) : undefined;
-    const contentWidth = explicitWidth !== undefined ? Math.max(1, explicitWidth - padding.left - padding.right) : undefined;
+    const explicitWidthRaw =
+      typeof (style as any).width === 'number' &&
+      Number.isFinite((style as any).width) &&
+      (style as any).width > 0
+        ? (style as any).width
+        : undefined;
+    const explicitWidth =
+      explicitWidthRaw !== undefined ? Math.round(explicitWidthRaw * renderScale) : undefined;
+    const contentWidth =
+      explicitWidth !== undefined
+        ? Math.max(1, explicitWidth - padding.left - padding.right)
+        : undefined;
 
     const safeW = Math.max(1, canvas.width);
     const safeH = Math.max(1, canvas.height);
@@ -1533,7 +1542,8 @@ export class VideoCompositor {
     let maxLineWidth = 0;
     for (const line of lines) {
       if (line.length === 0) continue;
-      const w = ctx.measureText(line).width + Math.max(0, line.length - 1) * Math.max(0, letterSpacing);
+      const w =
+        ctx.measureText(line).width + Math.max(0, line.length - 1) * Math.max(0, letterSpacing);
       if (w > maxLineWidth) maxLineWidth = w;
     }
 
@@ -1560,7 +1570,8 @@ export class VideoCompositor {
 
     const bgX = textBlockLeft - padding.left;
     const bgY = startY - padding.top;
-    const bgW = explicitWidth !== undefined ? explicitWidth : (textBlockW + padding.left + padding.right);
+    const bgW =
+      explicitWidth !== undefined ? explicitWidth : textBlockW + padding.left + padding.right;
     const bgH = textBlockH + padding.top + padding.bottom;
 
     if (backgroundColor.length > 0) {

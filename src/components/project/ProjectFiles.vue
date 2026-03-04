@@ -124,7 +124,12 @@ function onFileAction(action: FileAction, entry: FsEntry) {
   } else if (action === 'openAsProjectTab') {
     if (entry.kind !== 'file' || !entry.path) return;
     const mediaType = getMediaTypeFromFilename(entry.name);
-    if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image' && mediaType !== 'text')
+    if (
+      mediaType !== 'video' &&
+      mediaType !== 'audio' &&
+      mediaType !== 'image' &&
+      mediaType !== 'text'
+    )
       return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
@@ -352,7 +357,8 @@ async function createTimelineInDirectory(entry: FsEntry) {
 }
 
 async function onCreateTimeline() {
-  const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+  const selectedDir =
+    uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
 
   if (selectedDir) {
     await createTimelineInDirectory(selectedDir);
@@ -387,7 +393,8 @@ function onFileSelect(e: Event) {
     const files = Array.from(target.files);
     target.value = '';
 
-    const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+    const selectedDir =
+      uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
     if (!selectedDir || !selectedDir.path) {
       handleFiles(files);
       return;
@@ -445,7 +452,9 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      onFileActionBase("createFolder", entry, () => fileManager.rootEntries.value.map(e => e.name));
+      onFileActionBase('createFolder', entry, () =>
+        fileManager.rootEntries.value.map((e) => e.name),
+      );
       (uiStore as any).pendingFsEntryCreateFolder = null;
     }
   },
@@ -589,7 +598,14 @@ watch(
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="onFileAction('createFolder', (uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null) as FsEntry)"
+          @click="
+            onFileAction(
+              'createFolder',
+              (uiStore.selectedFsEntry?.kind === 'directory'
+                ? uiStore.selectedFsEntry
+                : null) as FsEntry,
+            )
+          "
         />
 
         <div class="ml-auto flex items-center">
@@ -641,8 +657,6 @@ watch(
 
       <FileManagerFiles
         :editing-entry-path="editingEntryPath"
-        @commit-rename="commitRename"
-        @stop-rename="stopRename"
         :folders-only="foldersOnly"
         :is-dragging="isDragging"
         :is-loading="isLoading"
@@ -652,7 +666,9 @@ watch(
         :find-entry-by-path="findEntryByPath"
         :media-cache="fileManager.mediaCache"
         :move-entry="moveEntry"
+        @commit-rename="commitRename"
         :get-project-root-dir-handle="getProjectRootDirHandle"
+        @stop-rename="stopRename"
         :handle-files="handleFiles"
         @toggle="toggleDirectory"
         @action="onFileAction"

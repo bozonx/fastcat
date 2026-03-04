@@ -439,7 +439,9 @@ const emit = defineEmits<{
           class="flex items-center gap-2 shrink-0"
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
-          <UTooltip :text="t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
+          <UTooltip
+            :text="t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead')"
+          >
             <UButton
               size="2xs"
               color="neutral"

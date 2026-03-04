@@ -151,7 +151,8 @@ function draw() {
 
       const frameColor = `rgba(${tickColor.match(/(\d+),\s*(\d+),\s*(\d+)/)?.[0] || '255,255,255'}, 0.65)`;
       ctx.strokeStyle = pxPerFrame > 15 ? frameColor : tickColor;
-      if (pxPerFrame > 15) ctx.lineWidth = 1.5; else ctx.lineWidth = 1;
+      if (pxPerFrame > 15) ctx.lineWidth = 1.5;
+      else ctx.lineWidth = 1;
 
       for (let f = 1; f < currentFps; f += frameStep) {
         const frameX =

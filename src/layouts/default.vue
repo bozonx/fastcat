@@ -72,7 +72,10 @@ useHead({
   >
     <div class="flex flex-col flex-1 h-full min-h-0 relative">
       <!-- Main Content (NuxtPage) -->
-      <div v-show="!isStartingUp && workspaceStore.workspaceHandle && projectStore.currentProjectName" class="flex-1 min-h-0 relative">
+      <div
+        v-show="!isStartingUp && workspaceStore.workspaceHandle && projectStore.currentProjectName"
+        class="flex-1 min-h-0 relative"
+      >
         <EditorHeader
           @open-project-settings="isProjectSettingsOpen = true"
           @open-editor-settings="isEditorSettingsOpen = true"
@@ -95,41 +98,41 @@ useHead({
       <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
       <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
 
-        <!-- Drag Overlay Hint -->
+      <!-- Drag Overlay Hint -->
+      <div
+        v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity pointer-events-none"
+      >
         <div
-          v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity pointer-events-none"
+          class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/90 border border-primary-500/50 rounded-3xl shadow-2xl animate-pulse-slow"
         >
-          <div
-            class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/90 border border-primary-500/50 rounded-3xl shadow-2xl animate-pulse-slow"
-          >
-            <UIcon name="i-heroicons-arrow-down-tray" class="w-20 h-20 text-primary-500 mb-6" />
-            <h2 class="text-3xl font-bold text-white mb-2 text-center">
-              {{ t('videoEditor.fileManager.actions.dropFilesHere', 'Drop files here') }}
-            </h2>
-            <div class="space-y-4 text-center max-w-md">
-              <p class="text-lg text-ui-text-muted">
+          <UIcon name="i-heroicons-arrow-down-tray" class="w-20 h-20 text-primary-500 mb-6" />
+          <h2 class="text-3xl font-bold text-white mb-2 text-center">
+            {{ t('videoEditor.fileManager.actions.dropFilesHere', 'Drop files here') }}
+          </h2>
+          <div class="space-y-4 text-center max-w-md">
+            <p class="text-lg text-ui-text-muted">
+              {{
+                t(
+                  'videoEditor.fileManager.actions.dropFilesGlobalDescription',
+                  'Release files to automatically save them to the project sources folder',
+                )
+              }}
+            </p>
+            <div
+              class="flex items-center justify-center gap-2 py-2 px-4 bg-primary-500/10 rounded-xl border border-primary-400/20"
+            >
+              <UIcon name="i-heroicons-folder" class="w-5 h-5 text-primary-400" />
+              <p class="text-sm font-medium text-primary-400">
                 {{
                   t(
-                    'videoEditor.fileManager.actions.dropFilesGlobalDescription',
-                    'Release files to automatically save them to the project sources folder',
+                    'videoEditor.fileManager.actions.dropToFolderHint',
+                    'Drag to the File Manager on the left to upload to a specific folder',
                   )
                 }}
               </p>
-              <div
-                class="flex items-center justify-center gap-2 py-2 px-4 bg-primary-500/10 rounded-xl border border-primary-400/20"
-              >
-                <UIcon name="i-heroicons-folder" class="w-5 h-5 text-primary-400" />
-                <p class="text-sm font-medium text-primary-400">
-                  {{
-                    t(
-                      'videoEditor.fileManager.actions.dropToFolderHint',
-                      'Drag to the File Manager on the left to upload to a specific folder',
-                    )
-                  }}
-                </p>
-              </div>
             </div>
+          </div>
         </div>
       </div>
     </div>

@@ -80,7 +80,7 @@ export const useMediaStore = defineStore('media', () => {
   ): Promise<MediaMetadata | null> {
     const file = await fileHandle.getFile();
     const cacheKey = projectRelativePath;
-    
+
     // Clear missing status if we are here (we have a file handle)
     missingPaths.value[projectRelativePath] = false;
 

@@ -144,7 +144,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       let x = val / 100;
       x = x === 0 ? 0.001 : clampNumber(x, -1000, 1000);
       const absY = Math.abs(current.scale?.y ?? 1);
-      const y = linked ? (Math.sign(current.scale?.y ?? 1) * Math.abs(x)) : (current.scale?.y ?? 1);
+      const y = linked ? Math.sign(current.scale?.y ?? 1) * Math.abs(x) : (current.scale?.y ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
   });
@@ -160,7 +160,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       let y = val / 100;
       y = y === 0 ? 0.001 : clampNumber(y, -1000, 1000);
       const absX = Math.abs(current.scale?.x ?? 1);
-      const x = linked ? (Math.sign(current.scale?.x ?? 1) * Math.abs(y)) : (current.scale?.x ?? 1);
+      const x = linked ? Math.sign(current.scale?.x ?? 1) * Math.abs(y) : (current.scale?.x ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
   });

@@ -66,7 +66,7 @@ function onWheel(event: Event) {
   const next = safeCurrent + direction * wheelStep;
   const rounded = Number(next.toFixed(precision));
   const clamped = clamp(rounded);
-  
+
   emit('update:modelValue', clamped);
 }
 </script>

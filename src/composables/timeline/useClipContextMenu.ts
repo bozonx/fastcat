@@ -87,7 +87,10 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         },
       });
 
-      const hasAudio = options.track.value.kind === 'audio' || clipItem.clipType === 'media' || clipItem.clipType === 'timeline';
+      const hasAudio =
+        options.track.value.kind === 'audio' ||
+        clipItem.clipType === 'media' ||
+        clipItem.clipType === 'timeline';
       if (hasAudio) {
         mainGroup.push({
           label: clipItem.audioMuted

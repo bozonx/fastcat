@@ -97,7 +97,11 @@ onUnmounted(() => {
         <FileBrowser :is-files-page="true" class="h-full" />
       </Pane>
       <Pane :size="sizes[2]" min-size="10">
-        <PropertiesPanel :is-files-page="true" :entity="selectionStore.selectedEntity" class="h-full" />
+        <PropertiesPanel
+          :is-files-page="true"
+          :entity="selectionStore.selectedEntity"
+          class="h-full"
+        />
       </Pane>
     </Splitpanes>
   </ClientOnly>

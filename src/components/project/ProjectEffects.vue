@@ -20,7 +20,9 @@ function handleDragStart(event: DragEvent, type: string, category: 'effect' | 't
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated text-sm relative min-h-0">
     <!-- Tabs -->
-    <div class="flex items-center border-b border-ui-border shrink-0 px-2 pt-2 gap-1 bg-ui-bg-elevated sticky top-0 z-10">
+    <div
+      class="flex items-center border-b border-ui-border shrink-0 px-2 pt-2 gap-1 bg-ui-bg-elevated sticky top-0 z-10"
+    >
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
         :class="
@@ -70,11 +72,16 @@ function handleDragStart(event: DragEvent, type: string, category: 'effect' | 't
           <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
           <div class="flex-1 min-w-0">
             <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
-            <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">{{ effect.description }}</p>
+            <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
+              {{ effect.description }}
+            </p>
           </div>
         </div>
-        
-        <div v-if="effects.length === 0" class="col-span-full text-center text-ui-text-muted py-8 italic">
+
+        <div
+          v-if="effects.length === 0"
+          class="col-span-full text-center text-ui-text-muted py-8 italic"
+        >
           {{ t('common.noData') }}
         </div>
       </div>
@@ -93,14 +100,20 @@ function handleDragStart(event: DragEvent, type: string, category: 'effect' | 't
             <h4 class="text-sm font-medium text-ui-text">{{ transition.name }}</h4>
           </div>
         </div>
-        
-        <div v-if="transitions.length === 0" class="col-span-full text-center text-ui-text-muted py-8 italic">
+
+        <div
+          v-if="transitions.length === 0"
+          class="col-span-full text-center text-ui-text-muted py-8 italic"
+        >
           {{ t('common.noData') }}
         </div>
       </div>
 
       <!-- Audio Effects -->
-      <div v-show="activeTab === 'audio'" class="flex flex-col items-center justify-center h-full min-h-50 text-ui-text-disabled py-8 text-center">
+      <div
+        v-show="activeTab === 'audio'"
+        class="flex flex-col items-center justify-center h-full min-h-50 text-ui-text-disabled py-8 text-center"
+      >
         <UIcon name="i-heroicons-musical-note" class="w-10 h-10 mb-3" />
         <p class="text-sm italic">
           {{ t('common.noData', '(coming soon)') }}

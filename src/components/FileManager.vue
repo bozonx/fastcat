@@ -100,7 +100,9 @@ function onFileAction(action: any, entry: FsEntry) {
       path: '',
       handle: null as any,
     };
-    onFileActionBase('createFolder', target, () => fileManager.rootEntries.value.map((e) => e.name));
+    onFileActionBase('createFolder', target, () =>
+      fileManager.rootEntries.value.map((e) => e.name),
+    );
   } else if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
@@ -124,7 +126,12 @@ function onFileAction(action: any, entry: FsEntry) {
   } else if (action === 'openAsProjectTab') {
     if (entry.kind !== 'file' || !entry.path) return;
     const mediaType = getMediaTypeFromFilename(entry.name);
-    if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image' && mediaType !== 'text')
+    if (
+      mediaType !== 'video' &&
+      mediaType !== 'audio' &&
+      mediaType !== 'image' &&
+      mediaType !== 'text'
+    )
       return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
@@ -311,7 +318,9 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      onFileActionBase("createFolder", entry, () => fileManager.rootEntries.value.map(e => e.name));
+      onFileActionBase('createFolder', entry, () =>
+        fileManager.rootEntries.value.map((e) => e.name),
+      );
       (uiStore as any).pendingFsEntryCreateFolder = null;
     }
   },
@@ -470,10 +479,11 @@ function onDrop(e: DragEvent) {
 }
 
 async function onCreateTimeline() {
-  const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+  const selectedDir =
+    uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
 
   if (selectedDir) {
-    ;(uiStore as any).pendingFsEntryCreateTimeline = selectedDir;
+    (uiStore as any).pendingFsEntryCreateTimeline = selectedDir;
     return;
   }
 
@@ -505,7 +515,8 @@ function onFileSelect(e: Event) {
     const files = Array.from(target.files);
     target.value = '';
 
-    const selectedDir = uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
+    const selectedDir =
+      uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
     if (!selectedDir || !selectedDir.path) {
       handleFiles(files);
       return;
@@ -628,7 +639,12 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
           @click="
-            onFileAction('createFolder', (uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null) as FsEntry)
+            onFileAction(
+              'createFolder',
+              (uiStore.selectedFsEntry?.kind === 'directory'
+                ? uiStore.selectedFsEntry
+                : null) as FsEntry,
+            )
           "
         />
 
@@ -684,10 +700,8 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 
       <!-- Content -->
       <FileManagerFiles
-        :editing-entry-path="editingEntryPath"
-        @commit-rename="commitRename"
-        @stop-rename="stopRename"
         v-if="activeTab === 'files'"
+        :editing-entry-path="editingEntryPath"
         :folders-only="foldersOnly"
         :is-files-page="isFilesPage"
         :is-dragging="isDragging"
@@ -696,7 +710,9 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         :root-entries="rootEntries"
         :get-file-icon="getFileIcon"
         :find-entry-by-path="findEntryByPath"
+        @commit-rename="commitRename"
         :media-cache="fileManager.mediaCache"
+        @stop-rename="stopRename"
         :move-entry="moveEntry"
         :get-project-root-dir-handle="getProjectRootDirHandle"
         :handle-files="handleFiles"

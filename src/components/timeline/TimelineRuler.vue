@@ -36,11 +36,34 @@ const scrollLeft = ref(0);
 const markers = computed(() => timelineStore.getMarkers());
 
 // --- Styling Settings (Adjust these for desired look) ---
-let textColor = 'rgba(255, 255, 255, 0.5)';
-let tickColor = 'rgba(255, 255, 255, 0.2)';
-let majorTickWidth = 1.25;
-let subTickWidth = 0.8;
+const textColor = 'rgba(255, 255, 255, 0.5)';
+const tickColor = 'rgba(255, 255, 255, 0.2)';
+const majorTickWidth = 1.25;
+const subTickWidth = 0.8;
 // ---------------------------------------------------------
+
+let drawRafId: number | null = null;
+function scheduleDraw() {
+  if (drawRafId !== null) return;
+  drawRafId = requestAnimationFrame(() => {
+    drawRafId = null;
+    draw();
+  });
+}
+
+let activeMarkerPointerMove: ((e: PointerEvent) => void) | null = null;
+let activeMarkerPointerUp: ((e?: PointerEvent) => void) | null = null;
+
+function clearMarkerPointerListeners() {
+  if (activeMarkerPointerMove) {
+    window.removeEventListener('pointermove', activeMarkerPointerMove);
+    activeMarkerPointerMove = null;
+  }
+  if (activeMarkerPointerUp) {
+    window.removeEventListener('pointerup', activeMarkerPointerUp as any);
+    activeMarkerPointerUp = null;
+  }
+}
 
 onMounted(() => {
   // Theme override removed to favor manual adjustment above
@@ -54,14 +77,14 @@ useResizeObserver(containerRef, (entries) => {
   if (entry) {
     width.value = entry.contentRect.width;
     height.value = entry.contentRect.height;
-    draw();
+    scheduleDraw();
   }
 });
 
 function onScroll() {
   if (props.scrollEl) {
     scrollLeft.value = props.scrollEl.scrollLeft;
-    draw();
+    scheduleDraw();
   }
 }
 
@@ -83,6 +106,12 @@ onUnmounted(() => {
   if (props.scrollEl) {
     props.scrollEl.removeEventListener('scroll', onScroll);
   }
+
+  clearMarkerPointerListeners();
+  if (drawRafId !== null) {
+    cancelAnimationFrame(drawRafId);
+    drawRafId = null;
+  }
 });
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
@@ -90,11 +119,11 @@ const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 
 watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
-  requestAnimationFrame(draw);
+  scheduleDraw();
 });
 
 watch(markers, () => {
-  requestAnimationFrame(draw);
+  scheduleDraw();
 });
 
 function deleteMarker(markerId: string) {
@@ -136,6 +165,9 @@ function onMarkerPointerDown(e: PointerEvent, markerId: string, part: 'left' | '
   markerDragStartUs.value = m.timeUs;
   markerDragStartDurationUs.value = m.durationUs ?? 0;
 
+  clearMarkerPointerListeners();
+  activeMarkerPointerMove = onWindowPointerMove;
+  activeMarkerPointerUp = onWindowPointerUp;
   window.addEventListener('pointermove', onWindowPointerMove);
   window.addEventListener('pointerup', onWindowPointerUp);
 }
@@ -150,15 +182,15 @@ function onWindowPointerMove(e: PointerEvent) {
     const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
     const newPx = Math.max(0, startPx + dx);
     const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
-    
+
     // If it's a zone, adjusting left should keep the right edge fixed by changing duration
-    const m = markers.value.find(x => x.id === draggedMarkerId.value);
+    const m = markers.value.find((x) => x.id === draggedMarkerId.value);
     if (m && m.durationUs !== undefined) {
       const endUs = markerDragStartUs.value + markerDragStartDurationUs.value;
       if (newUs < endUs) {
-        timelineStore.updateMarker(draggedMarkerId.value, { 
+        timelineStore.updateMarker(draggedMarkerId.value, {
           timeUs: newUs,
-          durationUs: endUs - newUs
+          durationUs: endUs - newUs,
         });
       }
     } else {
@@ -168,15 +200,14 @@ function onWindowPointerMove(e: PointerEvent) {
     const durationPx = timeUsToPx(markerDragStartDurationUs.value, currentZoom);
     const newDurationPx = Math.max(10, durationPx + dx); // min width 10px
     const newDurationUs = pxToTimeUs(newDurationPx, currentZoom);
-    
+
     timelineStore.updateMarker(draggedMarkerId.value, { durationUs: newDurationUs });
   }
 }
 
 function onWindowPointerUp() {
   draggedMarkerId.value = null;
-  window.removeEventListener('pointermove', onWindowPointerMove);
-  window.removeEventListener('pointerup', onWindowPointerUp);
+  clearMarkerPointerListeners();
 }
 
 function truncateForTooltip(text: string): string {
@@ -192,7 +223,7 @@ const markerPoints = computed(() => {
   const startPx = scrollLeft.value;
   const w = width.value;
 
-    return markers.value
+  return markers.value
     .map((m) => {
       const x = timeUsToPx(m.timeUs, currentZoom) - startPx;
       const width = m.durationUs !== undefined ? timeUsToPx(m.durationUs, currentZoom) : 0;
@@ -205,7 +236,9 @@ const markerPoints = computed(() => {
         color: m.color ?? '#eab308',
       };
     })
-    .filter((p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20));
+    .filter(
+      (p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20),
+    );
 });
 
 function formatTime(us: number, fpsValue: number): string {
@@ -388,7 +421,8 @@ function onRulerDblClick(e: MouseEvent) {
 function onRulerPointerDown(e: PointerEvent) {
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
 
-  if (e.button === 1) { // Middle click
+  if (e.button === 1) {
+    // Middle click
     if (settings.middleClick === 'pan') {
       emit('start-pan', e);
       return;
@@ -398,7 +432,8 @@ function onRulerPointerDown(e: PointerEvent) {
       emit('start-playhead-drag', e); // Pass to Timeline to trigger drag playhead
       return;
     }
-  } else if (e.button === 0) { // Left click
+  } else if (e.button === 0) {
+    // Left click
     if (e.shiftKey) {
       if (settings.shiftClick === 'add_marker_and_edit') {
         const timeUs = getTimeUsFromMouseEvent(e);
@@ -501,8 +536,12 @@ function onRulerWheel(e: WheelEvent) {
           class="absolute bottom-0 h-full pointer-events-auto"
           :style="{ left: `${p.x}px`, width: p.isZone ? `${p.width}px` : 'auto' }"
         >
-          <div v-if="p.isZone" class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none" :style="p.color ? { backgroundColor: `${p.color}33`, borderColor: `${p.color}80` } : {}" />
-          
+          <div
+            v-if="p.isZone"
+            class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none"
+            :style="p.color ? { backgroundColor: `${p.color}33`, borderColor: `${p.color}80` } : {}"
+          />
+
           <!-- Left/Main Marker -->
           <div class="absolute bottom-0 left-0">
             <UContextMenu
@@ -554,8 +593,12 @@ function onRulerWheel(e: WheelEvent) {
                     selectionStore.selectedEntity?.source === 'timeline' &&
                     selectionStore.selectedEntity?.kind === 'marker' &&
                     selectionStore.selectedEntity.markerId === p.id
-                      ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
-                      : (p.color ? '' : 'bg-primary-500'),
+                      ? p.color
+                        ? 'ring-2 ring-white/50'
+                        : 'bg-primary-400 ring-2 ring-primary-400/50'
+                      : p.color
+                        ? ''
+                        : 'bg-primary-500',
                   ]"
                   :style="p.color ? { color: p.color } : {}"
                   :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
@@ -564,14 +607,20 @@ function onRulerWheel(e: WheelEvent) {
                   @contextmenu.stop
                   @click.stop="selectMarker(p.id)"
                 >
-                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg
+                    width="10"
+                    height="14"
+                    viewBox="0 0 10 14"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <path d="M0 0H10V9L5 14L0 9V0Z" :fill="p.color ?? '#3b82f6'" />
                   </svg>
                 </button>
               </UTooltip>
             </UContextMenu>
           </div>
-          
+
           <!-- Right Marker (for zones) -->
           <div v-if="p.isZone" class="absolute bottom-0 right-0">
             <UContextMenu
@@ -602,8 +651,12 @@ function onRulerWheel(e: WheelEvent) {
                     selectionStore.selectedEntity?.source === 'timeline' &&
                     selectionStore.selectedEntity?.kind === 'marker' &&
                     selectionStore.selectedEntity.markerId === p.id
-                      ? (p.color ? 'ring-2 ring-white/50' : 'bg-primary-400 ring-2 ring-primary-400/50')
-                      : (p.color ? '' : 'bg-primary-500'),
+                      ? p.color
+                        ? 'ring-2 ring-white/50'
+                        : 'bg-primary-400 ring-2 ring-primary-400/50'
+                      : p.color
+                        ? ''
+                        : 'bg-primary-500',
                   ]"
                   :style="p.color ? { color: p.color } : {}"
                   aria-label="Zone Marker End"
@@ -612,7 +665,13 @@ function onRulerWheel(e: WheelEvent) {
                   @contextmenu.stop
                   @click.stop="selectMarker(p.id)"
                 >
-                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg
+                    width="10"
+                    height="14"
+                    viewBox="0 0 10 14"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <path d="M0 0H10V9L5 14L0 9V0Z" :fill="p.color ?? '#3b82f6'" />
                   </svg>
                 </button>
