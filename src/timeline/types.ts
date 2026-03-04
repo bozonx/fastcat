@@ -1,6 +1,9 @@
 import type { ClipEffect as BaseClipEffect } from '../effects/core/registry';
 import type { ColorAdjustmentParams } from '../effects/video/color-adjustment/manifest';
 import type { BlurParams } from '../effects/video/blur/manifest';
+import type { ColorMatrixParams } from '../effects/video/color-matrix/manifest';
+import type { NoiseParams } from '../effects/video/noise/manifest';
+import type { DisplacementParams } from '../effects/video/displacement/manifest';
 
 export type TrackKind = 'video' | 'audio';
 
@@ -90,8 +93,16 @@ export type ColorAdjustmentEffect = BaseClipEffect<ColorAdjustmentParams> & {
   type: 'color-adjustment';
 };
 export type BlurEffect = BaseClipEffect<BlurParams> & { type: 'blur' };
+export type ColorMatrixEffect = BaseClipEffect<ColorMatrixParams> & { type: 'colorMatrix' };
+export type NoiseEffect = BaseClipEffect<NoiseParams> & { type: 'noise' };
+export type DisplacementEffect = BaseClipEffect<DisplacementParams> & { type: 'displacement' };
 
-export type ClipEffect = ColorAdjustmentEffect | BlurEffect;
+export type ClipEffect =
+  | ColorAdjustmentEffect
+  | BlurEffect
+  | ColorMatrixEffect
+  | NoiseEffect
+  | DisplacementEffect;
 
 interface TimelineClipBase {
   kind: 'clip';
