@@ -19,6 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:trackHeight', trackId: string, height: number): void;
+  (e: 'scroll', event: Event): void;
 }>();
 
 const timelineStore = useTimelineStore();
@@ -449,8 +450,8 @@ function toggleClipSnapMode() {
         </div>
       </div>
     </UContextMenu>
-    <div ref="labelsScrollContainer" class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container">
-      <div class="flex flex-col divide-y divide-ui-border min-h-full">
+    <div ref="labelsScrollContainer" class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container" @scroll="emit('scroll', $event)">
+      <div class="flex flex-col divide-y divide-ui-border min-h-full pb-16">
         <UContextMenu
           v-for="track in tracks"
           :key="track.id"

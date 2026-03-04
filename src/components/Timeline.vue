@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useResizeObserver } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -70,37 +69,57 @@ const playheadPx = computed(() =>
 );
 
 // Offset playhead relative to the track area viewport accounting for scroll
-const playheadLeft = computed(() => playheadPx.value - scrollLeftRef.value);
+const playheadLeft = computed(() => Math.round(playheadPx.value - scrollLeftRef.value));
 
-// Zoom indicator fixed position (computed from trackAreaRef bounding rect)
-const zoomIndicatorStyle = ref<{ bottom: string; right: string } | null>(null);
+const isLabelsScrolling = ref(false);
 
-function updateZoomIndicatorPos() {
-  const el = trackAreaRef.value;
+function onLabelsScroll() {
+  if (!timelineTrackLabelsRef.value?.labelsScrollContainer) return;
+  const labelsEl = timelineTrackLabelsRef.value.labelsScrollContainer;
+  const el = scrollEl.value;
   if (!el) return;
-  const rect = el.getBoundingClientRect();
-  zoomIndicatorStyle.value = {
-    bottom: `${window.innerHeight - rect.bottom + 8}px`,
-    right: `${window.innerWidth - rect.right + 12}px`,
-  };
+
+  if (isLabelsScrolling.value) {
+    isLabelsScrolling.value = false;
+    return;
+  }
+
+  const maxScrollTop = el.scrollHeight - el.clientHeight;
+  const labelsMaxScrollTop = labelsEl.scrollHeight - labelsEl.clientHeight;
+  
+  if (maxScrollTop > 0 && labelsMaxScrollTop > 0) {
+    const ratio = labelsEl.scrollTop / labelsMaxScrollTop;
+    isTimelineScrolling.value = true;
+    el.scrollTop = Math.round(ratio * maxScrollTop);
+  } else {
+    isTimelineScrolling.value = true;
+    el.scrollTop = labelsEl.scrollTop;
+  }
 }
 
-useResizeObserver(trackAreaRef, updateZoomIndicatorPos);
-watch(trackAreaRef, updateZoomIndicatorPos);
+const isTimelineScrolling = ref(false);
 
 function onScroll() {
   const el = scrollEl.value;
   if (!el) return;
   scrollLeftRef.value = el.scrollLeft;
-  // Sync label scroll: use ratio to handle different clientHeights (labels has no horizontal scrollbar)
+  
+  // Sync label scroll: use ratio to handle different clientHeights
   const labelsEl = timelineTrackLabelsRef.value?.labelsScrollContainer;
   if (labelsEl) {
+    if (isTimelineScrolling.value) {
+      isTimelineScrolling.value = false;
+      return;
+    }
+
     const maxScrollTop = el.scrollHeight - el.clientHeight;
     const labelsMaxScrollTop = labelsEl.scrollHeight - labelsEl.clientHeight;
     if (maxScrollTop > 0 && labelsMaxScrollTop > 0) {
       const ratio = el.scrollTop / maxScrollTop;
+      isLabelsScrolling.value = true;
       labelsEl.scrollTop = Math.round(ratio * labelsMaxScrollTop);
     } else {
+      isLabelsScrolling.value = true;
       labelsEl.scrollTop = el.scrollTop;
     }
   }
@@ -121,7 +140,8 @@ const zoomFactor = computed(() => {
   const pos = Math.min(100, Math.max(0, zoom));
   const exponent = (pos - 50) / 10;
   const factor = Math.pow(2, exponent);
-  return factor.toFixed(2);
+  // Show as "x1.25" format
+  return `x${factor.toFixed(2)}`;
 });
 
 let zoomTimeout: number | null = null;
@@ -626,6 +646,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             :track-heights="trackHeights"
             class="h-full border-r border-ui-border"
             @update:track-height="updateTrackHeight"
+            @scroll="onLabelsScroll"
           />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
@@ -682,7 +703,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             <div
               class="absolute top-7 bottom-0 pointer-events-auto cursor-ew-resize"
               :style="{
-                left: `${Math.round(playheadLeft)}px`,
+                left: `${playheadLeft}px`,
                 width: '1px',
                 zIndex: 50,
                 backgroundColor: 'var(--color-primary-500, #3b82f6)',
@@ -690,25 +711,22 @@ async function onDrop(e: DragEvent, trackId: string) {
               @pointerdown="startPlayheadDrag"
             />
 
-            <!-- Zoom Indicator (fixed position, outside overflow:hidden bounds) -->
-            <Teleport to="body">
-              <Transition
-                enter-active-class="transition-opacity duration-200"
-                enter-from-class="opacity-0"
-                enter-to-class="opacity-100"
-                leave-active-class="transition-opacity duration-300"
-                leave-from-class="opacity-100"
-                leave-to-class="opacity-0"
+            <!-- Zoom indicator — absolute in bottom-right of visible track area -->
+            <Transition
+              enter-active-class="transition-opacity duration-150"
+              enter-from-class="opacity-0"
+              enter-to-class="opacity-100"
+              leave-active-class="transition-opacity duration-500"
+              leave-from-class="opacity-100"
+              leave-to-class="opacity-0"
+            >
+              <div
+                v-if="isZooming"
+                class="absolute bottom-3 right-3 px-2.5 py-1 text-xs font-mono rounded-md bg-neutral-900/90 text-neutral-100 shadow-lg pointer-events-none z-50 select-none"
               >
-                <div
-                  v-if="isZooming && zoomIndicatorStyle"
-                  class="fixed px-2 py-1 text-xs font-mono rounded bg-neutral-900/95 border border-white/10 text-white shadow-lg pointer-events-none backdrop-blur-sm"
-                  :style="{ ...zoomIndicatorStyle, zIndex: 9999 }"
-                >
-                  ×{{ zoomFactor }}
-                </div>
-              </Transition>
-            </Teleport>
+                {{ zoomFactor }}
+              </div>
+            </Transition>
           </div>
         </Pane>
       </Splitpanes>

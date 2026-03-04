@@ -323,8 +323,9 @@ function draw() {
   ctx.stroke();
 
   // Playhead indicator in ruler
-  const playheadPx = Math.round(timeUsToPx(currentTime.value, currentZoom) - startPx) + 0.5;
-  if (playheadPx >= -10 && playheadPx <= w + 10) {
+  // Use Math.round without +0.5 offset to match the CSS playhead line pixel position
+  const playheadX = Math.round(timeUsToPx(currentTime.value, currentZoom) - startPx);
+  if (playheadX >= -10 && playheadX <= w + 10) {
     const styles = window.getComputedStyle(document.documentElement);
     const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
 
@@ -334,10 +335,14 @@ function draw() {
     const pw = 10;
     const ph = 10;
 
-    ctx.moveTo(playheadPx - pw / 2, h - ph);
-    ctx.lineTo(playheadPx + pw / 2, h - ph);
-    ctx.lineTo(playheadPx, h);
+    // Triangle pointing down, touching the bottom edge of the ruler
+    ctx.moveTo(playheadX - pw / 2, h - ph);
+    ctx.lineTo(playheadX + pw / 2, h - ph);
+    ctx.lineTo(playheadX, h);
     ctx.fill();
+
+    // Draw a 1px vertical line from triangle tip to bottom edge for precise alignment
+    ctx.fillRect(playheadX, h - 1, 1, 1);
   }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
