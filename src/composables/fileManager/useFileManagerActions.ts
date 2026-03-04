@@ -1,4 +1,4 @@
-import { ref, computed, type Ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
@@ -33,18 +33,11 @@ interface FileManagerActions {
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
 }
 
-export function useFileManagerModals(actions: FileManagerActions) {
+export function useFileManagerActions(actions: FileManagerActions) {
   const { t } = useI18n();
-  const toast = useToast();
   const uiStore = useUiStore();
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
-
-  const isCreateFolderModalOpen = ref(false);
-  const folderCreationTarget = ref<FileSystemDirectoryHandle | null>(null);
-
-  const isRenameModalOpen = ref(false);
-  const renameTarget = ref<FsEntry | null>(null);
 
   const isDeleteConfirmModalOpen = ref(false);
   const deleteTarget = ref<FsEntry | null>(null);
@@ -52,20 +45,52 @@ export function useFileManagerModals(actions: FileManagerActions) {
   const directoryUploadTarget = ref<FsEntry | null>(null);
   const directoryUploadInput = ref<HTMLInputElement | null>(null);
 
+  const editingEntryPath = ref<string | null>(null);
+
   const timelinesUsingDeleteTarget = computed(() => {
     const entry = deleteTarget.value;
     if (!entry || entry.kind !== 'file' || !entry.path) return [];
     return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
   });
 
-  function openCreateFolderModal(targetEntry: FsEntry | null = null) {
-    folderCreationTarget.value =
-      targetEntry?.kind === 'directory' ? (targetEntry.handle as FileSystemDirectoryHandle) : null;
-    isCreateFolderModalOpen.value = true;
+  function startRename(entry: FsEntry) {
+    editingEntryPath.value = entry.path ?? null;
   }
 
-  async function handleCreateFolder(name: string) {
-    await actions.createFolder(name, folderCreationTarget.value);
+  function stopRename() {
+    editingEntryPath.value = null;
+  }
+
+  async function commitRename(entry: FsEntry, newName: string) {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === entry.name) {
+      stopRename();
+      return;
+    }
+    
+    await actions.renameEntry(entry, trimmed);
+    stopRename();
+  }
+
+  async function handleCreateAutoFolder(
+    targetDirHandle: FileSystemDirectoryHandle | null,
+    targetDirPath: string,
+    existingNames: string[]
+  ) {
+    const baseName = t('common.folderBaseName', 'Папка');
+    let index = 1;
+    let newName = '';
+    do {
+      newName = `${baseName}_${index.toString().padStart(3, '0')}`;
+      index++;
+    } while (existingNames.includes(newName));
+
+    await actions.createFolder(newName, targetDirHandle);
+    
+    const createdPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
+    
+    // Set editing path so it opens rename mode automatically
+    editingEntryPath.value = createdPath;
   }
 
   function openDeleteConfirmModal(entry: FsEntry) {
@@ -99,42 +124,20 @@ export function useFileManagerModals(actions: FileManagerActions) {
     }, 0);
   }
 
-  async function handleRename(newName: string) {
-    if (!renameTarget.value) return;
-
-    const trimmed = newName.trim();
-    if (!trimmed) {
-      toast.add({
-        color: 'red',
-        title: t('common.rename', 'Rename'),
-        description: t('common.validation.required', 'Name is required.'),
-      });
-      return;
-    }
-
-    if (trimmed.includes('/') || trimmed === '.' || trimmed === '..') {
-      toast.add({
-        color: 'red',
-        title: t('common.rename', 'Rename'),
-        description: t('common.validation.invalidName', 'Name contains invalid characters.'),
-      });
-      return;
-    }
-
-    await actions.renameEntry(renameTarget.value, trimmed);
-    renameTarget.value = null;
-  }
-
-  function onFileAction(action: FileAction, entry: FsEntry) {
+  function onFileAction(action: FileAction, entry: FsEntry, getExistingNames?: () => string[]) {
     if (action === 'createFolder') {
-      openCreateFolderModal(entry);
+      const existingNames = getExistingNames ? getExistingNames() : (entry.children?.map(c => c.name) || []);
+      void handleCreateAutoFolder(
+        entry.kind === 'directory' ? entry.handle as FileSystemDirectoryHandle : null,
+        entry.path ?? '',
+        existingNames
+      );
     } else if (action === 'upload') {
       if (entry.kind !== 'directory') return;
       directoryUploadTarget.value = entry;
       directoryUploadInput.value?.click();
     } else if (action === 'rename') {
-      renameTarget.value = entry;
-      isRenameModalOpen.value = true;
+      startRename(entry);
     } else if (action === 'delete') {
       openDeleteConfirmModal(entry);
     } else if (action === 'createProxy') {
@@ -156,20 +159,18 @@ export function useFileManagerModals(actions: FileManagerActions) {
   }
 
   return {
-    isCreateFolderModalOpen,
-    folderCreationTarget,
-    isRenameModalOpen,
-    renameTarget,
     isDeleteConfirmModalOpen,
     deleteTarget,
     timelinesUsingDeleteTarget,
     directoryUploadTarget,
     directoryUploadInput,
-    openCreateFolderModal,
-    handleCreateFolder,
+    editingEntryPath,
+    startRename,
+    stopRename,
+    commitRename,
+    handleCreateAutoFolder,
     openDeleteConfirmModal,
     handleDeleteConfirm,
-    handleRename,
     onFileAction,
   };
 }

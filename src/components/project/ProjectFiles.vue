@@ -5,14 +5,12 @@ import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
-import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import RenameModal from '~/components/common/RenameModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
-import type { FileAction as FileActionBase } from '~/composables/fileManager/useFileManagerModals';
+import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
+import type { FileAction as FileActionBase } from '~/composables/fileManager/useFileManagerActions';
 import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
@@ -63,22 +61,18 @@ const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const {
-  isCreateFolderModalOpen,
-  folderCreationTarget,
-  isRenameModalOpen,
-  renameTarget,
   isDeleteConfirmModalOpen,
+  editingEntryPath,
+  commitRename,
+  stopRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
   directoryUploadInput,
-  openCreateFolderModal,
-  handleCreateFolder,
   openDeleteConfirmModal,
   handleDeleteConfirm,
-  handleRename,
   onFileAction: onFileActionBase,
-} = useFileManagerModals({
+} = useFileManagerActions({
   createFolder,
   renameEntry,
   deleteEntry,
@@ -477,11 +471,7 @@ watch(
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="
-            openCreateFolderModal(
-              uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null,
-            )
-          "
+            @click="onFileAction('createFolder', uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
         />
 
         <div class="ml-auto flex items-center">
@@ -532,6 +522,9 @@ watch(
       </div>
 
       <FileManagerFiles
+        :editing-entry-path="editingEntryPath"
+        @commit-rename="commitRename"
+        @stop-rename="stopRename"
         :folders-only="foldersOnly"
         :is-dragging="isDragging"
         :is-loading="isLoading"
@@ -545,7 +538,6 @@ watch(
         :handle-files="handleFiles"
         @toggle="toggleDirectory"
         @action="onFileAction"
-        @create-folder="openCreateFolderModal"
         @select="handleFileManagerFilesSelect"
       />
     </div>
@@ -564,10 +556,7 @@ watch(
       </div>
     </div>
 
-    <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
 
-    <RenameModal
-      v-model:open="isRenameModalOpen"
       :initial-name="renameTarget?.name"
       @rename="handleRename"
     />

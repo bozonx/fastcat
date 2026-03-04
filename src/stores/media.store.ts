@@ -56,14 +56,20 @@ export const useMediaStore = defineStore('media', () => {
   const workerModule = createMediaWorkerModule();
 
   const mediaMetadata = ref<Record<string, MediaMetadata>>({});
+  const missingPaths = ref<Record<string, boolean>>({});
 
   function resetMediaState() {
     mediaMetadata.value = {};
+    missingPaths.value = {};
   }
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
     const handle = await projectStore.getFileHandleByPath(path);
-    if (!handle) return null;
+    if (!handle) {
+      missingPaths.value[path] = true;
+      return null;
+    }
+    missingPaths.value[path] = false;
     return await getOrFetchMetadata(handle, path, options);
   }
 
@@ -74,6 +80,9 @@ export const useMediaStore = defineStore('media', () => {
   ): Promise<MediaMetadata | null> {
     const file = await fileHandle.getFile();
     const cacheKey = projectRelativePath;
+    
+    // Clear missing status if we are here (we have a file handle)
+    missingPaths.value[projectRelativePath] = false;
 
     const fileType = typeof file.type === 'string' ? file.type : '';
     const isKnownMediaByMime =
@@ -167,6 +176,7 @@ export const useMediaStore = defineStore('media', () => {
 
   return {
     mediaMetadata,
+    missingPaths,
     getOrFetchMetadataByPath,
     getOrFetchMetadata,
     resetMediaState,

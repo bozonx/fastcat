@@ -15,10 +15,9 @@ import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
-import { useFileManagerModals } from '~/composables/fileManager/useFileManagerModals';
-import CreateFolderModal from '~/components/common/CreateFolderModal.vue';
+import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
+import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import RenameModal from '~/components/common/RenameModal.vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
@@ -59,22 +58,18 @@ const isLoading = ref(false);
 const parentFolders = ref<FsEntry[]>([]);
 
 const {
-  isCreateFolderModalOpen,
-  folderCreationTarget,
-  isRenameModalOpen,
-  renameTarget,
   isDeleteConfirmModalOpen,
+  editingEntryPath,
+  commitRename,
+  stopRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
   directoryUploadInput,
-  openCreateFolderModal,
-  handleCreateFolder,
   openDeleteConfirmModal,
   handleDeleteConfirm,
-  handleRename,
   onFileAction: onFileActionBase,
-} = useFileManagerModals({
+} = useFileManagerActions({
   createFolder,
   renameEntry,
   deleteEntry,
@@ -118,7 +113,7 @@ function onFileAction(action: any, entry: FsEntry) {
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
   } else if (action === 'createFolder') {
-    openCreateFolderModal(entry);
+    onFileActionBase('createFolder', entry, () => folderEntries.value.map((e) => e.name));
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
       (uiStore as any).pendingFsEntryCreateTimeline = entry;
@@ -326,11 +321,11 @@ const folderSizesLoading = ref<Record<string, boolean>>({});
 
 async function calculateFolderSize(path: string, handle: FileSystemDirectoryHandle) {
   if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
-  
+
   folderSizesLoading.value[path] = true;
   try {
     let totalSize = 0;
-    
+
     async function calc(dirHandle: FileSystemDirectoryHandle) {
       // @ts-ignore
       for await (const entry of dirHandle.values()) {
@@ -346,7 +341,7 @@ async function calculateFolderSize(path: string, handle: FileSystemDirectoryHand
         }
       }
     }
-    
+
     await calc(handle);
     folderSizes.value[path] = totalSize;
   } catch (error) {
@@ -367,7 +362,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 async function loadFolderContent() {
@@ -526,8 +521,8 @@ const sortedEntries = computed(() => {
     if (field === 'name') {
       result = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     } else if (field === 'size') {
-      const aSize = a.kind === 'file' ? (a.size || 0) : (folderSizes.value[a.path || ''] || 0);
-      const bSize = b.kind === 'file' ? (b.size || 0) : (folderSizes.value[b.path || ''] || 0);
+      const aSize = a.kind === 'file' ? a.size || 0 : folderSizes.value[a.path || ''] || 0;
+      const bSize = b.kind === 'file' ? b.size || 0 : folderSizes.value[b.path || ''] || 0;
       result = aSize - bSize;
     } else if (field === 'modified') {
       result = (a.lastModified || 0) - (b.lastModified || 0);
@@ -819,7 +814,9 @@ async function onPanelDrop(e: DragEvent) {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
-    :class="{ 'bg-primary-500/5 outline-2 outline-primary-500/30 -outline-offset-2': isDragOverPanel }"
+    :class="{
+      'bg-primary-500/5 outline-2 outline-primary-500/30 -outline-offset-2': isDragOverPanel,
+    }"
     @dragover.prevent="onPanelDragOver"
     @dragleave="onPanelDragLeave"
     @drop.prevent="onPanelDrop"
@@ -981,7 +978,10 @@ async function onPanelDrop(e: DragEvent) {
           </div>
 
           <!-- Grid View -->
-          <div v-else-if="filesPageStore.viewMode === 'grid'" class="flex flex-wrap gap-2 content-start">
+          <div
+            v-else-if="filesPageStore.viewMode === 'grid'"
+            class="flex flex-wrap gap-2 content-start"
+          >
             <UContextMenu
               v-for="entry in sortedEntries"
               :key="entry.path"
@@ -996,7 +996,8 @@ async function onPanelDrop(e: DragEvent) {
                   'border-b-2 border-b-red-500':
                     entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
                   'opacity-30': entry.name.startsWith('.'),
-                  'ring-2 ring-primary-500 bg-primary-500/20': dragOverEntryPath === (entry.path ?? null),
+                  'ring-2 ring-primary-500 bg-primary-500/20':
+                    dragOverEntryPath === (entry.path ?? null),
                 }"
                 :style="{ width: `${filesPageStore.gridCardSize}px` }"
                 :draggable="true"
@@ -1078,13 +1079,21 @@ async function onPanelDrop(e: DragEvent) {
             <!-- Root drop zone for grid view -->
             <div
               class="w-full flex items-center justify-center min-h-12 mt-2 rounded-lg transition-colors"
-              :class="{ 'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver }"
+              :class="{
+                'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
+                  isRootDropOver,
+              }"
               @dragover.prevent="onRootDragOver"
               @dragleave.prevent="onRootDragLeave"
               @drop.prevent="onRootDrop"
             >
               <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
-                {{ t('videoEditor.fileManager.actions.dropToRootHint', 'Release to upload into the project root') }}
+                {{
+                  t(
+                    'videoEditor.fileManager.actions.dropToRootHint',
+                    'Release to upload into the project root',
+                  )
+                }}
               </p>
             </div>
           </div>
@@ -1215,13 +1224,8 @@ async function onPanelDrop(e: DragEvent) {
               </thead>
 
               <tbody>
-                <template
-                  v-for="entry in sortedEntries as ExtendedFsEntry[]"
-                  :key="entry.path"
-                >
-                  <UContextMenu
-                    :items="getContextMenuItems(entry)"
-                  >
+                <template v-for="entry in sortedEntries as ExtendedFsEntry[]" :key="entry.path">
+                  <UContextMenu :items="getContextMenuItems(entry)">
                     <tr
                       class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
                       :class="{
@@ -1301,7 +1305,9 @@ async function onPanelDrop(e: DragEvent) {
                         </span>
                       </td>
                       <td class="py-2 px-3 text-ui-text-muted">
-                        {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
+                        {{
+                          entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType
+                        }}
                       </td>
                       <td class="py-2 px-3 text-right text-ui-text-muted">
                         <template v-if="entry.kind === 'file'">
@@ -1309,18 +1315,17 @@ async function onPanelDrop(e: DragEvent) {
                         </template>
                         <template v-else-if="entry.kind === 'directory'">
                           <div v-if="folderSizesLoading[entry.path || '']" class="flex justify-end">
-                            <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-ui-text-muted" />
+                            <UIcon
+                              name="i-heroicons-arrow-path"
+                              class="w-4 h-4 animate-spin text-ui-text-muted"
+                            />
                           </div>
                           <template v-else-if="folderSizes[entry.path || ''] !== undefined">
                             {{ formatBytes(folderSizes[entry.path || ''] ?? 0) }}
                           </template>
-                          <template v-else>
-                            -
-                          </template>
+                          <template v-else> - </template>
                         </template>
-                        <template v-else>
-                          -
-                        </template>
+                        <template v-else> - </template>
                       </td>
                       <td class="py-2 px-3 text-ui-text-muted">
                         {{ formatDate(entry.created) }}
@@ -1342,7 +1347,12 @@ async function onPanelDrop(e: DragEvent) {
                 >
                   <td colspan="5" class="py-3 px-3 text-center">
                     <span v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
-                      {{ t('videoEditor.fileManager.actions.dropToRootHint', 'Release to upload into the project root') }}
+                      {{
+                        t(
+                          'videoEditor.fileManager.actions.dropToRootHint',
+                          'Release to upload into the project root',
+                        )
+                      }}
                     </span>
                   </td>
                 </tr>
@@ -1370,11 +1380,6 @@ async function onPanelDrop(e: DragEvent) {
     </div>
 
     <!-- Modals -->
-    <CreateFolderModal v-model:open="isCreateFolderModalOpen" @create="handleCreateFolder" />
-    <RenameModal
-      v-model:open="isRenameModalOpen"
-      :initial-name="renameTarget?.name"
-      @rename="handleRename"
     />
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"
