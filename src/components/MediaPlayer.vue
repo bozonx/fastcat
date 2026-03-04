@@ -307,6 +307,10 @@ watch(
     }
   },
 );
+
+onUnmounted(() => {
+  clearReversePlaybackTimer();
+});
 </script>
 
 <template>

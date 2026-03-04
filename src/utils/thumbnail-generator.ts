@@ -34,6 +34,7 @@ class ThumbnailGenerator {
   private activeTasks = new Set<string>();
   private cache = new Map<string, string[]>(); // hash -> array of blob urls
   private readonly maxCacheEntries = 50;
+  private cancelledTasks = new Set<string>();
 
   private touchCacheEntry(id: string) {
     const urls = this.cache.get(id);
@@ -60,7 +61,20 @@ class ThumbnailGenerator {
     }
   }
 
+  cancelTask(id: string) {
+    if (!id) return;
+    this.cancelledTasks.add(id);
+    this.queue = this.queue.filter((t) => t.id !== id);
+  }
+
+  private isCancelled(id: string) {
+    return this.cancelledTasks.has(id);
+  }
+
   addTask(task: ThumbnailTask) {
+    if (this.isCancelled(task.id)) {
+      this.cancelledTasks.delete(task.id);
+    }
     if (this.queue.some((t) => t.id === task.id) || this.activeTasks.has(task.id)) {
       return; // Already in queue or processing
     }
@@ -121,6 +135,16 @@ class ThumbnailGenerator {
 
       // We expect filenames to be "0.webp", "5.webp", "10.webp", etc.
       for (let i = 0; i <= task.duration; i += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS) {
+        if (this.isCancelled(task.id)) {
+          for (const url of urls) {
+            try {
+              URL.revokeObjectURL(url);
+            } catch {
+              // ignore
+            }
+          }
+          return true;
+        }
         const fileName = `${Math.round(i)}.webp`;
         try {
           const fileHandle = await hashDir.getFileHandle(fileName);
@@ -128,7 +152,9 @@ class ThumbnailGenerator {
           const url = URL.createObjectURL(file);
           urls.push(url);
           framesProcessed++;
-          task.onProgress?.(framesProcessed / totalFrames, url, i);
+          if (!this.isCancelled(task.id)) {
+            task.onProgress?.(framesProcessed / totalFrames, url, i);
+          }
         } catch (e: any) {
           if (e?.name === 'NotFoundError') {
             // If any frame is missing, we consider OPFS cache incomplete
@@ -136,6 +162,17 @@ class ThumbnailGenerator {
           }
           throw e;
         }
+      }
+
+      if (this.isCancelled(task.id)) {
+        for (const url of urls) {
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            // ignore
+          }
+        }
+        return true;
       }
 
       this.cache.set(task.id, urls);
@@ -154,6 +191,10 @@ class ThumbnailGenerator {
   private async generateThumbnails(task: ThumbnailTask): Promise<void> {
     const isLoaded = await this.loadThumbnailsFromOPFS(task);
     if (isLoaded) {
+      return Promise.resolve();
+    }
+
+    if (this.isCancelled(task.id)) {
       return Promise.resolve();
     }
 
@@ -185,6 +226,53 @@ class ThumbnailGenerator {
       let framesProcessed = 0;
 
       let sourceObjectUrl: string | null = null;
+      let nextFrameTimer: number | null = null;
+
+      let seekedHandler: ((...args: any[]) => void) | null = null;
+      let errorHandler: ((...args: any[]) => void) | null = null;
+      let loadedDataHandler: ((...args: any[]) => void) | null = null;
+
+      const cleanup = (options?: { revokeSource?: boolean }) => {
+        if (nextFrameTimer !== null) {
+          clearTimeout(nextFrameTimer);
+          nextFrameTimer = null;
+        }
+
+        if (seekedHandler) {
+          video.removeEventListener('seeked', seekedHandler);
+          seekedHandler = null;
+        }
+        if (errorHandler) {
+          video.removeEventListener('error', errorHandler);
+          errorHandler = null;
+        }
+        if (loadedDataHandler) {
+          video.removeEventListener('loadeddata', loadedDataHandler);
+          loadedDataHandler = null;
+        }
+
+        try {
+          video.pause();
+        } catch {
+          // ignore
+        }
+
+        try {
+          video.removeAttribute('src');
+          video.load();
+        } catch {
+          // ignore
+        }
+
+        if (options?.revokeSource !== false && sourceObjectUrl) {
+          try {
+            URL.revokeObjectURL(sourceObjectUrl);
+          } catch {
+            // ignore
+          }
+          sourceObjectUrl = null;
+        }
+      };
 
       const ensureTargetDir = async () => {
         const parts = [
@@ -209,11 +297,14 @@ class ThumbnailGenerator {
       };
 
       const processNextFrame = async () => {
+        if (this.isCancelled(task.id)) {
+          cleanup();
+          resolve();
+          return;
+        }
         if (currentTime > task.duration) {
           task.onComplete?.();
-          if (sourceObjectUrl) {
-            URL.revokeObjectURL(sourceObjectUrl);
-          }
+          cleanup();
           resolve();
           return;
         }
@@ -221,7 +312,12 @@ class ThumbnailGenerator {
         video.currentTime = currentTime;
       };
 
-      video.addEventListener('seeked', async () => {
+      seekedHandler = async () => {
+        if (this.isCancelled(task.id)) {
+          cleanup();
+          resolve();
+          return;
+        }
         try {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -247,7 +343,9 @@ class ThumbnailGenerator {
             this.evictCacheIfNeeded();
 
             framesProcessed++;
-            task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);
+            if (!this.isCancelled(task.id)) {
+              task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);
+            }
           }
         } catch (e) {
           console.error('Error extracting frame', e);
@@ -256,26 +354,42 @@ class ThumbnailGenerator {
         currentTime += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
 
         // Yield to main thread to prevent UI freezing
-        setTimeout(processNextFrame, 50);
-      });
+        nextFrameTimer = window.setTimeout(() => {
+          nextFrameTimer = null;
+          void processNextFrame();
+        }, 50);
+      };
 
-      video.addEventListener('error', (e) => {
-        task.onError?.(new Error('Video error'));
-        if (sourceObjectUrl) {
-          URL.revokeObjectURL(sourceObjectUrl);
+      errorHandler = (e: unknown) => {
+        if (!this.isCancelled(task.id)) {
+          task.onError?.(new Error('Video error'));
         }
+        cleanup();
         reject(e);
-      });
+      };
+
+      loadedDataHandler = () => {
+        void processNextFrame();
+      };
+
+      if (seekedHandler) video.addEventListener('seeked', seekedHandler);
+      if (errorHandler) video.addEventListener('error', errorHandler);
 
       (async () => {
         try {
           await ensureSourceUrl();
-          video.addEventListener('loadeddata', () => {
-            processNextFrame();
-          });
+          if (this.isCancelled(task.id)) {
+            cleanup();
+            resolve();
+            return;
+          }
+          if (loadedDataHandler) video.addEventListener('loadeddata', loadedDataHandler);
           video.load();
         } catch (e: any) {
-          task.onError?.(e instanceof Error ? e : new Error(String(e)));
+          if (!this.isCancelled(task.id)) {
+            task.onError?.(e instanceof Error ? e : new Error(String(e)));
+          }
+          cleanup();
           reject(e);
         }
       })();
