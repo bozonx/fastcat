@@ -35,15 +35,15 @@ const scrollLeft = ref(0);
 
 const markers = computed(() => timelineStore.getMarkers());
 
-let textColor = '#8a8a8a';
-let tickColor = '#4a4a4a';
+// --- Styling Settings (Adjust these for desired look) ---
+let textColor = 'rgba(255, 255, 255, 0.5)';
+let tickColor = 'rgba(255, 255, 255, 0.2)';
+let majorTickWidth = 1.25;
+let subTickWidth = 0.8;
+// ---------------------------------------------------------
 
 onMounted(() => {
-  const styles = window.getComputedStyle(document.documentElement);
-  const tc = styles.getPropertyValue('--ui-text-muted').trim();
-  const bc = styles.getPropertyValue('--ui-border').trim();
-  if (tc) textColor = tc;
-  if (bc) tickColor = bc;
+  // Theme override removed to favor manual adjustment above
 });
 
 useResizeObserver(containerRef, (entries) => {
@@ -270,7 +270,7 @@ function draw() {
 
   ctx.fillStyle = textColor;
   ctx.strokeStyle = tickColor;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = majorTickWidth;
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -287,7 +287,14 @@ function draw() {
       ctx.lineTo(x, h);
       ctx.fillText(formatTime(s * 1_000_000, currentFps), x, 4);
     }
+  }
+  ctx.stroke();
 
+  // Draw sub-ticks and frame lines (thinner)
+  ctx.lineWidth = subTickWidth;
+  ctx.beginPath();
+
+  for (let s = startS; s <= endS; s += mainStepS) {
     if (mainStepS === 1) {
       const pxPerFrame = pxPerSec / currentFps;
       let frameStep = 1;

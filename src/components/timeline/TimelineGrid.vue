@@ -35,8 +35,8 @@ onMounted(() => {
   const match = raw.match(/(\d+),\s*(\d+),\s*(\d+)/);
   if (match) {
     const [, r, g, b] = match;
-    tickColor = `rgba(${r}, ${g}, ${b}, 0.08)`;
-    majorTickColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
+    tickColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
+    majorTickColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
   }
 });
 
@@ -136,8 +136,7 @@ function draw() {
   }
   ctx.stroke();
 
-  // Sub-tick lines
-  ctx.strokeStyle = tickColor;
+  // Second-level sub-ticks and frame lines
   ctx.lineWidth = 1;
   ctx.beginPath();
 
@@ -150,6 +149,10 @@ function draw() {
         frameStep = Math.ceil(5 / pxPerFrame);
       }
 
+      const frameColor = `rgba(${tickColor.match(/(\d+),\s*(\d+),\s*(\d+)/)?.[0] || '255,255,255'}, 0.65)`;
+      ctx.strokeStyle = pxPerFrame > 15 ? frameColor : tickColor;
+      if (pxPerFrame > 15) ctx.lineWidth = 1.5; else ctx.lineWidth = 1;
+
       for (let f = 1; f < currentFps; f += frameStep) {
         const frameX =
           Math.round(
@@ -160,8 +163,11 @@ function draw() {
           ctx.lineTo(frameX, h);
         }
       }
+      ctx.stroke();
+      ctx.beginPath(); // Reset after special stroke
     } else {
-      // Second-level sub-ticks
+      ctx.strokeStyle = tickColor;
+      ctx.lineWidth = 1;
       let subStepS = 1;
       if (mainStepS >= 60) subStepS = 10;
       else if (mainStepS >= 10) subStepS = 5;
