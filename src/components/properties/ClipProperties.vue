@@ -621,10 +621,13 @@ defineExpose({
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.clip.transform.anchor', 'Anchor') }}</span>
-        <USelect 
+        <USelectMenu 
           v-model="transformAnchorPreset" 
-          :options="anchorPresetOptions" 
+          :items="anchorPresetOptions" 
+          value-key="value"
+          label-key="label"
           size="sm" 
+          class="w-full"
         />
       </div>
 

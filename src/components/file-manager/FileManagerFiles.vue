@@ -108,6 +108,7 @@ async function onRequestMove(params: {
     targetDirHandle: params.targetDirHandle,
     targetDirPath: params.targetDirPath,
   });
+  uiStore.notifyFileManagerUpdate();
 }
 
 async function onRequestUpload(params: {
@@ -116,6 +117,7 @@ async function onRequestUpload(params: {
   targetDirPath: string;
 }) {
   await props.handleFiles(params.files, params.targetDirHandle, params.targetDirPath);
+  uiStore.notifyFileManagerUpdate();
 }
 
 const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(

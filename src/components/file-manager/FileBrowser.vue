@@ -29,6 +29,7 @@ import {
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -139,6 +140,60 @@ async function refreshFileTree() {
   await loadFolderContent();
 }
 
+async function createTimelineInDirectory(entry: FsEntry) {
+  if (entry.kind !== 'directory') return;
+
+  const createdFileName = await createTimelineCommand({
+    projectDir: entry.handle as FileSystemDirectoryHandle,
+    timelinesDirName: undefined,
+  });
+
+  await loadProjectDirectory();
+  uiStore.notifyFileManagerUpdate();
+  await loadFolderContent();
+
+  const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+  const createdEntry = findEntryByPath(createdPath);
+  if (createdEntry) {
+    selectionStore.selectFsEntry(createdEntry);
+  }
+}
+
+async function createMarkdownInDirectory(entry: FsEntry) {
+  if (entry.kind !== 'directory') return;
+
+  const dirHandle = entry.handle as FileSystemDirectoryHandle;
+  const baseName = 'Документ_';
+  const ext = '.md';
+
+  const existing = new Set<string>();
+  const iterator = (dirHandle as any).values?.() ?? (dirHandle as any).entries?.();
+  if (iterator) {
+    for await (const value of iterator) {
+      const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
+      existing.add(handle.name);
+    }
+  }
+
+  let i = 1;
+  let fileName = `${baseName}${i}${ext}`;
+  while (existing.has(fileName)) {
+    i += 1;
+    fileName = `${baseName}${i}${ext}`;
+  }
+
+  const handle = await dirHandle.getFileHandle(fileName, { create: true });
+  if (typeof (handle as FileSystemFileHandle).createWritable === 'function') {
+    const writable = await (handle as FileSystemFileHandle).createWritable();
+    await writable.write('');
+    await writable.close();
+  }
+
+  await loadProjectDirectory();
+  uiStore.notifyFileManagerUpdate();
+  await loadFolderContent();
+}
+
 watch(
   () => (uiStore as any).pendingFsEntryRename,
   (value) => {
@@ -148,6 +203,32 @@ watch(
     if (inCurrentFolder) {
       startRename(entry);
       (uiStore as any).pendingFsEntryRename = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateTimeline,
+  async (value) => {
+    const entry = value as FsEntry | null;
+    if (!entry || entry.kind !== 'directory') return;
+    try {
+      await createTimelineInDirectory(entry);
+    } finally {
+      (uiStore as any).pendingFsEntryCreateTimeline = null;
+    }
+  },
+);
+
+watch(
+  () => (uiStore as any).pendingFsEntryCreateMarkdown,
+  async (value) => {
+    const entry = value as FsEntry | null;
+    if (!entry || entry.kind !== 'directory') return;
+    try {
+      await createMarkdownInDirectory(entry);
+    } finally {
+      (uiStore as any).pendingFsEntryCreateMarkdown = null;
     }
   },
 );
@@ -736,28 +817,30 @@ async function onEntryDrop(e: DragEvent, entry: FsEntry) {
   const targetHandle = entry.handle as FileSystemDirectoryHandle;
   const targetPath = entry.path ?? '';
 
-  if (hasFiles && droppedFiles.length > 0) {
-    await handleFiles(droppedFiles, targetHandle, targetPath);
+  if (moveRaw) {
+    let parsed: { path?: unknown } | null;
+    try {
+      parsed = JSON.parse(moveRaw);
+    } catch {
+      return;
+    }
+
+    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
+    if (!sourcePath || sourcePath === targetPath) return;
+
+    const source = findEntryByPath(sourcePath);
+    if (!source) return;
+
+    await moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
+    uiStore.notifyFileManagerUpdate();
     await loadFolderContent();
     return;
   }
 
-  if (!moveRaw) return;
+  if (!hasFiles || droppedFiles.length === 0) return;
 
-  let parsed: { path?: unknown } | null;
-  try {
-    parsed = JSON.parse(moveRaw);
-  } catch {
-    return;
-  }
-
-  const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-  if (!sourcePath || sourcePath === targetPath) return;
-
-  const source = findEntryByPath(sourcePath);
-  if (!source) return;
-
-  await moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
+  await handleFiles(droppedFiles, targetHandle, targetPath);
+  uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 }
 
@@ -794,6 +877,7 @@ async function onDirectoryUploadChange(e: Event) {
   } else {
     await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
   }
+  uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 }
 
@@ -829,6 +913,7 @@ async function onPanelDrop(e: DragEvent) {
         await moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
       }
     }
+    uiStore.notifyFileManagerUpdate();
     await loadFolderContent();
     return;
   }
@@ -842,6 +927,7 @@ async function onPanelDrop(e: DragEvent) {
   } else {
     await handleFiles(droppedFiles);
   }
+  uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 }
 </script>

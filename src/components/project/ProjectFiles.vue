@@ -97,12 +97,23 @@ function onFileAction(action: FileAction, entry: FsEntry) {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
     }
+  } else if (action === 'createFolder') {
+    const target: FsEntry = entry ?? {
+      kind: 'directory',
+      name: projectStore.currentProjectName ?? '',
+      path: '',
+      handle: null as any,
+    };
+    onFileActionBase('createFolder', target, () =>
+      (target.children ?? []).map((child) => child.name),
+    );
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
       void createTimelineInDirectory(entry);
     }
   } else if (action === 'openAsPanel') {
     if (entry.kind !== 'file') return;
+    projectStore.goToCut();
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
       projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);
@@ -471,7 +482,7 @@ watch(
           color="neutral"
           size="xs"
           :title="t('videoEditor.fileManager.actions.createFolder')"
-            @click="onFileAction('createFolder', uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
+          @click="onFileAction('createFolder', uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null)"
         />
 
         <div class="ml-auto flex items-center">
@@ -555,11 +566,6 @@ watch(
         </p>
       </div>
     </div>
-
-
-      :initial-name="renameTarget?.name"
-      @rename="handleRename"
-    />
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"
