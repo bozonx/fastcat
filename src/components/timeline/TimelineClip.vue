@@ -437,7 +437,7 @@ const { contextMenuItems } = useClipContextMenu({
       @click="
         if ($event.button !== 1) {
           emit('selectItem', $event, item.id);
-          selectionStore.selectTimelineItem(track.id, item.id, item.kind as 'clip' | 'gap');
+          // Selection logic is handled in the parent component via the selectItem event
         }
       "
       @dragover="handleDragOver"

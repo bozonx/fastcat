@@ -368,8 +368,7 @@ watch(
     ),
   () => {
     cutPanelsLayoutKey.value++;
-  },
-  { flush: 'post' },
+  }
 );
 
 const verticalSplitSizesKey = computed(

@@ -8,6 +8,7 @@ import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
+import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
@@ -75,10 +76,19 @@ const selectedMarkerId = computed<string | null>(() => {
   return null;
 });
 
+const selectedClips = computed(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'timeline' && entity.kind === 'clips') {
+    return entity.items;
+  }
+  return null;
+});
+
 const displayMode = computed<
-  'transition' | 'clip' | 'track' | 'file' | 'marker' | 'timeline' | 'empty'
+  'transition' | 'clip' | 'clips' | 'track' | 'file' | 'marker' | 'timeline' | 'empty'
 >(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
+  if (selectedClips.value) return 'clips';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
 
@@ -217,6 +227,11 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
             :transition-selection="selectedTransition"
             :clip="selectedTransitionClip"
+          />
+
+          <MultiClipProperties
+            v-else-if="displayMode === 'clips' && selectedClips"
+            :items="selectedClips"
           />
 
           <ClipProperties
