@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
@@ -127,6 +128,15 @@ export function useTimelineInteraction(
   function selectItem(e: PointerEvent, itemId: string) {
     const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
     timelineStore.toggleSelection(itemId, { multi: isMulti });
+
+    const selectedIds = timelineStore.selectedItemIds;
+    const items = tracks.value
+      .flatMap((t) => t.items.map((it) => ({ trackId: t.id, item: it })))
+      .filter((x) => selectedIds.includes(x.item.id))
+      .map((x) => ({ trackId: x.trackId, itemId: x.item.id }));
+
+    const selectionStore = useSelectionStore();
+    selectionStore.selectTimelineItems(items);
   }
 
   function startMoveItem(e: PointerEvent, trackId: string, itemId: string, startUs: number) {

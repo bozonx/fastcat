@@ -593,7 +593,7 @@ export function useFileManager() {
         });
         await fileThumbnailGenerator.clearThumbnail({
           projectId,
-          hash: getFileThumbnailHash({ projectId, projectRelativePath }),
+          projectRelativePath,
         });
       },
       clearWaveforms: async ({ projectId, projectRelativePath }) => {

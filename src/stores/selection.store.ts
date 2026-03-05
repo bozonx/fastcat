@@ -15,6 +15,12 @@ export interface SelectedTimelineClip extends SelectedEntityBase {
   itemId: string;
 }
 
+export interface SelectedTimelineClips extends SelectedEntityBase {
+  source: 'timeline';
+  kind: 'clips';
+  items: { trackId: string; itemId: string }[];
+}
+
 export interface SelectedTimelineTrack extends SelectedEntityBase {
   source: 'timeline';
   kind: 'track';
@@ -57,6 +63,7 @@ export interface SelectedTimelineProperties extends SelectedEntityBase {
 
 export type SelectedEntity =
   | SelectedTimelineClip
+  | SelectedTimelineClips
   | SelectedTimelineGap
   | SelectedTimelineTrack
   | SelectedTimelineTransition
@@ -74,6 +81,25 @@ export const useSelectionStore = defineStore('selection', () => {
       trackId,
       itemId,
     };
+  }
+
+  function selectTimelineItems(items: { trackId: string; itemId: string }[]) {
+    if (items.length === 0) {
+      selectedEntity.value = null;
+    } else if (items.length === 1 && items[0]) {
+      selectedEntity.value = {
+        source: 'timeline',
+        kind: 'clip',
+        trackId: items[0].trackId,
+        itemId: items[0].itemId,
+      };
+    } else {
+      selectedEntity.value = {
+        source: 'timeline',
+        kind: 'clips',
+        items,
+      };
+    }
   }
 
   function selectTimelineTrack(trackId: string) {
@@ -126,6 +152,7 @@ export const useSelectionStore = defineStore('selection', () => {
   return {
     selectedEntity,
     selectTimelineItem,
+    selectTimelineItems,
     selectTimelineTrack,
     selectTimelineTransition,
     selectTimelineMarker,

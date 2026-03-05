@@ -329,6 +329,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       const nextChildren = await readDirectory(entry.handle as FileSystemDirectoryHandle, path);
       deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
         ...e,
+        expanded: deps.isPathExpanded(path),
         children: mergeEntries(e.children, nextChildren),
       }));
     } catch (e) {

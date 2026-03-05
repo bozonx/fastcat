@@ -18,7 +18,9 @@ interface UseClipContextMenuOptions {
   item: Ref<TimelineTrackItem>;
   timelineDoc: Ref<TimelineDocument | null>;
   projectSettings: Ref<GranVideoEditorProjectSettings>;
+  selectedItemIds: Ref<string[]>;
   applyTimelineCommand: (cmd: TimelineCommand) => void;
+  batchApplyTimeline: (cmds: TimelineCommand[]) => void;
   updateClipProperties: (
     trackId: string,
     itemId: string,
@@ -49,6 +51,153 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     const item = options.item.value;
 
     if (!item) return [];
+
+    const isMultiSelection =
+      options.selectedItemIds.value.length > 1 && options.selectedItemIds.value.includes(item.id);
+
+    if (isMultiSelection) {
+      const doc = options.timelineDoc.value;
+      const selectedClips: TimelineClipItem[] = [];
+      const itemsToUpdate: { trackId: string; itemId: string }[] = [];
+
+      if (doc) {
+        for (const t of doc.tracks) {
+          for (const it of t.items) {
+            if (options.selectedItemIds.value.includes(it.id)) {
+              if (it.kind === 'clip') {
+                selectedClips.push(it as TimelineClipItem);
+              }
+              itemsToUpdate.push({ trackId: t.id, itemId: it.id });
+            }
+          }
+        }
+      }
+
+      const allDisabled = selectedClips.length > 0 && selectedClips.every((c) => c.disabled);
+
+      let hasAudioOrVideoWithAudio = false;
+      let hasVideo = false;
+      let allMuted = true;
+      let allShowWaveform = true;
+      let allWaveformHalf = true;
+
+      if (doc) {
+        for (const { trackId, itemId } of itemsToUpdate) {
+          const tr = doc.tracks.find((t) => t.id === trackId);
+          if (!tr) continue;
+          const clip = tr.items.find((it) => it.id === itemId);
+          if (!clip || clip.kind !== 'clip') continue;
+
+          if (tr.kind === 'video') hasVideo = true;
+
+          const hasAudio =
+            tr.kind === 'audio' ||
+            (tr.kind === 'video' &&
+              clip.clipType === 'media' &&
+              (clip.linkedVideoClipId || (clip.source as any)?.hasAudio));
+          if (hasAudio) hasAudioOrVideoWithAudio = true;
+
+          if (!clip.audioMuted) allMuted = false;
+          if (clip.showWaveform === false) allShowWaveform = false;
+          if (clip.audioWaveformMode === 'full') allWaveformHalf = false;
+        }
+      }
+
+      const mainGroup: { label: string; icon: string; onSelect: () => void; disabled?: boolean }[] =
+        [];
+
+      mainGroup.push({
+        label: allDisabled
+          ? options.t('granVideoEditor.timeline.enableClips', 'Enable clips')
+          : options.t('granVideoEditor.timeline.disableClips', 'Disable clips'),
+        icon: allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+        onSelect: async () => {
+          const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
+            type: 'update_clip_properties' as const,
+            trackId,
+            itemId,
+            properties: { disabled: !allDisabled },
+          }));
+          options.batchApplyTimeline(cmds);
+          await options.requestTimelineSave({ immediate: true });
+        },
+      });
+
+      if (hasAudioOrVideoWithAudio) {
+        mainGroup.push({
+          label: allMuted
+            ? options.t('granVideoEditor.timeline.unmuteClips', 'Unmute clips')
+            : options.t('granVideoEditor.timeline.muteClips', 'Mute clips'),
+          icon: allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+          onSelect: async () => {
+            const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
+              type: 'update_clip_properties' as const,
+              trackId,
+              itemId,
+              properties: { audioMuted: !allMuted },
+            }));
+            options.batchApplyTimeline(cmds);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+
+        mainGroup.push({
+          label: allWaveformHalf
+            ? options.t('granVideoEditor.timeline.waveformFull', 'Waveform: Full')
+            : options.t('granVideoEditor.timeline.waveformHalf', 'Waveform: Half'),
+          icon: 'i-heroicons-chart-bar',
+          onSelect: async () => {
+            const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
+              type: 'update_clip_properties' as const,
+              trackId,
+              itemId,
+              properties: {
+                audioWaveformMode: (allWaveformHalf ? 'full' : 'half') as 'full' | 'half',
+              },
+            }));
+            options.batchApplyTimeline(cmds);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
+      if (hasVideo) {
+        mainGroup.push({
+          label: allShowWaveform
+            ? options.t('granVideoEditor.timeline.hideWaveform', 'Hide Waveform')
+            : options.t('granVideoEditor.timeline.showWaveform', 'Show Waveform'),
+          icon: allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+          onSelect: async () => {
+            const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
+              type: 'update_clip_properties' as const,
+              trackId,
+              itemId,
+              properties: { showWaveform: !allShowWaveform },
+            }));
+            options.batchApplyTimeline(cmds);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
+      const actionGroup = [
+        {
+          label: options.t('granVideoEditor.timeline.delete', 'Delete'),
+          icon: 'i-heroicons-trash',
+          onSelect: () => {
+            options.clearSelection();
+            const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
+              type: 'delete_items' as const,
+              trackId,
+              itemIds: [itemId],
+            }));
+            options.batchApplyTimeline(cmds);
+          },
+        },
+      ];
+
+      return [mainGroup, actionGroup];
+    }
 
     if (item.kind === 'gap') {
       return [

@@ -388,35 +388,38 @@ class FileThumbnailGenerator {
     this.evictCacheIfNeeded();
   }
 
-  async clearThumbnail(input: { projectId: string; hash: string }) {
-    const url = this.cache.get(input.hash);
+  async clearThumbnail(input: { projectId: string; projectRelativePath: string }) {
+    const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
+    const url = this.cache.get(hash);
     if (url) {
       try {
         URL.revokeObjectURL(url);
       } catch {
         // ignore
       }
-      this.cache.delete(input.hash);
+      this.cache.delete(hash);
     }
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const parts = [
-        ...getProjectThumbnailsSegments(input.projectId),
-        FILE_MANAGER_THUMBNAILS.DIR_NAME,
-      ];
+      const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
+      const dirName = isTimeline
+        ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
+        : FILE_MANAGER_THUMBNAILS.DIR_NAME;
+
+      const parts = [...getProjectThumbnailsSegments(input.projectId), dirName];
 
       let dir = workspaceStore.workspaceHandle;
       for (const segment of parts) {
         dir = await dir.getDirectoryHandle(segment);
       }
 
-      await dir.removeEntry(`${input.hash}.webp`);
+      await dir.removeEntry(`${hash}.webp`);
     } catch (e: any) {
       if (e?.name !== 'NotFoundError') {
-        console.warn('Failed to clear file thumbnail for', input.hash, e);
+        console.warn('Failed to clear file thumbnail for', hash, e);
       }
     }
   }
@@ -426,19 +429,23 @@ class FileThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const parts = [...getProjectThumbnailsSegments(projectId), FILE_MANAGER_THUMBNAILS.DIR_NAME];
-
+      const parts = getProjectThumbnailsSegments(projectId);
       let dir = workspaceStore.workspaceHandle;
       for (const segment of parts) {
         dir = await dir.getDirectoryHandle(segment);
       }
 
-      // We just delete the whole folder
-      let rootDir = workspaceStore.workspaceHandle;
-      for (let i = 0; i < parts.length - 1; i++) {
-        rootDir = await rootDir.getDirectoryHandle(parts[i]!);
+      // We clear both subdirectories if they exist
+      try {
+        await dir.removeEntry(FILE_MANAGER_THUMBNAILS.DIR_NAME, { recursive: true });
+      } catch {
+        /* ignore */
       }
-      await rootDir.removeEntry(FILE_MANAGER_THUMBNAILS.DIR_NAME, { recursive: true });
+      try {
+        await dir.removeEntry(TIMELINE_MANAGER_THUMBNAILS.DIR_NAME, { recursive: true });
+      } catch {
+        /* ignore */
+      }
     } catch (e: any) {
       if (e?.name !== 'NotFoundError') {
         console.warn('Failed to clear all file thumbnails for project', projectId, e);

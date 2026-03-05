@@ -19,13 +19,24 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
   watch(
     entries,
     (currentEntries) => {
-      if (!projectStore.currentProjectId) return;
+      if (!projectStore.currentProjectId) {
+        thumbnails.value = {};
+        cleanupAll();
+        return;
+      }
 
       const projectId = projectStore.currentProjectId;
       const newHashes = new Set<string>();
+      const validPaths = new Set(currentEntries.map((e) => e.path).filter(Boolean));
 
-      const newThumbnails: Record<string, string> = {};
+      // 1. Cleanup thumbnails for entries no longer in currentEntries
+      Object.keys(thumbnails.value).forEach((path) => {
+        if (!validPaths.has(path)) {
+          delete thumbnails.value[path];
+        }
+      });
 
+      // 2. Add tasks for new entries
       for (const entry of currentEntries) {
         if (entry.kind === 'file' && entry.path) {
           const path = entry.path;
@@ -39,9 +50,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
             });
             newHashes.add(hash);
 
-            if (thumbnails.value[path]) {
-              newThumbnails[path] = thumbnails.value[path] as string;
-            } else {
+            if (!thumbnails.value[path]) {
               activeHashes.add(hash);
               fileThumbnailGenerator.addTask({
                 id: hash,
@@ -49,6 +58,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
                 projectRelativePath: path,
                 onComplete: (url: string) => {
                   if (isUnmounted) return;
+                  // Use spread to trigger reactivity
                   thumbnails.value = {
                     ...thumbnails.value,
                     [path]: url,
@@ -67,8 +77,6 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
           activeHashes.delete(oldHash);
         }
       }
-
-      thumbnails.value = newThumbnails;
     },
     { immediate: true, deep: true },
   );
