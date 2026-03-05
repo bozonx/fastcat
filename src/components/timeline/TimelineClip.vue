@@ -8,12 +8,51 @@ import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { clampHandlePx, getClipClass, transitionSvgParts } from '~/utils/timeline/clip';
+import { getEffectManifest } from '~/effects';
+import type { ClipEffect } from '~/timeline/types';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
+const uiStore = useUiStore();
+
+function handleDragOver(event: DragEvent) {
+  if (event.dataTransfer?.types.includes('gran-effect')) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }
+}
+
+function handleDrop(event: DragEvent) {
+  const effectType = event.dataTransfer?.getData('gran-effect');
+  if (!effectType || !clipItem.value) return;
+
+  const manifest = getEffectManifest(effectType);
+  if (!manifest) return;
+
+  const newEffect = {
+    id: `effect_${Date.now()}`,
+    type: effectType,
+    enabled: true,
+    ...manifest.defaultValues,
+  } as unknown as ClipEffect;
+
+  const currentEffects = clipItem.value.effects || [];
+  timelineStore.updateClipProperties(props.track.id, props.item.id, {
+    effects: [newEffect, ...currentEffects],
+  });
+
+  // Select the clip
+  selectionStore.selectTimelineItem(props.track.id, props.item.id, props.item.kind as 'clip');
+
+  // Trigger scroll to effects
+  uiStore.triggerScrollToEffects();
+
+  event.preventDefault();
+  event.stopPropagation();
+}
 
 interface Props {
   track: TimelineTrack;
@@ -381,6 +420,8 @@ const { contextMenuItems } = useClipContextMenu({
           selectionStore.selectTimelineItem(track.id, item.id, item.kind as 'clip' | 'gap');
         }
       "
+      @dragover="handleDragOver"
+      @drop="handleDrop"
     >
       <!-- Missing Media Overlay -->
       <div

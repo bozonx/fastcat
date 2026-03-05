@@ -96,6 +96,7 @@ export function useTimelineInteraction(
   const dragStartSnapshot = ref<import('~/timeline/types').TimelineDocument | null>(null);
   const lastDragAppliedCmd = ref<import('~/timeline/commands').TimelineCommand | null>(null);
   const dragCancelRequested = ref(false);
+  const dragIsFreeOverride = ref(false);
 
   let dragRafId: number | null = null;
 
@@ -145,6 +146,7 @@ export function useTimelineInteraction(
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
+    dragIsFreeOverride.value = e.shiftKey;
     dragAnchorStartUs.value = startUs;
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
@@ -199,6 +201,7 @@ export function useTimelineInteraction(
     draggingItemId.value = input.itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
+    dragIsFreeOverride.value = e.shiftKey;
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
@@ -251,7 +254,7 @@ export function useTimelineInteraction(
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const zoom = timelineStore.timelineZoom;
-    const enableFrameSnap = settingsStore.frameSnapMode === 'frames';
+    const enableFrameSnap = settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
     const enableClipSnap = settingsStore.clipSnapMode === 'clips';
     const snapThresholdPx = settingsStore.snapThresholdPx;
     const overlapMode = settingsStore.overlapMode;
@@ -304,6 +307,7 @@ export function useTimelineInteraction(
           toTrackId: targetTrackId,
           itemId,
           startUs,
+          quantizeToFrames: enableFrameSnap,
         } as const;
         timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
         lastDragAppliedCmd.value = cmd as any;
@@ -364,6 +368,7 @@ export function useTimelineInteraction(
         itemId,
         edge: cmdEdge,
         deltaUs: nextStepDeltaUs,
+        quantizeToFrames: enableFrameSnap,
       } as any;
       timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
       lastDragAppliedCmd.value = cmd as any;
@@ -407,6 +412,7 @@ export function useTimelineInteraction(
 
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
+    dragIsFreeOverride.value = e.shiftKey;
     scheduleDragApply();
   }
 
@@ -434,12 +440,15 @@ export function useTimelineInteraction(
       const commit = pendingMoveCommit.value;
       if (commit) {
         try {
+          const enableFrameSnap =
+            settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
           const cmd = {
             type: 'overlay_place_item',
             fromTrackId: commit.fromTrackId,
             toTrackId: commit.toTrackId,
             itemId: commit.itemId,
             startUs: commit.startUs,
+            quantizeToFrames: enableFrameSnap,
           } as const;
           timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
           lastDragAppliedCmd.value = cmd as any;
@@ -478,6 +487,7 @@ export function useTimelineInteraction(
 
     dragStartSnapshot.value = null;
     lastDragAppliedCmd.value = null;
+    dragIsFreeOverride.value = false;
 
     window.removeEventListener('keydown', onGlobalKeyDown);
   }

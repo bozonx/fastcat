@@ -21,6 +21,7 @@ import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcr
 import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar.vue';
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
+import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import {
@@ -60,6 +61,29 @@ const {
 } = fileManager;
 const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
+const { isGlobalDragging } = storeToRefs(uiStore);
+
+const {
+  isDragOverPanel,
+  dragOverEntryPath,
+  isRootDropOver,
+  onRootDragOver,
+  onRootDragLeave,
+  onRootDrop,
+  onEntryDragStart,
+  onEntryDragEnd,
+  onEntryDragOver,
+  onEntryDragLeave,
+  onEntryDrop,
+  onPanelDragOver,
+  onPanelDragLeave,
+  onPanelDrop,
+} = useFileBrowserDragAndDrop({
+  findEntryByPath,
+  handleFiles,
+  moveEntry,
+  loadFolderContent,
+});
 
 const rootContainer = ref<HTMLElement | null>(null);
 
@@ -723,122 +747,7 @@ function onCardSizeChange(e: Event) {
 }
 
 // --- Drag-and-drop within the browser panel ---
-
-const isDragOverPanel = ref(false);
-const dragOverEntryPath = ref<string | null>(null);
-
-const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
-  {
-    getProjectRootDirHandle,
-    findEntryByPath: (path) => findEntryByPath(path),
-    handleFiles,
-    moveEntry: (params) => moveEntry(params),
-  },
-);
-
-function onEntryDragStart(e: DragEvent, entry: FsEntry) {
-  if (!entry.path) return;
-  if (!e.dataTransfer) return;
-
-  e.dataTransfer.effectAllowed = 'copyMove';
-  const movePayload = { name: entry.name, kind: entry.kind, path: entry.path };
-  e.dataTransfer.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
-  // Mark as internal so the global overlay is not shown
-  e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
-
-  if (entry.kind !== 'file') return;
-
-  const isTimeline = entry.name.toLowerCase().endsWith('.otio');
-  const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
-  const data: DraggedFileData = { name: entry.name, kind, path: entry.path };
-  setDraggedFile(data);
-  e.dataTransfer?.setData('application/json', JSON.stringify(data));
-}
-
-function onEntryDragEnd() {
-  clearDraggedFile();
-  dragOverEntryPath.value = null;
-}
-
-function isDropTargetDir(entry: FsEntry): boolean {
-  return entry.kind === 'directory';
-}
-
-function onEntryDragOver(e: DragEvent, entry: FsEntry) {
-  if (!isDropTargetDir(entry)) return;
-  const types = e.dataTransfer?.types;
-  if (!types) return;
-  if (!types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) && !types.includes('Files')) return;
-  dragOverEntryPath.value = entry.path ?? null;
-  e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
-}
-
-function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
-  if (dragOverEntryPath.value !== (entry.path ?? null)) return;
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
-    dragOverEntryPath.value = null;
-  }
-}
-
-async function onEntryDrop(e: DragEvent, entry: FsEntry) {
-  if (!isDropTargetDir(entry)) return;
-  e.stopPropagation();
-  dragOverEntryPath.value = null;
-
-  // Snapshot synchronously before any await
-  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-  const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
-  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-
-  const targetHandle = entry.handle as FileSystemDirectoryHandle;
-  const targetPath = entry.path ?? '';
-
-  if (moveRaw) {
-    let parsed: { path?: unknown } | null;
-    try {
-      parsed = JSON.parse(moveRaw);
-    } catch {
-      return;
-    }
-
-    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-    if (!sourcePath || sourcePath === targetPath) return;
-
-    const source = findEntryByPath(sourcePath);
-    if (!source) return;
-
-    await moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
-    uiStore.notifyFileManagerUpdate();
-    await loadFolderContent();
-    return;
-  }
-
-  if (!hasFiles || droppedFiles.length === 0) return;
-
-  await handleFiles(droppedFiles, targetHandle, targetPath);
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
-}
-
-// Drop for external (OS) files onto the current folder panel background
-function onPanelDragOver(e: DragEvent) {
-  const types = e.dataTransfer?.types;
-  if (!types) return;
-  if (types.includes('Files') || types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) {
-    isDragOverPanel.value = true;
-    uiStore.isFileManagerDragging = true;
-    e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
-  }
-}
-
-function onPanelDragLeave(e: DragEvent) {
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
-    isDragOverPanel.value = false;
-    uiStore.isFileManagerDragging = false;
-  }
-}
+// Logic moved to useFileBrowserDragAndDrop
 
 async function onDirectoryUploadChange(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -858,55 +767,7 @@ async function onDirectoryUploadChange(e: Event) {
   await loadFolderContent();
 }
 
-async function onPanelDrop(e: DragEvent) {
-  isDragOverPanel.value = false;
-  uiStore.isFileManagerDragging = false;
-  uiStore.isGlobalDragging = false;
-
-  const targetFolder = filesPageStore.selectedFolder;
-  const targetHandle = targetFolder?.handle as FileSystemDirectoryHandle | undefined;
-  const targetPath = targetFolder?.path ?? '';
-
-  // Internal file manager move (from tree or another browser panel)
-  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  if (moveRaw) {
-    let parsed: { path?: unknown } | null;
-    try {
-      parsed = JSON.parse(moveRaw);
-    } catch {
-      return;
-    }
-    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-    if (!sourcePath) return;
-
-    const source = findEntryByPath(sourcePath);
-    if (!source) return;
-
-    if (targetHandle) {
-      await moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
-    } else {
-      const rootHandle = await getProjectRootDirHandle();
-      if (rootHandle) {
-        await moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
-      }
-    }
-    uiStore.notifyFileManagerUpdate();
-    await loadFolderContent();
-    return;
-  }
-
-  // External (OS) files
-  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-  if (droppedFiles.length === 0) return;
-
-  if (targetHandle) {
-    await handleFiles(droppedFiles, targetHandle, targetPath);
-  } else {
-    await handleFiles(droppedFiles);
-  }
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
-}
+// Panel drop handled by useFileBrowserDragAndDrop
 </script>
 
 <template>

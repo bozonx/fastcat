@@ -91,6 +91,12 @@ export const useUiStore = defineStore('ui', () => {
     previewFullscreenToggleTrigger.value = Date.now();
   }
 
+  const scrollToEffectsTrigger = ref(0);
+
+  function triggerScrollToEffects() {
+    scrollToEffectsTrigger.value = Date.now();
+  }
+
   return {
     selectedFsEntry,
     isGlobalDragging,
@@ -127,5 +133,8 @@ export const useUiStore = defineStore('ui', () => {
     hasPersistedFileTreeState,
     isFileTreePathExpanded,
     setFileTreePathExpanded,
+
+    scrollToEffectsTrigger,
+    triggerScrollToEffects,
   };
 });

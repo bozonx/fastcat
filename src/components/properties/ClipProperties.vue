@@ -244,6 +244,24 @@ const {
   },
 });
 
+const effectsSectionRef = ref<HTMLElement | null>(null);
+
+watch(
+  () => uiStore.scrollToEffectsTrigger,
+  () => {
+    if (!effectsSectionRef.value) return;
+    // We need to find the scrollable container.
+    // In PropertiesPanel.vue it is .overflow-auto
+    const container = effectsSectionRef.value.closest('.overflow-auto');
+    if (container) {
+      container.scrollTo({
+        top: effectsSectionRef.value.offsetTop - 10,
+        behavior: 'smooth',
+      });
+    }
+  },
+);
+
 function handleTransitionUpdate(payload: {
   trackId: string;
   itemId: string;
@@ -626,13 +644,15 @@ defineExpose({
       />
     </div>
 
-    <EffectsEditor
-      :effects="clip.effects"
-      :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
-      :add-label="t('granVideoEditor.effects.add', 'Add')"
-      :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
-      @update:effects="handleUpdateClipEffects"
-    />
+    <div ref="effectsSectionRef">
+      <EffectsEditor
+        :effects="clip.effects"
+        :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
+        :add-label="t('granVideoEditor.effects.add', 'Add')"
+        :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
+        @update:effects="handleUpdateClipEffects"
+      />
+    </div>
 
     <ClipAudioSection
       :can-edit-audio-fades="canEditAudioFades"
