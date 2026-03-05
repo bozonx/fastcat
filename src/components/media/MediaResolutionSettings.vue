@@ -216,7 +216,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <USelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
-            :disabled="disabled"
+            disabled
             size="sm"
             class="w-full"
             value-key="value"

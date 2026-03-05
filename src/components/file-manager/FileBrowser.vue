@@ -227,7 +227,15 @@ function onFileAction(action: string, entry: FsEntry) {
     projectStore.goToCut();
     const type = getMediaTypeFromFilename(entry.name);
     if (type === 'text') {
-      projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);
+      void (async () => {
+        try {
+          const file = await (entry.handle as FileSystemFileHandle).getFile();
+          const content = await file.text();
+          projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name);
+        } catch {
+          projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name);
+        }
+      })();
     } else if (type === 'video' || type === 'audio' || type === 'image') {
       projectStore.addMediaPanel(entry, type, entry.name);
     }

@@ -120,7 +120,15 @@ function onFileAction(action: string, entry: FsEntry) {
     projectStore.goToCut();
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
-      projectStore.addTextPanel(entry.path ?? entry.name, `File: ${entry.name}`, entry.name);
+      void (async () => {
+        try {
+          const file = await (entry.handle as FileSystemFileHandle).getFile();
+          const content = await file.text();
+          projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name);
+        } catch {
+          projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name);
+        }
+      })();
     } else if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
       projectStore.addMediaPanel(entry, mediaType, entry.name);
     }

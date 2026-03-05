@@ -435,7 +435,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       defaultErrorMessage: 'Failed to move',
       toastTitle: 'Move error',
       toastDescription: () => error.value || 'Failed to move',
-      rethrow: true,
     });
   }
 
