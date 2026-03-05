@@ -26,6 +26,7 @@ const isDraggingOver = ref(false);
 
 let activeClipPointerMove: ((e: PointerEvent) => void) | null = null;
 let activeClipPointerUp: ((e?: PointerEvent) => void) | null = null;
+let didStartClipDrag = false;
 
 function handleDragEnter(event: DragEvent) {
   if (event.dataTransfer?.types.includes('gran-effect')) {
@@ -205,9 +206,26 @@ function onTransitionPointerdown(e: PointerEvent) {
   window.addEventListener('pointerup', onPointerUp);
 }
 
+function onClipClick(e: MouseEvent) {
+  if (didStartClipDrag) {
+    didStartClipDrag = false;
+    return;
+  }
+
+  if (e.button !== 1) {
+    emit('selectItem', e as unknown as PointerEvent, props.item.id);
+    // Selection logic is handled in the parent component via the selectItem event
+  }
+}
+
 function onClipPointerdown(e: PointerEvent) {
   if (e.button !== 0) return;
   if (!clipItem.value || Boolean(clipItem.value.locked)) return;
+
+  didStartClipDrag = false;
+
+  const targetEl = e.currentTarget as HTMLElement | null;
+  targetEl?.setPointerCapture(e.pointerId);
 
   const startX = e.clientX;
   const startY = e.clientY;
@@ -218,8 +236,9 @@ function onClipPointerdown(e: PointerEvent) {
     const dx = Math.abs(ev.clientX - startX);
     const dy = Math.abs(ev.clientY - startY);
     if (dx > 3 || dy > 3) {
+      didStartClipDrag = true;
       clearActiveClipPointerListeners();
-      emit('startMoveItem', ev, props.item.trackId, props.item.id, props.item.timelineRange.startUs);
+      emit('startMoveItem', e, props.item.trackId, props.item.id, props.item.timelineRange.startUs);
     }
   }
 
@@ -477,12 +496,7 @@ const { contextMenuItems } = useClipContextMenu({
         width: `${clipWidthPx}px`,
       }"
       @pointerdown="onClipPointerdown($event)"
-      @click="
-        if ($event.button !== 1) {
-          emit('selectItem', $event, item.id);
-          // Selection logic is handled in the parent component via the selectItem event
-        }
-      "
+      @click="onClipClick($event)"
       @dragover="handleDragOver"
       @dragenter="handleDragEnter"
       @dragleave="handleDragLeave"
