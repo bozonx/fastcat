@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -18,6 +18,18 @@ const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const uiStore = useUiStore();
 
+const isDraggingOver = ref(false);
+
+function handleDragEnter(event: DragEvent) {
+  if (event.dataTransfer?.types.includes('gran-effect')) {
+    isDraggingOver.value = true;
+  }
+}
+
+function handleDragLeave() {
+  isDraggingOver.value = false;
+}
+
 function handleDragOver(event: DragEvent) {
   if (event.dataTransfer?.types.includes('gran-effect')) {
     event.preventDefault();
@@ -26,6 +38,7 @@ function handleDragOver(event: DragEvent) {
 }
 
 function handleDrop(event: DragEvent) {
+  isDraggingOver.value = false;
   const effectType = event.dataTransfer?.getData('gran-effect');
   if (!effectType || !clipItem.value) return;
 
@@ -399,6 +412,7 @@ const { contextMenuItems } = useClipContextMenu({
         timelineStore.selectedItemIds.includes(item.id)
           ? 'ring-2 ring-(--selection-ring) z-20 shadow-lg'
           : '',
+        isDraggingOver ? 'ring-2 ring-primary-500 z-30' : '',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
@@ -423,6 +437,8 @@ const { contextMenuItems } = useClipContextMenu({
         }
       "
       @dragover="handleDragOver"
+      @dragenter="handleDragEnter"
+      @dragleave="handleDragLeave"
       @drop="handleDrop"
     >
       <!-- Missing Media Overlay -->

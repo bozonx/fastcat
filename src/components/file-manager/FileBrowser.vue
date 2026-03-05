@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, toRaw } from 'vue';
+import { ref, computed, watch, toRaw, onUnmounted } from 'vue';
 import {
   useFilesPageStore,
   type FileViewMode,
@@ -485,6 +485,10 @@ function cleanupObjectUrls() {
     }
   }
 }
+
+onUnmounted(() => {
+  cleanupObjectUrls();
+});
 
 async function loadParentFolders() {
   parentFolders.value = [];

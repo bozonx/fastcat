@@ -13,6 +13,41 @@ function makeDoc(track: TimelineTrack): TimelineDocument {
 }
 
 describe('timeline/commands gap behavior', () => {
+  it('overlay_place_item should keep free start when quantizeToFrames is false', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    const freeStartUs = 1_000_001;
+    const { next } = applyTimelineCommand(doc, {
+      type: 'overlay_place_item',
+      fromTrackId: 'v1',
+      toTrackId: 'v1',
+      itemId: 'c1',
+      startUs: freeStartUs,
+      quantizeToFrames: false,
+    });
+
+    const clip = next.tracks[0]?.items.find(
+      (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
+    );
+    expect(clip?.timelineRange.startUs).toBe(freeStartUs);
+  });
+
   it('move_item_to_track on same track behaves like move_item (does not remove clip)', () => {
     const doc = makeDoc({
       id: 'v1',
