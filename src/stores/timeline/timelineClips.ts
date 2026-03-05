@@ -56,6 +56,7 @@ export interface TimelineClipsApi {
         | 'audioFadeOutUs'
         | 'audioMuted'
         | 'audioWaveformMode'
+        | 'showWaveform'
       >
     > & {
       backgroundColor?: string;
@@ -139,6 +140,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         | 'audioFadeOutUs'
         | 'audioMuted'
         | 'audioWaveformMode'
+        | 'showWaveform'
       >
     > & {
       backgroundColor?: string;

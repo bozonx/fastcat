@@ -227,7 +227,7 @@ function drawChunk(chunkIndex: number) {
   const halfH = targetHeight / 2;
   const step = targetWidth / chunkLength;
 
-  const mode = props.item.audioWaveformMode || 'full';
+  const mode = props.item.audioWaveformMode || 'half';
   const gain = props.item.audioGain ?? 1;
   const muted = isMuted.value;
 

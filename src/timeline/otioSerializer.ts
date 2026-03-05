@@ -334,6 +334,7 @@ function parseClipItem(input: {
       granMeta?.audioWaveformMode === 'half' || granMeta?.audioWaveformMode === 'full'
         ? granMeta.audioWaveformMode
         : undefined,
+    showWaveform: granMeta?.showWaveform !== undefined ? Boolean(granMeta.showWaveform) : undefined,
     audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
     freezeFrameSourceUs:
       clipType === 'media' &&
@@ -571,6 +572,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             audioFadeOutUs: item.audioFadeOutUs,
             audioMuted: item.audioMuted,
             audioWaveformMode: item.audioWaveformMode,
+            showWaveform: item.showWaveform,
             audioFromVideoDisabled:
               item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
