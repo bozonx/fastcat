@@ -141,6 +141,12 @@ export function useProjectTabs() {
     }
   }
 
+  function removeFileTabByPath(filePath: string) {
+    const tab = fileTabs.value.find((t) => t.filePath === filePath);
+    if (!tab) return;
+    removeFileTab(tab.id);
+  }
+
   function initDefaultTab() {
     if (!activeTabId.value && tabs.value.length > 0) {
       const firstTab = tabs.value[0];
@@ -159,6 +165,7 @@ export function useProjectTabs() {
     reorderTabs,
     addFileTab,
     removeFileTab,
+    removeFileTabByPath,
     hideStaticTab,
     showStaticTab,
   };

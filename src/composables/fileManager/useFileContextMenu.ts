@@ -21,6 +21,7 @@ interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
   folderHasVideos: (entry: FsEntry) => boolean;
   isOpenableMediaFile: (entry: FsEntry) => boolean;
+  isConvertibleMediaFile: (entry: FsEntry) => boolean;
   isVideo: (entry: FsEntry) => boolean;
   getEntryMeta: (entry: FsEntry) => {
     hasProxy: boolean;
@@ -107,7 +108,7 @@ export function useFileContextMenu(
       ]);
     }
 
-    if (deps.isOpenableMediaFile(entry)) {
+    if (deps.isConvertibleMediaFile(entry)) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),

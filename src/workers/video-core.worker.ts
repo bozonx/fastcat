@@ -166,7 +166,9 @@ self.addEventListener('message', async (e: any) => {
       const result = await api[method](...(data.args || []));
       self.postMessage({ type: 'rpc-response', id: data.id, result });
     } catch (err: any) {
-      console.error(`[Worker] Error in method ${data.method}:`, err);
+      if (err?.name !== 'AbortError') {
+        console.error(`[Worker] Error in method ${data.method}:`, err);
+      }
       self.postMessage({
         type: 'rpc-response',
         id: data.id,

@@ -155,12 +155,20 @@ class FileThumbnailGenerator {
         return;
       }
 
+      // If it's a timeline file, we don't have an automatic generator for it.
+      // We expect it to be saved manually during project save.
+      if (task.projectRelativePath.toLowerCase().endsWith('.otio')) {
+        resolve();
+        return;
+      }
+
       const video = document.createElement('video');
       video.muted = true;
       video.crossOrigin = 'anonymous';
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
+
 
       if (!ctx) {
         reject(new Error('Failed to get 2d context'));
@@ -331,6 +339,49 @@ class FileThumbnailGenerator {
         }
       })();
     });
+  }
+
+  async saveManualThumbnail(input: {
+    projectId: string;
+    projectRelativePath: string;
+    blob: Blob;
+  }) {
+    const workspaceStore = useWorkspaceStore();
+    if (!workspaceStore.workspaceHandle) return;
+
+    const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
+    const parts = [
+      ...getProjectThumbnailsSegments(input.projectId),
+      FILE_MANAGER_THUMBNAILS.DIR_NAME,
+    ];
+
+    let dir = workspaceStore.workspaceHandle;
+    for (const segment of parts) {
+      dir = await dir.getDirectoryHandle(segment, { create: true });
+    }
+
+    const fileName = `${hash}.webp`;
+    const fileHandle = await dir.getFileHandle(fileName, { create: true });
+    const writable = await (fileHandle as any).createWritable();
+    await writable.write(input.blob);
+    await writable.close();
+
+    // Revoke old URL if exists in cache
+    const oldUrl = this.cache.get(hash);
+    if (oldUrl) {
+      try {
+        URL.revokeObjectURL(oldUrl);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const savedFile = await fileHandle.getFile();
+    const thumbUrl = URL.createObjectURL(savedFile);
+
+    this.cache.set(hash, thumbUrl);
+    this.touchCacheEntry(hash);
+    this.evictCacheIfNeeded();
   }
 
   async clearThumbnail(input: { projectId: string; hash: string }) {

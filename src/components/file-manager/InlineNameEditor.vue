@@ -30,24 +30,34 @@ const isInvalid = computed(() => {
 
 let isFinished = false;
 
+function focusAndSelectName() {
+  if (!inputRef.value) return;
+
+  inputRef.value.focus();
+  // Scroll into view
+  inputRef.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+  if (!props.isFolder) {
+    const lastDot = props.initialName.lastIndexOf('.');
+    if (lastDot > 0) {
+      inputRef.value.setSelectionRange(0, lastDot);
+    } else {
+      inputRef.value.select();
+    }
+    return;
+  }
+
+  inputRef.value.select();
+}
+
 onMounted(() => {
   nextTick(() => {
-    if (inputRef.value) {
-      inputRef.value.focus();
-      // Scroll into view
-      inputRef.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-
-      if (!props.isFolder) {
-        const lastDot = props.initialName.lastIndexOf('.');
-        if (lastDot > 0) {
-          inputRef.value.setSelectionRange(0, lastDot);
-        } else {
-          inputRef.value.select();
-        }
-      } else {
-        inputRef.value.select();
-      }
-    }
+    focusAndSelectName();
+    // Context menu close can steal focus right after mount.
+    // Repeat once in next macrotask to keep consistent rename UX.
+    setTimeout(() => {
+      focusAndSelectName();
+    }, 0);
   });
 });
 
@@ -107,7 +117,7 @@ function cancel() {
     ref="inputRef"
     v-model="currentName"
     type="text"
-    class="text-sm bg-ui-bg-elevated text-ui-text px-1 py-0 border rounded-sm outline-hidden w-full max-w-[200px]"
+    class="text-sm bg-ui-bg-elevated text-ui-text px-1 py-0 border rounded-sm outline-hidden w-full max-w-50"
     :class="isInvalid ? 'border-red-500' : 'border-primary-500'"
     @keydown.enter="finish"
     @keydown.esc="cancel"

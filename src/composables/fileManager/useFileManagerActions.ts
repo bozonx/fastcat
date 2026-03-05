@@ -2,10 +2,12 @@ import { ref, computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useProjectStore } from '~/stores/project.store';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName, type FsDirectoryHandleWithIteration } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
+import { useProjectTabs } from '~/composables/project/useProjectTabs';
 
 export type FileAction =
   | 'createFolder'
@@ -53,6 +55,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const uiStore = useUiStore();
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
+  const projectStore = useProjectStore();
+  const { removeFileTabByPath } = useProjectTabs();
 
   const isDeleteConfirmModalOpen = ref(false);
   const deleteTarget = ref<FsEntry | null>(null);
@@ -120,6 +124,18 @@ export function useFileManagerActions(actions: FileManagerActions) {
     await actions.createFolder(newName, targetDirHandle, targetDirPath);
 
     const createdPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
+
+    const createdEntry = actions.findEntryByPath(createdPath);
+    if (createdEntry) {
+      uiStore.selectedFsEntry = {
+        kind: createdEntry.kind,
+        name: createdEntry.name,
+        path: createdEntry.path,
+        handle: createdEntry.handle,
+      };
+      selectionStore.selectFsEntry(createdEntry);
+      actions.onFileSelect?.(createdEntry);
+    }
 
     // Set editing path so it opens rename mode automatically
     editingEntryPath.value = createdPath;
@@ -249,6 +265,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
         : selectionStore.selectedEntity.name === deleteTarget.value.name)
     ) {
       selectionStore.clearSelection();
+    }
+
+    if (deletePath?.toLowerCase().endsWith('.otio')) {
+      if (projectStore.currentTimelinePath === deletePath) {
+        await projectStore.closeTimelineFile(deletePath);
+      }
+      removeFileTabByPath(deletePath);
     }
 
     actions.onAfterDelete?.();

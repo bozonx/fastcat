@@ -22,6 +22,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import type { DynamicPanel } from '~/stores/editorView.store';
 import { hideStaticTab, showStaticTab } from '~/composables/project/useProjectTabs';
+import { isOpenableProjectFileName } from '~/utils/media-types';
 
 // Vertical Splitpanes logic
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
@@ -273,6 +274,11 @@ function onDrop(event: DragEvent, targetPanelId: string) {
     try {
       const payload = JSON.parse(fileDragData);
       if (payload.kind === 'file' && dropPosition.value) {
+        if (!isOpenableProjectFileName(String(payload.name ?? ''))) {
+          resetDragState();
+          return;
+        }
+
         // Find extension to determine type
         const ext = payload.name?.split('.').pop()?.toLowerCase() ?? '';
         let mediaType: 'video' | 'audio' | 'image' | 'unknown' = 'unknown';

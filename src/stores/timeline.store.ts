@@ -328,6 +328,8 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   async function saveTimeline() {
     await persistence.saveTimeline();
+    const uiStore = useUiStore();
+    uiStore.notifyTimelineSave();
   }
 
   const dispatcher = createTimelineDispatcher({

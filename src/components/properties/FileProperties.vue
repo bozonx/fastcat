@@ -6,7 +6,11 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
-import { VIDEO_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
+import {
+  VIDEO_EXTENSIONS,
+  getMediaTypeFromFilename,
+  isOpenableProjectFileName,
+} from '~/utils/media-types';
 import { formatAudioChannels } from '~/utils/audio';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -169,12 +173,9 @@ function createMarkdownInFolder() {
 }
 
 const canOpenAsPanel = computed(() => {
-  return (
-    mediaType.value === 'text' ||
-    mediaType.value === 'video' ||
-    mediaType.value === 'audio' ||
-    mediaType.value === 'image'
-  );
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'file') return false;
+  return isOpenableProjectFileName(entry.name);
 });
 
 const canOpenAsProjectTab = computed(() => {
@@ -375,7 +376,8 @@ function openAsTextPanel() {
             id: 'convertFile',
             label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
             icon: 'i-heroicons-arrow-path',
-            hidden: !canOpenAsPanel,
+            hidden:
+              mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image',
             onClick: () => emit('convert', props.selectedFsEntry),
           },
           {

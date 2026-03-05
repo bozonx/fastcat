@@ -13,7 +13,11 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
-import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
+import {
+  getMediaTypeFromFilename,
+  getIconForMediaType,
+  isOpenableProjectFileName,
+} from '~/utils/media-types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
@@ -23,7 +27,6 @@ import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
-import { VIDEO_DIR_NAME } from '~/utils/constants';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import {
   useDraggedFile,
@@ -220,6 +223,7 @@ function onFileAction(action: string, entry: FsEntry) {
     }
   } else if (action === 'openAsPanel') {
     if (entry.kind !== 'file') return;
+    if (!isOpenableProjectFileName(entry.name)) return;
     projectStore.goToCut();
     const type = getMediaTypeFromFilename(entry.name);
     if (type === 'text') {
@@ -229,8 +233,7 @@ function onFileAction(action: string, entry: FsEntry) {
     }
   } else if (action === 'openAsProjectTab') {
     if (entry.kind !== 'file' || !entry.path) return;
-    const type = getMediaTypeFromFilename(entry.name);
-    if (type !== 'video' && type !== 'audio' && type !== 'image' && type !== 'text') return;
+    if (!isOpenableProjectFileName(entry.name)) return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
   } else if (action === 'createFolder') {
@@ -386,7 +389,8 @@ function folderHasVideos(entry: FsEntry): boolean {
 }
 
 function isVideo(entry: FsEntry): boolean {
-  return entry.kind === 'file' && !!entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
+  if (entry.kind !== 'file') return false;
+  return getMediaTypeFromFilename(entry.name) === 'video';
 }
 
 const { getContextMenuItems } = useFileContextMenu(
@@ -395,8 +399,12 @@ const { getContextMenuItems } = useFileContextMenu(
     folderHasVideos,
     isOpenableMediaFile: (entry: FsEntry) => {
       if (entry.kind !== 'file') return false;
+      return isOpenableProjectFileName(entry.name);
+    },
+    isConvertibleMediaFile: (entry: FsEntry) => {
+      if (entry.kind !== 'file') return false;
       const type = getMediaTypeFromFilename(entry.name);
-      return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
+      return type === 'video' || type === 'audio' || type === 'image';
     },
     isVideo,
     getEntryMeta: (entry: FsEntry) => ({
@@ -709,6 +717,7 @@ function handleEntryDoubleClick(entry: FsEntry) {
         // Find a way to open timeline, for now just call onFileAction('openAsProjectTab') or emit select
       }
     } else {
+      if (!isOpenableProjectFileName(entry.name)) return;
       onFileAction('openAsProjectTab', entry);
     }
   }

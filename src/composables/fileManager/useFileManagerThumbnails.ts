@@ -30,7 +30,9 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
         if (entry.kind === 'file' && entry.path) {
           const path = entry.path;
           const type = getMediaTypeFromFilename(entry.name);
-          if (type === 'video') {
+          const isTimeline = entry.name.toLowerCase().endsWith('.otio');
+
+          if (type === 'video' || isTimeline) {
             const hash = getFileThumbnailHash({
               projectId,
               projectRelativePath: path,

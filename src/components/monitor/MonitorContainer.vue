@@ -7,6 +7,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
@@ -24,7 +25,9 @@ const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
+const uiStore = useUiStore();
 const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
+
 
 const playbackSpeedOptions = [
   { label: '0.5x', value: 0.5 },
@@ -243,7 +246,7 @@ function handleSpeedWheel(e: WheelEvent) {
   }
 }
 
-const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
+const { isSavingStopFrame, createStopFrameSnapshot, saveTimelineThumbnail } = useMonitorSnapshot({
   projectStore,
   timelineStore,
   workspaceStore,
@@ -253,6 +256,14 @@ const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
   workerTimelineClips,
   rawWorkerTimelineClips,
 });
+
+watch(
+  () => uiStore.timelineSaveTrigger,
+  () => {
+    saveTimelineThumbnail();
+  },
+);
+
 
 const toolbarPosition = computed(
   () => projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom',

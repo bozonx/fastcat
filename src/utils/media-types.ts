@@ -38,3 +38,14 @@ export function getIconForMediaType(type: MediaType): string {
       return 'i-heroicons-document';
   }
 }
+
+export function isOpenableProjectTextFilename(filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  return ext === 'md' || ext === 'txt';
+}
+
+export function isOpenableProjectFileName(filename: string): boolean {
+  const type = getMediaTypeFromFilename(filename);
+  if (type === 'video' || type === 'audio' || type === 'image') return true;
+  return isOpenableProjectTextFilename(filename);
+}

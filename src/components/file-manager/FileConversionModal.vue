@@ -169,7 +169,42 @@ function onImageHeightChange(val: number) {
         <span class="font-mono text-ui-text">{{ outputFileName }}</span>
       </div>
 
-      <div v-if="mediaType === 'video'" class="space-y-4">
+      <template v-if="isConverting">
+        <div class="p-4 bg-ui-bg-accent/30 rounded-lg border border-ui-border flex flex-col gap-2">
+          <div class="text-xs text-ui-text-muted font-medium mb-1">
+            {{ t('videoEditor.fileManager.convert.parameters', 'Conversion Parameters') }}
+          </div>
+          
+          <template v-if="mediaType === 'video'">
+            <div class="text-sm"><span class="text-ui-text-muted">Resolution:</span> {{ videoWidth }}x{{ videoHeight }}</div>
+            <div class="text-sm"><span class="text-ui-text-muted">FPS:</span> {{ videoFps }}</div>
+            <div class="text-sm"><span class="text-ui-text-muted">Video:</span> {{ videoFormat.toUpperCase() }} / {{ videoCodec }} ({{ videoBitrateMbps }} Mbps)</div>
+            <div class="text-sm"><span class="text-ui-text-muted">Audio:</span> {{ excludeAudio ? 'None' : `${audioCodec.toUpperCase()} (${audioBitrateKbps} Kbps, ${audioChannels}, ${audioSampleRate === 0 && props.originalAudioSampleRate ? props.originalAudioSampleRate : audioSampleRate || 'Original'} Hz)` }}</div>
+          </template>
+
+          <template v-else-if="mediaType === 'audio'">
+            <div class="text-sm"><span class="text-ui-text-muted">Format:</span> {{ audioOnlyFormat.toUpperCase() }}</div>
+            <div class="text-sm"><span class="text-ui-text-muted">Audio:</span> {{ audioOnlyBitrateKbps }} Kbps, {{ audioChannels }}, {{ audioSampleRate === 0 && props.originalAudioSampleRate ? props.originalAudioSampleRate : audioSampleRate || 'Original' }} Hz</div>
+          </template>
+
+          <template v-else-if="mediaType === 'image'">
+            <div class="text-sm"><span class="text-ui-text-muted">Format:</span> WebP</div>
+            <div class="text-sm"><span class="text-ui-text-muted">Resolution:</span> {{ imageWidth }}x{{ imageHeight }}</div>
+            <div class="text-sm"><span class="text-ui-text-muted">Quality:</span> {{ imageQuality }}</div>
+          </template>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex justify-between text-xs text-ui-text-muted">
+            <span class="font-medium">{{ getPhaseLabel }}</span>
+            <span class="font-mono">{{ Math.round(conversionProgress * 100) }}%</span>
+          </div>
+          <UProgress :value="conversionProgress * 100" />
+        </div>
+      </template>
+
+      <template v-else>
+        <div v-if="mediaType === 'video'" class="space-y-4">
         <MediaResolutionSettings
           v-model:is-custom-resolution="isCustomResolution"
           v-model:width="videoWidth"
@@ -271,20 +306,13 @@ function onImageHeightChange(val: number) {
           </div>
         </div>
       </div>
+      </template>
 
       <div
         v-if="conversionError"
         class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
       >
         {{ conversionError }}
-      </div>
-
-      <div v-if="isConverting" class="flex flex-col gap-2">
-        <div class="flex justify-between text-xs text-ui-text-muted">
-          <span class="font-medium">{{ getPhaseLabel }}</span>
-          <span class="font-mono">{{ Math.round(conversionProgress * 100) }}%</span>
-        </div>
-        <UProgress :value="conversionProgress * 100" />
       </div>
     </div>
 
