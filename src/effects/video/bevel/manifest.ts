@@ -54,12 +54,13 @@ export const bevelManifest: EffectManifest<BevelParams> = {
       step: 0.05,
     },
   ],
-  createFilter: () => new BevelFilter({
-    rotation: 45,
-    thickness: 2,
-    lightAlpha: 0.7,
-    shadowAlpha: 0.7,
-  }),
+  createFilter: () =>
+    new BevelFilter({
+      rotation: 45,
+      thickness: 2,
+      lightAlpha: 0.7,
+      shadowAlpha: 0.7,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as BevelFilter;
     if (values.rotation !== undefined) f.rotation = values.rotation;

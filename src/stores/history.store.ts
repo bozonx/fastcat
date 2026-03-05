@@ -42,6 +42,9 @@ const COMMAND_LABELS: Record<TimelineCommand['type'], string> = {
   update_track_properties: 'Update track',
   extract_audio_to_track: 'Extract audio',
   return_audio_to_video: 'Return audio',
+  update_master_gain: 'Update master gain',
+  update_master_muted: 'Toggle mute',
+  update_master_effects: 'Update effects',
 };
 
 export const useHistoryStore = defineStore('history', () => {

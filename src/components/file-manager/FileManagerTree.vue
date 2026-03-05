@@ -283,7 +283,7 @@ const { getContextMenuItems } = useFileContextMenu(
     getEntryMeta: ctx.getEntryMeta,
     isFilesPage: props.isFilesPage,
   },
-  (action: any, entry: any) => emit('action', action as any, entry)
+  (action: any, entry: any) => emit('action', action as any, entry),
 );
 </script>
 

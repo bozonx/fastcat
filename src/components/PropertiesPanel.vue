@@ -76,7 +76,9 @@ const selectedMarkerId = computed<string | null>(() => {
   return null;
 });
 
-const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'marker' | 'timeline' | 'empty'>(() => {
+const displayMode = computed<
+  'transition' | 'clip' | 'track' | 'file' | 'marker' | 'timeline' | 'empty'
+>(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
@@ -263,22 +265,22 @@ function handleDeleteClip() {
 
       <FileConversionModal
         v-model:open="fileConversion.isModalOpen.value"
-        :media-type="fileConversion.mediaType.value"
-        :file-name="fileConversion.targetEntry.value?.name ?? ''"
-        :is-converting="fileConversion.isConverting.value"
-        :conversion-progress="fileConversion.conversionProgress.value"
-        :conversion-error="fileConversion.conversionError.value"
-        :conversion-phase="fileConversion.conversionPhase.value"
         v-model:video-format="fileConversion.videoFormat.value"
         v-model:video-codec="fileConversion.videoCodec.value"
         v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
         v-model:exclude-audio="fileConversion.excludeAudio.value"
         v-model:audio-codec="fileConversion.audioCodec.value"
+        :media-type="fileConversion.mediaType.value"
         v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
+        :file-name="fileConversion.targetEntry.value?.name ?? ''"
         v-model:bitrate-mode="fileConversion.bitrateMode.value"
+        :is-converting="fileConversion.isConverting.value"
         v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
+        :conversion-progress="fileConversion.conversionProgress.value"
         v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
+        :conversion-error="fileConversion.conversionError.value"
         v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
+        :conversion-phase="fileConversion.conversionPhase.value"
         v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
         v-model:audio-channels="fileConversion.audioChannels.value"
         v-model:audio-sample-rate="fileConversion.audioSampleRate.value"

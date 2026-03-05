@@ -9,7 +9,12 @@ import { formatBytes } from '~/utils/format';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
-type ExtendedFsEntry = FsEntry & { objectUrl?: string; size?: number; mimeType?: string; created?: number; };
+type ExtendedFsEntry = FsEntry & {
+  objectUrl?: string;
+  size?: number;
+  mimeType?: string;
+  created?: number;
+};
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
@@ -215,8 +220,7 @@ function formatDate(timestamp?: number) {
                 <div
                   class="h-4 flex items-center justify-center shrink-0"
                   :class="[
-                    entry.path &&
-                    timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
+                    entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
                       ? 'border-b-2 border-red-500'
                       : '',
                   ]"
@@ -273,9 +277,7 @@ function formatDate(timestamp?: number) {
                 </span>
               </td>
               <td class="py-2 px-3 text-ui-text-muted">
-                {{
-                  entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType
-                }}
+                {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
               </td>
               <td class="py-2 px-3 text-right text-ui-text-muted">
                 <template v-if="entry.kind === 'file'">
@@ -318,7 +320,7 @@ function formatDate(timestamp?: number) {
               {{
                 t(
                   'videoEditor.fileManager.actions.dropToRootHint',
-                  'Release to upload into the project root'
+                  'Release to upload into the project root',
                 )
               }}
             </span>

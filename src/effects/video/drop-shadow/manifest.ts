@@ -75,14 +75,15 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
       label: 'Только тень',
     },
   ],
-  createFilter: () => new DropShadowFilter({
-    offset: { x: 4, y: 4 },
-    color: 0x000000,
-    alpha: 1,
-    shadowOnly: false,
-    blur: 2,
-    quality: 4,
-  }),
+  createFilter: () =>
+    new DropShadowFilter({
+      offset: { x: 4, y: 4 },
+      color: 0x000000,
+      alpha: 1,
+      shadowOnly: false,
+      blur: 2,
+      quality: 4,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as DropShadowFilter;
     if (values.offsetX !== undefined && values.offsetY !== undefined) {

@@ -21,7 +21,9 @@ const masterGain = computed({
   },
 });
 
-const masterEffects = computed(() => timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []);
+const masterEffects = computed(
+  () => timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? [],
+);
 
 const masterMuted = computed({
   get: () => Boolean(timelineStore.timelineDoc?.metadata?.gran?.masterMuted),
@@ -38,12 +40,14 @@ function handleUpdateMasterEffects(effects: ClipEffect[]) {
 }
 
 function handleAddVideoTrack() {
-  const idx = (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'video').length ?? 0) + 1;
+  const idx =
+    (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'video').length ?? 0) + 1;
   timelineStore.addTrack('video', `Video ${idx}`);
 }
 
 function handleAddAudioTrack() {
-  const idx = (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
+  const idx =
+    (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
 </script>
@@ -77,7 +81,9 @@ function handleAddAudioTrack() {
 
       <div class="flex flex-col gap-2 mt-3 p-2 bg-ui-bg rounded border border-ui-border">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.timeline.properties.snapToFrames', 'Snap to frames') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.timeline.properties.snapToFrames', 'Snap to frames')
+          }}</span>
           <USwitch
             size="sm"
             :model-value="settingsStore.frameSnapMode === 'frames'"
@@ -85,7 +91,9 @@ function handleAddAudioTrack() {
           />
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.timeline.properties.snapToClips', 'Snap to clips') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.timeline.properties.snapToClips', 'Snap to clips')
+          }}</span>
           <USwitch
             size="sm"
             :model-value="settingsStore.clipSnapMode === 'clips'"
@@ -93,7 +101,9 @@ function handleAddAudioTrack() {
           />
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.timeline.properties.overlapMode', 'Pseudo-overlap') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.timeline.properties.overlapMode', 'Pseudo-overlap')
+          }}</span>
           <USwitch
             size="sm"
             :model-value="settingsStore.overlapMode === 'pseudo'"
@@ -101,7 +111,9 @@ function handleAddAudioTrack() {
           />
         </div>
         <div class="flex items-center justify-between border-t border-ui-border pt-1 mt-1">
-          <span class="text-xs text-ui-text-muted">{{ t('granVideoEditor.timeline.properties.masterMute', 'Master mute') }}</span>
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.timeline.properties.masterMute', 'Master mute')
+          }}</span>
           <USwitch
             size="sm"
             :model-value="masterMuted"
@@ -118,7 +130,7 @@ function handleAddAudioTrack() {
         :title="t('granVideoEditor.effects.masterTitle', 'Master effects')"
         @update:effects="handleUpdateMasterEffects"
       />
-      <div 
+      <div
         v-if="masterEffects.length === 0"
         class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
       >
@@ -129,7 +141,9 @@ function handleAddAudioTrack() {
     </div>
 
     <!-- Master Volume -->
-    <PropertySection :title="t('granVideoEditor.timeline.properties.masterVolume', 'Master Volume')">
+    <PropertySection
+      :title="t('granVideoEditor.timeline.properties.masterVolume', 'Master Volume')"
+    >
       <div class="space-y-1.5 mt-1">
         <div class="flex items-center justify-between">
           <span class="text-[10px] font-mono text-ui-text-muted">{{ masterGain.toFixed(3) }}x</span>

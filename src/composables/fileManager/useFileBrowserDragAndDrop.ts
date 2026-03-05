@@ -2,11 +2,14 @@ import { ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
-import { useDraggedFile } from '~/composables/useDraggedFile';
+import {
+  useDraggedFile,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+  INTERNAL_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { FILE_MANAGER_MOVE_DRAG_TYPE, INTERNAL_DRAG_TYPE } from '~/composables/useDraggedFile';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;

@@ -224,21 +224,21 @@ export function useFileConversion() {
 
       const newFileName = `${baseName}_converted.${newExt}`;
 
-      // Get parent directory handle
-      const parentPath = entry.path ? entry.path.substring(0, entry.path.lastIndexOf('/')) : '';
       let dirHandle: FileSystemDirectoryHandle;
 
-      if (!parentPath) {
+      if (entry.parentHandle) {
+        dirHandle = entry.parentHandle;
+      } else {
         const root = await fileManager.getProjectRootDirHandle();
         if (!root) throw new Error('Root directory not found');
-        dirHandle = root;
-      } else {
-        const parentEntry = fileManager.findEntryByPath(parentPath);
-        if (parentEntry && parentEntry.kind === 'directory') {
-          dirHandle = parentEntry.handle as FileSystemDirectoryHandle;
-        } else {
-          throw new Error('Parent directory not found');
+
+        const parts = (entry.path || '').split('/').slice(0, -1);
+        let current = root;
+        for (const p of parts) {
+          if (!p) continue;
+          current = await current.getDirectoryHandle(p);
         }
+        dirHandle = current;
       }
 
       const targetHandle = await dirHandle.getFileHandle(newFileName, { create: true });

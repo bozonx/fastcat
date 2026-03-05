@@ -13,7 +13,9 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
 
-const volumePercent = computed(() => Math.round((monitorMuted.value ? 0 : monitorVolume.value) * 100));
+const volumePercent = computed(() =>
+  Math.round((monitorMuted.value ? 0 : monitorVolume.value) * 100),
+);
 
 function toggleMute() {
   monitorMuted.value = !monitorMuted.value;

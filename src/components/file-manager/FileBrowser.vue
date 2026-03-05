@@ -32,11 +32,16 @@ import {
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
+import {
+  createTimelineCommand,
+  createMarkdownCommand,
+} from '~/file-manager/application/fileManagerCommands';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+
+import PQueue from 'p-queue';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -192,7 +197,7 @@ const {
   },
 });
 
-function onFileAction(action: any, entry: FsEntry) {
+function onFileAction(action: string, entry: FsEntry) {
   if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -229,7 +234,6 @@ function onFileAction(action: any, entry: FsEntry) {
     setActiveTab(tabId);
   } else if (action === 'createFolder') {
     const existingNames = folderEntries.value.map((e) => e.name);
-    const parentPath = entry.path ?? '';
     onFileActionBase('createFolder', entry, () => existingNames);
     void loadFolderContent();
   } else if (action === 'createTimeline') {
@@ -244,8 +248,18 @@ function onFileAction(action: any, entry: FsEntry) {
     if (entry.kind === 'file') {
       fileConversion.openConversionModal(entry);
     }
-  } else {
-    onFileActionBase(action, entry);
+  } else if (action === 'delete') {
+    onFileActionBase('delete', entry);
+  } else if (action === 'rename') {
+    onFileActionBase('rename', entry);
+  } else if (action === 'createProxy') {
+    onFileActionBase('createProxy', entry);
+  } else if (action === 'cancelProxy') {
+    onFileActionBase('cancelProxy', entry);
+  } else if (action === 'deleteProxy') {
+    onFileActionBase('deleteProxy', entry);
+  } else if (action === 'upload') {
+    onFileActionBase('upload', entry);
   }
 }
 
@@ -254,13 +268,14 @@ async function refreshFileTree() {
   await loadProjectDirectory({ fullRefresh: true } as any);
 }
 
-import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
-
 async function createTimelineInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
-  const existingInFolder = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
-  const existingNames = existingInFolder.map(e => e.name);
+  const existingInFolder = await readDirectory(
+    entry.handle as FileSystemDirectoryHandle,
+    entry.path,
+  );
+  const existingNames = existingInFolder.map((e) => e.name);
 
   const createdFileName = await createTimelineCommand({
     projectDir: entry.handle as FileSystemDirectoryHandle,
@@ -282,8 +297,11 @@ async function createTimelineInDirectory(entry: FsEntry) {
 async function createMarkdownInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
-  const existingInFolder = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
-  const existingNames = existingInFolder.map(e => e.name);
+  const existingInFolder = await readDirectory(
+    entry.handle as FileSystemDirectoryHandle,
+    entry.path,
+  );
+  const existingNames = existingInFolder.map((e) => e.name);
 
   const createdFileName = await createMarkdownCommand({
     dirHandle: entry.handle as FileSystemDirectoryHandle,
@@ -394,8 +412,6 @@ const emptySpaceContextMenuItems = computed(() => {
   return getContextMenuItems(filesPageStore.selectedFolder);
 });
 
-
-
 const GRID_SIZES = [80, 100, 130, 160, 200];
 const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
 
@@ -410,8 +426,6 @@ const resizeStartWidth = ref(0);
 
 const folderSizes = ref<Record<string, number>>({});
 const folderSizesLoading = ref<Record<string, boolean>>({});
-
-import PQueue from 'p-queue';
 
 const sizeCalcQueue = new PQueue({ concurrency: 5 });
 
@@ -950,8 +964,7 @@ async function onDirectoryUploadChange(e: Event) {
             deleteTarget.kind === 'directory'
               ? t('common.folder', 'Folder')
               : t('common.file', 'File')
-          }}
-          ·
+          }}:
           {{ deleteTarget.path }}
         </div>
       </div>
@@ -959,22 +972,22 @@ async function onDirectoryUploadChange(e: Event) {
 
     <FileConversionModal
       v-model:open="fileConversion.isModalOpen.value"
-      :media-type="fileConversion.mediaType.value"
-      :file-name="fileConversion.targetEntry.value?.name ?? ''"
-      :is-converting="fileConversion.isConverting.value"
-      :conversion-progress="fileConversion.conversionProgress.value"
-      :conversion-error="fileConversion.conversionError.value"
-      :conversion-phase="fileConversion.conversionPhase.value"
       v-model:video-format="fileConversion.videoFormat.value"
       v-model:video-codec="fileConversion.videoCodec.value"
       v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
       v-model:exclude-audio="fileConversion.excludeAudio.value"
       v-model:audio-codec="fileConversion.audioCodec.value"
+      :media-type="fileConversion.mediaType.value"
       v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
+      :file-name="fileConversion.targetEntry.value?.name ?? ''"
       v-model:bitrate-mode="fileConversion.bitrateMode.value"
+      :is-converting="fileConversion.isConverting.value"
       v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
+      :conversion-progress="fileConversion.conversionProgress.value"
       v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
+      :conversion-error="fileConversion.conversionError.value"
       v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
+      :conversion-phase="fileConversion.conversionPhase.value"
       v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
       v-model:audio-channels="fileConversion.audioChannels.value"
       v-model:audio-sample-rate="fileConversion.audioSampleRate.value"

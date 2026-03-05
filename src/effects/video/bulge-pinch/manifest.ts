@@ -56,11 +56,12 @@ export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
       step: 0.05,
     },
   ],
-  createFilter: () => new BulgePinchFilter({
-    center: [0.5, 0.5],
-    radius: 100,
-    strength: 1,
-  }),
+  createFilter: () =>
+    new BulgePinchFilter({
+      center: [0.5, 0.5],
+      radius: 100,
+      strength: 1,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as BulgePinchFilter;
     if (values.centerX !== undefined && values.centerY !== undefined) {

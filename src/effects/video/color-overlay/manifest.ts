@@ -27,10 +27,11 @@ export const colorOverlayManifest: EffectManifest<ColorOverlayParams> = {
       format: (v) => `${Math.round(v * 100)}%`,
     },
   ],
-  createFilter: () => new ColorOverlayFilter({
-    color: 0x000000,
-    alpha: 0.5,
-  }),
+  createFilter: () =>
+    new ColorOverlayFilter({
+      color: 0x000000,
+      alpha: 0.5,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as ColorOverlayFilter;
     if (values.color !== undefined) {

@@ -51,14 +51,16 @@ function handleDeleteClip() {
 }
 
 function toggleAudioWaveformMode() {
-  const current = (props.clip as import('~/timeline/types').TimelineClipItem).audioWaveformMode || 'half';
+  const current =
+    (props.clip as import('~/timeline/types').TimelineClipItem).audioWaveformMode || 'half';
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     audioWaveformMode: current === 'half' ? 'full' : 'half',
   });
 }
 
 function toggleShowWaveform() {
-  const current = (props.clip as import('~/timeline/types').TimelineClipItem).showWaveform !== false;
+  const current =
+    (props.clip as import('~/timeline/types').TimelineClipItem).showWaveform !== false;
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     showWaveform: !current,
   });

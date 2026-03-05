@@ -9,7 +9,12 @@ import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
 // Local type for entries that might have objectUrl
-type ExtendedFsEntry = FsEntry & { objectUrl?: string; size?: number; mimeType?: string; created?: number; };
+type ExtendedFsEntry = FsEntry & {
+  objectUrl?: string;
+  size?: number;
+  mimeType?: string;
+  created?: number;
+};
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
@@ -49,11 +54,7 @@ const fileManager = useFileManager();
 
 <template>
   <div class="flex flex-wrap gap-2 content-start">
-    <UContextMenu
-      v-for="entry in entries"
-      :key="entry.path"
-      :items="getContextMenuItems(entry)"
-    >
+    <UContextMenu v-for="entry in entries" :key="entry.path" :items="getContextMenuItems(entry)">
       <div
         class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
         :class="{
@@ -165,7 +166,7 @@ const fileManager = useFileManager();
         {{
           t(
             'videoEditor.fileManager.actions.dropToRootHint',
-            'Release to upload into the project root'
+            'Release to upload into the project root',
           )
         }}
       </p>
