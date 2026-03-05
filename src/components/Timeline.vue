@@ -218,6 +218,21 @@ function onTimelineClick(e: MouseEvent) {
 
   const el = scrollEl.value;
   if (!el) return;
+
+  // If click is below the last track row, select timeline properties.
+  // Keep playhead placement behavior for clicks within the track rows.
+  const scrollerRectY = el.getBoundingClientRect();
+  const y = e.clientY - scrollerRectY.top + el.scrollTop;
+  const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
+  const totalTracksHeight = docTracks.reduce((sum, tr) => {
+    const h = trackHeights.value[tr.id] ?? 40;
+    return sum + h;
+  }, 0);
+  if (y > totalTracksHeight) {
+    timelineStore.selectTimelineProperties();
+    return;
+  }
+
   const scrollerRect = el.getBoundingClientRect();
   const scrollX = el.scrollLeft;
   const x = e.clientX - scrollerRect.left + scrollX;

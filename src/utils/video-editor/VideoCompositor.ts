@@ -115,6 +115,8 @@ export class VideoCompositor {
   private contextLost = false;
   private adjustmentTexture: RenderTexture | null = null;
   private stageVisibilityState: boolean[] = [];
+  private masterEffects: ClipEffect[] | null = null;
+  private masterEffectFilters: Map<string, Filter> | null = null;
   private sampleRequestsInFlight = 0;
   private readonly sampleRequestQueue: Array<() => void> = [];
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
@@ -215,6 +217,14 @@ export class VideoCompositor {
     checkCancel?: () => boolean,
   ): Promise<number> {
     if (!this.app) throw new Error('VideoCompositor not initialized');
+
+    // Extract stage-level (master) effects from meta items.
+    // We keep the payload format flexible since it comes from a worker boundary.
+    const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
+    const nextMaster =
+      meta && Array.isArray((meta as any).masterEffects) ? (meta as any).masterEffects : null;
+    this.masterEffects = nextMaster;
+    this.stageSortDirty = true;
 
     const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
 
@@ -681,6 +691,11 @@ export class VideoCompositor {
   }
 
   updateTimelineLayout(timelineClips: any[]): number {
+    const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
+    const nextMaster =
+      meta && Array.isArray((meta as any).masterEffects) ? (meta as any).masterEffects : null;
+    this.masterEffects = nextMaster;
+
     const byId = new Map<string, any>();
     for (const clipData of timelineClips) {
       if (clipData?.kind !== 'clip') continue;
@@ -1067,6 +1082,8 @@ export class VideoCompositor {
         }
       }
 
+      this.applyMasterEffects();
+
       if (this.app.renderer) {
         this.app.renderer.render(this.app.stage);
       }
@@ -1248,7 +1265,56 @@ export class VideoCompositor {
       }
     }
 
-    clip.sprite.filters = filters.length > 0 ? (filters as any) : null;
+    clip.sprite.filters = filters.length > 0 ? filters : null;
+  }
+
+  private applyMasterEffects() {
+    if (!this.app) return;
+
+    if (!this.masterEffectFilters) {
+      this.masterEffectFilters = new Map();
+    }
+
+    const filters: Filter[] = [];
+    const seenIds = new Set<string>();
+    const effects = Array.isArray(this.masterEffects) ? this.masterEffects : [];
+
+    for (const effect of effects) {
+      if (!effect?.enabled) continue;
+      if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
+      if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
+
+      const manifest = getEffectManifest(effect.type);
+      if (!manifest) continue;
+
+      seenIds.add(effect.id);
+      let filter = this.masterEffectFilters.get(effect.id);
+      if (!filter) {
+        filter = manifest.createFilter();
+        this.masterEffectFilters.set(effect.id, filter);
+      }
+
+      try {
+        manifest.updateFilter(filter, effect);
+      } catch (err) {
+        console.error('[VideoCompositor] Failed to update master effect filter', err);
+        continue;
+      }
+
+      filters.push(filter);
+    }
+
+    for (const [id, filter] of this.masterEffectFilters.entries()) {
+      if (seenIds.has(id)) continue;
+      this.masterEffectFilters.delete(id);
+      try {
+        (filter as any)?.destroy?.();
+      } catch {
+        // ignore
+      }
+    }
+
+    this.app.stage.filters = filters.length > 0 ? filters : null;
   }
 
   private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {

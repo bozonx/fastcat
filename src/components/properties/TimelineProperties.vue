@@ -6,7 +6,6 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import type { ClipEffect } from '~/timeline/types';
-import { getEffectManifest } from '~/effects';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -46,31 +45,6 @@ function handleAddVideoTrack() {
 function handleAddAudioTrack() {
   const idx = (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
-}
-
-function handleEffectDrop(e: DragEvent) {
-  const effectType = e.dataTransfer?.getData('gran-effect');
-  if (!effectType) return;
-  
-  e.preventDefault();
-  
-  const manifest = getEffectManifest(effectType);
-  if (!manifest) return;
-  const newEffect: ClipEffect = {
-    id: `effect_${Date.now()}`,
-    type: effectType,
-    enabled: true,
-    ...(manifest.defaultValues ?? {}),
-  } as unknown as ClipEffect;
-
-  handleUpdateMasterEffects([...masterEffects.value, newEffect]);
-}
-
-function onDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('gran-effect')) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  }
 }
 </script>
 
@@ -138,11 +112,7 @@ function onDragOver(e: DragEvent) {
     </PropertySection>
 
     <!-- Master Video Effects -->
-    <div 
-      class="relative"
-      @dragover="onDragOver"
-      @drop="handleEffectDrop"
-    >
+    <div class="relative">
       <EffectsEditor
         :effects="masterEffects"
         :title="t('granVideoEditor.effects.masterTitle', 'Master effects')"

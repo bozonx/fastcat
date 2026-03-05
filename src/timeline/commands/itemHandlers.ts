@@ -194,7 +194,9 @@ export function overlayTrimItem(
     ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
     : deltaCandidate;
   const speed = typeof moved.speed === 'number' && Number.isFinite(moved.speed) ? moved.speed : 1;
-  const sourceDeltaUs = quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round');
+  const sourceDeltaUs = shouldQuantizeToFrames
+    ? quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round')
+    : Math.round(deltaUs * speed);
 
   const prevTimelineStartUs = Math.max(0, Math.round(moved.timelineRange.startUs));
   const prevTimelineDurationUs = Math.max(0, Math.round(moved.timelineRange.durationUs));
@@ -364,7 +366,9 @@ export function overlayTrimItem(
     ...doc,
     tracks: doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t)),
   };
-  const normalized = normalizeGaps(docWithMoved, track.id, nextItems);
+  const normalized = normalizeGaps(docWithMoved, track.id, nextItems, {
+    quantizeToFrames: shouldQuantizeToFrames,
+  });
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: normalized } : t));
 
@@ -1089,7 +1093,10 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     if (!linked) return { next: doc };
     if (linked.track.kind !== 'video') return { next: doc };
 
-    const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
+    const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+    const startUs = shouldQuantizeToFrames
+      ? quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round')
+      : Math.max(0, Math.round(cmd.startUs));
     const durationUs = Math.max(0, linked.item.timelineRange.durationUs);
 
     assertNoOverlap(linked.track, linked.item.id, startUs, durationUs);
@@ -1105,7 +1112,12 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
           : x,
       );
       nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-      return { ...t, items: normalizeGaps(doc, t.id, nextItems) };
+      return {
+        ...t,
+        items: normalizeGaps(doc, t.id, nextItems, {
+          quantizeToFrames: shouldQuantizeToFrames,
+        }),
+      };
     });
 
     nextTracks = updateLinkedLockedAudio(
@@ -1169,6 +1181,7 @@ export function moveItemToTrack(
       trackId: fromTrack.id,
       itemId: cmd.itemId,
       startUs: cmd.startUs,
+      quantizeToFrames: cmd.quantizeToFrames,
     });
   }
 
@@ -1240,7 +1253,12 @@ export function moveItemToTrack(
             : x,
         );
         nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-        return { ...t, items: normalizeGaps(doc, t.id, nextItems) };
+        return {
+          ...t,
+          items: normalizeGaps(doc, t.id, nextItems, {
+            quantizeToFrames: shouldQuantizeToFrames,
+          }),
+        };
       });
 
       nextTracks = updateLinkedLockedAudio(
@@ -1276,7 +1294,9 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
     : deltaCandidate;
 
   const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
-  const sourceDeltaUs = quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round');
+  const sourceDeltaUs = shouldQuantizeToFrames
+    ? quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round')
+    : Math.round(deltaUs * speed);
 
   const prevTimelineStartUs = Math.max(0, Math.round(item.timelineRange.startUs));
   const prevTimelineDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));

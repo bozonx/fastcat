@@ -71,10 +71,13 @@ export function useMonitorTimeline() {
 
         const clipEffects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined;
         const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : undefined;
-        const effects =
-          clipEffects && trackEffects
-            ? [...clipEffects, ...trackEffects]
-            : (clipEffects ?? trackEffects);
+        const effects = (() => {
+          const parts = [clipEffects, trackEffects].filter(
+            (arr): arr is NonNullable<typeof arr> => Array.isArray(arr) && arr.length > 0,
+          );
+          if (parts.length === 0) return undefined;
+          return parts.flat();
+        })();
 
         const base: WorkerTimelineClip = {
           kind: 'clip',

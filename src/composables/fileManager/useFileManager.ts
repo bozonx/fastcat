@@ -112,7 +112,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   watch(
     () => deps.showHiddenFiles.value,
     () => {
-      void loadProjectDirectory();
+      void loadProjectDirectory({ fullRefresh: true });
     },
   );
 
@@ -137,7 +137,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function loadProjectDirectory() {
+  async function loadProjectDirectory(options?: { fullRefresh?: boolean }) {
     const projectDir = await deps.getProjectDirHandle();
     if (!projectDir) {
       deps.rootEntries.value = [];
@@ -145,9 +145,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       return;
     }
 
+    const shouldFullRefresh = options?.fullRefresh ?? false;
+
     await runWithUiFeedback({
       action: async () => {
-        await service.loadProjectDirectory(projectDir);
+        await service.loadProjectDirectory(projectDir, {
+          refreshExpandedChildren: shouldFullRefresh,
+          expandPersistedDirectories: true,
+          autoExpandMediaDirs: true,
+        });
       },
       defaultErrorMessage: 'Failed to open project folder',
       toastTitle: 'Project error',
