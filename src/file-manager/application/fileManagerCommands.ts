@@ -7,6 +7,7 @@ import {
   copyFileToDirectory,
   renameDirectoryFallback,
 } from '~/file-manager/fs/ops';
+import { generateUniqueFsEntryName } from '~/utils/fs';
 
 export interface HandleFilesDeps {
   getProjectDirHandle: () => Promise<FileSystemDirectoryHandle>;
@@ -296,32 +297,13 @@ export async function createTimelineCommand(params: {
     ? await params.projectDir.getDirectoryHandle(params.timelinesDirName, { create: true })
     : params.projectDir;
 
-  let index = params.initialIndex ?? 1;
-  let fileName = '';
-
-  if (params.existingNames) {
-    const existing = new Set(params.existingNames);
-    do {
-      fileName = `timeline_${String(index).padStart(3, '0')}.otio`;
-      index++;
-    } while (existing.has(fileName));
-  } else {
-    let exists = true;
-    while (exists) {
-      fileName = `timeline_${String(index).padStart(3, '0')}.otio`;
-      try {
-        await timelinesDir.getFileHandle(fileName);
-        index += 1;
-      } catch (e: unknown) {
-        const err = e as { name?: string };
-        if (err?.name === 'NotFoundError') {
-          exists = false;
-          continue;
-        }
-        throw e;
-      }
-    }
-  }
+  const fileName = await generateUniqueFsEntryName({
+    dirHandle: timelinesDir,
+    baseName: 'timeline_',
+    extension: '.otio',
+    existingNames: params.existingNames,
+    startIndex: params.initialIndex,
+  });
 
   const fileHandle = await timelinesDir.getFileHandle(fileName, { create: true });
   if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
@@ -348,34 +330,12 @@ export async function createMarkdownCommand(params: {
   dirHandle: FileSystemDirectoryHandle;
   existingNames?: string[];
 }): Promise<string> {
-  let index = 1;
-  let fileName = '';
-  const baseName = 'Документ_';
-  const ext = '.md';
-
-  if (params.existingNames) {
-    const existing = new Set(params.existingNames);
-    do {
-      fileName = `${baseName}${index}${ext}`;
-      index++;
-    } while (existing.has(fileName));
-  } else {
-    let exists = true;
-    while (exists) {
-      fileName = `${baseName}${index}${ext}`;
-      try {
-        await params.dirHandle.getFileHandle(fileName);
-        index += 1;
-      } catch (e: unknown) {
-        const err = e as { name?: string };
-        if (err?.name === 'NotFoundError') {
-          exists = false;
-          continue;
-        }
-        throw e;
-      }
-    }
-  }
+  const fileName = await generateUniqueFsEntryName({
+    dirHandle: params.dirHandle,
+    baseName: 'Документ_',
+    extension: '.md',
+    existingNames: params.existingNames,
+  });
 
   const fileHandle = await params.dirHandle.getFileHandle(fileName, { create: true });
   if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {

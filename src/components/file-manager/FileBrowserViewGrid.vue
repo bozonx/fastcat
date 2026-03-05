@@ -25,6 +25,7 @@ const props = defineProps<{
   folderEntriesNames: string[];
   getContextMenuItems: (entry: FsEntry) => any[];
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
+  videoThumbnails?: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
@@ -85,6 +86,12 @@ const fileManager = useFileManager();
           <img
             v-if="entry.kind === 'file' && entry.objectUrl"
             :src="entry.objectUrl"
+            :alt="entry.name"
+            class="max-w-full max-h-full object-contain"
+          />
+          <img
+            v-else-if="entry.kind === 'file' && videoThumbnails && entry.path && videoThumbnails[entry.path]"
+            :src="videoThumbnails[entry.path]"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
           />

@@ -1,3 +1,5 @@
+import PQueue from 'p-queue';
+
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
@@ -53,9 +55,14 @@ export async function copyFileToDirectory(params: {
 export async function copyDirectoryRecursive(params: {
   sourceDirHandle: FileSystemDirectoryHandle;
   targetDirHandle: FileSystemDirectoryHandle;
+  queue?: PQueue;
 }): Promise<void> {
   const iterator = getDirectoryIterator(params.sourceDirHandle);
   if (!iterator) return;
+
+  const queue = params.queue ?? new PQueue({ concurrency: 5 });
+  const isRootCall = !params.queue;
+  const tasks: Promise<void>[] = [];
 
   for await (const value of iterator) {
     const handle = (Array.isArray(value) ? value[1] : value) as
@@ -63,21 +70,35 @@ export async function copyDirectoryRecursive(params: {
       | FileSystemDirectoryHandle;
 
     if (handle.kind === 'file') {
-      await copyFileToDirectory({
-        sourceHandle: handle as FileSystemFileHandle,
-        fileName: handle.name,
-        targetDirHandle: params.targetDirHandle,
-      });
+      tasks.push(
+        queue.add(async () => {
+          await copyFileToDirectory({
+            sourceHandle: handle as FileSystemFileHandle,
+            fileName: handle.name,
+            targetDirHandle: params.targetDirHandle,
+          });
+        }) as Promise<void>,
+      );
       continue;
     }
 
-    const nextTargetDir = await params.targetDirHandle.getDirectoryHandle(handle.name, {
-      create: true,
-    });
-    await copyDirectoryRecursive({
-      sourceDirHandle: handle as FileSystemDirectoryHandle,
-      targetDirHandle: nextTargetDir,
-    });
+    const nextTargetDirTask = queue.add(async () => {
+      const nextTargetDir = await params.targetDirHandle.getDirectoryHandle(handle.name, {
+        create: true,
+      });
+      await copyDirectoryRecursive({
+        sourceDirHandle: handle as FileSystemDirectoryHandle,
+        targetDirHandle: nextTargetDir,
+        queue,
+      });
+    }) as Promise<void>;
+    tasks.push(nextTargetDirTask);
+  }
+
+  await Promise.all(tasks);
+
+  if (isRootCall) {
+    await queue.onIdle();
   }
 }
 

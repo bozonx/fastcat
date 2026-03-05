@@ -24,6 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean];
   convert: [];
+  cancel: [];
 }>();
 
 const { t } = useI18n();
@@ -223,23 +224,26 @@ const getPhaseLabel = computed(() => {
     <template #footer>
       <div class="flex items-center justify-end gap-2 w-full">
         <UButton
-          variant="ghost"
-          color="neutral"
-          :label="t('common.cancel', 'Cancel')"
-          :disabled="isConverting"
-          @click="isOpen = false"
-        />
-        <UButton
+          v-if="isConverting"
           variant="solid"
-          color="primary"
-          :label="
-            isConverting
-              ? t('videoEditor.fileManager.convert.converting', 'Converting...')
-              : t('videoEditor.fileManager.convert.start', 'Convert')
-          "
-          :loading="isConverting"
-          @click="emit('convert')"
+          color="error"
+          :label="t('common.cancel', 'Cancel')"
+          @click="emit('cancel')"
         />
+        <template v-else>
+          <UButton
+            variant="ghost"
+            color="neutral"
+            :label="t('common.cancel', 'Cancel')"
+            @click="isOpen = false"
+          />
+          <UButton
+            variant="solid"
+            color="primary"
+            :label="t('videoEditor.fileManager.convert.start', 'Convert')"
+            @click="emit('convert')"
+          />
+        </template>
       </div>
     </template>
   </AppModal>

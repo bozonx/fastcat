@@ -21,6 +21,7 @@ export function useFileConversion() {
   });
 
   const isConverting = ref(false);
+  const isCancelRequested = ref(false);
   const conversionProgress = ref(0);
   const conversionError = ref<string | null>(null);
   const conversionPhase = ref<'encoding' | 'saving' | null>(null);
@@ -208,6 +209,7 @@ export function useFileConversion() {
     if (!targetEntry.value || isConverting.value) return;
 
     isConverting.value = true;
+    isCancelRequested.value = false;
     conversionError.value = null;
     conversionProgress.value = 0;
 
@@ -249,6 +251,21 @@ export function useFileConversion() {
         await convertVideoAudio(fileHandle, targetHandle);
       }
 
+      if (isCancelRequested.value) {
+        // Delete the partially created file
+        try {
+          await dirHandle.removeEntry(newFileName);
+        } catch {
+          // Ignore cleanup errors
+        }
+        toast.add({
+          title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
+          color: 'neutral',
+        });
+        isModalOpen.value = false;
+        return;
+      }
+
       toast.add({
         title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
         color: 'success',
@@ -258,10 +275,28 @@ export function useFileConversion() {
       isModalOpen.value = false;
     } catch (err: any) {
       console.error('Conversion failed', err);
-      conversionError.value = err.message || 'Failed to convert file';
+      if (isCancelRequested.value) {
+        toast.add({
+          title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
+          color: 'neutral',
+        });
+        isModalOpen.value = false;
+      } else {
+        conversionError.value = err.message || 'Failed to convert file';
+      }
     } finally {
       isConverting.value = false;
     }
+  }
+
+  async function cancelConversion() {
+    if (!isConverting.value) return;
+
+    const client = await getExportWorkerClient();
+    if (client && typeof (client as any).cancelExport === 'function') {
+      await (client as any).cancelExport();
+    }
+    isCancelRequested.value = true;
   }
 
   return {
@@ -288,5 +323,6 @@ export function useFileConversion() {
     imageQuality,
     openConversionModal,
     startConversion,
+    cancelConversion,
   };
 }
