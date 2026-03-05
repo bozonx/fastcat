@@ -28,6 +28,8 @@ export interface TimelinePersistenceDeps {
   ) => TimelineDocument;
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
+
+  onSaveSuccess?: () => void;
 }
 
 export interface TimelinePersistence {

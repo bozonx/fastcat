@@ -240,7 +240,10 @@ export function useFileConversion() {
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: false,
         audioChannels: audioChannels.value,
-        audioSampleRate: audioSampleRate.value || undefined,
+        audioSampleRate:
+          audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
+            ? originalAudioSampleRate.value
+            : audioSampleRate.value || undefined,
       };
 
       videoPayload = [
@@ -274,16 +277,19 @@ export function useFileConversion() {
         format: resolveAudioOnlyContainerFormat(codec),
         videoCodec: 'none',
         // mediabunny CanvasSource requires bitrate to be a positive integer or quality.
-        // In audio-only mode we still instantiate a video track (tiny canvas), so set a minimal valid bitrate.
+        // In audio-only mode we still instantiate a video track (tiny canvas), so set valid parameters.
         bitrate: 100_000,
         audioBitrate: audioOnlyBitrateKbps.value * 1000,
         audio: true,
         audioCodec: codec,
-        width: 2,
-        height: 2,
-        fps: 30,
+        width: 16,
+        height: 16,
+        fps: 1,
         audioChannels: audioChannels.value,
-        audioSampleRate: audioSampleRate.value || undefined,
+        audioSampleRate:
+          audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
+            ? originalAudioSampleRate.value
+            : audioSampleRate.value || undefined,
       };
 
       if (meta.audio) {

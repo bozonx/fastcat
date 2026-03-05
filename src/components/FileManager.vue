@@ -14,7 +14,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
@@ -138,6 +138,7 @@ function onFileAction(
     directoryUploadInput.value?.click();
   } else if (action === 'openAsPanel') {
     if (entry.kind !== 'file') return;
+    if (!isOpenableProjectFileName(entry.name)) return;
     projectStore.goToCut();
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
@@ -147,14 +148,7 @@ function onFileAction(
     }
   } else if (action === 'openAsProjectTab') {
     if (entry.kind !== 'file' || !entry.path) return;
-    const mediaType = getMediaTypeFromFilename(entry.name);
-    if (
-      mediaType !== 'video' &&
-      mediaType !== 'audio' &&
-      mediaType !== 'image' &&
-      mediaType !== 'text'
-    )
-      return;
+    if (!isOpenableProjectFileName(entry.name)) return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
   } else if (action === 'createOtioVersion') {
@@ -214,8 +208,11 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
+      if (entry.path) {
+        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
+      }
       onFileActionBase('createFolder', entry, () =>
-        fileManager.rootEntries.value.map((e) => e.name),
+        entry.children?.map((e) => e.name) ?? [],
       );
       uiStore.pendingFsEntryCreateFolder = null;
     }
@@ -228,6 +225,9 @@ watch(
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
       try {
+        if (entry.path) {
+          uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
+        }
         const projectDir = entry.handle
           ? (entry.handle as FileSystemDirectoryHandle)
           : await getProjectRootDirHandle();
@@ -277,6 +277,9 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
+      if (entry.path) {
+        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
+      }
       onFileActionBase('createMarkdown', entry);
       uiStore.pendingFsEntryCreateMarkdown = null;
     }

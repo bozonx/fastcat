@@ -243,6 +243,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       action: async () => {
         const baseDir = targetEntry || (await deps.getProjectDirHandle());
         if (!baseDir) return;
+
+        if (parentPath) {
+          deps.setFileTreePathExpanded(parentPath, true);
+        }
+
         await createFolderCommand({ name, baseDir });
         await reloadDirectory(parentPath);
       },
@@ -418,6 +423,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         );
 
         const sourceParentPath = getParentPath(sourcePath);
+
+        if (targetDirPath) {
+          deps.setFileTreePathExpanded(targetDirPath, true);
+        }
+
         await reloadDirectory(sourceParentPath);
         await reloadDirectory(targetDirPath);
         await triggerMediaIntegrityCheck();

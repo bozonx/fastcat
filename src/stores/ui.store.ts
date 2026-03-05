@@ -110,6 +110,12 @@ export const useUiStore = defineStore('ui', () => {
     scrollToEffectsTrigger.value = Date.now();
   }
 
+  const timelineSaveTrigger = ref(0);
+
+  function notifyTimelineSave() {
+    timelineSaveTrigger.value++;
+  }
+
   return {
     selectedFsEntry,
     isGlobalDragging,
@@ -138,10 +144,12 @@ export const useUiStore = defineStore('ui', () => {
     triggerMonitorZoomReset,
     triggerPreviewPlayback,
     togglePreviewFullscreen,
+    timelineSaveTrigger,
 
     showHiddenFiles,
     fileManagerUpdateCounter,
     notifyFileManagerUpdate,
+    notifyTimelineSave,
     restoreFileTreeStateOnce,
     hasPersistedFileTreeState,
     isFileTreePathExpanded,

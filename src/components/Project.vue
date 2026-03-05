@@ -9,6 +9,7 @@ import {
   type ProjectFileTab,
 } from '~/composables/project/useProjectTabs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
+import { isOpenableProjectFileName } from '~/utils/media-types';
 import ProjectFiles from '~/components/project/ProjectFiles.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
@@ -134,7 +135,7 @@ function onTabBarDrop(e: DragEvent) {
   if (movePayloadRaw) {
     try {
       const payload = JSON.parse(movePayloadRaw) as { path: string; name: string; kind: string };
-      if (payload.kind === 'file' && payload.path) {
+      if (payload.kind === 'file' && payload.path && isOpenableProjectFileName(payload.name)) {
         const tabId = addFileTab({ filePath: payload.path, fileName: payload.name });
         setActiveTab(tabId);
       }
@@ -149,7 +150,12 @@ function onTabBarDrop(e: DragEvent) {
   if (jsonPayloadRaw) {
     try {
       const payload = JSON.parse(jsonPayloadRaw) as { path?: string; name?: string; kind?: string };
-      if (payload.kind === 'file' && payload.path && payload.name) {
+      if (
+        payload.kind === 'file' &&
+        payload.path &&
+        payload.name &&
+        isOpenableProjectFileName(payload.name)
+      ) {
         const tabId = addFileTab({ filePath: payload.path, fileName: payload.name });
         setActiveTab(tabId);
         return;
@@ -183,7 +189,11 @@ function onTabBarDrop(e: DragEvent) {
         filePath?: string;
         fileName?: string;
       };
-      if (payload.filePath && payload.fileName) {
+      if (
+        payload.filePath &&
+        payload.fileName &&
+        isOpenableProjectFileName(payload.fileName)
+      ) {
         const tabId = addFileTab({
           filePath: payload.filePath,
           fileName: payload.fileName,

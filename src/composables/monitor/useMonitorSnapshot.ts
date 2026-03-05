@@ -1,5 +1,4 @@
-import { ref } from 'vue';
-import type { Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
@@ -7,6 +6,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
+import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 
 export function useMonitorSnapshot(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -22,6 +22,46 @@ export function useMonitorSnapshot(input: {
   const uiStore = useUiStore();
 
   const isSavingStopFrame = ref(false);
+
+  async function saveTimelineThumbnail() {
+    if (input.isLoading.value || input.loadError.value) return;
+    if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
+
+    try {
+      const { client } = getExportWorkerClient();
+      setExportHostApi({
+        getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
+        onExportProgress: () => {},
+      });
+
+      const clipsPayload = JSON.parse(
+        JSON.stringify(input.rawWorkerTimelineClips.value ?? input.workerTimelineClips.value),
+      );
+
+      const timeUs = input.uiCurrentTimeUs.value;
+      const exportWidth = 400; // Manager thumbnail size
+      const exportHeight = 225; // 16:9 aspect ratio for thumbnail
+
+      const blob = await client.extractFrameToBlob(
+        timeUs,
+        exportWidth,
+        exportHeight,
+        clipsPayload,
+        0.7, // Quality
+      );
+
+      if (blob) {
+        await fileThumbnailGenerator.saveManualThumbnail({
+          projectId: input.projectStore.currentProjectId,
+          projectRelativePath: input.projectStore.currentTimelinePath,
+          blob,
+        });
+        uiStore.notifyFileManagerUpdate();
+      }
+    } catch (err) {
+      console.warn('[Monitor] Failed to save timeline thumbnail', err);
+    }
+  }
 
   async function createStopFrameSnapshot() {
     if (isSavingStopFrame.value) return;
@@ -133,5 +173,6 @@ export function useMonitorSnapshot(input: {
   return {
     isSavingStopFrame,
     createStopFrameSnapshot,
+    saveTimelineThumbnail,
   };
 }

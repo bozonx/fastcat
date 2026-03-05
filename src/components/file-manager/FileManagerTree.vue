@@ -7,12 +7,11 @@ import {
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 
 interface Props {
@@ -130,13 +129,19 @@ function getEntryIconClass(entry: FsEntry): string {
 }
 
 function isVideo(entry: FsEntry): boolean {
-  return entry.kind === 'file' && !!entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
+  if (entry.kind !== 'file') return false;
+  return getMediaTypeFromFilename(entry.name) === 'video';
 }
 
 function isOpenableMediaFile(entry: FsEntry): boolean {
   if (entry.kind !== 'file') return false;
+  return isOpenableProjectFileName(entry.name);
+}
+
+function isConvertibleMediaFile(entry: FsEntry): boolean {
+  if (entry.kind !== 'file') return false;
   const type = getMediaTypeFromFilename(entry.name);
-  return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
+  return type === 'video' || type === 'audio' || type === 'image';
 }
 
 function onEntryClick(entry: FsEntry) {
@@ -280,6 +285,7 @@ const { getContextMenuItems } = useFileContextMenu(
     isGeneratingProxyInDirectory,
     folderHasVideos,
     isOpenableMediaFile,
+    isConvertibleMediaFile,
     isVideo,
     getEntryMeta: ctx.getEntryMeta,
     isFilesPage: props.isFilesPage,
