@@ -14,9 +14,11 @@ const props = withDefaults(
     audioChannels?: 'stereo' | 'mono';
     sampleRate?: number;
     disabled?: boolean;
+    showAudioSettings?: boolean;
   }>(),
   {
     disabled: false,
+    showAudioSettings: true,
   },
 );
 
@@ -292,42 +294,50 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.fps', 'FPS') }}
       </label>
-      <WheelNumberInput v-model="localFps" :min="1" :max="240" :step="1" :disabled="disabled" />
+      <WheelNumberInput
+        v-model="localFps"
+        :min="1"
+        :max="240"
+        :step="0.001"
+        :disabled="disabled"
+      />
     </div>
 
     <div class="h-px bg-ui-border my-2"></div>
 
-    <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
-      {{ t('videoEditor.audio.audioSettings', 'Audio settings') }}
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.audio.channels', 'Channels') }}
-        </label>
-        <UiAppButtonGroup
-          v-model="localAudioChannels"
-          :options="audioChannelsOptions as any"
-          :disabled="disabled"
-          class="w-full"
-        />
+    <template v-if="props.showAudioSettings">
+      <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
+        {{ t('videoEditor.audio.audioSettings', 'Audio settings') }}
       </div>
 
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
-        </label>
-        <USelect
-          v-model.number="localSampleRate"
-          :items="sampleRateOptions"
-          :disabled="disabled"
-          size="sm"
-          class="w-full"
-          value-key="value"
-          label-key="label"
-        />
+      <div class="grid grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.audio.channels', 'Channels') }}
+          </label>
+          <UiAppButtonGroup
+            v-model="localAudioChannels"
+            :options="audioChannelsOptions as any"
+            :disabled="disabled"
+            class="w-full"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
+          </label>
+          <USelect
+            v-model.number="localSampleRate"
+            :items="sampleRateOptions"
+            :disabled="disabled"
+            size="sm"
+            class="w-full"
+            value-key="value"
+            label-key="label"
+          />
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>

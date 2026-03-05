@@ -178,6 +178,7 @@ function onImageHeightChange(val: number) {
           v-model:resolution-format="resolutionFormat"
           v-model:orientation="orientation"
           v-model:aspect-ratio="aspectRatio"
+          :show-audio-settings="false"
           :disabled="isConverting"
         />
 

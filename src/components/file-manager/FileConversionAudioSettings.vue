@@ -24,10 +24,11 @@ const audioChannelsOptions = [
 ];
 
 const sampleRateOptions = computed(() => {
-  const original = Number(props.originalSampleRate) || 0;
-  const originalLabel = original
-    ? `${t('videoEditor.audio.original', 'Original')} (${original})`
-    : t('videoEditor.audio.original', 'Original');
+  const originalRaw = props.originalSampleRate;
+  const original = originalRaw === null || originalRaw === undefined ? null : Number(originalRaw);
+  const originalLabel = original === null
+    ? t('videoEditor.audio.original', 'Original')
+    : `${t('videoEditor.audio.original', 'Original')} (${Math.round(original)})`;
 
   return [
     { value: 0, label: originalLabel },
