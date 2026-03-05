@@ -57,7 +57,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackSpeed = ref(1);
   const currentTime = ref(0);
   const duration = ref(0);
-  const audioVolume = ref(1);
+  const masterGain = ref(1);
   const audioMuted = ref(false);
   const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});
 
@@ -123,7 +123,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying,
     playbackSpeed,
     timelineZoom,
-    audioVolume,
+    audioVolume: masterGain,
     audioMuted,
     duration,
     playbackGestureHandler,
@@ -242,7 +242,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying.value = false;
     currentTime.value = 0;
     duration.value = 0;
-    audioVolume.value = 1;
+    masterGain.value = 1;
     audioMuted.value = false;
     audioLevels.value = {};
     timelineZoom.value = 50;
@@ -274,6 +274,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineDoc,
     currentTime,
     duration,
+    masterGain,
 
     isTimelineDirty,
     isSavingTimeline,
@@ -374,7 +375,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTime,
     setCurrentTimeUs,
     duration,
-    audioVolume,
+    masterGain,
     audioMuted,
     audioLevels,
     playbackSpeed,
@@ -388,6 +389,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     saveTimeline,
     requestTimelineSave,
     applyTimeline,
+    setMasterGain: (gain: number) => applyTimeline({ type: 'update_master_gain', gain }),
     addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath,
     loadTimelineMetadata,
@@ -398,6 +400,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
       selection.selectTransition(input),
     ...playback,
+    setAudioVolume: (gain: number) => applyTimeline({ type: 'update_master_gain', gain }),
     ...tracks,
     ...trimming,
     ...clips,

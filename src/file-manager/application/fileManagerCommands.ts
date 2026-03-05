@@ -279,6 +279,7 @@ export async function createTimelineCommand(params: {
   projectDir: FileSystemDirectoryHandle;
   timelinesDirName?: string;
   initialIndex?: number;
+  existingNames?: string[];
 }): Promise<string> {
   const timelinesDir = params.timelinesDirName
     ? await params.projectDir.getDirectoryHandle(params.timelinesDirName, { create: true })
@@ -286,19 +287,28 @@ export async function createTimelineCommand(params: {
 
   let index = params.initialIndex ?? 1;
   let fileName = '';
-  let exists = true;
-  while (exists) {
-    fileName = `timeline_${String(index).padStart(3, '0')}.otio`;
-    try {
-      await timelinesDir.getFileHandle(fileName);
-      index += 1;
-    } catch (e: unknown) {
-      const err = e as { name?: string };
-      if (err?.name === 'NotFoundError') {
-        exists = false;
-        continue;
+
+  if (params.existingNames) {
+    const existing = new Set(params.existingNames);
+    do {
+      fileName = `timeline_${String(index).padStart(3, '0')}.otio`;
+      index++;
+    } while (existing.has(fileName));
+  } else {
+    let exists = true;
+    while (exists) {
+      fileName = `timeline_${String(index).padStart(3, '0')}.otio`;
+      try {
+        await timelinesDir.getFileHandle(fileName);
+        index += 1;
+      } catch (e: unknown) {
+        const err = e as { name?: string };
+        if (err?.name === 'NotFoundError') {
+          exists = false;
+          continue;
+        }
+        throw e;
       }
-      throw e;
     }
   }
 
@@ -321,4 +331,49 @@ export async function createTimelineCommand(params: {
   await writable.close();
 
   return params.timelinesDirName ? `${params.timelinesDirName}/${fileName}` : fileName;
+}
+
+export async function createMarkdownCommand(params: {
+  dirHandle: FileSystemDirectoryHandle;
+  existingNames?: string[];
+}): Promise<string> {
+  let index = 1;
+  let fileName = '';
+  const baseName = 'Документ_';
+  const ext = '.md';
+
+  if (params.existingNames) {
+    const existing = new Set(params.existingNames);
+    do {
+      fileName = `${baseName}${index}${ext}`;
+      index++;
+    } while (existing.has(fileName));
+  } else {
+    let exists = true;
+    while (exists) {
+      fileName = `${baseName}${index}${ext}`;
+      try {
+        await params.dirHandle.getFileHandle(fileName);
+        index += 1;
+      } catch (e: unknown) {
+        const err = e as { name?: string };
+        if (err?.name === 'NotFoundError') {
+          exists = false;
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  const fileHandle = await params.dirHandle.getFileHandle(fileName, { create: true });
+  if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
+    throw new Error('Failed to create markdown: createWritable is not available');
+  }
+
+  const writable = await (fileHandle as FileSystemFileHandle).createWritable();
+  await writable.write('');
+  await writable.close();
+
+  return fileName;
 }

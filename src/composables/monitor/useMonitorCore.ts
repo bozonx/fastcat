@@ -6,6 +6,7 @@ import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
 import { toWorkerTimelineClips } from '~/composables/timeline/useTimelineExport';
+import { useUiStore } from '~/stores/ui.store';
 
 import type { WorkerTimelineClip } from './types';
 
@@ -29,20 +30,22 @@ interface MonitorDisplayState {
   renderHeight: Ref<number>;
   updateCanvasDisplaySize: () => void;
 }
-
+ 
+interface TimelineStoreState {
+  duration: number;
+  currentTime: number;
+  setCurrentTimeUs: (timeUs: number) => void;
+  isPlaying: boolean;
+  masterGain: number;
+  audioMuted: boolean;
+}
+ 
 interface MonitorStoreState {
   projectStore: {
     projectSettings: GranVideoEditorProjectSettings;
     getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   };
-  timelineStore: {
-    duration: number;
-    currentTime: number;
-    setCurrentTimeUs: (timeUs: number) => void;
-    isPlaying: boolean;
-    audioVolume: number;
-    audioMuted: boolean;
-  };
+  timelineStore: TimelineStoreState;
   proxyStore: {
     getProxyFileHandle: (path: string) => Promise<FileSystemFileHandle | null>;
   };
@@ -55,6 +58,7 @@ export interface UseMonitorCoreOptions extends MonitorStoreState {
 
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
+  const uiStore = useUiStore();
   const { projectStore, timelineStore, proxyStore, monitorTimeline, monitorDisplay } = options;
 
   const {
@@ -611,10 +615,19 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   });
 
   watch(
-    () => [timelineStore.audioVolume, timelineStore.audioMuted],
+    () => [timelineStore.masterGain, timelineStore.audioMuted],
     () => {
-      const effectiveVolume = timelineStore.audioMuted ? 0 : timelineStore.audioVolume;
-      audioEngine.setVolume(effectiveVolume);
+      const effectiveMaster = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
+      audioEngine.setMasterVolume(effectiveMaster);
+    },
+    { immediate: true },
+  );
+
+  watch(
+    () => [uiStore.monitorVolume, uiStore.monitorMuted],
+    () => {
+      const effectiveMonitor = uiStore.monitorMuted ? 0 : uiStore.monitorVolume;
+      audioEngine.setMonitorVolume(effectiveMonitor);
     },
     { immediate: true },
   );

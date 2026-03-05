@@ -7,6 +7,7 @@ export interface TimelinePersistenceDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
   duration: Ref<number>;
+  masterGain: Ref<number>;
 
   isTimelineDirty: Ref<boolean>;
   isSavingTimeline: Ref<boolean>;
@@ -58,6 +59,7 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
           gran: {
             ...(doc.metadata?.gran ?? {}),
             playheadUs: deps.currentTime.value,
+            masterGain: deps.masterGain.value,
           },
         },
       };
@@ -150,6 +152,14 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
         Number.isFinite(parsed.metadata.gran.playheadUs)
       ) {
         deps.currentTime.value = parsed.metadata.gran.playheadUs;
+      }
+      if (
+        typeof parsed.metadata?.gran?.masterGain === 'number' &&
+        Number.isFinite(parsed.metadata.gran.masterGain)
+      ) {
+        deps.masterGain.value = parsed.metadata.gran.masterGain;
+      } else {
+        deps.masterGain.value = 1;
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);

@@ -685,9 +685,15 @@ export function useTimelineExport() {
       videoTracks: allVideoTracks,
     });
 
-    const audioClips = await toWorkerTimelineClips(effectiveAudioItems, projectStore, {
-      trackKind: 'audio',
-    });
+    const masterGain = timelineStore.masterGain;
+    const audioClips = (
+      await toWorkerTimelineClips(effectiveAudioItems, projectStore, {
+        trackKind: 'audio',
+      })
+    ).map((clip) => ({
+      ...clip,
+      audioGain: (clip.audioGain ?? 1) * masterGain,
+    }));
 
     if (!videoClips.length && !audioClips.length) throw new Error('Timeline is empty');
 

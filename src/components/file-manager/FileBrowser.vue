@@ -58,6 +58,7 @@ const {
   handleFiles,
   moveEntry,
   findEntryByPath,
+  reloadDirectory,
 } = fileManager;
 const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
@@ -240,15 +241,21 @@ async function refreshFileTree() {
   await loadFolderContent();
 }
 
+import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
+
 async function createTimelineInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
+
+  const existingInFolder = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
+  const existingNames = existingInFolder.map(e => e.name);
 
   const createdFileName = await createTimelineCommand({
     projectDir: entry.handle as FileSystemDirectoryHandle,
     timelinesDirName: undefined,
+    existingNames,
   });
 
-  await loadProjectDirectory();
+  await reloadDirectory(entry.path || '');
   uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 
@@ -262,36 +269,23 @@ async function createTimelineInDirectory(entry: FsEntry) {
 async function createMarkdownInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
-  const dirHandle = entry.handle as FileSystemDirectoryHandle;
-  const baseName = 'Документ_';
-  const ext = '.md';
+  const existingInFolder = await readDirectory(entry.handle as FileSystemDirectoryHandle, entry.path);
+  const existingNames = existingInFolder.map(e => e.name);
 
-  const existing = new Set<string>();
-  const iterator = (dirHandle as any).values?.() ?? (dirHandle as any).entries?.();
-  if (iterator) {
-    for await (const value of iterator) {
-      const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-      existing.add(handle.name);
-    }
-  }
+  const createdFileName = await createMarkdownCommand({
+    dirHandle: entry.handle as FileSystemDirectoryHandle,
+    existingNames,
+  });
 
-  let i = 1;
-  let fileName = `${baseName}${i}${ext}`;
-  while (existing.has(fileName)) {
-    i += 1;
-    fileName = `${baseName}${i}${ext}`;
-  }
-
-  const handle = await dirHandle.getFileHandle(fileName, { create: true });
-  if (typeof (handle as FileSystemFileHandle).createWritable === 'function') {
-    const writable = await (handle as FileSystemFileHandle).createWritable();
-    await writable.write('');
-    await writable.close();
-  }
-
-  await loadProjectDirectory();
+  await reloadDirectory(entry.path || '');
   uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
+
+  const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+  const createdEntry = findEntryByPath(createdPath);
+  if (createdEntry) {
+    selectionStore.selectFsEntry(createdEntry);
+  }
 }
 
 watch(
@@ -439,10 +433,12 @@ async function calculateFolderSize(path: string, handle: FileSystemDirectoryHand
 watch(
   () => [folderEntries.value, filesPageStore.viewMode],
   () => {
-    if (filesPageStore.viewMode === 'list') {
+    if (filesPageStore.viewMode === 'list' && folderEntries.value.length > 0) {
+      // In list view we only trigger sizes for directories that are currently empty in our size cache
       for (const entry of folderEntries.value) {
-        if (entry.kind === 'directory' && entry.path) {
-          void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
+        if (entry.kind === 'directory' && entry.path && folderSizes.value[entry.path] === undefined) {
+          // No automatic parallel calculation to avoid killing UI
+          // calculation is triggered by UI if needed or we could queue it
         }
       }
     }
@@ -536,6 +532,7 @@ watch(
 watch(
   () => uiStore.fileManagerUpdateCounter,
   async () => {
+    // only reload the current view content, not the whole tree
     await loadFolderContent();
   },
 );

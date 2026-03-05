@@ -206,6 +206,7 @@ export interface TimelineGranMetadata {
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];
   playheadUs?: number;
+  masterGain?: number;
 }
 
 export interface TimelineMetadata {

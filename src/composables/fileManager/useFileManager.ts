@@ -450,6 +450,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     createTimeline,
     getFileIcon,
     readDirectory: service.readDirectory,
+    reloadDirectory: async (path: string) => {
+      const projectDir = await deps.getProjectDirHandle();
+      if (projectDir) await service.reloadDirectory(path, projectDir);
+    },
   };
 }
 

@@ -14,10 +14,22 @@ export interface FsEntrySelection {
 export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
   const showHiddenFiles = ref(readLocalStorageJson('gran-video-editor:show-hidden-files', false));
+  const monitorVolume = ref(readLocalStorageJson('gran-video-editor:monitor-volume', 1));
+  const monitorMuted = ref(readLocalStorageJson('gran-video-editor:monitor-muted', false));
 
   watch(
     () => showHiddenFiles.value,
     (val) => writeLocalStorageJson('gran-video-editor:show-hidden-files', val),
+  );
+
+  watch(
+    () => monitorVolume.value,
+    (val) => writeLocalStorageJson('gran-video-editor:monitor-volume', val),
+  );
+
+  watch(
+    () => monitorMuted.value,
+    (val) => writeLocalStorageJson('gran-video-editor:monitor-muted', val),
   );
 
   const isGlobalDragging = ref(false);
@@ -136,5 +148,8 @@ export const useUiStore = defineStore('ui', () => {
 
     scrollToEffectsTrigger,
     triggerScrollToEffects,
+
+    monitorVolume,
+    monitorMuted,
   };
 });

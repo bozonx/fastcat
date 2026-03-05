@@ -239,6 +239,11 @@ export interface RemoveMarkerCommand {
   id: string;
 }
 
+export interface UpdateMasterGainCommand {
+  type: 'update_master_gain';
+  gain: number;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -262,7 +267,8 @@ export type TimelineCommand =
   | OverlayTrimItemCommand
   | AddMarkerCommand
   | UpdateMarkerCommand
-  | RemoveMarkerCommand;
+  | RemoveMarkerCommand
+  | UpdateMasterGainCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -318,6 +324,19 @@ export function applyTimelineCommand(
       return overlayPlaceItem(doc, cmd);
     case 'overlay_trim_item':
       return overlayTrimItem(doc, cmd);
+    case 'update_master_gain':
+      return {
+        next: {
+          ...doc,
+          metadata: {
+            ...(doc.metadata ?? {}),
+            gran: {
+              ...(doc.metadata?.gran ?? {}),
+              masterGain: cmd.gain,
+            },
+          },
+        },
+      };
     default: {
       const _exhaustiveCheck: never = cmd;
       throw new Error(`Unhandled timeline command type: ${(_exhaustiveCheck as any).type}`);
