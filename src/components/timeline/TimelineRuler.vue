@@ -282,7 +282,7 @@ function draw() {
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
 
-  if (pxPerFrame >= 12) {
+  if (pxPerFrame >= 6) {
     const frameDurationUs = 1_000_000 / currentFps;
     const currentFrameStartUs = Math.floor(currentTime.value / frameDurationUs) * frameDurationUs;
     const currentFrameStartX = timeUsToPx(currentFrameStartUs, currentZoom) - startPx;
