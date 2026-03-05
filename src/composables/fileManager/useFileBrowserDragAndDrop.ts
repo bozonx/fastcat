@@ -48,17 +48,39 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!entry.path) return;
     if (!e.dataTransfer) return;
 
+    const selectionStore = useSelectionStore();
+    const selected = selectionStore.selectedEntity;
+
+    let entriesToMove: FsEntry[] = [entry];
+
+    // If dragging an already selected item, move the whole selection
+    if (selected?.source === 'fileManager') {
+      if (selected.kind === 'multiple') {
+        const isSelected = selected.entries.some((s) => s.path === entry.path);
+        if (isSelected) {
+          entriesToMove = selected.entries;
+        }
+      }
+    }
+
     e.dataTransfer.effectAllowed = 'copyMove';
-    const movePayload = { name: entry.name, kind: entry.kind, path: entry.path };
+
+    const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
     e.dataTransfer.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
     // Mark as internal so the global overlay is not shown
     e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 
     if (entry.kind !== 'file') return;
 
+    // Set preview for the primary dragged item
     const isTimeline = entry.name.toLowerCase().endsWith('.otio');
     const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
-    const data: DraggedFileData = { name: entry.name, kind, path: entry.path };
+    const data: DraggedFileData = {
+      name: entry.name,
+      kind,
+      path: entry.path,
+      count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
+    };
     setDraggedFile(data);
     e.dataTransfer?.setData('application/json', JSON.stringify(data));
   }
@@ -102,20 +124,29 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const targetPath = entry.path ?? '';
 
     if (moveRaw) {
-      let parsed: { path?: unknown } | null;
+      let parsed: any = null;
       try {
         parsed = JSON.parse(moveRaw);
       } catch {
         return;
       }
 
-      const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-      if (!sourcePath || sourcePath === targetPath) return;
+      const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-      const source = options.findEntryByPath(sourcePath);
-      if (!source) return;
+      for (const item of itemsToMove) {
+        const sourcePath = typeof item?.path === 'string' ? item.path : '';
+        if (!sourcePath || sourcePath === targetPath) continue;
 
-      await options.moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
+        const source = options.findEntryByPath(sourcePath);
+        if (!source) continue;
+
+        await options.moveEntry({
+          source,
+          targetDirHandle: targetHandle,
+          targetDirPath: targetPath,
+        });
+      }
+
       options.notifyFileManagerUpdate();
       await options.loadFolderContent();
       return;
@@ -157,30 +188,36 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     if (moveRaw) {
-      let parsed: { path?: unknown } | null;
+      let parsed: any = null;
       try {
         parsed = JSON.parse(moveRaw);
       } catch {
         return;
       }
-      const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-      if (!sourcePath) return;
 
-      const source = options.findEntryByPath(sourcePath);
-      if (!source) return;
+      const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-      if (targetHandle) {
-        await options.moveEntry({
-          source,
-          targetDirHandle: targetHandle,
-          targetDirPath: targetPath,
-        });
-      } else {
-        const rootHandle = await fileManager.getProjectRootDirHandle();
-        if (rootHandle) {
-          await options.moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
+      for (const item of itemsToMove) {
+        const sourcePath = typeof item?.path === 'string' ? item.path : '';
+        if (!sourcePath) continue;
+
+        const source = options.findEntryByPath(sourcePath);
+        if (!source) continue;
+
+        if (targetHandle) {
+          await options.moveEntry({
+            source,
+            targetDirHandle: targetHandle,
+            targetDirPath: targetPath,
+          });
+        } else {
+          const rootHandle = await fileManager.getProjectRootDirHandle();
+          if (rootHandle) {
+            await options.moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
+          }
         }
       }
+
       options.notifyFileManagerUpdate();
       await options.loadFolderContent();
       return;
