@@ -78,6 +78,7 @@ export interface SplitItemCommand {
   itemId: string;
   atUs: number;
   ignoreLocks?: boolean;
+  quantizeToFrames?: boolean;
 }
 
 export interface DeleteItemsCommand {

@@ -50,7 +50,7 @@ describe('TimelineStore', () => {
     const store = useTimelineStore();
     expect(store.timelineDoc).toBeNull();
     expect(store.isPlaying).toBe(false);
-    expect(store.audioVolume).toBe(1);
+    expect(store.masterGain).toBe(1);
   });
 
   it('manages item selection', () => {
@@ -69,8 +69,8 @@ describe('TimelineStore', () => {
   it('sets audio volume and unmutes when positive', () => {
     const store = useTimelineStore();
     store.audioMuted = true;
-    store.setAudioVolume(0.5);
-    expect(store.audioVolume).toBe(0.5);
+    store.setMasterGain(0.5);
+    expect(store.masterGain).toBe(0.5);
     expect(store.audioMuted).toBe(false);
   });
 

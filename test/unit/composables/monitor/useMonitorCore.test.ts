@@ -14,7 +14,11 @@ const mockClient = {
   initCompositor: vi.fn().mockResolvedValue(undefined),
 };
 
-const audioEngineInstances: Array<{ setVolume: ReturnType<typeof vi.fn> }> = [];
+const audioEngineInstances: Array<{
+  setVolume: ReturnType<typeof vi.fn>;
+  setMasterVolume: ReturnType<typeof vi.fn>;
+  setMonitorVolume: ReturnType<typeof vi.fn>;
+}> = [];
 
 vi.mock('~/utils/video-editor/worker-client', () => ({
   getPreviewWorkerClient: () => ({ client: mockClient, worker: {} }),
@@ -28,6 +32,8 @@ vi.mock('~/utils/video-editor/AudioEngine', () => {
     loadClips = vi.fn().mockResolvedValue(undefined);
     updateTimelineLayout = vi.fn();
     destroy = vi.fn();
+    setMasterVolume = vi.fn();
+    setMonitorVolume = vi.fn();
 
     constructor() {
       audioEngineInstances.push(this);
@@ -78,7 +84,7 @@ describe('useMonitorCore', () => {
       duration: 0,
       currentTime: 0,
       isPlaying: false,
-      audioVolume: 1,
+      masterGain: 1,
       audioMuted: false,
     });
 
@@ -143,7 +149,7 @@ describe('useMonitorCore', () => {
       duration: 0,
       currentTime: 0,
       isPlaying: false,
-      audioVolume: 1,
+      masterGain: 1,
       audioMuted: false,
     });
 
@@ -195,15 +201,15 @@ describe('useMonitorCore', () => {
     await nextTick();
 
     const audioEngine = audioEngineInstances[0];
-    expect(audioEngine?.setVolume).toHaveBeenLastCalledWith(1);
+    expect(audioEngine?.setMasterVolume).toHaveBeenLastCalledWith(1);
 
-    timelineStore.audioVolume = 0.4;
+    timelineStore.masterGain = 0.4;
     await nextTick();
-    expect(audioEngine?.setVolume).toHaveBeenLastCalledWith(0.4);
+    expect(audioEngine?.setMasterVolume).toHaveBeenLastCalledWith(0.4);
 
     timelineStore.audioMuted = true;
     await nextTick();
-    expect(audioEngine?.setVolume).toHaveBeenLastCalledWith(0);
+    expect(audioEngine?.setMasterVolume).toHaveBeenLastCalledWith(0);
 
     wrapper.unmount();
   });
