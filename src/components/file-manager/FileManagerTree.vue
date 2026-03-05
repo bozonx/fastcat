@@ -13,6 +13,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -127,8 +128,8 @@ function getEntryIconClass(entry: FsEntry): string {
   return 'text-ui-text-muted';
 }
 
-function isVideo(entry: FsEntry) {
-  return entry.kind === 'file' && entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
+function isVideo(entry: FsEntry): boolean {
+  return entry.kind === 'file' && !!entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
 }
 
 function isOpenableMediaFile(entry: FsEntry): boolean {
@@ -273,147 +274,17 @@ function folderHasVideos(entry: FsEntry): boolean {
   });
 }
 
-function getContextMenuItems(entry: FsEntry) {
-  const items = [];
-
-  if (entry.kind === 'directory') {
-    const hasVideos = folderHasVideos(entry);
-
-    items.push([
-      {
-        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-        icon: 'i-heroicons-folder-plus',
-        onSelect: () => emit('action', 'createFolder', entry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
-        icon: 'i-heroicons-document-plus',
-        onSelect: () => emit('action', 'createTimeline' as any, entry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
-        icon: 'i-heroicons-document-text',
-        onSelect: () => emit('action', 'createMarkdown', entry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
-        icon: 'i-heroicons-arrow-up-tray',
-        onSelect: () => emit('action', 'upload', entry),
-      },
-    ]);
-
-    if (hasVideos) {
-      if (isGeneratingProxyInDirectory(entry)) {
-        items.push([
-          {
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
-            icon: 'i-heroicons-x-circle',
-            color: 'error',
-            onSelect: () => emit('action', 'cancelProxyForFolder', entry),
-          },
-        ]);
-      } else {
-        items.push([
-          {
-            label: t(
-              'videoEditor.fileManager.actions.createProxyForAll',
-              'Create proxy for all videos',
-            ),
-            icon: 'i-heroicons-film',
-            onSelect: () => emit('action', 'createProxyForFolder', entry),
-          },
-        ]);
-      }
-    }
-  }
-
-  if (isOpenableMediaFile(entry) && !props.isFilesPage) {
-    items.push([
-      {
-        label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-        icon: 'i-heroicons-window',
-        onSelect: () => emit('action', 'openAsPanel', entry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-        icon: 'i-heroicons-squares-plus',
-        onSelect: () => emit('action', 'openAsProjectTab', entry),
-      },
-    ]);
-  }
-
-  if (isVideo(entry)) {
-    const meta = ctx.getEntryMeta(entry);
-    const hasProxy = meta.hasProxy;
-    const generatingProxy = meta.generatingProxy;
-
-    if (!generatingProxy) {
-      items.push([
-        {
-          label: hasProxy
-            ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
-            : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
-          icon: 'i-heroicons-film',
-          onSelect: () => emit('action', 'createProxy', entry),
-        },
-      ]);
-    }
-
-    if (generatingProxy) {
-      items.push([
-        {
-          label: t(
-            'videoEditor.fileManager.actions.cancelProxyGeneration',
-            'Cancel proxy generation',
-          ),
-          icon: 'i-heroicons-x-circle',
-          color: 'error',
-          onSelect: () => emit('action', 'cancelProxy', entry),
-        },
-      ]);
-    }
-
-    if (hasProxy) {
-      items.push([
-        {
-          label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
-          icon: 'i-heroicons-trash',
-          color: 'error',
-          onSelect: () => emit('action', 'deleteProxy', entry),
-        },
-      ]);
-    }
-  }
-
-  const isOtioFile = entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio');
-  if (isOtioFile) {
-    items.push([
-      {
-        label: t('granVideoEditor.timeline.createVersion', 'Create version'),
-        icon: 'i-heroicons-document-duplicate',
-        onSelect: () => emit('action', 'createOtioVersion', entry),
-      },
-    ]);
-  }
-
-  items.push([
-    {
-      label: t('common.rename', 'Rename'),
-      icon: 'i-heroicons-pencil',
-      onSelect: () => emit('action', 'rename', entry),
-    },
-    {
-      label: t('common.delete', 'Delete'),
-      icon: 'i-heroicons-trash',
-      onSelect: () => emit('action', 'delete', entry),
-    },
-  ]);
-
-  return items;
-}
+const { getContextMenuItems } = useFileContextMenu(
+  {
+    isGeneratingProxyInDirectory,
+    folderHasVideos,
+    isOpenableMediaFile,
+    isVideo,
+    getEntryMeta: ctx.getEntryMeta,
+    isFilesPage: props.isFilesPage,
+  },
+  (action: any, entry: any) => emit('action', action as any, entry)
+);
 </script>
 
 <template>

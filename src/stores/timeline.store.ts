@@ -21,6 +21,8 @@ import { createTimelineExternalRefs } from '~/stores/timeline/timelineExternalRe
 import { createTimelineHistoryDebounce } from '~/stores/timeline/timelineHistoryDebounce';
 import { createTimelineDispatcher } from '~/stores/timeline/timelineDispatcher';
 
+import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
 import { useHistoryStore } from './history.store';
@@ -126,6 +128,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration,
     playbackGestureHandler,
   });
+
+  function setCurrentTimeUs(nextTimeUs: number) {
+    const fps = sanitizeFps(timelineDoc.value?.timebase?.fps);
+    const quantized = quantizeTimeUsToFrames(nextTimeUs, fps, 'round');
+    const max = Number.isFinite(duration.value) ? Math.max(0, Math.round(duration.value)) : 0;
+    currentTime.value = max > 0 ? Math.min(Math.max(0, quantized), max) : Math.max(0, quantized);
+  }
 
   const tracks = createTimelineTracks({
     timelineDoc,
@@ -363,6 +372,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineSaveError,
     isPlaying,
     currentTime,
+    setCurrentTimeUs,
     duration,
     audioVolume,
     audioMuted,

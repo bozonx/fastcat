@@ -222,7 +222,7 @@ function onTimelineClick(e: MouseEvent) {
   const scrollX = el.scrollLeft;
   const x = e.clientX - scrollerRect.left + scrollX;
 
-  timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
+  timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
 }
 
 function onTimelinePointerDown(e: PointerEvent) {

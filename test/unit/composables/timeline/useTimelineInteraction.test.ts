@@ -6,6 +6,10 @@ import {
   BASE_PX_PER_SECOND,
   computeAnchoredScrollLeft,
 } from '../../../../src/composables/timeline/useTimelineInteraction';
+import {
+  computeSnappedStartUs,
+  quantizeStartUsToFrames,
+} from '../../../../src/utils/timeline/geometry';
 
 describe('useTimelineInteraction', () => {
   it('timeUsToPx should convert microseconds to pixels correctly', () => {
@@ -63,5 +67,55 @@ describe('useTimelineInteraction', () => {
     });
 
     expect(nextScrollLeft).toBe(0);
+  });
+
+  it('computeSnappedStartUs should always quantize to frames when frame snapping is enabled', () => {
+    const fps = 30;
+
+    // Pick a target that is not on a frame boundary.
+    const targetUs = 101_000;
+    expect(targetUs).not.toBe(quantizeStartUsToFrames(targetUs, fps));
+
+    const snapped = computeSnappedStartUs({
+      rawStartUs: 123_456,
+      draggingItemDurationUs: 1_000_000,
+      fps,
+      zoom: 50,
+      snapThresholdPx: 10,
+      snapTargetsUs: [targetUs],
+      enableFrameSnap: true,
+      enableClipSnap: true,
+      frameOffsetUs: 0,
+    });
+
+    expect(snapped).toBe(quantizeStartUsToFrames(snapped, fps));
+  });
+
+  it('computeSnappedStartUs should preserve frame offset when snapping (free clip offset is kept)', () => {
+    const fps = 30;
+    const frameUs = Math.round(1e6 / fps);
+
+    // Simulate a clip that initially sits between frames (has offset).
+    const frameOffsetUs = 7_000;
+    expect(frameOffsetUs).toBeGreaterThan(0);
+
+    const rawStartUs = frameUs * 10 + 12_345;
+
+    const snapped = computeSnappedStartUs({
+      rawStartUs,
+      draggingItemDurationUs: 1_000_000,
+      fps,
+      zoom: 50,
+      snapThresholdPx: 10,
+      snapTargetsUs: [],
+      enableFrameSnap: true,
+      enableClipSnap: false,
+      frameOffsetUs,
+    });
+
+    // When offset snapping is used, result should keep the same offset relative to frame grid.
+    const base = Math.max(0, snapped - frameOffsetUs);
+    expect(base).toBe(quantizeStartUsToFrames(base, fps));
+    expect(snapped).toBe(base + frameOffsetUs);
   });
 });

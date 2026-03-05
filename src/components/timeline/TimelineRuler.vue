@@ -393,7 +393,7 @@ function onRulerContextMenu(e: MouseEvent) {
 // Single click: move playhead
 function onRulerClick(e: MouseEvent) {
   if (e.button !== 0) return;
-  timelineStore.currentTime = getTimeUsFromMouseEvent(e);
+  timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
 }
 
 // Double click: add marker at clicked position
@@ -428,7 +428,7 @@ function onRulerPointerDown(e: PointerEvent) {
       return;
     }
     if (settings.middleClick === 'move_playhead') {
-      timelineStore.currentTime = getTimeUsFromMouseEvent(e);
+      timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
       emit('start-playhead-drag', e); // Pass to Timeline to trigger drag playhead
       return;
     }
@@ -452,7 +452,7 @@ function onRulerPointerDown(e: PointerEvent) {
     if (settings.drag === 'pan') {
       emit('start-pan', e); // This will trigger pan in Timeline
     } else if (settings.drag === 'move_playhead') {
-      timelineStore.currentTime = getTimeUsFromMouseEvent(e);
+      timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
       emit('start-playhead-drag', e); // This will trigger startPlayheadDrag
     } else {
       emit('pointerdown', e); // default behavior
