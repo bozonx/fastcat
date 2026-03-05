@@ -29,6 +29,7 @@ import { useHistoryStore } from './history.store';
 import { useWorkspaceStore } from './workspace.store';
 import { useProxyStore } from './proxy.store';
 import { useSelectionStore } from './selection.store';
+import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 
 export const useTimelineStore = defineStore('timeline', () => {
@@ -299,6 +300,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     parseTimelineFromOtio,
     serializeTimelineToOtio,
     selectTimelineDurationUs,
+    onSaveSuccess: () => {
+      const uiStore = useUiStore();
+      uiStore.notifyTimelineSave();
+    },
   });
 
   watch(
@@ -328,8 +333,6 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   async function saveTimeline() {
     await persistence.saveTimeline();
-    const uiStore = useUiStore();
-    uiStore.notifyTimelineSave();
   }
 
   const dispatcher = createTimelineDispatcher({
