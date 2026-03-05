@@ -117,8 +117,14 @@ onBeforeUnmount(() => {
   visibleChunks.value.clear();
 });
 
+const speed = computed(() => {
+  const s = props.item.speed || 1;
+  // Prevent division by zero and extreme values
+  return Math.max(0.001, Math.min(100, s));
+});
+
 const trimOffsetPx = computed(() => {
-  return timeUsToPx(props.item.sourceRange.startUs, timelineStore.timelineZoom);
+  return timeUsToPx(props.item.sourceRange.startUs / speed.value, timelineStore.timelineZoom);
 });
 
 const durationUs = computed(() => props.item.sourceDurationUs || 0);
@@ -127,7 +133,21 @@ const durationUs = computed(() => props.item.sourceDurationUs || 0);
 const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas
 
 const totalWidthPx = computed(() => {
-  return timeUsToPx(durationUs.value, timelineStore.timelineZoom);
+  return timeUsToPx(durationUs.value / speed.value, timelineStore.timelineZoom);
+});
+
+const track = computed(() => {
+  return timelineStore.timelineDoc?.tracks.find((t) => t.id === props.item.trackId);
+});
+
+const isMuted = computed(() => {
+  return (
+    props.item.audioMuted ||
+    track.value?.audioMuted ||
+    timelineStore.audioMuted ||
+    props.item.disabled ||
+    track.value?.videoHidden
+  );
 });
 
 const chunks = computed(() => {
@@ -157,7 +177,8 @@ function setChunkCanvas(el: unknown, chunkIndex: number) {
   chunkCanvases.value[chunkIndex] = el instanceof HTMLCanvasElement ? el : null;
 }
 
-const waveColor = '#3b82f6'; // Tailwind blue-500
+const waveColor = '#60a5fa'; // Tailwind blue-400
+const muteColor = '#94a3b8'; // Tailwind slate-400
 
 function drawChunk(chunkIndex: number) {
   const chunk = chunks.value.find((c) => c.chunkIndex === chunkIndex);
@@ -184,8 +205,12 @@ function drawChunk(chunkIndex: number) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const peaks = audioPeaks.value[0]; // Just use first channel for now
-  if (!peaks || peaks.length === 0) return;
+  const channels = audioPeaks.value;
+  if (!channels || channels.length === 0) return;
+
+  const numChannels = channels.length;
+  const peaksCount = channels[0]?.length || 0;
+  if (peaksCount === 0) return;
 
   const totalW = totalWidthPx.value;
 
@@ -193,44 +218,72 @@ function drawChunk(chunkIndex: number) {
   const startRatio = chunk.startPx / totalW;
   const endRatio = (chunk.startPx + chunk.widthPx) / totalW;
 
-  const startIndex = Math.floor(startRatio * peaks.length);
-  const endIndex = Math.min(peaks.length, Math.ceil(endRatio * peaks.length));
+  const startIndex = Math.floor(startRatio * peaksCount);
+  const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount));
+  const chunkLength = endIndex - startIndex;
 
-  const chunkPeaks = peaks.slice(startIndex, endIndex);
-  if (chunkPeaks.length === 0) return;
+  if (chunkLength <= 0) return;
 
   const halfH = targetHeight / 2;
-  const step = targetWidth / chunkPeaks.length;
+  const step = targetWidth / chunkLength;
 
   const mode = props.item.audioWaveformMode || 'full';
+  const gain = props.item.audioGain ?? 1;
+  const muted = isMuted.value;
 
-  ctx.fillStyle = waveColor;
+  const grad = ctx.createLinearGradient(0, 0, 0, targetHeight);
+  if (muted) {
+    grad.addColorStop(0, '#94a3b866');
+    grad.addColorStop(1, '#64748b66');
+    ctx.fillStyle = grad;
+  } else {
+    grad.addColorStop(0.2, '#60a5fa');
+    grad.addColorStop(0.5, '#3b82f6');
+    grad.addColorStop(0.8, '#60a5fa');
+    ctx.fillStyle = grad;
+  }
+
   ctx.beginPath();
 
   if (mode === 'half') {
     ctx.moveTo(0, targetHeight);
-    for (let i = 0; i < chunkPeaks.length; i++) {
+    for (let i = 0; i < chunkLength; i++) {
       const x = i * step;
-      const peak = chunkPeaks[i] ?? 0;
-      const y = targetHeight - Math.abs(peak) * targetHeight;
+      let peak = 0;
+      for (let ch = 0; ch < numChannels; ch++) {
+        const p = Math.abs(channels[ch]?.[startIndex + i] || 0);
+        if (p > peak) peak = p;
+      }
+      peak *= gain;
+      const y = targetHeight - Math.min(1.1, peak) * targetHeight;
       ctx.lineTo(x, y);
     }
     ctx.lineTo(targetWidth, targetHeight);
   } else {
     // Draw top half
     ctx.moveTo(0, halfH);
-    for (let i = 0; i < chunkPeaks.length; i++) {
+    for (let i = 0; i < chunkLength; i++) {
       const x = i * step;
-      const peak = chunkPeaks[i] ?? 0;
-      const y = halfH - Math.abs(peak) * halfH;
+      let peak = 0;
+      for (let ch = 0; ch < numChannels; ch++) {
+        const p = Math.abs(channels[ch]?.[startIndex + i] || 0);
+        if (p > peak) peak = p;
+      }
+      peak *= gain;
+      const y = halfH - Math.min(1.1, peak) * halfH;
       ctx.lineTo(x, y);
     }
 
     // Draw bottom half (mirrored)
-    for (let i = chunkPeaks.length - 1; i >= 0; i--) {
+    for (let i = chunkLength - 1; i >= 0; i--) {
       const x = i * step;
-      const peak = chunkPeaks[i] ?? 0;
-      const y = halfH + Math.abs(peak) * halfH;
+      let peak = 0;
+      for (let ch = 0; ch < numChannels; ch++) {
+        const p = Math.abs(channels[ch]?.[startIndex + i] || 0);
+        if (p > peak) peak = p;
+      }
+      peak *= gain;
+      const y = halfH + Math.min(1.1, peak) * halfH;
       ctx.lineTo(x, y);
     }
   }
@@ -257,7 +310,7 @@ async function redrawMountedChunks() {
 }
 
 watch(
-  () => props.item.audioWaveformMode,
+  () => [props.item.audioWaveformMode, props.item.audioGain, isMuted.value],
   () => {
     void redrawMountedChunks();
   },
