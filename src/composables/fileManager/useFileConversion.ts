@@ -5,6 +5,7 @@ import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/wo
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useUiStore } from '~/stores/ui.store';
 
 // Module-level singleton state so all components share the same modal instance.
 const isModalOpen = ref(false);
@@ -57,6 +58,7 @@ export function useFileConversion() {
   const { t } = useI18n();
   const projectStore = useProjectStore();
   const fileManager = useFileManager();
+  const uiStore = useUiStore();
   const toast = useToast();
 
   function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
@@ -378,6 +380,7 @@ export function useFileConversion() {
       });
 
       await fileManager.loadProjectDirectory();
+      uiStore.notifyFileManagerUpdate();
       isModalOpen.value = false;
     } catch (err: any) {
       console.error('Conversion failed', err);
@@ -398,9 +401,9 @@ export function useFileConversion() {
   async function cancelConversion() {
     if (!isConverting.value) return;
 
-    const client = await getExportWorkerClient();
-    if (client && typeof (client as any).cancelExport === 'function') {
-      await (client as any).cancelExport();
+    const { client } = getExportWorkerClient();
+    if (client && typeof client.cancelExport === 'function') {
+      await client.cancelExport();
     }
     isCancelRequested.value = true;
   }

@@ -314,6 +314,13 @@ async function createTimelineInDirectory(entry: FsEntry) {
 async function createMarkdownInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
+  if (entry.path) {
+    const projectName = projectStore.currentProjectName;
+    if (projectName) {
+      uiStore.setFileTreePathExpanded(projectName, entry.path, true);
+    }
+  }
+
   const existingInFolder = await readDirectory(
     entry.handle as FileSystemDirectoryHandle,
     entry.path,
@@ -983,39 +990,6 @@ async function onDirectoryUploadChange(e: Event) {
         </div>
       </div>
     </UiConfirmModal>
-
-    <FileConversionModal
-      v-model:open="fileConversion.isModalOpen.value"
-      v-model:video-format="fileConversion.videoFormat.value"
-      v-model:video-codec="fileConversion.videoCodec.value"
-      v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
-      v-model:exclude-audio="fileConversion.excludeAudio.value"
-      v-model:audio-codec="fileConversion.audioCodec.value"
-      v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
-      v-model:bitrate-mode="fileConversion.bitrateMode.value"
-      v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
-      v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
-      v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
-      v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
-      v-model:audio-channels="fileConversion.audioChannels.value"
-      v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
-      v-model:image-quality="fileConversion.imageQuality.value"
-      v-model:video-width="fileConversion.videoWidth.value"
-      v-model:video-height="fileConversion.videoHeight.value"
-      v-model:video-fps="fileConversion.videoFps.value"
-      v-model:resolution-format="fileConversion.resolutionFormat.value"
-      v-model:orientation="fileConversion.orientation.value"
-      v-model:aspect-ratio="fileConversion.aspectRatio.value"
-      v-model:is-custom-resolution="fileConversion.isCustomResolution.value"
-      :media-type="fileConversion.mediaType.value"
-      :file-name="fileConversion.targetEntry.value?.name ?? ''"
-      :is-converting="fileConversion.isConverting.value"
-      :conversion-progress="fileConversion.conversionProgress.value"
-      :conversion-error="fileConversion.conversionError.value"
-      :conversion-phase="fileConversion.conversionPhase.value"
-      @convert="fileConversion.startConversion"
-      @cancel="fileConversion.cancelConversion"
-    />
 
     <input
       ref="directoryUploadInput"

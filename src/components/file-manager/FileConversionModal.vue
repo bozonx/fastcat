@@ -149,12 +149,17 @@ function onImageHeightChange(val: number) {
     imageWidth.value = clampPositiveInt(val * imageAspectRatio.value);
   }
 }
+
+const modalTitle = computed(() => {
+  return props.isConverting ? '' : t('videoEditor.fileManager.convert.title', 'Convert File');
+});
 </script>
 
 <template>
   <AppModal
     v-model:open="isOpen"
-    :title="t('videoEditor.fileManager.convert.title', 'Convert File')"
+    :title="modalTitle"
+    :close-button="!isConverting"
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
     :prevent-close="isConverting"
   >
@@ -214,6 +219,7 @@ function onImageHeightChange(val: number) {
           v-model:orientation="orientation"
           v-model:aspect-ratio="aspectRatio"
           :show-audio-settings="false"
+          :disable-aspect-ratio="true"
           :disabled="isConverting"
         />
 

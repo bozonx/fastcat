@@ -15,10 +15,12 @@ const props = withDefaults(
     sampleRate?: number;
     disabled?: boolean;
     showAudioSettings?: boolean;
+    disableAspectRatio?: boolean;
   }>(),
   {
     disabled: false,
     showAudioSettings: true,
+    disableAspectRatio: false,
   },
 );
 
@@ -216,7 +218,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <USelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
-            disabled
+            :disabled="disabled || disableAspectRatio"
             size="sm"
             class="w-full"
             value-key="value"
