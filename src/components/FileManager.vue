@@ -14,7 +14,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProxyStore } from '~/stores/proxy.store';
-import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
+import { createTimelineCommand, createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
@@ -109,7 +109,7 @@ function onFileAction(action: any, entry: FsEntry) {
     }
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
-      (uiStore as any).pendingFsEntryCreateTimeline = entry;
+      uiStore.pendingFsEntryCreateTimeline = entry;
     }
   } else if (action === 'upload') {
     directoryUploadTarget.value = entry;
@@ -244,40 +244,47 @@ async function createOtioVersion(entry: FsEntry) {
 
 async function createMarkdownInDirectory(entry: FsEntry) {
   const dirHandle = entry.handle as FileSystemDirectoryHandle;
-  const baseName = 'Документ_';
-  const ext = '.md';
 
-  const existing = new Set<string>();
-  try {
-    const iterator = (dirHandle as any).values?.() ?? (dirHandle as any).entries?.();
-    if (iterator) {
-      for await (const value of iterator) {
-        const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-        existing.add(handle.name);
-      }
-    }
-  } catch {
-    // ignore
+  const existingInFolder = await fileManager.readDirectory(dirHandle, entry.path);
+  const existingNames = existingInFolder.map((e) => e.name);
+
+  const createdFileName = await createMarkdownCommand({
+    dirHandle,
+    existingNames,
+  });
+
+  await fileManager.reloadDirectory(entry.path ?? '');
+  uiStore.notifyFileManagerUpdate();
+
+  const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+  const newEntry = findEntryByPath(newPath);
+  if (newEntry) {
+    uiStore.selectedFsEntry = {
+      kind: newEntry.kind,
+      name: newEntry.name,
+      path: newEntry.path,
+      handle: newEntry.handle,
+    };
+    selectionStore.selectFsEntry(newEntry);
+    emit('select', newEntry);
   }
+}
 
-  let i = 1;
-  let fileName = `${baseName}${i}${ext}`;
-  while (existing.has(fileName)) {
-    i += 1;
-    fileName = `${baseName}${i}${ext}`;
-  }
+async function createTimelineInDirectory(entry: FsEntry) {
+  const dirHandle = entry.handle as FileSystemDirectoryHandle;
 
-  const handle = await dirHandle.getFileHandle(fileName, { create: true });
-  const createWritable = (handle as FileSystemFileHandle).createWritable;
-  if (typeof createWritable === 'function') {
-    const writable = await (handle as FileSystemFileHandle).createWritable();
-    await writable.write('');
-    await writable.close();
-  }
+  const existingInFolder = await fileManager.readDirectory(dirHandle, entry.path);
+  const existingNames = existingInFolder.map((e) => e.name);
 
-  await loadProjectDirectory();
+  const createdFileName = await createTimelineCommand({
+    projectDir: dirHandle,
+    existingNames,
+  });
 
-  const newPath = entry.path ? `${entry.path}/${fileName}` : fileName;
+  await fileManager.reloadDirectory(entry.path ?? '');
+  uiStore.notifyFileManagerUpdate();
+
+  const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
   const newEntry = findEntryByPath(newPath);
   if (newEntry) {
     uiStore.selectedFsEntry = {
@@ -303,31 +310,31 @@ watch(
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryRename,
+  () => uiStore.pendingFsEntryRename,
   (value) => {
     const entry = value as FsEntry | null;
     if (entry) {
       startRename(entry);
-      (uiStore as any).pendingFsEntryRename = null;
+      uiStore.pendingFsEntryRename = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateFolder,
+  () => uiStore.pendingFsEntryCreateFolder,
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
       onFileActionBase('createFolder', entry, () =>
         fileManager.rootEntries.value.map((e) => e.name),
       );
-      (uiStore as any).pendingFsEntryCreateFolder = null;
+      uiStore.pendingFsEntryCreateFolder = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateTimeline,
+  () => uiStore.pendingFsEntryCreateTimeline,
   async (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
@@ -370,14 +377,14 @@ watch(
           description: e instanceof Error ? e.message : 'Failed to create timeline',
         });
       } finally {
-        (uiStore as any).pendingFsEntryCreateTimeline = null;
+        uiStore.pendingFsEntryCreateTimeline = null;
       }
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateMarkdown,
+  () => uiStore.pendingFsEntryCreateMarkdown,
   async (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
@@ -387,18 +394,18 @@ watch(
       if (handle) {
         void createMarkdownInDirectory({ ...entry, handle });
       }
-      (uiStore as any).pendingFsEntryCreateMarkdown = null;
+      uiStore.pendingFsEntryCreateMarkdown = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingOtioCreateVersion,
+  () => uiStore.pendingOtioCreateVersion,
   (value) => {
     const entry = value as FsEntry | null;
     if (entry) {
       void createOtioVersion(entry);
-      (uiStore as any).pendingOtioCreateVersion = null;
+      uiStore.pendingOtioCreateVersion = null;
     }
   },
 );
@@ -483,7 +490,7 @@ async function onCreateTimeline() {
     uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
 
   if (selectedDir) {
-    (uiStore as any).pendingFsEntryCreateTimeline = selectedDir;
+    uiStore.pendingFsEntryCreateTimeline = selectedDir;
     return;
   }
 

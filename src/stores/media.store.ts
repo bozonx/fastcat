@@ -131,6 +131,8 @@ export const useMediaStore = defineStore('media', () => {
     const metaDir = await fsModule.ensureFilesMetaDir();
     const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
 
+    let parsedMeta: MediaMetadata | null = null;
+
     if (!options?.forceRefresh && metaDir) {
       try {
         const cacheHandle = await metaDir.getFileHandle(cacheFileName);
@@ -138,12 +140,30 @@ export const useMediaStore = defineStore('media', () => {
         const text = await cacheFile.text();
         const parsed = JSON.parse(text) as MediaMetadata;
         if (parsed.source.size === file.size && parsed.source.lastModified === file.lastModified) {
-          mediaMetadata.value[cacheKey] = parsed;
-          return parsed;
+          parsedMeta = parsed;
         }
       } catch {
         // Cache miss
       }
+    }
+
+    if (parsedMeta) {
+      // Try to load cached peaks
+      const waveformsDir = await fsModule.ensureWaveformsDir();
+      if (waveformsDir) {
+        try {
+          const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
+          const peaksFile = await peaksHandle.getFile();
+          const peaksText = await peaksFile.text();
+          const peaksData = JSON.parse(peaksText) as number[][];
+          parsedMeta.audioPeaks = peaksData;
+        } catch {
+          // No cached peaks
+        }
+      }
+
+      mediaMetadata.value[cacheKey] = parsedMeta;
+      return parsedMeta;
     }
 
     try {
@@ -155,7 +175,11 @@ export const useMediaStore = defineStore('media', () => {
         if (metaDir) {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
           const writable = await (cacheHandle as any).createWritable();
-          await writable.write(JSON.stringify(meta, null, 2));
+          // We don't want to save large peaks array inside main metadata json
+          const metaToSave = { ...meta };
+          delete metaToSave.audioPeaks;
+
+          await writable.write(JSON.stringify(metaToSave, null, 2));
           await writable.close();
         }
 
@@ -171,6 +195,26 @@ export const useMediaStore = defineStore('media', () => {
   function setAudioPeaks(projectRelativePath: string, peaks: number[][]) {
     if (mediaMetadata.value[projectRelativePath]) {
       mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+
+      // Save peaks to OPFS
+      const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
+      fsModule
+        .ensureWaveformsDir()
+        .then((waveformsDir) => {
+          if (!waveformsDir) return;
+          waveformsDir
+            .getFileHandle(cacheFileName, { create: true })
+            .then((peaksHandle) => {
+              (peaksHandle as any)
+                .createWritable()
+                .then((writable: any) => {
+                  writable.write(JSON.stringify(peaks)).then(() => writable.close());
+                })
+                .catch((e: Error) => console.warn('Failed to write peaks', e));
+            })
+            .catch((e) => console.warn('Failed to get peaks handle', e));
+        })
+        .catch((e) => console.warn('Failed to get waveforms dir', e));
     }
   }
 
@@ -187,6 +231,12 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  async function removeMediaCache(projectRelativePath: string) {
+    delete mediaMetadata.value[projectRelativePath];
+    delete missingPaths.value[projectRelativePath];
+    await fsModule.removeCacheFiles(projectRelativePath);
+  }
+
   return {
     mediaMetadata,
     missingPaths,
@@ -195,5 +245,6 @@ export const useMediaStore = defineStore('media', () => {
     resetMediaState,
     setAudioPeaks,
     revalidateMissingMedia,
+    removeMediaCache,
   };
 });

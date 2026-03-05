@@ -48,7 +48,7 @@ describe('useClipTransform', () => {
       },
     });
 
-    api.transformScaleX.value = 2;
+    api.transformScaleX.value = 200;
     if (!updated) {
       throw new Error('Expected updateTransform to be called');
     }

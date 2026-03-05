@@ -13,8 +13,10 @@ import TransitionProperties from '~/components/properties/TransitionProperties.v
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
+import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
@@ -30,6 +32,7 @@ const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
+const fileConversion = useFileConversion();
 
 function clearAllSelection() {
   selectionStore.clearSelection();
@@ -244,6 +247,7 @@ function handleDeleteClip() {
             :has-proxy="hasProxy"
             :preview-mode="previewMode"
             @update:preview-mode="(m) => (previewMode = m)"
+            @convert="(entry) => fileConversion.openConversionModal(entry)"
           />
           <MarkerProperties
             v-else-if="displayMode === 'marker' && selectedMarkerId"
@@ -256,6 +260,31 @@ function handleDeleteClip() {
           ></div>
         </div>
       </div>
+
+      <FileConversionModal
+        v-model:open="fileConversion.isModalOpen.value"
+        :media-type="fileConversion.mediaType.value"
+        :file-name="fileConversion.targetEntry.value?.name ?? ''"
+        :is-converting="fileConversion.isConverting.value"
+        :conversion-progress="fileConversion.conversionProgress.value"
+        :conversion-error="fileConversion.conversionError.value"
+        :conversion-phase="fileConversion.conversionPhase.value"
+        v-model:video-format="fileConversion.videoFormat.value"
+        v-model:video-codec="fileConversion.videoCodec.value"
+        v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
+        v-model:exclude-audio="fileConversion.excludeAudio.value"
+        v-model:audio-codec="fileConversion.audioCodec.value"
+        v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
+        v-model:bitrate-mode="fileConversion.bitrateMode.value"
+        v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
+        v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
+        v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
+        v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
+        v-model:audio-channels="fileConversion.audioChannels.value"
+        v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
+        v-model:image-quality="fileConversion.imageQuality.value"
+        @convert="fileConversion.startConversion"
+      />
     </div>
   </div>
 </template>

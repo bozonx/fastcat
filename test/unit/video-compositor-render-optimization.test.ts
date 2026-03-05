@@ -8,6 +8,9 @@ describe('VideoCompositor render optimization', () => {
     const compositor = new VideoCompositor() as any;
     const app = {
       render: vi.fn(),
+      renderer: {
+        render: vi.fn(),
+      },
       stage: {
         children: [] as any[],
       },
@@ -33,7 +36,7 @@ describe('VideoCompositor render optimization', () => {
     const result = await compositor.renderFrame(1_000);
 
     expect(result).toEqual({ id: 'canvas' });
-    expect(app.render).not.toHaveBeenCalled();
+    expect(app.renderer.render).not.toHaveBeenCalled();
   });
 
   it('renders when stage sort is dirty even if time is unchanged', async () => {
@@ -42,6 +45,6 @@ describe('VideoCompositor render optimization', () => {
 
     await compositor.renderFrame(1_000);
 
-    expect(app.render).toHaveBeenCalledTimes(1);
+    expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
 });

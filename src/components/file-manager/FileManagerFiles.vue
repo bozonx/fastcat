@@ -191,7 +191,8 @@ const emit = defineEmits<{
       | 'createFolder'
       | 'openAsPanel'
       | 'openAsProjectTab'
-      | 'createOtioVersion',
+      | 'createOtioVersion'
+      | 'convertFile',
     entry: FsEntry,
   ): void;
   (e: 'createFolder', entry: FsEntry | null): void;
@@ -327,15 +328,7 @@ async function onEntrySelect(entry: FsEntry) {
     <UContextMenu :items="rootContextMenuItems">
       <div class="min-w-full w-max min-h-full flex flex-col" @pointerdown.self="selectProjectRoot">
         <div
-          v-if="isLoading && rootEntries.length === 0"
-          class="px-3 py-4 text-sm text-ui-text-muted"
-        >
-          {{ t('common.loading', 'Loading...') }}
-        </div>
-
-        <!-- Empty state -->
-        <div
-          v-else-if="rootEntries.length === 0"
+          v-if="rootEntries.length === 0"
           class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-ui-text-disabled px-4 text-center min-h-50"
         >
           <UIcon name="i-heroicons-folder-open" class="w-10 h-10" />
@@ -367,12 +360,6 @@ async function onEntrySelect(entry: FsEntry) {
             @request-move="onRequestMove"
             @request-upload="onRequestUpload"
           />
-          <div
-            v-if="isLoading"
-            class="absolute inset-0 bg-ui-bg/30 flex items-center justify-center z-50"
-          >
-            <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />
-          </div>
         </div>
 
         <div

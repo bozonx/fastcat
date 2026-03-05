@@ -35,6 +35,8 @@ import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
+import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -44,6 +46,8 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const fileManager = useFileManager();
 const proxyStore = useProxyStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
+
+const fileConversion = useFileConversion();
 
 const props = defineProps<{
   isFilesPage?: boolean;
@@ -158,7 +162,6 @@ function onContainerKeyDown(e: KeyboardEvent) {
 }
 
 const folderEntries = ref<FsEntry[]>([]);
-const isLoading = ref(false);
 const parentFolders = ref<FsEntry[]>([]);
 
 const {
@@ -182,10 +185,10 @@ const {
   handleFiles,
   mediaCache: fileManager.mediaCache,
   onAfterRename: () => {
-    void loadFolderContent(true);
+    void loadFolderContent();
   },
   onAfterDelete: () => {
-    void loadFolderContent(true);
+    void loadFolderContent();
   },
 });
 
@@ -228,14 +231,18 @@ function onFileAction(action: any, entry: FsEntry) {
     const existingNames = folderEntries.value.map((e) => e.name);
     const parentPath = entry.path ?? '';
     onFileActionBase('createFolder', entry, () => existingNames);
-    void loadFolderContent(true);
+    void loadFolderContent();
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
-      (uiStore as any).pendingFsEntryCreateTimeline = entry;
+      uiStore.pendingFsEntryCreateTimeline = entry;
     }
   } else if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
-      (uiStore as any).pendingFsEntryCreateMarkdown = entry;
+      uiStore.pendingFsEntryCreateMarkdown = entry;
+    }
+  } else if (action === 'convertFile') {
+    if (entry.kind === 'file') {
+      fileConversion.openConversionModal(entry);
     }
   } else {
     onFileActionBase(action, entry);
@@ -244,9 +251,7 @@ function onFileAction(action: any, entry: FsEntry) {
 
 async function refreshFileTree() {
   folderSizes.value = {};
-  await loadProjectDirectory();
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent(true);
+  await loadProjectDirectory({ fullRefresh: true } as any);
 }
 
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
@@ -265,7 +270,7 @@ async function createTimelineInDirectory(entry: FsEntry) {
 
   await reloadDirectory(entry.path || '');
   uiStore.notifyFileManagerUpdate();
-  await loadFolderContent(true);
+  await loadFolderContent();
 
   const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
   const createdEntry = findEntryByPath(createdPath);
@@ -287,7 +292,7 @@ async function createMarkdownInDirectory(entry: FsEntry) {
 
   await reloadDirectory(entry.path || '');
   uiStore.notifyFileManagerUpdate();
-  await loadFolderContent(true);
+  await loadFolderContent();
 
   const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
   const createdEntry = findEntryByPath(createdPath);
@@ -297,40 +302,40 @@ async function createMarkdownInDirectory(entry: FsEntry) {
 }
 
 watch(
-  () => (uiStore as any).pendingFsEntryRename,
+  () => uiStore.pendingFsEntryRename,
   (value) => {
     const entry = value as FsEntry | null;
     if (!entry) return;
     const inCurrentFolder = folderEntries.value.some((e) => e.path === entry.path);
     if (inCurrentFolder) {
       startRename(entry);
-      (uiStore as any).pendingFsEntryRename = null;
+      uiStore.pendingFsEntryRename = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateTimeline,
+  () => uiStore.pendingFsEntryCreateTimeline,
   async (value) => {
     const entry = value as FsEntry | null;
     if (!entry || entry.kind !== 'directory') return;
     try {
       await createTimelineInDirectory(entry);
     } finally {
-      (uiStore as any).pendingFsEntryCreateTimeline = null;
+      uiStore.pendingFsEntryCreateTimeline = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateMarkdown,
+  () => uiStore.pendingFsEntryCreateMarkdown,
   async (value) => {
     const entry = value as FsEntry | null;
     if (!entry || entry.kind !== 'directory') return;
     try {
       await createMarkdownInDirectory(entry);
     } finally {
-      (uiStore as any).pendingFsEntryCreateMarkdown = null;
+      uiStore.pendingFsEntryCreateMarkdown = null;
     }
   },
 );
@@ -406,36 +411,42 @@ const resizeStartWidth = ref(0);
 const folderSizes = ref<Record<string, number>>({});
 const folderSizesLoading = ref<Record<string, boolean>>({});
 
+import PQueue from 'p-queue';
+
+const sizeCalcQueue = new PQueue({ concurrency: 5 });
+
 async function calculateFolderSize(path: string, handle: FileSystemDirectoryHandle) {
   if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
 
   folderSizesLoading.value[path] = true;
-  try {
-    let totalSize = 0;
+  await sizeCalcQueue.add(async () => {
+    try {
+      let totalSize = 0;
 
-    async function calc(dirHandle: FileSystemDirectoryHandle) {
-      // @ts-expect-error Types for FileSystemDirectoryHandle values iterator may be incomplete
-      for await (const entry of dirHandle.values()) {
-        if (entry.kind === 'file') {
-          try {
-            const file = await entry.getFile();
-            totalSize += file.size;
-          } catch {
-            // skip
+      async function calc(dirHandle: FileSystemDirectoryHandle) {
+        // @ts-expect-error Types for FileSystemDirectoryHandle values iterator may be incomplete
+        for await (const entry of dirHandle.values()) {
+          if (entry.kind === 'file') {
+            try {
+              const file = await entry.getFile();
+              totalSize += file.size;
+            } catch {
+              // skip
+            }
+          } else if (entry.kind === 'directory') {
+            await calc(entry);
           }
-        } else if (entry.kind === 'directory') {
-          await calc(entry);
         }
       }
-    }
 
-    await calc(handle);
-    folderSizes.value[path] = totalSize;
-  } catch (error) {
-    console.error('Failed to calculate folder size:', error);
-  } finally {
-    folderSizesLoading.value[path] = false;
-  }
+      await calc(handle);
+      folderSizes.value[path] = totalSize;
+    } catch (error) {
+      console.error('Failed to calculate folder size:', error);
+    } finally {
+      folderSizesLoading.value[path] = false;
+    }
+  });
 }
 
 // Calculate size for selected entity (details view)
@@ -452,7 +463,7 @@ watch(
 // Trigger sizes for directories in list view (one by one)
 watch(
   () => [folderEntries.value, filesPageStore.viewMode],
-  async () => {
+  () => {
     if (filesPageStore.viewMode === 'list' && folderEntries.value.length > 0) {
       for (const entry of folderEntries.value) {
         if (
@@ -461,8 +472,7 @@ watch(
           folderSizes.value[entry.path] === undefined &&
           !folderSizesLoading.value[entry.path]
         ) {
-          // Sequential calculation to avoid hitting browser limits or lagging UI
-          await calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
+          void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
         }
       }
     }
@@ -470,14 +480,13 @@ watch(
   { immediate: true },
 );
 
-async function loadFolderContent(silent = false) {
+async function loadFolderContent() {
   if (!filesPageStore.selectedFolder || !filesPageStore.selectedFolder.handle) {
     cleanupObjectUrls();
     folderEntries.value = [];
     return;
   }
 
-  if (!silent) isLoading.value = true;
   try {
     const handle = toRaw(filesPageStore.selectedFolder.handle) as FileSystemDirectoryHandle;
     const path = filesPageStore.selectedFolder.path || '';
@@ -493,8 +502,6 @@ async function loadFolderContent(silent = false) {
     console.error('Failed to load folder content:', error);
     cleanupObjectUrls();
     folderEntries.value = [];
-  } finally {
-    isLoading.value = false;
   }
 }
 
@@ -508,6 +515,8 @@ function cleanupObjectUrls() {
 
 onUnmounted(() => {
   cleanupObjectUrls();
+  document.removeEventListener('mousemove', onResizeMove);
+  document.removeEventListener('mouseup', onResizeEnd);
 });
 
 async function loadParentFolders() {
@@ -835,15 +844,7 @@ async function onDirectoryUploadChange(e: Event) {
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col">
           <div
-            v-if="isLoading && folderEntries.length === 0"
-            class="flex flex-col items-center justify-center flex-1 gap-4 text-ui-text-muted"
-          >
-            <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
-            <span>{{ t('common.loading', 'Loading...') }}</span>
-          </div>
-
-          <div
-            v-else-if="!filesPageStore.selectedFolder"
+            v-if="!filesPageStore.selectedFolder"
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
           >
             <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
@@ -955,6 +956,32 @@ async function onDirectoryUploadChange(e: Event) {
         </div>
       </div>
     </UiConfirmModal>
+
+    <FileConversionModal
+      v-model:open="fileConversion.isModalOpen.value"
+      :media-type="fileConversion.mediaType.value"
+      :file-name="fileConversion.targetEntry.value?.name ?? ''"
+      :is-converting="fileConversion.isConverting.value"
+      :conversion-progress="fileConversion.conversionProgress.value"
+      :conversion-error="fileConversion.conversionError.value"
+      :conversion-phase="fileConversion.conversionPhase.value"
+      v-model:video-format="fileConversion.videoFormat.value"
+      v-model:video-codec="fileConversion.videoCodec.value"
+      v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
+      v-model:exclude-audio="fileConversion.excludeAudio.value"
+      v-model:audio-codec="fileConversion.audioCodec.value"
+      v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
+      v-model:bitrate-mode="fileConversion.bitrateMode.value"
+      v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
+      v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
+      v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
+      v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
+      v-model:audio-channels="fileConversion.audioChannels.value"
+      v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
+      v-model:image-quality="fileConversion.imageQuality.value"
+      @convert="fileConversion.startConversion"
+    />
+
     <input
       ref="directoryUploadInput"
       type="file"
