@@ -69,6 +69,12 @@ export function useFileConversion() {
     return 'mp4';
   }
 
+  function clampPositiveNumber(value: number, fallback: number) {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return fallback;
+    return v;
+  }
+
   async function openConversionModal(entry: FsEntry) {
     targetEntry.value = entry;
     const type = mediaType.value;
@@ -94,7 +100,7 @@ export function useFileConversion() {
         if (meta?.video) {
           videoWidth.value = Math.max(1, Math.round(Number(meta.video.width) || 1920));
           videoHeight.value = Math.max(1, Math.round(Number(meta.video.height) || 1080));
-          videoFps.value = Math.max(1, Math.round(Number(meta.video.fps) || 30));
+          videoFps.value = clampPositiveNumber(Number(meta.video.fps), 30);
           isCustomResolution.value = true;
         }
 
@@ -229,7 +235,7 @@ export function useFileConversion() {
         audioCodec: audioCodec.value,
         width: Math.max(1, Math.round(Number(videoWidth.value) || meta.video?.width || 1920)),
         height: Math.max(1, Math.round(Number(videoHeight.value) || meta.video?.height || 1080)),
-        fps: Math.max(1, Math.round(Number(videoFps.value) || meta.video?.fps || 30)),
+        fps: clampPositiveNumber(Number(videoFps.value) || Number(meta.video?.fps), 30),
         bitrateMode: bitrateMode.value,
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: false,
