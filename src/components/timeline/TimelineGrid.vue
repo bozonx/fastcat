@@ -113,15 +113,15 @@ function draw() {
 
   if (pxPerFrame >= 12) {
     const frameDurationUs = 1_000_000 / currentFps;
-    const nextFrameStartUs = (Math.floor(currentTime.value / frameDurationUs) + 1) * frameDurationUs;
-    const nextFrameStartX = timeUsToPx(nextFrameStartUs, currentZoom) - startPx;
+    const currentFrameStartUs = Math.floor(currentTime.value / frameDurationUs) * frameDurationUs;
+    const currentFrameStartX = timeUsToPx(currentFrameStartUs, currentZoom) - startPx;
 
-    if (nextFrameStartX < w && nextFrameStartX + pxPerFrame > 0) {
+    if (currentFrameStartX < w && currentFrameStartX + pxPerFrame > 0) {
       const styles = window.getComputedStyle(document.documentElement);
       const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
       ctx.fillStyle = primaryColor;
-      ctx.globalAlpha = 0.2;
-      ctx.fillRect(nextFrameStartX, 0, pxPerFrame, h);
+      ctx.globalAlpha = 0.12;
+      ctx.fillRect(currentFrameStartX, 0, pxPerFrame, h);
       ctx.globalAlpha = 1;
     }
   }

@@ -1007,6 +1007,13 @@ async function onDirectoryUploadChange(e: Event) {
       v-model:audio-channels="fileConversion.audioChannels.value"
       v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
       v-model:image-quality="fileConversion.imageQuality.value"
+      v-model:video-width="fileConversion.videoWidth.value"
+      v-model:video-height="fileConversion.videoHeight.value"
+      v-model:video-fps="fileConversion.videoFps.value"
+      v-model:resolution-format="fileConversion.resolutionFormat.value"
+      v-model:orientation="fileConversion.orientation.value"
+      v-model:aspect-ratio="fileConversion.aspectRatio.value"
+      v-model:is-custom-resolution="fileConversion.isCustomResolution.value"
       @convert="fileConversion.startConversion"
       @cancel="fileConversion.cancelConversion"
     />
