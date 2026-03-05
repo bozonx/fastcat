@@ -630,7 +630,13 @@ const { contextMenuItems } = useClipContextMenu({
       <div class="flex-1 flex w-full min-h-0 relative z-20">
         <TimelineClipThumbnails v-if="isVideo(item)" :item="item as any" :width="clipWidthPx" />
 
-        <TimelineAudioWaveform v-if="isAudio(item)" :item="item as any" />
+        <TimelineAudioWaveform
+          v-if="
+            isAudio(item) ||
+            (isVideo(item) && clipHasAudio(item, track) && clipItem?.showWaveform !== false)
+          "
+          :item="item as any"
+        />
 
         <div
           v-if="clipItem && !shouldCollapseTransitions(item)"

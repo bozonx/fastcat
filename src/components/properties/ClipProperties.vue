@@ -50,6 +50,20 @@ function handleDeleteClip() {
   timelineStore.deleteSelectedItems(props.clip.trackId);
 }
 
+function toggleAudioWaveformMode() {
+  const current = (props.clip as import('~/timeline/types').TimelineClipItem).audioWaveformMode || 'half';
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    audioWaveformMode: current === 'half' ? 'full' : 'half',
+  });
+}
+
+function toggleShowWaveform() {
+  const current = (props.clip as import('~/timeline/types').TimelineClipItem).showWaveform !== false;
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    showWaveform: !current,
+  });
+}
+
 function selectTransitionEdge(edge: 'in' | 'out') {
   const clip = props.clip;
   timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
@@ -335,6 +349,40 @@ defineExpose({
       >
         {{ t('granVideoEditor.clip.showInFileManager', 'Show in File Manager') }}
       </UButton>
+
+      <template v-if="canEditAudioGain">
+        <UButton
+          v-if="clipTrackKind === 'video'"
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-eye"
+          class="w-full justify-center mt-2"
+          @click="toggleShowWaveform"
+        >
+          {{
+            clip.showWaveform === false
+              ? t('granVideoEditor.clip.showWaveform', 'Show Waveform')
+              : t('granVideoEditor.clip.hideWaveform', 'Hide Waveform')
+          }}
+        </UButton>
+
+        <UButton
+          v-if="clipTrackKind === 'audio' || clip.showWaveform !== false"
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-chart-bar"
+          class="w-full justify-center mt-2"
+          @click="toggleAudioWaveformMode"
+        >
+          {{
+            (clip.audioWaveformMode || 'half') === 'full'
+              ? t('granVideoEditor.clip.halfWaveform', 'Half Waveform')
+              : t('granVideoEditor.clip.fullWaveform', 'Full Waveform')
+          }}
+        </UButton>
+      </template>
     </PropertySection>
 
     <PropertySection v-if="clip.clipType === 'media'" :title="t('common.source', 'Source File')">
