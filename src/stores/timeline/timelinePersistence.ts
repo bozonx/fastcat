@@ -75,6 +75,8 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
         const writable = await (handle as any).createWritable();
         await writable.write(deps.serializeTimelineToOtio(snapshot));
         await writable.close();
+
+        deps.onSaveSuccess?.();
       } catch (e: unknown) {
         deps.timelineSaveError.value =
           e instanceof Error ? e.message : 'Failed to save timeline file';
