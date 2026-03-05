@@ -420,19 +420,23 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   }
 
   const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
   const qTimeline = quantizeRangeToFrames(item.timelineRange, fps);
   const startUs = qTimeline.startUs;
   const endUs = startUs + qTimeline.durationUs;
 
   const startFrame = usToFrame(startUs, fps, 'round');
   const endFrame = usToFrame(endUs, fps, 'round');
-  const cutFrame = usToFrame(quantizeTimeUsToFrames(Number(cmd.atUs), fps, 'round'), fps, 'round');
+  const cutFrameCandidate = shouldQuantizeToFrames
+    ? usToFrame(quantizeTimeUsToFrames(Number(cmd.atUs), fps, 'round'), fps, 'round')
+    : usToFrame(Number(cmd.atUs), fps, 'round');
+  const cutFrame = cutFrameCandidate;
 
   if (!(cutFrame > startFrame && cutFrame < endFrame)) {
     return { next: doc };
   }
 
-  const atUs = frameToUs(cutFrame, fps);
+  const atUs = shouldQuantizeToFrames ? frameToUs(cutFrame, fps) : Number(cmd.atUs);
 
   const leftDurationUs = Math.max(0, atUs - startUs);
   const rightDurationUs = Math.max(0, endUs - atUs);

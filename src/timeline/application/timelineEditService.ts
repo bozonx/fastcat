@@ -115,6 +115,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
               trackId: track.id,
               itemId: clip.id,
               startUs: Math.max(0, clipStart - deltaUs),
+              quantizeToFrames: false,
             },
             { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
           );
@@ -170,6 +171,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
           trackId: target.trackId,
           itemId: clip.id,
           startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
+          quantizeToFrames: false,
         },
         { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
       );
@@ -225,6 +227,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
           trackId: target.trackId,
           itemId: clip.id,
           startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
+          quantizeToFrames: false,
         },
         { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
       );
@@ -316,6 +319,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
               itemId: clip.id,
               startUs: Math.max(0, clipStart - deltaUs),
               ignoreLocks: true,
+              quantizeToFrames: false,
             },
             { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
           );
@@ -409,6 +413,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
               itemId: clip.id,
               startUs: Math.max(0, clipStart - deltaUs),
               ignoreLocks: true,
+              quantizeToFrames: false,
             },
             { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
           );

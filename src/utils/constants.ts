@@ -20,10 +20,18 @@ export const VIDEO_CORE_LIMITS = {
 };
 
 export const TIMELINE_CLIP_THUMBNAILS = {
-  DIR_NAME: 'video_clip_frames',
+  DIR_NAME: 'video_clips',
   INTERVAL_SECONDS: 2,
   WIDTH: 160,
   HEIGHT: 90,
   QUALITY: 0.4,
   MAX_CONCURRENT_TASKS: 2,
+} as const;
+
+export const FILE_MANAGER_THUMBNAILS = {
+  DIR_NAME: 'video_files',
+  MAX_SIZE: 400,
+  QUALITY: 0.6,
+  POSITION_FRACTION: 0.25, // First quarter
+  MAX_CONCURRENT_TASKS: 3,
 } as const;

@@ -89,6 +89,13 @@ class AudioContextMock {
   public createdGains: GainNodeMock[] = [];
   public createdBuffers: AudioBufferMock[] = [];
 
+  createAnalyser = vi.fn(() => ({
+    fftSize: 2048,
+    frequencyBinCount: 1024,
+    getByteFrequencyData: vi.fn(),
+    connect: vi.fn(),
+  }));
+
   createGain() {
     const gain = new GainNodeMock();
     this.createdGains.push(gain);
@@ -190,10 +197,10 @@ describe('AudioEngine', () => {
     await engine.init();
 
     expect(audioContextInstance).toBeTruthy();
-    engine.setVolume(2);
-    expect(audioContextInstance?.createdGains[0]?.gain.value).toBe(1);
+    engine.setMasterVolume(2);
+    expect(audioContextInstance?.createdGains[0]?.gain.value).toBe(2);
 
-    engine.setVolume(-1);
+    engine.setMasterVolume(-1);
     expect(audioContextInstance?.createdGains[0]?.gain.value).toBe(0);
   });
 
