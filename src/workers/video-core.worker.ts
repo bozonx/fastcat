@@ -34,13 +34,13 @@ const api: any = {
   extractMetadata,
 
   async initCompositor(canvas: OffscreenCanvas, width: number, height: number, bgColor: string) {
+    const nextCompositor = new VideoCompositor();
+    await nextCompositor.init(width, height, bgColor, true, canvas);
+
     if (compositor) {
       compositor.destroy();
-      compositor = null;
     }
-
-    compositor = new VideoCompositor();
-    await compositor.init(width, height, bgColor, true, canvas);
+    compositor = nextCompositor;
   },
 
   async loadTimeline(clips: any[]) {

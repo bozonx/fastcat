@@ -73,6 +73,10 @@ export interface GranVideoEditorUserSettings {
         | 'none';
       middleClick: 'pan' | 'none';
     };
+    trackHeaders: {
+      wheel: 'scroll_vertical' | 'resize_track' | 'zoom_vertical' | 'none';
+      wheelSecondary: 'scroll_vertical' | 'resize_track' | 'zoom_vertical' | 'none';
+    };
     monitor: {
       wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
       wheelShift: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
@@ -143,6 +147,10 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
       middleClick: 'pan',
+    },
+    trackHeaders: {
+      wheel: 'scroll_vertical',
+      wheelSecondary: 'resize_track',
     },
     monitor: {
       wheel: 'zoom',

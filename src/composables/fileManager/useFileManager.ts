@@ -213,7 +213,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           },
         );
 
-        await loadProjectDirectory();
+        if (targetDirPath !== undefined) {
+          await reloadDirectory(targetDirPath);
+        } else {
+          await loadProjectDirectory();
+        }
       },
       defaultErrorMessage: 'Failed to upload files',
       toastTitle: 'Upload error',
@@ -221,7 +225,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function createFolder(name: string, targetEntry: FileSystemDirectoryHandle | null = null) {
+  async function createFolder(
+    name: string,
+    targetEntry: FileSystemDirectoryHandle | null = null,
+    parentPath: string = '',
+  ) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
@@ -230,7 +238,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         const baseDir = targetEntry || (await deps.getProjectDirHandle());
         if (!baseDir) return;
         await createFolderCommand({ name, baseDir });
-        await loadProjectDirectory();
+        await reloadDirectory(parentPath);
       },
       defaultErrorMessage: 'Failed to create folder',
       toastTitle: 'Folder error',
@@ -271,7 +279,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           },
         });
 
-        await loadProjectDirectory();
+        const parentPath = getParentPath(target.path);
+        await reloadDirectory(parentPath);
         await triggerMediaIntegrityCheck();
       },
       defaultErrorMessage: 'Failed to delete',
@@ -316,7 +325,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           await deps.onEntryPathChanged?.({ oldPath, newPath });
         }
 
-        await loadProjectDirectory();
+        const parentPathForRename = getParentPath(target.path);
+        await reloadDirectory(parentPathForRename);
         await triggerMediaIntegrityCheck();
       },
       defaultErrorMessage: 'Failed to rename',
@@ -391,7 +401,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           },
         );
 
-        await loadProjectDirectory();
+        const sourceParentPath = getParentPath(sourcePath);
+        await reloadDirectory(sourceParentPath);
+        await reloadDirectory(targetDirPath);
         await triggerMediaIntegrityCheck();
       },
       defaultErrorMessage: 'Failed to move',
@@ -411,7 +423,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           projectDir,
           timelinesDirName: TIMELINES_DIR_NAME,
         });
-        await loadProjectDirectory();
+        await reloadDirectory(TIMELINES_DIR_NAME);
         return createdPath;
       },
       defaultErrorMessage: 'Failed to create timeline',
@@ -425,6 +437,18 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     if (entry.name.toLowerCase().endsWith('.otio')) return 'i-heroicons-rectangle-stack';
     const type = getMediaTypeFromFilename(entry.name);
     return getIconForMediaType(type);
+  }
+
+  function getParentPath(path?: string): string {
+    if (!path) return '';
+    const parts = path.split('/');
+    if (parts.length <= 1) return '';
+    return parts.slice(0, -1).join('/');
+  }
+
+  async function reloadDirectory(path: string) {
+    const projectDir = await deps.getProjectDirHandle();
+    if (projectDir) await service.reloadDirectory(path, projectDir);
   }
 
   return {
@@ -450,10 +474,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     createTimeline,
     getFileIcon,
     readDirectory: service.readDirectory,
-    reloadDirectory: async (path: string) => {
-      const projectDir = await deps.getProjectDirHandle();
-      if (projectDir) await service.reloadDirectory(path, projectDir);
-    },
+    reloadDirectory,
   };
 }
 

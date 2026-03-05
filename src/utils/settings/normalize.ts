@@ -173,6 +173,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const normalizedMouse: GranVideoEditorUserSettings['mouse'] = {
     ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
     timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
+    trackHeaders: { ...DEFAULT_USER_SETTINGS.mouse.trackHeaders },
     monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
   };
 
@@ -239,6 +240,23 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         (normalizedMouse.timeline as Record<string, unknown>).middleClick = timelineMiddleClick as
           | 'pan'
           | 'none';
+      }
+    }
+
+    const rawTrackHeaders = (rawMouse as Record<string, unknown>).trackHeaders as
+      | Record<string, unknown>
+      | undefined;
+    if (rawTrackHeaders && typeof rawTrackHeaders === 'object') {
+      for (const k of ['wheel', 'wheelSecondary']) {
+        if (
+          (TRACK_HEADERS_WHEEL_ACTIONS as readonly string[]).includes(
+            (rawTrackHeaders as Record<string, unknown>)[k] as string,
+          )
+        ) {
+          (normalizedMouse.trackHeaders as Record<string, unknown>)[k] = (
+            rawTrackHeaders as Record<string, unknown>
+          )[k];
+        }
       }
     }
 

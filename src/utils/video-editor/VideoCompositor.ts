@@ -753,7 +753,7 @@ export class VideoCompositor {
   }
 
   async renderFrame(timeUs: number): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
-    if (!this.app || !this.canvas) return null;
+    if (!this.app || !this.canvas || !this.app.renderer) return null;
 
     if (this.contextLost) {
       return null;
@@ -1035,7 +1035,7 @@ export class VideoCompositor {
             if (childObj) childObj.visible = false;
           }
 
-          if (this.adjustmentTexture) {
+          if (this.adjustmentTexture && this.app.renderer) {
             this.app.renderer.render({
               container: this.app.stage,
               target: this.adjustmentTexture,
@@ -1067,7 +1067,9 @@ export class VideoCompositor {
         }
       }
 
-      this.app.render();
+      if (this.app.renderer) {
+        this.app.renderer.render(this.app.stage);
+      }
 
       return this.canvas;
     } finally {

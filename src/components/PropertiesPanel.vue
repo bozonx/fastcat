@@ -12,6 +12,7 @@ import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
+import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
 
@@ -72,7 +73,7 @@ const selectedMarkerId = computed<string | null>(() => {
   return null;
 });
 
-const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'marker' | 'empty'>(() => {
+const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'marker' | 'timeline' | 'empty'>(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
@@ -81,6 +82,7 @@ const displayMode = computed<'transition' | 'clip' | 'track' | 'file' | 'marker'
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
+  if (entity?.source === 'timeline' && entity.kind === 'timeline-properties') return 'timeline';
 
   return 'empty';
 });
@@ -167,6 +169,12 @@ function handleDeleteClip() {
           >
             {{ selectedTrack.name }}
           </span>
+          <span
+            v-else-if="displayMode === 'timeline'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ t('granVideoEditor.timeline.properties.title', 'Timeline Properties') }}
+          </span>
         </template>
         <span v-else class="ml-2 text-xs text-ui-text-muted font-mono truncate">
           {{ t('common.properties', 'Properties') }}
@@ -241,6 +249,7 @@ function handleDeleteClip() {
             v-else-if="displayMode === 'marker' && selectedMarkerId"
             :marker-id="selectedMarkerId"
           />
+          <TimelineProperties v-else-if="displayMode === 'timeline'" />
           <div
             v-else
             class="flex flex-col items-center justify-center h-full text-ui-text-muted"

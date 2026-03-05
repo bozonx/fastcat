@@ -244,6 +244,16 @@ export interface UpdateMasterGainCommand {
   gain: number;
 }
 
+export interface UpdateMasterMutedCommand {
+  type: 'update_master_muted';
+  muted: boolean;
+}
+
+export interface UpdateMasterEffectsCommand {
+  type: 'update_master_effects';
+  effects: import('./types').ClipEffect[];
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -268,7 +278,9 @@ export type TimelineCommand =
   | AddMarkerCommand
   | UpdateMarkerCommand
   | RemoveMarkerCommand
-  | UpdateMasterGainCommand;
+  | UpdateMasterGainCommand
+  | UpdateMasterMutedCommand
+  | UpdateMasterEffectsCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -333,6 +345,32 @@ export function applyTimelineCommand(
             gran: {
               ...(doc.metadata?.gran ?? {}),
               masterGain: cmd.gain,
+            },
+          },
+        },
+      };
+    case 'update_master_muted':
+      return {
+        next: {
+          ...doc,
+          metadata: {
+            ...(doc.metadata ?? {}),
+            gran: {
+              ...(doc.metadata?.gran ?? {}),
+              masterMuted: cmd.muted,
+            },
+          },
+        },
+      };
+    case 'update_master_effects':
+      return {
+        next: {
+          ...doc,
+          metadata: {
+            ...(doc.metadata ?? {}),
+            gran: {
+              ...(doc.metadata?.gran ?? {}),
+              masterEffects: cmd.effects,
             },
           },
         },
