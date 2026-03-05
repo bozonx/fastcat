@@ -14,7 +14,6 @@ import TransitionProperties from '~/components/properties/TransitionProperties.v
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
-import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 

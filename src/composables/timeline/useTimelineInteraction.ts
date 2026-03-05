@@ -298,158 +298,124 @@ export function useTimelineInteraction(
         }
       }
 
-      const isMulti = timelineStore.selectedItemIds.includes(itemId) && timelineStore.selectedItemIds.length > 1;
+      const isMulti =
+        timelineStore.selectedItemIds.includes(itemId) && timelineStore.selectedItemIds.length > 1;
 
       if (isMulti && dragStartSnapshot.value) {
-
         const deltaUs = startUs - dragAnchorStartUs.value;
 
-        const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] = [];
-
-        
+        const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] =
+          [];
 
         let trackOffset = 0;
 
         if (targetTrackId !== dragOriginTrackId.value) {
+          const origIdx = tracks.value.findIndex((t) => t.id === dragOriginTrackId.value);
 
-            const origIdx = tracks.value.findIndex(t => t.id === dragOriginTrackId.value);
+          const newIdx = tracks.value.findIndex((t) => t.id === targetTrackId);
 
-            const newIdx = tracks.value.findIndex(t => t.id === targetTrackId);
-
-            if (origIdx !== -1 && newIdx !== -1) {
-
-                trackOffset = newIdx - origIdx;
-
-            }
-
+          if (origIdx !== -1 && newIdx !== -1) {
+            trackOffset = newIdx - origIdx;
+          }
         }
-
-
 
         for (const selectedId of timelineStore.selectedItemIds) {
+          let origTrackId = '';
 
-           let origTrackId = '';
+          let origStartUs = 0;
 
-           let origStartUs = 0;
+          for (const t of dragStartSnapshot.value.tracks) {
+            const it = t.items.find((x) => x.id === selectedId);
 
-           for (const t of dragStartSnapshot.value.tracks) {
+            if (it && it.kind === 'clip') {
+              origTrackId = t.id;
 
-             const it = t.items.find(x => x.id === selectedId);
+              origStartUs = it.timelineRange.startUs;
 
-             if (it && it.kind === 'clip') {
+              break;
+            }
+          }
 
-               origTrackId = t.id;
+          let currTrackId = '';
 
-               origStartUs = it.timelineRange.startUs;
+          for (const t of tracks.value) {
+            if (t.items.some((x) => x.id === selectedId)) {
+              currTrackId = t.id;
 
-               break;
+              break;
+            }
+          }
 
-             }
+          if (origTrackId && currTrackId) {
+            let toTrackId = origTrackId;
 
-           }
+            if (trackOffset !== 0) {
+              const origIdx = tracks.value.findIndex((t) => t.id === origTrackId);
 
+              const newIdx = origIdx + trackOffset;
 
+              if (newIdx >= 0 && newIdx < tracks.value.length) {
+                const targetT = tracks.value[newIdx];
 
-           let currTrackId = '';
+                const origT = tracks.value[origIdx];
 
-           for (const t of tracks.value) {
+                if (targetT && origT && targetT.kind === origT.kind) {
+                  toTrackId = targetT.id;
+                }
+              }
+            }
 
-             if (t.items.some(x => x.id === selectedId)) {
+            moves.push({
+              fromTrackId: currTrackId,
 
-               currTrackId = t.id;
+              toTrackId,
 
-               break;
+              itemId: selectedId,
 
-             }
-
-           }
-
-
-
-           if (origTrackId && currTrackId) {
-
-             let toTrackId = origTrackId;
-
-             if (trackOffset !== 0) {
-
-                 const origIdx = tracks.value.findIndex(t => t.id === origTrackId);
-
-                 const newIdx = origIdx + trackOffset;
-
-                 if (newIdx >= 0 && newIdx < tracks.value.length) {
-
-                     const targetT = tracks.value[newIdx];
-
-                     const origT = tracks.value[origIdx];
-
-                     if (targetT && origT && targetT.kind === origT.kind) {
-
-                         toTrackId = targetT.id;
-
-                     }
-
-                 }
-
-             }
-
-
-
-             moves.push({
-
-               fromTrackId: currTrackId,
-
-               toTrackId,
-
-               itemId: selectedId,
-
-               startUs: Math.max(0, origStartUs + deltaUs),
-
-             });
-
-           }
-
+              startUs: Math.max(0, origStartUs + deltaUs),
+            });
+          }
         }
 
-
-
         moves.sort((a, b) => {
-
           return deltaUs >= 0 ? b.startUs - a.startUs : a.startUs - b.startUs;
-
         });
 
-
-
         if (moves.length > 0) {
-
           try {
+            if (overlapMode === 'pseudo') {
+              const cmds = moves.map((move) => ({
+                type: 'overlay_place_item' as const,
+                fromTrackId: move.fromTrackId,
+                toTrackId: move.toTrackId,
+                itemId: move.itemId,
+                startUs: move.startUs,
+                quantizeToFrames: enableFrameSnap,
+              }));
 
-            const cmd = {
+              timelineStore.batchApplyTimeline(cmds as any, {
+                saveMode: 'none',
+                skipHistory: true,
+              });
+              lastDragAppliedCmd.value = (cmds[cmds.length - 1] ?? null) as any;
+            } else {
+              const cmd = {
+                type: 'move_items',
+                moves,
+                quantizeToFrames: enableFrameSnap,
+              } as const;
 
-              type: 'move_items',
-
-              moves,
-
-              quantizeToFrames: enableFrameSnap,
-
-            } as const;
-
-            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-
-            lastDragAppliedCmd.value = cmd as any;
+              timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+              lastDragAppliedCmd.value = cmd as any;
+            }
 
             draggingTrackId.value = targetTrackId;
-
             hasPendingTimelinePersist.value = true;
-
           } catch {}
-
         }
 
         return;
-
       }
-
 
       if (overlapMode === 'pseudo') {
         movePreview.value = { itemId, trackId: targetTrackId, startUs };
