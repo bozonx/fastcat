@@ -37,6 +37,9 @@ export const bloomManifest: EffectManifest<BloomParams> = {
   updateFilter: (filter, values) => {
     const f = filter as BloomFilter;
     if (values.strength !== undefined) f.strength = values.strength;
-    if (values.quality !== undefined) f.quality = values.quality;
+    if (values.quality !== undefined) {
+      (f as any)._blurXFilter.quality = values.quality;
+      (f as any)._blurYFilter.quality = values.quality;
+    }
   },
 };

@@ -60,6 +60,7 @@ export interface MoveItemCommand {
   itemId: string;
   startUs: number;
   ignoreLocks?: boolean;
+  quantizeToFrames?: boolean;
 }
 
 export interface TrimItemCommand {
@@ -68,6 +69,7 @@ export interface TrimItemCommand {
   itemId: string;
   edge: 'start' | 'end';
   deltaUs: number;
+  quantizeToFrames?: boolean;
 }
 
 export interface SplitItemCommand {
@@ -117,6 +119,7 @@ export interface MoveItemToTrackCommand {
   toTrackId: string;
   itemId: string;
   startUs: number;
+  quantizeToFrames?: boolean;
 }
 
 export interface ExtractAudioToTrackCommand {
@@ -209,6 +212,7 @@ export interface OverlayTrimItemCommand {
   itemId: string;
   edge: 'start' | 'end';
   deltaUs: number;
+  quantizeToFrames?: boolean;
 }
 
 export interface AddMarkerCommand {

@@ -188,7 +188,11 @@ export function overlayTrimItem(
     throw new Error('Locked audio clip');
   }
 
-  const deltaUs = quantizeDeltaUsToFrames(Number(cmd.deltaUs), fps, 'round');
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const deltaCandidate = Math.round(Number(cmd.deltaUs));
+  const deltaUs = shouldQuantizeToFrames
+    ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
+    : deltaCandidate;
   const speed = typeof moved.speed === 'number' && Number.isFinite(moved.speed) ? moved.speed : 1;
   const sourceDeltaUs = quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round');
 
@@ -233,12 +237,14 @@ export function overlayTrimItem(
   }
 
   const nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
-  const qTimeline = quantizeRangeToFrames(
-    { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-    fps,
-  );
-  nextTimelineStartUs = qTimeline.startUs;
-  nextTimelineDurationUs = qTimeline.durationUs;
+  if (shouldQuantizeToFrames) {
+    const qTimeline = quantizeRangeToFrames(
+      { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+      fps,
+    );
+    nextTimelineStartUs = qTimeline.startUs;
+    nextTimelineDurationUs = qTimeline.durationUs;
+  }
 
   const movedNext: TimelineClipItem = {
     ...moved,
@@ -1108,7 +1114,12 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     return { next: { ...doc, tracks: nextTracks } };
   }
 
-  const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
+  const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
+  const startUs = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    : startCandidate;
   const durationUs = Math.max(0, item.timelineRange.durationUs);
 
   assertNoOverlap(track, item.id, startUs, durationUs);
@@ -1166,7 +1177,12 @@ export function moveItemToTrack(
     Boolean(item.linkedVideoClipId) &&
     Boolean(item.lockToLinkedVideo);
 
-  const startUs = quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round');
+  const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
+  const startUs = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    : startCandidate;
   const durationUs = Math.max(0, item.timelineRange.durationUs);
 
   assertNoOverlap(toTrack, item.id, startUs, durationUs);
@@ -1241,7 +1257,11 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   }
 
   const fps = getDocFps(doc);
-  const deltaUs = quantizeDeltaUsToFrames(Number(cmd.deltaUs), fps, 'round');
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const deltaCandidate = Math.round(Number(cmd.deltaUs));
+  const deltaUs = shouldQuantizeToFrames
+    ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
+    : deltaCandidate;
 
   const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
   const sourceDeltaUs = quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round');
@@ -1291,13 +1311,15 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   const nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
 
-  const qTimeline = quantizeRangeToFrames(
-    { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-    fps,
-  );
+  if (shouldQuantizeToFrames) {
+    const qTimeline = quantizeRangeToFrames(
+      { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+      fps,
+    );
 
-  nextTimelineStartUs = qTimeline.startUs;
-  nextTimelineDurationUs = qTimeline.durationUs;
+    nextTimelineStartUs = qTimeline.startUs;
+    nextTimelineDurationUs = qTimeline.durationUs;
+  }
 
   assertNoOverlap(track, item.id, nextTimelineStartUs, nextTimelineDurationUs);
 
