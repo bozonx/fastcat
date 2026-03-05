@@ -15,7 +15,6 @@ import { useFileManagerActions } from '~/composables/fileManager/useFileManagerA
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
-import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 
@@ -43,34 +42,6 @@ const proxyStore = useProxyStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
 
 const fileConversion = useFileConversion();
-const {
-  isModalOpen: conversionModalOpen,
-  videoFormat: conversionVideoFormat,
-  videoCodec: conversionVideoCodec,
-  videoBitrateMbps: conversionVideoBitrateMbps,
-  excludeAudio: conversionExcludeAudio,
-  audioCodec: conversionAudioCodec,
-  audioBitrateKbps: conversionAudioBitrateKbps,
-  bitrateMode: conversionBitrateMode,
-  keyframeIntervalSec: conversionKeyframeIntervalSec,
-  audioOnlyFormat: conversionAudioOnlyFormat,
-  audioOnlyCodec: conversionAudioOnlyCodec,
-  audioOnlyBitrateKbps: conversionAudioOnlyBitrateKbps,
-  audioChannels: conversionAudioChannels,
-  audioSampleRate: conversionAudioSampleRate,
-  imageQuality: conversionImageQuality,
-  imageWidth: conversionImageWidth,
-  imageHeight: conversionImageHeight,
-  isImageResolutionLinked: conversionIsImageResolutionLinked,
-  imageAspectRatio: conversionImageAspectRatio,
-  mediaType: conversionMediaType,
-  targetEntry: conversionTargetEntry,
-  originalAudioSampleRate: conversionOriginalAudioSampleRate,
-  isConverting: conversionIsConverting,
-  conversionProgress: conversionProgress,
-  conversionError: conversionError,
-  conversionPhase: conversionPhase,
-} = fileConversion;
 
 const fileManager = useFileManager();
 const {
@@ -716,40 +687,9 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
       </div>
     </UiConfirmModal>
 
-    <FileConversionModal
-      v-model:open="conversionModalOpen"
-      v-model:video-format="conversionVideoFormat"
-      v-model:video-codec="conversionVideoCodec"
-      v-model:video-bitrate-mbps="conversionVideoBitrateMbps"
-      v-model:exclude-audio="conversionExcludeAudio"
-      v-model:audio-codec="conversionAudioCodec"
-      v-model:audio-bitrate-kbps="conversionAudioBitrateKbps"
-      v-model:bitrate-mode="conversionBitrateMode"
-      v-model:keyframe-interval-sec="conversionKeyframeIntervalSec"
-      v-model:audio-only-format="conversionAudioOnlyFormat"
-      v-model:audio-only-codec="conversionAudioOnlyCodec"
-      v-model:audio-only-bitrate-kbps="conversionAudioOnlyBitrateKbps"
-      v-model:audio-channels="conversionAudioChannels"
-      v-model:audio-sample-rate="conversionAudioSampleRate"
-      v-model:image-quality="conversionImageQuality"
-      v-model:image-width="conversionImageWidth"
-      v-model:image-height="conversionImageHeight"
-      v-model:is-image-resolution-linked="conversionIsImageResolutionLinked"
-      v-model:image-aspect-ratio="conversionImageAspectRatio"
-      :media-type="conversionMediaType"
-      :file-name="conversionTargetEntry?.name ?? ''"
-      :original-audio-sample-rate="conversionOriginalAudioSampleRate"
-      :is-converting="conversionIsConverting"
-      :conversion-progress="conversionProgress"
-      :conversion-error="conversionError"
-      :conversion-phase="conversionPhase"
-      @convert="fileConversion.startConversion"
-      @cancel="fileConversion.cancelConversion"
-    />
-
     <!-- Global Drag Highlight / Hint -->
     <div
-      v-if="uiStore.isGlobalDragging && !isDragging"
+      v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
       class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary-500/10 border-4 border-dashed border-primary-500/50 m-2 rounded-2xl pointer-events-none transition-all duration-300"
     >
       <div

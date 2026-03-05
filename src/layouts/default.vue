@@ -22,6 +22,8 @@ import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
 import EditorHeader from '~/components/editor/EditorHeader.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
+import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -35,6 +37,36 @@ const { onGlobalDragOver, onGlobalDragLeave, onGlobalDrop } = useGlobalDragAndDr
 const isEditorSettingsOpen = ref(false);
 const isProjectSettingsOpen = ref(false);
 const isStartingUp = ref(true);
+
+const fileConversion = useFileConversion();
+const {
+  isModalOpen: conversionModalOpen,
+  videoFormat: conversionVideoFormat,
+  videoCodec: conversionVideoCodec,
+  videoBitrateMbps: conversionVideoBitrateMbps,
+  excludeAudio: conversionExcludeAudio,
+  audioCodec: conversionAudioCodec,
+  audioBitrateKbps: conversionAudioBitrateKbps,
+  bitrateMode: conversionBitrateMode,
+  keyframeIntervalSec: conversionKeyframeIntervalSec,
+  audioOnlyFormat: conversionAudioOnlyFormat,
+  audioOnlyCodec: conversionAudioOnlyCodec,
+  audioOnlyBitrateKbps: conversionAudioOnlyBitrateKbps,
+  audioChannels: conversionAudioChannels,
+  audioSampleRate: conversionAudioSampleRate,
+  imageQuality: conversionImageQuality,
+  imageWidth: conversionImageWidth,
+  imageHeight: conversionImageHeight,
+  isImageResolutionLinked: conversionIsImageResolutionLinked,
+  imageAspectRatio: conversionImageAspectRatio,
+  mediaType: conversionMediaType,
+  targetEntry: conversionTargetEntry,
+  originalAudioSampleRate: conversionOriginalAudioSampleRate,
+  isConverting: conversionIsConverting,
+  conversionProgress: conversionProgress,
+  conversionError: conversionError,
+  conversionPhase: conversionPhase,
+} = fileConversion;
 
 // Initialize Actions and Hotkeys
 const { openProject } = useProjectActions();
@@ -97,6 +129,37 @@ useHead({
       <!-- Modals -->
       <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
       <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
+
+      <FileConversionModal
+        v-model:open="conversionModalOpen"
+        v-model:video-format="conversionVideoFormat"
+        v-model:video-codec="conversionVideoCodec"
+        v-model:video-bitrate-mbps="conversionVideoBitrateMbps"
+        v-model:exclude-audio="conversionExcludeAudio"
+        v-model:audio-codec="conversionAudioCodec"
+        v-model:audio-bitrate-kbps="conversionAudioBitrateKbps"
+        v-model:bitrate-mode="conversionBitrateMode"
+        v-model:keyframe-interval-sec="conversionKeyframeIntervalSec"
+        v-model:audio-only-format="conversionAudioOnlyFormat"
+        v-model:audio-only-codec="conversionAudioOnlyCodec"
+        v-model:audio-only-bitrate-kbps="conversionAudioOnlyBitrateKbps"
+        v-model:audio-channels="conversionAudioChannels"
+        v-model:audio-sample-rate="conversionAudioSampleRate"
+        v-model:image-quality="conversionImageQuality"
+        v-model:image-width="conversionImageWidth"
+        v-model:image-height="conversionImageHeight"
+        v-model:is-image-resolution-linked="conversionIsImageResolutionLinked"
+        v-model:image-aspect-ratio="conversionImageAspectRatio"
+        :media-type="conversionMediaType"
+        :file-name="conversionTargetEntry?.name ?? ''"
+        :original-audio-sample-rate="conversionOriginalAudioSampleRate"
+        :is-converting="conversionIsConverting"
+        :conversion-progress="conversionProgress"
+        :conversion-error="conversionError"
+        :conversion-phase="conversionPhase"
+        @convert="fileConversion.startConversion"
+        @cancel="fileConversion.cancelConversion"
+      />
 
       <!-- Drag Overlay Hint -->
       <div

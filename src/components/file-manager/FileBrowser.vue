@@ -42,7 +42,6 @@ import {
 } from '~/file-manager/application/fileManagerCommands';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
-import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 import PQueue from 'p-queue';
@@ -57,6 +56,34 @@ const proxyStore = useProxyStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
 
 const fileConversion = useFileConversion();
+const {
+  isModalOpen: conversionModalOpen,
+  videoFormat: conversionVideoFormat,
+  videoCodec: conversionVideoCodec,
+  videoBitrateMbps: conversionVideoBitrateMbps,
+  excludeAudio: conversionExcludeAudio,
+  audioCodec: conversionAudioCodec,
+  audioBitrateKbps: conversionAudioBitrateKbps,
+  bitrateMode: conversionBitrateMode,
+  keyframeIntervalSec: conversionKeyframeIntervalSec,
+  audioOnlyFormat: conversionAudioOnlyFormat,
+  audioOnlyCodec: conversionAudioOnlyCodec,
+  audioOnlyBitrateKbps: conversionAudioOnlyBitrateKbps,
+  audioChannels: conversionAudioChannels,
+  audioSampleRate: conversionAudioSampleRate,
+  imageQuality: conversionImageQuality,
+  imageWidth: conversionImageWidth,
+  imageHeight: conversionImageHeight,
+  isImageResolutionLinked: conversionIsImageResolutionLinked,
+  imageAspectRatio: conversionImageAspectRatio,
+  mediaType: conversionMediaType,
+  targetEntry: conversionTargetEntry,
+  originalAudioSampleRate: conversionOriginalAudioSampleRate,
+  isConverting: conversionIsConverting,
+  conversionProgress: conversionProgress,
+  conversionError: conversionError,
+  conversionPhase: conversionPhase,
+} = fileConversion;
 
 const props = defineProps<{
   isFilesPage?: boolean;
@@ -990,37 +1017,6 @@ async function onDirectoryUploadChange(e: Event) {
         </div>
       </div>
     </UiConfirmModal>
-
-    <FileConversionModal
-      v-model:open="fileConversion.isModalOpen.value"
-      v-model:video-format="fileConversion.videoFormat.value"
-      v-model:video-codec="fileConversion.videoCodec.value"
-      v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
-      v-model:exclude-audio="fileConversion.excludeAudio.value"
-      v-model:audio-codec="fileConversion.audioCodec.value"
-      v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
-      v-model:bitrate-mode="fileConversion.bitrateMode.value"
-      v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
-      v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
-      v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
-      v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
-      v-model:audio-channels="fileConversion.audioChannels.value"
-      v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
-      v-model:image-quality="fileConversion.imageQuality.value"
-      v-model:image-width="fileConversion.imageWidth.value"
-      v-model:image-height="fileConversion.imageHeight.value"
-      v-model:is-image-resolution-linked="fileConversion.isImageResolutionLinked.value"
-      v-model:image-aspect-ratio="fileConversion.imageAspectRatio.value"
-      :media-type="fileConversion.mediaType.value"
-      :file-name="fileConversion.targetEntry.value?.name ?? ''"
-      :original-audio-sample-rate="fileConversion.originalAudioSampleRate.value"
-      :is-converting="fileConversion.isConverting.value"
-      :conversion-progress="fileConversion.conversionProgress.value"
-      :conversion-error="fileConversion.conversionError.value"
-      :conversion-phase="fileConversion.conversionPhase.value"
-      @convert="fileConversion.startConversion"
-      @cancel="fileConversion.cancelConversion"
-    />
 
     <input
       ref="directoryUploadInput"
