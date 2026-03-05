@@ -48,7 +48,8 @@ export function useFileConversion() {
   const audioOnlyCodec = ref<'opus' | 'aac'>('opus');
   const audioOnlyBitrateKbps = ref(128);
   const audioChannels = ref<'stereo' | 'mono'>('stereo');
-  const audioSampleRate = ref(48000);
+  const audioSampleRate = ref(0);
+  const originalAudioSampleRate = ref<number | null>(null);
 
   // Image Settings
   const imageQuality = ref(80); // 0-100
@@ -66,11 +67,6 @@ export function useFileConversion() {
   function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'ogg' | 'mp4' {
     if (codec === 'opus') return 'ogg';
     return 'mp4';
-  }
-
-  function resolveAudioOnlyFileExtension(codec: 'opus' | 'aac'): 'ogg' | 'm4a' {
-    if (codec === 'opus') return 'ogg';
-    return 'm4a';
   }
 
   async function openConversionModal(entry: FsEntry) {
@@ -99,11 +95,19 @@ export function useFileConversion() {
           videoWidth.value = Math.max(1, Math.round(Number(meta.video.width) || 1920));
           videoHeight.value = Math.max(1, Math.round(Number(meta.video.height) || 1080));
           videoFps.value = Math.max(1, Math.round(Number(meta.video.fps) || 30));
+          isCustomResolution.value = true;
         }
 
         if (meta?.audio) {
           audioChannels.value = resolveAudioChannelsFromMeta(meta.audio.channels);
-          audioSampleRate.value = Math.max(1, Math.round(Number(meta.audio.sampleRate) || 48000));
+          originalAudioSampleRate.value = Math.max(
+            1,
+            Math.round(Number(meta.audio.sampleRate) || 0),
+          );
+          audioSampleRate.value = 0;
+        } else {
+          originalAudioSampleRate.value = null;
+          audioSampleRate.value = 0;
         }
       } catch {
         // ignore metadata errors
@@ -113,7 +117,8 @@ export function useFileConversion() {
       audioOnlyFormat.value = 'opus';
       audioOnlyBitrateKbps.value = 128;
       audioChannels.value = 'stereo';
-      audioSampleRate.value = 48000;
+      originalAudioSampleRate.value = null;
+      audioSampleRate.value = 0;
 
       try {
         const fileHandle = entry.handle as FileSystemFileHandle;
@@ -121,7 +126,14 @@ export function useFileConversion() {
         const meta = await client.extractMetadata(fileHandle);
         if (meta?.audio) {
           audioChannels.value = resolveAudioChannelsFromMeta(meta.audio.channels);
-          audioSampleRate.value = Math.max(1, Math.round(Number(meta.audio.sampleRate) || 48000));
+          originalAudioSampleRate.value = Math.max(
+            1,
+            Math.round(Number(meta.audio.sampleRate) || 0),
+          );
+          audioSampleRate.value = 0;
+        } else {
+          originalAudioSampleRate.value = null;
+          audioSampleRate.value = 0;
         }
       } catch {
         // ignore metadata errors
@@ -222,7 +234,7 @@ export function useFileConversion() {
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: false,
         audioChannels: audioChannels.value,
-        audioSampleRate: audioSampleRate.value,
+        audioSampleRate: audioSampleRate.value || undefined,
       };
 
       videoPayload = [
@@ -265,7 +277,7 @@ export function useFileConversion() {
         height: 2,
         fps: 30,
         audioChannels: audioChannels.value,
-        audioSampleRate: audioSampleRate.value,
+        audioSampleRate: audioSampleRate.value || undefined,
       };
 
       if (meta.audio) {
@@ -302,7 +314,7 @@ export function useFileConversion() {
       const baseName = entry.name.replace(/\.[^.]+$/, '');
       let newExt = '';
       if (type === 'image') newExt = 'webp';
-      else if (type === 'audio') newExt = resolveAudioOnlyFileExtension(audioOnlyFormat.value);
+      else if (type === 'audio') newExt = audioOnlyFormat.value;
       else if (type === 'video') newExt = videoFormat.value;
 
       const newFileName = `${baseName}_converted.${newExt}`;
@@ -408,6 +420,7 @@ export function useFileConversion() {
     audioOnlyBitrateKbps,
     audioChannels,
     audioSampleRate,
+    originalAudioSampleRate,
     imageQuality,
     imageWidth,
     imageHeight,

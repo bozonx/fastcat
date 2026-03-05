@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
 export interface FormatOption {
@@ -13,9 +14,12 @@ interface Props {
   hasAudio?: boolean;
   isLoadingCodecSupport?: boolean;
   audioCodecLabel?: string;
+  showAudioAdvanced?: boolean;
+  originalAudioSampleRate?: number | null;
   formatOptions: readonly FormatOption[];
   videoCodecOptions: readonly VideoCodecOptionResolved[];
   showMetadata?: boolean;
+  hideAudioBitrate?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -23,7 +27,10 @@ const props = withDefaults(defineProps<Props>(), {
   hasAudio: true,
   isLoadingCodecSupport: false,
   audioCodecLabel: 'AAC',
+  showAudioAdvanced: false,
+  originalAudioSampleRate: null,
   showMetadata: false,
+  hideAudioBitrate: false,
 });
 
 const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { required: true });
@@ -32,6 +39,8 @@ const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
+const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
+const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
 const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', {
   default: 'custom',
 });
@@ -293,7 +302,7 @@ watch(
       }}</span>
     </label>
 
-    <div v-if="!excludeAudio && outputFormat === 'mp4'" class="flex flex-col gap-2">
+    <div v-if="!excludeAudio && outputFormat === 'mp4' && !props.hideAudioBitrate" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
       </label>
@@ -306,7 +315,16 @@ watch(
       </div>
     </div>
 
-    <div v-if="!excludeAudio" class="flex flex-col gap-2">
+    <FileConversionAudioSettings
+      v-if="!excludeAudio && props.showAudioAdvanced"
+      v-model:audio-bitrate-kbps="audioBitrateKbps"
+      v-model:audio-channels="audioChannels"
+      v-model:audio-sample-rate="audioSampleRate"
+      :original-sample-rate="props.originalAudioSampleRate"
+      :disabled="props.disabled"
+    />
+
+    <div v-else-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
       </label>
