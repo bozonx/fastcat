@@ -4,6 +4,21 @@ import { blurManifest } from './video/blur/manifest';
 import { colorMatrixManifest } from './video/color-matrix/manifest';
 import { noiseManifest } from './video/noise/manifest';
 import { displacementManifest } from './video/displacement/manifest';
+import { advancedBloomManifest } from './video/advanced-bloom/manifest';
+import { asciiManifest } from './video/ascii/manifest';
+import { backdropBlurManifest } from './video/backdrop-blur/manifest';
+import { bevelManifest } from './video/bevel/manifest';
+import { bloomManifest } from './video/bloom/manifest';
+import { bulgePinchManifest } from './video/bulge-pinch/manifest';
+import { colorGradientManifest } from './video/color-gradient/manifest';
+import { colorMapManifest } from './video/color-map/manifest';
+import { colorOverlayManifest } from './video/color-overlay/manifest';
+import { colorReplaceManifest } from './video/color-replace/manifest';
+import { convolutionManifest } from './video/convolution/manifest';
+import { crossHatchManifest } from './video/cross-hatch/manifest';
+import { crtManifest } from './video/crt/manifest';
+import { dotManifest } from './video/dot/manifest';
+import { dropShadowManifest } from './video/drop-shadow/manifest';
 
 export function initEffects() {
   registerEffect(colorAdjustmentManifest);
@@ -11,6 +26,21 @@ export function initEffects() {
   registerEffect(colorMatrixManifest);
   registerEffect(noiseManifest);
   registerEffect(displacementManifest);
+  registerEffect(advancedBloomManifest);
+  registerEffect(asciiManifest);
+  registerEffect(backdropBlurManifest);
+  registerEffect(bevelManifest);
+  registerEffect(bloomManifest);
+  registerEffect(bulgePinchManifest);
+  registerEffect(colorGradientManifest);
+  registerEffect(colorMapManifest);
+  registerEffect(colorOverlayManifest);
+  registerEffect(colorReplaceManifest);
+  registerEffect(convolutionManifest);
+  registerEffect(crossHatchManifest);
+  registerEffect(crtManifest);
+  registerEffect(dotManifest);
+  registerEffect(dropShadowManifest);
 }
 
 // Export everything for convenience
@@ -20,3 +50,18 @@ export * from './video/blur/manifest';
 export * from './video/color-matrix/manifest';
 export * from './video/noise/manifest';
 export * from './video/displacement/manifest';
+export * from './video/advanced-bloom/manifest';
+export * from './video/ascii/manifest';
+export * from './video/backdrop-blur/manifest';
+export * from './video/bevel/manifest';
+export * from './video/bloom/manifest';
+export * from './video/bulge-pinch/manifest';
+export * from './video/color-gradient/manifest';
+export * from './video/color-map/manifest';
+export * from './video/color-overlay/manifest';
+export * from './video/color-replace/manifest';
+export * from './video/convolution/manifest';
+export * from './video/cross-hatch/manifest';
+export * from './video/crt/manifest';
+export * from './video/dot/manifest';
+export * from './video/drop-shadow/manifest';
