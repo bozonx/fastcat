@@ -12,6 +12,7 @@ import MultiClipProperties from '~/components/properties/MultiClipProperties.vue
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
+import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
@@ -84,7 +85,7 @@ const selectedClips = computed(() => {
 });
 
 const displayMode = computed<
-  'transition' | 'clip' | 'clips' | 'track' | 'file' | 'marker' | 'timeline' | 'empty'
+  'transition' | 'clip' | 'clips' | 'track' | 'file' | 'files' | 'marker' | 'timeline' | 'empty'
 >(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
   if (selectedClips.value) return 'clips';
@@ -95,6 +96,7 @@ const displayMode = computed<
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
+  if (entity?.source === 'fileManager' && entity.kind === 'multiple') return 'files';
   if (entity?.source === 'timeline' && entity.kind === 'timeline-properties') return 'timeline';
 
   return 'empty';
@@ -104,6 +106,14 @@ const selectedFsEntry = computed(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory')) {
     return entity.entry;
+  }
+  return null;
+});
+
+const selectedFsEntries = computed(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'fileManager' && entity.kind === 'multiple') {
+    return entity.entries;
   }
   return null;
 });
@@ -251,6 +261,10 @@ function onPanelFocusOut() {
             :preview-mode="previewMode"
             @update:preview-mode="(m) => (previewMode = m)"
             @convert="(entry) => fileConversion.openConversionModal(entry)"
+          />
+          <MultiFileProperties
+            v-else-if="displayMode === 'files' && selectedFsEntries"
+            :entries="selectedFsEntries"
           />
           <MarkerProperties
             v-else-if="displayMode === 'marker' && selectedMarkerId"

@@ -65,8 +65,13 @@ export function useGeneralHotkeys(
     'general.rename': () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {
-        (uiStore as any).pendingFsEntryRename = selected.entry;
-        return true;
+        if (selected.kind === 'file' || selected.kind === 'directory') {
+          (uiStore as any).pendingFsEntryRename = selected.entry;
+          return true;
+        } else if (selected.kind === 'multiple' && selected.entries.length === 1) {
+          (uiStore as any).pendingFsEntryRename = selected.entries[0];
+          return true;
+        }
       }
       return false;
     },
@@ -74,7 +79,11 @@ export function useGeneralHotkeys(
     'general.delete': () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {
-        uiStore.pendingFsEntryDelete = selected.entry;
+        if (selected.kind === 'multiple') {
+          uiStore.pendingFsEntryDelete = selected.entries;
+        } else {
+          uiStore.pendingFsEntryDelete = [selected.entry];
+        }
       } else if (selected?.source === 'timeline') {
         if (selected.kind === 'track') {
           timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });

@@ -38,7 +38,7 @@ const emit = defineEmits<{
   (e: 'entryDragOver', event: DragEvent, entry: FsEntry): void;
   (e: 'entryDragLeave', event: DragEvent, entry: FsEntry): void;
   (e: 'entryDrop', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryClick', entry: FsEntry): void;
+  (e: 'entryClick', event: MouseEvent, entry: FsEntry): void;
   (e: 'entryDoubleClick', entry: FsEntry): void;
   (e: 'entryEnter', entry: FsEntry): void;
   (e: 'commitRename', entry: FsEntry, name: string): void;
@@ -58,6 +58,15 @@ const fileManager = useFileManager();
 function formatDate(timestamp?: number) {
   if (!timestamp) return '-';
   return new Date(timestamp).toLocaleString();
+}
+
+function isSelected(entry: FsEntry): boolean {
+  const selected = selectionStore.selectedEntity;
+  if (!selected || selected.source !== 'fileManager') return false;
+  if (selected.kind === 'multiple') {
+    return selected.entries.some((e) => e.path === entry.path);
+  }
+  return selected.path === entry.path;
 }
 </script>
 
@@ -192,9 +201,7 @@ function formatDate(timestamp?: number) {
             <tr
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
               :class="{
-                'bg-primary-500/10':
-                  selectionStore.selectedEntity?.source === 'fileManager' &&
-                  selectionStore.selectedEntity.path === entry.path,
+                'bg-primary-500/10': isSelected(entry),
                 'opacity-30': entry.name.startsWith('.'),
                 'text-(--color-success)!':
                   fileManager.mediaCache.hasProxy(entry.path || '') &&
@@ -212,7 +219,7 @@ function formatDate(timestamp?: number) {
               @dragover.prevent="emit('entryDragOver', $event, entry)"
               @dragleave="emit('entryDragLeave', $event, entry)"
               @drop.prevent="emit('entryDrop', $event, entry)"
-              @click="emit('entryClick', entry)"
+              @click="emit('entryClick', $event, entry)"
               @dblclick="emit('entryDoubleClick', entry)"
               @keydown.enter.prevent="emit('entryEnter', entry)"
               @keydown.space.prevent="emit('entryEnter', entry)"

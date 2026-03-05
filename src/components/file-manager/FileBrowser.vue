@@ -751,8 +751,58 @@ const stats = computed(() => {
   };
 });
 
-function handleEntryClick(entry: FsEntry) {
-  filesPageStore.selectFile(entry);
+function handleEntryClick(event: MouseEvent, entry: FsEntry) {
+  if (event.ctrlKey || event.metaKey) {
+    // Toggle selection
+    const selected = selectionStore.selectedEntity;
+    if (selected && selected.source === 'fileManager') {
+      let currentEntries: FsEntry[] = [];
+      if (selected.kind === 'multiple') {
+        currentEntries = [...selected.entries];
+      } else if (selected.kind === 'file' || selected.kind === 'directory') {
+        currentEntries = [selected.entry];
+      }
+      
+      const existingIndex = currentEntries.findIndex(e => e.path === entry.path);
+      if (existingIndex >= 0) {
+        currentEntries.splice(existingIndex, 1);
+        selectionStore.selectFsEntries(currentEntries);
+      } else {
+        selectionStore.selectFsEntries([...currentEntries, entry]);
+      }
+    } else {
+      selectionStore.selectFsEntry(entry);
+    }
+  } else if (event.shiftKey) {
+    // Range selection
+    const selected = selectionStore.selectedEntity;
+    if (selected && selected.source === 'fileManager') {
+      const visibleEntries = sortedEntries.value;
+      const targetIndex = visibleEntries.findIndex(e => e.path === entry.path);
+      
+      let lastSelectedIndex = -1;
+      if (selected.kind === 'multiple' && selected.entries.length > 0) {
+        const lastSelected = selected.entries[selected.entries.length - 1];
+        lastSelectedIndex = visibleEntries.findIndex(e => e.path === lastSelected?.path);
+      } else if ('path' in selected) {
+        lastSelectedIndex = visibleEntries.findIndex(e => e.path === selected.path);
+      }
+
+      if (lastSelectedIndex >= 0 && targetIndex >= 0) {
+        const start = Math.min(lastSelectedIndex, targetIndex);
+        const end = Math.max(lastSelectedIndex, targetIndex);
+        const range = visibleEntries.slice(start, end + 1);
+        selectionStore.selectFsEntries(range);
+      } else {
+        selectionStore.selectFsEntry(entry);
+      }
+    } else {
+      selectionStore.selectFsEntry(entry);
+    }
+  } else {
+    // Normal single selection
+    filesPageStore.selectFile(entry);
+  }
 }
 
 function handleEntryDoubleClick(entry: FsEntry) {
