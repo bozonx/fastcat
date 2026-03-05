@@ -4,9 +4,11 @@ import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 const props = withDefaults(
   defineProps<{
     disabled?: boolean;
+    originalSampleRate?: number | null;
   }>(),
   {
     disabled: false,
+    originalSampleRate: null,
   },
 );
 
@@ -21,11 +23,18 @@ const audioChannelsOptions = [
   { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
 ];
 
-const sampleRateOptions = [
-  { value: 32000, label: '32 kHz' },
-  { value: 44100, label: '44.1 kHz' },
-  { value: 48000, label: '48 kHz' },
-];
+const sampleRateOptions = computed(() => {
+  const original = Number(props.originalSampleRate) || 0;
+  const originalLabel = original
+    ? `${t('videoEditor.audio.original', 'Original')} (${original})`
+    : t('videoEditor.audio.original', 'Original');
+
+  return [
+    { value: 0, label: originalLabel },
+    { value: 44100, label: '44.1 kHz' },
+    { value: 48000, label: '48 kHz' },
+  ];
+});
 </script>
 
 <template>

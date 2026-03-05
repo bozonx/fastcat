@@ -695,6 +695,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
       v-model:image-aspect-ratio="fileConversion.imageAspectRatio.value"
       :media-type="fileConversion.mediaType.value"
       :file-name="fileConversion.targetEntry.value?.name ?? ''"
+      :original-audio-sample-rate="fileConversion.originalAudioSampleRate.value"
       :is-converting="fileConversion.isConverting.value"
       :conversion-progress="fileConversion.conversionProgress.value"
       :conversion-error="fileConversion.conversionError.value"

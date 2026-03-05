@@ -17,6 +17,7 @@ const props = defineProps<{
   open: boolean;
   mediaType: 'video' | 'audio' | 'image' | 'text' | 'unknown' | 'timeline' | null;
   fileName: string;
+  originalAudioSampleRate?: number | null;
   isConverting: boolean;
   conversionProgress: number;
   conversionError: string | null;
@@ -58,7 +59,7 @@ const audioOnlyFormat = defineModel<'opus' | 'aac'>('audioOnlyFormat', { default
 const audioOnlyCodec = defineModel<'opus' | 'aac'>('audioOnlyCodec', { default: 'opus' });
 const audioOnlyBitrateKbps = defineModel<number>('audioOnlyBitrateKbps', { default: 128 });
 const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
-const audioSampleRate = defineModel<number>('audioSampleRate', { default: 48000 });
+const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
 
 // Image Settings
 const imageQuality = defineModel<number>('imageQuality', { default: 80 });
@@ -111,13 +112,13 @@ const getPhaseLabel = computed(() => {
   return '';
 });
 
-const _outputFileName = computed(() => {
+const outputFileName = computed(() => {
   const baseName = props.fileName.replace(/\.[^.]+$/, '');
   if (props.mediaType === 'video') {
     return `${baseName}_converted.${videoFormat.value}`;
   }
   if (props.mediaType === 'audio') {
-    const ext = audioOnlyFormat.value === 'opus' ? 'ogg' : 'm4a';
+    const ext = audioOnlyFormat.value;
     return `${baseName}_converted.${ext}`;
   }
   if (props.mediaType === 'image') {
@@ -135,27 +136,19 @@ function clampPositiveInt(value: number) {
   return Math.max(1, v);
 }
 
-watch(
-  imageWidth,
-  (nextWidth, prevWidth) => {
-    if (!isImageResolutionLinked.value) return;
-    if (!imageAspectRatio.value) return;
-    if (nextWidth === prevWidth) return;
-    imageHeight.value = clampPositiveInt(nextWidth / imageAspectRatio.value);
-  },
-  { flush: 'sync' },
-);
+function onImageWidthChange(val: number) {
+  imageWidth.value = val;
+  if (isImageResolutionLinked.value && imageAspectRatio.value) {
+    imageHeight.value = clampPositiveInt(val / imageAspectRatio.value);
+  }
+}
 
-watch(
-  imageHeight,
-  (nextHeight, prevHeight) => {
-    if (!isImageResolutionLinked.value) return;
-    if (!imageAspectRatio.value) return;
-    if (nextHeight === prevHeight) return;
-    imageWidth.value = clampPositiveInt(nextHeight * imageAspectRatio.value);
-  },
-  { flush: 'sync' },
-);
+function onImageHeightChange(val: number) {
+  imageHeight.value = val;
+  if (isImageResolutionLinked.value && imageAspectRatio.value) {
+    imageWidth.value = clampPositiveInt(val * imageAspectRatio.value);
+  }
+}
 </script>
 
 <template>
@@ -169,6 +162,11 @@ watch(
       <div class="text-sm text-ui-text-muted">
         {{ t('videoEditor.fileManager.convert.targetFile', 'Converting:') }}
         <span class="font-mono text-ui-text">{{ fileName }}</span>
+      </div>
+
+      <div class="text-sm text-ui-text-muted">
+        {{ t('videoEditor.fileManager.convert.outputFile', 'Output:') }}
+        <span class="font-mono text-ui-text">{{ outputFileName }}</span>
       </div>
 
       <div v-if="mediaType === 'video'" class="space-y-4">
@@ -190,23 +188,19 @@ watch(
           v-model:exclude-audio="excludeAudio"
           v-model:audio-codec="audioCodec"
           v-model:audio-bitrate-kbps="audioBitrateKbps"
+          v-model:audio-channels="audioChannels"
+          v-model:audio-sample-rate="audioSampleRate"
           v-model:bitrate-mode="bitrateMode"
           v-model:keyframe-interval-sec="keyframeIntervalSec"
           :disabled="isConverting"
           :show-metadata="false"
           :has-audio="true"
           :hide-audio-bitrate="true"
+          :show-audio-advanced="true"
+          :original-audio-sample-rate="props.originalAudioSampleRate"
           :is-loading-codec-support="isLoadingCodecSupport"
           :format-options="formatOptions"
           :video-codec-options="videoCodecOptions"
-        />
-
-        <FileConversionAudioSettings
-          v-if="!excludeAudio"
-          v-model:audio-bitrate-kbps="audioBitrateKbps"
-          v-model:audio-channels="audioChannels"
-          v-model:audio-sample-rate="audioSampleRate"
-          :disabled="isConverting"
         />
       </div>
 
@@ -226,6 +220,7 @@ watch(
           v-model:audio-bitrate-kbps="audioOnlyBitrateKbps"
           v-model:audio-channels="audioChannels"
           v-model:audio-sample-rate="audioSampleRate"
+          :original-sample-rate="props.originalAudioSampleRate"
           :disabled="isConverting"
         />
       </div>
@@ -254,12 +249,24 @@ watch(
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">W</label>
-            <WheelNumberInput v-model="imageWidth" :min="1" :step="2" :disabled="isConverting" />
+            <WheelNumberInput 
+              :model-value="imageWidth" 
+              @update:model-value="onImageWidthChange" 
+              :min="1" 
+              :step="2" 
+              :disabled="isConverting" 
+            />
           </div>
 
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">H</label>
-            <WheelNumberInput v-model="imageHeight" :min="1" :step="2" :disabled="isConverting" />
+            <WheelNumberInput 
+              :model-value="imageHeight" 
+              @update:model-value="onImageHeightChange" 
+              :min="1" 
+              :step="2" 
+              :disabled="isConverting" 
+            />
           </div>
         </div>
       </div>
