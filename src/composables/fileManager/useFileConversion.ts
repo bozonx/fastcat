@@ -35,6 +35,13 @@ export function useFileConversion() {
   const audioBitrateKbps = ref(128);
   const bitrateMode = ref<'constant' | 'variable'>('variable');
   const keyframeIntervalSec = ref(2);
+  const videoWidth = ref(1920);
+  const videoHeight = ref(1080);
+  const videoFps = ref(30);
+  const resolutionFormat = ref('1080p');
+  const orientation = ref<'landscape' | 'portrait'>('landscape');
+  const aspectRatio = ref('16:9');
+  const isCustomResolution = ref(false);
 
   // Audio Settings
   const audioOnlyFormat = ref<'opus' | 'aac'>('opus');
@@ -315,6 +322,13 @@ export function useFileConversion() {
     audioBitrateKbps,
     bitrateMode,
     keyframeIntervalSec,
+    videoWidth,
+    videoHeight,
+    videoFps,
+    resolutionFormat,
+    orientation,
+    aspectRatio,
+    isCustomResolution,
     audioOnlyFormat,
     audioOnlyCodec,
     audioOnlyBitrateKbps,
