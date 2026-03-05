@@ -69,16 +69,18 @@ const activeTab = ref('files');
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
+const directoryUploadTarget = ref<FsEntry | null>(null);
+const directoryUploadInput = ref<HTMLInputElement | null>(null);
+
 const {
   isDeleteConfirmModalOpen,
   editingEntryPath,
-  deleteTarget,
-  timelinesUsingDeleteTarget,
-  directoryUploadTarget,
-  directoryUploadInput,
-  handleDeleteConfirm,
   commitRename,
   stopRename,
+  startRename,
+  deleteTargets,
+  timelinesUsingDeleteTarget,
+  handleDeleteConfirm,
   onFileAction: onFileActionBase,
 } = useFileManagerActions({
   createFolder,
@@ -223,9 +225,7 @@ watch(
       if (entry.path) {
         uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
       }
-      onFileActionBase('createFolder', entry, () =>
-        entry.children?.map((e) => e.name) ?? [],
-      );
+      onFileActionBase('createFolder', entry, () => entry.children?.map((e) => e.name) ?? []);
       uiStore.pendingFsEntryCreateFolder = null;
     }
   },
@@ -639,6 +639,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
     <!-- Timeline Toolbar at the bottom of the panel -->
     <TimelineToolbar v-if="!foldersOnly" />
 
+    <!-- Modals -->
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"
       :title="t('common.delete', 'Delete')"
@@ -653,21 +654,27 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
       @confirm="handleDeleteConfirm"
     >
       <div>
-        <div v-show="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
-          {{ deleteTarget?.name }}
+        <div v-if="deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTargets[0]?.name }}
         </div>
-        <div v-if="deleteTarget?.path" class="mt-1 text-xs text-ui-text-muted break-all">
+        <div v-else-if="deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
+        </div>
+        <div
+          v-if="deleteTargets.length === 1 && deleteTargets[0]?.path"
+          class="mt-1 text-xs text-ui-text-muted break-all"
+        >
           {{
-            deleteTarget.kind === 'directory'
+            deleteTargets[0].kind === 'directory'
               ? t('common.folder', 'Folder')
               : t('common.file', 'File')
           }}
           ·
-          {{ deleteTarget.path }}
+          {{ deleteTargets[0].path }}
         </div>
 
         <div
-          v-if="deleteTarget?.kind === 'file' && timelinesUsingDeleteTarget.length > 0"
+          v-if="timelinesUsingDeleteTarget.length > 0"
           class="mt-3 p-2 rounded border border-red-500/40 bg-red-500/10"
         >
           <div class="text-xs font-semibold text-red-400">

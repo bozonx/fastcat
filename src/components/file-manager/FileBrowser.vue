@@ -204,7 +204,7 @@ const {
   commitRename,
   stopRename,
   startRename,
-  deleteTarget,
+  deleteTargets,
   directoryUploadTarget,
   directoryUploadInput,
   handleDeleteConfirm,
@@ -762,8 +762,8 @@ function handleEntryClick(event: MouseEvent, entry: FsEntry) {
       } else if (selected.kind === 'file' || selected.kind === 'directory') {
         currentEntries = [selected.entry];
       }
-      
-      const existingIndex = currentEntries.findIndex(e => e.path === entry.path);
+
+      const existingIndex = currentEntries.findIndex((e) => e.path === entry.path);
       if (existingIndex >= 0) {
         currentEntries.splice(existingIndex, 1);
         selectionStore.selectFsEntries(currentEntries);
@@ -778,14 +778,14 @@ function handleEntryClick(event: MouseEvent, entry: FsEntry) {
     const selected = selectionStore.selectedEntity;
     if (selected && selected.source === 'fileManager') {
       const visibleEntries = sortedEntries.value;
-      const targetIndex = visibleEntries.findIndex(e => e.path === entry.path);
-      
+      const targetIndex = visibleEntries.findIndex((e) => e.path === entry.path);
+
       let lastSelectedIndex = -1;
       if (selected.kind === 'multiple' && selected.entries.length > 0) {
         const lastSelected = selected.entries[selected.entries.length - 1];
-        lastSelectedIndex = visibleEntries.findIndex(e => e.path === lastSelected?.path);
+        lastSelectedIndex = visibleEntries.findIndex((e) => e.path === lastSelected?.path);
       } else if ('path' in selected) {
-        lastSelectedIndex = visibleEntries.findIndex(e => e.path === selected.path);
+        lastSelectedIndex = visibleEntries.findIndex((e) => e.path === selected.path);
       }
 
       if (lastSelectedIndex >= 0 && targetIndex >= 0) {
@@ -1054,16 +1054,22 @@ async function onDirectoryUploadChange(e: Event) {
       @confirm="handleDeleteConfirm"
     >
       <div>
-        <div v-show="deleteTarget" class="mt-2 text-sm font-medium text-ui-text">
-          {{ deleteTarget?.name }}
+        <div v-if="deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTargets[0]?.name }}
         </div>
-        <div v-if="deleteTarget?.path" class="mt-1 text-xs text-ui-text-muted break-all">
+        <div v-else-if="deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
+        </div>
+        <div
+          v-if="deleteTargets.length === 1 && deleteTargets[0]?.path"
+          class="mt-1 text-xs text-ui-text-muted break-all"
+        >
           {{
-            deleteTarget.kind === 'directory'
+            deleteTargets[0].kind === 'directory'
               ? t('common.folder', 'Folder')
               : t('common.file', 'File')
           }}:
-          {{ deleteTarget.path }}
+          {{ deleteTargets[0].path }}
         </div>
       </div>
     </UiConfirmModal>

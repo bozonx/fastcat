@@ -62,24 +62,28 @@ export function useFileDrop(options: UseFileDropOptions) {
 
     if (!moveRaw) return;
 
-    let parsed: { path?: unknown } | null;
+    let parsed: any = null;
     try {
       parsed = JSON.parse(moveRaw);
     } catch {
       return;
     }
 
-    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-    if (!sourcePath) return;
+    const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-    const source = options.findEntryByPath(sourcePath);
-    if (!source) return;
+    for (const item of itemsToMove) {
+      const sourcePath = typeof item?.path === 'string' ? item.path : '';
+      if (!sourcePath) continue;
 
-    await options.moveEntry({
-      source,
-      targetDirHandle: rootHandle,
-      targetDirPath: '',
-    });
+      const source = options.findEntryByPath(sourcePath);
+      if (!source) continue;
+
+      await options.moveEntry({
+        source,
+        targetDirHandle: rootHandle,
+        targetDirPath: '',
+      });
+    }
   }
 
   return {

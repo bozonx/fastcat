@@ -4,6 +4,7 @@ export interface DraggedFileData {
   name: string;
   path: string;
   kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text';
+  count?: number;
 }
 
 const draggedFile = ref<DraggedFileData | null>(null);

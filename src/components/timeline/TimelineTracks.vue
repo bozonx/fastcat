@@ -77,6 +77,137 @@ const movePreviewResolved = computed(() => {
   };
 });
 
+// Marquee Selection Logic
+const containerRef = ref<HTMLElement | null>(null);
+const isMarqueeSelecting = ref(false);
+const marqueeStart = ref({ x: 0, y: 0 });
+const marqueeCurrent = ref({ x: 0, y: 0 });
+
+const marqueeStyle = computed(() => {
+  if (!isMarqueeSelecting.value) return {};
+  const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x);
+  const top = Math.min(marqueeStart.value.y, marqueeCurrent.value.y);
+  const width = Math.abs(marqueeCurrent.value.x - marqueeStart.value.x);
+  const height = Math.abs(marqueeCurrent.value.y - marqueeStart.value.y);
+  return {
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+  };
+});
+
+function getPointerCoords(e: PointerEvent) {
+  if (!containerRef.value) return { x: 0, y: 0 };
+  const rect = containerRef.value.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  };
+}
+
+let onMarqueeMove: ((e: PointerEvent) => void) | null = null;
+let onMarqueeUp: ((e: PointerEvent) => void) | null = null;
+
+function updateLiveMarqueeSelection() {
+  if (!isMarqueeSelecting.value) return;
+
+  const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x);
+  const right = Math.max(marqueeStart.value.x, marqueeCurrent.value.x);
+  const top = Math.min(marqueeStart.value.y, marqueeCurrent.value.y);
+  const bottom = Math.max(marqueeStart.value.y, marqueeCurrent.value.y);
+
+  const zoom = timelineStore.timelineZoom;
+  const selectedItems: { trackId: string; itemId: string }[] = [];
+
+  let currentY = 0;
+  for (const track of props.tracks) {
+    const trackHeight = props.trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT;
+    const trackTop = currentY;
+    const trackBottom = currentY + trackHeight;
+
+    const isYFullyInside = trackTop >= top && trackBottom <= bottom;
+
+    if (isYFullyInside) {
+      for (const item of track.items) {
+        if (item.kind !== 'clip') continue;
+
+        const clipStartPx = timeUsToPx(item.timelineRange.startUs, zoom);
+        const clipEndPx = timeUsToPx(item.timelineRange.startUs + item.timelineRange.durationUs, zoom);
+
+        const isXFullyInside = clipStartPx >= left && clipEndPx <= right;
+
+        if (isXFullyInside) {
+          selectedItems.push({ trackId: track.id, itemId: item.id });
+        }
+      }
+    }
+
+    currentY += trackHeight;
+  }
+
+  if (selectedItems.length > 0) {
+    timelineStore.selectedItemIds = selectedItems.map((i) => i.itemId);
+    selectionStore.selectTimelineItems(selectedItems);
+  } else {
+    timelineStore.selectedItemIds = [];
+    selectionStore.clearSelection();
+  }
+}
+
+function startMarquee(e: PointerEvent, onClick?: () => void) {
+  if (e.button !== 0) return;
+
+  const coords = getPointerCoords(e);
+  marqueeStart.value = coords;
+  marqueeCurrent.value = coords;
+  let didMove = false;
+
+  onMarqueeMove = (ev: PointerEvent) => {
+    const currentCoords = getPointerCoords(ev);
+    
+    if (!didMove) {
+      const dx = Math.abs(currentCoords.x - marqueeStart.value.x);
+      const dy = Math.abs(currentCoords.y - marqueeStart.value.y);
+      if (dx > 3 || dy > 3) {
+        didMove = true;
+        isMarqueeSelecting.value = true;
+        timelineStore.clearSelection();
+        selectionStore.clearSelection();
+      }
+    }
+
+    if (didMove) {
+      marqueeCurrent.value = currentCoords;
+      updateLiveMarqueeSelection();
+    }
+  };
+
+  onMarqueeUp = (ev: PointerEvent) => {
+    if (didMove) {
+      isMarqueeSelecting.value = false;
+      updateLiveMarqueeSelection();
+    } else {
+      if (onClick) onClick();
+    }
+    cleanupMarqueeListeners();
+  };
+
+  window.addEventListener('pointermove', onMarqueeMove);
+  window.addEventListener('pointerup', onMarqueeUp);
+}
+
+function cleanupMarqueeListeners() {
+  if (onMarqueeMove) window.removeEventListener('pointermove', onMarqueeMove);
+  if (onMarqueeUp) window.removeEventListener('pointerup', onMarqueeUp);
+  onMarqueeMove = null;
+  onMarqueeUp = null;
+}
+
+onBeforeUnmount(() => {
+  cleanupMarqueeListeners();
+});
+
 const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
   (e: 'dragover', event: DragEvent, trackId: string): void;
@@ -162,16 +293,26 @@ function selectTransition(
 
 <template>
   <div
-    class="flex flex-col min-h-full pb-16"
+    ref="containerRef"
+    class="flex flex-col min-h-full pb-16 relative"
     :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
     @pointerdown="
-      if ($event.button !== 1 && $event.target === $event.currentTarget) {
+      if ($event.button === 0 && $event.target === $event.currentTarget) {
+        startMarquee($event);
+      } else if ($event.button !== 1 && $event.target === $event.currentTarget) {
         timelineStore.clearSelection();
         selectionStore.clearSelection();
         timelineStore.selectTrack(null);
       }
     "
   >
+    <!-- Marquee Selection Rectangle -->
+    <div
+      v-if="isMarqueeSelecting"
+      class="absolute border-2 border-primary-500 bg-primary-500/20 pointer-events-none z-50"
+      :style="marqueeStyle"
+    />
+
     <AppModal
       v-model:open="speedModalOpen"
       :title="t('granVideoEditor.timeline.speedModalTitle', 'Clip speed')"
@@ -218,7 +359,13 @@ function selectTransition(
       ]"
       :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
       @pointerdown="
-        if ($event.button !== 1 && $event.target === $event.currentTarget) {
+        if ($event.button === 0 && $event.target === $event.currentTarget) {
+          startMarquee($event, () => {
+            timelineStore.selectTrack(track.id);
+            timelineStore.clearSelection();
+            selectionStore.clearSelection();
+          });
+        } else if ($event.button !== 1 && $event.target === $event.currentTarget) {
           timelineStore.selectTrack(track.id);
           timelineStore.clearSelection();
           selectionStore.clearSelection();
@@ -294,7 +441,13 @@ function selectTransition(
               width: `${Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
             }"
             @pointerdown="
-              if ($event.button !== 1) {
+              if ($event.button === 0) {
+                $event.stopPropagation();
+                startMarquee($event, () => {
+                  emit('selectItem', $event, item.id);
+                  selectionStore.selectTimelineItem(track.id, item.id, 'gap');
+                });
+              } else if ($event.button !== 1) {
                 $event.stopPropagation();
                 emit('selectItem', $event, item.id);
                 selectionStore.selectTimelineItem(track.id, item.id, 'gap');

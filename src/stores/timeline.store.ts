@@ -428,6 +428,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTrack: (trackId: string | null) => selection.selectTrack(trackId),
     toggleSelection: (itemId: string, options?: { multi?: boolean }) =>
       selection.toggleSelection(itemId, options),
+    selectTimelineItems: (itemIds: string[]) => selection.selectTimelineItems(itemIds),
     selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
       selection.selectTransition(input),
     ...playback,
