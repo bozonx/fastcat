@@ -982,7 +982,8 @@ export function updateClipProperties(
       'audioBalance' in nextProps ||
       'audioFadeInUs' in nextProps ||
       'audioFadeOutUs' in nextProps ||
-      'audioMuted' in nextProps
+      'audioMuted' in nextProps ||
+      'audioWaveformMode' in nextProps
     ) {
       finalTracks = updateLinkedLockedAudio(
         { ...doc, tracks: finalTracks },
@@ -994,6 +995,7 @@ export function updateClipProperties(
           audioFadeInUs: (updated.item as any).audioFadeInUs,
           audioFadeOutUs: (updated.item as any).audioFadeOutUs,
           audioMuted: (updated.item as any).audioMuted,
+          audioWaveformMode: (updated.item as any).audioWaveformMode,
         }),
       );
     }

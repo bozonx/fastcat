@@ -202,24 +202,37 @@ function drawChunk(chunkIndex: number) {
   const halfH = targetHeight / 2;
   const step = targetWidth / chunkPeaks.length;
 
+  const mode = props.item.audioWaveformMode || 'full';
+
   ctx.fillStyle = waveColor;
   ctx.beginPath();
 
-  // Draw top half
-  ctx.moveTo(0, halfH);
-  for (let i = 0; i < chunkPeaks.length; i++) {
-    const x = i * step;
-    const peak = chunkPeaks[i] ?? 0;
-    const y = halfH - Math.abs(peak) * halfH;
-    ctx.lineTo(x, y);
-  }
+  if (mode === 'half') {
+    ctx.moveTo(0, targetHeight);
+    for (let i = 0; i < chunkPeaks.length; i++) {
+      const x = i * step;
+      const peak = chunkPeaks[i] ?? 0;
+      const y = targetHeight - Math.abs(peak) * targetHeight;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(targetWidth, targetHeight);
+  } else {
+    // Draw top half
+    ctx.moveTo(0, halfH);
+    for (let i = 0; i < chunkPeaks.length; i++) {
+      const x = i * step;
+      const peak = chunkPeaks[i] ?? 0;
+      const y = halfH - Math.abs(peak) * halfH;
+      ctx.lineTo(x, y);
+    }
 
-  // Draw bottom half (mirrored)
-  for (let i = chunkPeaks.length - 1; i >= 0; i--) {
-    const x = i * step;
-    const peak = chunkPeaks[i] ?? 0;
-    const y = halfH + Math.abs(peak) * halfH;
-    ctx.lineTo(x, y);
+    // Draw bottom half (mirrored)
+    for (let i = chunkPeaks.length - 1; i >= 0; i--) {
+      const x = i * step;
+      const peak = chunkPeaks[i] ?? 0;
+      const y = halfH + Math.abs(peak) * halfH;
+      ctx.lineTo(x, y);
+    }
   }
 
   ctx.closePath();
@@ -242,6 +255,13 @@ async function redrawMountedChunks() {
     drawChunk(chunk.chunkIndex);
   }
 }
+
+watch(
+  () => props.item.audioWaveformMode,
+  () => {
+    void redrawMountedChunks();
+  },
+);
 
 watch(
   [chunks],

@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 const isDropInProgress = ref(false);
 
@@ -9,6 +10,7 @@ export function useGlobalDragAndDrop() {
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
+  const fm = useFileManager();
 
   function onGlobalDragOver(e: DragEvent) {
     const types = e.dataTransfer?.types;
@@ -42,8 +44,6 @@ export function useGlobalDragAndDrop() {
       if (files.length === 0) return;
       if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
-      const { useFileManager } = await import('~/composables/fileManager/useFileManager');
-      const fm = useFileManager();
       await fm.handleFiles(files);
     } finally {
       isDropInProgress.value = false;
