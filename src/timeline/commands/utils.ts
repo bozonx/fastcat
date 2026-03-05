@@ -193,8 +193,10 @@ export function normalizeGaps(
   doc: TimelineDocument,
   trackId: string,
   items: TimelineTrackItem[],
+  options?: { quantizeToFrames?: boolean },
 ): TimelineTrackItem[] {
   const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = options?.quantizeToFrames !== false;
   const clips = items
     .filter((it): it is TimelineClipItem => it.kind === 'clip')
     .map((it) => ({ ...it, timelineRange: { ...it.timelineRange } }));
@@ -205,9 +207,15 @@ export function normalizeGaps(
   let cursorUs = 0;
 
   for (const clip of clips) {
-    const qTimeline = quantizeRangeToFrames(clip.timelineRange, fps);
-    const startUs = qTimeline.startUs;
-    const durationUs = qTimeline.durationUs;
+    const qTimeline = shouldQuantizeToFrames
+      ? quantizeRangeToFrames(clip.timelineRange, fps)
+      : null;
+    const startUs = qTimeline
+      ? qTimeline.startUs
+      : Math.max(0, Math.round(clip.timelineRange.startUs));
+    const durationUs = qTimeline
+      ? qTimeline.durationUs
+      : Math.max(0, Math.round(clip.timelineRange.durationUs));
     const endUs = startUs + durationUs;
 
     if (startUs > cursorUs) {

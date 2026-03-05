@@ -200,6 +200,7 @@ export interface OverlayPlaceItemCommand {
   toTrackId: string;
   itemId: string;
   startUs: number;
+  quantizeToFrames?: boolean;
 }
 
 /**

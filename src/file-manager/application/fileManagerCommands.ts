@@ -230,6 +230,20 @@ export async function moveEntryCommand(
     kind: params.source.kind,
   });
 
+  const handle = params.source.handle as unknown as { move?: (target: FileSystemDirectoryHandle, name: string) => Promise<void> };
+  if (typeof handle.move === 'function') {
+    await handle.move(targetDirHandle, params.source.name);
+    
+    if (params.source.kind === 'file') {
+      const oldPath = sourcePath;
+      const newPath = targetDirPath ? `${targetDirPath}/${params.source.name}` : params.source.name;
+      await deps.onFileMoved?.({ oldPath, newPath });
+    } else {
+      await deps.onDirectoryMoved?.();
+    }
+    return;
+  }
+
   if (params.source.kind === 'file') {
     await copyFileToDirectory({
       sourceHandle: params.source.handle as FileSystemFileHandle,

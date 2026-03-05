@@ -5,22 +5,27 @@ export function findEntryByPath(entries: FsEntry[], path: string): FsEntry | nul
   const normalized = normalizeFsPath(path);
   if (!normalized) return null;
 
-  function walk(list: FsEntry[]): FsEntry | null {
-    for (const entry of list) {
-      if (entry.path === normalized) return entry;
-      if (
-        entry.kind === 'directory' &&
-        Array.isArray(entry.children) &&
-        entry.children.length > 0
-      ) {
-        const found = walk(entry.children);
-        if (found) return found;
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+
+  let currentList = entries;
+  let currentEntry: FsEntry | null = null;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const found = currentList.find((e) => e.name === part);
+    if (!found) return null;
+
+    currentEntry = found;
+    if (i < parts.length - 1) {
+      if (found.kind !== 'directory' || !Array.isArray(found.children)) {
+        return null;
       }
+      currentList = found.children;
     }
-    return null;
   }
 
-  return walk(entries);
+  return currentEntry;
 }
 
 export function mergeEntries(
@@ -69,20 +74,26 @@ export function updateEntryByPath(
   const normalized = normalizeFsPath(path);
   if (!normalized) return entries;
 
-  function walk(list: FsEntry[]): { next: FsEntry[]; changed: boolean } {
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0) return entries;
+
+  function walk(list: FsEntry[], depth: number): { next: FsEntry[]; changed: boolean } {
     let changed = false;
+    const targetName = parts[depth];
+
     const next = list.map((entry) => {
-      if (entry.path === normalized) {
-        changed = true;
-        return updater(entry);
+      if (entry.name !== targetName) return entry;
+
+      if (depth === parts.length - 1) {
+        if (entry.path === normalized) {
+          changed = true;
+          return updater(entry);
+        }
+        return entry;
       }
 
-      if (
-        entry.kind === 'directory' &&
-        Array.isArray(entry.children) &&
-        entry.children.length > 0
-      ) {
-        const r = walk(entry.children);
+      if (entry.kind === 'directory' && Array.isArray(entry.children)) {
+        const r = walk(entry.children, depth + 1);
         if (r.changed) {
           changed = true;
           return { ...entry, children: r.next };
@@ -91,8 +102,9 @@ export function updateEntryByPath(
 
       return entry;
     });
+
     return { next: changed ? next : list, changed };
   }
 
-  return walk(entries).next;
+  return walk(entries, 0).next;
 }
