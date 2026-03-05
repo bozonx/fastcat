@@ -1088,6 +1088,24 @@ export function removeItems(
   return { next: { ...doc, tracks: nextTracks } };
 }
 
+export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): TimelineCommandResult {
+  let currentDoc = doc;
+
+  for (const move of cmd.moves) {
+    const res = moveItemToTrack(currentDoc, {
+      type: 'move_item_to_track',
+      fromTrackId: move.fromTrackId,
+      toTrackId: move.toTrackId,
+      itemId: move.itemId,
+      startUs: move.startUs,
+      quantizeToFrames: cmd.quantizeToFrames,
+    });
+    currentDoc = res.next;
+  }
+
+  return { next: currentDoc };
+}
+
 export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
   const item = track.items.find((x) => x.id === cmd.itemId);

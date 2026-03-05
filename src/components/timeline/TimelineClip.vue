@@ -24,6 +24,9 @@ const uiStore = useUiStore();
 
 const isDraggingOver = ref(false);
 
+let activeClipPointerMove: ((e: PointerEvent) => void) | null = null;
+let activeClipPointerUp: ((e?: PointerEvent) => void) | null = null;
+
 function handleDragEnter(event: DragEvent) {
   if (event.dataTransfer?.types.includes('gran-effect')) {
     isDraggingOver.value = true;
@@ -71,6 +74,17 @@ function handleDrop(event: DragEvent) {
 
   event.preventDefault();
   event.stopPropagation();
+}
+
+function clearActiveClipPointerListeners() {
+  if (activeClipPointerMove) {
+    window.removeEventListener('pointermove', activeClipPointerMove);
+    activeClipPointerMove = null;
+  }
+  if (activeClipPointerUp) {
+    window.removeEventListener('pointerup', activeClipPointerUp as any);
+    activeClipPointerUp = null;
+  }
 }
 
 interface Props {
@@ -191,8 +205,37 @@ function onTransitionPointerdown(e: PointerEvent) {
   window.addEventListener('pointerup', onPointerUp);
 }
 
+function onClipPointerdown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  if (!clipItem.value || Boolean(clipItem.value.locked)) return;
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  clearActiveClipPointerListeners();
+
+  function onPointerMove(ev: PointerEvent) {
+    const dx = Math.abs(ev.clientX - startX);
+    const dy = Math.abs(ev.clientY - startY);
+    if (dx > 3 || dy > 3) {
+      clearActiveClipPointerListeners();
+      emit('startMoveItem', ev, props.item.trackId, props.item.id, props.item.timelineRange.startUs);
+    }
+  }
+
+  function onPointerUp() {
+    clearActiveClipPointerListeners();
+  }
+
+  activeClipPointerMove = onPointerMove;
+  activeClipPointerUp = onPointerUp;
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+}
+
 onBeforeUnmount(() => {
   clearActiveTransitionPointerListeners();
+  clearActiveClipPointerListeners();
 });
 
 const clipWidthPx = computed(() => {
@@ -385,12 +428,16 @@ const isMediaMissing = computed(() => {
   return mediaStore.missingPaths[clipItem.value.source.path] === true;
 });
 
+const selectedItemIdsRef = computed(() => timelineStore.selectedItemIds);
+
 const { contextMenuItems } = useClipContextMenu({
   track: trackRef,
   item: itemRef,
   timelineDoc: timelineDocRef,
   projectSettings: projectSettingsRef,
+  selectedItemIds: selectedItemIdsRef,
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
+  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
   updateClipProperties: (trackId, itemId, p) =>
     timelineStore.updateClipProperties(trackId, itemId, p),
   updateClipTransition: (trackId, itemId, p) =>
@@ -429,11 +476,7 @@ const { contextMenuItems } = useClipContextMenu({
         left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
       }"
-      @pointerdown="
-        clipItem &&
-        !Boolean(clipItem.locked) &&
-        emit('startMoveItem', $event, item.trackId, item.id, item.timelineRange.startUs)
-      "
+      @pointerdown="onClipPointerdown($event)"
       @click="
         if ($event.button !== 1) {
           emit('selectItem', $event, item.id);
