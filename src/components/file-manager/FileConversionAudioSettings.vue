@@ -32,18 +32,6 @@ const sampleRateOptions = [
   <div class="space-y-4">
     <div class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
-      </label>
-      <WheelNumberInput
-        v-model="audioBitrateKbps"
-        :min="32"
-        :step="16"
-        :disabled="props.disabled"
-      />
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.audio.channels', 'Channels') }}
       </label>
       <UiAppButtonGroup
@@ -53,19 +41,33 @@ const sampleRateOptions = [
       />
     </div>
 
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
-      </label>
-      <USelect
-        v-model.number="audioSampleRate"
-        :items="sampleRateOptions"
-        :disabled="props.disabled"
-        size="sm"
-        class="w-full"
-        value-key="value"
-        label-key="label"
-      />
+    <div class="grid grid-cols-2 gap-3">
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
+        </label>
+        <WheelNumberInput
+          v-model="audioBitrateKbps"
+          :min="32"
+          :step="16"
+          :disabled="props.disabled"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
+        </label>
+        <USelect
+          v-model.number="audioSampleRate"
+          :items="sampleRateOptions"
+          :disabled="props.disabled"
+          size="sm"
+          class="w-full"
+          value-key="value"
+          label-key="label"
+        />
+      </div>
     </div>
   </div>
 </template>

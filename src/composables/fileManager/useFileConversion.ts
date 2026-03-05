@@ -52,8 +52,28 @@ export function useFileConversion() {
 
   // Image Settings
   const imageQuality = ref(80); // 0-100
+  const imageWidth = ref(0);
+  const imageHeight = ref(0);
+  const isImageResolutionLinked = ref(true);
+  const imageAspectRatio = ref(1);
 
-  function openConversionModal(entry: FsEntry) {
+  function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
+    if (!channels) return 'stereo';
+    if (channels === 1) return 'mono';
+    return 'stereo';
+  }
+
+  function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'ogg' | 'mp4' {
+    if (codec === 'opus') return 'ogg';
+    return 'mp4';
+  }
+
+  function resolveAudioOnlyFileExtension(codec: 'opus' | 'aac'): 'ogg' | 'm4a' {
+    if (codec === 'opus') return 'ogg';
+    return 'm4a';
+  }
+
+  async function openConversionModal(entry: FsEntry) {
     targetEntry.value = entry;
     const type = mediaType.value;
 
@@ -69,14 +89,58 @@ export function useFileConversion() {
         projectStore.projectSettings?.exportDefaults?.encoding?.audioCodec ?? 'aac';
       audioBitrateKbps.value =
         projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ?? 128;
+
+      try {
+        const fileHandle = entry.handle as FileSystemFileHandle;
+        const { client } = getExportWorkerClient();
+        const meta = await client.extractMetadata(fileHandle);
+
+        if (meta?.video) {
+          videoWidth.value = Math.max(1, Math.round(Number(meta.video.width) || 1920));
+          videoHeight.value = Math.max(1, Math.round(Number(meta.video.height) || 1080));
+          videoFps.value = Math.max(1, Math.round(Number(meta.video.fps) || 30));
+        }
+
+        if (meta?.audio) {
+          audioChannels.value = resolveAudioChannelsFromMeta(meta.audio.channels);
+          audioSampleRate.value = Math.max(1, Math.round(Number(meta.audio.sampleRate) || 48000));
+        }
+      } catch {
+        // ignore metadata errors
+      }
     } else if (type === 'audio') {
       audioOnlyCodec.value = 'opus';
       audioOnlyFormat.value = 'opus';
       audioOnlyBitrateKbps.value = 128;
       audioChannels.value = 'stereo';
       audioSampleRate.value = 48000;
+
+      try {
+        const fileHandle = entry.handle as FileSystemFileHandle;
+        const { client } = getExportWorkerClient();
+        const meta = await client.extractMetadata(fileHandle);
+        if (meta?.audio) {
+          audioChannels.value = resolveAudioChannelsFromMeta(meta.audio.channels);
+          audioSampleRate.value = Math.max(1, Math.round(Number(meta.audio.sampleRate) || 48000));
+        }
+      } catch {
+        // ignore metadata errors
+      }
     } else if (type === 'image') {
       imageQuality.value = 80;
+
+      try {
+        const fileHandle = entry.handle as FileSystemFileHandle;
+        const file = await fileHandle.getFile();
+        const bitmap = await createImageBitmap(file);
+        imageWidth.value = bitmap.width;
+        imageHeight.value = bitmap.height;
+        imageAspectRatio.value = bitmap.height > 0 ? bitmap.width / bitmap.height : 1;
+      } catch {
+        imageWidth.value = 0;
+        imageHeight.value = 0;
+        imageAspectRatio.value = 1;
+      }
     }
 
     isConverting.value = false;
@@ -92,11 +156,15 @@ export function useFileConversion() {
     const file = await fileHandle.getFile();
     const bitmap = await createImageBitmap(file);
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+
+    const targetWidth = Math.max(1, Math.round(Number(imageWidth.value) || bitmap.width));
+    const targetHeight = Math.max(1, Math.round(Number(imageHeight.value) || bitmap.height));
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Could not create canvas context');
-    ctx.drawImage(bitmap, 0, 0);
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
 
     const blob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob(resolve, 'image/webp', imageQuality.value / 100);
@@ -147,12 +215,14 @@ export function useFileConversion() {
         audioBitrate: audioBitrateKbps.value * 1000,
         audio: !excludeAudio.value,
         audioCodec: audioCodec.value,
-        width: meta.video?.width || 1920,
-        height: meta.video?.height || 1080,
-        fps: meta.video?.fps || 30,
+        width: Math.max(1, Math.round(Number(videoWidth.value) || meta.video?.width || 1920)),
+        height: Math.max(1, Math.round(Number(videoHeight.value) || meta.video?.height || 1080)),
+        fps: Math.max(1, Math.round(Number(videoFps.value) || meta.video?.fps || 30)),
         bitrateMode: bitrateMode.value,
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: false,
+        audioChannels: audioChannels.value,
+        audioSampleRate: audioSampleRate.value,
       };
 
       videoPayload = [
@@ -181,12 +251,16 @@ export function useFileConversion() {
       }
     } else {
       // Audio only
+      const codec = audioOnlyCodec.value;
       exportOptions = {
-        format: audioOnlyFormat.value,
+        format: resolveAudioOnlyContainerFormat(codec),
         videoCodec: 'none',
+        // mediabunny CanvasSource requires bitrate to be a positive integer or quality.
+        // In audio-only mode we still instantiate a video track (tiny canvas), so set a minimal valid bitrate.
+        bitrate: 100_000,
         audioBitrate: audioOnlyBitrateKbps.value * 1000,
         audio: true,
-        audioCodec: audioOnlyCodec.value,
+        audioCodec: codec,
         width: 2,
         height: 2,
         fps: 30,
@@ -228,7 +302,7 @@ export function useFileConversion() {
       const baseName = entry.name.replace(/\.[^.]+$/, '');
       let newExt = '';
       if (type === 'image') newExt = 'webp';
-      else if (type === 'audio') newExt = audioOnlyFormat.value;
+      else if (type === 'audio') newExt = resolveAudioOnlyFileExtension(audioOnlyFormat.value);
       else if (type === 'video') newExt = videoFormat.value;
 
       const newFileName = `${baseName}_converted.${newExt}`;
@@ -335,6 +409,10 @@ export function useFileConversion() {
     audioChannels,
     audioSampleRate,
     imageQuality,
+    imageWidth,
+    imageHeight,
+    isImageResolutionLinked,
+    imageAspectRatio,
     openConversionModal,
     startConversion,
     cancelConversion,

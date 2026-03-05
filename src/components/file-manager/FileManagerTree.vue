@@ -61,6 +61,7 @@ const emit = defineEmits<{
       | 'cancelProxyForFolder'
       | 'createOtioVersion'
       | 'createMarkdown'
+      | 'convertFile'
       | 'openAsPanel'
       | 'openAsProjectTab',
     entry: FsEntry,

@@ -62,6 +62,10 @@ const audioSampleRate = defineModel<number>('audioSampleRate', { default: 48000 
 
 // Image Settings
 const imageQuality = defineModel<number>('imageQuality', { default: 80 });
+const imageWidth = defineModel<number>('imageWidth', { default: 0 });
+const imageHeight = defineModel<number>('imageHeight', { default: 0 });
+const isImageResolutionLinked = defineModel<boolean>('isImageResolutionLinked', { default: true });
+const imageAspectRatio = defineModel<number>('imageAspectRatio', { default: 1 });
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
@@ -107,13 +111,14 @@ const getPhaseLabel = computed(() => {
   return '';
 });
 
-const outputFileName = computed(() => {
+const _outputFileName = computed(() => {
   const baseName = props.fileName.replace(/\.[^.]+$/, '');
   if (props.mediaType === 'video') {
     return `${baseName}_converted.${videoFormat.value}`;
   }
   if (props.mediaType === 'audio') {
-    return `${baseName}_converted.${audioOnlyFormat.value}`;
+    const ext = audioOnlyFormat.value === 'opus' ? 'ogg' : 'm4a';
+    return `${baseName}_converted.${ext}`;
   }
   if (props.mediaType === 'image') {
     return `${baseName}_converted.webp`;
@@ -124,6 +129,33 @@ const outputFileName = computed(() => {
 watch(audioOnlyFormat, (nextFormat) => {
   audioOnlyCodec.value = nextFormat;
 });
+
+function clampPositiveInt(value: number) {
+  const v = Math.round(Number(value) || 0);
+  return Math.max(1, v);
+}
+
+watch(
+  imageWidth,
+  (nextWidth, prevWidth) => {
+    if (!isImageResolutionLinked.value) return;
+    if (!imageAspectRatio.value) return;
+    if (nextWidth === prevWidth) return;
+    imageHeight.value = clampPositiveInt(nextWidth / imageAspectRatio.value);
+  },
+  { flush: 'sync' },
+);
+
+watch(
+  imageHeight,
+  (nextHeight, prevHeight) => {
+    if (!isImageResolutionLinked.value) return;
+    if (!imageAspectRatio.value) return;
+    if (nextHeight === prevHeight) return;
+    imageWidth.value = clampPositiveInt(nextHeight * imageAspectRatio.value);
+  },
+  { flush: 'sync' },
+);
 </script>
 
 <template>
@@ -140,6 +172,17 @@ watch(audioOnlyFormat, (nextFormat) => {
       </div>
 
       <div v-if="mediaType === 'video'" class="space-y-4">
+        <MediaResolutionSettings
+          v-model:is-custom-resolution="isCustomResolution"
+          v-model:width="videoWidth"
+          v-model:height="videoHeight"
+          v-model:fps="videoFps"
+          v-model:resolution-format="resolutionFormat"
+          v-model:orientation="orientation"
+          v-model:aspect-ratio="aspectRatio"
+          :disabled="isConverting"
+        />
+
         <MediaEncodingSettings
           v-model:output-format="videoFormat"
           v-model:video-codec="videoCodec"
@@ -152,19 +195,17 @@ watch(audioOnlyFormat, (nextFormat) => {
           :disabled="isConverting"
           :show-metadata="false"
           :has-audio="true"
+          :hide-audio-bitrate="true"
           :is-loading-codec-support="isLoadingCodecSupport"
           :format-options="formatOptions"
           :video-codec-options="videoCodecOptions"
         />
 
-        <MediaResolutionSettings
-          v-model:is-custom-resolution="isCustomResolution"
-          v-model:width="videoWidth"
-          v-model:height="videoHeight"
-          v-model:fps="videoFps"
-          :resolution-format="resolutionFormat"
-          :orientation="orientation"
-          :aspect-ratio="aspectRatio"
+        <FileConversionAudioSettings
+          v-if="!excludeAudio"
+          v-model:audio-bitrate-kbps="audioBitrateKbps"
+          v-model:audio-channels="audioChannels"
+          v-model:audio-sample-rate="audioSampleRate"
           :disabled="isConverting"
         />
       </div>
@@ -182,9 +223,9 @@ watch(audioOnlyFormat, (nextFormat) => {
         </div>
 
         <FileConversionAudioSettings
-          v-model:audioBitrateKbps="audioOnlyBitrateKbps"
-          v-model:audioChannels="audioChannels"
-          v-model:audioSampleRate="audioSampleRate"
+          v-model:audio-bitrate-kbps="audioOnlyBitrateKbps"
+          v-model:audio-channels="audioChannels"
+          v-model:audio-sample-rate="audioSampleRate"
           :disabled="isConverting"
         />
       </div>
@@ -208,6 +249,18 @@ watch(audioOnlyFormat, (nextFormat) => {
             :step="1"
             :disabled="isConverting"
           />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs text-ui-text-muted font-medium">W</label>
+            <WheelNumberInput v-model="imageWidth" :min="1" :step="2" :disabled="isConverting" />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs text-ui-text-muted font-medium">H</label>
+            <WheelNumberInput v-model="imageHeight" :min="1" :step="2" :disabled="isConverting" />
+          </div>
         </div>
       </div>
 
