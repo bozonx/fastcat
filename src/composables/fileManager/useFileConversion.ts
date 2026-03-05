@@ -6,57 +6,58 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 
+// Module-level singleton state so all components share the same modal instance.
+const isModalOpen = ref(false);
+const targetEntry = ref<FsEntry | null>(null);
+
+const mediaType = computed(() => {
+  if (!targetEntry.value) return null;
+  return getMediaTypeFromFilename(targetEntry.value.name);
+});
+
+const isConverting = ref(false);
+const isCancelRequested = ref(false);
+const conversionProgress = ref(0);
+const conversionError = ref<string | null>(null);
+const conversionPhase = ref<'encoding' | 'saving' | null>(null);
+
+// Video Settings
+const videoFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
+const videoCodec = ref('avc1.640032');
+const videoBitrateMbps = ref(5);
+const excludeAudio = ref(false);
+const audioCodec = ref<'aac' | 'opus'>('aac');
+const audioBitrateKbps = ref(128);
+const bitrateMode = ref<'constant' | 'variable'>('variable');
+const keyframeIntervalSec = ref(2);
+const videoWidth = ref(1920);
+const videoHeight = ref(1080);
+const videoFps = ref(30);
+const resolutionFormat = ref('1080p');
+const orientation = ref<'landscape' | 'portrait'>('landscape');
+const aspectRatio = ref('16:9');
+const isCustomResolution = ref(false);
+
+// Audio Settings
+const audioOnlyFormat = ref<'opus' | 'aac'>('opus');
+const audioOnlyCodec = ref<'opus' | 'aac'>('opus');
+const audioOnlyBitrateKbps = ref(128);
+const audioChannels = ref<'stereo' | 'mono'>('stereo');
+const audioSampleRate = ref(0);
+const originalAudioSampleRate = ref<number | null>(null);
+
+// Image Settings
+const imageQuality = ref(80); // 0-100
+const imageWidth = ref(0);
+const imageHeight = ref(0);
+const isImageResolutionLinked = ref(true);
+const imageAspectRatio = ref(1);
+
 export function useFileConversion() {
   const { t } = useI18n();
   const projectStore = useProjectStore();
   const fileManager = useFileManager();
   const toast = useToast();
-
-  const isModalOpen = ref(false);
-  const targetEntry = ref<FsEntry | null>(null);
-
-  const mediaType = computed(() => {
-    if (!targetEntry.value) return null;
-    return getMediaTypeFromFilename(targetEntry.value.name);
-  });
-
-  const isConverting = ref(false);
-  const isCancelRequested = ref(false);
-  const conversionProgress = ref(0);
-  const conversionError = ref<string | null>(null);
-  const conversionPhase = ref<'encoding' | 'saving' | null>(null);
-
-  // Video Settings
-  const videoFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
-  const videoCodec = ref('avc1.640032');
-  const videoBitrateMbps = ref(5);
-  const excludeAudio = ref(false);
-  const audioCodec = ref<'aac' | 'opus'>('aac');
-  const audioBitrateKbps = ref(128);
-  const bitrateMode = ref<'constant' | 'variable'>('variable');
-  const keyframeIntervalSec = ref(2);
-  const videoWidth = ref(1920);
-  const videoHeight = ref(1080);
-  const videoFps = ref(30);
-  const resolutionFormat = ref('1080p');
-  const orientation = ref<'landscape' | 'portrait'>('landscape');
-  const aspectRatio = ref('16:9');
-  const isCustomResolution = ref(false);
-
-  // Audio Settings
-  const audioOnlyFormat = ref<'opus' | 'aac'>('opus');
-  const audioOnlyCodec = ref<'opus' | 'aac'>('opus');
-  const audioOnlyBitrateKbps = ref(128);
-  const audioChannels = ref<'stereo' | 'mono'>('stereo');
-  const audioSampleRate = ref(0);
-  const originalAudioSampleRate = ref<number | null>(null);
-
-  // Image Settings
-  const imageQuality = ref(80); // 0-100
-  const imageWidth = ref(0);
-  const imageHeight = ref(0);
-  const isImageResolutionLinked = ref(true);
-  const imageAspectRatio = ref(1);
 
   function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
     if (!channels) return 'stereo';
@@ -232,7 +233,7 @@ export function useFileConversion() {
         bitrate: videoBitrateMbps.value * 1_000_000,
         audioBitrate: audioBitrateKbps.value * 1000,
         audio: !excludeAudio.value,
-        audioCodec: audioCodec.value,
+        audioCodec: videoFormat.value === 'mp4' ? 'aac' : 'opus',
         width: Math.max(1, Math.round(Number(videoWidth.value) || meta.video?.width || 1920)),
         height: Math.max(1, Math.round(Number(videoHeight.value) || meta.video?.height || 1080)),
         fps: clampPositiveNumber(Number(videoFps.value) || Number(meta.video?.fps), 30),
@@ -368,7 +369,7 @@ export function useFileConversion() {
           color: 'neutral',
         });
         isModalOpen.value = false;
-        return;
+        isConverting.value = false;
       }
 
       toast.add({

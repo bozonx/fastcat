@@ -1,5 +1,5 @@
 export const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg'];
+export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'opus', 'm4a'];
 export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'];
 export const TEXT_EXTENSIONS = ['txt', 'md', 'json', 'yaml', 'yml'];
 export const TIMELINE_EXTENSIONS = ['otio'];

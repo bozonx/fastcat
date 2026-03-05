@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue';
 
 const props = defineProps<{
   initialName: string;
@@ -29,12 +29,13 @@ const isInvalid = computed(() => {
 });
 
 let isFinished = false;
+// Timer used to debounce blur so context menu closing doesn't trigger cancel.
+let blurTimer: ReturnType<typeof setTimeout> | null = null;
 
 function focusAndSelectName() {
   if (!inputRef.value) return;
 
   inputRef.value.focus();
-  // Scroll into view
   inputRef.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
   if (!props.isFolder) {
@@ -52,14 +53,37 @@ function focusAndSelectName() {
 
 onMounted(() => {
   nextTick(() => {
-    focusAndSelectName();
-    // Context menu close can steal focus right after mount.
-    // Repeat once in next macrotask to keep consistent rename UX.
+    // Use a longer delay so the context menu has time to fully close
+    // before we try to grab focus, preventing the context-menu-close blur.
     setTimeout(() => {
       focusAndSelectName();
-    }, 0);
+    }, 100);
   });
 });
+
+onBeforeUnmount(() => {
+  if (blurTimer !== null) {
+    clearTimeout(blurTimer);
+    blurTimer = null;
+  }
+});
+
+function onBlur() {
+  // Delay finish so that if focus immediately returns (e.g. context menu closing)
+  // the focusAndSelectName in the timer above will fire first and cancel the blur.
+  blurTimer = setTimeout(() => {
+    blurTimer = null;
+    finish();
+  }, 150);
+}
+
+function onFocus() {
+  // Cancel any pending blur-finish when focus returns to the input.
+  if (blurTimer !== null) {
+    clearTimeout(blurTimer);
+    blurTimer = null;
+  }
+}
 
 function finish() {
   if (isFinished) return;
@@ -121,7 +145,8 @@ function cancel() {
     :class="isInvalid ? 'border-red-500' : 'border-primary-500'"
     @keydown.enter="finish"
     @keydown.esc="cancel"
-    @blur="finish"
+    @blur="onBlur"
+    @focus="onFocus"
     @click.stop
     @dblclick.stop
   />

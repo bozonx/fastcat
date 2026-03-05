@@ -45,6 +45,8 @@ interface FileManagerActions {
   findEntryByPath: (path: string) => FsEntry | null;
   readDirectory: (dirHandle: FileSystemDirectoryHandle, basePath?: string) => Promise<FsEntry[]>;
   reloadDirectory: (path: string) => Promise<void>;
+  notifyFileManagerUpdate?: () => void;
+  setFileTreePathExpanded?: (path: string, expanded: boolean) => void;
   onAfterRename?: () => void;
   onAfterDelete?: () => void;
   onFileSelect?: (entry: FsEntry) => void;
@@ -220,6 +222,10 @@ export function useFileManagerActions(actions: FileManagerActions) {
   async function createMarkdownInDirectory(entry: FsEntry) {
     const dirHandle = entry.handle as FileSystemDirectoryHandle;
 
+    if (entry.path) {
+      actions.setFileTreePathExpanded?.(entry.path, true);
+    }
+
     const existingInFolder = await actions.readDirectory(dirHandle, entry.path);
     const existingNames = existingInFolder.map((e) => e.name);
 
@@ -229,6 +235,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     });
 
     await actions.reloadDirectory(entry.path ?? '');
+    actions.notifyFileManagerUpdate?.();
 
     const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
     const newEntry = actions.findEntryByPath(newPath);
