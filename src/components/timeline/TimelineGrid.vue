@@ -77,8 +77,9 @@ onUnmounted(() => {
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
+const currentTime = computed(() => timelineStore.currentTime);
 
-watch([fps, zoom, width, height, scrollLeft], () => {
+watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
   requestAnimationFrame(draw);
 });
 
@@ -103,11 +104,27 @@ function draw() {
   const currentZoom = zoom.value;
   const currentFps = fps.value;
   const pxPerSec = zoomToPxPerSecond(currentZoom);
+  const pxPerFrame = pxPerSec / currentFps;
 
   const startPx = scrollLeft.value;
   const endPx = startPx + w;
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
+
+  if (pxPerFrame >= 12) {
+    const frameDurationUs = 1_000_000 / currentFps;
+    const nextFrameStartUs = (Math.floor(currentTime.value / frameDurationUs) + 1) * frameDurationUs;
+    const nextFrameStartX = timeUsToPx(nextFrameStartUs, currentZoom) - startPx;
+
+    if (nextFrameStartX < w && nextFrameStartX + pxPerFrame > 0) {
+      const styles = window.getComputedStyle(document.documentElement);
+      const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
+      ctx.fillStyle = primaryColor;
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(nextFrameStartX, 0, pxPerFrame, h);
+      ctx.globalAlpha = 1;
+    }
+  }
 
   // Same step calculation as TimelineRuler for perfect sync
   const MIN_DIST_PX = 90;
@@ -143,7 +160,6 @@ function draw() {
   for (let s = startS; s <= endS; s += mainStepS) {
     if (mainStepS === 1) {
       // Frame-level ticks at high zoom
-      const pxPerFrame = pxPerSec / currentFps;
       let frameStep = 1;
       if (pxPerFrame < 5) {
         frameStep = Math.ceil(5 / pxPerFrame);
