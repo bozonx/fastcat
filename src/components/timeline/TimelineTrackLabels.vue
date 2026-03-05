@@ -98,12 +98,21 @@ watch(
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 
 function onSelectTrack(trackId: string) {
-  if (timelineStore.selectedTrackId === trackId) {
-    timelineStore.selectTimelineProperties();
-  } else {
+  if (timelineStore.selectedTrackId !== trackId) {
     timelineStore.selectTrack(trackId);
     selectionStore.selectTimelineTrack(trackId);
+    return;
   }
+
+  const entity = selectionStore.selectedEntity;
+  const isTimelinePropsSelected = entity?.source === 'timeline' && entity.kind === 'timeline-properties';
+  if (isTimelinePropsSelected) {
+    timelineStore.selectTrack(trackId);
+    selectionStore.selectTimelineTrack(trackId);
+    return;
+  }
+
+  timelineStore.selectTimelineProperties();
 }
 
 function selectTimelineProperties() {

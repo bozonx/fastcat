@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
+import type { TimelineDocument } from '~/timeline/types';
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
@@ -30,7 +31,7 @@ interface MonitorDisplayState {
   renderHeight: Ref<number>;
   updateCanvasDisplaySize: () => void;
 }
- 
+
 interface TimelineStoreState {
   duration: number;
   currentTime: number;
@@ -38,8 +39,9 @@ interface TimelineStoreState {
   isPlaying: boolean;
   masterGain: number;
   audioMuted: boolean;
+  timelineDoc: TimelineDocument | null;
 }
- 
+
 interface MonitorStoreState {
   projectStore: {
     projectSettings: GranVideoEditorProjectSettings;
@@ -110,6 +112,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const useProxyInMonitor = computed(() => {
     return projectStore.projectSettings.monitor?.useProxy !== false;
   });
+
+  function buildVideoWorkerPayload(clips: WorkerTimelineClip[]): any[] {
+    const masterEffects = timelineStore.timelineDoc?.metadata?.gran?.masterEffects;
+    const meta =
+      Array.isArray(masterEffects) && masterEffects.length > 0
+        ? [{ kind: 'meta', masterEffects }]
+        : [];
+    return [...meta, ...clips];
+  }
 
   function cloneWorkerPayload<T>(value: T): T {
     try {
@@ -258,7 +269,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           workerTimelineClips.value = flattenedClips;
           workerAudioClips.value = flattenedAudio;
 
-          const payload = cloneWorkerPayload(flattenedClips);
+          const payload = cloneWorkerPayload(buildVideoWorkerPayload(flattenedClips));
           const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(flattenedAudio);
           // Keep store duration at least as large as current value to avoid clamping
@@ -500,7 +511,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         onExportProgress: () => {},
       });
 
-      const payload = cloneWorkerPayload(clips);
+      const payload = cloneWorkerPayload(buildVideoWorkerPayload(clips));
       const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
       if (clips.length === 0) {
         await client.clearClips();

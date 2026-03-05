@@ -105,7 +105,7 @@ export async function toWorkerTimelineClips(
     const parentEffects = options?.parentEffects ?? [];
     const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
     const combinedEffects =
-      parentEffects.length > 0 ? [...parentEffects, ...itemEffects] : itemEffects;
+      parentEffects.length > 0 ? [...itemEffects, ...parentEffects] : itemEffects;
 
     const base: WorkerTimelineClip = {
       kind: 'clip',
@@ -171,7 +171,7 @@ export async function toWorkerTimelineClips(
                   ? cloneEffects(track.effects)
                   : [];
                 const combinedTrackEffects =
-                  combinedEffects.length > 0 ? [...combinedEffects, ...trackEffects] : trackEffects;
+                  combinedEffects.length > 0 ? [...trackEffects, ...combinedEffects] : trackEffects;
 
                 const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, {
                   layer: nestedLayer,
@@ -680,6 +680,12 @@ export function useTimelineExport() {
       videoClips.push(...clips);
     }
 
+    const masterEffects = doc?.metadata?.gran?.masterEffects;
+    const videoPayload: any[] =
+      Array.isArray(masterEffects) && masterEffects.length > 0
+        ? [{ kind: 'meta', masterEffects }, ...videoClips]
+        : [...videoClips];
+
     const effectiveAudioItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
@@ -715,7 +721,7 @@ export function useTimelineExport() {
       audioSampleRate: projectStore.projectSettings?.project?.sampleRate,
       audioChannels: projectStore.projectSettings?.project?.audioChannels,
     };
-    await (client as any).exportTimeline(fileHandle, finalOptions, videoClips, audioClips);
+    await (client as any).exportTimeline(fileHandle, finalOptions, videoPayload, audioClips);
   }
 
   async function cancelExport() {

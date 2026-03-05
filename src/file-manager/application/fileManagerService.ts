@@ -39,7 +39,14 @@ export interface FileManagerService {
   toggleDirectory: (entry: FsEntry) => Promise<void>;
   refreshExpandedChildren: (entries: FsEntry[]) => Promise<void>;
   expandPersistedDirectories: () => Promise<void>;
-  loadProjectDirectory: (projectDir: FileSystemDirectoryHandle) => Promise<void>;
+  loadProjectDirectory: (
+    projectDir: FileSystemDirectoryHandle,
+    options?: {
+      refreshExpandedChildren?: boolean;
+      expandPersistedDirectories?: boolean;
+      autoExpandMediaDirs?: boolean;
+    },
+  ) => Promise<void>;
   reloadDirectory: (path: string, projectDir: FileSystemDirectoryHandle) => Promise<void>;
 }
 
@@ -258,14 +265,37 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     }
   }
 
-  async function loadProjectDirectory(projectDir: FileSystemDirectoryHandle) {
+  async function loadProjectDirectory(
+    projectDir: FileSystemDirectoryHandle,
+    options?: {
+      refreshExpandedChildren?: boolean;
+      expandPersistedDirectories?: boolean;
+      autoExpandMediaDirs?: boolean;
+    },
+  ) {
+    const {
+      refreshExpandedChildren: shouldRefreshExpandedChildren = false,
+      expandPersistedDirectories: shouldExpandPersistedDirectories = true,
+      autoExpandMediaDirs: shouldAutoExpandMediaDirs = true,
+    } = options ?? {};
+
     const nextRoot = await readDirectory(projectDir);
     deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
 
-    await refreshExpandedChildren(deps.rootEntries.value);
-    await expandPersistedDirectories();
+    if (shouldRefreshExpandedChildren) {
+      await refreshExpandedChildren(deps.rootEntries.value);
+    }
+
+    if (shouldExpandPersistedDirectories) {
+      await expandPersistedDirectories();
+    }
 
     if (deps.hasPersistedFileTreeState?.()) {
+      deps.onDirectoryLoaded?.();
+      return;
+    }
+
+    if (!shouldAutoExpandMediaDirs) {
       deps.onDirectoryLoaded?.();
       return;
     }
