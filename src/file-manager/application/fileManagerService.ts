@@ -40,6 +40,7 @@ export interface FileManagerService {
   refreshExpandedChildren: (entries: FsEntry[]) => Promise<void>;
   expandPersistedDirectories: () => Promise<void>;
   loadProjectDirectory: (projectDir: FileSystemDirectoryHandle) => Promise<void>;
+  reloadDirectory: (path: string, projectDir: FileSystemDirectoryHandle) => Promise<void>;
 }
 
 export function createFileManagerService(deps: FileManagerServiceDeps): FileManagerService {
@@ -286,6 +287,29 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     deps.onDirectoryLoaded?.();
   }
 
+  async function reloadDirectory(path: string, projectDir: FileSystemDirectoryHandle) {
+    if (!path) {
+      const nextRoot = await readDirectory(projectDir);
+      deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
+      return;
+    }
+    const entry = findEntryByPath(path);
+    if (!entry || entry.kind !== 'directory') return;
+    try {
+      const nextChildren = await readDirectory(entry.handle as FileSystemDirectoryHandle, path);
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+        ...e,
+        children: mergeEntries(e.children, nextChildren),
+      }));
+    } catch (e) {
+      deps.onError?.({
+        title: 'File manager error',
+        message: `Failed to reload directory: ${path}`,
+        error: e,
+      });
+    }
+  }
+
   return {
     readDirectory,
     findEntryByPath,
@@ -294,5 +318,6 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     refreshExpandedChildren,
     expandPersistedDirectories,
     loadProjectDirectory,
+    reloadDirectory,
   };
 }

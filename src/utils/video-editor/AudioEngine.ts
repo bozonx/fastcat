@@ -55,6 +55,7 @@ export class AudioEngine {
   private decodeInFlight = new Map<string, Promise<AudioBuffer | null>>();
   private activeNodes = new Map<string, AudioBufferSourceNode>();
   private masterGain: GainNode | null = null;
+  private monitorGain: GainNode | null = null;
   private isPlaying = false;
   private baseTimeS = 0;
   private playbackContextTimeS = 0;
@@ -66,7 +67,8 @@ export class AudioEngine {
   private decodeQueue: Array<() => void> = [];
   private decodeInFlightCount = 0;
   private readonly maxDecodeConcurrency = 2;
-  private currentVolume = 1;
+  private currentMasterVolume = 1;
+  private currentMonitorVolume = 1;
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
@@ -187,12 +189,19 @@ export class AudioEngine {
     if (!this.ctx) {
       this.ctx = new AudioContext({ sampleRate });
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = this.currentVolume;
-      this.masterGain.connect(this.ctx.destination);
+      this.masterGain.gain.value = this.currentMasterVolume;
+
+      this.monitorGain = this.ctx.createGain();
+      this.monitorGain.gain.value = this.currentMonitorVolume;
 
       const masterAnalyser = this.ctx.createAnalyser();
       masterAnalyser.fftSize = 2048;
+
+      // Chain: MasterGain -> Analyser -> MonitorGain -> Destination
       this.masterGain.connect(masterAnalyser);
+      masterAnalyser.connect(this.monitorGain);
+      this.monitorGain.connect(this.ctx.destination);
+
       this.analyserNodes.set('master', masterAnalyser);
 
       if (this.ctx.destination) {
@@ -421,9 +430,20 @@ export class AudioEngine {
   }
 
   setVolume(volume: number) {
-    this.currentVolume = Math.max(0, Math.min(1, volume));
+    this.setMasterVolume(volume);
+  }
+
+  setMasterVolume(volume: number) {
+    this.currentMasterVolume = Math.max(0, Math.min(2, volume));
     if (this.masterGain) {
-      this.masterGain.gain.value = this.currentVolume;
+      this.masterGain.gain.value = this.currentMasterVolume;
+    }
+  }
+
+  setMonitorVolume(volume: number) {
+    this.currentMonitorVolume = Math.max(0, Math.min(2, volume));
+    if (this.monitorGain) {
+      this.monitorGain.gain.value = this.currentMonitorVolume;
     }
   }
 

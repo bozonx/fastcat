@@ -7,9 +7,9 @@ const timelineStore = useTimelineStore();
 const { t } = useI18n();
 
 const volume = computed({
-  get: () => timelineStore.audioVolume,
+  get: () => timelineStore.masterGain,
   set: (val: number) => {
-    timelineStore.audioVolume = val;
+    timelineStore.setMasterGain(val);
   },
 });
 

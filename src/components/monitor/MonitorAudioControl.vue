@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
@@ -9,18 +10,18 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const timelineStore = useTimelineStore();
-const { audioVolume, audioMuted } = storeToRefs(timelineStore);
+const uiStore = useUiStore();
+const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
 
-const volumePercent = computed(() => Math.round((audioMuted.value ? 0 : audioVolume.value) * 100));
+const volumePercent = computed(() => Math.round((monitorMuted.value ? 0 : monitorVolume.value) * 100));
 
 function toggleMute() {
-  timelineStore.toggleAudioMuted();
+  monitorMuted.value = !monitorMuted.value;
   (document.activeElement as HTMLElement | null)?.blur?.();
 }
 
 function onVolumeUpdate(v: number | string | undefined | null) {
-  timelineStore.setAudioVolume(Number(v ?? 1));
+  monitorVolume.value = Number(v ?? 1);
 }
 
 // Popup logic for compact mode
@@ -90,9 +91,9 @@ onBeforeUnmount(() => {
       size="sm"
       variant="ghost"
       color="neutral"
-      :icon="audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+      :icon="monitorMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
       :aria-label="
-        audioMuted
+        monitorMuted
           ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
           : t('granVideoEditor.monitor.audioMute', 'Mute')
       "
@@ -105,7 +106,7 @@ onBeforeUnmount(() => {
       :step="0.05"
       :wheel-step-multiplier="1"
       :default-value="1"
-      :model-value="audioMuted ? 0 : audioVolume"
+      :model-value="monitorMuted ? 0 : monitorVolume"
       slider-class="w-20"
       :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
       @update:model-value="onVolumeUpdate"
@@ -125,9 +126,9 @@ onBeforeUnmount(() => {
       size="sm"
       variant="ghost"
       color="neutral"
-      :icon="audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+      :icon="monitorMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
       :aria-label="
-        audioMuted
+        monitorMuted
           ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
           : t('granVideoEditor.monitor.audioMute', 'Mute')
       "
@@ -165,9 +166,9 @@ onBeforeUnmount(() => {
                 size="xs"
                 variant="ghost"
                 color="neutral"
-                :icon="audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+                :icon="monitorMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
                 :aria-label="
-                  audioMuted
+                  monitorMuted
                     ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
                     : t('granVideoEditor.monitor.audioMute', 'Mute')
                 "
@@ -180,7 +181,7 @@ onBeforeUnmount(() => {
                   :step="0.05"
                   :wheel-step-multiplier="1"
                   :default-value="1"
-                  :model-value="audioMuted ? 0 : audioVolume"
+                  :model-value="monitorMuted ? 0 : monitorVolume"
                   slider-class="w-full"
                   @update:model-value="onVolumeUpdate"
                 />
