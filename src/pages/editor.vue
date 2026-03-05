@@ -16,6 +16,7 @@ import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';
 import Timeline from '~/components/Timeline.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
+import TextEditor from '~/components/preview/TextEditor.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
 import { useFocusStore } from '~/stores/focus.store';
@@ -545,7 +546,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     </div>
                     <div
                       v-else-if="panel.type === 'text'"
-                      class="h-full w-full bg-ui-bg-elevated p-4 overflow-auto border border-ui-border flex flex-col pt-8 relative"
+                      class="h-full w-full bg-ui-bg-elevated flex flex-col pt-8 relative border border-ui-border"
                     >
                       <div
                         class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
@@ -566,9 +567,14 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
-                      <pre class="text-xs whitespace-pre-wrap flex-1 mt-2">{{
-                        panel.fileContent
-                      }}</pre>
+                      <div class="flex-1 overflow-hidden min-h-0 relative">
+                        <TextEditor
+                          class="absolute inset-0 h-full w-full border-none"
+                          :file-path="panel.filePath || ''"
+                          :file-name="panel.title || ''"
+                          :initial-content="panel.fileContent || ''"
+                        />
+                      </div>
                     </div>
 
                     <!-- History panel (detached from Project tabs) -->

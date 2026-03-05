@@ -29,13 +29,14 @@ const isInvalid = computed(() => {
 });
 
 let isFinished = false;
+let isReady = false;
 // Timer used to debounce blur so context menu closing doesn't trigger cancel.
 let blurTimer: ReturnType<typeof setTimeout> | null = null;
 
 function focusAndSelectName() {
   if (!inputRef.value) return;
 
-  inputRef.value.focus();
+  inputRef.value.focus({ preventScroll: true });
   inputRef.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
   if (!props.isFolder) {
@@ -53,11 +54,14 @@ function focusAndSelectName() {
 
 onMounted(() => {
   nextTick(() => {
-    // Use a longer delay so the context menu has time to fully close
-    // before we try to grab focus, preventing the context-menu-close blur.
+    focusAndSelectName();
+    
+    // Context menus often restore focus to their trigger element when closing.
+    // We wait for that to finish, then assert focus again and mark as ready.
     setTimeout(() => {
       focusAndSelectName();
-    }, 100);
+      isReady = true;
+    }, 200);
   });
 });
 
@@ -69,8 +73,13 @@ onBeforeUnmount(() => {
 });
 
 function onBlur() {
-  // Delay finish so that if focus immediately returns (e.g. context menu closing)
-  // the focusAndSelectName in the timer above will fire first and cancel the blur.
+  if (!isReady) {
+    // If blurred before ready (e.g. by context menu closing), just re-focus
+    focusAndSelectName();
+    return;
+  }
+  
+  // Delay finish so that if focus immediately returns we don't cancel
   blurTimer = setTimeout(() => {
     blurTimer = null;
     finish();
