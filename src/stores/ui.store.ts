@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import { createUiFileTreePersistenceModule } from '~/stores/ui/uiFileTreePersistence';
+import type { FsEntry } from '~/types/fs';
 
 export interface FsEntrySelection {
   kind: 'file' | 'directory';
@@ -37,12 +38,12 @@ export const useUiStore = defineStore('ui', () => {
 
   const fileTreeExpandedPaths = ref<Record<string, true>>({});
 
-  const pendingFsEntryDelete = ref<unknown>(null);
-  const pendingFsEntryRename = ref<unknown>(null);
-  const pendingFsEntryCreateFolder = ref<unknown>(null);
-  const pendingFsEntryCreateMarkdown = ref<unknown>(null);
-  const pendingFsEntryCreateTimeline = ref<unknown>(null);
-  const pendingOtioCreateVersion = ref<unknown>(null);
+  const pendingFsEntryDelete = ref<FsEntry | null>(null);
+  const pendingFsEntryRename = ref<FsEntry | null>(null);
+  const pendingFsEntryCreateFolder = ref<FsEntry | null>(null);
+  const pendingFsEntryCreateTimeline = ref<FsEntry | null>(null);
+  const pendingFsEntryCreateMarkdown = ref<FsEntry | null>(null);
+  const pendingOtioCreateVersion = ref<FsEntry | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
 

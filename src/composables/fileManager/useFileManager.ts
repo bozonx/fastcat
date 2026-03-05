@@ -282,6 +282,16 @@ export function createFileManager(deps: FileManagerCreateDeps) {
                 });
               }
             }
+
+            if (path.startsWith(`${VIDEO_DIR_NAME}/`) || path.startsWith(`${AUDIO_DIR_NAME}/`)) {
+              const projectId = deps.getProjectId();
+              if (projectId) {
+                await deps.mediaCache.clearWaveforms({
+                  projectId,
+                  projectRelativePath: path,
+                });
+              }
+            }
           },
         });
 
@@ -484,6 +494,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   };
 }
 
+const sharedRootEntries = ref<FsEntry[]>([]);
+const sharedSortMode = ref<FileTreeSortMode>('name');
+
 export function useFileManager() {
   const { t } = useI18n();
   const toast = useToast();
@@ -494,9 +507,6 @@ export function useFileManager() {
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
   const focusStore = useFocusStore();
-
-  const rootEntries = ref<FsEntry[]>([]);
-  const sortMode = ref<FileTreeSortMode>('name');
 
   const isApiSupported = computed(() => workspaceStore.isApiSupported);
   const showHiddenFiles = computed(() => uiStore.showHiddenFiles);
@@ -515,7 +525,7 @@ export function useFileManager() {
       selectionStore.selectedEntity?.source === 'fileManager' &&
       selectionStore.selectedEntity.path === params.oldPath
     ) {
-      const updatedEntry = findEntryByPathCore(rootEntries.value, params.newPath);
+      const updatedEntry = findEntryByPathCore(sharedRootEntries.value, params.newPath);
       if (updatedEntry) {
         selectionStore.selectFsEntry(updatedEntry);
       }
@@ -526,8 +536,8 @@ export function useFileManager() {
     t,
     toast,
     isApiSupported,
-    rootEntries,
-    sortMode,
+    rootEntries: sharedRootEntries,
+    sortMode: sharedSortMode,
     showHiddenFiles,
     mediaStore,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
@@ -573,10 +583,13 @@ export function useFileManager() {
           hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
         });
       },
+      clearWaveforms: async ({ projectId, projectRelativePath }) => {
+        await mediaStore.removeMediaCache(projectRelativePath);
+      },
     }),
     onEntryPathChanged: async ({ oldPath, newPath }) => {
-      delete mediaStore.mediaMetadata[oldPath];
-      delete mediaStore.mediaMetadata[newPath];
+      await mediaStore.removeMediaCache(oldPath);
+      await mediaStore.removeMediaCache(newPath);
       updateSelectionPath({ oldPath, newPath });
     },
     onDirectoryMoved: async () => {

@@ -410,7 +410,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     saveTimeline,
     requestTimelineSave,
     applyTimeline,
-    setMasterGain: (gain: number) => applyTimeline({ type: 'update_master_gain', gain }),
+    setMasterGain: (gain: number) => {
+      applyTimeline({ type: 'update_master_gain', gain });
+      if (gain > 0 && audioMuted.value) {
+        setMasterMuted(false);
+      }
+    },
     addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath,
     loadTimelineMetadata,

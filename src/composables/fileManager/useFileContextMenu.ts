@@ -14,7 +14,8 @@ export type FileAction =
   | 'createMarkdown'
   | 'createTimeline'
   | 'openAsPanel'
-  | 'openAsProjectTab';
+  | 'openAsProjectTab'
+  | 'convertFile';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
@@ -102,6 +103,16 @@ export function useFileContextMenu(
           label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
           icon: 'i-heroicons-squares-plus',
           onSelect: () => onAction('openAsProjectTab', entry),
+        },
+      ]);
+    }
+
+    if (deps.isOpenableMediaFile(entry)) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+          icon: 'i-heroicons-arrow-path',
+          onSelect: () => onAction('convertFile', entry),
         },
       ]);
     }

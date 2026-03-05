@@ -30,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:previewMode': [val: 'original' | 'proxy'];
+  'convert': [entry: any];
 }>();
 
 const { t } = useI18n();
@@ -152,19 +153,19 @@ function openAsProjectTab() {
 function createSubfolder() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  (uiStore as any).pendingFsEntryCreateFolder = entry;
+  uiStore.pendingFsEntryCreateFolder = entry;
 }
 
 function createTimelineInFolder() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  (uiStore as any).pendingFsEntryCreateTimeline = entry;
+  uiStore.pendingFsEntryCreateTimeline = entry;
 }
 
 function createMarkdownInFolder() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  (uiStore as any).pendingFsEntryCreateMarkdown = entry;
+  uiStore.pendingFsEntryCreateMarkdown = entry;
 }
 
 const canOpenAsPanel = computed(() => {
@@ -202,7 +203,7 @@ const hasExistingProxyForFile = computed(() => {
 function onRename() {
   const entry = props.selectedFsEntry;
   if (!entry) return;
-  (uiStore as any).pendingFsEntryRename = entry;
+  uiStore.pendingFsEntryRename = entry;
 }
 
 function onDelete() {
@@ -371,6 +372,13 @@ function openAsTextPanel() {
         ]"
         :secondary-actions="[
           {
+            id: 'convertFile',
+            label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+            icon: 'i-heroicons-arrow-path',
+            hidden: !canOpenAsPanel,
+            onClick: () => emit('convert', props.selectedFsEntry),
+          },
+          {
             id: 'createProxy',
             label: hasExistingProxyForFile
               ? t('videoEditor.fileManager.proxy.regenerate', 'Regenerate proxy')
@@ -407,7 +415,7 @@ function openAsTextPanel() {
             label: t('granVideoEditor.timeline.createVersion', 'Create version'),
             icon: 'i-heroicons-document-duplicate',
             hidden: !isOtio,
-            onClick: () => ((uiStore as any).pendingOtioCreateVersion = props.selectedFsEntry),
+            onClick: () => (uiStore.pendingOtioCreateVersion = props.selectedFsEntry),
           },
         ]"
       />

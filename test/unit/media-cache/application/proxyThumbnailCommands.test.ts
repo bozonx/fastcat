@@ -13,6 +13,7 @@ function createServiceMock() {
     removeProxy: vi.fn(async () => undefined),
     clearExistingProxies: vi.fn(() => undefined),
     clearVideoThumbnails: vi.fn(async () => undefined),
+    clearWaveforms: vi.fn(async () => undefined),
   };
 }
 

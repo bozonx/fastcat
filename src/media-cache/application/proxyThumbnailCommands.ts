@@ -36,8 +36,19 @@ export async function clearVideoThumbnailsCommand(params: {
   });
 }
 
+export async function clearWaveformsCommand(params: {
+  service: Pick<ProxyThumbnailService, 'clearWaveforms'>;
+  projectId: string;
+  projectRelativePath: string;
+}): Promise<void> {
+  await params.service.clearWaveforms({
+    projectId: params.projectId,
+    projectRelativePath: params.projectRelativePath,
+  });
+}
+
 export async function cleanupVideoCachesCommand(params: {
-  service: Pick<ProxyThumbnailService, 'removeProxy' | 'clearVideoThumbnails'>;
+  service: Pick<ProxyThumbnailService, 'removeProxy' | 'clearVideoThumbnails' | 'clearWaveforms'>;
   projectId: string;
   projectRelativePath: string;
 }): Promise<void> {
@@ -46,12 +57,20 @@ export async function cleanupVideoCachesCommand(params: {
     projectId: params.projectId,
     projectRelativePath: params.projectRelativePath,
   });
+  await params.service.clearWaveforms({
+    projectId: params.projectId,
+    projectRelativePath: params.projectRelativePath,
+  });
 }
 
 export async function onVideoPathMovedCommand(params: {
   service: Pick<
     ProxyThumbnailService,
-    'removeProxy' | 'clearExistingProxies' | 'clearVideoThumbnails' | 'checkExistingProxies'
+    | 'removeProxy'
+    | 'clearExistingProxies'
+    | 'clearVideoThumbnails'
+    | 'clearWaveforms'
+    | 'checkExistingProxies'
   >;
   projectId: string;
   oldPath: string;
@@ -60,6 +79,10 @@ export async function onVideoPathMovedCommand(params: {
   await params.service.removeProxy(params.oldPath);
   params.service.clearExistingProxies();
   await params.service.clearVideoThumbnails({
+    projectId: params.projectId,
+    projectRelativePath: params.oldPath,
+  });
+  await params.service.clearWaveforms({
     projectId: params.projectId,
     projectRelativePath: params.oldPath,
   });

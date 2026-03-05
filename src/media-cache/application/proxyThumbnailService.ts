@@ -12,6 +12,7 @@ export interface ProxyThumbnailServiceDeps {
     projectId: string;
     projectRelativePath: string;
   }) => Promise<void>;
+  clearWaveforms: (params: { projectId: string; projectRelativePath: string }) => Promise<void>;
 }
 
 export interface ProxyThumbnailService {
@@ -28,6 +29,7 @@ export interface ProxyThumbnailService {
     projectId: string;
     projectRelativePath: string;
   }) => Promise<void>;
+  clearWaveforms: (params: { projectId: string; projectRelativePath: string }) => Promise<void>;
 }
 
 export function createProxyThumbnailService(
@@ -46,6 +48,11 @@ export function createProxyThumbnailService(
     clearExistingProxies: () => deps.clearExistingProxies(),
     clearVideoThumbnails: (params) =>
       deps.clearVideoThumbnails({
+        projectId: params.projectId,
+        projectRelativePath: params.projectRelativePath,
+      }),
+    clearWaveforms: (params) =>
+      deps.clearWaveforms({
         projectId: params.projectId,
         projectRelativePath: params.projectRelativePath,
       }),
