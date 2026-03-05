@@ -19,10 +19,11 @@ function createFileEntry(params: {
   name: string;
   path: string;
   parent: FileSystemDirectoryHandle;
+  withMove?: boolean;
 }) {
   const handle = {
     getFile: vi.fn(async () => new File(['x'], params.name, { type: 'text/plain' })),
-    move: vi.fn(async () => undefined),
+    move: params.withMove === false ? undefined : vi.fn(async () => undefined),
   } as any as FileSystemFileHandle;
 
   const entry: FsEntry = {
@@ -38,7 +39,7 @@ function createFileEntry(params: {
 
 function createDirEntry(params: { name: string; path: string; parent: FileSystemDirectoryHandle }) {
   const handle = {
-    move: vi.fn(async () => undefined),
+    move: undefined,
   } as any as FileSystemDirectoryHandle;
 
   const entry: FsEntry = {
@@ -89,7 +90,12 @@ describe('fileManagerCommands', () => {
   it('moveEntryCommand calls deps.onFileMoved for files', async () => {
     const parent = createDirHandleMock();
     const targetDir = createDirHandleMock();
-    const { entry } = createFileEntry({ name: 'a.txt', path: 'files/a.txt', parent });
+    const { entry } = createFileEntry({
+      name: 'a.txt',
+      path: 'files/a.txt',
+      parent,
+      withMove: false,
+    });
 
     const removeEntry = vi.fn(async () => undefined);
     const onFileMoved = vi.fn(async () => undefined);

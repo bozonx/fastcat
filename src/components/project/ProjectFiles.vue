@@ -616,7 +616,7 @@ watch(
                   label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
                   icon: 'i-heroicons-arrow-path',
                   disabled: isLoading || !projectStore.currentProjectName,
-                  onSelect: () => loadProjectDirectory(),
+                  onSelect: () => loadProjectDirectory({ fullRefresh: true }),
                 },
               ],
               [
