@@ -21,7 +21,11 @@ export type FileAction =
   | 'openInNewTab';
 
 interface FileManagerActions {
-  createFolder: (name: string, target?: FileSystemDirectoryHandle | null) => Promise<void>;
+  createFolder: (
+    name: string,
+    target?: FileSystemDirectoryHandle | null,
+    parentPath?: string,
+  ) => Promise<void>;
   renameEntry: (target: FsEntry, newName: string) => Promise<void>;
   deleteEntry: (target: FsEntry) => Promise<void>;
   loadProjectDirectory: () => Promise<void>;
@@ -104,7 +108,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       index++;
     } while (usedNames.has(newName));
 
-    await actions.createFolder(newName, targetDirHandle);
+    await actions.createFolder(newName, targetDirHandle, targetDirPath);
 
     const createdPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
 

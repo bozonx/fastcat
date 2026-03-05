@@ -175,10 +175,10 @@ const {
   handleFiles,
   mediaCache: fileManager.mediaCache,
   onAfterRename: () => {
-    void loadFolderContent();
+    void loadFolderContent(true);
   },
   onAfterDelete: () => {
-    void loadFolderContent();
+    void loadFolderContent(true);
   },
 });
 
@@ -219,8 +219,9 @@ function onFileAction(action: any, entry: FsEntry) {
     setActiveTab(tabId);
   } else if (action === 'createFolder') {
     const existingNames = folderEntries.value.map((e) => e.name);
+    const parentPath = entry.path ?? '';
     onFileActionBase('createFolder', entry, () => existingNames);
-    void loadFolderContent();
+    void loadFolderContent(true);
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
       (uiStore as any).pendingFsEntryCreateTimeline = entry;
@@ -238,7 +239,7 @@ async function refreshFileTree() {
   folderSizes.value = {};
   await loadProjectDirectory();
   uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
+  await loadFolderContent(true);
 }
 
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
@@ -257,7 +258,7 @@ async function createTimelineInDirectory(entry: FsEntry) {
 
   await reloadDirectory(entry.path || '');
   uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
+  await loadFolderContent(true);
 
   const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
   const createdEntry = findEntryByPath(createdPath);
@@ -279,7 +280,7 @@ async function createMarkdownInDirectory(entry: FsEntry) {
 
   await reloadDirectory(entry.path || '');
   uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
+  await loadFolderContent(true);
 
   const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
   const createdEntry = findEntryByPath(createdPath);
@@ -430,15 +431,31 @@ async function calculateFolderSize(path: string, handle: FileSystemDirectoryHand
   }
 }
 
+// Calculate size for selected entity (details view)
+watch(
+  () => uiStore.selectedFsEntry,
+  (entry) => {
+    if (entry && entry.kind === 'directory' && entry.handle && entry.path) {
+      void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
+    }
+  },
+  { immediate: true },
+);
+
+// Trigger sizes for directories in list view (one by one)
 watch(
   () => [folderEntries.value, filesPageStore.viewMode],
-  () => {
+  async () => {
     if (filesPageStore.viewMode === 'list' && folderEntries.value.length > 0) {
-      // In list view we only trigger sizes for directories that are currently empty in our size cache
       for (const entry of folderEntries.value) {
-        if (entry.kind === 'directory' && entry.path && folderSizes.value[entry.path] === undefined) {
-          // No automatic parallel calculation to avoid killing UI
-          // calculation is triggered by UI if needed or we could queue it
+        if (
+          entry.kind === 'directory' &&
+          entry.path &&
+          folderSizes.value[entry.path] === undefined &&
+          !folderSizesLoading.value[entry.path]
+        ) {
+          // Sequential calculation to avoid hitting browser limits or lagging UI
+          await calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
         }
       }
     }
@@ -446,14 +463,14 @@ watch(
   { immediate: true },
 );
 
-async function loadFolderContent() {
+async function loadFolderContent(silent = false) {
   if (!filesPageStore.selectedFolder || !filesPageStore.selectedFolder.handle) {
     cleanupObjectUrls();
     folderEntries.value = [];
     return;
   }
 
-  isLoading.value = true;
+  if (!silent) isLoading.value = true;
   try {
     const handle = toRaw(filesPageStore.selectedFolder.handle) as FileSystemDirectoryHandle;
     const path = filesPageStore.selectedFolder.path || '';
@@ -807,7 +824,7 @@ async function onDirectoryUploadChange(e: Event) {
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col">
           <div
-            v-if="isLoading"
+            v-if="isLoading && folderEntries.length === 0"
             class="flex flex-col items-center justify-center flex-1 gap-4 text-ui-text-muted"
           >
             <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />

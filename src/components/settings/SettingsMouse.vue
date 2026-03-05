@@ -66,6 +66,19 @@ const timelineWheelOptions = computed(() => {
   }));
 });
 
+const trackHeadersWheelOptions = computed(() => {
+  const labels: Record<string, string> = {
+    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+    resize_track: t('videoEditor.settings.mouseActionResizeTrack', 'Resize track height'),
+    zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return TRACK_HEADERS_WHEEL_ACTIONS.map((action) => ({
+    label: labels[action] || action,
+    value: action,
+  }));
+});
+
 const monitorWheelOptions = computed(() => {
   const labels: Record<string, string> = {
     zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
@@ -355,6 +368,61 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest px-1">
+          {{ t('videoEditor.settings.mouseTrackHeaders', 'Track Headers') }}
+        </div>
+
+        <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
+          <table class="w-full border-collapse">
+            <tbody class="divide-y divide-ui-border">
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.trackHeaders.wheel"
+                    :items="trackHeadersWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.trackHeaders.wheel = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.trackHeaders.wheelSecondary"
+                    :items="trackHeadersWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.trackHeaders.wheelSecondary =
+                          v?.value ?? v)
                     "
                   />
                 </td>

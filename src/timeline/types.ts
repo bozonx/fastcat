@@ -207,6 +207,8 @@ export interface TimelineGranMetadata {
   markers?: TimelineMarker[];
   playheadUs?: number;
   masterGain?: number;
+  masterMuted?: boolean;
+  masterEffects?: ClipEffect[];
 }
 
 export interface TimelineMetadata {

@@ -40,20 +40,6 @@ function onDragEnd() {
   clearDraggedFile();
 }
 
-const tracks = computed(
-  () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
-);
-
-function addVideoTrack() {
-  const idx = tracks.value.filter((tr) => tr.kind === 'video').length + 1;
-  timelineStore.addTrack('video', `Video ${idx}`);
-}
-
-function addAudioTrack() {
-  const idx = tracks.value.filter((tr) => tr.kind === 'audio').length + 1;
-  timelineStore.addTrack('audio', `Audio ${idx}`);
-}
-
 function addAdjustmentClip() {
   timelineStore.addAdjustmentClipAtPlayhead();
 }
@@ -106,6 +92,17 @@ function onZoomInput(e: Event) {
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <div class="ml-2 flex items-center gap-1.5">
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-cog-6-tooth"
+        :aria-label="t('granVideoEditor.timeline.properties.title', 'Timeline properties')"
+        @click="timelineStore.selectTimelineProperties()"
+      />
+
+      <div class="w-px h-5 bg-ui-border mx-1.5" />
+
       <div
         draggable="true"
         class="cursor-grab active:cursor-grabbing"

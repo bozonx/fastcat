@@ -136,9 +136,7 @@ export function addVirtualClipToTrack(
 
   const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
-    quantizeToFrames: shouldQuantizeToFrames,
-  });
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
   const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
   return {
@@ -465,7 +463,9 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     nextItemsRaw.push(rightItem);
   }
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
+    quantizeToFrames: shouldQuantizeToFrames,
+  });
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
@@ -1140,7 +1140,9 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   );
 
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
+    quantizeToFrames: shouldQuantizeToFrames,
+  });
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
@@ -1344,7 +1346,9 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   );
 
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
+    quantizeToFrames: shouldQuantizeToFrames,
+  });
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 

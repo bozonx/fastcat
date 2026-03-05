@@ -8,6 +8,7 @@ export interface TimelinePersistenceDeps {
   currentTime: Ref<number>;
   duration: Ref<number>;
   masterGain: Ref<number>;
+  audioMuted?: Ref<boolean>;
 
   isTimelineDirty: Ref<boolean>;
   isSavingTimeline: Ref<boolean>;
@@ -60,6 +61,7 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
             ...(doc.metadata?.gran ?? {}),
             playheadUs: deps.currentTime.value,
             masterGain: deps.masterGain.value,
+            ...(deps.audioMuted ? { masterMuted: deps.audioMuted.value } : {}),
           },
         },
       };
@@ -160,6 +162,10 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
         deps.masterGain.value = parsed.metadata.gran.masterGain;
       } else {
         deps.masterGain.value = 1;
+      }
+
+      if (deps.audioMuted) {
+        deps.audioMuted.value = Boolean(parsed.metadata?.gran?.masterMuted);
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);

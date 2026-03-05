@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
@@ -28,6 +28,7 @@ import { useMediaStore } from './media.store';
 import { useHistoryStore } from './history.store';
 import { useWorkspaceStore } from './workspace.store';
 import { useProxyStore } from './proxy.store';
+import { useSelectionStore } from './selection.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 
 export const useTimelineStore = defineStore('timeline', () => {
@@ -36,6 +37,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const historyStore = useHistoryStore();
   const workspaceStore = useWorkspaceStore();
   const proxyStore = useProxyStore();
+  const selectionStore = useSelectionStore();
 
   const historyDebounce = createTimelineHistoryDebounce({ historyStore });
 
@@ -128,6 +130,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration,
     playbackGestureHandler,
   });
+
+  function setMasterMuted(nextMuted: boolean) {
+    const muted = Boolean(nextMuted);
+    audioMuted.value = muted;
+    if (!timelineDoc.value) return;
+    applyTimeline({ type: 'update_master_muted', muted });
+  }
 
   function setCurrentTimeUs(nextTimeUs: number) {
     const fps = sanitizeFps(timelineDoc.value?.timebase?.fps);
@@ -275,6 +284,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTime,
     duration,
     masterGain,
+    audioMuted,
 
     isTimelineDirty,
     isSavingTimeline,
@@ -290,6 +300,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     serializeTimelineToOtio,
     selectTimelineDurationUs,
   });
+
+  watch(
+    () => timelineDoc.value?.metadata?.gran?.masterMuted,
+    (next) => {
+      if (timelineDoc.value) {
+        audioMuted.value = Boolean(next);
+      }
+    },
+    { flush: 'post' },
+  );
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     await persistence.requestTimelineSave(options);
@@ -376,6 +396,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     setCurrentTimeUs,
     duration,
     masterGain,
+    audioVolume: masterGain,
     audioMuted,
     audioLevels,
     playbackSpeed,
@@ -401,6 +422,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       selection.selectTransition(input),
     ...playback,
     setAudioVolume: (gain: number) => applyTimeline({ type: 'update_master_gain', gain }),
+    setMasterMuted,
     ...tracks,
     ...trimming,
     ...clips,
@@ -416,6 +438,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     resetTimelineState,
     undoTimeline,
     redoTimeline,
+    selectTimelineProperties: () => selectionStore.selectTimelineProperties(),
     batchApplyTimeline,
     historyStore,
   };

@@ -13,6 +13,13 @@ export const MONITOR_WHEEL_ACTIONS = [
   'none',
 ] as const;
 
+export const TRACK_HEADERS_WHEEL_ACTIONS = [
+  'scroll_vertical',
+  'resize_track',
+  'zoom_vertical',
+  'none',
+] as const;
+
 export const RULER_WHEEL_ACTIONS = ['zoom_horizontal', 'scroll_horizontal', 'none'] as const;
 
 export const RULER_DOUBLE_CLICK_ACTIONS = ['add_marker', 'none'] as const;

@@ -98,8 +98,16 @@ watch(
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 
 function onSelectTrack(trackId: string) {
-  timelineStore.selectTrack(trackId);
-  selectionStore.selectTimelineTrack(trackId);
+  if (timelineStore.selectedTrackId === trackId) {
+    timelineStore.selectTimelineProperties();
+  } else {
+    timelineStore.selectTrack(trackId);
+    selectionStore.selectTimelineTrack(trackId);
+  }
+}
+
+function selectTimelineProperties() {
+  timelineStore.selectTimelineProperties();
 }
 
 function toggleVideoHidden(track: TimelineTrack, e: MouseEvent) {
@@ -296,25 +304,30 @@ const emptyAreaContextMenuItems = computed(() => {
     ],
   ];
 });
-function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
-  const isShift = e.shiftKey;
+function onTrackAreaWheel(e: WheelEvent) {
   const isSecondary = isSecondaryWheel(e);
+  const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
-  const settings = workspaceStore.userSettings.mouse.timeline;
-
-  let action = settings.wheel;
-  if (isSecondary && isShift) action = settings.wheelSecondaryShift;
-  else if (isSecondary) action = settings.wheelSecondary;
-  else if (isShift) action = settings.wheelShift;
+  let action = isSecondary ? settings.wheelSecondary : settings.wheel;
 
   if (action === 'none') {
     e.preventDefault();
     return;
   }
 
-  // Calculate delta amount based on event
   const delta = getWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
+
+  if (action === 'scroll_vertical') {
+    // Let browser handle vertical scrolling natively
+    if (!isSecondary) return;
+    
+    e.preventDefault();
+    if (labelsScrollContainer.value) {
+      labelsScrollContainer.value.scrollTop += delta;
+    }
+    return;
+  }
 
   if (action === 'zoom_vertical') {
     e.preventDefault();
@@ -336,23 +349,43 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
     }
     return;
   }
+}
 
-  // Handle older behavior as fallback
-  if (isSecondary || (!e.shiftKey && e.deltaY === 0)) return;
+function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
+  const isSecondary = isSecondaryWheel(e);
+  const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
-  e.preventDefault();
-  e.stopPropagation();
+  let action = isSecondary ? settings.wheelSecondary : settings.wheel;
 
-  const dir = delta < 0 ? 1 : -1;
-  const step = 10;
+  if (action === 'none') {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
 
-  const currentHeight = props.trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT;
-  const nextHeight = Math.max(
-    MIN_TRACK_HEIGHT,
-    Math.min(MAX_TRACK_HEIGHT, currentHeight + dir * step),
-  );
+  const delta = getWheelDelta(e);
+  if (!Number.isFinite(delta) || delta === 0) return;
 
-  emit('update:trackHeight', track.id, nextHeight);
+  // Let onTrackAreaWheel handle global zoom and scroll
+  if (action === 'zoom_vertical' || action === 'scroll_vertical') {
+    return;
+  }
+
+  if (action === 'resize_track') {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dir = delta < 0 ? 1 : -1;
+    const step = 10;
+
+    const currentHeight = props.trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT;
+    const nextHeight = Math.max(
+      MIN_TRACK_HEIGHT,
+      Math.min(MAX_TRACK_HEIGHT, currentHeight + dir * step),
+    );
+
+    emit('update:trackHeight', track.id, nextHeight);
+  }
 }
 
 function toggleOverlapMode() {
@@ -392,22 +425,13 @@ function toggleClipSnapMode() {
       <div
         class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
       >
-        <UTooltip :text="t('granVideoEditor.timeline.addVideoTrack', 'Add video track')">
+        <UTooltip :text="t('granVideoEditor.timeline.properties.title', 'Timeline properties')">
           <UButton
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="i-heroicons-video-camera"
-            @click="addVideoTrack"
-          />
-        </UTooltip>
-        <UTooltip :text="t('granVideoEditor.timeline.addAudioTrack', 'Add audio track')">
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-musical-note"
-            @click="addAudioTrack"
+            icon="i-heroicons-cog-6-tooth"
+            @click="selectTimelineProperties"
           />
         </UTooltip>
 
@@ -487,7 +511,7 @@ function toggleClipSnapMode() {
       :style="scrollbarCompensation ? { marginBottom: `${scrollbarCompensation}px` } : {}"
       @scroll="emit('scroll', $event)"
     >
-      <div class="flex flex-col min-h-full pb-16">
+      <div class="flex flex-col min-h-full pb-16" @wheel="onTrackAreaWheel">
         <UContextMenu
           v-for="track in tracks"
           :key="track.id"
@@ -585,7 +609,7 @@ function toggleClipSnapMode() {
         </UContextMenu>
 
         <UContextMenu :items="emptyAreaContextMenuItems" class="flex-1">
-          <div class="w-full h-full" />
+          <div class="w-full h-full" @click="selectTimelineProperties" />
         </UContextMenu>
       </div>
     </div>

@@ -50,12 +50,18 @@ export interface SelectedTimelineGap extends SelectedEntityBase {
   itemId: string;
 }
 
+export interface SelectedTimelineProperties extends SelectedEntityBase {
+  source: 'timeline';
+  kind: 'timeline-properties';
+}
+
 export type SelectedEntity =
   | SelectedTimelineClip
   | SelectedTimelineGap
   | SelectedTimelineTrack
   | SelectedTimelineTransition
   | SelectedTimelineMarker
+  | SelectedTimelineProperties
   | SelectedFsEntry;
 
 export const useSelectionStore = defineStore('selection', () => {
@@ -106,6 +112,13 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
+  function selectTimelineProperties() {
+    selectedEntity.value = {
+      source: 'timeline',
+      kind: 'timeline-properties',
+    };
+  }
+
   function clearSelection() {
     selectedEntity.value = null;
   }
@@ -117,6 +130,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineTransition,
     selectTimelineMarker,
     selectFsEntry,
+    selectTimelineProperties,
     clearSelection,
   };
 });

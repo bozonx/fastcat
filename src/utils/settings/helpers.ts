@@ -67,6 +67,7 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
     },
     mouse: {
       timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
+      trackHeaders: { ...DEFAULT_USER_SETTINGS.mouse.trackHeaders },
       monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
       ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
     },
