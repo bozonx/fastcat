@@ -4,11 +4,8 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
-import {
-  cancelProxyCommand,
-  ensureProxyCommand,
-  removeProxyCommand,
-} from '~/media-cache/application/proxyThumbnailCommands';
+import { generateUniqueFsEntryName, type FsDirectoryHandleWithIteration } from '~/utils/fs';
+import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 
 export type FileAction =
   | 'createFolder'
@@ -18,7 +15,14 @@ export type FileAction =
   | 'deleteProxy'
   | 'createProxy'
   | 'cancelProxy'
-  | 'openInNewTab';
+  | 'openInNewTab'
+  | 'createOtioVersion'
+  | 'createMarkdown'
+  | 'createProxyForFolder'
+  | 'cancelProxyForFolder'
+  | 'convertFile'
+  | 'openAsPanel'
+  | 'openAsProjectTab';
 
 interface FileManagerActions {
   createFolder: (
@@ -35,8 +39,13 @@ interface FileManagerActions {
     targetDirPath?: string,
   ) => Promise<void>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
+  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  findEntryByPath: (path: string) => FsEntry | null;
+  readDirectory: (dirHandle: FileSystemDirectoryHandle, basePath?: string) => Promise<FsEntry[]>;
+  reloadDirectory: (path: string) => Promise<void>;
   onAfterRename?: () => void;
   onAfterDelete?: () => void;
+  onFileSelect?: (entry: FsEntry) => void;
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
@@ -87,8 +96,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
     const usedNames = new Set(existingNames);
     if (targetDirHandle) {
       try {
-        const iterator =
-          (targetDirHandle as any).values?.() ?? (targetDirHandle as any).entries?.();
+        const handleWithIter = targetDirHandle as FsDirectoryHandleWithIteration;
+        const iterator = handleWithIter.values?.() ?? handleWithIter.entries?.();
         if (iterator) {
           for await (const value of iterator) {
             const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
@@ -114,6 +123,109 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
     // Set editing path so it opens rename mode automatically
     editingEntryPath.value = createdPath;
+  }
+
+  async function resolveParentDirHandleForEntry(
+    entry: FsEntry,
+  ): Promise<FileSystemDirectoryHandle | null> {
+    if (entry.parentHandle) return entry.parentHandle;
+    if (!entry.path) return null;
+
+    const root = await actions.getProjectRootDirHandle();
+    if (!root) return null;
+
+    const parts = entry.path.split('/').slice(0, -1);
+    let dir: FileSystemDirectoryHandle = root;
+    for (const p of parts) {
+      if (!p) continue;
+      dir = await dir.getDirectoryHandle(p);
+    }
+    return dir;
+  }
+
+  async function createOtioVersion(entry: FsEntry) {
+    if (entry.kind !== 'file') return;
+    if (!entry.name.toLowerCase().endsWith('.otio')) return;
+
+    const parentDir = await resolveParentDirHandleForEntry(entry);
+    if (!parentDir) return;
+
+    const existing = new Set<string>();
+    try {
+      const handleWithIter = parentDir as FsDirectoryHandleWithIteration;
+      const iterator = handleWithIter.values?.() ?? handleWithIter.entries?.();
+      if (iterator) {
+        for await (const value of iterator) {
+          const h = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
+          existing.add(h.name);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const match = entry.name.slice(0, -'.otio'.length).match(/^(.*)_([0-9]{3})$/);
+    const prefix = match ? match[1] : entry.name.slice(0, -'.otio'.length);
+    const start = match ? Number(match[2]) + 1 : 1;
+
+    const nextName = await generateUniqueFsEntryName({
+      dirHandle: parentDir,
+      baseName: prefix + '_',
+      extension: '.otio',
+      existingNames: Array.from(existing),
+      startIndex: start,
+    });
+
+    const file = await (entry.handle as FileSystemFileHandle).getFile();
+    const nextHandle = await parentDir.getFileHandle(nextName, { create: true });
+    const createWritable = (nextHandle as FileSystemFileHandle).createWritable;
+    if (typeof createWritable !== 'function') return;
+
+    const writable = await (nextHandle as FileSystemFileHandle).createWritable();
+    await writable.write(file);
+    await writable.close();
+
+    await actions.loadProjectDirectory();
+
+    const parentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
+    const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
+    const newEntry = actions.findEntryByPath(nextPath);
+    if (newEntry) {
+      uiStore.selectedFsEntry = {
+        kind: newEntry.kind,
+        name: newEntry.name,
+        path: newEntry.path,
+        handle: newEntry.handle,
+      };
+      selectionStore.selectFsEntry(newEntry);
+    }
+  }
+
+  async function createMarkdownInDirectory(entry: FsEntry) {
+    const dirHandle = entry.handle as FileSystemDirectoryHandle;
+
+    const existingInFolder = await actions.readDirectory(dirHandle, entry.path);
+    const existingNames = existingInFolder.map((e) => e.name);
+
+    const createdFileName = await createMarkdownCommand({
+      dirHandle,
+      existingNames,
+    });
+
+    await actions.reloadDirectory(entry.path ?? '');
+
+    const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+    const newEntry = actions.findEntryByPath(newPath);
+    if (newEntry) {
+      uiStore.selectedFsEntry = {
+        kind: newEntry.kind,
+        name: newEntry.name,
+        path: newEntry.path,
+        handle: newEntry.handle,
+      };
+      selectionStore.selectFsEntry(newEntry);
+      actions.onFileSelect?.(newEntry);
+    }
   }
 
   function openDeleteConfirmModal(entry: FsEntry) {
@@ -149,8 +261,11 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }, 0);
   }
 
-  function onFileAction(action: FileAction, entry: FsEntry, getExistingNames?: () => string[]) {
-    if (action === 'createFolder') {
+  const fileActionHandlers: Record<
+    string,
+    (entry: FsEntry, getExistingNames?: () => string[]) => void | Promise<void>
+  > = {
+    createFolder: (entry, getExistingNames) => {
       const existingNames = getExistingNames
         ? getExistingNames()
         : entry.children?.map((c) => c.name) || [];
@@ -159,29 +274,45 @@ export function useFileManagerActions(actions: FileManagerActions) {
         entry.path ?? '',
         existingNames,
       );
-    } else if (action === 'upload') {
+    },
+    upload: (entry) => {
       if (entry.kind !== 'directory') return;
       directoryUploadTarget.value = entry;
       directoryUploadInput.value?.click();
-    } else if (action === 'rename') {
-      startRename(entry);
-    } else if (action === 'delete') {
-      openDeleteConfirmModal(entry);
-    } else if (action === 'createProxy') {
+    },
+    rename: (entry) => startRename(entry),
+    delete: (entry) => openDeleteConfirmModal(entry),
+    createProxy: (entry) => {
       if (entry.kind !== 'file' || !entry.path) return;
-      void ensureProxyCommand({
-        service: actions.mediaCache,
+      void actions.mediaCache.ensureProxy({
         fileHandle: entry.handle as FileSystemFileHandle,
         projectRelativePath: entry.path!,
       });
-    } else if (action === 'cancelProxy') {
+    },
+    cancelProxy: (entry) => {
       if (entry.kind === 'file' && entry.path) {
-        void cancelProxyCommand({ service: actions.mediaCache, projectRelativePath: entry.path });
+        void actions.mediaCache.cancelProxy(entry.path);
       }
-    } else if (action === 'deleteProxy') {
+    },
+    deleteProxy: (entry) => {
       if (entry.kind === 'file' && entry.path) {
-        void removeProxyCommand({ service: actions.mediaCache, projectRelativePath: entry.path });
+        void actions.mediaCache.removeProxy(entry.path);
       }
+    },
+    createOtioVersion: (entry) => void createOtioVersion(entry),
+    createMarkdown: (entry) => {
+      if (entry.kind === 'directory') {
+        void createMarkdownInDirectory(entry);
+      }
+    },
+  };
+
+  function onFileAction(action: FileAction, entry: FsEntry, getExistingNames?: () => string[]) {
+    const handler = fileActionHandlers[action];
+    if (handler) {
+      void handler(entry, getExistingNames);
+    } else {
+      console.warn(`[useFileManagerActions] Unhandled file action: ${action}`);
     }
   }
 

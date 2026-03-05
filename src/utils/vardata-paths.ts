@@ -23,7 +23,7 @@ export function getProjectThumbnailsSegments(projectId: string): string[] {
 }
 
 export function getProjectWaveformsSegments(projectId: string): string[] {
-  return [...getProjectVardataSegments(projectId), VARDATA_PROJECT_WAVEFORMS_DIR_NAME];
+  return [...getProjectThumbnailsSegments(projectId), VARDATA_PROJECT_WAVEFORMS_DIR_NAME];
 }
 
 export function getProjectCacheSegments(projectId: string): string[] {

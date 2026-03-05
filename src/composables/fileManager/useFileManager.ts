@@ -1,4 +1,4 @@
-import { ref, computed, toRaw, markRaw, watch, type Ref } from 'vue';
+import { ref, shallowRef, computed, toRaw, markRaw, watch, type Ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -494,7 +494,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   };
 }
 
-const sharedRootEntries = ref<FsEntry[]>([]);
+const sharedRootEntries = shallowRef<FsEntry[]>([]);
 const sharedSortMode = ref<FileTreeSortMode>('name');
 
 export function useFileManager() {
@@ -581,6 +581,10 @@ export function useFileManager() {
         await thumbnailGenerator.clearThumbnails({
           projectId,
           hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
+        });
+        await fileThumbnailGenerator.clearThumbnail({
+          projectId,
+          hash: getFileThumbnailHash({ projectId, projectRelativePath }),
         });
       },
       clearWaveforms: async ({ projectId, projectRelativePath }) => {

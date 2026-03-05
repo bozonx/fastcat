@@ -3,6 +3,43 @@ export interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandl
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
+export async function generateUniqueFsEntryName(params: {
+  dirHandle: FileSystemDirectoryHandle;
+  baseName: string;
+  extension: string;
+  existingNames?: string[];
+  startIndex?: number;
+}): Promise<string> {
+  let index = params.startIndex ?? 1;
+  let fileName = '';
+
+  if (params.existingNames) {
+    const existing = new Set(params.existingNames);
+    do {
+      fileName = `${params.baseName}${String(index).padStart(3, '0')}${params.extension}`;
+      index++;
+    } while (existing.has(fileName));
+  } else {
+    let exists = true;
+    while (exists) {
+      fileName = `${params.baseName}${String(index).padStart(3, '0')}${params.extension}`;
+      try {
+        await params.dirHandle.getFileHandle(fileName);
+        index += 1;
+      } catch (e: unknown) {
+        const err = e as { name?: string };
+        if (err?.name === 'NotFoundError') {
+          exists = false;
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  return fileName;
+}
+
 export async function computeDirectorySize(
   dirHandle: FileSystemDirectoryHandle,
   options?: { maxEntries?: number },

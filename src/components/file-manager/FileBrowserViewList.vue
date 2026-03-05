@@ -26,6 +26,7 @@ const props = defineProps<{
   folderEntriesNames: string[];
   getContextMenuItems: (entry: FsEntry) => any[];
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
+  videoThumbnails?: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
@@ -229,6 +230,12 @@ function formatDate(timestamp?: number) {
                     v-if="proxyStore.generatingProxies.has(entry.path || '')"
                     :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
                     size="sm"
+                  />
+                  <img
+                    v-else-if="entry.kind === 'file' && videoThumbnails && entry.path && videoThumbnails[entry.path]"
+                    :src="videoThumbnails[entry.path]"
+                    :alt="entry.name"
+                    class="w-4 h-4 object-cover rounded-sm"
                   />
                   <UIcon
                     v-else

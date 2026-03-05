@@ -7,6 +7,7 @@ import {
   type SortOrder,
 } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -189,6 +190,10 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
+  getProjectRootDirHandle: fileManager.getProjectRootDirHandle,
+  findEntryByPath: fileManager.findEntryByPath,
+  readDirectory: fileManager.readDirectory,
+  reloadDirectory: fileManager.reloadDirectory,
   onAfterRename: () => {
     void loadFolderContent();
   },
@@ -645,35 +650,43 @@ function getMimeFromExt(filename: string): string {
 }
 
 const sortedEntries = computed(() => {
+  const arr = [...folderEntries.value] as ExtendedFsEntry[];
+
+  // Separate folders and files
+  const folders = arr.filter((e) => e.kind === 'directory');
+  const files = arr.filter((e) => e.kind === 'file');
+
   const { field, order } = filesPageStore.sortOption;
-  const entries = [...folderEntries.value];
+  const modifier = order === 'asc' ? 1 : -1;
 
-  entries.sort((a: ExtendedFsEntry, b: ExtendedFsEntry) => {
-    let result = 0;
+  const compare = (a: any, b: any) => {
+    if (a === b) return 0;
+    return a > b ? modifier : -modifier;
+  };
 
-    if (a.kind !== b.kind) {
-      return a.kind === 'directory' ? -1 : 1;
+  folders.sort((a, b) => compare(a.name.toLowerCase(), b.name.toLowerCase()));
+
+  files.sort((a, b) => {
+    switch (field) {
+      case 'name':
+        return compare(a.name.toLowerCase(), b.name.toLowerCase());
+      case 'type':
+        return compare(a.mimeType || '', b.mimeType || '');
+      case 'size':
+        return compare(a.size || 0, b.size || 0);
+      case 'modified':
+        return compare(a.lastModified || 0, b.lastModified || 0);
+      case 'created':
+        return compare(a.created || 0, b.created || 0);
+      default:
+        return 0;
     }
-
-    if (field === 'name') {
-      result = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-    } else if (field === 'size') {
-      const aSize = a.kind === 'file' ? a.size || 0 : folderSizes.value[a.path || ''] || 0;
-      const bSize = b.kind === 'file' ? b.size || 0 : folderSizes.value[b.path || ''] || 0;
-      result = aSize - bSize;
-    } else if (field === 'modified') {
-      result = (a.lastModified || 0) - (b.lastModified || 0);
-    } else if (field === 'created') {
-      result = (a.created || 0) - (b.created || 0);
-    } else if (field === 'type') {
-      result = (a.mimeType || '').localeCompare(b.mimeType || '');
-    }
-
-    return order === 'asc' ? result : -result;
   });
 
-  return entries;
+  return [...folders, ...files];
 });
+
+const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries);
 
 const stats = computed(() => {
   let totalSize = 0;
@@ -889,6 +902,7 @@ async function onDirectoryUploadChange(e: Event) {
             :folder-entries-names="folderEntries.map((e) => e.name)"
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
+            :video-thumbnails="videoThumbnails"
             @root-drag-over="onRootDragOver"
             @root-drag-leave="onRootDragLeave"
             @root-drop="onRootDrop"
@@ -917,6 +931,7 @@ async function onDirectoryUploadChange(e: Event) {
             :folder-entries-names="folderEntries.map((e) => e.name)"
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
+            :video-thumbnails="videoThumbnails"
             @root-drag-over="onRootDragOver"
             @root-drag-leave="onRootDragLeave"
             @root-drop="onRootDrop"
@@ -993,6 +1008,7 @@ async function onDirectoryUploadChange(e: Event) {
       v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
       v-model:image-quality="fileConversion.imageQuality.value"
       @convert="fileConversion.startConversion"
+      @cancel="fileConversion.cancelConversion"
     />
 
     <input

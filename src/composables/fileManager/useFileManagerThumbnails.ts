@@ -1,0 +1,94 @@
+import { ref, watch, onBeforeUnmount, type Ref } from 'vue';
+import type { FsEntry } from '~/types/fs';
+import { useProjectStore } from '~/stores/project.store';
+import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
+
+export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
+  const projectStore = useProjectStore();
+  const thumbnails = ref<Record<string, string>>({}); // projectRelativePath -> objectUrl
+  let isUnmounted = false;
+  const activeHashes = new Set<string>();
+
+  function cleanupAll() {
+    activeHashes.forEach((hash) => {
+      fileThumbnailGenerator.cancelTask(hash);
+    });
+    activeHashes.clear();
+  }
+
+  watch(
+    entries,
+    (currentEntries) => {
+      if (!projectStore.currentProjectId) return;
+
+      const projectId = projectStore.currentProjectId;
+      const newHashes = new Set<string>();
+
+      const newThumbnails: Record<string, string> = {};
+
+      for (const entry of currentEntries) {
+        if (entry.kind === 'file' && entry.path) {
+          const path = entry.path;
+          const type = getMediaTypeFromFilename(entry.name);
+          if (type === 'video') {
+            const hash = getFileThumbnailHash({
+              projectId,
+              projectRelativePath: path,
+            });
+            newHashes.add(hash);
+
+            if (thumbnails.value[path]) {
+              newThumbnails[path] = thumbnails.value[path] as string;
+            } else {
+              activeHashes.add(hash);
+              fileThumbnailGenerator.addTask({
+                id: hash,
+                projectId,
+                projectRelativePath: path,
+                onComplete: (url: string) => {
+                  if (isUnmounted) return;
+                  thumbnails.value = {
+                    ...thumbnails.value,
+                    [path]: url,
+                  };
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Cancel tasks for files that are no longer in the list
+      for (const oldHash of activeHashes) {
+        if (!newHashes.has(oldHash)) {
+          fileThumbnailGenerator.cancelTask(oldHash);
+          activeHashes.delete(oldHash);
+        }
+      }
+
+      thumbnails.value = newThumbnails;
+    },
+    { immediate: true, deep: true },
+  );
+
+  onBeforeUnmount(() => {
+    isUnmounted = true;
+    cleanupAll();
+  });
+
+  return {
+    thumbnails,
+  };
+}
+
+// Simple helper to guess type. In real world we might want to use something robust or just check if it's in our video extensions.
+function getMediaTypeFromFilename(
+  filename: string,
+): 'video' | 'audio' | 'image' | 'text' | 'unknown' {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext || '')) return 'video';
+  if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return 'audio';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext || '')) return 'image';
+  if (['txt', 'md', 'json', 'csv', 'xml', 'log'].includes(ext || '')) return 'text';
+  return 'unknown';
+}

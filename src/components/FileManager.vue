@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
-import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
@@ -14,16 +13,15 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProxyStore } from '~/stores/proxy.store';
-import {
-  createTimelineCommand,
-  createMarkdownCommand,
-} from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 
-const props = defineProps<{
+import type { FileAction } from '~/composables/fileManager/useFileManagerActions';
+
+const _props = defineProps<{
   foldersOnly?: boolean;
   disableSort?: boolean;
   isFilesPage?: boolean;
@@ -37,7 +35,6 @@ const { t } = useI18n();
 const toast = useToast();
 
 const projectStore = useProjectStore();
-const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
@@ -51,7 +48,6 @@ const fileManager = useFileManager();
 const {
   rootEntries,
   isLoading,
-  error,
   isApiSupported,
   getProjectRootDirHandle,
   loadProjectDirectory,
@@ -61,6 +57,8 @@ const {
   deleteEntry,
   renameEntry,
   findEntryByPath,
+  readDirectory,
+  reloadDirectory,
   moveEntry,
   createTimeline,
   getFileIcon,
@@ -75,15 +73,13 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const {
   isDeleteConfirmModalOpen,
   editingEntryPath,
-  commitRename,
-  stopRename,
-  startRename,
   deleteTarget,
   timelinesUsingDeleteTarget,
   directoryUploadTarget,
   directoryUploadInput,
-  openDeleteConfirmModal,
   handleDeleteConfirm,
+  commitRename,
+  stopRename,
   onFileAction: onFileActionBase,
 } = useFileManagerActions({
   createFolder,
@@ -92,11 +88,30 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
+  getProjectRootDirHandle,
+  findEntryByPath,
+  readDirectory,
+  reloadDirectory,
+  onFileSelect: (entry) => emit('select', entry),
 });
 
 // openFileInfoModal is now handled entirely within useFileManagerActions
 
-function onFileAction(action: any, entry: FsEntry) {
+function onFileAction(
+  action:
+    | FileAction
+    | 'refresh'
+    | 'upload'
+    | 'openAsPanel'
+    | 'openAsProjectTab'
+    | 'convertFile'
+    | 'createProxyForFolder'
+    | 'cancelProxyForFolder'
+    | 'createTimeline'
+    | 'createMarkdown'
+    | 'addToTimeline',
+  entry: FsEntry,
+) {
   if (action === 'refresh') {
     void loadProjectDirectory({ fullRefresh: true });
     return;
@@ -105,14 +120,14 @@ function onFileAction(action: any, entry: FsEntry) {
       kind: 'directory',
       name: '',
       path: '',
-      handle: null as any,
+      handle: null as unknown as FileSystemDirectoryHandle,
     };
     onFileActionBase('createFolder', target, () =>
       fileManager.rootEntries.value.map((e) => e.name),
     );
   } else if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
-      void createMarkdownInDirectory(entry);
+      onFileActionBase('createMarkdown', entry);
     }
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
@@ -143,7 +158,7 @@ function onFileAction(action: any, entry: FsEntry) {
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
   } else if (action === 'createOtioVersion') {
-    void createOtioVersion(entry);
+    onFileActionBase('createOtioVersion', entry);
   } else if (action === 'convertFile') {
     if (entry.kind === 'file') {
       fileConversion.openConversionModal(entry);
@@ -168,144 +183,7 @@ function onFileAction(action: any, entry: FsEntry) {
       }
     }
   } else {
-    onFileActionBase(action, entry);
-  }
-}
-
-function buildNextOtioVersionName(name: string, existingNames: Set<string>): string {
-  const lower = name.toLowerCase();
-  if (!lower.endsWith('.otio')) return name;
-
-  const base = name.slice(0, -'.otio'.length);
-  const match = base.match(/^(.*)_([0-9]{3})$/);
-  const prefix = match ? match[1] : base;
-  const start = match ? Number(match[2]) + 1 : 1;
-
-  for (let i = start; i < 10_000; i += 1) {
-    const candidate = `${prefix}_${String(i).padStart(3, '0')}.otio`;
-    if (!existingNames.has(candidate)) return candidate;
-  }
-
-  return `${prefix}_${Date.now()}.otio`;
-}
-
-async function resolveParentDirHandleForEntry(
-  entry: FsEntry,
-): Promise<FileSystemDirectoryHandle | null> {
-  if (entry.parentHandle) return entry.parentHandle;
-  if (!entry.path) return null;
-
-  const root = await getProjectRootDirHandle();
-  if (!root) return null;
-
-  const parts = entry.path.split('/').slice(0, -1);
-  let dir: FileSystemDirectoryHandle = root;
-  for (const p of parts) {
-    if (!p) continue;
-    dir = await dir.getDirectoryHandle(p);
-  }
-  return dir;
-}
-
-async function createOtioVersion(entry: FsEntry) {
-  if (entry.kind !== 'file') return;
-  if (!entry.name.toLowerCase().endsWith('.otio')) return;
-
-  const parentDir = await resolveParentDirHandleForEntry(entry);
-  if (!parentDir) return;
-
-  const existing = new Set<string>();
-  try {
-    const iterator = (parentDir as any).values?.() ?? (parentDir as any).entries?.();
-    if (iterator) {
-      for await (const value of iterator) {
-        const h = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-        existing.add(h.name);
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  const nextName = buildNextOtioVersionName(entry.name, existing);
-  const file = await (entry.handle as FileSystemFileHandle).getFile();
-  const nextHandle = await parentDir.getFileHandle(nextName, { create: true });
-  const createWritable = (nextHandle as FileSystemFileHandle).createWritable;
-  if (typeof createWritable !== 'function') return;
-
-  const writable = await (nextHandle as FileSystemFileHandle).createWritable();
-  await writable.write(file);
-  await writable.close();
-
-  await loadProjectDirectory();
-
-  const parentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
-  const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
-  const newEntry = findEntryByPath(nextPath);
-  if (newEntry) {
-    uiStore.selectedFsEntry = {
-      kind: newEntry.kind,
-      name: newEntry.name,
-      path: newEntry.path,
-      handle: newEntry.handle,
-    };
-    selectionStore.selectFsEntry(newEntry);
-  }
-}
-
-async function createMarkdownInDirectory(entry: FsEntry) {
-  const dirHandle = entry.handle as FileSystemDirectoryHandle;
-
-  const existingInFolder = await fileManager.readDirectory(dirHandle, entry.path);
-  const existingNames = existingInFolder.map((e) => e.name);
-
-  const createdFileName = await createMarkdownCommand({
-    dirHandle,
-    existingNames,
-  });
-
-  await fileManager.reloadDirectory(entry.path ?? '');
-  uiStore.notifyFileManagerUpdate();
-
-  const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
-  const newEntry = findEntryByPath(newPath);
-  if (newEntry) {
-    uiStore.selectedFsEntry = {
-      kind: newEntry.kind,
-      name: newEntry.name,
-      path: newEntry.path,
-      handle: newEntry.handle,
-    };
-    selectionStore.selectFsEntry(newEntry);
-    emit('select', newEntry);
-  }
-}
-
-async function createTimelineInDirectory(entry: FsEntry) {
-  const dirHandle = entry.handle as FileSystemDirectoryHandle;
-
-  const existingInFolder = await fileManager.readDirectory(dirHandle, entry.path);
-  const existingNames = existingInFolder.map((e) => e.name);
-
-  const createdFileName = await createTimelineCommand({
-    projectDir: dirHandle,
-    existingNames,
-  });
-
-  await fileManager.reloadDirectory(entry.path ?? '');
-  uiStore.notifyFileManagerUpdate();
-
-  const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
-  const newEntry = findEntryByPath(newPath);
-  if (newEntry) {
-    uiStore.selectedFsEntry = {
-      kind: newEntry.kind,
-      name: newEntry.name,
-      path: newEntry.path,
-      handle: newEntry.handle,
-    };
-    selectionStore.selectFsEntry(newEntry);
-    emit('select', newEntry);
+    onFileActionBase(action as FileAction, entry);
   }
 }
 
@@ -314,7 +192,7 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry) {
-      openDeleteConfirmModal(entry);
+      onFileActionBase('delete', entry);
       uiStore.pendingFsEntryDelete = null;
     }
   },
@@ -325,7 +203,7 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry) {
-      startRename(entry);
+      onFileActionBase('rename', entry);
       uiStore.pendingFsEntryRename = null;
     }
   },
@@ -396,15 +274,10 @@ watch(
 
 watch(
   () => uiStore.pendingFsEntryCreateMarkdown,
-  async (value) => {
+  (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      const handle = entry.handle
-        ? (entry.handle as FileSystemDirectoryHandle)
-        : await getProjectRootDirHandle();
-      if (handle) {
-        void createMarkdownInDirectory({ ...entry, handle });
-      }
+      onFileActionBase('createMarkdown', entry);
       uiStore.pendingFsEntryCreateMarkdown = null;
     }
   },
@@ -415,7 +288,7 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry) {
-      void createOtioVersion(entry);
+      onFileActionBase('createOtioVersion', entry);
       uiStore.pendingOtioCreateVersion = null;
     }
   },
@@ -799,6 +672,32 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         </div>
       </div>
     </UiConfirmModal>
+
+    <FileConversionModal
+      v-model:open="fileConversion.isModalOpen.value"
+      v-model:video-format="fileConversion.videoFormat.value"
+      v-model:video-codec="fileConversion.videoCodec.value"
+      v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
+      v-model:exclude-audio="fileConversion.excludeAudio.value"
+      v-model:audio-codec="fileConversion.audioCodec.value"
+      v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
+      v-model:bitrate-mode="fileConversion.bitrateMode.value"
+      v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
+      v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
+      v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
+      v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
+      v-model:audio-channels="fileConversion.audioChannels.value"
+      v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
+      v-model:image-quality="fileConversion.imageQuality.value"
+      :media-type="fileConversion.mediaType.value"
+      :file-name="fileConversion.targetEntry.value?.name ?? ''"
+      :is-converting="fileConversion.isConverting.value"
+      :conversion-progress="fileConversion.conversionProgress.value"
+      :conversion-error="fileConversion.conversionError.value"
+      :conversion-phase="fileConversion.conversionPhase.value"
+      @convert="fileConversion.startConversion"
+      @cancel="fileConversion.cancelConversion"
+    />
 
     <!-- Global Drag Highlight / Hint -->
     <div
