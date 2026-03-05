@@ -157,6 +157,7 @@ export interface UpdateClipPropertiesCommand {
       | 'audioFadeInUs'
       | 'audioFadeOutUs'
       | 'audioMuted'
+      | 'audioWaveformMode'
     >
   > & {
     backgroundColor?: string;

@@ -104,6 +104,21 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
             await options.requestTimelineSave({ immediate: true });
           },
         });
+
+        const currentMode = clipItem.audioWaveformMode || 'full';
+        mainGroup.push({
+          label:
+            currentMode === 'half'
+              ? options.t('granVideoEditor.timeline.waveformFull', 'Full waveform')
+              : options.t('granVideoEditor.timeline.waveformHalf', 'Half waveform'),
+          icon: 'i-heroicons-chart-bar',
+          onSelect: async () => {
+            options.updateClipProperties(track.id, clipItem.id, {
+              audioWaveformMode: currentMode === 'half' ? 'full' : 'half',
+            });
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
       }
 
       mainGroup.push({
