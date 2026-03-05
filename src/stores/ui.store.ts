@@ -38,7 +38,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const fileTreeExpandedPaths = ref<Record<string, true>>({});
 
-  const pendingFsEntryDelete = ref<FsEntry | null>(null);
+  const pendingFsEntryDelete = ref<FsEntry[] | null>(null);
   const pendingFsEntryRename = ref<FsEntry | null>(null);
   const pendingFsEntryCreateFolder = ref<FsEntry | null>(null);
   const pendingFsEntryCreateTimeline = ref<FsEntry | null>(null);

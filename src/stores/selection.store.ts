@@ -49,6 +49,12 @@ export interface SelectedFsEntry extends SelectedEntityBase {
   entry: FsEntry;
 }
 
+export interface SelectedFsEntries extends SelectedEntityBase {
+  source: 'fileManager';
+  kind: 'multiple';
+  entries: FsEntry[];
+}
+
 export interface SelectedTimelineGap extends SelectedEntityBase {
   source: 'timeline';
   kind: 'gap';
@@ -69,7 +75,8 @@ export type SelectedEntity =
   | SelectedTimelineTransition
   | SelectedTimelineMarker
   | SelectedTimelineProperties
-  | SelectedFsEntry;
+  | SelectedFsEntry
+  | SelectedFsEntries;
 
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
@@ -138,6 +145,22 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
+  function selectFsEntries(entries: FsEntry[]) {
+    if (entries.length === 0) {
+      clearSelection();
+      return;
+    }
+    if (entries.length === 1 && entries[0]) {
+      selectFsEntry(entries[0]);
+      return;
+    }
+    selectedEntity.value = {
+      source: 'fileManager',
+      kind: 'multiple',
+      entries,
+    };
+  }
+
   function selectTimelineProperties() {
     selectedEntity.value = {
       source: 'timeline',
@@ -157,6 +180,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineTransition,
     selectTimelineMarker,
     selectFsEntry,
+    selectFsEntries,
     selectTimelineProperties,
     clearSelection,
   };

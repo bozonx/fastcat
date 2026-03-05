@@ -61,7 +61,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const { removeFileTabByPath } = useProjectTabs();
 
   const isDeleteConfirmModalOpen = ref(false);
-  const deleteTarget = ref<FsEntry | null>(null);
+  const deleteTargets = ref<FsEntry[]>([]);
 
   const directoryUploadTarget = ref<FsEntry | null>(null);
   const directoryUploadInput = ref<HTMLInputElement | null>(null);
@@ -69,9 +69,10 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const editingEntryPath = ref<string | null>(null);
 
   const timelinesUsingDeleteTarget = computed(() => {
-    const entry = deleteTarget.value;
-    if (!entry || entry.kind !== 'file' || !entry.path) return [];
-    return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
+    return deleteTargets.value.flatMap((entry) => {
+      if (entry.kind !== 'file' || !entry.path) return [];
+      return timelineMediaUsageStore.mediaPathToTimelines[entry.path] ?? [];
+    });
   });
 
   function startRename(entry: FsEntry) {
@@ -251,34 +252,47 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
   }
 
-  function openDeleteConfirmModal(entry: FsEntry) {
-    deleteTarget.value = entry;
+  function openDeleteConfirmModal(entries: FsEntry[]) {
+    deleteTargets.value = entries;
     isDeleteConfirmModalOpen.value = true;
   }
 
   async function handleDeleteConfirm() {
-    if (!deleteTarget.value) return;
-    const deletePath = deleteTarget.value.path;
-    await actions.deleteEntry(deleteTarget.value);
+    if (deleteTargets.value.length === 0) return;
 
-    if (deletePath && uiStore.selectedFsEntry?.path === deletePath) {
+    const pathsToDelete = new Set(deleteTargets.value.map((t) => t.path).filter(Boolean));
+    const namesToDelete = new Set(deleteTargets.value.map((t) => t.name));
+
+    for (const target of deleteTargets.value) {
+      await actions.deleteEntry(target);
+    }
+
+    if (uiStore.selectedFsEntry?.path && pathsToDelete.has(uiStore.selectedFsEntry.path)) {
       uiStore.selectedFsEntry = null;
     }
 
-    if (
-      selectionStore.selectedEntity?.source === 'fileManager' &&
-      (selectionStore.selectedEntity.path
-        ? selectionStore.selectedEntity.path === deletePath
-        : selectionStore.selectedEntity.name === deleteTarget.value.name)
-    ) {
-      selectionStore.clearSelection();
+    const sel = selectionStore.selectedEntity;
+    if (sel?.source === 'fileManager') {
+      let shouldClear = false;
+      if (sel.kind === 'multiple') {
+        shouldClear = sel.entries.some((e) =>
+          e.path ? pathsToDelete.has(e.path) : namesToDelete.has(e.name),
+        );
+      } else {
+        shouldClear = sel.path ? pathsToDelete.has(sel.path) : namesToDelete.has(sel.name);
+      }
+      if (shouldClear) {
+        selectionStore.clearSelection();
+      }
     }
 
-    if (deletePath?.toLowerCase().endsWith('.otio')) {
-      if (projectStore.currentTimelinePath === deletePath) {
-        await projectStore.closeTimelineFile(deletePath);
+    for (const path of pathsToDelete) {
+      if (path?.toLowerCase().endsWith('.otio')) {
+        if (projectStore.currentTimelinePath === path) {
+          await projectStore.closeTimelineFile(path);
+        }
+        removeFileTabByPath(path);
       }
-      removeFileTabByPath(deletePath);
     }
 
     actions.onAfterDelete?.();
@@ -286,58 +300,84 @@ export function useFileManagerActions(actions: FileManagerActions) {
     setTimeout(() => {
       isDeleteConfirmModalOpen.value = false;
       setTimeout(() => {
-        deleteTarget.value = null;
+        deleteTargets.value = [];
       }, 300);
     }, 0);
   }
 
   const fileActionHandlers: Record<
     string,
-    (entry: FsEntry, getExistingNames?: () => string[]) => void | Promise<void>
+    (entry: FsEntry | FsEntry[], getExistingNames?: () => string[]) => void | Promise<void>
   > = {
     createFolder: (entry, getExistingNames) => {
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      if (!e) return;
       const existingNames = getExistingNames
         ? getExistingNames()
-        : entry.children?.map((c) => c.name) || [];
+        : e.children?.map((c) => c.name) || [];
       void handleCreateAutoFolder(
-        entry.kind === 'directory' ? (entry.handle as FileSystemDirectoryHandle) : null,
-        entry.path ?? '',
+        e.kind === 'directory' ? (e.handle as FileSystemDirectoryHandle) : null,
+        e.path ?? '',
         existingNames,
       );
     },
     upload: (entry) => {
-      if (entry.kind !== 'directory') return;
-      directoryUploadTarget.value = entry;
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      if (!e || e.kind !== 'directory') return;
+      directoryUploadTarget.value = e;
       directoryUploadInput.value?.click();
     },
-    rename: (entry) => startRename(entry),
-    delete: (entry) => openDeleteConfirmModal(entry),
+    rename: (entry) => {
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      if (e) startRename(e);
+    },
+    delete: (entry) => {
+      const entries = Array.isArray(entry) ? entry : [entry];
+      openDeleteConfirmModal(entries);
+    },
     createProxy: (entry) => {
-      if (entry.kind !== 'file' || !entry.path) return;
-      void actions.mediaCache.ensureProxy({
-        fileHandle: entry.handle as FileSystemFileHandle,
-        projectRelativePath: entry.path!,
-      });
+      const entries = Array.isArray(entry) ? entry : [entry];
+      for (const e of entries) {
+        if (e.kind !== 'file' || !e.path) continue;
+        void actions.mediaCache.ensureProxy({
+          fileHandle: e.handle as FileSystemFileHandle,
+          projectRelativePath: e.path!,
+        });
+      }
     },
     cancelProxy: (entry) => {
-      if (entry.kind === 'file' && entry.path) {
-        void actions.mediaCache.cancelProxy(entry.path);
+      const entries = Array.isArray(entry) ? entry : [entry];
+      for (const e of entries) {
+        if (e.kind === 'file' && e.path) {
+          void actions.mediaCache.cancelProxy(e.path);
+        }
       }
     },
     deleteProxy: (entry) => {
-      if (entry.kind === 'file' && entry.path) {
-        void actions.mediaCache.removeProxy(entry.path);
+      const entries = Array.isArray(entry) ? entry : [entry];
+      for (const e of entries) {
+        if (e.kind === 'file' && e.path) {
+          void actions.mediaCache.removeProxy(e.path);
+        }
       }
     },
-    createOtioVersion: (entry) => void createOtioVersion(entry),
+    createOtioVersion: (entry) => {
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      if (e) void createOtioVersion(e);
+    },
     createMarkdown: (entry) => {
-      if (entry.kind === 'directory') {
-        void createMarkdownInDirectory(entry);
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      if (e && e.kind === 'directory') {
+        void createMarkdownInDirectory(e);
       }
     },
   };
 
-  function onFileAction(action: FileAction, entry: FsEntry, getExistingNames?: () => string[]) {
+  function onFileAction(
+    action: FileAction,
+    entry: FsEntry | FsEntry[],
+    getExistingNames?: () => string[],
+  ) {
     const handler = fileActionHandlers[action];
     if (handler) {
       void handler(entry, getExistingNames);
@@ -348,7 +388,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
   return {
     isDeleteConfirmModalOpen,
-    deleteTarget,
+    deleteTargets,
     timelinesUsingDeleteTarget,
     directoryUploadTarget,
     directoryUploadInput,
