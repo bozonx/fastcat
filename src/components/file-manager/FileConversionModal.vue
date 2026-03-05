@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -43,9 +45,16 @@ const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' })
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { default: 128 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
+const videoWidth = defineModel<number>('videoWidth', { default: 1920 });
+const videoHeight = defineModel<number>('videoHeight', { default: 1080 });
+const videoFps = defineModel<number>('videoFps', { default: 30 });
+const resolutionFormat = defineModel<string>('resolutionFormat', { default: '1080p' });
+const orientation = defineModel<'landscape' | 'portrait'>('orientation', { default: 'landscape' });
+const aspectRatio = defineModel<string>('aspectRatio', { default: '16:9' });
+const isCustomResolution = defineModel<boolean>('isCustomResolution', { default: false });
 
 // Audio Settings
-const audioOnlyFormat = defineModel<'webm' | 'mp4'>('audioOnlyFormat', { default: 'webm' });
+const audioOnlyFormat = defineModel<'opus' | 'aac'>('audioOnlyFormat', { default: 'opus' });
 const audioOnlyCodec = defineModel<'opus' | 'aac'>('audioOnlyCodec', { default: 'opus' });
 const audioOnlyBitrateKbps = defineModel<number>('audioOnlyBitrateKbps', { default: 128 });
 const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
@@ -60,9 +69,9 @@ const formatOptions: readonly FormatOption[] = [
   { value: 'mkv', label: 'MKV (AV1)' },
 ];
 
-const audioFormatOptions: readonly FormatOption[] = [
-  { value: 'webm', label: 'WEBM' },
-  { value: 'mp4', label: 'MP4' },
+const audioFormatOptions: readonly { value: 'opus' | 'aac'; label: string }[] = [
+  { value: 'opus', label: 'OPUS' },
+  { value: 'aac', label: 'AAC' },
 ];
 
 const audioCodecOptions = [
@@ -96,6 +105,24 @@ const getPhaseLabel = computed(() => {
     return t('videoEditor.export.phaseEncoding', 'Encoding');
   if (props.conversionPhase === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
   return '';
+});
+
+const outputFileName = computed(() => {
+  const baseName = props.fileName.replace(/\.[^.]+$/, '');
+  if (props.mediaType === 'video') {
+    return `${baseName}_converted.${videoFormat.value}`;
+  }
+  if (props.mediaType === 'audio') {
+    return `${baseName}_converted.${audioOnlyFormat.value}`;
+  }
+  if (props.mediaType === 'image') {
+    return `${baseName}_converted.webp`;
+  }
+  return props.fileName;
+});
+
+watch(audioOnlyFormat, (nextFormat) => {
+  audioOnlyCodec.value = nextFormat;
 });
 </script>
 
@@ -177,6 +204,21 @@ const getPhaseLabel = computed(() => {
             :options="[
               { value: 'stereo', label: 'Stereo' },
               { value: 'mono', label: 'Mono' },
+            ]"
+            :disabled="isConverting"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.audio.sampleRate', 'Sample rate') }}
+          </label>
+          <UiAppButtonGroup
+            v-model="audioSampleRate"
+            :options="[
+              { value: 32000, label: '32 kHz' },
+              { value: 44100, label: '44.1 kHz' },
+              { value: 48000, label: '48 kHz' },
             ]"
             :disabled="isConverting"
           />

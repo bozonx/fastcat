@@ -6,8 +6,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'navigateBack'): void;
-  (e: 'navigateUp'): void;
+  (e: 'navigateBack' | 'navigateUp'): void;
   (e: 'navigateToFolder', index: number): void;
 }>();
 </script>

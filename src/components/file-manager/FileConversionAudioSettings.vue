@@ -1,0 +1,71 @@
+<script setup lang="ts">
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+  }>(),
+  {
+    disabled: false,
+  },
+);
+
+const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
+const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { required: true });
+const audioSampleRate = defineModel<number>('audioSampleRate', { required: true });
+
+const { t } = useI18n();
+
+const audioChannelsOptions = [
+  { value: 'stereo', label: t('videoEditor.audio.stereo', 'Stereo') },
+  { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
+];
+
+const sampleRateOptions = [
+  { value: 32000, label: '32 kHz' },
+  { value: 44100, label: '44.1 kHz' },
+  { value: 48000, label: '48 kHz' },
+];
+</script>
+
+<template>
+  <div class="space-y-4">
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
+      </label>
+      <WheelNumberInput
+        v-model="audioBitrateKbps"
+        :min="32"
+        :step="16"
+        :disabled="props.disabled"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.audio.channels', 'Channels') }}
+      </label>
+      <UiAppButtonGroup
+        v-model="audioChannels"
+        :options="audioChannelsOptions"
+        :disabled="props.disabled"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
+      </label>
+      <USelect
+        v-model.number="audioSampleRate"
+        :items="sampleRateOptions"
+        :disabled="props.disabled"
+        size="sm"
+        class="w-full"
+        value-key="value"
+        label-key="label"
+      />
+    </div>
+  </div>
+</template>
