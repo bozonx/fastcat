@@ -298,6 +298,159 @@ export function useTimelineInteraction(
         }
       }
 
+      const isMulti = timelineStore.selectedItemIds.includes(itemId) && timelineStore.selectedItemIds.length > 1;
+
+      if (isMulti && dragStartSnapshot.value) {
+
+        const deltaUs = startUs - dragAnchorStartUs.value;
+
+        const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] = [];
+
+        
+
+        let trackOffset = 0;
+
+        if (targetTrackId !== dragOriginTrackId.value) {
+
+            const origIdx = tracks.value.findIndex(t => t.id === dragOriginTrackId.value);
+
+            const newIdx = tracks.value.findIndex(t => t.id === targetTrackId);
+
+            if (origIdx !== -1 && newIdx !== -1) {
+
+                trackOffset = newIdx - origIdx;
+
+            }
+
+        }
+
+
+
+        for (const selectedId of timelineStore.selectedItemIds) {
+
+           let origTrackId = '';
+
+           let origStartUs = 0;
+
+           for (const t of dragStartSnapshot.value.tracks) {
+
+             const it = t.items.find(x => x.id === selectedId);
+
+             if (it && it.kind === 'clip') {
+
+               origTrackId = t.id;
+
+               origStartUs = it.timelineRange.startUs;
+
+               break;
+
+             }
+
+           }
+
+
+
+           let currTrackId = '';
+
+           for (const t of tracks.value) {
+
+             if (t.items.some(x => x.id === selectedId)) {
+
+               currTrackId = t.id;
+
+               break;
+
+             }
+
+           }
+
+
+
+           if (origTrackId && currTrackId) {
+
+             let toTrackId = origTrackId;
+
+             if (trackOffset !== 0) {
+
+                 const origIdx = tracks.value.findIndex(t => t.id === origTrackId);
+
+                 const newIdx = origIdx + trackOffset;
+
+                 if (newIdx >= 0 && newIdx < tracks.value.length) {
+
+                     const targetT = tracks.value[newIdx];
+
+                     const origT = tracks.value[origIdx];
+
+                     if (targetT && origT && targetT.kind === origT.kind) {
+
+                         toTrackId = targetT.id;
+
+                     }
+
+                 }
+
+             }
+
+
+
+             moves.push({
+
+               fromTrackId: currTrackId,
+
+               toTrackId,
+
+               itemId: selectedId,
+
+               startUs: Math.max(0, origStartUs + deltaUs),
+
+             });
+
+           }
+
+        }
+
+
+
+        moves.sort((a, b) => {
+
+          return deltaUs >= 0 ? b.startUs - a.startUs : a.startUs - b.startUs;
+
+        });
+
+
+
+        if (moves.length > 0) {
+
+          try {
+
+            const cmd = {
+
+              type: 'move_items',
+
+              moves,
+
+              quantizeToFrames: enableFrameSnap,
+
+            } as const;
+
+            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+
+            lastDragAppliedCmd.value = cmd as any;
+
+            draggingTrackId.value = targetTrackId;
+
+            hasPendingTimelinePersist.value = true;
+
+          } catch {}
+
+        }
+
+        return;
+
+      }
+
+
       if (overlapMode === 'pseudo') {
         movePreview.value = { itemId, trackId: targetTrackId, startUs };
         pendingMoveCommit.value = {

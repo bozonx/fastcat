@@ -92,6 +92,9 @@ type FileAction =
 function onFileAction(action: string, entry: FsEntry) {
   if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
+      if (entry.path) {
+        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
+      }
       void createMarkdownInDirectory(entry);
     }
   } else if (action === 'createFolder') {

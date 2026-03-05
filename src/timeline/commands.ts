@@ -255,6 +255,17 @@ export interface UpdateMasterEffectsCommand {
   effects: import('./types').ClipEffect[];
 }
 
+export interface MoveItemsCommand {
+  type: 'move_items';
+  moves: {
+    fromTrackId: string;
+    toTrackId: string;
+    itemId: string;
+    startUs: number;
+  }[];
+  quantizeToFrames?: boolean;
+}
+
 export type TimelineCommand =
   | AddClipToTrackCommand
   | AddVirtualClipToTrackCommand
@@ -268,6 +279,7 @@ export type TimelineCommand =
   | DeleteTrackCommand
   | ReorderTracksCommand
   | MoveItemToTrackCommand
+  | MoveItemsCommand
   | ExtractAudioToTrackCommand
   | ReturnAudioToVideoCommand
   | RenameItemCommand
@@ -321,6 +333,8 @@ export function applyTimelineCommand(
       return removeItems(doc, cmd);
     case 'move_item':
       return moveItem(doc, cmd);
+    case 'move_items':
+      return moveItems(doc, cmd);
     case 'move_item_to_track':
       return moveItemToTrack(doc, cmd);
     case 'trim_item':
