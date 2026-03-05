@@ -48,7 +48,9 @@ function handleDrop(event: DragEvent) {
   selectionStore.selectTimelineItem(props.track.id, props.item.id, props.item.kind as 'clip');
 
   // Trigger scroll to effects
-  uiStore.triggerScrollToEffects();
+  setTimeout(() => {
+    uiStore.triggerScrollToEffects();
+  }, 50);
 
   event.preventDefault();
   event.stopPropagation();
