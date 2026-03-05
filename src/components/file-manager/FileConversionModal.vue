@@ -156,6 +156,17 @@ watch(audioOnlyFormat, (nextFormat) => {
           :format-options="formatOptions"
           :video-codec-options="videoCodecOptions"
         />
+
+        <MediaResolutionSettings
+          v-model:is-custom-resolution="isCustomResolution"
+          v-model:width="videoWidth"
+          v-model:height="videoHeight"
+          v-model:fps="videoFps"
+          :resolution-format="resolutionFormat"
+          :orientation="orientation"
+          :aspect-ratio="aspectRatio"
+          :disabled="isConverting"
+        />
       </div>
 
       <div v-if="mediaType === 'audio'" class="space-y-4">
@@ -170,59 +181,12 @@ watch(audioOnlyFormat, (nextFormat) => {
           />
         </div>
 
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
-          </label>
-          <div class="w-full">
-            <UiAppButtonGroup
-              v-model="audioOnlyCodec"
-              :options="audioCodecOptions"
-              :disabled="isConverting"
-            />
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
-          </label>
-          <WheelNumberInput
-            v-model="audioOnlyBitrateKbps"
-            :min="32"
-            :step="16"
-            :disabled="isConverting"
-          />
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.fileManager.audio.channels', 'Channels') }}
-          </label>
-          <UiAppButtonGroup
-            v-model="audioChannels"
-            :options="[
-              { value: 'stereo', label: 'Stereo' },
-              { value: 'mono', label: 'Mono' },
-            ]"
-            :disabled="isConverting"
-          />
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.audio.sampleRate', 'Sample rate') }}
-          </label>
-          <UiAppButtonGroup
-            v-model="audioSampleRate"
-            :options="[
-              { value: 32000, label: '32 kHz' },
-              { value: 44100, label: '44.1 kHz' },
-              { value: 48000, label: '48 kHz' },
-            ]"
-            :disabled="isConverting"
-          />
-        </div>
+        <FileConversionAudioSettings
+          v-model:audioBitrateKbps="audioOnlyBitrateKbps"
+          v-model:audioChannels="audioChannels"
+          v-model:audioSampleRate="audioSampleRate"
+          :disabled="isConverting"
+        />
       </div>
 
       <div v-if="mediaType === 'image'" class="space-y-4">
