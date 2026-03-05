@@ -625,7 +625,6 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         @stop-rename="stopRename"
         @toggle="toggleDirectory"
         @action="onFileAction"
-        @create-folder="(entry: FsEntry | null) => onFileAction('createFolder', entry as FsEntry)"
         @select="handleFileManagerFilesSelect"
       />
       <FileManagerEffects

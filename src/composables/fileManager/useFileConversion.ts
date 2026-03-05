@@ -65,8 +65,8 @@ export function useFileConversion() {
     return 'stereo';
   }
 
-  function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'ogg' | 'mp4' {
-    if (codec === 'opus') return 'ogg';
+  function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'mkv' | 'mp4' {
+    if (codec === 'opus') return 'mkv';
     return 'mp4';
   }
 

@@ -35,3 +35,8 @@ export const FILE_MANAGER_THUMBNAILS = {
   POSITION_FRACTION: 0.25, // First quarter
   MAX_CONCURRENT_TASKS: 3,
 } as const;
+
+export const TIMELINE_MANAGER_THUMBNAILS = {
+  DIR_NAME: 'timelines',
+} as const;
+

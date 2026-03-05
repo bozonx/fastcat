@@ -1,6 +1,6 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { FILE_MANAGER_THUMBNAILS } from '~/utils/constants';
+import { FILE_MANAGER_THUMBNAILS, TIMELINE_MANAGER_THUMBNAILS } from '~/utils/constants';
 import { getProjectThumbnailsSegments } from '~/utils/vardata-paths';
 
 export interface FileThumbnailTask {
@@ -106,10 +106,12 @@ class FileThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return null;
 
     try {
-      const parts = [
-        ...getProjectThumbnailsSegments(task.projectId),
-        FILE_MANAGER_THUMBNAILS.DIR_NAME,
-      ];
+      const isTimeline = task.projectRelativePath.toLowerCase().endsWith('.otio');
+      const dirName = isTimeline
+        ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
+        : FILE_MANAGER_THUMBNAILS.DIR_NAME;
+
+      const parts = [...getProjectThumbnailsSegments(task.projectId), dirName];
 
       let dir = workspaceStore.workspaceHandle;
       for (const segment of parts) {
@@ -350,10 +352,12 @@ class FileThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return;
 
     const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
-    const parts = [
-      ...getProjectThumbnailsSegments(input.projectId),
-      FILE_MANAGER_THUMBNAILS.DIR_NAME,
-    ];
+    const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
+    const dirName = isTimeline
+      ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
+      : FILE_MANAGER_THUMBNAILS.DIR_NAME;
+
+    const parts = [...getProjectThumbnailsSegments(input.projectId), dirName];
 
     let dir = workspaceStore.workspaceHandle;
     for (const segment of parts) {

@@ -193,6 +193,11 @@ const {
   findEntryByPath: fileManager.findEntryByPath,
   readDirectory: fileManager.readDirectory,
   reloadDirectory: fileManager.reloadDirectory,
+  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
+  setFileTreePathExpanded: (path, expanded) => {
+    const projectName = projectStore.currentProjectName;
+    if (projectName) uiStore.setFileTreePathExpanded(projectName, path, expanded);
+  },
   onAfterRename: () => {
     void loadFolderContent();
   },

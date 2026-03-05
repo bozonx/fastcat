@@ -195,7 +195,6 @@ const emit = defineEmits<{
       | 'convertFile',
     entry: FsEntry,
   ): void;
-  (e: 'createFolder', entry: FsEntry | null): void;
   (e: 'commitRename', entry: FsEntry, newName: string): void;
   (e: 'stopRename'): void;
 }>();
@@ -221,7 +220,16 @@ const rootContextMenuItems = computed(() => {
       {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
-        onSelect: () => emit('createFolder', null),
+        onSelect: async () => {
+          const handle = await props.getProjectRootDirHandle();
+          if (!handle) return;
+          emit('action', 'createFolder', {
+            kind: 'directory',
+            name: projectStore.currentProjectName!,
+            path: '',
+            handle,
+          });
+        },
       },
       {
         label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
