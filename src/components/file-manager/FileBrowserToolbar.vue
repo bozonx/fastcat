@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
 import { useUiStore } from '~/stores/ui.store';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
-const props = defineProps<{
+defineProps<{
   gridSizes: number[];
   currentGridSizeName: string;
 }>();

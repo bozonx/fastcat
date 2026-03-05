@@ -37,7 +37,7 @@ export function useFileConversion() {
   const keyframeIntervalSec = ref(2);
 
   // Audio Settings
-  const audioOnlyFormat = ref<'webm' | 'mp4'>('webm'); // usually webm for opus
+  const audioOnlyFormat = ref<'opus' | 'aac'>('opus');
   const audioOnlyCodec = ref<'opus' | 'aac'>('opus');
   const audioOnlyBitrateKbps = ref(128);
   const audioChannels = ref<'stereo' | 'mono'>('stereo');
@@ -64,7 +64,7 @@ export function useFileConversion() {
         projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ?? 128;
     } else if (type === 'audio') {
       audioOnlyCodec.value = 'opus';
-      audioOnlyFormat.value = 'webm';
+      audioOnlyFormat.value = 'opus';
       audioOnlyBitrateKbps.value = 128;
       audioChannels.value = 'stereo';
       audioSampleRate.value = 48000;
