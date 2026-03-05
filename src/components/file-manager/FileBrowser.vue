@@ -72,8 +72,6 @@ const {
   reloadDirectory,
 } = fileManager;
 const { t } = useI18n();
-const { setDraggedFile, clearDraggedFile } = useDraggedFile();
-const { isGlobalDragging } = storeToRefs(uiStore);
 
 const skipNextUpdateReload = ref(false);
 
@@ -177,10 +175,8 @@ const {
   stopRename,
   startRename,
   deleteTarget,
-  timelinesUsingDeleteTarget,
   directoryUploadTarget,
   directoryUploadInput,
-  openDeleteConfirmModal,
   handleDeleteConfirm,
   onFileAction: onFileActionBase,
 } = useFileManagerActions({
@@ -637,11 +633,6 @@ async function createPreviewUrl(name: string, file: File): Promise<string | unde
   }
 }
 
-function isImageSupported(filename: string): boolean {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  return ext ? SUPPORTED_IMAGE_EXTS.includes(ext) : false;
-}
-
 function getMimeFromExt(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   const type = getMediaTypeFromFilename(filename);
@@ -728,11 +719,6 @@ function handleEntryEnter(entry: FsEntry) {
   handleEntryDoubleClick(entry);
 }
 
-function formatDate(timestamp?: number) {
-  if (!timestamp) return '-';
-  return new Date(timestamp).toLocaleString();
-}
-
 function handleSort(field: FileSortField) {
   if (filesPageStore.sortOption.field === field) {
     filesPageStore.sortOption = {
@@ -800,15 +786,6 @@ function onResizeEnd() {
   resizingColumn.value = null;
   document.removeEventListener('mousemove', onResizeMove);
   document.removeEventListener('mouseup', onResizeEnd);
-}
-
-function onCardSizeChange(e: Event) {
-  const target = e.target as HTMLInputElement;
-  if (!target) return;
-  const value = parseInt(target.value);
-  if (!isNaN(value)) {
-    filesPageStore.setGridCardSize(GRID_SIZES[value] || 120);
-  }
 }
 
 // --- Drag-and-drop within the browser panel ---
@@ -992,17 +969,11 @@ async function onDirectoryUploadChange(e: Event) {
       v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
       v-model:exclude-audio="fileConversion.excludeAudio.value"
       v-model:audio-codec="fileConversion.audioCodec.value"
-      :media-type="fileConversion.mediaType.value"
       v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
-      :file-name="fileConversion.targetEntry.value?.name ?? ''"
       v-model:bitrate-mode="fileConversion.bitrateMode.value"
-      :is-converting="fileConversion.isConverting.value"
       v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
-      :conversion-progress="fileConversion.conversionProgress.value"
       v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
-      :conversion-error="fileConversion.conversionError.value"
       v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
-      :conversion-phase="fileConversion.conversionPhase.value"
       v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
       v-model:audio-channels="fileConversion.audioChannels.value"
       v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
@@ -1014,6 +985,12 @@ async function onDirectoryUploadChange(e: Event) {
       v-model:orientation="fileConversion.orientation.value"
       v-model:aspect-ratio="fileConversion.aspectRatio.value"
       v-model:is-custom-resolution="fileConversion.isCustomResolution.value"
+      :media-type="fileConversion.mediaType.value"
+      :file-name="fileConversion.targetEntry.value?.name ?? ''"
+      :is-converting="fileConversion.isConverting.value"
+      :conversion-progress="fileConversion.conversionProgress.value"
+      :conversion-error="fileConversion.conversionError.value"
+      :conversion-phase="fileConversion.conversionPhase.value"
       @convert="fileConversion.startConversion"
       @cancel="fileConversion.cancelConversion"
     />

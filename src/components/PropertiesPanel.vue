@@ -15,7 +15,6 @@ import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
-import type { FsEntry } from '~/types/fs';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const props = defineProps<{
@@ -117,18 +116,6 @@ function onPanelFocusIn(e: FocusEvent) {
 
 function onPanelFocusOut() {
   // Keep focus state
-}
-
-function openRenameModal() {
-  if (clipRef.value) {
-    clipRef.value.isRenameModalOpen = true;
-  }
-}
-
-function handleDeleteClip() {
-  if (selectedClip.value) {
-    timelineStore.deleteSelectedItems(selectedClip.value.trackId);
-  }
 }
 </script>
 
@@ -253,7 +240,7 @@ function handleDeleteClip() {
           />
           <MarkerProperties
             v-else-if="displayMode === 'marker' && selectedMarkerId"
-            :marker-id="selectedMarkerId"
+            v-model:marker-id="selectedMarkerId"
           />
           <TimelineProperties v-else-if="displayMode === 'timeline'" />
           <div
@@ -270,22 +257,34 @@ function handleDeleteClip() {
         v-model:video-bitrate-mbps="fileConversion.videoBitrateMbps.value"
         v-model:exclude-audio="fileConversion.excludeAudio.value"
         v-model:audio-codec="fileConversion.audioCodec.value"
-        :media-type="fileConversion.mediaType.value"
         v-model:audio-bitrate-kbps="fileConversion.audioBitrateKbps.value"
-        :file-name="fileConversion.targetEntry.value?.name ?? ''"
         v-model:bitrate-mode="fileConversion.bitrateMode.value"
-        :is-converting="fileConversion.isConverting.value"
         v-model:keyframe-interval-sec="fileConversion.keyframeIntervalSec.value"
-        :conversion-progress="fileConversion.conversionProgress.value"
         v-model:audio-only-format="fileConversion.audioOnlyFormat.value"
-        :conversion-error="fileConversion.conversionError.value"
         v-model:audio-only-codec="fileConversion.audioOnlyCodec.value"
-        :conversion-phase="fileConversion.conversionPhase.value"
         v-model:audio-only-bitrate-kbps="fileConversion.audioOnlyBitrateKbps.value"
         v-model:audio-channels="fileConversion.audioChannels.value"
         v-model:audio-sample-rate="fileConversion.audioSampleRate.value"
         v-model:image-quality="fileConversion.imageQuality.value"
+        v-model:image-width="fileConversion.imageWidth.value"
+        v-model:image-height="fileConversion.imageHeight.value"
+        v-model:is-image-resolution-linked="fileConversion.isImageResolutionLinked.value"
+        v-model:image-aspect-ratio="fileConversion.imageAspectRatio.value"
+        v-model:video-width="fileConversion.videoWidth.value"
+        v-model:video-height="fileConversion.videoHeight.value"
+        v-model:video-fps="fileConversion.videoFps.value"
+        v-model:resolution-format="fileConversion.resolutionFormat.value"
+        v-model:orientation="fileConversion.orientation.value"
+        v-model:aspect-ratio="fileConversion.aspectRatio.value"
+        v-model:is-custom-resolution="fileConversion.isCustomResolution.value"
+        :media-type="fileConversion.mediaType.value"
+        :file-name="fileConversion.targetEntry.value?.name ?? ''"
+        :is-converting="fileConversion.isConverting.value"
+        :conversion-progress="fileConversion.conversionProgress.value"
+        :conversion-error="fileConversion.conversionError.value"
+        :conversion-phase="fileConversion.conversionPhase.value"
         @convert="fileConversion.startConversion"
+        @cancel="fileConversion.cancelConversion"
       />
     </div>
   </div>
