@@ -104,17 +104,18 @@ export const crtManifest: EffectManifest<CRTParams> = {
       step: 0.01,
     },
   ],
-  createFilter: () => new CRTFilter({
-    curvature: 1,
-    lineWidth: 1,
-    lineContrast: 0.25,
-    verticalLine: false,
-    noise: 0.3,
-    noiseSize: 1,
-    vignetting: 0.3,
-    vignettingAlpha: 1,
-    vignettingBlur: 0.3,
-  }),
+  createFilter: () =>
+    new CRTFilter({
+      curvature: 1,
+      lineWidth: 1,
+      lineContrast: 0.25,
+      verticalLine: false,
+      noise: 0.3,
+      noiseSize: 1,
+      vignetting: 0.3,
+      vignettingAlpha: 1,
+      vignettingBlur: 0.3,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as CRTFilter;
     if (values.curvature !== undefined) f.curvature = values.curvature;

@@ -14,9 +14,14 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProxyStore } from '~/stores/proxy.store';
-import { createTimelineCommand, createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
+import {
+  createTimelineCommand,
+  createMarkdownCommand,
+} from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -39,6 +44,8 @@ const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
+
+const fileConversion = useFileConversion();
 
 const fileManager = useFileManager();
 const {
@@ -137,6 +144,10 @@ function onFileAction(action: any, entry: FsEntry) {
     setActiveTab(tabId);
   } else if (action === 'createOtioVersion') {
     void createOtioVersion(entry);
+  } else if (action === 'convertFile') {
+    if (entry.kind === 'file') {
+      fileConversion.openConversionModal(entry);
+    }
   } else if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -717,12 +728,12 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         :root-entries="rootEntries"
         :get-file-icon="getFileIcon"
         :find-entry-by-path="findEntryByPath"
-        @commit-rename="commitRename"
         :media-cache="fileManager.mediaCache"
-        @stop-rename="stopRename"
         :move-entry="moveEntry"
         :get-project-root-dir-handle="getProjectRootDirHandle"
         :handle-files="handleFiles"
+        @commit-rename="commitRename"
+        @stop-rename="stopRename"
         @toggle="toggleDirectory"
         @action="onFileAction"
         @create-folder="(entry: FsEntry | null) => onFileAction('createFolder', entry as FsEntry)"

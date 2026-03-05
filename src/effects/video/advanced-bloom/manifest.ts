@@ -64,13 +64,14 @@ export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
       step: 1,
     },
   ],
-  createFilter: () => new AdvancedBloomFilter({
-    threshold: 0.5,
-    bloomScale: 1.0,
-    brightness: 1.0,
-    blur: 2.0,
-    quality: 4,
-  }),
+  createFilter: () =>
+    new AdvancedBloomFilter({
+      threshold: 0.5,
+      bloomScale: 1.0,
+      brightness: 1.0,
+      blur: 2.0,
+      quality: 4,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as AdvancedBloomFilter;
     if (values.threshold !== undefined) f.threshold = values.threshold;

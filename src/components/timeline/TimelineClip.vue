@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineTrackItem,
+  TimelineClipItem,
+  ClipEffect,
+} from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -9,7 +14,6 @@ import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { clampHandlePx, getClipClass, transitionSvgParts } from '~/utils/timeline/clip';
 import { getEffectManifest } from '~/effects';
-import type { ClipEffect } from '~/timeline/types';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();

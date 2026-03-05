@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import AppModal from '~/components/ui/AppModal.vue';
-import MediaEncodingSettings, { type FormatOption } from '~/components/media/MediaEncodingSettings.vue';
+import MediaEncodingSettings, {
+  type FormatOption,
+} from '~/components/media/MediaEncodingSettings.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
-import { BASE_VIDEO_CODEC_OPTIONS, checkVideoCodecSupport, resolveVideoCodecOptions } from '~/utils/webcodecs';
+import {
+  BASE_VIDEO_CODEC_OPTIONS,
+  checkVideoCodecSupport,
+  resolveVideoCodecOptions,
+} from '~/utils/webcodecs';
 
 const props = defineProps<{
   open: boolean;
@@ -17,7 +23,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean];
-  'convert': [];
+  convert: [];
 }>();
 
 const { t } = useI18n();
@@ -85,11 +91,11 @@ onMounted(() => {
 });
 
 const getPhaseLabel = computed(() => {
-  if (props.conversionPhase === 'encoding') return t('videoEditor.export.phaseEncoding', 'Encoding');
+  if (props.conversionPhase === 'encoding')
+    return t('videoEditor.export.phaseEncoding', 'Encoding');
   if (props.conversionPhase === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
   return '';
 });
-
 </script>
 
 <template>
@@ -101,7 +107,8 @@ const getPhaseLabel = computed(() => {
   >
     <div class="space-y-6">
       <div class="text-sm text-ui-text-muted">
-        {{ t('videoEditor.fileManager.convert.targetFile', 'Converting:') }} <span class="font-mono text-ui-text">{{ fileName }}</span>
+        {{ t('videoEditor.fileManager.convert.targetFile', 'Converting:') }}
+        <span class="font-mono text-ui-text">{{ fileName }}</span>
       </div>
 
       <div v-if="mediaType === 'video'" class="space-y-4">
@@ -152,7 +159,12 @@ const getPhaseLabel = computed(() => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
           </label>
-          <WheelNumberInput v-model="audioOnlyBitrateKbps" :min="32" :step="16" :disabled="isConverting" />
+          <WheelNumberInput
+            v-model="audioOnlyBitrateKbps"
+            :min="32"
+            :step="16"
+            :disabled="isConverting"
+          />
         </div>
 
         <div class="flex flex-col gap-2">
@@ -161,7 +173,10 @@ const getPhaseLabel = computed(() => {
           </label>
           <UiAppButtonGroup
             v-model="audioChannels"
-            :options="[{ value: 'stereo', label: 'Stereo' }, { value: 'mono', label: 'Mono' }]"
+            :options="[
+              { value: 'stereo', label: 'Stereo' },
+              { value: 'mono', label: 'Mono' },
+            ]"
             :disabled="isConverting"
           />
         </div>
@@ -179,11 +194,20 @@ const getPhaseLabel = computed(() => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
           </label>
-          <WheelNumberInput v-model="imageQuality" :min="1" :max="100" :step="1" :disabled="isConverting" />
+          <WheelNumberInput
+            v-model="imageQuality"
+            :min="1"
+            :max="100"
+            :step="1"
+            :disabled="isConverting"
+          />
         </div>
       </div>
 
-      <div v-if="conversionError" class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20">
+      <div
+        v-if="conversionError"
+        class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
+      >
         {{ conversionError }}
       </div>
 
@@ -208,7 +232,11 @@ const getPhaseLabel = computed(() => {
         <UButton
           variant="solid"
           color="primary"
-          :label="isConverting ? t('videoEditor.fileManager.convert.converting', 'Converting...') : t('videoEditor.fileManager.convert.start', 'Convert')"
+          :label="
+            isConverting
+              ? t('videoEditor.fileManager.convert.converting', 'Converting...')
+              : t('videoEditor.fileManager.convert.start', 'Convert')
+          "
           :loading="isConverting"
           @click="emit('convert')"
         />

@@ -68,7 +68,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
     // Default gradient stops (red to blue)
     const stops: ColorStop[] = [
       { offset: 0, color: 0xff0000, alpha: 1 },
-      { offset: 1, color: 0x0000ff, alpha: 1 }
+      { offset: 1, color: 0x0000ff, alpha: 1 },
     ];
     return new ColorGradientFilter({
       type: 0,

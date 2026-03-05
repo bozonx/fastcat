@@ -29,11 +29,12 @@ export const colorReplaceManifest: EffectManifest<ColorReplaceParams> = {
       format: (v) => `${Math.round(v * 100)}%`,
     },
   ],
-  createFilter: () => new ColorReplaceFilter({
-    originalColor: 0xff0000,
-    targetColor: 0x000000,
-    tolerance: 0.4,
-  }),
+  createFilter: () =>
+    new ColorReplaceFilter({
+      originalColor: 0xff0000,
+      targetColor: 0x000000,
+      tolerance: 0.4,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as ColorReplaceFilter;
     if (values.originalColor !== undefined) {

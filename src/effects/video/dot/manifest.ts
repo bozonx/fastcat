@@ -41,11 +41,12 @@ export const dotManifest: EffectManifest<DotParams> = {
       label: 'Ч/Б',
     },
   ],
-  createFilter: () => new DotFilter({
-    scale: 1,
-    angle: 5,
-    grayscale: true,
-  }),
+  createFilter: () =>
+    new DotFilter({
+      scale: 1,
+      angle: 5,
+      grayscale: true,
+    }),
   updateFilter: (filter, values) => {
     const f = filter as DotFilter;
     if (values.scale !== undefined) f.scale = values.scale;

@@ -30,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:previewMode': [val: 'original' | 'proxy'];
-  'convert': [entry: any];
+  convert: [entry: any];
 }>();
 
 const { t } = useI18n();

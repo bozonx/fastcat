@@ -93,7 +93,7 @@ type FileAction =
   | 'openAsPanel'
   | 'openAsProjectTab';
 
-function onFileAction(action: FileAction, entry: FsEntry) {
+function onFileAction(action: string, entry: FsEntry) {
   if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       void createMarkdownInDirectory(entry);
@@ -153,6 +153,10 @@ function onFileAction(action: FileAction, entry: FsEntry) {
           }
         }
       }
+    }
+  } else if (action === 'convertFile') {
+    if (entry.kind === 'file') {
+      // For now this is handled in FileManagerFiles or globally
     }
   } else if (action === 'addToTimeline') {
     onFileActionBase(action as FileActionBase, entry);
@@ -666,10 +670,10 @@ watch(
         :find-entry-by-path="findEntryByPath"
         :media-cache="fileManager.mediaCache"
         :move-entry="moveEntry"
-        @commit-rename="commitRename"
         :get-project-root-dir-handle="getProjectRootDirHandle"
-        @stop-rename="stopRename"
         :handle-files="handleFiles"
+        @commit-rename="commitRename"
+        @stop-rename="stopRename"
         @toggle="toggleDirectory"
         @action="onFileAction"
         @select="handleFileManagerFilesSelect"
