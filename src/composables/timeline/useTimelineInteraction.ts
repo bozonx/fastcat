@@ -109,7 +109,7 @@ export function useTimelineInteraction(
 
   function seekByMouseEvent(e: MouseEvent) {
     const x = getLocalX(e);
-    timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
+    timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
   }
 
   function onTimeRulerPointerDown(e: PointerEvent) {
@@ -337,8 +337,9 @@ export function useTimelineInteraction(
       bestDist = clipSnap.distUs;
     }
 
-    if (enableFrameSnap && bestDist >= thresholdUs) {
-      snappedEdgeUs = quantizeStartUsToFrames(rawEdgeUs, fps);
+    if (enableFrameSnap) {
+      const baseUs = bestDist < thresholdUs ? snappedEdgeUs : rawEdgeUs;
+      snappedEdgeUs = quantizeStartUsToFrames(baseUs, fps);
     }
 
     // Convert snapped edge back to delta relative to current edge (so we stay compatible with timeline commands)
@@ -390,7 +391,7 @@ export function useTimelineInteraction(
       if (!scrollerRect) return;
       const scrollX = scrollEl.value?.scrollLeft ?? 0;
       const x = e.clientX - scrollerRect.left + scrollX;
-      timelineStore.currentTime = pxToTimeUs(x, timelineStore.timelineZoom);
+      timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
       return;
     }
 

@@ -157,9 +157,9 @@ export function computeSnappedStartUs(params: {
     }
   }
 
-  if (enableFrameSnap && bestDist >= thresholdUs) {
+  if (enableFrameSnap) {
     const offsetUs = Number.isFinite(frameOffsetUs) ? Math.round(frameOffsetUs) : 0;
-    best = quantizeStartUsToFrames(rawStartUs - offsetUs, fps) + offsetUs;
+    best = quantizeStartUsToFrames(best - offsetUs, fps) + offsetUs;
   }
 
   return Math.max(0, best);

@@ -38,6 +38,7 @@ interface MonitorStoreState {
   timelineStore: {
     duration: number;
     currentTime: number;
+    setCurrentTimeUs: (timeUs: number) => void;
     isPlaying: boolean;
     audioVolume: number;
     audioMuted: boolean;
@@ -351,7 +352,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     if (timelineStore.currentTime === normalizedTimeUs) {
       return;
     }
-    timelineStore.currentTime = normalizedTimeUs;
+    timelineStore.setCurrentTimeUs(normalizedTimeUs);
   }
 
   function clampToTimeline(timeUs: number): number {

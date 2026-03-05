@@ -205,7 +205,7 @@ function setPlayback(params: { direction: 'forward' | 'backward'; speed: number 
 }
 
 function rewindToStart() {
-  timelineStore.currentTime = 0;
+  timelineStore.setCurrentTimeUs(0);
   blurActiveElement();
 }
 

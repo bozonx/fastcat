@@ -16,9 +16,11 @@ import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-typ
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
-import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import { useProxyStore } from '~/stores/proxy.store';
+import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
+import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
+import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar.vue';
+import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
+import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import {
@@ -30,6 +32,7 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
+import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -332,147 +335,35 @@ function folderHasVideos(entry: FsEntry): boolean {
   });
 }
 
-function isVideo(entry: FsEntry) {
-  return entry.kind === 'file' && entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
+function isVideo(entry: FsEntry): boolean {
+  return entry.kind === 'file' && !!entry.path?.startsWith(`${VIDEO_DIR_NAME}/`);
 }
 
-function getContextMenuItems(entry: FsEntry) {
-  const items = [];
-
-  if (entry.kind === 'directory') {
-    const hasVideos = folderHasVideos(entry);
-
-    items.push([
-      {
-        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-        icon: 'i-heroicons-folder-plus',
-        onSelect: () => onFileAction('createFolder', entry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
-        icon: 'i-heroicons-arrow-up-tray',
-        onSelect: () => onFileAction('upload', entry),
-      },
-    ]);
-
-    if (hasVideos) {
-      if (isGeneratingProxyInDirectory(entry)) {
-        items.push([
-          {
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
-            icon: 'i-heroicons-x-circle',
-            color: 'error',
-            onSelect: () => onFileAction('cancelProxyForFolder', entry),
-          },
-        ]);
-      } else {
-        items.push([
-          {
-            label: t(
-              'videoEditor.fileManager.actions.createProxyForAll',
-              'Create proxy for all videos',
-            ),
-            icon: 'i-heroicons-film',
-            onSelect: () => onFileAction('createProxyForFolder', entry),
-          },
-        ]);
-      }
-    }
-  }
-
-  if (entry.kind === 'file') {
-    const type = getMediaTypeFromFilename(entry.name);
-    const canOpen = type === 'video' || type === 'audio' || type === 'image' || type === 'text';
-    if (canOpen && !props.isFilesPage) {
-      items.push([
-        {
-          label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-          icon: 'i-heroicons-window',
-          onSelect: () => onFileAction('openAsPanel', entry),
-        },
-        {
-          label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-          icon: 'i-heroicons-squares-plus',
-          onSelect: () => onFileAction('openAsProjectTab', entry),
-        },
-      ]);
-    }
-  }
-
-  if (isVideo(entry)) {
-    const hasProxy = fileManager.mediaCache.hasProxy(entry.path!);
-    const generatingProxy = proxyStore.generatingProxies.has(entry.path!);
-
-    if (!generatingProxy) {
-      items.push([
-        {
-          label: hasProxy
-            ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
-            : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
-          icon: 'i-heroicons-film',
-          onSelect: () => onFileAction('createProxy', entry),
-        },
-      ]);
-    }
-
-    if (generatingProxy) {
-      items.push([
-        {
-          label: t(
-            'videoEditor.fileManager.actions.cancelProxyGeneration',
-            'Cancel proxy generation',
-          ),
-          icon: 'i-heroicons-x-circle',
-          color: 'error',
-          onSelect: () => onFileAction('cancelProxy', entry),
-        },
-      ]);
-    }
-
-    if (hasProxy) {
-      items.push([
-        {
-          label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
-          icon: 'i-heroicons-trash',
-          color: 'error',
-          onSelect: () => onFileAction('deleteProxy', entry),
-        },
-      ]);
-    }
-  }
-
-  items.push([
-    {
-      label: t('common.rename', 'Rename'),
-      icon: 'i-heroicons-pencil',
-      onSelect: () => onFileAction('rename', entry),
+const { getContextMenuItems } = useFileContextMenu(
+  {
+    isGeneratingProxyInDirectory,
+    folderHasVideos,
+    isOpenableMediaFile: (entry: FsEntry) => {
+      if (entry.kind !== 'file') return false;
+      const type = getMediaTypeFromFilename(entry.name);
+      return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
     },
-    {
-      label: t('common.delete', 'Delete'),
-      icon: 'i-heroicons-trash',
-      color: 'error',
-      onSelect: () => onFileAction('delete', entry),
-    },
-  ]);
-
-  return items;
-}
+    isVideo,
+    getEntryMeta: (entry: FsEntry) => ({
+      hasProxy: entry.path ? fileManager.mediaCache.hasProxy(entry.path) : false,
+      generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,
+    }),
+    isFilesPage: props.isFilesPage,
+  },
+  (action: any, entry: any) => onFileAction(action as any, entry)
+);
 
 const emptySpaceContextMenuItems = computed(() => {
   if (!filesPageStore.selectedFolder) return [];
   return getContextMenuItems(filesPageStore.selectedFolder);
 });
 
-const sortFields: { label: string; value: FileSortField }[] = [
-  { label: t('common.name', 'Name'), value: 'name' },
-  { label: t('common.type', 'Type'), value: 'type' },
-  { label: t('common.size', 'Size'), value: 'size' },
-  { label: t('common.created', 'Created'), value: 'created' },
-  { label: t('common.modified', 'Modified'), value: 'modified' },
-];
+
 
 const GRID_SIZES = [80, 100, 130, 160, 200];
 const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
@@ -1029,127 +920,20 @@ async function onPanelDrop(e: DragEvent) {
     @drop.prevent="onPanelDrop"
   >
     <!-- Navigation bar -->
-    <div
+    <FileBrowserBreadcrumbs
       v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''"
-      class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
-    >
-      <UButton
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        icon="i-heroicons-arrow-left"
-        @click="navigateBack"
-      />
-      <UButton
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        icon="i-heroicons-arrow-up"
-        @click="navigateUp"
-      />
-
-      <div class="flex items-center gap-1 ml-2 overflow-x-auto">
-        <template v-for="(folder, index) in parentFolders" :key="folder.path">
-          <button
-            class="text-xs text-ui-text-muted hover:text-ui-text transition-colors shrink-0"
-            :class="{ 'text-ui-text font-medium': index === parentFolders.length - 1 }"
-            @click="navigateToFolder(index)"
-          >
-            {{ folder.name }}
-          </button>
-          <UIcon
-            v-if="index < parentFolders.length - 1"
-            name="i-heroicons-chevron-right"
-            class="w-3 h-3 text-ui-text-muted shrink-0"
-          />
-        </template>
-      </div>
-    </div>
+      :parent-folders="parentFolders"
+      @navigate-back="navigateBack"
+      @navigate-up="navigateUp"
+      @navigate-to-folder="navigateToFolder"
+    />
 
     <!-- Toolbar -->
-    <div
-      class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
-    >
-      <div class="flex items-center gap-1">
-        <UButton
-          :color="filesPageStore.viewMode === 'grid' ? 'primary' : 'neutral'"
-          variant="ghost"
-          icon="i-heroicons-squares-2x2"
-          size="sm"
-          @click="filesPageStore.setViewMode('grid')"
-        />
-        <UButton
-          :color="filesPageStore.viewMode === 'list' ? 'primary' : 'neutral'"
-          variant="ghost"
-          icon="i-heroicons-list-bullet"
-          size="sm"
-          @click="filesPageStore.setViewMode('list')"
-        />
-      </div>
-
-      <!-- Card size slider (only in grid view) -->
-      <div
-        v-if="filesPageStore.viewMode === 'grid'"
-        class="flex items-center gap-2 ml-2 w-24"
-        :title="`${t('videoEditor.fileManager.cardScale', 'Масштаб карточек')}: ${currentGridSizeName}`"
-      >
-        <WheelSlider
-          :model-value="GRID_SIZES.indexOf(filesPageStore.gridCardSize)"
-          :min="0"
-          :max="GRID_SIZES.length - 1"
-          :step="1"
-          class="flex-1 w-full"
-          @update:model-value="(v: number) => filesPageStore.setGridCardSize(GRID_SIZES[v] || 130)"
-        />
-      </div>
-
-      <div class="ml-auto flex items-center gap-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
-        <USelectMenu
-          v-model="filesPageStore.sortOption.field"
-          :items="sortFields"
-          value-key="value"
-          size="xs"
-          class="w-32"
-          :search-input="false"
-        />
-        <UButton
-          :icon="
-            filesPageStore.sortOption.order === 'asc'
-              ? 'i-heroicons-bars-arrow-up'
-              : 'i-heroicons-bars-arrow-down'
-          "
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          @click="
-            filesPageStore.sortOption.order =
-              filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
-          "
-        />
-        <div class="w-px h-4 bg-ui-border mx-1"></div>
-        <UButton
-          icon="i-heroicons-arrow-path"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
-          @click="refreshFileTree"
-        />
-        <UButton
-          :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="
-            uiStore.showHiddenFiles
-              ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-              : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files')
-          "
-          @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
-        />
-      </div>
-    </div>
+    <FileBrowserToolbar
+      :grid-sizes="GRID_SIZES"
+      :current-grid-size-name="currentGridSizeName"
+      @refresh="refreshFileTree"
+    />
 
     <!-- Main Content -->
     <div
@@ -1190,426 +974,67 @@ async function onPanelDrop(e: DragEvent) {
           </div>
 
           <!-- Grid View -->
-          <div
+          <FileBrowserViewGrid
             v-else-if="filesPageStore.viewMode === 'grid'"
-            class="flex flex-wrap gap-2 content-start"
-          >
-            <UContextMenu
-              v-for="entry in sortedEntries"
-              :key="entry.path"
-              :items="getContextMenuItems(entry)"
-            >
-              <div
-                class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
-                :class="{
-                  'bg-primary-500/10 border-primary-500/30':
-                    selectionStore.selectedEntity?.source === 'fileManager' &&
-                    selectionStore.selectedEntity.path === entry.path,
-                  'border-b-2 border-b-red-500':
-                    entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
-                  'opacity-30': entry.name.startsWith('.'),
-                  'ring-2 ring-primary-500 bg-primary-500/20':
-                    dragOverEntryPath === (entry.path ?? null),
-                }"
-                :style="{ width: `${filesPageStore.gridCardSize}px` }"
-                :draggable="true"
-                tabindex="0"
-                @dragstart="onEntryDragStart($event, entry)"
-                @dragend="onEntryDragEnd"
-                @dragover.prevent="onEntryDragOver($event, entry)"
-                @dragleave="onEntryDragLeave($event, entry)"
-                @drop.prevent="onEntryDrop($event, entry)"
-                @click="handleEntryClick(entry)"
-                @dblclick="handleEntryDoubleClick(entry)"
-                @keydown.enter.prevent="handleEntryEnter(entry)"
-                @keydown.space.prevent="handleEntryEnter(entry)"
-              >
-                <div
-                  class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
-                >
-                  <img
-                    v-if="entry.kind === 'file' && (entry as ExtendedFsEntry).objectUrl"
-                    :src="(entry as ExtendedFsEntry).objectUrl"
-                    :alt="entry.name"
-                    class="max-w-full max-h-full object-contain"
-                  />
-                  <div
-                    v-else-if="proxyStore.generatingProxies.has(entry.path || '')"
-                    class="relative flex items-center justify-center text-amber-400"
-                  >
-                    <ProgressSpinner
-                      :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
-                      size="md"
-                    />
-                  </div>
-                  <UIcon
-                    v-else
-                    :name="getFileIcon(entry)"
-                    :class="[
-                      entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
-                      fileManager.mediaCache.hasProxy(entry.path || '') &&
-                      !proxyStore.generatingProxies.has(entry.path || '')
-                        ? 'text-(--color-success)!'
-                        : '',
-                      proxyStore.generatingProxies.has(entry.path || '') ||
-                      isGeneratingProxyInDirectory(entry)
-                        ? 'text-amber-400/90'
-                        : '',
-                      {
-                        'w-8 h-8': currentGridSizeName === 'xs',
-                        'w-10 h-10': currentGridSizeName === 's',
-                        'w-12 h-12': currentGridSizeName === 'm',
-                        'w-16 h-16': currentGridSizeName === 'l',
-                        'w-20 h-20': currentGridSizeName === 'xl',
-                      },
-                    ]"
-                  />
-                </div>
-                <InlineNameEditor
-                  v-if="editingEntryPath === entry.path"
-                  :initial-name="entry.name"
-                  :is-folder="entry.kind === 'directory'"
-                  :existing-names="folderEntries.map((e) => e.name)"
-                  @save="(name) => commitRename(entry, name)"
-                  @cancel="stopRename"
-                />
-                <span
-                  v-else
-                  class="text-center break-all line-clamp-2 px-1 transition-colors"
-                  :class="[
-                    entry.kind === 'directory'
-                      ? 'font-medium text-ui-text group-hover:text-primary-400'
-                      : 'text-ui-text',
-                    entry.name.startsWith('.') ? 'opacity-50' : '',
-                    {
-                      'text-xs':
-                        currentGridSizeName === 'xs' ||
-                        currentGridSizeName === 's' ||
-                        currentGridSizeName === 'm',
-                      'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
-                    },
-                  ]"
-                  :title="entry.name"
-                  @dblclick.stop="onFileAction('rename', entry)"
-                >
-                  {{ entry.name }}
-                </span>
-              </div>
-            </UContextMenu>
-
-            <!-- Root drop zone for grid view -->
-            <div
-              class="w-full flex items-center justify-center min-h-12 mt-2 rounded-lg transition-colors"
-              :class="{
-                'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
-                  isRootDropOver,
-              }"
-              @dragover.prevent="onRootDragOver"
-              @dragleave.prevent="onRootDragLeave"
-              @drop.prevent="onRootDrop"
-            >
-              <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
-                {{
-                  t(
-                    'videoEditor.fileManager.actions.dropToRootHint',
-                    'Release to upload into the project root',
-                  )
-                }}
-              </p>
-            </div>
-          </div>
+            :entries="sortedEntries as ExtendedFsEntry[]"
+            :is-root-drop-over="isRootDropOver"
+            :drag-over-entry-path="dragOverEntryPath"
+            :current-grid-size-name="currentGridSizeName"
+            :editing-entry-path="editingEntryPath"
+            :folder-entries-names="folderEntries.map((e) => e.name)"
+            :get-context-menu-items="getContextMenuItems"
+            :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
+            @root-drag-over="onRootDragOver"
+            @root-drag-leave="onRootDragLeave"
+            @root-drop="onRootDrop"
+            @entry-drag-start="onEntryDragStart"
+            @entry-drag-end="onEntryDragEnd"
+            @entry-drag-over="onEntryDragOver"
+            @entry-drag-leave="onEntryDragLeave"
+            @entry-drop="onEntryDrop"
+            @entry-click="handleEntryClick"
+            @entry-double-click="handleEntryDoubleClick"
+            @entry-enter="handleEntryEnter"
+            @commit-rename="commitRename"
+            @stop-rename="stopRename"
+            @file-action="onFileAction"
+          />
 
           <!-- List View -->
-          <div v-else class="flex flex-col w-full min-w-max">
-            <table class="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr class="text-ui-text-muted border-b border-ui-border">
-                  <th
-                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                    :style="{ width: `${filesPageStore.columnWidths.name}px`, minWidth: '60px' }"
-                    @click="handleSort('name')"
-                  >
-                    <div class="flex items-center gap-1">
-                      {{ t('common.name', 'Name') }}
-                      <UIcon
-                        v-if="filesPageStore.sortOption.field === 'name'"
-                        :name="
-                          filesPageStore.sortOption.order === 'asc'
-                            ? 'i-heroicons-bars-arrow-up'
-                            : 'i-heroicons-bars-arrow-down'
-                        "
-                        class="w-3 h-3"
-                      />
-                    </div>
-                    <div
-                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                      @mousedown.stop="onResizeStart($event, 'name')"
-                    />
-                  </th>
-
-                  <th
-                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                    :style="{ width: `${filesPageStore.columnWidths.type}px`, minWidth: '60px' }"
-                    @click="handleSort('type')"
-                  >
-                    <div class="flex items-center gap-1">
-                      {{ t('common.type', 'Type') }}
-                      <UIcon
-                        v-if="filesPageStore.sortOption.field === 'type'"
-                        :name="
-                          filesPageStore.sortOption.order === 'asc'
-                            ? 'i-heroicons-bars-arrow-up'
-                            : 'i-heroicons-bars-arrow-down'
-                        "
-                        class="w-3 h-3"
-                      />
-                    </div>
-                    <div
-                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                      @mousedown.stop="onResizeStart($event, 'type')"
-                    />
-                  </th>
-
-                  <th
-                    class="py-2 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                    :style="{ width: `${filesPageStore.columnWidths.size}px`, minWidth: '60px' }"
-                    @click="handleSort('size')"
-                  >
-                    <div class="flex items-center justify-end gap-1">
-                      {{ t('common.size', 'Size') }}
-                      <UIcon
-                        v-if="filesPageStore.sortOption.field === 'size'"
-                        :name="
-                          filesPageStore.sortOption.order === 'asc'
-                            ? 'i-heroicons-bars-arrow-up'
-                            : 'i-heroicons-bars-arrow-down'
-                        "
-                        class="w-3 h-3"
-                      />
-                    </div>
-                    <div
-                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                      @mousedown.stop="onResizeStart($event, 'size')"
-                    />
-                  </th>
-
-                  <th
-                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                    :style="{ width: `${filesPageStore.columnWidths.created}px`, minWidth: '60px' }"
-                    @click="handleSort('created')"
-                  >
-                    <div class="flex items-center gap-1">
-                      {{ t('common.created', 'Created') }}
-                      <UIcon
-                        v-if="filesPageStore.sortOption.field === 'created'"
-                        :name="
-                          filesPageStore.sortOption.order === 'asc'
-                            ? 'i-heroicons-bars-arrow-up'
-                            : 'i-heroicons-bars-arrow-down'
-                        "
-                        class="w-3 h-3"
-                      />
-                    </div>
-                    <div
-                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                      @mousedown.stop="onResizeStart($event, 'created')"
-                    />
-                  </th>
-
-                  <th
-                    class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-                    :style="{
-                      width: `${filesPageStore.columnWidths.modified}px`,
-                      minWidth: '60px',
-                    }"
-                    @click="handleSort('modified')"
-                  >
-                    <div class="flex items-center gap-1">
-                      {{ t('common.modified', 'Modified') }}
-                      <UIcon
-                        v-if="filesPageStore.sortOption.field === 'modified'"
-                        :name="
-                          filesPageStore.sortOption.order === 'asc'
-                            ? 'i-heroicons-bars-arrow-up'
-                            : 'i-heroicons-bars-arrow-down'
-                        "
-                        class="w-3 h-3"
-                      />
-                    </div>
-                    <div
-                      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
-                      @mousedown.stop="onResizeStart($event, 'modified')"
-                    />
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                <template v-for="entry in sortedEntries as ExtendedFsEntry[]" :key="entry.path">
-                  <UContextMenu :items="getContextMenuItems(entry)">
-                    <tr
-                      class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
-                      :class="{
-                        'bg-primary-500/10':
-                          selectionStore.selectedEntity?.source === 'fileManager' &&
-                          selectionStore.selectedEntity.path === entry.path,
-                        'opacity-30': entry.name.startsWith('.'),
-                        'text-(--color-success)!':
-                          fileManager.mediaCache.hasProxy(entry.path || '') &&
-                          !proxyStore.generatingProxies.has(entry.path || ''),
-                        'text-amber-400!':
-                          proxyStore.generatingProxies.has(entry.path || '') ||
-                          isGeneratingProxyInDirectory(entry),
-                        'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
-                          dragOverEntryPath === (entry.path ?? null),
-                      }"
-                      :draggable="true"
-                      tabindex="0"
-                      @dragstart="onEntryDragStart($event, entry)"
-                      @dragend="onEntryDragEnd"
-                      @dragover.prevent="onEntryDragOver($event, entry)"
-                      @dragleave="onEntryDragLeave($event, entry)"
-                      @drop.prevent="onEntryDrop($event, entry)"
-                      @click="handleEntryClick(entry)"
-                      @dblclick="handleEntryDoubleClick(entry)"
-                      @keydown.enter.prevent="handleEntryEnter(entry)"
-                      @keydown.space.prevent="handleEntryEnter(entry)"
-                    >
-                      <td class="py-2 px-3 flex items-center gap-2">
-                        <div
-                          class="h-4 flex items-center justify-center shrink-0"
-                          :class="[
-                            entry.path &&
-                            timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
-                              ? 'border-b-2 border-red-500'
-                              : '',
-                          ]"
-                        >
-                          <ProgressSpinner
-                            v-if="proxyStore.generatingProxies.has(entry.path || '')"
-                            :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
-                            size="sm"
-                          />
-                          <UIcon
-                            v-else
-                            :name="getFileIcon(entry)"
-                            class="w-4 h-4 transition-colors"
-                            :class="[
-                              entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
-                              entry.name.startsWith('.') ? 'opacity-30' : '',
-                              fileManager.mediaCache.hasProxy(entry.path || '') &&
-                              !proxyStore.generatingProxies.has(entry.path || '')
-                                ? 'text-(--color-success)!'
-                                : '',
-                              proxyStore.generatingProxies.has(entry.path || '') ||
-                              isGeneratingProxyInDirectory(entry)
-                                ? 'text-amber-400/90'
-                                : '',
-                            ]"
-                          />
-                        </div>
-                        <InlineNameEditor
-                          v-if="editingEntryPath === entry.path"
-                          :initial-name="entry.name"
-                          :is-folder="entry.kind === 'directory'"
-                          :existing-names="folderEntries.map((e) => e.name)"
-                          @save="(name) => commitRename(entry, name)"
-                          @cancel="stopRename"
-                        />
-                        <span
-                          v-else
-                          class="truncate max-w-50 transition-colors"
-                          :class="[
-                            entry.name.startsWith('.') ? 'opacity-30' : '',
-                            fileManager.mediaCache.hasProxy(entry.path || '') &&
-                            !proxyStore.generatingProxies.has(entry.path || '')
-                              ? 'text-(--color-success)!'
-                              : '',
-                            proxyStore.generatingProxies.has(entry.path || '') ||
-                            isGeneratingProxyInDirectory(entry)
-                              ? 'text-amber-400!'
-                              : '',
-                          ]"
-                          :title="entry.name"
-                          @dblclick.stop="onFileAction('rename', entry)"
-                        >
-                          {{ entry.name }}
-                        </span>
-                      </td>
-                      <td class="py-2 px-3 text-ui-text-muted">
-                        {{
-                          entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType
-                        }}
-                      </td>
-                      <td class="py-2 px-3 text-right text-ui-text-muted">
-                        <template v-if="entry.kind === 'file'">
-                          {{ formatBytes(entry.size || 0) }}
-                        </template>
-                        <template v-else-if="entry.kind === 'directory'">
-                          <div v-if="folderSizesLoading[entry.path || '']" class="flex justify-end">
-                            <UIcon
-                              name="i-heroicons-arrow-path"
-                              class="w-4 h-4 animate-spin text-ui-text-muted"
-                            />
-                          </div>
-                          <template v-else-if="folderSizes[entry.path || ''] !== undefined">
-                            {{ formatBytes(folderSizes[entry.path || ''] ?? 0) }}
-                          </template>
-                          <template v-else> - </template>
-                        </template>
-                        <template v-else> - </template>
-                      </td>
-                      <td class="py-2 px-3 text-ui-text-muted">
-                        {{ formatDate(entry.created) }}
-                      </td>
-                      <td class="py-2 px-3 text-ui-text-muted">
-                        {{ formatDate(entry.lastModified) }}
-                      </td>
-                    </tr>
-                  </UContextMenu>
-                </template>
-
-                <!-- Root drop zone row for list view -->
-                <tr
-                  class="transition-colors"
-                  :class="{ 'bg-primary-500/10': isRootDropOver }"
-                  @dragover.prevent="onRootDragOver"
-                  @dragleave.prevent="onRootDragLeave"
-                  @drop.prevent="onRootDrop"
-                >
-                  <td colspan="5" class="py-3 px-3 text-center">
-                    <span v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
-                      {{
-                        t(
-                          'videoEditor.fileManager.actions.dropToRootHint',
-                          'Release to upload into the project root',
-                        )
-                      }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <FileBrowserViewList
+            v-else
+            :entries="sortedEntries as ExtendedFsEntry[]"
+            :is-root-drop-over="isRootDropOver"
+            :drag-over-entry-path="dragOverEntryPath"
+            :folder-sizes-loading="folderSizesLoading"
+            :folder-sizes="folderSizes"
+            :editing-entry-path="editingEntryPath"
+            :folder-entries-names="folderEntries.map((e) => e.name)"
+            :get-context-menu-items="getContextMenuItems"
+            :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
+            @root-drag-over="onRootDragOver"
+            @root-drag-leave="onRootDragLeave"
+            @root-drop="onRootDrop"
+            @entry-drag-start="onEntryDragStart"
+            @entry-drag-end="onEntryDragEnd"
+            @entry-drag-over="onEntryDragOver"
+            @entry-drag-leave="onEntryDragLeave"
+            @entry-drop="onEntryDrop"
+            @entry-click="handleEntryClick"
+            @entry-double-click="handleEntryDoubleClick"
+            @entry-enter="handleEntryEnter"
+            @commit-rename="commitRename"
+            @stop-rename="stopRename"
+            @file-action="onFileAction"
+            @sort="handleSort"
+            @resize-start="onResizeStart"
+          />
         </div>
       </UContextMenu>
     </div>
 
     <!-- Bottom Panel -->
-    <div
-      class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-[10px] uppercase font-bold tracking-wider text-ui-text-muted"
-    >
-      <div v-if="filesPageStore.selectedFolder" class="flex items-center gap-4">
-        <span
-          >{{ t('common.totalSize', 'Total Size') }}:
-          <span class="text-ui-text">{{ stats.totalSize }}</span></span
-        >
-        <span
-          >{{ t('common.filesCount', 'Files') }}:
-          <span class="text-ui-text">{{ stats.fileCount }}</span></span
-        >
-      </div>
-    </div>
+    <FileBrowserStatusBar :stats="stats" />
 
     <!-- Modals -->
     <UiConfirmModal
