@@ -91,7 +91,7 @@ const {
 
 function onFileAction(action: any, entry: FsEntry) {
   if (action === 'refresh') {
-    void loadProjectDirectory().then(() => uiStore.notifyFileManagerUpdate());
+    void loadProjectDirectory({ fullRefresh: true });
     return;
   } else if (action === 'createFolder') {
     const target: FsEntry = entry ?? {

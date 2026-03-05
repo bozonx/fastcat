@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
+import { computed, ref, nextTick, watch, onBeforeUnmount, provide } from 'vue';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
@@ -28,6 +28,20 @@ const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
+
+// Provide dummy tooltip context for testing purposes without needing a TooltipProvider wrapper
+if (process.env.NODE_ENV === 'test') {
+  provide(Symbol.for('TooltipProviderContext'), {
+    delayDuration: ref(700),
+    disableHoverableContent: ref(false),
+    disableClosingTrigger: ref(false),
+    onOpen: () => {},
+    onClose: () => {},
+    isOpen: () => false,
+    onTriggerEnter: () => {},
+    onTriggerLeave: () => {},
+  });
+}
 
 const DEFAULT_TRACK_HEIGHT = 40;
 const MIN_TRACK_HEIGHT = 32;
@@ -105,7 +119,8 @@ function onSelectTrack(trackId: string) {
   }
 
   const entity = selectionStore.selectedEntity;
-  const isTimelinePropsSelected = entity?.source === 'timeline' && entity.kind === 'timeline-properties';
+  const isTimelinePropsSelected =
+    entity?.source === 'timeline' && entity.kind === 'timeline-properties';
   if (isTimelinePropsSelected) {
     timelineStore.selectTrack(trackId);
     selectionStore.selectTimelineTrack(trackId);
@@ -317,7 +332,7 @@ function onTrackAreaWheel(e: WheelEvent) {
   const isSecondary = isSecondaryWheel(e);
   const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
-  let action = isSecondary ? settings.wheelSecondary : settings.wheel;
+  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
 
   if (action === 'none') {
     e.preventDefault();
@@ -330,7 +345,7 @@ function onTrackAreaWheel(e: WheelEvent) {
   if (action === 'scroll_vertical') {
     // Let browser handle vertical scrolling natively
     if (!isSecondary) return;
-    
+
     e.preventDefault();
     if (labelsScrollContainer.value) {
       labelsScrollContainer.value.scrollTop += delta;
@@ -364,7 +379,7 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
   const isSecondary = isSecondaryWheel(e);
   const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
-  let action = isSecondary ? settings.wheelSecondary : settings.wheel;
+  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
 
   if (action === 'none') {
     e.preventDefault();
@@ -519,8 +534,9 @@ function toggleClipSnapMode() {
       class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
       :style="scrollbarCompensation ? { marginBottom: `${scrollbarCompensation}px` } : {}"
       @scroll="emit('scroll', $event)"
+      @click="selectTimelineProperties"
     >
-      <div class="flex flex-col min-h-full pb-16" @wheel="onTrackAreaWheel">
+      <div class="flex flex-col min-h-full pb-16">
         <UContextMenu
           v-for="track in tracks"
           :key="track.id"
@@ -540,7 +556,7 @@ function toggleClipSnapMode() {
             @dragstart="onDragStart($event, track)"
             @dragover.prevent
             @drop.prevent="onDrop($event, track)"
-            @click="onSelectTrack(track.id)"
+            @click.stop="onSelectTrack(track.id)"
             @contextmenu="onSelectTrack(track.id)"
             @wheel="onTrackWheel($event, track)"
             @mouseenter="timelineStore.hoveredTrackId = track.id"
@@ -617,8 +633,8 @@ function toggleClipSnapMode() {
           </div>
         </UContextMenu>
 
-        <UContextMenu :items="emptyAreaContextMenuItems" class="flex-1">
-          <div class="w-full h-full" @click="selectTimelineProperties" />
+        <UContextMenu :items="emptyAreaContextMenuItems" class="flex-1 flex flex-col min-h-0">
+          <div class="w-full h-full flex-1 min-h-12.5" @click="selectTimelineProperties" />
         </UContextMenu>
       </div>
     </div>

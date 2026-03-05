@@ -21,6 +21,7 @@ interface UseFileBrowserDragAndDropOptions {
     targetDirPath: string;
   }) => Promise<void>;
   loadFolderContent: () => Promise<void>;
+  notifyFileManagerUpdate: () => void;
 }
 
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
@@ -112,7 +113,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       if (!source) return;
 
       await options.moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
-      uiStore.notifyFileManagerUpdate();
+      options.notifyFileManagerUpdate();
       await options.loadFolderContent();
       return;
     }
@@ -120,7 +121,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!hasFiles || droppedFiles.length === 0) return;
 
     await options.handleFiles(droppedFiles, targetHandle, targetPath);
-    uiStore.notifyFileManagerUpdate();
+    options.notifyFileManagerUpdate();
     await options.loadFolderContent();
   }
 
@@ -166,14 +167,18 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       if (!source) return;
 
       if (targetHandle) {
-        await options.moveEntry({ source, targetDirHandle: targetHandle, targetDirPath: targetPath });
+        await options.moveEntry({
+          source,
+          targetDirHandle: targetHandle,
+          targetDirPath: targetPath,
+        });
       } else {
         const rootHandle = await fileManager.getProjectRootDirHandle();
         if (rootHandle) {
           await options.moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
         }
       }
-      uiStore.notifyFileManagerUpdate();
+      options.notifyFileManagerUpdate();
       await options.loadFolderContent();
       return;
     }
@@ -186,7 +191,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     } else {
       await options.handleFiles(droppedFiles);
     }
-    uiStore.notifyFileManagerUpdate();
+    options.notifyFileManagerUpdate();
     await options.loadFolderContent();
   }
 

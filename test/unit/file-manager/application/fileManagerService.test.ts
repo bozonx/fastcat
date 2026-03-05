@@ -49,7 +49,7 @@ function createFileHandleMock(params: { name: string; lastModified?: number; typ
 describe('fileManagerService', () => {
   it('readDirectory filters hidden files when showHiddenFiles=false and sorts directories first', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const dirA: any = { kind: 'directory', name: 'aaa' };
     const fileHidden: any = { kind: 'file', name: '.secret.txt', getFile: vi.fn() };
@@ -80,7 +80,7 @@ describe('fileManagerService', () => {
 
   it('readDirectory includes hidden files when showHiddenFiles=true', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const fileHidden: any = { kind: 'file', name: '.secret.txt', getFile: vi.fn() };
     const fileVisible: any = createFileHandleMock({ name: 'a.txt' });
@@ -104,7 +104,7 @@ describe('fileManagerService', () => {
 
   it('readDirectory calls checkExistingProxies for video files', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const video = createFileHandleMock({ name: 'a.mp4', type: 'video/mp4' });
     const dirHandle = createDirHandleMock({ values: [video] });
@@ -129,7 +129,7 @@ describe('fileManagerService', () => {
 
   it('toggleDirectory updates rootEntries expanded state, persists path, and lazy-loads children', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const childFile = createFileHandleMock({ name: 'child.txt' });
     const childDirHandle = createDirHandleMock({ values: [childFile] });
@@ -171,7 +171,7 @@ describe('fileManagerService', () => {
 
   it('readDirectory reports error via onError when iteration is not available', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const onError = vi.fn();
     const service = createFileManagerService({
@@ -199,7 +199,7 @@ describe('fileManagerService', () => {
 
   it('loadProjectDirectory merges entries and auto-expands media dirs', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const sourcesDir: any = {
       kind: 'directory',
@@ -239,7 +239,7 @@ describe('fileManagerService', () => {
 
   it('loadProjectDirectory does not auto-expand media dirs when persisted tree state exists', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const videoDir: any = {
       kind: 'directory',
@@ -270,7 +270,7 @@ describe('fileManagerService', () => {
 
   it('expandPersistedDirectories expands saved paths and loads children', async () => {
     const rootEntries = ref<FsEntry[]>([]);
-    const sortMode = ref<'name' | 'modified'>('name');
+    const sortMode = ref<'name' | 'type'>('name');
 
     const childFile = createFileHandleMock({ name: 'child.txt' });
     const nestedDirHandle = createDirHandleMock({ values: [childFile] });

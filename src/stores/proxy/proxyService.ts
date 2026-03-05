@@ -117,16 +117,14 @@ export function createProxyService(params: {
     };
 
     const signal = options?.signal;
+    const onAbort = () => {
+      controller.abort();
+    };
+
     if (signal) {
       if (signal.aborted) controller.abort();
       else {
-        signal.addEventListener(
-          'abort',
-          () => {
-            controller.abort();
-          },
-          { once: true },
-        );
+        signal.addEventListener('abort', onAbort, { once: true });
       }
     }
 
@@ -242,6 +240,14 @@ export function createProxyService(params: {
           params.activeWorkerPaths.value.delete(projectRelativePath);
           params.generatingProxies.value.delete(projectRelativePath);
           delete params.proxyProgress.value[projectRelativePath];
+
+          if (signal) {
+            try {
+              signal.removeEventListener('abort', onAbort);
+            } catch {
+              // ignore
+            }
+          }
 
           const nextControllers = { ...params.proxyAbortControllers.value };
           delete nextControllers[projectRelativePath];

@@ -73,7 +73,7 @@ export function addClipToTrack(
 
   const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
 
   const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
@@ -136,7 +136,7 @@ export function addVirtualClipToTrack(
 
   const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw);
+  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
   const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
   return {
@@ -289,7 +289,9 @@ export function overlayTrimItem(
 
     // Overlaps only on the left side: trim end of existing clip
     if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
-      const newDuration = quantizeTimeUsToFrames(startUs - itStart, fps, 'floor');
+      const newDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
+        : Math.max(0, Math.round(startUs - itStart));
       if (newDuration > 0) {
         nextItems.push({
           ...it,
@@ -328,7 +330,9 @@ export function overlayTrimItem(
 
     // Existing clip fully contains the trimmed item range: split into two
     if (itStart < startUs && itEnd > endUs) {
-      const leftDuration = quantizeTimeUsToFrames(startUs - itStart, fps, 'floor');
+      const leftDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
+        : Math.max(0, Math.round(startUs - itStart));
       if (leftDuration > 0) {
         nextItems.push({
           ...it,
@@ -338,8 +342,12 @@ export function overlayTrimItem(
       }
 
       const rightTrimDelta = endUs - itStart;
-      const rightStart = quantizeTimeUsToFrames(endUs, fps, 'ceil');
-      const rightDuration = quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor');
+      const rightStart = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
+        : Math.max(0, Math.round(endUs));
+      const rightDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
+        : Math.max(0, Math.round(itEnd - endUs));
       if (rightDuration > 0) {
         const rightSourceStartUs = Math.min(
           it.sourceRange.startUs + rightTrimDelta,
@@ -538,7 +546,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
       if (!changed) return t;
       patched.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-      return { ...t, items: normalizeGaps(doc, t.id, patched) };
+      return { ...t, items: normalizeGaps(doc, t.id, patched, { quantizeToFrames: false }) };
     });
   }
 
@@ -682,7 +690,9 @@ export function updateClipProperties(
           }
 
           let nextTracksLocal = doc.tracks.map((t) =>
-            t.id === track.id ? { ...t, items: normalizeGaps(doc, t.id, nextClips) } : t,
+            t.id === track.id
+              ? { ...t, items: normalizeGaps(doc, t.id, nextClips, { quantizeToFrames: false }) }
+              : t,
           );
 
           for (const movedId of movedVideoClipIds) {
@@ -962,7 +972,7 @@ export function updateClipProperties(
             })()
           : it,
       );
-      const normalized = normalizeGaps(doc, t.id, updatedItems);
+      const normalized = normalizeGaps(doc, t.id, updatedItems, { quantizeToFrames: false });
       return { ...t, items: normalized };
     }
     return t;
@@ -1068,7 +1078,7 @@ export function removeItems(
   if (!itemsRemoved) return { next: doc };
 
   nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  nextItems = normalizeGaps(doc, track.id, nextItems);
+  nextItems = normalizeGaps(doc, track.id, nextItems, { quantizeToFrames: false });
 
   const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
   return { next: { ...doc, tracks: nextTracks } };
@@ -1693,7 +1703,7 @@ export function updateClipTransition(
     if (t.id !== track.id) return t;
     const nextItemsRaw = t.items.map((it) => patchedItemsById.get(it.id) ?? it);
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextItems = normalizeGaps(doc, t.id, nextItemsRaw);
+    const nextItems = normalizeGaps(doc, t.id, nextItemsRaw, { quantizeToFrames: false });
     return { ...t, items: nextItems };
   });
 
@@ -1807,8 +1817,12 @@ export function overlayPlaceItem(
     // Overlaps only on the right side: trim start of existing clip
     if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
       const trimDelta = endUs - itStart;
-      const newStart = quantizeTimeUsToFrames(endUs, fps, 'ceil');
-      const newDuration = quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor');
+      const newStart = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
+        : Math.max(0, Math.round(endUs));
+      const newDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
+        : Math.max(0, Math.round(itEnd - endUs));
       if (newDuration > 0) {
         const newSourceStartUs = Math.min(
           it.sourceRange.startUs + trimDelta,

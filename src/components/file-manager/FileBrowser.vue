@@ -34,6 +34,7 @@ import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
+import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -64,6 +65,8 @@ const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const { isGlobalDragging } = storeToRefs(uiStore);
 
+const skipNextUpdateReload = ref(false);
+
 const {
   isDragOverPanel,
   dragOverEntryPath,
@@ -84,6 +87,10 @@ const {
   handleFiles,
   moveEntry,
   loadFolderContent,
+  notifyFileManagerUpdate: () => {
+    skipNextUpdateReload.value = true;
+    uiStore.notifyFileManagerUpdate();
+  },
 });
 
 const rootContainer = ref<HTMLElement | null>(null);
@@ -374,7 +381,7 @@ const { getContextMenuItems } = useFileContextMenu(
     }),
     isFilesPage: props.isFilesPage,
   },
-  (action: any, entry: any) => onFileAction(action as any, entry)
+  (action: ContextMenuFileAction, entry: FsEntry) => onFileAction(action, entry),
 );
 
 const emptySpaceContextMenuItems = computed(() => {
@@ -549,6 +556,10 @@ watch(
 watch(
   () => uiStore.fileManagerUpdateCounter,
   async () => {
+    if (skipNextUpdateReload.value) {
+      skipNextUpdateReload.value = false;
+      return;
+    }
     // only reload the current view content, not the whole tree
     await loadFolderContent();
   },

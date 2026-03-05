@@ -176,6 +176,7 @@ const emit = defineEmits<{
   (
     e: 'action',
     action:
+      | 'refresh'
       | 'rename'
       | 'delete'
       | 'addToTimeline'
@@ -256,7 +257,7 @@ const rootContextMenuItems = computed(() => {
         icon: 'i-heroicons-arrow-path',
         disabled: props.isLoading,
         onSelect: () =>
-          emit('action', 'refresh' as any, {
+          emit('action', 'refresh', {
             kind: 'directory',
             name: '',
             path: '',

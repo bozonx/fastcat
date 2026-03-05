@@ -1,5 +1,6 @@
 import { AUDIO_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
+import PQueue from 'p-queue';
 import {
   assertEntryDoesNotExist,
   copyDirectoryRecursive,
@@ -34,54 +35,62 @@ export async function handleFilesCommand(
   const projectDir = await deps.getProjectDirHandle();
   const targetDirHandleRaw = params.targetDirHandle;
 
-  for (let file of Array.from(files)) {
-    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+  const queue = new PQueue({ concurrency: 3 });
+
+  const tasks = Array.from(files).map((inputFile) =>
+    queue.add(async () => {
+      let file = inputFile;
+
+      if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+        try {
+          file = await deps.convertSvgToPng(file);
+        } catch (e) {
+          deps.onSvgConvertError({ file, error: e });
+          return;
+        }
+      }
+
+      let targetDir = targetDirHandleRaw;
+      let finalRelativePathBase = params.targetDirPath || '';
+
+      if (!targetDir) {
+        const resolved = await deps.getTargetDirHandle({ projectDir, file });
+        if (!resolved) {
+          deps.onSkipProjectFile({ file });
+          return;
+        }
+
+        targetDir = resolved.dir;
+        finalRelativePathBase = resolved.relativePathBase;
+      }
+
       try {
-        file = await deps.convertSvgToPng(file);
-      } catch (e) {
-        deps.onSvgConvertError({ file, error: e });
-        continue;
-      }
-    }
-
-    let targetDir = targetDirHandleRaw;
-    let finalRelativePathBase = params.targetDirPath || '';
-
-    if (!targetDir) {
-      const resolved = await deps.getTargetDirHandle({ projectDir, file });
-      if (!resolved) {
-        deps.onSkipProjectFile({ file });
-        continue;
+        await targetDir.getFileHandle(file.name);
+        throw new Error(`File already exists: ${file.name}`);
+      } catch (e: unknown) {
+        const err = e as { name?: string };
+        if (err?.name !== 'NotFoundError') throw e;
       }
 
-      targetDir = resolved.dir;
-      finalRelativePathBase = resolved.relativePathBase;
-    }
+      const fileHandle = await targetDir.getFileHandle(file.name, { create: true });
+      if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
+        throw new Error('Failed to write file: createWritable is not available');
+      }
 
-    try {
-      await targetDir.getFileHandle(file.name);
-      throw new Error(`File already exists: ${file.name}`);
-    } catch (e: unknown) {
-      const err = e as { name?: string };
-      if (err?.name !== 'NotFoundError') throw e;
-    }
+      const writable = await (fileHandle as FileSystemFileHandle).createWritable();
+      await writable.write(file);
+      await writable.close();
 
-    const fileHandle = await targetDir.getFileHandle(file.name, { create: true });
-    if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
-      throw new Error('Failed to write file: createWritable is not available');
-    }
+      if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+        const projectRelativePath = finalRelativePathBase
+          ? `${finalRelativePathBase}/${file.name}`
+          : file.name;
+        deps.onMediaImported({ fileHandle, projectRelativePath, file });
+      }
+    }),
+  );
 
-    const writable = await (fileHandle as FileSystemFileHandle).createWritable();
-    await writable.write(file);
-    await writable.close();
-
-    if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-      const projectRelativePath = finalRelativePathBase
-        ? `${finalRelativePathBase}/${file.name}`
-        : file.name;
-      deps.onMediaImported({ fileHandle, projectRelativePath, file });
-    }
-  }
+  await Promise.all(tasks);
 }
 
 export async function resolveDefaultTargetDir(params: {
@@ -230,10 +239,12 @@ export async function moveEntryCommand(
     kind: params.source.kind,
   });
 
-  const handle = params.source.handle as unknown as { move?: (target: FileSystemDirectoryHandle, name: string) => Promise<void> };
+  const handle = params.source.handle as unknown as {
+    move?: (target: FileSystemDirectoryHandle, name: string) => Promise<void>;
+  };
   if (typeof handle.move === 'function') {
     await handle.move(targetDirHandle, params.source.name);
-    
+
     if (params.source.kind === 'file') {
       const oldPath = sourcePath;
       const newPath = targetDirPath ? `${targetDirPath}/${params.source.name}` : params.source.name;
