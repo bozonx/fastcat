@@ -18,7 +18,12 @@ import {
   terminateExportWorker,
   restartExportWorker,
 } from '~/utils/video-editor/worker-client';
-import type { ClipTransform, TimelineTrackItem, ClipEffect } from '~/timeline/types';
+import type {
+  ClipTransform,
+  TimelineTrackItem,
+  ClipEffect,
+  TimelineSelectionRange,
+} from '~/timeline/types';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
@@ -55,6 +60,7 @@ export interface ExportOptions {
   width: number;
   height: number;
   fps: number;
+  exportRangeUs?: TimelineSelectionRange;
 }
 
 export interface WorkerTimelineClip {
@@ -78,6 +84,33 @@ export interface WorkerTimelineClip {
   transform?: ClipTransform;
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
+}
+
+function trimWorkerClipToRange(
+  clip: WorkerTimelineClip,
+  range: TimelineSelectionRange,
+): WorkerTimelineClip | null {
+  const clipStartUs = clip.timelineRange.startUs;
+  const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+  const overlapStartUs = Math.max(clipStartUs, range.startUs);
+  const overlapEndUs = Math.min(clipEndUs, range.endUs);
+
+  if (overlapEndUs <= overlapStartUs) return null;
+
+  const trimStartUs = overlapStartUs - clipStartUs;
+  const trimmedDurationUs = overlapEndUs - overlapStartUs;
+
+  return {
+    ...clip,
+    timelineRange: {
+      startUs: overlapStartUs - range.startUs,
+      durationUs: trimmedDurationUs,
+    },
+    sourceRange: {
+      startUs: clip.sourceRange.startUs + trimStartUs,
+      durationUs: trimmedDurationUs,
+    },
+  };
 }
 
 export async function toWorkerTimelineClips(
@@ -675,6 +708,8 @@ export function useTimelineExport() {
     const videoTracks = allVideoTracks.filter((track) => !track.videoHidden);
     const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
+    const exportRangeUs = options.exportRangeUs;
+
     const videoClips: WorkerTimelineClip[] = [];
     for (let index = 0; index < videoTracks.length; index++) {
       const track = videoTracks[index];
@@ -690,11 +725,17 @@ export function useTimelineExport() {
       videoClips.push(...clips);
     }
 
+    const croppedVideoClips = exportRangeUs
+      ? videoClips
+          .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
+          .filter((clip): clip is WorkerTimelineClip => clip !== null)
+      : videoClips;
+
     const masterEffects = doc?.metadata?.gran?.masterEffects;
     const videoPayload: any[] =
       Array.isArray(masterEffects) && masterEffects.length > 0
-        ? [{ kind: 'meta', masterEffects }, ...videoClips]
-        : [...videoClips];
+        ? [{ kind: 'meta', masterEffects }, ...croppedVideoClips]
+        : [...croppedVideoClips];
 
     const effectiveAudioItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
@@ -711,7 +752,14 @@ export function useTimelineExport() {
       audioGain: (clip.audioGain ?? 1) * masterGain,
     }));
 
-    if (!videoClips.length && !audioClips.length) throw new Error('Timeline is empty');
+    const croppedAudioClips = exportRangeUs
+      ? audioClips
+          .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
+          .filter((clip): clip is WorkerTimelineClip => clip !== null)
+      : audioClips;
+
+    if (!croppedVideoClips.length && !croppedAudioClips.length)
+      throw new Error('Timeline is empty');
 
     const { client } = getExportWorkerClient();
 
@@ -731,7 +779,7 @@ export function useTimelineExport() {
       audioSampleRate: projectStore.projectSettings?.project?.sampleRate,
       audioChannels: projectStore.projectSettings?.project?.audioChannels,
     };
-    await (client as any).exportTimeline(fileHandle, finalOptions, videoPayload, audioClips);
+    await (client as any).exportTimeline(fileHandle, finalOptions, videoPayload, croppedAudioClips);
   }
 
   async function cancelExport() {

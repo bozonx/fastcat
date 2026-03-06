@@ -771,7 +771,7 @@ const selectionRangeMenuItems = computed(() => [
       <div class="absolute inset-0 pointer-events-none">
         <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems">
           <div
-            class="absolute inset-y-0 pointer-events-auto z-0"
+            class="absolute inset-y-0 pointer-events-auto z-30"
             :style="{
               left: `${selectionRangePoint.x}px`,
               width: `${selectionRangePoint.width}px`,
