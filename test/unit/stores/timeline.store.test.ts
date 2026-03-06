@@ -845,9 +845,13 @@ describe('TimelineStore', () => {
       startUs: 500_000,
     });
 
-    expect((store.timelineDoc as any).tracks[0].items).toHaveLength(0);
-    expect((store.timelineDoc as any).tracks[1].items).toHaveLength(1);
-    expect((store.timelineDoc as any).tracks[1].items[0].clipType).toBe('timeline');
-    expect((store.timelineDoc as any).tracks[1].items[0].timelineRange.startUs).toBe(500_000);
+    expect((store.timelineDoc as any).tracks[0].items.every((it: any) => it.kind === 'gap')).toBe(
+      true,
+    );
+    const movedClip = (store.timelineDoc as any).tracks[1].items.find(
+      (it: any) => it.kind === 'clip',
+    );
+    expect(movedClip.clipType).toBe('timeline');
+    expect(movedClip.timelineRange.startUs).toBe(500_000);
   });
 });
