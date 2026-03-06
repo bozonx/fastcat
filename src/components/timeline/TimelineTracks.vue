@@ -490,7 +490,7 @@ function selectTransition(
     </div>
 
     <!-- Empty clickable area to match TimelineTrackLabels.vue -->
-    <div class="w-full flex-1 min-h-50" @click="timelineStore.selectTrack(null)" />
+    <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
 
     <!-- Padding at the bottom for scroll space, matches TimelineTrackLabels.vue h-16 -->
     <div class="h-16 shrink-0" />
