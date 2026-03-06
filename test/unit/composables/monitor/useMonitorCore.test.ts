@@ -46,6 +46,7 @@ vi.mock('~/utils/video-editor/AudioEngine', () => {
 function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTimelineClip {
   return {
     kind: 'clip',
+    clipType: 'media',
     id: 'audio-1',
     layer: 0,
     source: { path: 'audio.mp3' },

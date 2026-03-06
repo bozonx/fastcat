@@ -22,6 +22,8 @@ export interface TimelineSourceRef {
 
 export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background' | 'text';
 
+export type TimelineBlendMode = 'normal' | 'add' | 'multiply' | 'screen' | 'darken' | 'lighten';
+
 export interface TextClipStyle {
   width?: number;
   fontFamily?: string;
@@ -132,6 +134,7 @@ interface TimelineClipBase {
   freezeFrameSourceUs?: number;
   isImage?: boolean;
   opacity?: number;
+  blendMode?: TimelineBlendMode;
   effects?: ClipEffect[];
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
@@ -186,6 +189,8 @@ export interface TimelineTrack {
   kind: TrackKind;
   name: string;
   videoHidden?: boolean;
+  opacity?: number;
+  blendMode?: TimelineBlendMode;
   audioMuted?: boolean;
   audioSolo?: boolean;
   audioGain?: number;

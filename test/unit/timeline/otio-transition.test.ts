@@ -16,6 +16,8 @@ function makeDoc(): TimelineDocument {
         id: 'v1',
         kind: 'video',
         name: 'Video 1',
+        opacity: 0.6,
+        blendMode: 'screen',
         items: [
           {
             kind: 'clip',
@@ -29,6 +31,8 @@ function makeDoc(): TimelineDocument {
             sourceDurationUs: 10_000_000,
             timelineRange: { startUs: 0, durationUs: 5_000_000 },
             sourceRange: { startUs: 0, durationUs: 5_000_000 },
+            opacity: 0.5,
+            blendMode: 'multiply',
             transitionIn: { type: 'dissolve', durationUs: 300_000 },
             transitionOut: { type: 'dissolve', durationUs: 500_000 },
             audioGain: 1.25,
@@ -58,8 +62,13 @@ describe('timeline/otioSerializer: transitions', () => {
     const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
 
     const clip = parsed.tracks[0]?.items[0] as any;
+    const track = parsed.tracks[0] as any;
+    expect(track.opacity).toBe(0.6);
+    expect(track.blendMode).toBe('screen');
     expect(clip.disabled).toBe(true);
     expect(clip.locked).toBe(true);
+    expect(clip.opacity).toBe(0.5);
+    expect(clip.blendMode).toBe('multiply');
     expect(clip.transitionIn).toEqual({ type: 'dissolve', durationUs: 300_000 });
     expect(clip.transitionOut).toEqual({ type: 'dissolve', durationUs: 500_000 });
     expect(clip.audioGain).toBe(1.25);

@@ -26,7 +26,14 @@ export interface TimelineTracksApi {
     properties: Partial<
       Pick<
         TimelineTrack,
-        'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects' | 'audioGain' | 'audioBalance'
+        | 'videoHidden'
+        | 'opacity'
+        | 'blendMode'
+        | 'audioMuted'
+        | 'audioSolo'
+        | 'effects'
+        | 'audioGain'
+        | 'audioBalance'
       >
     >,
   ) => void;
@@ -80,7 +87,14 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     properties: Partial<
       Pick<
         TimelineTrack,
-        'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects' | 'audioGain' | 'audioBalance'
+        | 'videoHidden'
+        | 'opacity'
+        | 'blendMode'
+        | 'audioMuted'
+        | 'audioSolo'
+        | 'effects'
+        | 'audioGain'
+        | 'audioBalance'
       >
     >,
   ) {
