@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
@@ -20,6 +22,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const toast = useToast();
 const projectStore = useProjectStore();
+const uiStore = useUiStore();
 const saveAsDefaults = ref(false);
 
 const {
@@ -281,6 +284,10 @@ async function handleConfirm() {
         color: 'success',
         icon: 'i-heroicons-check-circle',
       });
+
+      const fileManager = useFileManager();
+      await fileManager.reloadDirectory('_export');
+      uiStore.notifyFileManagerUpdate();
 
       emit('exported');
     } finally {

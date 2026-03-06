@@ -323,6 +323,7 @@ export function useFileConversion() {
 
     let createdFileName: string | null = null;
     let createdDirHandle: FileSystemDirectoryHandle | null = null;
+    let dirPath = '';
 
     try {
       const entry = targetEntry.value;
@@ -343,11 +344,13 @@ export function useFileConversion() {
 
       if (entry.parentHandle) {
         dirHandle = entry.parentHandle;
+        dirPath = (entry.path || '').split('/').slice(0, -1).join('/');
       } else {
         const root = await fileManager.getProjectRootDirHandle();
         if (!root) throw new Error('Root directory not found');
 
         const parts = (entry.path || '').split('/').slice(0, -1);
+        dirPath = parts.join('/');
         let current = root;
         for (const p of parts) {
           if (!p) continue;
@@ -369,13 +372,13 @@ export function useFileConversion() {
       if (isCancelRequested.value) {
         if (createdDirHandle && createdFileName) {
           try {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             await createdDirHandle.removeEntry(createdFileName);
           } catch {
             // ignore
           }
         }
-        await fileManager.loadProjectDirectory();
+        await fileManager.reloadDirectory(dirPath);
         uiStore.notifyFileManagerUpdate();
         toast.add({
           title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
@@ -390,7 +393,7 @@ export function useFileConversion() {
         color: 'success',
       });
 
-      await fileManager.loadProjectDirectory();
+      await fileManager.reloadDirectory(dirPath);
       uiStore.notifyFileManagerUpdate();
       isModalOpen.value = false;
     } catch (err: any) {
@@ -398,13 +401,13 @@ export function useFileConversion() {
       if (isCancelRequested.value) {
         if (createdDirHandle && createdFileName) {
           try {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             await createdDirHandle.removeEntry(createdFileName);
           } catch {
             // ignore
           }
         }
-        await fileManager.loadProjectDirectory();
+        await fileManager.reloadDirectory(dirPath);
         uiStore.notifyFileManagerUpdate();
         toast.add({
           title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),

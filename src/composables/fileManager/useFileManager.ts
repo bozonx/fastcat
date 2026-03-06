@@ -473,7 +473,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   async function reloadDirectory(path: string) {
     const projectDir = await deps.getProjectDirHandle();
-    if (projectDir) await service.reloadDirectory(path, projectDir);
+    if (projectDir) {
+      await service.reloadDirectory(path, projectDir);
+      deps.onDirectoryLoaded?.();
+    }
   }
 
   return {

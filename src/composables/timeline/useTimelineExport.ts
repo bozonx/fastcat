@@ -2,6 +2,8 @@ import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import {
   EXPORT_DIR_NAME,
   VIDEO_DIR_NAME,
