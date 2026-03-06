@@ -2,8 +2,8 @@
 import { onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
-import FileManager from '~/components/FileManager.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
+import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -85,7 +85,7 @@ onUnmounted(() => {
   <ClientOnly>
     <Splitpanes class="flex-1 min-h-0 editor-splitpanes" @resized="onResized">
       <Pane :size="sizes[0]" min-size="10">
-        <FileManager
+        <FileManagerPanel
           folders-only
           disable-sort
           :is-files-page="true"

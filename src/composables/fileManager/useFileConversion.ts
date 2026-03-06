@@ -369,11 +369,14 @@ export function useFileConversion() {
       if (isCancelRequested.value) {
         if (createdDirHandle && createdFileName) {
           try {
+            await new Promise(resolve => setTimeout(resolve, 500));
             await createdDirHandle.removeEntry(createdFileName);
           } catch {
             // ignore
           }
         }
+        await fileManager.loadProjectDirectory();
+        uiStore.notifyFileManagerUpdate();
         toast.add({
           title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
           color: 'neutral',
@@ -395,11 +398,14 @@ export function useFileConversion() {
       if (isCancelRequested.value) {
         if (createdDirHandle && createdFileName) {
           try {
+            await new Promise(resolve => setTimeout(resolve, 500));
             await createdDirHandle.removeEntry(createdFileName);
           } catch {
             // ignore
           }
         }
+        await fileManager.loadProjectDirectory();
+        uiStore.notifyFileManagerUpdate();
         toast.add({
           title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
           color: 'neutral',

@@ -10,7 +10,7 @@ import {
 } from '~/composables/project/useProjectTabs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import { isOpenableProjectFileName } from '~/utils/media-types';
-import ProjectFiles from '~/components/project/ProjectFiles.vue';
+import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
@@ -214,7 +214,7 @@ onMounted(() => {
     id: 'files',
     label: t('videoEditor.fileManager.tabs.files', 'Files'),
     icon: 'i-heroicons-folder',
-    component: markRaw(ProjectFiles),
+    component: markRaw(FileManagerPanel),
   });
 
   registerProjectTab({

@@ -255,6 +255,13 @@ function onMarqueePointerMove(e: PointerEvent) {
   selectEntriesInMarquee();
 }
 
+const preventClickClear = ref(false);
+
+function handleContainerClick() {
+  if (preventClickClear.value) return;
+  selectionStore.clearSelection();
+}
+
 function onMarqueePointerUp(e: PointerEvent) {
   if (!isMarqueeSelecting.value) return;
   const container = rootContainer.value;
@@ -265,6 +272,15 @@ function onMarqueePointerUp(e: PointerEvent) {
       // ignore
     }
   }
+
+  const r = marqueeRect.value;
+  if (r && (r.width > 3 || r.height > 3)) {
+    preventClickClear.value = true;
+    setTimeout(() => {
+      preventClickClear.value = false;
+    }, 0);
+  }
+
   isMarqueeSelecting.value = false;
   marqueeStart.value = null;
   marqueeCurrent.value = null;
@@ -1126,7 +1142,7 @@ async function onDirectoryUploadChange(e: Event) {
     <div
       ref="rootContainer"
       class="flex-1 overflow-auto p-4 content-scrollbar relative"
-      @click.self="navigateToRoot"
+      @click.self="handleContainerClick"
       @keydown="onContainerKeyDown"
       @pointerdown.capture="onMarqueePointerDown"
       @pointermove="onMarqueePointerMove"
