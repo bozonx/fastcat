@@ -1,4 +1,4 @@
-import { Filter, GlProgram } from 'pixi.js';
+import { Filter, GlProgram, Texture } from 'pixi.js';
 import { easeInOutCubic, hexColorToRgb01, sanitizeTransitionColor } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
@@ -69,7 +69,7 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
     new Filter({
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
-        uFromTexture: null,
+        uFromTexture: Texture.WHITE.source,
         fadeToBlackUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uFadeColor: { value: [0, 0, 0], type: 'vec3<f32>' },
@@ -84,7 +84,7 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const rgb = hexColorToRgb01(params.color);
-    resources.uFromTexture = context.fromTexture?.source ?? null;
+    resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uFadeColor = [rgb.r, rgb.g, rgb.b];
   },
