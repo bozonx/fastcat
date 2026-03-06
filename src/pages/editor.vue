@@ -8,9 +8,8 @@ import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 import Project from '~/components/Project.vue';
-import ProjectFiles from '~/components/project/ProjectFiles.vue';
-import FileManager from '~/components/FileManager.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
+import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';
@@ -65,7 +64,7 @@ const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes
   [40, 60],
 );
 
-const { getProjectRootDirHandle } = useFileManager();
+const { getProjectRootDirHandle, findEntryByPath } = useFileManager();
 
 async function navigateToParentFolder() {
   const folder = filesPageStore.selectedFolder;
@@ -281,6 +280,8 @@ function onDrop(event: DragEvent, targetPanelId: string) {
           return;
         }
 
+        const entry = findEntryByPath(payload.path);
+
         // Find extension to determine type
         const ext = payload.name?.split('.').pop()?.toLowerCase() ?? '';
         let mediaType: 'video' | 'audio' | 'image' | 'unknown' = 'unknown';
@@ -294,7 +295,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
           void (async () => {
             let content = `File: ${payload.name}`;
             try {
-              const handle = payload.handle as FileSystemFileHandle | undefined;
+              const handle = (entry?.handle || payload.handle) as FileSystemFileHandle | undefined;
               if (handle && typeof handle.getFile === 'function') {
                 const file = await handle.getFile();
                 content = await file.text();
@@ -317,7 +318,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
               kind: 'file',
               path: payload.path,
               name: payload.name,
-              handle: payload.handle as any,
+              handle: (entry?.handle || payload.handle) as any,
             },
             mediaType,
             payload.name,
@@ -436,9 +437,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
             @resized="onFilesResize"
           >
             <Pane :size="filesSizes[0]" min-size="10">
-              <FileManager
+              <FileManagerPanel
                 folders-only
                 disable-sort
+                is-files-page
                 class="h-full"
                 @select="filesPageStore.selectFolder"
               />

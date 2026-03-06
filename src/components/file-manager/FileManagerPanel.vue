@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
-import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
@@ -15,10 +14,12 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import { useUiStore } from '~/stores/ui.store';
 
 const props = defineProps<{
   foldersOnly?: boolean;
   disableSort?: boolean;
+  isFilesPage?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,9 +27,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const toast = useToast();
 
 const projectStore = useProjectStore();
-const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
@@ -40,7 +41,6 @@ const fileManager = useFileManager();
 const {
   rootEntries,
   isLoading,
-  error,
   isApiSupported,
   getProjectRootDirHandle,
   loadProjectDirectory,
@@ -50,6 +50,8 @@ const {
   deleteEntry,
   renameEntry,
   findEntryByPath,
+  readDirectory,
+  reloadDirectory,
   moveEntry,
   createTimeline,
   getFileIcon,
@@ -74,49 +76,47 @@ const {
   handleDeleteConfirm,
   onFileAction: onFileActionBase,
 } = useFileManagerActions({
-  ...fileManager,
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  loadProjectDirectory,
+  handleFiles,
   mediaCache: fileManager.mediaCache,
+  getProjectRootDirHandle,
+  findEntryByPath,
+  readDirectory,
+  reloadDirectory,
+  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
+  setFileTreePathExpanded: (path, expanded) => {
+    const projectName = projectStore.currentProjectName;
+    if (projectName) uiStore.setFileTreePathExpanded(projectName, path, expanded);
+  },
+  onFileSelect: (entry) => emit('select', entry),
 });
 
 type FileAction =
   | FileActionBase
+  | 'refresh'
   | 'createMarkdown'
   | 'createTimeline'
-  | 'createOtioVersion'
-  | 'createProxyForFolder'
-  | 'cancelProxyForFolder'
-  | 'addToTimeline'
   | 'openAsPanel'
   | 'openAsProjectTab';
 
-function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
+async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
   if (Array.isArray(entry)) {
     if (action === 'delete') {
       onFileActionBase('delete', entry);
       return;
     }
-    if (action === 'createProxy') {
-      onFileActionBase('createProxy', entry);
-      return;
-    }
-    if (action === 'cancelProxy') {
-      onFileActionBase('cancelProxy', entry);
-      return;
-    }
-    if (action === 'deleteProxy') {
-      onFileActionBase('deleteProxy', entry);
+    if (['createProxy', 'cancelProxy', 'deleteProxy'].includes(action)) {
+      onFileActionBase(action as any, entry);
       return;
     }
     return;
   }
 
-  if (action === 'createMarkdown') {
-    if (entry.kind === 'directory') {
-      if (entry.path) {
-        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
-      }
-      void createMarkdownInDirectory(entry);
-    }
+  if (action === 'refresh') {
+    void loadProjectDirectory({ fullRefresh: true });
   } else if (action === 'createFolder') {
     const target: FsEntry = entry ?? {
       kind: 'directory',
@@ -135,33 +135,36 @@ function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       if (entry.path) {
         uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
       }
-      void createTimelineInDirectory(entry);
+      await createTimelineInDirectory(entry);
+    }
+  } else if (action === 'createMarkdown') {
+    if (entry.kind === 'directory') {
+      if (entry.path) {
+        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
+      }
+      onFileActionBase('createMarkdown', entry);
     }
   } else if (action === 'openAsPanel') {
-    if (entry.kind !== 'file') return;
-    if (!isOpenableProjectFileName(entry.name)) return;
+    if (entry.kind !== 'file' || !isOpenableProjectFileName(entry.name)) return;
     projectStore.goToCut();
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
-      void (async () => {
-        try {
-          const file = await (entry.handle as FileSystemFileHandle).getFile();
-          const content = await file.text();
-          projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name);
-        } catch {
-          projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name);
-        }
-      })();
-    } else if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
-      projectStore.addMediaPanel(entry, mediaType, entry.name);
+      try {
+        const file = await (entry.handle as FileSystemFileHandle).getFile();
+        const content = await file.text();
+        projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name);
+      } catch {
+        projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name);
+      }
+    } else if (['video', 'audio', 'image'].includes(mediaType)) {
+      projectStore.addMediaPanel(entry, mediaType as any, entry.name);
     }
   } else if (action === 'openAsProjectTab') {
-    if (entry.kind !== 'file' || !entry.path) return;
-    if (!isOpenableProjectFileName(entry.name)) return;
+    if (entry.kind !== 'file' || !entry.path || !isOpenableProjectFileName(entry.name)) return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
   } else if (action === 'createOtioVersion') {
-    void createOtioVersion(entry);
+    onFileActionBase('createOtioVersion', entry);
   } else if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -182,175 +185,16 @@ function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       }
     }
   } else if (action === 'convertFile') {
-    if (entry.kind === 'file') {
-      // For now this is handled in FileManagerFiles or globally
-    }
-  } else if (action === 'addToTimeline') {
-    onFileActionBase(action as FileActionBase, entry);
+    // This action is often handled by parent or useFileConversion, 
+    // but we can emit it or trigger something. 
+    // In current implementation it's often triggered directly from context menu or FileProperties.
   } else {
     onFileActionBase(action as FileActionBase, entry);
   }
 }
 
-function buildNextOtioVersionName(name: string, existingNames: Set<string>): string {
-  const lower = name.toLowerCase();
-  if (!lower.endsWith('.otio')) return name;
-
-  const base = name.slice(0, -'.otio'.length);
-  const match = base.match(/^(.*)_([0-9]{3})$/);
-  const prefix = match ? match[1] : base;
-  const start = match ? Number(match[2]) + 1 : 1;
-
-  for (let i = start; i < 10_000; i += 1) {
-    const candidate = `${prefix}_${String(i).padStart(3, '0')}.otio`;
-    if (!existingNames.has(candidate)) return candidate;
-  }
-
-  return `${prefix}_${Date.now()}.otio`;
-}
-
-async function resolveParentDirHandleForEntry(
-  entry: FsEntry,
-): Promise<FileSystemDirectoryHandle | null> {
-  if (entry.parentHandle) return entry.parentHandle;
-  if (!entry.path) return null;
-
-  const root = await getProjectRootDirHandle();
-  if (!root) return null;
-
-  const parts = entry.path.split('/').slice(0, -1);
-  let dir: FileSystemDirectoryHandle = root;
-  for (const p of parts) {
-    if (!p) continue;
-    dir = await dir.getDirectoryHandle(p);
-  }
-  return dir;
-}
-
-async function createOtioVersion(entry: FsEntry) {
-  if (entry.kind !== 'file') return;
-  if (!entry.name.toLowerCase().endsWith('.otio')) return;
-
-  const parentDir = await resolveParentDirHandleForEntry(entry);
-  if (!parentDir) return;
-
-  const existing = new Set<string>();
-  try {
-    const iterator = (parentDir as any).values?.() ?? (parentDir as any).entries?.();
-    if (iterator) {
-      for await (const value of iterator) {
-        const h = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-        existing.add(h.name);
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  const nextName = buildNextOtioVersionName(entry.name, existing);
-  const file = await (entry.handle as FileSystemFileHandle).getFile();
-  const nextHandle = await parentDir.getFileHandle(nextName, { create: true });
-  const createWritable = (nextHandle as FileSystemFileHandle).createWritable;
-  if (typeof createWritable !== 'function') return;
-
-  const writable = await (nextHandle as FileSystemFileHandle).createWritable();
-  await writable.write(file);
-  await writable.close();
-
-  await loadProjectDirectory();
-
-  const parentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
-  const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
-  const newEntry = findEntryByPath(nextPath);
-  if (newEntry) {
-    uiStore.selectedFsEntry = {
-      kind: newEntry.kind,
-      name: newEntry.name,
-      path: newEntry.path,
-      handle: newEntry.handle,
-    };
-    selectionStore.selectFsEntry(newEntry);
-  }
-}
-
-async function createMarkdownInDirectory(entry: FsEntry) {
-  const dirHandle = entry.handle as FileSystemDirectoryHandle;
-  const baseName = 'Документ_';
-  const ext = '.md';
-
-  const existing = new Set<string>();
-  try {
-    const iterator = (dirHandle as any).values?.() ?? (dirHandle as any).entries?.();
-    if (iterator) {
-      for await (const value of iterator) {
-        const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-        existing.add(handle.name);
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  let i = 1;
-  let fileName = `${baseName}${i}${ext}`;
-  while (existing.has(fileName)) {
-    i += 1;
-    fileName = `${baseName}${i}${ext}`;
-  }
-
-  const handle = await dirHandle.getFileHandle(fileName, { create: true });
-  const createWritable = (handle as FileSystemFileHandle).createWritable;
-  if (typeof createWritable === 'function') {
-    const writable = await (handle as FileSystemFileHandle).createWritable();
-    await writable.write('');
-    await writable.close();
-  }
-
-  await loadProjectDirectory();
-
-  const newPath = entry.path ? `${entry.path}/${fileName}` : fileName;
-  const newEntry = findEntryByPath(newPath);
-  if (newEntry) {
-    uiStore.selectedFsEntry = {
-      kind: newEntry.kind,
-      name: newEntry.name,
-      path: newEntry.path,
-      handle: newEntry.handle,
-    };
-    selectionStore.selectFsEntry(newEntry);
-    emit('select', newEntry);
-  }
-}
-
-function onDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('Files')) {
-    isDragging.value = true;
-    uiStore.isFileManagerDragging = true;
-  }
-}
-
-function onDragLeave(e: DragEvent) {
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  const relatedTarget = e.relatedTarget as Node | null;
-  if (!currentTarget?.contains(relatedTarget)) {
-    isDragging.value = false;
-    uiStore.isFileManagerDragging = false;
-  }
-}
-
-function onDrop(e: DragEvent) {
-  isDragging.value = false;
-  uiStore.isFileManagerDragging = false;
-  uiStore.isGlobalDragging = false;
-
-  if (e.dataTransfer?.files) {
-    handleFiles(e.dataTransfer.files);
-  }
-}
-
 async function createTimelineInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
-
   try {
     const createdFileName = await createTimelineCommand({
       projectDir: entry.handle as FileSystemDirectoryHandle,
@@ -378,8 +222,8 @@ async function createTimelineInDirectory(entry: FsEntry) {
       void timelineStore.loadTimelineMetadata();
     }
   } catch (e: unknown) {
-    console.error('[ProjectFiles] Failed to create timeline', e);
-    useToast().add({
+    console.error('[FileManagerPanel] Failed to create timeline', e);
+    toast.add({
       color: 'red',
       title: 'Timeline error',
       description: e instanceof Error ? e.message : 'Failed to create timeline',
@@ -456,6 +300,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
   emit('select', entry);
 }
 
+// Watchers for global actions (from search or other panels)
 watch(
   () => uiStore.pendingFsEntryDelete,
   (value) => {
@@ -464,7 +309,7 @@ watch(
       openDeleteConfirmModal(entries);
       uiStore.pendingFsEntryDelete = null;
     }
-  },
+  }
 );
 
 watch(
@@ -475,7 +320,7 @@ watch(
       startRename(entry);
       (uiStore as any).pendingFsEntryRename = null;
     }
-  },
+  }
 );
 
 watch(
@@ -483,10 +328,10 @@ watch(
   (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      onFileActionBase('createFolder', entry, () => entry.children?.map((e) => e.name) ?? []);
+      onFileAction('createFolder', entry);
       (uiStore as any).pendingFsEntryCreateFolder = null;
     }
-  },
+  }
 );
 
 watch(
@@ -494,43 +339,10 @@ watch(
   async (value) => {
     const entry = value as FsEntry | null;
     if (entry && entry.kind === 'directory') {
-      if (entry.path) {
-        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
-      }
-      void createTimelineInDirectory(entry);
+      await createTimelineInDirectory(entry);
       (uiStore as any).pendingFsEntryCreateTimeline = null;
     }
-  },
-);
-
-watch(
-  () => (uiStore as any).pendingFsEntryCreateMarkdown,
-  async (value) => {
-    const entry = value as FsEntry | null;
-    if (entry && entry.kind === 'directory') {
-      if (entry.path) {
-        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
-      }
-      const handle = entry.handle
-        ? (entry.handle as FileSystemDirectoryHandle)
-        : await getProjectRootDirHandle();
-      if (handle) {
-        void createMarkdownInDirectory({ ...entry, handle });
-      }
-      (uiStore as any).pendingFsEntryCreateMarkdown = null;
-    }
-  },
-);
-
-watch(
-  () => (uiStore as any).pendingOtioCreateVersion,
-  (value) => {
-    const entry = value as FsEntry | null;
-    if (entry) {
-      void createOtioVersion(entry);
-      (uiStore as any).pendingOtioCreateVersion = null;
-    }
-  },
+  }
 );
 
 watch(
@@ -564,6 +376,7 @@ watch(
   { immediate: true },
 );
 
+// Sync: refresh the tree when needed
 let isReloadingFromCounter = false;
 watch(
   () => uiStore.fileManagerUpdateCounter,
@@ -578,6 +391,32 @@ watch(
     }
   },
 );
+
+function onDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('Files')) {
+    isDragging.value = true;
+    uiStore.isFileManagerDragging = true;
+  }
+}
+
+function onDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const relatedTarget = e.relatedTarget as Node | null;
+  if (!currentTarget?.contains(relatedTarget)) {
+    isDragging.value = false;
+    uiStore.isFileManagerDragging = false;
+  }
+}
+
+function onDrop(e: DragEvent) {
+  isDragging.value = false;
+  uiStore.isFileManagerDragging = false;
+  uiStore.isGlobalDragging = false;
+
+  if (e.dataTransfer?.files) {
+    handleFiles(e.dataTransfer.files);
+  }
+}
 </script>
 
 <template>
@@ -590,6 +429,7 @@ watch(
     @dragleave.prevent="onDragLeave"
     @drop.prevent="onDrop"
   >
+    <!-- Hidden inputs -->
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
     <input
       ref="directoryUploadInput"
@@ -607,6 +447,7 @@ watch(
       }"
       @pointerdown.capture="focusStore.setTempFocus('left')"
     >
+      <!-- Actions Toolbar -->
       <div
         v-if="projectStore.currentProjectName"
         class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
@@ -651,7 +492,10 @@ watch(
                   label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
                   icon: 'i-heroicons-arrow-path',
                   disabled: isLoading || !projectStore.currentProjectName,
-                  onSelect: () => loadProjectDirectory({ fullRefresh: true }),
+                  onSelect: async () => {
+                    await loadProjectDirectory({ fullRefresh: true });
+                    uiStore.notifyFileManagerUpdate();
+                  },
                 },
               ],
               [
@@ -690,9 +534,11 @@ watch(
         </div>
       </div>
 
+      <!-- File List -->
       <FileManagerFiles
         :editing-entry-path="editingEntryPath"
         :folders-only="foldersOnly"
+        :is-files-page="isFilesPage"
         :is-dragging="isDragging"
         :is-loading="isLoading"
         :is-api-supported="isApiSupported"
@@ -711,20 +557,7 @@ watch(
       />
     </div>
 
-    <div
-      v-if="uiStore.isGlobalDragging && !isDragging"
-      class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary-500/10 border-4 border-dashed border-primary-500/50 m-2 rounded-2xl pointer-events-none transition-all duration-300"
-    >
-      <div
-        class="flex flex-col items-center bg-ui-bg-elevated/90 px-6 py-4 rounded-xl border border-primary-500/30 shadow-xl"
-      >
-        <UIcon name="i-heroicons-folder-arrow-down" class="w-10 h-10 text-primary-400 mb-2" />
-        <p class="text-sm font-bold text-primary-400 text-center uppercase tracking-wider">
-          {{ t('videoEditor.fileManager.actions.dropZone', 'Move to folder') }}
-        </p>
-      </div>
-    </div>
-
+    <!-- Modals -->
     <UiConfirmModal
       v-model:open="isDeleteConfirmModalOpen"
       :title="t('common.delete', 'Delete')"
@@ -745,7 +578,6 @@ watch(
         <div v-else-if="deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
           {{ deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
         </div>
-
         <div
           v-if="deleteTargets.length === 1 && deleteTargets[0]?.path"
           class="mt-1 text-xs text-ui-text-muted break-all"
@@ -779,5 +611,20 @@ watch(
         </div>
       </div>
     </UiConfirmModal>
+
+    <!-- Global Drag Highlight -->
+    <div
+      v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
+      class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary-500/10 border-4 border-dashed border-primary-500/50 m-2 rounded-2xl pointer-events-none transition-all duration-300"
+    >
+      <div
+        class="flex flex-col items-center bg-ui-bg-elevated/90 px-6 py-4 rounded-xl border border-primary-500/30 shadow-xl"
+      >
+        <UIcon name="i-heroicons-folder-arrow-down" class="w-10 h-10 text-primary-400 mb-2" />
+        <p class="text-sm font-bold text-primary-400 text-center uppercase tracking-wider">
+          {{ t('videoEditor.fileManager.actions.dropZone', 'Move to folder') }}
+        </p>
+      </div>
+    </div>
   </div>
 </template>

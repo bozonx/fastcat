@@ -295,7 +295,7 @@ function selectTransition(
 <template>
   <div
     ref="containerRef"
-    class="flex flex-col min-h-full pb-16 relative"
+    class="flex flex-col min-h-full relative"
     :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
     @pointerdown="
       if ($event.button === 0 && $event.target === $event.currentTarget) {
@@ -347,6 +347,7 @@ function selectTransition(
       </template>
     </AppModal>
 
+    <!-- Tracks -->
     <div
       v-for="track in tracks"
       :key="track.id"
@@ -378,6 +379,7 @@ function selectTransition(
       @dragleave.prevent="emit('dragleave', $event, track.id)"
       @drop.prevent="emit('drop', $event, track.id)"
     >
+      <!-- Drop Previews inside track -->
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"
         class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
@@ -486,5 +488,11 @@ function selectTransition(
         />
       </template>
     </div>
+
+    <!-- Empty clickable area to match TimelineTrackLabels.vue -->
+    <div class="w-full flex-1 min-h-[128px]" @click="timelineStore.selectTrack(null)" />
+
+    <!-- Padding at the bottom for scroll space, matches TimelineTrackLabels.vue h-16 -->
+    <div class="h-16 shrink-0" />
   </div>
 </template>

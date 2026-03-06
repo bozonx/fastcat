@@ -505,11 +505,10 @@ function toggleClipSnapMode() {
     <div
       ref="labelsScrollContainer"
       class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
-      :style="scrollbarCompensation ? { marginBottom: `${scrollbarCompensation}px` } : {}"
       @scroll="emit('scroll', $event)"
       @click="selectTimelineProperties"
     >
-      <div class="flex flex-col min-h-full pb-16">
+      <div class="flex flex-col min-h-full">
         <UContextMenu
           v-for="track in tracks"
           :key="track.id"
@@ -606,9 +605,20 @@ function toggleClipSnapMode() {
           </div>
         </UContextMenu>
 
+        <!-- Empty clickable area to match TimelineTracks.vue -->
         <UContextMenu :items="emptyAreaContextMenuItems" class="flex-1 flex flex-col min-h-0">
-          <div class="w-full h-full flex-1 min-h-12.5" @click="selectTimelineProperties" />
+          <div class="w-full flex-1 min-h-[128px]" @click="selectTimelineProperties" />
         </UContextMenu>
+
+        <!-- Padding at the bottom for scroll space, matches TimelineTracks.vue pb-16 -->
+        <div class="h-16 shrink-0" />
+
+        <!-- Scrollbar compensation to align exactly with tracks scroll area -->
+        <div
+          v-if="scrollbarCompensation"
+          class="shrink-0"
+          :style="{ height: `${scrollbarCompensation}px` }"
+        />
       </div>
     </div>
   </div>

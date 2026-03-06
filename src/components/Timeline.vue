@@ -787,10 +787,10 @@ async function onDrop(e: DragEvent, trackId: string) {
               />
             </div>
 
-            <!-- Grid lines overlaid on tracks area, below ruler -->
+          <!-- Grid lines overlaid on tracks area, below ruler -->
             <TimelineGrid
-              class="absolute left-0 right-0 bottom-0 pointer-events-none"
-              :style="{ top: '28px' }"
+              class="absolute left-0 right-0 pointer-events-none"
+              :style="{ top: '28px', bottom: `${scrollbarHeight}px` }"
               :scroll-el="scrollEl"
             />
 
@@ -843,5 +843,29 @@ async function onDrop(e: DragEvent, trackId: string) {
 */
 .timeline-scroll-el {
   scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-accent, #666) transparent;
+}
+
+.timeline-scroll-el::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.timeline-scroll-el::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timeline-scroll-el::-webkit-scrollbar-thumb {
+  background: var(--ui-border, #444);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.timeline-scroll-el::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-border-accent, #666);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 </style>
