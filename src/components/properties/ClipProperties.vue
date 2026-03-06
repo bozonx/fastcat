@@ -7,7 +7,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFilesPageStore } from '~/stores/filesPage.store';
-import type { TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/types';
+import type { TimelineBlendMode, TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
@@ -46,6 +46,15 @@ const clipTrack = computed<TimelineTrack | undefined>(() =>
 );
 
 const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video');
+
+const blendModeOptions: Array<{ value: TimelineBlendMode; label: string }> = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'add', label: 'Add' },
+  { value: 'multiply', label: 'Multiply' },
+  { value: 'screen', label: 'Screen' },
+  { value: 'darken', label: 'Darken' },
+  { value: 'lighten', label: 'Lighten' },
+];
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
 
@@ -275,6 +284,21 @@ function handleUpdateOpacity(val: number | undefined) {
   const safe = typeof val === 'number' && Number.isFinite(val) ? val : 1;
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     opacity: safe,
+  });
+}
+
+function handleUpdateBlendMode(val: TimelineBlendMode | string | undefined) {
+  const safe =
+    val === 'add' ||
+    val === 'multiply' ||
+    val === 'screen' ||
+    val === 'darken' ||
+    val === 'lighten'
+      ? val
+      : 'normal';
+
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    blendMode: safe,
   });
 }
 
@@ -792,6 +816,20 @@ defineExpose({
       v-if="clip.clipType !== 'adjustment'"
       class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
     >
+      <div class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.clip.blendMode', 'Blend mode')
+        }}</span>
+        <USelectMenu
+          :model-value="clip.blendMode ?? 'normal'"
+          :items="blendModeOptions"
+          value-key="value"
+          label-key="label"
+          size="sm"
+          @update:model-value="handleUpdateBlendMode"
+        />
+      </div>
+
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">
           {{ t('granVideoEditor.clip.opacity', 'Opacity') }}

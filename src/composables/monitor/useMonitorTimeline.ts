@@ -68,25 +68,18 @@ export function useMonitorTimeline() {
         if ((item as any).disabled) continue;
 
         const clipType = (item as any).clipType ?? 'media';
-
-        const clipEffects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined;
-        const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : undefined;
-        const effects = (() => {
-          const parts = [clipEffects, trackEffects].filter(
-            (arr): arr is NonNullable<typeof arr> => Array.isArray(arr) && arr.length > 0,
-          );
-          if (parts.length === 0) return undefined;
-          return parts.flat();
-        })();
+        const effects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined;
 
         const base: WorkerTimelineClip = {
           kind: 'clip',
           clipType,
           id: item.id,
+          trackId: track.id,
           layer: trackCount - 1 - trackIndex,
           speed: sanitizeSpeed((item as any).speed) ?? 1,
           freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
+          blendMode: item.blendMode,
           effects,
           transform: (item as any).transform,
           transitionIn: sanitizeTransition((item as any).transitionIn),

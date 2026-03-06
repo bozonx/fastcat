@@ -8,8 +8,12 @@ describe('useMonitorTimeline', () => {
     setActivePinia(createPinia());
   });
 
+  function getTimelineStore(): any {
+    return useTimelineStore() as any;
+  }
+
   it('provides computed videoTrack', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -54,7 +58,7 @@ describe('useMonitorTimeline', () => {
   });
 
   it('computes workerTimelineClips and workerAudioClips correctly', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -117,7 +121,7 @@ describe('useMonitorTimeline', () => {
   });
 
   it('assigns inverted layers so first track (top in UI) renders on top', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -161,8 +165,50 @@ describe('useMonitorTimeline', () => {
     expect(clip2?.layer).toBe(0);
   });
 
+  it('keeps raw worker video clip compositing separate from top-level track compositing', () => {
+    const timelineStore = getTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          opacity: 0.25,
+          blendMode: 'screen',
+          effects: [{ id: 'track-effect', type: 'blur', enabled: true, amount: 5 }],
+          items: [
+            {
+              id: 'clip1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'v1',
+              source: { path: 'a.mp4' },
+              opacity: 0.5,
+              blendMode: 'multiply',
+              effects: [{ id: 'clip-effect', type: 'blur', enabled: true, amount: 1 }],
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { rawWorkerTimelineClips } = useMonitorTimeline();
+    expect(rawWorkerTimelineClips.value).toHaveLength(1);
+    expect(rawWorkerTimelineClips.value[0]).toMatchObject({
+      id: 'clip1',
+      trackId: 'v1',
+      opacity: 0.5,
+      blendMode: 'multiply',
+    });
+    expect(rawWorkerTimelineClips.value[0]?.effects).toEqual([
+      { id: 'clip-effect', type: 'blur', enabled: true, amount: 1 },
+    ]);
+  });
+
   it('workerAudioClips does not duplicate audio from video clips', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -216,7 +262,7 @@ describe('useMonitorTimeline', () => {
   });
 
   it('computes signatures correctly', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -281,7 +327,7 @@ describe('useMonitorTimeline', () => {
   });
 
   it('filters hidden video tracks from workerTimelineClips', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -306,7 +352,7 @@ describe('useMonitorTimeline', () => {
   });
 
   it('applies audio solo/mute when building workerAudioClips', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {
@@ -348,7 +394,7 @@ describe('useMonitorTimeline', () => {
   });
 
   it('applies video track solo/mute to __audio clips extracted from video', () => {
-    const timelineStore = useTimelineStore();
+    const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
         {

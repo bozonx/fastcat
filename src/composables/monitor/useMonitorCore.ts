@@ -6,7 +6,11 @@ import type { TimelineDocument } from '~/timeline/types';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
-import { toWorkerTimelineClips } from '~/composables/timeline/useTimelineExport';
+import {
+  buildVideoWorkerPayload,
+  buildWorkerVideoTracks,
+  toWorkerTimelineClips,
+} from '~/composables/timeline/useTimelineExport';
 import { useUiStore } from '~/stores/ui.store';
 
 import type { WorkerTimelineClip } from './types';
@@ -112,15 +116,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const useProxyInMonitor = computed(() => {
     return projectStore.projectSettings.monitor?.useProxy !== false;
   });
-
-  function buildVideoWorkerPayload(clips: WorkerTimelineClip[]): any[] {
-    const masterEffects = timelineStore.timelineDoc?.metadata?.gran?.masterEffects;
-    const meta =
-      Array.isArray(masterEffects) && masterEffects.length > 0
-        ? [{ kind: 'meta', masterEffects }]
-        : [];
-    return [...meta, ...clips];
-  }
 
   function cloneWorkerPayload<T>(value: T): T {
     try {
@@ -271,7 +266,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           workerTimelineClips.value = flattenedClips;
           workerAudioClips.value = flattenedAudio;
 
-          const payload = cloneWorkerPayload(buildVideoWorkerPayload(flattenedClips));
+          const payload = cloneWorkerPayload(
+            buildVideoWorkerPayload({
+              clips: flattenedClips,
+              tracks: buildWorkerVideoTracks(timelineStore.timelineDoc?.tracks ?? []),
+              masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+            }),
+          );
           const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(flattenedAudio);
           // Keep store duration at least as large as current value to avoid clamping
@@ -515,7 +516,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         onExportProgress: () => {},
       });
 
-      const payload = cloneWorkerPayload(buildVideoWorkerPayload(clips));
+      const payload = cloneWorkerPayload(
+        buildVideoWorkerPayload({
+          clips,
+          tracks: buildWorkerVideoTracks(timelineStore.timelineDoc?.tracks ?? []),
+          masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+        }),
+      );
       const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
       if (clips.length === 0) {
         await client.clearClips();

@@ -82,6 +82,7 @@ export async function getVideoSampleWithZeroFallback(
 
 export interface CompositorClip {
   itemId: string;
+  trackId?: string;
   layer: number;
   sourcePath?: string;
   fileHandle?: FileSystemFileHandle;
@@ -115,6 +116,16 @@ export interface CompositorClip {
   transitionOut?: ClipTransition;
 }
 
+export interface CompositorTrack {
+  id: string;
+  layer: number;
+  opacity?: number;
+  blendMode?: TimelineBlendMode;
+  effects?: ClipEffect[];
+  container: Container;
+  effectFilters?: Map<string, Filter>;
+}
+
 export class VideoCompositor {
   public app: Application | null = null;
   public canvas: OffscreenCanvas | HTMLCanvasElement | null = null;
@@ -124,6 +135,9 @@ export class VideoCompositor {
   private width = 1920;
   private height = 1080;
   private clipById = new Map<string, CompositorClip>();
+  private trackById = new Map<string, CompositorTrack>();
+  private trackByLayer = new Map<number, CompositorTrack>();
+  private tracks: CompositorTrack[] = [];
   private replacedClipIds = new Set<string>();
   private lastRenderedTimeUs = 0;
   private clipPreferBitmapFallback = new Map<string, boolean>();
@@ -142,6 +156,138 @@ export class VideoCompositor {
     getStartUs: (clip) => clip.startUs,
     getEndUs: (clip) => clip.endUs,
   });
+
+  private normalizeTrackOpacity(value: unknown): number | undefined {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+    return Math.max(0, Math.min(1, value));
+  }
+
+  private buildTrackRuntimeList(timelineItems: any[]): Array<{
+    id: string;
+    layer: number;
+    opacity?: number;
+    blendMode?: TimelineBlendMode;
+    effects?: ClipEffect[];
+  }> {
+    const explicitTracks = timelineItems
+      .filter((item) => item && typeof item === 'object' && item.kind === 'track')
+      .map((track) => ({
+        id:
+          typeof track.id === 'string' && track.id.length > 0
+            ? track.id
+            : `track_${String(track.layer ?? 0)}`,
+        layer: Math.round(Number(track.layer ?? 0)),
+        opacity: this.normalizeTrackOpacity(track.opacity),
+        blendMode: resolveBlendMode(track.blendMode),
+        effects: Array.isArray(track.effects) ? (track.effects as ClipEffect[]) : undefined,
+      }));
+
+    const inferredLayers = new Set<number>();
+    for (const item of timelineItems) {
+      if (!item || typeof item !== 'object' || item.kind !== 'clip') continue;
+      inferredLayers.add(Math.round(Number(item.layer ?? 0)));
+    }
+
+    const explicitLayers = new Set(explicitTracks.map((track) => track.layer));
+    const inferredTracks = [...inferredLayers]
+      .filter((layer) => !explicitLayers.has(layer))
+      .sort((a, b) => a - b)
+      .map((layer) => ({
+        id: `track_${layer}`,
+        layer,
+        opacity: 1,
+        blendMode: 'normal' as const,
+      }));
+
+    return [...explicitTracks, ...inferredTracks].sort((a, b) => a.layer - b.layer);
+  }
+
+  private syncTrackRuntimes(timelineItems: any[]) {
+    if (!this.app) return;
+
+    const nextDefs = this.buildTrackRuntimeList(timelineItems);
+    const nextTrackById = new Map<string, CompositorTrack>();
+    const nextTrackByLayer = new Map<number, CompositorTrack>();
+    const nextTracks: CompositorTrack[] = [];
+
+    for (const def of nextDefs) {
+      const existing = this.trackById.get(def.id) ?? this.trackByLayer.get(def.layer);
+      const track = existing ?? {
+        id: def.id,
+        layer: def.layer,
+        container: new Container(),
+      };
+
+      track.id = def.id;
+      track.layer = def.layer;
+      track.opacity = def.opacity;
+      track.blendMode = def.blendMode;
+      track.effects = def.effects;
+      track.container.alpha = def.opacity ?? 1;
+      track.container.blendMode = def.blendMode ?? 'normal';
+      (track.container as any).__trackId = def.id;
+
+      if (track.container.parent !== this.app.stage) {
+        this.app.stage.addChild(track.container);
+      }
+
+      nextTrackById.set(track.id, track);
+      nextTrackByLayer.set(track.layer, track);
+      nextTracks.push(track);
+    }
+
+    for (const [trackId, track] of this.trackById.entries()) {
+      if (nextTrackById.has(trackId)) continue;
+      if (track.container.parent) {
+        track.container.parent.removeChild(track.container);
+      }
+      if (track.effectFilters) {
+        for (const filter of track.effectFilters.values()) {
+          try {
+            (filter as any)?.destroy?.();
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+
+    this.trackById = nextTrackById;
+    this.trackByLayer = nextTrackByLayer;
+    this.tracks = nextTracks.sort((a, b) => a.layer - b.layer);
+  }
+
+  private getTrackRuntimeForClip(
+    clip: Pick<CompositorClip, 'trackId' | 'layer'>,
+  ): CompositorTrack | null {
+    if (clip.trackId) {
+      return this.trackById.get(clip.trackId) ?? this.trackByLayer.get(clip.layer) ?? null;
+    }
+    return this.trackByLayer.get(clip.layer) ?? null;
+  }
+
+  private sortTrackContainerChildren() {
+    for (const track of this.tracks) {
+      track.container.children.sort((a: any, b: any) => {
+        const aClip = this.clipById.get((a as any)?.__clipId ?? '') as CompositorClip | undefined;
+        const bClip = this.clipById.get((b as any)?.__clipId ?? '') as CompositorClip | undefined;
+
+        const aStartUs = aClip?.startUs ?? 0;
+        const bStartUs = bClip?.startUs ?? 0;
+        if (aStartUs !== bStartUs) {
+          return aStartUs - bStartUs;
+        }
+
+        const aEndUs = aClip?.endUs ?? 0;
+        const bEndUs = bClip?.endUs ?? 0;
+        if (aEndUs !== bEndUs) {
+          return aEndUs - bEndUs;
+        }
+
+        return String((a as any)?.__clipId ?? '').localeCompare(String((b as any)?.__clipId ?? ''));
+      });
+    }
+  }
 
   private async withVideoSampleSlot<T>(task: () => Promise<T>): Promise<T> {
     const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
@@ -242,6 +388,7 @@ export class VideoCompositor {
     const nextMaster =
       meta && Array.isArray((meta as any).masterEffects) ? (meta as any).masterEffects : null;
     this.masterEffects = nextMaster;
+    this.syncTrackRuntimes(timelineClips);
     this.stageSortDirty = true;
 
     const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
@@ -287,6 +434,10 @@ export class VideoCompositor {
           ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
           : undefined;
       const layer = Math.round(Number(clipData.layer ?? 0));
+      const trackId =
+        typeof clipData.trackId === 'string' && clipData.trackId.length > 0
+          ? clipData.trackId
+          : this.getTrackRuntimeForClip({ layer })?.id;
       const requestedTimelineDurationUs = Math.max(
         0,
         Math.round(Number(clipData.timelineRange?.durationUs ?? 0)),
@@ -344,10 +495,15 @@ export class VideoCompositor {
         reusable.speed = speed;
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
+        reusable.trackId = trackId;
         reusable.opacity = clipData.opacity;
         reusable.blendMode = resolveBlendMode((clipData as any).blendMode);
         reusable.effects = clipData.effects;
         reusable.transform = (clipData as any).transform;
+        const reusableTrack = this.getTrackRuntimeForClip(reusable);
+        if (reusableTrack && reusable.sprite.parent !== reusableTrack.container) {
+          reusableTrack.container.addChild(reusable.sprite);
+        }
         if (reusable.clipKind === 'solid') {
           reusable.backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
           reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
@@ -375,13 +531,13 @@ export class VideoCompositor {
         sprite.height = 1;
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-        this.app.stage.addChild(sprite);
 
         const backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
         sprite.tint = parseHexColor(backgroundColor);
 
         const compositorClip: CompositorClip = {
           itemId,
+          trackId,
           layer,
           startUs,
           endUs,
@@ -405,6 +561,13 @@ export class VideoCompositor {
         };
 
         (compositorClip as any).clipType = 'background';
+
+        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
+        if (trackRuntime) {
+          trackRuntime.container.addChild(sprite);
+        } else {
+          this.app.stage.addChild(sprite);
+        }
 
         this.applySolidLayout(compositorClip);
 
@@ -436,13 +599,13 @@ export class VideoCompositor {
         sprite.height = this.height;
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-        this.app.stage.addChild(sprite);
 
         const canvasSource = new CanvasSource({ resource: clipCanvas as any });
         sprite.texture.source = canvasSource as any;
 
         const compositorClip: CompositorClip = {
           itemId,
+          trackId,
           layer,
           startUs,
           endUs,
@@ -470,6 +633,13 @@ export class VideoCompositor {
 
         (compositorClip as any).clipType = 'text';
 
+        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
+        if (trackRuntime) {
+          trackRuntime.container.addChild(sprite);
+        } else {
+          this.app.stage.addChild(sprite);
+        }
+
         this.drawTextClip(compositorClip);
         this.applySolidLayout(compositorClip);
 
@@ -492,10 +662,10 @@ export class VideoCompositor {
         sprite.height = this.height;
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-        this.app.stage.addChild(sprite);
 
         const compositorClip: CompositorClip = {
           itemId,
+          trackId,
           layer,
           startUs,
           endUs,
@@ -518,6 +688,13 @@ export class VideoCompositor {
         };
 
         (compositorClip as any).clipType = 'adjustment';
+
+        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
+        if (trackRuntime) {
+          trackRuntime.container.addChild(sprite);
+        } else {
+          this.app.stage.addChild(sprite);
+        }
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -556,7 +733,6 @@ export class VideoCompositor {
         sprite.height = 1;
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-        this.app.stage.addChild(sprite);
 
         let bmp: ImageBitmap | null = null;
         try {
@@ -582,6 +758,7 @@ export class VideoCompositor {
 
         const compositorClip: CompositorClip = {
           itemId,
+          trackId,
           layer,
           sourcePath,
           fileHandle,
@@ -607,6 +784,13 @@ export class VideoCompositor {
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
         };
+
+        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
+        if (trackRuntime) {
+          trackRuntime.container.addChild(sprite);
+        } else {
+          this.app.stage.addChild(sprite);
+        }
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -650,10 +834,10 @@ export class VideoCompositor {
         sprite.height = 1;
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-        this.app.stage.addChild(sprite);
 
         const compositorClip: CompositorClip = {
           itemId,
+          trackId,
           layer,
           sourcePath,
           fileHandle,
@@ -683,6 +867,13 @@ export class VideoCompositor {
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
         };
+
+        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
+        if (trackRuntime) {
+          trackRuntime.container.addChild(sprite);
+        } else {
+          this.app.stage.addChild(sprite);
+        }
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -724,6 +915,7 @@ export class VideoCompositor {
     const nextMaster =
       meta && Array.isArray((meta as any).masterEffects) ? (meta as any).masterEffects : null;
     this.masterEffects = nextMaster;
+    this.syncTrackRuntimes(timelineClips);
 
     const byId = new Map<string, any>();
     for (const clipData of timelineClips) {
@@ -769,12 +961,20 @@ export class VideoCompositor {
       clip.speed = speed;
       clip.freezeFrameSourceUs = freezeFrameSourceUs;
       clip.layer = layer;
+      clip.trackId =
+        typeof next.trackId === 'string' && next.trackId.length > 0
+          ? next.trackId
+          : this.getTrackRuntimeForClip({ layer })?.id;
       clip.opacity = next.opacity;
       clip.blendMode = resolveBlendMode((next as any).blendMode);
       clip.effects = next.effects;
       clip.transform = (next as any).transform;
       clip.transitionIn = (next as any).transitionIn;
       clip.transitionOut = (next as any).transitionOut;
+      const trackRuntime = this.getTrackRuntimeForClip(clip);
+      if (trackRuntime && clip.sprite.parent !== trackRuntime.container) {
+        trackRuntime.container.addChild(clip.sprite);
+      }
       if (clip.clipKind === 'solid') {
         clip.backgroundColor = String(
           (next as any).backgroundColor ?? clip.backgroundColor ?? '#000000',
@@ -826,6 +1026,13 @@ export class VideoCompositor {
         active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
         this.activeSortDirty = false;
       }
+
+      for (const track of this.tracks) {
+        track.container.alpha = track.opacity ?? 1;
+        track.container.blendMode = track.blendMode ?? 'normal';
+        this.applyTrackEffects(track);
+      }
+
       const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
 
       for (const clip of active) {
@@ -1027,12 +1234,12 @@ export class VideoCompositor {
       }
 
       if (this.stageSortDirty) {
-        // Ensure stage ordering matches layer ordering for correct blending
+        this.sortTrackContainerChildren();
         this.app.stage.children.sort((a: any, b: any) => {
-          const aClip = this.clipById.get((a as any).__clipId ?? '') as any;
-          const bClip = this.clipById.get((b as any).__clipId ?? '') as any;
-          const aLayer = typeof aClip?.layer === 'number' ? aClip.layer : 0;
-          const bLayer = typeof bClip?.layer === 'number' ? bClip.layer : 0;
+          const aTrack = this.trackById.get((a as any).__trackId ?? '') as any;
+          const bTrack = this.trackById.get((b as any).__trackId ?? '') as any;
+          const aLayer = typeof aTrack?.layer === 'number' ? aTrack.layer : 0;
+          const bLayer = typeof bTrack?.layer === 'number' ? bTrack.layer : 0;
           return aLayer - bLayer;
         });
         this.stageSortDirty = false;
@@ -1069,11 +1276,14 @@ export class VideoCompositor {
 
         let applied = false;
         for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          const clipId = (child as any)?.__clipId;
-          if (!clipId) continue;
-          const clip = this.clipById.get(clipId);
-          if (!clip || clip.clipKind !== 'adjustment' || !clip.sprite.visible) continue;
+          const child = children[i] as Container | undefined;
+          if (!child) continue;
+
+          const adjustmentClip = this.clips.find(
+            (clip) =>
+              clip.clipKind === 'adjustment' && clip.sprite.visible && clip.sprite.parent === child,
+          );
+          if (!adjustmentClip) continue;
 
           // Hide adjustment layer itself and everything above it
           for (let j = i; j < children.length; j++) {
@@ -1096,7 +1306,7 @@ export class VideoCompositor {
           }
 
           if (this.adjustmentTexture) {
-            clip.sprite.texture = this.adjustmentTexture;
+            adjustmentClip.sprite.texture = this.adjustmentTexture;
           }
 
           applied = true;
@@ -1297,6 +1507,54 @@ export class VideoCompositor {
     }
 
     clip.sprite.filters = filters.length > 0 ? filters : null;
+  }
+
+  private applyTrackEffects(track: CompositorTrack) {
+    if (!track.effectFilters) {
+      track.effectFilters = new Map();
+    }
+
+    const filters: Filter[] = [];
+    const seenIds = new Set<string>();
+
+    if (Array.isArray(track.effects) && track.effects.length > 0) {
+      for (const effect of track.effects) {
+        if (!effect?.enabled) continue;
+        if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
+        if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
+
+        const manifest = getEffectManifest(effect.type);
+        if (!manifest) continue;
+
+        seenIds.add(effect.id);
+        let filter = track.effectFilters.get(effect.id);
+        if (!filter) {
+          filter = manifest.createFilter();
+          track.effectFilters.set(effect.id, filter);
+        }
+
+        try {
+          manifest.updateFilter(filter, effect);
+        } catch (err) {
+          console.error('[VideoCompositor] Failed to update track effect filter', err);
+          continue;
+        }
+
+        filters.push(filter);
+      }
+    }
+
+    for (const [id, filter] of track.effectFilters.entries()) {
+      if (seenIds.has(id)) continue;
+      track.effectFilters.delete(id);
+      try {
+        (filter as any)?.destroy?.();
+      } catch {
+        // ignore
+      }
+    }
+
+    track.container.filters = filters.length > 0 ? filters : null;
   }
 
   private applyMasterEffects() {
@@ -1810,14 +2068,36 @@ export class VideoCompositor {
     for (const clip of this.clips) {
       this.destroyClip(clip);
     }
+    for (const track of this.tracks) {
+      if (track.effectFilters) {
+        for (const filter of track.effectFilters.values()) {
+          try {
+            (filter as any)?.destroy?.();
+          } catch {
+            // ignore
+          }
+        }
+        track.effectFilters.clear();
+      }
+      track.container.filters = null;
+      if (track.container.parent) {
+        track.container.parent.removeChild(track.container);
+      }
+      track.container.removeChildren();
+      track.container.destroy({ children: false });
+    }
     this.clips = [];
+    this.tracks = [];
     this.clipById.clear();
+    this.trackById.clear();
+    this.trackByLayer.clear();
     this.replacedClipIds.clear();
     this.lastRenderedTimeUs = 0;
     this.activeTracker.reset();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
     this.maxDurationUs = 0;
+    this.stageVisibilityState = [];
   }
 
   destroy() {

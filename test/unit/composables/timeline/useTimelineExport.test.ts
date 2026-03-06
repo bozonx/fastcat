@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildVideoWorkerPayload,
   getExt,
   sanitizeBaseName,
   resolveNextAvailableFilename,
@@ -65,6 +66,50 @@ describe('useTimelineExport pure functions', () => {
       videoCodec: 'avc1.42E032',
       audioCodec: 'aac',
     });
+  });
+
+  it('buildVideoWorkerPayload should emit meta, track and clip items', () => {
+    const payload = buildVideoWorkerPayload({
+      masterEffects: [{ id: 'master-1', type: 'blur', enabled: true, amount: 4 } as any],
+      tracks: [
+        {
+          id: 'v1',
+          layer: 2,
+          opacity: 0.6,
+          blendMode: 'screen',
+          effects: [{ id: 'track-1', type: 'blur', enabled: true, amount: 2 } as any],
+        },
+      ],
+      clips: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          layer: 2,
+          source: { path: '/video.mp4' },
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    expect(payload).toMatchObject([
+      { kind: 'meta' },
+      {
+        kind: 'track',
+        id: 'v1',
+        layer: 2,
+        opacity: 0.6,
+        blendMode: 'screen',
+      },
+      {
+        kind: 'clip',
+        id: 'c1',
+        trackId: 'v1',
+        layer: 2,
+      },
+    ]);
   });
 
   it('toWorkerTimelineClips should attach layer (default 0)', async () => {
@@ -134,6 +179,41 @@ describe('useTimelineExport pure functions', () => {
     const clips = await toWorkerTimelineClips(items, projectStoreMock);
 
     expect(clips[0]?.transform).toEqual((items[0] as any).transform);
+  });
+
+  it('toWorkerTimelineClips should keep top-level clip compositing separate from track compositing', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 'v1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        opacity: 0.5,
+        blendMode: 'multiply',
+        effects: [{ id: 'clip-1', type: 'blur', enabled: true, amount: 1 } as any],
+      } as any,
+    ];
+
+    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, {
+      layer: 3,
+      trackKind: 'video',
+    });
+
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toMatchObject({
+      id: 'c1',
+      trackId: 'v1',
+      layer: 3,
+      opacity: 0.5,
+      blendMode: 'multiply',
+    });
+    expect(clips[0]?.effects).toEqual([{ id: 'clip-1', type: 'blur', enabled: true, amount: 1 }]);
   });
 
   it('toWorkerTimelineClips should respect item.layer when options.layer is not provided', async () => {
@@ -226,6 +306,7 @@ describe('useTimelineExport pure functions', () => {
     expect(clips.length).toBe(1);
     expect(clips[0]?.clipType).toBe('media');
     expect(clips[0]?.source?.path).toBe('_timelines/media/video.mp4');
+    expect(clips[0]?.trackId).toBeUndefined();
   });
 
   it('toWorkerTimelineClips should apply nested timeline parent audio gain/balance/fades when trackKind is audio', async () => {

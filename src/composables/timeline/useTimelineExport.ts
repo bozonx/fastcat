@@ -24,6 +24,7 @@ import type {
   ClipEffect,
   TimelineSelectionRange,
   TimelineBlendMode,
+  TimelineTrack,
 } from '~/timeline/types';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -88,6 +89,65 @@ export interface WorkerTimelineClip {
   transitionOut?: import('~/timeline/types').ClipTransition;
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
+}
+
+export interface WorkerTimelineTrack {
+  kind: 'track';
+  id: string;
+  layer: number;
+  opacity?: number;
+  blendMode?: TimelineBlendMode;
+  effects?: unknown[];
+}
+
+export interface WorkerTimelineMeta {
+  kind: 'meta';
+  masterEffects: unknown[];
+}
+
+export type WorkerVideoPayloadItem = WorkerTimelineMeta | WorkerTimelineTrack | WorkerTimelineClip;
+
+export function buildWorkerVideoTracks(
+  tracks: TimelineTrack[],
+): Array<Pick<TimelineTrack, 'id' | 'opacity' | 'blendMode' | 'effects'> & { layer: number }> {
+  const visibleVideoTracks = tracks.filter((track) => track.kind === 'video' && !track.videoHidden);
+
+  return visibleVideoTracks.map((track, index) => ({
+    id: track.id,
+    opacity: track.opacity,
+    blendMode: track.blendMode,
+    effects: track.effects,
+    layer: visibleVideoTracks.length - 1 - index,
+  }));
+}
+
+export function buildVideoWorkerPayload(input: {
+  clips: WorkerTimelineClip[];
+  tracks?: Array<
+    Pick<TimelineTrack, 'id' | 'opacity' | 'blendMode' | 'effects'> & {
+      layer: number;
+    }
+  >;
+  masterEffects?: unknown[];
+}): WorkerVideoPayloadItem[] {
+  const meta =
+    Array.isArray(input.masterEffects) && input.masterEffects.length > 0
+      ? ([{ kind: 'meta', masterEffects: input.masterEffects }] satisfies WorkerTimelineMeta[])
+      : [];
+
+  const tracks: WorkerTimelineTrack[] = (input.tracks ?? []).map((track) => ({
+    kind: 'track',
+    id: track.id,
+    layer: track.layer,
+    opacity: track.opacity,
+    blendMode: track.blendMode,
+    effects:
+      Array.isArray(track.effects) && track.effects.length > 0
+        ? clonePlain(track.effects)
+        : undefined,
+  }));
+
+  return [...meta, ...tracks, ...input.clips];
 }
 
 function trimWorkerClipToRange(
@@ -265,6 +325,7 @@ export async function toWorkerTimelineClips(
                     clips.push({
                       ...resolvedNClip,
                       id: `${item.id}_nested_${resolvedNClip.id}`,
+                      trackId: undefined,
                       layer: nestedLayer,
                       audioGain: mergeGain((item as any).audioGain, resolvedNClip.audioGain),
                       audioBalance: mergeBalance(
@@ -350,6 +411,7 @@ export async function toWorkerTimelineClips(
                   clips.push({
                     ...resolvedNClip,
                     id: `${item.id}_nested_${resolvedNClip.id}`,
+                    trackId: resolvedNClip.trackId,
                     layer: 0,
                     audioGain: mergeGain((item as any).audioGain, resolvedNClip.audioGain),
                     audioBalance: mergeBalance(
@@ -727,13 +789,9 @@ export function useTimelineExport() {
       const track = videoTracks[index];
       if (!track) continue;
 
-      const trackEffects = track.effects ? JSON.parse(JSON.stringify(track.effects)) : [];
       const clips = await toWorkerTimelineClips(track.items ?? [], projectStore, {
         layer: videoTracks.length - 1 - index,
         trackKind: 'video',
-        parentOpacity: track.opacity ?? 1,
-        parentBlendMode: track.blendMode,
-        parentEffects: trackEffects,
       });
 
       videoClips.push(...clips);
@@ -745,11 +803,11 @@ export function useTimelineExport() {
           .filter((clip): clip is WorkerTimelineClip => clip !== null)
       : videoClips;
 
-    const masterEffects = doc?.metadata?.gran?.masterEffects;
-    const videoPayload: any[] =
-      Array.isArray(masterEffects) && masterEffects.length > 0
-        ? [{ kind: 'meta', masterEffects }, ...croppedVideoClips]
-        : [...croppedVideoClips];
+    const videoPayload = buildVideoWorkerPayload({
+      clips: croppedVideoClips,
+      tracks: buildWorkerVideoTracks(videoTracks),
+      masterEffects: doc?.metadata?.gran?.masterEffects,
+    });
 
     const effectiveAudioItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
