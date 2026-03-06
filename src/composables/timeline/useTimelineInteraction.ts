@@ -279,6 +279,13 @@ export function useTimelineInteraction(
       const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
       const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
 
+      const selectedMovableItemIds = timelineStore.selectedItemIds.filter((selectedId) => {
+        const selectedItem = tracks.value
+          .find((track) => track.items.some((trackItem) => trackItem.id === selectedId))
+          ?.items.find((trackItem) => trackItem.id === selectedId);
+        return selectedItem?.kind === 'clip' && !selectedItem.locked;
+      });
+
       const startUs = computeSnappedStartUs({
         rawStartUs,
         draggingItemDurationUs: dragAnchorDurationUs.value,
@@ -303,8 +310,7 @@ export function useTimelineInteraction(
         }
       }
 
-      const isMulti =
-        timelineStore.selectedItemIds.includes(itemId) && timelineStore.selectedItemIds.length > 1;
+      const isMulti = selectedMovableItemIds.includes(itemId) && selectedMovableItemIds.length > 1;
 
       if (isMulti && dragStartSnapshot.value) {
         const deltaUs = startUs - dragAnchorStartUs.value;
@@ -324,7 +330,7 @@ export function useTimelineInteraction(
           }
         }
 
-        for (const selectedId of timelineStore.selectedItemIds) {
+        for (const selectedId of selectedMovableItemIds) {
           let origTrackId = '';
 
           let origStartUs = 0;
