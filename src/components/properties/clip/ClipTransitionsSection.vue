@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
+import { getAllTransitionManifests } from '~/transitions';
 
 const props = defineProps<{
   isVideoTrack: boolean;
-  transitionIn: { type: string; durationUs: number } | null;
-  transitionOut: { type: string; durationUs: number } | null;
+  transitionIn: import('~/timeline/types').ClipTransition | null;
+  transitionOut: import('~/timeline/types').ClipTransition | null;
   clipDurationUs: number;
 }>();
 
@@ -12,9 +14,17 @@ const emit = defineEmits<{
   selectEdge: [edge: 'in' | 'out'];
   toggle: [edge: 'in' | 'out'];
   updateDuration: [payload: { edge: 'in' | 'out'; durationSec: number }];
+  updateType: [payload: { edge: 'in' | 'out'; type: string }];
 }>();
 
 const { t } = useI18n();
+const transitionOptions = computed(() =>
+  getAllTransitionManifests().map((manifest) => ({
+    label: manifest.name,
+    value: manifest.type,
+    icon: manifest.icon,
+  })),
+);
 </script>
 
 <template>
@@ -59,6 +69,15 @@ const { t } = useI18n();
         </div>
 
         <div v-if="props.transitionIn" class="pl-1.5 border-l-2 border-primary-500/40">
+          <USelectMenu
+            :model-value="props.transitionIn.type"
+            :items="transitionOptions"
+            value-key="value"
+            label-key="label"
+            size="xs"
+            class="mb-2"
+            @update:model-value="(value: any) => value && emit('updateType', { edge: 'in', type: value?.value ?? value })"
+          />
           <DurationSliderInput
             :model-value="props.transitionIn.durationUs / 1_000_000"
             :min="0.1"
@@ -108,6 +127,15 @@ const { t } = useI18n();
         </div>
 
         <div v-if="props.transitionOut" class="pl-1.5 border-l-2 border-primary-500/40">
+          <USelectMenu
+            :model-value="props.transitionOut.type"
+            :items="transitionOptions"
+            value-key="value"
+            label-key="label"
+            size="xs"
+            class="mb-2"
+            @update:model-value="(value: any) => value && emit('updateType', { edge: 'out', type: value?.value ?? value })"
+          />
           <DurationSliderInput
             :model-value="props.transitionOut.durationUs / 1_000_000"
             :min="0.1"

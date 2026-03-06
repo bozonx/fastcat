@@ -1460,6 +1460,19 @@ export class VideoCompositor {
     });
   }
 
+  private renderDisplayObjectToTextureForcedVisible(
+    displayObject: Container,
+    texture: RenderTexture,
+  ) {
+    const previousVisible = displayObject.visible;
+    displayObject.visible = true;
+    try {
+      this.renderDisplayObjectToTexture(displayObject, texture);
+    } finally {
+      displayObject.visible = previousVisible;
+    }
+  }
+
   private renderLowerLayersToTexture(layer: number, texture: RenderTexture) {
     if (!this.app?.renderer) return;
 
@@ -1523,11 +1536,11 @@ export class VideoCompositor {
         this.renderLowerLayersToTexture(clip.layer, fromTexture);
       } else {
         prevClip = this.findPrevClipOnLayer(clip);
-        if (!prevClip || !prevClip.sprite.visible) {
+        if (!prevClip) {
           transitionSprite.visible = false;
           continue;
         }
-        this.renderDisplayObjectToTexture(prevClip.sprite, fromTexture);
+        this.renderDisplayObjectToTextureForcedVisible(prevClip.sprite, fromTexture);
       }
 
       state.manifest.updateFilter?.(clip.transitionFilter, {
