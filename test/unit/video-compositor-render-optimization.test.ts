@@ -106,4 +106,58 @@ describe('VideoCompositor render optimization', () => {
       expect.objectContaining({ id: 'track_2', layer: 2, opacity: 1, blendMode: 'normal' }),
     ]);
   });
+
+  it('does not mark text clip dirty when style values are unchanged', () => {
+    const compositor = new VideoCompositor() as any;
+    const clipStyle = {
+      width: 320,
+      fontSize: 64,
+      fontWeight: '700',
+      color: '#fff',
+      align: 'center',
+      verticalAlign: 'middle',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      backgroundColor: '#000000',
+      padding: { top: 10, right: 20, bottom: 10, left: 20 },
+    };
+    const clip = {
+      itemId: 'text-1',
+      startUs: 0,
+      endUs: 1_000,
+      durationUs: 1_000,
+      sourceStartUs: 0,
+      sourceDurationUs: 1_000,
+      layer: 0,
+      trackId: 'track_0',
+      clipKind: 'text',
+      text: 'Hello',
+      style: clipStyle,
+      textDirty: false,
+      transitionSprite: null,
+      transitionFilter: null,
+      transitionFilterType: null,
+      sprite: { parent: null },
+      effectFilters: new Map(),
+    } as any;
+
+    compositor.clips = [clip];
+    compositor.trackById = new Map();
+    compositor.tracks = [];
+    compositor.transitionFilters = new Map();
+    compositor.updateTimelineLayout([
+      {
+        kind: 'clip',
+        id: 'text-1',
+        trackId: 'track_0',
+        layer: 0,
+        timelineRange: { startUs: 0, durationUs: 1_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000 },
+        text: 'Hello',
+        style: { ...clipStyle },
+      },
+    ]);
+
+    expect(clip.textDirty).toBe(false);
+  });
 });

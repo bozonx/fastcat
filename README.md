@@ -41,6 +41,9 @@ pnpm build
 - `src/timeline`: Core timeline logic and OTIO serialization.
 - `src/composables/monitor`: Monitor composables (timeline, playback, core orchestration).
 - `src/utils/video-editor`: Video composition and worker client logic.
+- Clip transforms use a shared layout helper in `src/utils/video-editor/clip-layout.ts` so monitor overlays and compositor rendering resolve the same anchor, fit and translation math.
+- Clip transform `position` values are stored in 1920x1080 design-space units and are scaled to the active preview/export resolution during layout.
+- Text clip style sizing (`width`, `fontSize`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the same design-space baseline during rendering.
 - `src/utils/dev-logger.ts`: Dev-only logger for verbose diagnostics (disabled in production).
 - `src/workers`: Web Workers for heavy lifting (video decoding/encoding).
 

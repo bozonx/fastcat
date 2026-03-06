@@ -320,6 +320,7 @@ describe('timeline/commands update_clip_properties', () => {
       itemId: 't1',
       properties: {
         style: {
+          width: 333.8,
           fontSize: 12.4,
           verticalAlign: 'bottom',
           lineHeight: 2,
@@ -333,6 +334,7 @@ describe('timeline/commands update_clip_properties', () => {
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.style).toEqual({
+      width: 334,
       fontSize: 12,
       verticalAlign: 'bottom',
       lineHeight: 2,
