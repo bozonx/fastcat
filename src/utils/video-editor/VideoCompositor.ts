@@ -15,7 +15,12 @@ import {
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
-import { getTransitionManifest } from '../../transitions';
+import {
+  DEFAULT_TRANSITION_CURVE,
+  DEFAULT_TRANSITION_MODE,
+  getTransitionManifest,
+  normalizeTransitionParams,
+} from '../../transitions';
 import type {
   TextClipStyle,
   ClipEffect,
@@ -1160,7 +1165,8 @@ export class VideoCompositor {
 
       for (const clip of active) {
         const tr = clip.transitionIn;
-        if (!tr || tr.mode !== 'blend_previous' || tr.durationUs <= 0) continue;
+        const mode = tr?.mode ?? DEFAULT_TRANSITION_MODE;
+        if (!tr || mode !== 'blend_previous' || tr.durationUs <= 0) continue;
         const localTimeUs = timeUs - clip.startUs;
         if (localTimeUs >= tr.durationUs) continue;
 
@@ -1170,7 +1176,11 @@ export class VideoCompositor {
         const manifest = getTransitionManifest(tr.type);
         const rawProgress = Math.max(0, Math.min(1, localTimeUs / tr.durationUs));
         const shadowAlpha = manifest
-          ? manifest.computeOutOpacity(rawProgress, {}, tr.curve ?? 'linear')
+          ? manifest.computeOutOpacity(
+              rawProgress,
+              (normalizeTransitionParams(tr.type, tr.params) as any) ?? {},
+              tr.curve ?? DEFAULT_TRANSITION_CURVE,
+            )
           : 1 - rawProgress;
 
         prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
@@ -1534,7 +1544,7 @@ export class VideoCompositor {
         continue;
       }
 
-      const mode = state.transition.mode ?? 'blend_previous';
+      const mode = state.transition.mode ?? DEFAULT_TRANSITION_MODE;
       if (mode !== 'blend_previous' && mode !== 'blend' && mode !== 'composite') {
         continue;
       }
@@ -1549,7 +1559,7 @@ export class VideoCompositor {
       const transitionSprite = this.ensureTransitionSprite(clip);
       this.renderDisplayObjectToTexture(clip.sprite, clip.transitionToTexture);
 
-      let fromTexture = clip.transitionFromTexture;
+      const fromTexture = clip.transitionFromTexture;
       let prevClip: CompositorClip | null = null;
 
       if (mode === 'composite') {
@@ -1654,15 +1664,19 @@ export class VideoCompositor {
 
     if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
       const dur = clip.transitionIn.durationUs;
-      const curve = clip.transitionIn.curve ?? 'linear';
+      const curve = clip.transitionIn.curve ?? DEFAULT_TRANSITION_CURVE;
       // In composite mode the clip fades from the lower track composition — opacity still applies
       if (localTimeUs < dur) {
         const manifest = getTransitionManifest(clip.transitionIn.type);
         if (manifest && manifest.renderMode !== 'shader') {
           const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
+          const params = normalizeTransitionParams(
+            clip.transitionIn.type,
+            clip.transitionIn.params,
+          );
           opacity = Math.min(
             opacity,
-            baseOpacity * manifest.computeInOpacity(rawProgress, {}, curve),
+            baseOpacity * manifest.computeInOpacity(rawProgress, (params as any) ?? {}, curve),
           );
         }
       }
@@ -1670,16 +1684,20 @@ export class VideoCompositor {
 
     if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
       const dur = clip.transitionOut.durationUs;
-      const curve = clip.transitionOut.curve ?? 'linear';
+      const curve = clip.transitionOut.curve ?? DEFAULT_TRANSITION_CURVE;
       const clipDurUs = clip.durationUs;
       const outStartUs = clipDurUs - dur;
       if (localTimeUs >= outStartUs) {
         const manifest = getTransitionManifest(clip.transitionOut.type);
         if (manifest && manifest.renderMode !== 'shader') {
           const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
+          const params = normalizeTransitionParams(
+            clip.transitionOut.type,
+            clip.transitionOut.params,
+          );
           opacity = Math.min(
             opacity,
-            baseOpacity * manifest.computeOutOpacity(rawProgress, {}, curve),
+            baseOpacity * manifest.computeOutOpacity(rawProgress, (params as any) ?? {}, curve),
           );
         }
       }
@@ -1702,7 +1720,7 @@ export class VideoCompositor {
       transition,
       manifest,
       progress,
-      curve: transition.curve ?? 'linear',
+      curve: transition.curve ?? DEFAULT_TRANSITION_CURVE,
     };
   }
 

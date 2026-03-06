@@ -3,7 +3,7 @@ import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface ClockParams {
-  softness?: number;
+  direction: 'clockwise' | 'counterclockwise';
 }
 
 const vertex = `
@@ -24,7 +24,7 @@ in vec2 vTextureCoord;
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
-uniform float uSoftness;
+uniform float uDirection;
 
 const float PI = 3.1415926535897932384626433832795;
 
@@ -41,9 +41,16 @@ void main(void) {
     angle += PI * 2.0;
   }
 
+  if (uDirection < 0.0) {
+    angle = PI * 2.0 - angle;
+    if (angle >= PI * 2.0) {
+      angle -= PI * 2.0;
+    }
+  }
+
   float normalizedAngle = angle / (PI * 2.0);
   float progress = clamp(uProgress, 0.0, 1.0);
-  float softness = max(0.0001, uSoftness);
+  float softness = 0.001;
   
   // normalizedAngle < progress means we reveal the incoming (to) texture
   float reveal = smoothstep(progress - softness, progress + softness, normalizedAngle);
@@ -55,14 +62,36 @@ void main(void) {
 }
 `;
 
+function normalizeClockParams(params?: Record<string, unknown>): ClockParams {
+  return {
+    direction: params?.direction === 'counterclockwise' ? 'counterclockwise' : 'clockwise',
+  };
+}
+
 export const clockManifest: TransitionManifest<ClockParams> = {
   type: 'clock',
   name: 'Clock',
   icon: 'i-heroicons-clock',
   defaultDurationUs: 600_000,
-  defaultParams: {
-    softness: 0.01,
-  },
+  defaultParams: normalizeClockParams(),
+  normalizeParams: normalizeClockParams,
+  paramFields: [
+    {
+      key: 'direction',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
+      options: [
+        {
+          value: 'clockwise',
+          labelKey: 'granVideoEditor.timeline.transition.directionClockwise',
+        },
+        {
+          value: 'counterclockwise',
+          labelKey: 'granVideoEditor.timeline.transition.directionCounterclockwise',
+        },
+      ],
+    },
+  ],
   renderMode: 'shader',
   createFilter: () =>
     new Filter({
@@ -71,7 +100,7 @@ export const clockManifest: TransitionManifest<ClockParams> = {
         uFromTexture: Texture.WHITE.source,
         clockUniforms: {
           uProgress: { value: 0, type: 'f32' },
-          uSoftness: { value: 0.01, type: 'f32' },
+          uDirection: { value: 1, type: 'f32' },
         },
       },
     }),
@@ -81,13 +110,10 @@ export const clockManifest: TransitionManifest<ClockParams> = {
     if (!uniforms) return;
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
-    const softnessRaw = Number((context.params as ClockParams | undefined)?.softness ?? 0.01);
+    const params = normalizeClockParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uSoftness = Math.max(
-      0.0001,
-      Math.min(0.1, Number.isFinite(softnessRaw) ? softnessRaw : 0.01),
-    );
+    uniforms.uDirection = params.direction === 'counterclockwise' ? -1 : 1;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

@@ -3,55 +3,92 @@ import { computed, ref } from 'vue';
 
 export type MainPanelFocus = 'monitor' | 'timeline';
 export type TempPanelFocus = 'none' | 'left' | 'right';
-export type AnyPanelFocus = MainPanelFocus | Exclude<TempPanelFocus, 'none'>;
+export type PanelFocusId =
+  | MainPanelFocus
+  | 'left'
+  | 'right'
+  | 'project'
+  | 'filesBrowser'
+  | 'properties'
+  | 'audioMixer'
+  | 'exportForm'
+  | `dynamic:${string}`;
+export type AnyPanelFocus = PanelFocusId;
+
+const MAIN_PANEL_IDS: MainPanelFocus[] = ['monitor', 'timeline'];
+const LEGACY_TEMP_PANEL_MAP: Record<Exclude<TempPanelFocus, 'none'>, PanelFocusId> = {
+  left: 'left',
+  right: 'right',
+};
+
+function isMainPanelFocus(panelId: string | null | undefined): panelId is MainPanelFocus {
+  return panelId === 'monitor' || panelId === 'timeline';
+}
+
+function toLegacyTempFocus(panelId: string | null | undefined): TempPanelFocus {
+  if (panelId === 'left') return 'left';
+  if (panelId === 'right') return 'right';
+  return 'none';
+}
 
 export const useFocusStore = defineStore('focus', () => {
   const activeTimelinePath = ref<string | null>(null);
 
   const mainFocusByTimeline = ref<Record<string, MainPanelFocus>>({});
+  const activePanelId = ref<PanelFocusId>('monitor');
+  const lastCutMainPanelId = ref<MainPanelFocus>('monitor');
+  const lastNonMainPanelId = ref<Exclude<PanelFocusId, MainPanelFocus> | null>(null);
 
-  const mainFocus = ref<MainPanelFocus>('monitor');
-  const lastMainFocusBeforeTemp = ref<MainPanelFocus>('monitor');
-  const tempFocus = ref<TempPanelFocus>('none');
-
-  const effectiveFocus = computed<AnyPanelFocus>(() => {
-    if (tempFocus.value === 'left') return 'left';
-    if (tempFocus.value === 'right') return 'right';
-    return mainFocus.value;
+  const mainFocus = computed<MainPanelFocus>(() => {
+    if (isMainPanelFocus(activePanelId.value)) {
+      return activePanelId.value;
+    }
+    return lastCutMainPanelId.value;
   });
 
-  function syncMainFocusToTimeline() {
+  const tempFocus = computed<TempPanelFocus>(() => toLegacyTempFocus(activePanelId.value));
+  const effectiveFocus = computed<AnyPanelFocus>(() => activePanelId.value);
+
+  function syncMainFocusToTimeline(nextMainFocus: MainPanelFocus) {
     const path = activeTimelinePath.value;
     if (!path) return;
     mainFocusByTimeline.value = {
       ...mainFocusByTimeline.value,
-      [path]: mainFocus.value,
+      [path]: nextMainFocus,
     };
+  }
+
+  function setPanelFocus(panelId: PanelFocusId) {
+    activePanelId.value = panelId;
+
+    if (isMainPanelFocus(panelId)) {
+      lastCutMainPanelId.value = panelId;
+      syncMainFocusToTimeline(panelId);
+      return;
+    }
+
+    lastNonMainPanelId.value = panelId;
   }
 
   function setActiveTimelinePath(nextPath: string | null) {
     activeTimelinePath.value = nextPath;
 
     if (!nextPath) {
-      tempFocus.value = 'none';
+      activePanelId.value = lastCutMainPanelId.value;
       return;
     }
 
     const saved = mainFocusByTimeline.value[nextPath];
-    mainFocus.value = saved ?? 'monitor';
-    lastMainFocusBeforeTemp.value = mainFocus.value;
+    const nextMainFocus = saved ?? 'monitor';
+    lastCutMainPanelId.value = nextMainFocus;
 
-    tempFocus.value = 'none';
+    if (isMainPanelFocus(activePanelId.value)) {
+      activePanelId.value = nextMainFocus;
+    }
   }
 
   function setMainFocus(next: MainPanelFocus) {
-    mainFocus.value = next;
-    lastMainFocusBeforeTemp.value = next;
-    syncMainFocusToTimeline();
-
-    if (tempFocus.value !== 'none') {
-      tempFocus.value = 'none';
-    }
+    setPanelFocus(next);
   }
 
   function toggleMainFocus() {
@@ -59,24 +96,31 @@ export const useFocusStore = defineStore('focus', () => {
   }
 
   function setTempFocus(next: Exclude<TempPanelFocus, 'none'>) {
-    if (tempFocus.value === next) return;
-
-    lastMainFocusBeforeTemp.value = mainFocus.value;
-    tempFocus.value = next;
+    setPanelFocus(LEGACY_TEMP_PANEL_MAP[next]);
   }
 
   function clearTempFocus() {
     if (tempFocus.value === 'none') return;
-    tempFocus.value = 'none';
+    activePanelId.value = lastCutMainPanelId.value;
+  }
+
+  function restoreLastNonMainPanel() {
+    if (!lastNonMainPanelId.value) return false;
+    activePanelId.value = lastNonMainPanelId.value;
+    return true;
+  }
+
+  function restoreLastCutMainPanel() {
+    activePanelId.value = lastCutMainPanelId.value;
   }
 
   function handleFocusHotkey() {
-    if (tempFocus.value !== 'none') {
-      clearTempFocus();
+    if (isMainPanelFocus(activePanelId.value)) {
+      toggleMainFocus();
       return;
     }
 
-    toggleMainFocus();
+    restoreLastCutMainPanel();
   }
 
   function isPanelFocused(panel: AnyPanelFocus) {
@@ -88,23 +132,39 @@ export const useFocusStore = defineStore('focus', () => {
     () =>
       effectiveFocus.value === 'monitor' ||
       effectiveFocus.value === 'left' ||
-      effectiveFocus.value === 'right',
+      effectiveFocus.value === 'right' ||
+      String(effectiveFocus.value).startsWith('dynamic:'),
+  );
+
+  const canUsePreviewHotkeys = computed(
+    () =>
+      effectiveFocus.value === 'project' ||
+      effectiveFocus.value === 'left' ||
+      effectiveFocus.value === 'right' ||
+      String(effectiveFocus.value).startsWith('dynamic:'),
   );
 
   return {
+    activePanelId,
     mainFocus,
     tempFocus,
     effectiveFocus,
+    lastCutMainPanelId,
+    lastNonMainPanelId,
 
     canUseTimelineHotkeys,
     canUsePlaybackHotkeys,
+    canUsePreviewHotkeys,
 
     isPanelFocused,
 
     setActiveTimelinePath,
+    setPanelFocus,
     setMainFocus,
     setTempFocus,
     clearTempFocus,
+    restoreLastNonMainPanel,
+    restoreLastCutMainPanel,
 
     handleFocusHotkey,
   };

@@ -38,8 +38,11 @@ const {
   edgeIcon,
   remove,
   selectedCurve,
+  selectedManifest,
   selectedMode,
+  selectedParams,
   selectedType,
+  updateParam,
 } = useClipTransitionPanel({
   edge: toRef(props, 'edge'),
   trackId: toRef(props, 'trackId'),
@@ -59,6 +62,18 @@ const curveOptions = computed(() => [
   { value: 'linear', label: t('granVideoEditor.timeline.transition.curveLinear') },
   { value: 'bezier', label: t('granVideoEditor.timeline.transition.curveBezier') },
 ]);
+
+function getSelectValue(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getNumberValue(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function getColorValue(value: unknown): string {
+  return typeof value === 'string' && value.trim().length > 0 ? value : '#000000';
+}
 </script>
 
 <template>
@@ -133,6 +148,52 @@ const curveOptions = computed(() => [
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.curve') }}</span>
       <AppButtonGroup v-model="selectedCurve" :options="curveOptions" />
+    </div>
+
+    <div v-if="selectedManifest?.paramFields?.length" class="flex flex-col gap-2">
+      <div class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.parameters') }}</div>
+
+      <div
+        v-for="field in selectedManifest.paramFields"
+        :key="`${selectedType}-${field.key}`"
+        class="flex flex-col gap-1"
+      >
+        <span class="text-ui-text-muted">{{ t(field.labelKey) }}</span>
+
+        <USelectMenu
+          v-if="field.kind === 'select'"
+          :model-value="getSelectValue(selectedParams[field.key])"
+          :items="
+            (field.options ?? []).map((option) => ({
+              label: t(option.labelKey),
+              value: option.value,
+            }))
+          "
+          value-key="value"
+          label-key="label"
+          size="xs"
+          @update:model-value="(value: any) => updateParam(field.key, value?.value ?? value)"
+        />
+
+        <UInput
+          v-else-if="field.kind === 'number'"
+          :model-value="getNumberValue(selectedParams[field.key])"
+          type="number"
+          size="xs"
+          :min="field.min"
+          :max="field.max"
+          :step="field.step ?? 0.01"
+          @update:model-value="(value: string | number) => updateParam(field.key, Number(value))"
+        />
+
+        <input
+          v-else-if="field.kind === 'color'"
+          :value="getColorValue(selectedParams[field.key])"
+          type="color"
+          class="h-8 w-full rounded border border-ui-border bg-ui-bg px-1"
+          @input="(event) => updateParam(field.key, (event.target as HTMLInputElement).value)"
+        />
+      </div>
     </div>
   </div>
 </template>

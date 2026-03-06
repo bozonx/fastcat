@@ -36,7 +36,13 @@ describe('timeline/commands update_clip_transition', () => {
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
-    expect(clip.transitionOut).toEqual({ type: 'dissolve', durationUs: 500_000 });
+    expect(clip.transitionOut).toEqual({
+      type: 'dissolve',
+      durationUs: 500_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {},
+    });
     expect(clip.transitionIn).toBeUndefined();
   });
 
@@ -51,7 +57,13 @@ describe('timeline/commands update_clip_transition', () => {
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
-    expect(clip.transitionIn).toEqual({ type: 'dissolve', durationUs: 300_000 });
+    expect(clip.transitionIn).toEqual({
+      type: 'dissolve',
+      durationUs: 300_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {},
+    });
   });
 
   it('removes transitionOut when set to null', () => {
@@ -141,8 +153,20 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextLeft.timelineRange.durationUs).toBe(7_000_000);
     expect(nextRight.timelineRange.startUs).toBe(5_000_000);
     expect(nextRight.timelineRange.durationUs).toBe(5_000_000);
-    expect(nextLeft.transitionOut).toEqual({ type: 'dissolve', durationUs: 2_000_000 });
-    expect(nextRight.transitionIn).toEqual({ type: 'dissolve', durationUs: 2_000_000 });
+    expect(nextLeft.transitionOut).toEqual({
+      type: 'dissolve',
+      durationUs: 2_000_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {},
+    });
+    expect(nextRight.transitionIn).toEqual({
+      type: 'dissolve',
+      durationUs: 2_000_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {},
+    });
   });
 
   it('does not collapse an existing overlap when updating transition duration', () => {
@@ -247,5 +271,67 @@ describe('timeline/commands update_clip_transition', () => {
     expect(overlapUs).toBe(3_000_000);
     expect(nextLeft.transitionOut.durationUs).toBe(3_000_000);
     expect(nextRight.transitionIn.durationUs).toBe(3_000_000);
+  });
+
+  it('preserves normalized transition params when updating a clip transition', () => {
+    const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [baseClip] });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_transition',
+      trackId: 'v1',
+      itemId: 'c1',
+      transitionOut: {
+        type: 'wipe',
+        durationUs: 500_000,
+        params: {
+          direction: 'up',
+          gap: 0.025,
+          gapColor: '#ff00ff',
+        },
+      },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.transitionOut).toEqual({
+      type: 'wipe',
+      durationUs: 500_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {
+        direction: 'up',
+        gap: 0.025,
+        gapColor: '#ff00ff',
+      },
+    });
+  });
+
+  it('normalizes invalid transition params to manifest defaults', () => {
+    const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [baseClip] });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_transition',
+      trackId: 'v1',
+      itemId: 'c1',
+      transitionIn: {
+        type: 'circle',
+        durationUs: 300_000,
+        params: {
+          blur: 99,
+          direction: 'wrong',
+        } as any,
+      },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.transitionIn).toEqual({
+      type: 'circle',
+      durationUs: 300_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {
+        blur: 0.2,
+        direction: 'from-center',
+      },
+    });
   });
 });

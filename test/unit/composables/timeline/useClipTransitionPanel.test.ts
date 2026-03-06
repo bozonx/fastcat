@@ -57,4 +57,43 @@ describe('useClipTransitionPanel', () => {
       transition: null,
     });
   });
+
+  it('emits normalized params for selected transition type', async () => {
+    const onUpdate = vi.fn();
+
+    const api = useClipTransitionPanel({
+      edge: ref<'in' | 'out'>('in'),
+      trackId: ref('v1'),
+      itemId: ref('c1'),
+      transition: ref<ClipTransition | undefined>({
+        type: 'wipe',
+        durationUs: 1_000_000,
+        mode: 'blend_previous',
+        curve: 'linear',
+        params: {
+          direction: 'up',
+          gap: 0.03,
+          gapColor: '#ff00ff',
+        },
+      }),
+      onUpdate,
+      debounceMs: 0,
+    });
+
+    api.updateParam('gap', 0.05);
+    await Promise.resolve();
+
+    expect(onUpdate).toHaveBeenCalled();
+    expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject({
+      transition: {
+        type: 'wipe',
+        mode: 'blend_previous',
+        params: {
+          direction: 'up',
+          gap: 0.05,
+          gapColor: '#ff00ff',
+        },
+      },
+    });
+  });
 });

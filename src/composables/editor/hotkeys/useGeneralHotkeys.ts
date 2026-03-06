@@ -49,6 +49,10 @@ export function useGeneralHotkeys(
     });
   }
 
+  function isPreviewFocus() {
+    return focusStore.canUsePreviewHotkeys;
+  }
+
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'general.focus': () => {
       focusStore.handleFocusHotkey();
@@ -135,7 +139,7 @@ export function useGeneralHotkeys(
     'general.zoomIn': (e) => {
       if (focusStore.effectiveFocus === 'timeline') {
         startZoomHotkeyHold({ direction: 1, keyCode: e.code });
-      } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+      } else if (isPreviewFocus()) {
         uiStore.triggerPreviewZoom(1);
       } else if (focusStore.effectiveFocus === 'monitor') {
         uiStore.triggerMonitorZoom(1);
@@ -146,7 +150,7 @@ export function useGeneralHotkeys(
     'general.zoomOut': (e) => {
       if (focusStore.effectiveFocus === 'timeline') {
         startZoomHotkeyHold({ direction: -1, keyCode: e.code });
-      } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+      } else if (isPreviewFocus()) {
         uiStore.triggerPreviewZoom(-1);
       } else if (focusStore.effectiveFocus === 'monitor') {
         uiStore.triggerMonitorZoom(-1);
@@ -157,7 +161,7 @@ export function useGeneralHotkeys(
     'general.zoomReset': () => {
       if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.setTimelineZoom(DEFAULT_TIMELINE_ZOOM_POSITION);
-      } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+      } else if (isPreviewFocus()) {
         uiStore.triggerPreviewZoomReset();
       } else if (focusStore.effectiveFocus === 'monitor') {
         uiStore.triggerMonitorZoomReset();
@@ -191,7 +195,7 @@ export function useGeneralHotkeys(
       return true;
     }
 
-    if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
+    if (isPreviewFocus()) {
       const entity = selectionStore.selectedEntity;
       if (entity?.source === 'fileManager' && entity.kind === 'file') {
         uiStore.togglePreviewFullscreen();

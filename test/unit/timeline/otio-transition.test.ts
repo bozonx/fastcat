@@ -81,6 +81,73 @@ describe('timeline/otioSerializer: transitions', () => {
     ]);
   });
 
+  it('preserves transition params, mode and curve through OTIO round-trip', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip1',
+              clipType: 'media',
+              source: { path: 'file.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 0, durationUs: 5_000_000 },
+              sourceRange: { startUs: 0, durationUs: 5_000_000 },
+              transitionIn: {
+                type: 'clock',
+                durationUs: 300_000,
+                mode: 'composite',
+                curve: 'bezier',
+                params: { direction: 'counterclockwise' },
+              },
+              transitionOut: {
+                type: 'wipe',
+                durationUs: 500_000,
+                mode: 'blend_previous',
+                curve: 'linear',
+                params: {
+                  direction: 'right',
+                  gap: 0.04,
+                  gapColor: '#00ff00',
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const serialized = serializeTimelineToOtio(doc);
+    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
+
+    const clip = parsed.tracks[0]?.items[0] as any;
+    expect(clip.transitionIn).toEqual({
+      type: 'clock',
+      durationUs: 300_000,
+      mode: 'composite',
+      curve: 'bezier',
+      params: { direction: 'counterclockwise' },
+    });
+    expect(clip.transitionOut).toEqual({
+      type: 'wipe',
+      durationUs: 500_000,
+      mode: 'blend_previous',
+      curve: 'linear',
+      params: {
+        direction: 'right',
+        gap: 0.04,
+        gapColor: '#00ff00',
+      },
+    });
+  });
+
   it('omits transitions when not set', () => {
     const doc: TimelineDocument = {
       ...makeDoc(),

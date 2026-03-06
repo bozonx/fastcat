@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useProjectStore } from '~/stores/project.store';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -13,6 +14,7 @@ import { usePlaybackHotkeys } from './hotkeys/usePlaybackHotkeys';
 export function useEditorHotkeys() {
   const workspaceStore = useWorkspaceStore();
   const focusStore = useFocusStore();
+  const projectStore = useProjectStore();
 
   const volumeHoldRunner = createHotkeyHoldRunner();
   const zoomHoldRunner = createHotkeyHoldRunner();
@@ -29,13 +31,25 @@ export function useEditorHotkeys() {
     ...playbackHandlers,
   };
 
+  function hasBlockingModalState() {
+    if (projectStore.currentView === 'fullscreen') return true;
+    if (document.querySelector('[role="dialog"]')) return true;
+    if (document.querySelector('.fixed.inset-0.bg-black/95')) return true;
+    return false;
+  }
+
+  function canHandleFocusTab() {
+    if (hasBlockingModalState()) return false;
+    return projectStore.currentView === 'cut' || projectStore.currentView === 'sound';
+  }
+
   async function onGlobalKeydown(e: KeyboardEvent) {
     if (e.defaultPrevented) return;
     if (e.repeat) return;
 
-    if (document.querySelector('[role="dialog"]') && e.key !== 'Escape') return;
+    if (hasBlockingModalState() && e.key !== 'Escape') return;
 
-    if (e.key === 'Tab' && focusStore.tempFocus !== 'none') {
+    if (e.key === 'Tab' && canHandleFocusTab()) {
       e.preventDefault();
       focusStore.handleFocusHotkey();
       return;

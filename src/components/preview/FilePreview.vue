@@ -15,6 +15,7 @@ const props = defineProps<{
   alt?: string;
   filePath?: string;
   fileName?: string;
+  focusPanelId?: string;
 }>();
 
 const isFullscreenOpen = ref(false);
@@ -77,6 +78,7 @@ onUnmounted(() => {
           :src="props.url"
           :alt="props.alt"
           :is-modal="isFullscreenOpen"
+          :focus-panel-id="props.focusPanelId"
           class="w-full h-full"
           @open-modal="isFullscreenOpen = true"
           @close-modal="isFullscreenOpen = false"
@@ -104,6 +106,7 @@ onUnmounted(() => {
           :src="props.url"
           :type="props.mediaType"
           :is-modal="isFullscreenOpen"
+          :focus-panel-id="props.focusPanelId"
           class="w-full h-full"
           @open-modal="isFullscreenOpen = true"
           @close-modal="isFullscreenOpen = false"

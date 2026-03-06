@@ -5,6 +5,11 @@ import type { WorkerTimelineClip } from './types';
 import { normalizeTimeUs } from '~/utils/monitor-time';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import {
+  normalizeTransitionCurve,
+  normalizeTransitionMode,
+  normalizeTransitionParams,
+} from '~/transitions';
 
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
@@ -58,19 +63,15 @@ export function useMonitorTimeline() {
       const durationUs = Number(anyRaw.durationUs);
       if (!type) return undefined;
       if (!Number.isFinite(durationUs)) return undefined;
+      const normalizedParams = normalizeTransitionParams(type, anyRaw.params) as
+        | Record<string, unknown>
+        | undefined;
       return {
         type,
         durationUs: Math.max(0, Math.round(durationUs)),
-        mode:
-          anyRaw.mode === 'blend' || anyRaw.mode === 'blend_previous' || anyRaw.mode === 'composite'
-            ? anyRaw.mode
-            : undefined,
-        curve:
-          anyRaw.curve === 'bezier' ? 'bezier' : anyRaw.curve === 'linear' ? 'linear' : undefined,
-        params:
-          anyRaw.params && typeof anyRaw.params === 'object'
-            ? JSON.parse(JSON.stringify(anyRaw.params))
-            : undefined,
+        mode: normalizeTransitionMode(anyRaw.mode),
+        curve: normalizeTransitionCurve(anyRaw.curve),
+        params: normalizedParams ? JSON.parse(JSON.stringify(normalizedParams)) : undefined,
       };
     }
 
