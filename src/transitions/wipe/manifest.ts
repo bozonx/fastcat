@@ -1,4 +1,4 @@
-import { Filter, GlProgram } from 'pixi.js';
+import { Filter, GlProgram, Texture } from 'pixi.js';
 import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
@@ -50,7 +50,7 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     new Filter({
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
-        uFromTexture: null,
+        uFromTexture: Texture.WHITE.source,
         wipeUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uSoftness: { value: 0.02, type: 'f32' },

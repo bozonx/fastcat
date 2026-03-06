@@ -1,4 +1,4 @@
-import { Filter, GlProgram } from 'pixi.js';
+import { Filter, GlProgram, Texture } from 'pixi.js';
 import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
@@ -53,7 +53,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     new Filter({
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
-        uFromTexture: null,
+        uFromTexture: Texture.WHITE.source,
         circleUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uSoftness: { value: 0.015, type: 'f32' },
@@ -64,13 +64,17 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.circleUniforms?.uniforms;
     if (!uniforms) return;
-    const progress = context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress =
+      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const softnessRaw = Number((context.params as CircleParams | undefined)?.softness ?? 0.015);
     if (context.fromTexture?.source) {
       resources.uFromTexture = context.fromTexture.source;
     }
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uSoftness = Math.max(0.0001, Math.min(0.15, Number.isFinite(softnessRaw) ? softnessRaw : 0.015));
+    uniforms.uSoftness = Math.max(
+      0.0001,
+      Math.min(0.15, Number.isFinite(softnessRaw) ? softnessRaw : 0.015),
+    );
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

@@ -311,6 +311,7 @@
         "hideHiddenFiles": "Скрыть скрытые файлы",
         "dropZone": "Переместить в папку",
         "cancelProxyGeneration": "Отменить генерацию прокси",
+        "convertFile": "Конвертировать файл",
         "title": "Действия"
       },
       "projectRoot": {
@@ -659,6 +660,18 @@
       "transitions": "Переходы",
       "deleteMarker": "Удалить маркер",
       "speedValue": "Скорость",
+      "waveformFull": "Полная вейвформа",
+      "waveformHalf": "Половина вейвформы",
+      "showThumbnails": "Показать миниатюры",
+      "hideThumbnails": "Скрыть миниатюры",
+      "showWaveform": "Показать вейвформу",
+      "hideWaveform": "Скрыть вейвформу",
+      "enableClips": "Включить клипы",
+      "disableClips": "Отключить клипы",
+      "unmuteClips": "Включить звук клипов",
+      "muteClips": "Выключить звук клипов",
+      "quantize": "Привязать к кадрам",
+      "unlinkAudio": "Открепить аудио",
       "adjustmentClipDefaultName": "Корректировка",
       "backgroundClipDefaultName": "Фон"
     },

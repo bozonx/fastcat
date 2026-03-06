@@ -12,6 +12,7 @@ import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
+import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';

@@ -307,6 +307,7 @@
         "hideHiddenFiles": "Hide hidden files",
         "dropZone": "Move to folder",
         "cancelProxyGeneration": "Cancel proxy generation",
+        "convertFile": "Convert file",
         "title": "Actions"
       },
       "projectRoot": {
@@ -655,6 +656,18 @@
       "transitions": "Transitions",
       "deleteMarker": "Delete marker",
       "speedValue": "Speed",
+      "waveformFull": "Full waveform",
+      "waveformHalf": "Half waveform",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails",
+      "showWaveform": "Show waveform",
+      "hideWaveform": "Hide waveform",
+      "enableClips": "Enable clips",
+      "disableClips": "Disable clips",
+      "unmuteClips": "Unmute clips",
+      "muteClips": "Mute clips",
+      "quantize": "Quantize to frames",
+      "unlinkAudio": "Unlink audio",
       "adjustmentClipDefaultName": "Adjustment",
       "backgroundClipDefaultName": "Background"
     },

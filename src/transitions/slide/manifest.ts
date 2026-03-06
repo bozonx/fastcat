@@ -1,4 +1,4 @@
-import { Filter, GlProgram } from 'pixi.js';
+import { Filter, GlProgram, Texture } from 'pixi.js';
 import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
@@ -54,7 +54,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     new Filter({
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
-        uFromTexture: null,
+        uFromTexture: Texture.WHITE.source,
         slideUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uSoftness: { value: 0.02, type: 'f32' },
@@ -65,13 +65,17 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.slideUniforms?.uniforms;
     if (!uniforms) return;
-    const progress = context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress =
+      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const softnessRaw = Number((context.params as SlideParams | undefined)?.softness ?? 0.02);
     if (context.fromTexture?.source) {
       resources.uFromTexture = context.fromTexture.source;
     }
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uSoftness = Math.max(0.0001, Math.min(0.2, Number.isFinite(softnessRaw) ? softnessRaw : 0.02));
+    uniforms.uSoftness = Math.max(
+      0.0001,
+      Math.min(0.2, Number.isFinite(softnessRaw) ? softnessRaw : 0.02),
+    );
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

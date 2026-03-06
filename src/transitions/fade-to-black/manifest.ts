@@ -12,10 +12,16 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
   defaultParams: {},
   computeOutOpacity: (progress, _params, curve) => {
     const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
-    return 1 - p;
+    if (p < 0.5) {
+      return 1 - p * 2;
+    }
+    return 0;
   },
   computeInOpacity: (progress, _params, curve) => {
     const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
-    return p;
+    if (p < 0.5) {
+      return 0;
+    }
+    return (p - 0.5) * 2;
   },
 };

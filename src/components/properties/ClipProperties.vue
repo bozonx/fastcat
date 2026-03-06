@@ -461,6 +461,24 @@ function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
   });
 }
 
+function updateTransitionType(edge: 'in' | 'out', type: string) {
+  const clip = props.clip;
+  const current = (
+    edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut
+  ) as import('~/timeline/types').ClipTransition | undefined;
+  if (!current || !type) return;
+
+  handleTransitionUpdate({
+    trackId: clip.trackId,
+    itemId: clip.id,
+    edge,
+    transition: {
+      ...current,
+      type,
+    },
+  });
+}
+
 defineExpose({
   isRenameModalOpen,
   handleDeleteClip,
@@ -809,6 +827,7 @@ defineExpose({
       @select-edge="selectTransitionEdge"
       @toggle="toggleTransition"
       @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
+      @update-type="({ edge, type }) => updateTransitionType(edge, type)"
     />
 
     <!-- Transparency (Opacity) -->
