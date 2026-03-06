@@ -475,18 +475,30 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
   const file = draggedFile.value;
   if (!file) {
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-    const first = droppedFiles[0] ?? null;
-    if (!first || !isTimelineTextDropFileName(first.name)) {
+    if (droppedFiles.length === 0) {
       clearDragPreview();
       return;
     }
 
+    const textFiles = droppedFiles.filter((f) => isTimelineTextDropFileName(f.name));
+    if (textFiles.length > 0) {
+      dragPreview.value = {
+        trackId,
+        startUs,
+        label: textFiles.length === 1 ? textFiles[0]!.name : `${textFiles.length} text clips`,
+        durationUs: 5_000_000 * textFiles.length,
+        kind: 'timeline-clip',
+      };
+      return;
+    }
+
+    // Default to a short preview if we just have random external files
     dragPreview.value = {
       trackId,
       startUs,
-      label: first.name,
-      durationUs: 5_000_000,
-      kind: 'timeline-clip',
+      label: droppedFiles.length === 1 ? droppedFiles[0]!.name : `${droppedFiles.length} files`,
+      durationUs: 5_000_000 * droppedFiles.length,
+      kind: 'file',
     };
     return;
   }
@@ -511,10 +523,17 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
     }
   }
 
+  const count = file.count ?? 1;
+  // If multiple items are selected in the file manager, they will be dragged together
+  if (count > 1) {
+    // Just estimate duration since we only know the metadata for the primary file
+    durationUs = durationUs * count;
+  }
+
   dragPreview.value = {
     trackId,
     startUs,
-    label: file.name,
+    label: count > 1 ? `${count} items` : file.name,
     durationUs,
     kind: file.kind === 'file' ? 'file' : 'timeline-clip',
   };
@@ -611,98 +630,134 @@ async function onDrop(e: DragEvent, trackId: string) {
     return;
   }
 
-  let parsed: any = null;
-  const raw = e.dataTransfer?.getData('application/json');
-  if (raw) {
+  let itemsToDrop: Array<{ kind: string; name: string; path?: string }> = [];
+
+  const moveRaw = e.dataTransfer?.getData('application/gran-file-manager-move');
+  if (moveRaw) {
     try {
-      parsed = JSON.parse(raw);
+      const parsed = JSON.parse(moveRaw);
+      itemsToDrop = Array.isArray(parsed) ? parsed : [parsed];
     } catch {
-      parsed = null;
+      // ignore
     }
   }
 
-  if (!parsed && draggedFile.value) {
-    parsed = {
-      kind: draggedFile.value.kind,
-      name: draggedFile.value.name,
-      path: draggedFile.value.path,
-    };
+  if (itemsToDrop.length === 0) {
+    let parsed: any = null;
+    const raw = e.dataTransfer?.getData('application/json');
+    if (raw) {
+      try {
+        parsed = JSON.parse(raw);
+        itemsToDrop = [parsed];
+      } catch {
+        parsed = null;
+      }
+    }
+
+    if (itemsToDrop.length === 0 && draggedFile.value) {
+      itemsToDrop = [
+        {
+          kind: draggedFile.value.kind,
+          name: draggedFile.value.name,
+          path: draggedFile.value.path,
+        },
+      ];
+    }
   }
 
-  const kind = typeof parsed?.kind === 'string' ? parsed.kind : undefined;
-  if (
-    kind &&
-    kind !== 'file' &&
-    kind !== 'timeline' &&
-    kind !== 'adjustment' &&
-    kind !== 'background' &&
-    kind !== 'text'
-  ) {
-    clearDraggedFile();
-    return;
-  }
+  const validItems = itemsToDrop.filter(item => {
+    const k = typeof item?.kind === 'string' ? item.kind : undefined;
+    return k === 'file' || k === 'timeline' || k === 'adjustment' || k === 'background' || k === 'text';
+  });
 
-  const name = typeof parsed?.name === 'string' ? parsed.name : undefined;
-  const path = typeof parsed?.path === 'string' ? parsed.path : undefined;
-  const isVirtual = kind === 'adjustment' || kind === 'background' || kind === 'text';
-  if (!name || (!isVirtual && !path)) {
+  if (validItems.length === 0) {
     clearDraggedFile();
     return;
   }
 
   try {
-    if (kind === 'adjustment' || kind === 'background' || kind === 'text') {
-      timelineStore.addVirtualClipToTrack({
-        trackId,
-        startUs: startUs ?? timelineStore.currentTime,
-        clipType: kind,
-        name,
-        text: kind === 'text' ? name : undefined,
-      });
-      await timelineStore.requestTimelineSave({ immediate: true });
-    } else if (kind === 'timeline') {
-      await timelineStore.addTimelineClipToTimelineFromPath({
-        trackId,
-        name,
-        path,
-        startUs: startUs ?? undefined,
-      });
-    } else {
-      const mediaType = getMediaTypeFromFilename(name || path || '');
-      if (mediaType === 'text' && path) {
-        const handle = await projectStore.getFileHandleByPath(path);
-        if (handle && handle.kind === 'file') {
-          const file = await (handle as FileSystemFileHandle).getFile();
-          const text = await file.text();
-          timelineStore.addVirtualClipToTrack({
+    let currentStartUs = startUs ?? timelineStore.currentTime;
+    let addedCount = 0;
+
+    for (const item of validItems) {
+      const kind = item.kind;
+      const name = typeof item.name === 'string' ? item.name : undefined;
+      const path = typeof item.path === 'string' ? item.path : undefined;
+      const isVirtual = kind === 'adjustment' || kind === 'background' || kind === 'text';
+      
+      if (!name || (!isVirtual && !path)) continue;
+
+      try {
+        if (kind === 'adjustment' || kind === 'background' || kind === 'text') {
+          const res = timelineStore.addVirtualClipToTrack({
             trackId,
-            startUs: startUs ?? timelineStore.currentTime,
-            clipType: 'text',
+            startUs: currentStartUs,
+            clipType: kind,
             name,
-            text,
+            text: kind === 'text' ? name : undefined,
           });
-          await timelineStore.requestTimelineSave({ immediate: true });
+          currentStartUs += 5_000_000;
+          addedCount++;
+        } else if (kind === 'timeline') {
+          const res = await timelineStore.addTimelineClipToTimelineFromPath({
+            trackId,
+            name,
+            path: path!,
+            startUs: currentStartUs,
+          });
+          currentStartUs += res.durationUs;
+          addedCount++;
         } else {
-          throw new Error('Could not read text file');
+          const mediaType = getMediaTypeFromFilename(name || path || '');
+          if (mediaType === 'text' && path) {
+            const handle = await projectStore.getFileHandleByPath(path);
+            if (handle && handle.kind === 'file') {
+              const file = await (handle as FileSystemFileHandle).getFile();
+              const text = await file.text();
+              timelineStore.addVirtualClipToTrack({
+                trackId,
+                startUs: currentStartUs,
+                clipType: 'text',
+                name,
+                text,
+              });
+              currentStartUs += 5_000_000;
+              addedCount++;
+            }
+          } else {
+            const res = await timelineStore.addClipToTimelineFromPath({
+              trackId,
+              name,
+              path: path!,
+              startUs: currentStartUs,
+            });
+            currentStartUs += res.durationUs;
+            addedCount++;
+          }
         }
-      } else {
-        await timelineStore.addClipToTimelineFromPath({
-          trackId,
-          name,
-          path: path!,
-          startUs: startUs ?? undefined,
-        });
+      } catch (err: any) {
+        // If it's a single file drag, show the error immediately
+        if (validItems.length === 1) {
+          throw err;
+        }
+        // For multiple files, just ignore the error (filter out invalid files silently)
+        console.warn(`Could not add ${name} to track:`, err);
       }
     }
 
-    toast.add({
-      title: 'Clip Added',
-      description: `${name} added to track`,
-      icon: 'i-heroicons-check-circle',
-      color: 'success',
-    });
+    if (addedCount > 0) {
+      await timelineStore.requestTimelineSave({ immediate: true });
 
-    void timelineMediaUsageStore.refreshUsage();
+      toast.add({
+        title: 'Clip Added',
+        description: addedCount === 1 
+          ? `${validItems.find(i => typeof i.name === 'string')?.name ?? 'Clip'} added to track`
+          : `${addedCount} clips added to track`,
+        icon: 'i-heroicons-check-circle',
+        color: 'success',
+      });
+      void timelineMediaUsageStore.refreshUsage();
+    }
   } catch (err: any) {
     toast.add({
       title: t('common.error', 'Error'),
