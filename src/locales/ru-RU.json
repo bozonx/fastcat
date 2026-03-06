@@ -178,6 +178,8 @@
       "hotkeysGroupTimeline": "Таймлайн",
       "hotkeysDuplicateTitle": "Дубликат горячей клавиши",
       "hotkeysDuplicateConfirm": "Всё равно добавить",
+      "snapThreshold": "Величина привязки (px)",
+      "snapThresholdDefault": "Величина привязки по умолчанию (px)",
       "hotkeysDuplicateReplace": "Заменить",
       "hotkeysResetAll": "Сбросить все",
       "hotkeysResetAllConfirmTitle": "Сбросить все горячие клавиши?",

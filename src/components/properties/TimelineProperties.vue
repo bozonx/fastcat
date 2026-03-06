@@ -121,7 +121,7 @@ function handleAddAudioTrack() {
         <div class="border-t border-ui-border pt-2 mt-2">
           <div class="flex items-center justify-between">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.timeline.properties.snapThreshold', 'Snap threshold')
+              t('videoEditor.settings.snapThreshold', 'Snap threshold (px)')
             }}</span>
             <span class="text-[10px] font-mono text-ui-text-muted">{{ snapThresholdPx }}px</span>
           </div>
@@ -131,13 +131,12 @@ function handleAddAudioTrack() {
             :max="40"
             :step="1"
             :wheel-step-multiplier="1"
-            :default-value="8"
           />
         </div>
 
         <div class="flex items-center justify-between border-t border-ui-border pt-1 mt-1">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.timeline.properties.masterMute', 'Master mute')
+            t('videoEditor.hotkeys.general.mute', 'Mute')
           }}</span>
           <USwitch
             size="sm"

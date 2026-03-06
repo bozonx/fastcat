@@ -262,6 +262,11 @@ export interface UpdateMasterEffectsCommand {
   effects: import('./types').ClipEffect[];
 }
 
+export interface UpdateTimelinePropertiesCommand {
+  type: 'update_timeline_properties';
+  properties: Partial<import('./types').TimelineGranMetadata>;
+}
+
 export interface MoveItemsCommand {
   type: 'move_items';
   moves: {
@@ -302,7 +307,8 @@ export type TimelineCommand =
   | RemoveMarkerCommand
   | UpdateMasterGainCommand
   | UpdateMasterMutedCommand
-  | UpdateMasterEffectsCommand;
+  | UpdateMasterEffectsCommand
+  | UpdateTimelinePropertiesCommand;
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -395,6 +401,19 @@ export function applyTimelineCommand(
             gran: {
               ...(doc.metadata?.gran ?? {}),
               masterEffects: cmd.effects,
+            },
+          },
+        },
+      };
+    case 'update_timeline_properties':
+      return {
+        next: {
+          ...doc,
+          metadata: {
+            ...(doc.metadata ?? {}),
+            gran: {
+              ...(doc.metadata?.gran ?? {}),
+              ...(cmd.properties ?? {}),
             },
           },
         },
