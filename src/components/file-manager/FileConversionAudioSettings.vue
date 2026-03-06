@@ -5,10 +5,12 @@ const props = withDefaults(
   defineProps<{
     disabled?: boolean;
     originalSampleRate?: number | null;
+    allowOriginalSampleRate?: boolean;
   }>(),
   {
     disabled: false,
     originalSampleRate: null,
+    allowOriginalSampleRate: false,
   },
 );
 
@@ -31,7 +33,7 @@ const sampleRateOptions = computed(() => {
     : `${t('videoEditor.audio.original', 'Original')} (${Math.round(original)})`;
 
   return [
-    { value: 0, label: originalLabel },
+    ...(props.allowOriginalSampleRate ? [{ value: 0, label: originalLabel }] : []),
     { value: 44100, label: '44.1 kHz' },
     { value: 48000, label: '48 kHz' },
   ];

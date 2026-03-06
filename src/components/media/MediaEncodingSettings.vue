@@ -16,6 +16,7 @@ interface Props {
   audioCodecLabel?: string;
   showAudioAdvanced?: boolean;
   originalAudioSampleRate?: number | null;
+  allowOriginalAudioSampleRate?: boolean;
   formatOptions: readonly FormatOption[];
   videoCodecOptions: readonly VideoCodecOptionResolved[];
   showMetadata?: boolean;
@@ -29,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
   audioCodecLabel: 'AAC',
   showAudioAdvanced: false,
   originalAudioSampleRate: null,
+  allowOriginalAudioSampleRate: false,
   showMetadata: false,
   hideAudioBitrate: false,
 });
@@ -321,6 +323,7 @@ watch(
       v-model:audio-channels="audioChannels"
       v-model:audio-sample-rate="audioSampleRate"
       :original-sample-rate="props.originalAudioSampleRate"
+      :allow-original-sample-rate="props.allowOriginalAudioSampleRate"
       :disabled="props.disabled"
     />
 
