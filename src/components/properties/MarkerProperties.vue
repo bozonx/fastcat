@@ -98,6 +98,11 @@ function handleConvertToSelectionRange() {
   if (!marker.value || !isZone.value) return;
   timelineStore.convertMarkerToSelectionRange(marker.value.id);
 }
+
+function handleCreateSelectionRange() {
+  if (!marker.value || !isZone.value) return;
+  timelineStore.createSelectionRangeFromMarker(marker.value.id);
+}
 </script>
 
 <template>
@@ -139,6 +144,17 @@ function handleConvertToSelectionRange() {
         @click="handleConvertToSelectionRange"
       >
         {{ t('granVideoEditor.timeline.convertZoneToSelection', 'Convert to selection area') }}
+      </UButton>
+      <UButton
+        v-if="isZone"
+        size="xs"
+        variant="soft"
+        color="secondary"
+        icon="i-heroicons-sparkles"
+        class="w-full justify-center mt-2"
+        @click="handleCreateSelectionRange"
+      >
+        {{ t('granVideoEditor.timeline.createSelectionFromZone', 'Create selection area') }}
       </UButton>
     </PropertySection>
 

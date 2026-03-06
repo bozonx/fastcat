@@ -172,6 +172,8 @@ const selectionDragStartX = ref(0);
 const selectionDragStartStartUs = ref(0);
 const selectionDragStartEndUs = ref(0);
 const suppressNextRulerClick = ref(false);
+const isCreatingSelectionRange = ref(false);
+const selectionCreateStartUs = ref(0);
 
 const contextClickTimeUs = ref(0);
 
@@ -316,6 +318,50 @@ function startSelectionRangeDrag(e: PointerEvent, part: SelectionDragPart) {
   activeSelectionPointerUp = onSelectionPointerUp;
   window.addEventListener('pointermove', onSelectionPointerMove);
   window.addEventListener('pointerup', onSelectionPointerUp);
+}
+
+function onSelectionCreatePointerMove(e: PointerEvent) {
+  if (!isCreatingSelectionRange.value) return;
+
+  suppressNextRulerClick.value = true;
+  const currentUs = getTimeUsFromMouseEvent(e as unknown as MouseEvent);
+  const startUs = Math.min(selectionCreateStartUs.value, currentUs);
+  const endUs = Math.max(selectionCreateStartUs.value, currentUs);
+
+  timelineStore.createSelectionRange({
+    startUs,
+    endUs: Math.max(startUs + 1, endUs),
+  });
+}
+
+function onSelectionCreatePointerUp() {
+  isCreatingSelectionRange.value = false;
+  clearSelectionPointerListeners();
+  window.setTimeout(() => {
+    suppressNextRulerClick.value = false;
+  }, 0);
+}
+
+function startSelectionRangeCreate(e: PointerEvent) {
+  if (e.button !== 0) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const timeUs = getTimeUsFromMouseEvent(e as unknown as MouseEvent);
+  selectionCreateStartUs.value = timeUs;
+  isCreatingSelectionRange.value = true;
+
+  timelineStore.createSelectionRange({
+    startUs: timeUs,
+    endUs: timeUs + 1,
+  });
+
+  clearSelectionPointerListeners();
+  activeSelectionPointerMove = onSelectionCreatePointerMove;
+  activeSelectionPointerUp = onSelectionCreatePointerUp;
+  window.addEventListener('pointermove', onSelectionCreatePointerMove);
+  window.addEventListener('pointerup', onSelectionCreatePointerUp);
 }
 
 function truncateForTooltip(text: string): string {
@@ -578,17 +624,7 @@ function onRulerPointerDown(e: PointerEvent) {
   } else if (e.button === 0) {
     // Left click
     if (e.shiftKey) {
-      if (settings.shiftClick === 'add_marker_and_edit') {
-        const timeUs = getTimeUsFromMouseEvent(e);
-        const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-        timelineStore.applyTimeline({
-          type: 'add_marker',
-          id: newMarkerId,
-          timeUs,
-          text: '',
-        });
-        selectMarker(newMarkerId);
-      }
+      startSelectionRangeCreate(e);
       return;
     }
 
@@ -659,6 +695,11 @@ function getZoneMarkerMenuItems(markerId: string) {
         label: t('granVideoEditor.timeline.convertZoneToSelection', 'Convert to selection area'),
         icon: 'i-heroicons-rectangle-group',
         onSelect: () => timelineStore.convertMarkerToSelectionRange(markerId),
+      },
+      {
+        label: t('granVideoEditor.timeline.createSelectionFromZone', 'Create selection area'),
+        icon: 'i-heroicons-sparkles',
+        onSelect: () => timelineStore.createSelectionRangeFromMarker(markerId),
       },
       {
         label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
@@ -739,11 +780,11 @@ const selectionRangeMenuItems = computed(() => [
           >
             <button
               type="button"
-              class="absolute inset-y-0 left-0 right-0 border-l border-r bg-primary-500/15 border-primary-500/60"
+              class="absolute inset-y-0 left-0 right-0 border-l border-r bg-violet-500/25 border-violet-400/80 shadow-[0_0_0_1px_rgba(167,139,250,0.35)]"
               :class="
                 selectionStore.selectedEntity?.source === 'timeline' &&
                 selectionStore.selectedEntity?.kind === 'selection-range'
-                  ? 'ring-2 ring-primary-400/60'
+                  ? 'ring-2 ring-violet-300/80'
                   : ''
               "
               @click.stop="selectSelectionRange"
@@ -751,13 +792,13 @@ const selectionRangeMenuItems = computed(() => [
             />
             <button
               type="button"
-              class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize"
+              class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-violet-300/70"
               aria-label="Selection start handle"
               @pointerdown.stop="startSelectionRangeDrag($event, 'left')"
             />
             <button
               type="button"
-              class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize"
+              class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-violet-300/70"
               aria-label="Selection end handle"
               @pointerdown.stop="startSelectionRangeDrag($event, 'right')"
             />

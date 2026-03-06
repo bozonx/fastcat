@@ -344,7 +344,7 @@ function selectTransition(
   >
     <div
       v-if="selectionRangeStyle"
-      class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-primary-500/60 bg-primary-500/12"
+      class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-violet-400/80 bg-violet-500/18 shadow-[0_0_0_1px_rgba(167,139,250,0.25)]"
       :style="selectionRangeStyle"
     />
 
