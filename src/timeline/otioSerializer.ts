@@ -373,6 +373,20 @@ function parseClipItem(input: {
         ? {
             type: granMeta.transitionIn.type,
             durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)),
+            mode:
+              granMeta.transitionIn.mode === 'blend' ||
+              granMeta.transitionIn.mode === 'blend_previous' ||
+              granMeta.transitionIn.mode === 'composite'
+                ? granMeta.transitionIn.mode
+                : undefined,
+            curve:
+              granMeta.transitionIn.curve === 'bezier' || granMeta.transitionIn.curve === 'linear'
+                ? granMeta.transitionIn.curve
+                : undefined,
+            params:
+              granMeta.transitionIn.params && typeof granMeta.transitionIn.params === 'object'
+                ? (granMeta.transitionIn.params as Record<string, unknown>)
+                : undefined,
           }
         : undefined,
     transitionOut:
@@ -382,6 +396,20 @@ function parseClipItem(input: {
         ? {
             type: granMeta.transitionOut.type,
             durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)),
+            mode:
+              granMeta.transitionOut.mode === 'blend' ||
+              granMeta.transitionOut.mode === 'blend_previous' ||
+              granMeta.transitionOut.mode === 'composite'
+                ? granMeta.transitionOut.mode
+                : undefined,
+            curve:
+              granMeta.transitionOut.curve === 'bezier' || granMeta.transitionOut.curve === 'linear'
+                ? granMeta.transitionOut.curve
+                : undefined,
+            params:
+              granMeta.transitionOut.params && typeof granMeta.transitionOut.params === 'object'
+                ? (granMeta.transitionOut.params as Record<string, unknown>)
+                : undefined,
           }
         : undefined,
     linkedGroupId:

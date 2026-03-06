@@ -49,7 +49,9 @@ export function useMonitorTimeline() {
       return Math.max(0.1, Math.min(10, v));
     }
 
-    function sanitizeTransition(raw: unknown): { type: string; durationUs: number } | undefined {
+    function sanitizeTransition(
+      raw: unknown,
+    ): import('~/timeline/types').ClipTransition | undefined {
       if (!raw || typeof raw !== 'object') return undefined;
       const anyRaw = raw as any;
       const type = typeof anyRaw.type === 'string' ? anyRaw.type : '';
@@ -59,6 +61,16 @@ export function useMonitorTimeline() {
       return {
         type,
         durationUs: Math.max(0, Math.round(durationUs)),
+        mode:
+          anyRaw.mode === 'blend' || anyRaw.mode === 'blend_previous' || anyRaw.mode === 'composite'
+            ? anyRaw.mode
+            : undefined,
+        curve:
+          anyRaw.curve === 'bezier' ? 'bezier' : anyRaw.curve === 'linear' ? 'linear' : undefined,
+        params:
+          anyRaw.params && typeof anyRaw.params === 'object'
+            ? JSON.parse(JSON.stringify(anyRaw.params))
+            : undefined,
       };
     }
 
