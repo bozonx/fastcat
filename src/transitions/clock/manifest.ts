@@ -10,9 +10,11 @@ const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
 
+uniform mat3 uFilterMatrix;
+
 void main(void) {
   gl_Position = vec4(aPosition * 2.0 - 1.0, 0.0, 1.0);
-  vTextureCoord = aPosition;
+  vTextureCoord = (uFilterMatrix * vec3(aPosition, 1.0)).xy;
 }
 `;
 
@@ -27,8 +29,14 @@ uniform float uSoftness;
 const float PI = 3.1415926535897932384626433832795;
 
 void main(void) {
-  vec2 centered = vTextureCoord - vec2(0.5, 0.5);
-  float angle = atan(centered.y, centered.x) + PI * 0.5;
+  // Flip Y to fix upside-down issue with RenderTextures in PIXI v8
+  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
+  
+  vec2 centered = uv - vec2(0.5, 0.5);
+  
+  // Angle starting from top (0, -0.5) and increasing clockwise.
+  // Using atan(x, -y) gives 0 at top and increases CW in screen coordinates.
+  float angle = atan(centered.x, -centered.y);
   if (angle < 0.0) {
     angle += PI * 2.0;
   }
@@ -36,10 +44,12 @@ void main(void) {
   float normalizedAngle = angle / (PI * 2.0);
   float progress = clamp(uProgress, 0.0, 1.0);
   float softness = max(0.0001, uSoftness);
+  
+  // normalizedAngle < progress means we reveal the incoming (to) texture
   float reveal = smoothstep(progress - softness, progress + softness, normalizedAngle);
 
-  vec4 fromColor = texture(uFromTexture, vTextureCoord);
-  vec4 toColor = texture(uTexture, vTextureCoord);
+  vec4 fromColor = texture(uFromTexture, uv);
+  vec4 toColor = texture(uTexture, uv);
 
   gl_FragColor = mix(fromColor, toColor, 1.0 - reveal);
 }
@@ -72,9 +82,7 @@ export const clockManifest: TransitionManifest<ClockParams> = {
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const softnessRaw = Number((context.params as ClockParams | undefined)?.softness ?? 0.01);
-    if (context.fromTexture?.source) {
-      resources.uFromTexture = context.fromTexture.source;
-    }
+    resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uSoftness = Math.max(
       0.0001,

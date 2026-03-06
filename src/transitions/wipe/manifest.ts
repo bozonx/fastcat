@@ -10,9 +10,11 @@ const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
 
+uniform mat3 uFilterMatrix;
+
 void main(void) {
   gl_Position = vec4(aPosition * 2.0 - 1.0, 0.0, 1.0);
-  vTextureCoord = aPosition;
+  vTextureCoord = (uFilterMatrix * vec3(aPosition, 1.0)).xy;
 }
 `;
 
@@ -26,12 +28,13 @@ uniform float uSoftness;
 uniform float uDirection;
 
 void main(void) {
-  vec4 fromColor = texture(uFromTexture, vTextureCoord);
-  vec4 toColor = texture(uTexture, vTextureCoord);
+  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
+  vec4 fromColor = texture(uFromTexture, uv);
+  vec4 toColor = texture(uTexture, uv);
   float progress = clamp(uProgress, 0.0, 1.0);
   float softness = max(0.0001, uSoftness);
   float edge = uDirection > 0.5 ? progress : (1.0 - progress);
-  float axis = uDirection > 0.5 ? vTextureCoord.x : (1.0 - vTextureCoord.x);
+  float axis = uDirection > 0.5 ? uv.x : (1.0 - uv.x);
   float mixValue = smoothstep(edge - softness, edge + softness, axis);
   gl_FragColor = mix(fromColor, toColor, mixValue);
 }
@@ -65,9 +68,7 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const softnessRaw = Number((context.params as WipeParams | undefined)?.softness ?? 0.02);
-    if (context.fromTexture?.source) {
-      resources.uFromTexture = context.fromTexture.source;
-    }
+    resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uSoftness = Math.max(
       0.0001,

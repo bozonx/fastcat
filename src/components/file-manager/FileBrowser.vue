@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, toRaw, onUnmounted } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import {
   useFilesPageStore,
   type FileViewMode,
@@ -53,6 +55,7 @@ const uiStore = useUiStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const fileManager = useFileManager();
 const proxyStore = useProxyStore();
+const workspaceStore = useWorkspaceStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
 
 const fileConversion = useFileConversion();
@@ -997,7 +1000,10 @@ const stats = computed(() => {
 });
 
 function handleEntryClick(event: MouseEvent, entry: FsEntry) {
-  if (event.ctrlKey || event.metaKey) {
+  const isL1 = isLayer1Active(event, workspaceStore.userSettings);
+  const isL2 = isLayer2Active(event, workspaceStore.userSettings);
+
+  if (isL2) {
     // Toggle selection
     const selected = selectionStore.selectedEntity;
     if (selected && selected.source === 'fileManager') {
@@ -1018,7 +1024,7 @@ function handleEntryClick(event: MouseEvent, entry: FsEntry) {
     } else {
       selectionStore.selectFsEntry(entry);
     }
-  } else if (event.shiftKey) {
+  } else if (isL1) {
     // Range selection
     const selected = selectionStore.selectedEntity;
     if (selected && selected.source === 'fileManager') {

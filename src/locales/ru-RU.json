@@ -180,6 +180,8 @@
       "hotkeysDuplicateConfirm": "Всё равно добавить",
       "snapThreshold": "Величина привязки (px)",
       "snapThresholdDefault": "Величина привязки по умолчанию (px)",
+      "hotkeysLayer1": "1-й слой (По умолчанию: Shift)",
+      "hotkeysLayer2": "2-й слой (По умолчанию: Ctrl)",
       "hotkeysDuplicateReplace": "Заменить",
       "hotkeysResetAll": "Сбросить все",
       "hotkeysResetAllConfirmTitle": "Сбросить все горячие клавиши?",

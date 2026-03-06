@@ -115,6 +115,7 @@ export interface CompositorClip {
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
   transitionFilter?: Filter | null;
+  transitionFilterType?: string | null;
   transitionSprite?: Sprite | null;
   transitionFromTexture?: RenderTexture | null;
   transitionToTexture?: RenderTexture | null;
@@ -653,6 +654,7 @@ export class VideoCompositor {
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
           transitionFilter: null,
+          transitionFilterType: null,
           textDirty: true,
         };
 
@@ -994,8 +996,26 @@ export class VideoCompositor {
       clip.blendMode = resolveBlendMode((next as any).blendMode);
       clip.effects = next.effects;
       clip.transform = (next as any).transform;
+      const prevTransitionInType = clip.transitionIn?.type ?? null;
+      const nextTransitionInType = (next as any).transitionIn?.type ?? null;
       clip.transitionIn = (next as any).transitionIn;
       clip.transitionOut = (next as any).transitionOut;
+      if (prevTransitionInType !== nextTransitionInType) {
+        if (clip.transitionFilter) {
+          try {
+            clip.transitionFilter.destroy();
+          } catch {
+            // ignore
+          }
+        }
+        this.transitionFilters.delete(clip.itemId);
+        clip.transitionFilter = null;
+        clip.transitionFilterType = null;
+        if (clip.transitionSprite) {
+          clip.transitionSprite.visible = false;
+          clip.transitionSprite.filters = null;
+        }
+      }
       if (clip.clipKind === 'text') {
         const nextText = String((next as any).text ?? '');
         const nextStyle = (next as any).style;
@@ -1697,6 +1717,7 @@ export class VideoCompositor {
         }
         this.transitionFilters.delete(clip.itemId);
         clip.transitionFilter = null;
+        clip.transitionFilterType = null;
       }
       if (clip.transitionSprite) {
         clip.transitionSprite.visible = false;
@@ -1706,12 +1727,25 @@ export class VideoCompositor {
     }
 
     let filter = clip.transitionFilter ?? this.transitionFilters.get(clip.itemId) ?? null;
+    const nextFilterType = state.transition.type;
+    if (filter && clip.transitionFilterType !== nextFilterType) {
+      try {
+        filter.destroy();
+      } catch {
+        // ignore
+      }
+      this.transitionFilters.delete(clip.itemId);
+      clip.transitionFilter = null;
+      clip.transitionFilterType = null;
+      filter = null;
+    }
     if (!filter) {
       filter = state.manifest.createFilter();
       this.transitionFilters.set(clip.itemId, filter);
     }
 
     clip.transitionFilter = filter;
+    clip.transitionFilterType = nextFilterType;
   }
 
   private applyClipEffects(clip: CompositorClip) {

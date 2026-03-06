@@ -12,6 +12,32 @@ export interface GranVideoEditorUserSettings {
     qualityPercent: number;
   };
   hotkeys: {
+    layer1:
+      | 'Shift'
+      | 'Control'
+      | 'Alt'
+      | 'Meta'
+      | 'ShiftLeft'
+      | 'ShiftRight'
+      | 'ControlLeft'
+      | 'ControlRight'
+      | 'AltLeft'
+      | 'AltRight'
+      | 'MetaLeft'
+      | 'MetaRight';
+    layer2:
+      | 'Shift'
+      | 'Control'
+      | 'Alt'
+      | 'Meta'
+      | 'ShiftLeft'
+      | 'ShiftRight'
+      | 'ControlLeft'
+      | 'ControlRight'
+      | 'AltLeft'
+      | 'AltRight'
+      | 'MetaLeft'
+      | 'MetaRight';
     bindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>>;
   };
   optimization: {
@@ -157,6 +183,8 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     qualityPercent: 85,
   },
   hotkeys: {
+    layer1: 'Shift',
+    layer2: 'Control',
     bindings: {},
   },
   optimization: {

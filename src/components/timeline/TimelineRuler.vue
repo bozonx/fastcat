@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useResizeObserver } from '@vueuse/core';
 import { useSelectionStore } from '~/stores/selection.store';
 import { isSecondaryWheel } from '~/utils/mouse';
@@ -623,7 +624,7 @@ function onRulerPointerDown(e: PointerEvent) {
     }
   } else if (e.button === 0) {
     // Left click
-    if (e.shiftKey) {
+    if (isLayer1Active(e, useWorkspaceStore().userSettings)) {
       startSelectionRangeCreate(e);
       return;
     }
