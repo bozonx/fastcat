@@ -377,20 +377,8 @@ watch(
 );
 
 // Sync: refresh the tree when needed
-let isReloadingFromCounter = false;
-watch(
-  () => uiStore.fileManagerUpdateCounter,
-  async () => {
-    if (isReloadingFromCounter) return;
-    isReloadingFromCounter = true;
-    try {
-      await loadProjectDirectory();
-    } finally {
-      await nextTick();
-      isReloadingFromCounter = false;
-    }
-  },
-);
+// (Removed watch on fileManagerUpdateCounter to prevent full tree reloads.
+// Tree updates reactively via rootEntries modification in reloadDirectory)
 
 function onDragOver(e: DragEvent) {
   if (e.dataTransfer?.types.includes('Files')) {
