@@ -90,7 +90,9 @@ const selectionRangeStyle = computed(() => {
   };
 });
 
-const canOpenClipProperties = computed(() => projectStore.currentView !== 'files' && projectStore.currentView !== 'cut');
+const canOpenClipProperties = computed(
+  () => projectStore.currentView === 'cut' || projectStore.currentView === 'sound',
+);
 
 // Marquee Selection Logic
 const containerRef = ref<HTMLElement | null>(null);
