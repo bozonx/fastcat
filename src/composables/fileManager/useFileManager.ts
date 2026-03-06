@@ -531,7 +531,9 @@ export function useFileManager() {
     }
 
     if (
-      selectionStore.selectedEntity?.source === 'fileManager' &&
+      selectionStore.selectedEntity &&
+      selectionStore.selectedEntity.source === 'fileManager' &&
+      'path' in selectionStore.selectedEntity &&
       selectionStore.selectedEntity.path === params.oldPath
     ) {
       const updatedEntry = findEntryByPathCore(sharedRootEntries.value, params.newPath);

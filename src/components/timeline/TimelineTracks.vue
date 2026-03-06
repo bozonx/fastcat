@@ -147,10 +147,10 @@ function updateLiveMarqueeSelection() {
   }
 
   if (selectedItems.length > 0) {
-    timelineStore.selectedItemIds = selectedItems.map((i) => i.itemId);
+    timelineStore.selectTimelineItems(selectedItems.map((i) => i.itemId));
     selectionStore.selectTimelineItems(selectedItems);
   } else {
-    timelineStore.selectedItemIds = [];
+    timelineStore.clearSelection();
     selectionStore.clearSelection();
   }
 }

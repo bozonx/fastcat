@@ -14,6 +14,7 @@ import {
   renameItem,
   removeItems,
   moveItem,
+  moveItems,
   moveItemToTrack,
   overlayPlaceItem,
   overlayTrimItem,
