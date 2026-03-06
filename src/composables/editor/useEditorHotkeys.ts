@@ -34,7 +34,7 @@ export function useEditorHotkeys() {
   function hasBlockingModalState() {
     if (projectStore.currentView === 'fullscreen') return true;
     if (document.querySelector('[role="dialog"]')) return true;
-    if (document.querySelector('.fixed.inset-0.bg-black/95')) return true;
+    if (document.getElementsByClassName('fixed inset-0 bg-black/95').length > 0) return true;
     return false;
   }
 

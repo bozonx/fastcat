@@ -89,7 +89,10 @@ export async function ensureVectorImageRaster(
     if (err?.name !== 'NotFoundError') throw error;
   }
 
-  const blob = await rasterizeSvgToBlob(sourceFile, { width, height });
+  const blob = await rasterizeSvgToBlob(sourceFile, {
+    maxWidth: width,
+    maxHeight: height,
+  });
   const fileHandle = await sourceDir.getFileHandle(fileName, { create: true });
   const createWritable = (fileHandle as FileSystemFileHandle).createWritable;
   if (typeof createWritable !== 'function') {
@@ -102,11 +105,12 @@ export async function ensureVectorImageRaster(
   return fileHandle;
 }
 
-export async function clearVectorImageRaster(
-  params: ClearVectorImageRasterParams,
-): Promise<void> {
+export async function clearVectorImageRaster(params: ClearVectorImageRasterParams): Promise<void> {
   try {
-    const cacheRoot = await getDirectory(params.workspaceHandle, getVectorImageRootSegments(params.projectId));
+    const cacheRoot = await getDirectory(
+      params.workspaceHandle,
+      getVectorImageRootSegments(params.projectId),
+    );
     await cacheRoot.removeEntry(getVectorImageSourceDirName(params.projectRelativePath), {
       recursive: true,
     });
