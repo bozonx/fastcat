@@ -53,6 +53,7 @@ const imageWidth = ref(0);
 const imageHeight = ref(0);
 const isImageResolutionLinked = ref(true);
 const imageAspectRatio = ref(1);
+const conversionModalRequestId = ref(0);
 
 export function useFileConversion() {
   const { t } = useI18n();
@@ -79,8 +80,16 @@ export function useFileConversion() {
   }
 
   async function openConversionModal(entry: FsEntry) {
+    const requestId = conversionModalRequestId.value + 1;
+    conversionModalRequestId.value = requestId;
     targetEntry.value = entry;
     const type = mediaType.value;
+
+    isConverting.value = false;
+    conversionProgress.value = 0;
+    conversionError.value = null;
+    conversionPhase.value = null;
+    isModalOpen.value = true;
 
     if (type === 'video') {
       videoFormat.value = projectStore.projectSettings?.exportDefaults?.encoding?.format ?? 'mp4';
@@ -99,6 +108,9 @@ export function useFileConversion() {
         const fileHandle = entry.handle as FileSystemFileHandle;
         const { client } = getExportWorkerClient();
         const meta = await client.extractMetadata(fileHandle);
+
+        if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
+          return;
 
         if (meta?.video) {
           videoWidth.value = Math.max(1, Math.round(Number(meta.video.width) || 1920));
@@ -133,6 +145,8 @@ export function useFileConversion() {
         const fileHandle = entry.handle as FileSystemFileHandle;
         const { client } = getExportWorkerClient();
         const meta = await client.extractMetadata(fileHandle);
+        if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
+          return;
         if (meta?.audio) {
           audioChannels.value = resolveAudioChannelsFromMeta(meta.audio.channels);
           originalAudioSampleRate.value = Math.max(
@@ -154,6 +168,8 @@ export function useFileConversion() {
         const fileHandle = entry.handle as FileSystemFileHandle;
         const file = await fileHandle.getFile();
         const bitmap = await createImageBitmap(file);
+        if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
+          return;
         imageWidth.value = bitmap.width;
         imageHeight.value = bitmap.height;
         imageAspectRatio.value = bitmap.height > 0 ? bitmap.width / bitmap.height : 1;
@@ -163,11 +179,6 @@ export function useFileConversion() {
         imageAspectRatio.value = 1;
       }
     }
-
-    isConverting.value = false;
-    conversionProgress.value = 0;
-    conversionError.value = null;
-    isModalOpen.value = true;
   }
 
   async function convertImage(
