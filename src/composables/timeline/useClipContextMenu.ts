@@ -455,6 +455,56 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         });
       }
 
+      if (isFree && !clipItem.locked) {
+        mainGroup.push({
+          label: options.t('granVideoEditor.timeline.quantize', 'Quantize to frames'),
+          icon: 'i-heroicons-squares-2x2',
+          onSelect: async () => {
+            options.applyTimelineCommand({
+              type: 'trim_item',
+              trackId: track.id,
+              itemId: clipItem.id,
+              edge: 'end',
+              deltaUs: 0,
+              quantizeToFrames: true,
+            } as any);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
+      if (isLockedAudioClip) {
+        mainGroup.push({
+          label: options.t('granVideoEditor.timeline.unlinkAudio', 'Unlink from video'),
+          icon: 'i-heroicons-link-slash',
+          onSelect: async () => {
+            options.updateClipProperties(track.id, clipItem.id, {
+              linkedVideoClipId: undefined,
+              lockToLinkedVideo: false,
+            } as any);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      } else if (linkedAudioForThisVideo.length > 0) {
+        mainGroup.push({
+          label: options.t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio'),
+          icon: 'i-heroicons-link-slash',
+          onSelect: async () => {
+            const cmds = linkedAudioForThisVideo.map((a) => ({
+              type: 'update_clip_properties' as const,
+              trackId: a.trackId,
+              itemId: a.id,
+              properties: {
+                linkedVideoClipId: undefined,
+                lockToLinkedVideo: false,
+              } as any,
+            }));
+            options.batchApplyTimeline(cmds as any);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
       mainGroup.push({
         label: clipItem.locked
           ? options.t('granVideoEditor.timeline.unlockClip', 'Unlock clip')

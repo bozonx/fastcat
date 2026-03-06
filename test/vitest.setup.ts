@@ -86,6 +86,45 @@ const originalError = console.error.bind(console);
 const originalLog = console.log.bind(console);
 const originalInfo = console.info.bind(console);
 
+class LocalStorageMock {
+  private store: Record<string, string> = {};
+
+  get length() {
+    return Object.keys(this.store).length;
+  }
+
+  getItem(key: string) {
+    return this.store[key] || null;
+  }
+
+  setItem(key: string, value: string) {
+    this.store[key] = String(value);
+  }
+
+  removeItem(key: string) {
+    delete this.store[key];
+  }
+
+  clear() {
+    this.store = {};
+  }
+
+  key(index: number) {
+    return Object.keys(this.store)[index] || null;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  if (!window.localStorage || typeof window.localStorage.clear !== 'function') {
+    Object.defineProperty(window, 'localStorage', {
+      value: new LocalStorageMock(),
+      writable: true,
+    });
+  }
+} else {
+  (globalThis as any).localStorage = new LocalStorageMock();
+}
+
 vi.spyOn(console, 'warn').mockImplementation((...args: any[]) => {
   if (shouldIgnoreConsoleMessage(args)) return;
   originalWarn(...args);

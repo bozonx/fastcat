@@ -11,6 +11,13 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 
+const snapThresholdPx = computed({
+  get: () => settingsStore.snapThresholdPx,
+  set: (val: number) => {
+    settingsStore.setSnapThresholdPx(val);
+  },
+});
+
 const masterGain = computed({
   get: () => timelineStore.timelineDoc?.metadata?.gran?.masterGain ?? 1,
   set: (val: number) => {
@@ -110,6 +117,24 @@ function handleAddAudioTrack() {
             @update:model-value="settingsStore.setOverlapMode($event ? 'pseudo' : 'none')"
           />
         </div>
+
+        <div class="border-t border-ui-border pt-2 mt-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-ui-text-muted">{{
+              t('granVideoEditor.timeline.properties.snapThreshold', 'Snap threshold')
+            }}</span>
+            <span class="text-[10px] font-mono text-ui-text-muted">{{ snapThresholdPx }}px</span>
+          </div>
+          <WheelSlider
+            v-model="snapThresholdPx"
+            :min="1"
+            :max="40"
+            :step="1"
+            :wheel-step-multiplier="1"
+            :default-value="8"
+          />
+        </div>
+
         <div class="flex items-center justify-between border-t border-ui-border pt-1 mt-1">
           <span class="text-xs text-ui-text-muted">{{
             t('granVideoEditor.timeline.properties.masterMute', 'Master mute')
