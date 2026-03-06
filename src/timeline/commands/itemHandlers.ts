@@ -28,6 +28,7 @@ import {
   normalizeGaps,
   findClipById,
   updateLinkedLockedAudio,
+  getLinkedClipGroupItemIds,
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
@@ -1114,6 +1115,52 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
 
   if (!cmd.ignoreLocks) {
     assertClipNotLocked(item, 'move');
+  }
+
+  if (!cmd.ignoreLinks && item.kind === 'clip') {
+    const linkedIds = getLinkedClipGroupItemIds(doc, item.id).filter((id) => id !== item.id);
+    if (linkedIds.length > 0) {
+      const currentStartUs = Math.max(0, Math.round(Number(item.timelineRange.startUs)));
+      const requestedStartUs = Math.max(0, Math.round(Number(cmd.startUs)));
+      const deltaUs = requestedStartUs - currentStartUs;
+
+      const moves: Array<{
+        fromTrackId: string;
+        toTrackId: string;
+        itemId: string;
+        startUs: number;
+      }> = [];
+
+      for (const track of doc.tracks) {
+        for (const trackItem of track.items) {
+          if (!linkedIds.includes(trackItem.id) && trackItem.id !== item.id) continue;
+          moves.push({
+            fromTrackId: track.id,
+            toTrackId: track.id,
+            itemId: trackItem.id,
+            startUs: Math.max(0, Math.round(Number(trackItem.timelineRange.startUs)) + deltaUs),
+          });
+        }
+      }
+
+      if (moves.length > 1) {
+        let currentDoc = doc;
+        for (const move of moves) {
+          const res = moveItemToTrack(currentDoc, {
+            type: 'move_item_to_track',
+            fromTrackId: move.fromTrackId,
+            toTrackId: move.toTrackId,
+            itemId: move.itemId,
+            startUs: move.startUs,
+            quantizeToFrames: cmd.quantizeToFrames,
+            ignoreLocks: cmd.ignoreLocks,
+            ignoreLinks: true,
+          });
+          currentDoc = res.next;
+        }
+        return { next: currentDoc };
+      }
+    }
   }
 
   if (

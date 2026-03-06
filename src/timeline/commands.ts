@@ -155,6 +155,8 @@ export interface UpdateClipPropertiesCommand {
       import('./types').TimelineClipItem,
       | 'disabled'
       | 'locked'
+      | 'linkedVideoClipId'
+      | 'lockToLinkedVideo'
       | 'opacity'
       | 'effects'
       | 'freezeFrameSourceUs'
@@ -170,6 +172,7 @@ export interface UpdateClipPropertiesCommand {
       | 'showThumbnails'
     >
   > & {
+    linkedGroupId?: string;
     backgroundColor?: string;
     text?: string;
     style?: import('./types').TextClipStyle;

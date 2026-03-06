@@ -46,6 +46,7 @@ export function extractAudioToTrack(
     sourceDurationUs: item.sourceDurationUs,
     timelineRange: { ...item.timelineRange },
     sourceRange: { ...item.sourceRange },
+    linkedGroupId: String((item as any).linkedGroupId ?? item.id),
     linkedVideoClipId: item.id,
     lockToLinkedVideo: true,
   };
@@ -55,7 +56,13 @@ export function extractAudioToTrack(
       return {
         ...t,
         items: t.items.map((it) =>
-          it.id === item.id && it.kind === 'clip' ? { ...it, audioFromVideoDisabled: true } : it,
+          it.id === item.id && it.kind === 'clip'
+            ? {
+                ...it,
+                audioFromVideoDisabled: true,
+                linkedGroupId: String((it as any).linkedGroupId ?? it.id),
+              }
+            : it,
         ),
       };
     }
