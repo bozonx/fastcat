@@ -31,6 +31,7 @@ import { useProxyStore } from './proxy.store';
 import { useSelectionStore } from './selection.store';
 import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
@@ -408,6 +409,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
   }
 
+  function setTimelineZoomExact(next: number) {
+    const parsed = Number(next);
+    if (!Number.isFinite(parsed)) return;
+
+    timelineZoom.value = Math.min(
+      MAX_TIMELINE_ZOOM_POSITION,
+      Math.max(MIN_TIMELINE_ZOOM_POSITION, parsed),
+    );
+  }
+
   return {
     timelineDoc,
     getMarkers: markerService.getMarkers,
@@ -450,6 +461,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
       selection.selectTransition(input),
     ...playback,
+    setTimelineZoomExact,
     setAudioVolume: (gain: number) => applyTimeline({ type: 'update_master_gain', gain }),
     setMasterMuted,
     ...tracks,

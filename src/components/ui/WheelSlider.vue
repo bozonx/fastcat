@@ -6,6 +6,7 @@ interface WheelSliderProps {
   min: number;
   max: number;
   step?: number;
+  steps?: number[];
   /** Extra CSS class forwarded to USlider */
   sliderClass?: string;
   wheelStepMultiplier?: number;
@@ -22,16 +23,66 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
 }>();
 
+function clampValue(value: number): number {
+  return Math.min(props.max, Math.max(props.min, value));
+}
+
+function findNearestStep(value: number): number {
+  const steps = props.steps ?? [];
+  if (steps.length === 0) {
+    return clampValue(value);
+  }
+
+  let nearest = steps[0] ?? props.min;
+  let nearestDistance = Math.abs(value - nearest);
+
+  for (const step of steps) {
+    const distance = Math.abs(value - step);
+    if (distance < nearestDistance) {
+      nearest = step;
+      nearestDistance = distance;
+    }
+  }
+
+  return clampValue(nearest);
+}
+
+function findSteppedValue(params: { value: number; direction: 1 | -1 }): number {
+  const steps = props.steps ?? [];
+  if (steps.length === 0) {
+    return clampValue(params.value);
+  }
+
+  if (params.direction > 0) {
+    for (const step of steps) {
+      if (step > params.value) {
+        return clampValue(step);
+      }
+    }
+
+    return clampValue(steps[steps.length - 1] ?? props.max);
+  }
+
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    const step = steps[index];
+    if (step !== undefined && step < params.value) {
+      return clampValue(step);
+    }
+  }
+
+  return clampValue(steps[0] ?? props.min);
+}
+
 const value = computed({
   get: () => {
     const rawValue = Number(props.modelValue);
     if (!Number.isFinite(rawValue)) return props.min;
-    return Math.min(props.max, Math.max(props.min, rawValue));
+    return clampValue(rawValue);
   },
   set: (nextValue: number) => {
     const rawValue = Number(nextValue);
     if (!Number.isFinite(rawValue)) return;
-    emit('update:modelValue', Math.min(props.max, Math.max(props.min, rawValue)));
+    emit('update:modelValue', props.steps?.length ? findNearestStep(rawValue) : clampValue(rawValue));
   },
 });
 
@@ -58,9 +109,15 @@ function onWheel(event: Event) {
 
   const current = Number(props.modelValue);
   const safeCurrent = Number.isFinite(current) ? current : props.min;
+
+  if (props.steps?.length) {
+    emit('update:modelValue', findSteppedValue({ value: safeCurrent, direction }));
+    return;
+  }
+
   const next = safeCurrent + direction * wheelStep;
   const rounded = Number(next.toFixed(precision));
-  const clamped = Math.min(props.max, Math.max(props.min, rounded));
+  const clamped = clampValue(rounded);
   emit('update:modelValue', clamped);
 }
 

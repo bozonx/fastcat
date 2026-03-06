@@ -83,6 +83,10 @@ const isLockedLinkedAudioClip = computed(() => {
   return Boolean((props.clip as any).linkedVideoClipId) && Boolean((props.clip as any).lockToLinkedVideo);
 });
 
+const isInLinkedGroup = computed(
+  () => typeof props.clip.linkedGroupId === 'string' && props.clip.linkedGroupId.trim().length > 0,
+);
+
 function handleDeleteClip() {
   timelineStore.deleteSelectedItems(props.clip.trackId);
 }
@@ -133,6 +137,14 @@ function handleQuantizeClip() {
     deltaUs: 0,
     quantizeToFrames: true,
   });
+}
+
+function handleRemoveFromGroup() {
+  if (!isInLinkedGroup.value) return;
+
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    linkedGroupId: undefined,
+  } as any);
 }
 
 function toggleAudioWaveformMode() {
@@ -424,6 +436,7 @@ defineExpose({
   isRenameModalOpen,
   handleDeleteClip,
 });
+
 </script>
 
 <template>
@@ -475,6 +488,19 @@ defineExpose({
       >
         {{ t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio') }}
       </UButton>
+
+      <UButton
+        v-if="isInLinkedGroup"
+        size="xs"
+        variant="soft"
+        color="neutral"
+        icon="i-heroicons-link-slash"
+        class="w-full justify-center mt-2"
+        @click="handleRemoveFromGroup"
+      >
+        {{ t('granVideoEditor.timeline.removeFromGroup', 'Remove from group') }}
+      </UButton>
+
       <UButton
         v-if="clip.clipType === 'media'"
         size="xs"

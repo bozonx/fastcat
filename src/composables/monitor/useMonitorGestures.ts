@@ -3,10 +3,14 @@ import type { useProjectStore } from '~/stores/project.store';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
-
-const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 20;
-const ZOOM_STEP_FACTOR = 0.001;
+import {
+  DEFAULT_MONITOR_ZOOM,
+  formatZoomMultiplier,
+  MAX_MONITOR_ZOOM,
+  MIN_MONITOR_ZOOM,
+  snapMonitorZoom,
+  stepMonitorZoom,
+} from '~/utils/zoom';
 
 export function useMonitorGestures(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -41,11 +45,22 @@ export function useMonitorGestures(input: {
     get: () => input.projectStore.projectSettings.monitor?.zoom ?? 1,
     set: (v: number) => {
       if (!input.projectStore.projectSettings.monitor) return;
-      input.projectStore.projectSettings.monitor.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v));
+      input.projectStore.projectSettings.monitor.zoom = snapMonitorZoom(v);
     },
   });
 
-  const zoomPercent = computed(() => Math.round(zoom.value * 100));
+  const zoomExact = computed({
+    get: () => input.projectStore.projectSettings.monitor?.zoom ?? DEFAULT_MONITOR_ZOOM,
+    set: (v: number) => {
+      if (!input.projectStore.projectSettings.monitor) return;
+      input.projectStore.projectSettings.monitor.zoom = Math.min(
+        MAX_MONITOR_ZOOM,
+        Math.max(MIN_MONITOR_ZOOM, v),
+      );
+    },
+  });
+
+  const zoomLabel = computed(() => formatZoomMultiplier(zoom.value));
 
   const workspaceStyle = computed(() => ({
     transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
@@ -56,7 +71,7 @@ export function useMonitorGestures(input: {
     if (!input.projectStore.projectSettings.monitor) return;
     input.projectStore.projectSettings.monitor.panX = 0;
     input.projectStore.projectSettings.monitor.panY = 0;
-    input.projectStore.projectSettings.monitor.zoom = 1;
+    input.projectStore.projectSettings.monitor.zoom = DEFAULT_MONITOR_ZOOM;
   }
 
   function centerMonitor() {
@@ -67,14 +82,11 @@ export function useMonitorGestures(input: {
 
   function resetZoom() {
     if (!input.projectStore.projectSettings.monitor) return;
-    input.projectStore.projectSettings.monitor.zoom = 1;
+    input.projectStore.projectSettings.monitor.zoom = DEFAULT_MONITOR_ZOOM;
   }
 
   function onCustomZoom(dir: number) {
-    const prevZoom = zoom.value;
-    const zoomFactor = dir > 0 ? 1.1 : 0.9;
-    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevZoom * zoomFactor));
-    zoom.value = nextZoom;
+    zoom.value = stepMonitorZoom(zoom.value, dir > 0 ? 1 : -1);
   }
 
   function onCustomZoomReset(e: Event) {
@@ -135,8 +147,9 @@ export function useMonitorGestures(input: {
 
     const rect = el.getBoundingClientRect();
     const prevZoom = zoom.value;
-    const rawNext = prevZoom * (1 - params.delta * ZOOM_STEP_FACTOR);
-    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, rawNext));
+    const direction = params.delta < 0 ? 1 : -1;
+    const nextZoom = stepMonitorZoom(prevZoom, direction);
+    if (nextZoom === prevZoom) return;
 
     // Viewport center in local coords
     const vpCx = rect.width / 2;
@@ -222,7 +235,8 @@ export function useMonitorGestures(input: {
   return {
     isPreviewSelected,
     zoom,
-    zoomPercent,
+    zoomExact,
+    zoomLabel,
     workspaceStyle,
     resetView,
     centerMonitor,

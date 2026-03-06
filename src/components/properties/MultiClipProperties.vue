@@ -14,6 +14,9 @@ const props = defineProps<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
+const generatedGroupId = () =>
+  `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
 const selectedCountLabel = computed(() => {
   return (t as any)(
     'granVideoEditor.timeline.selectedClipsCount',
@@ -72,6 +75,10 @@ const selectedClips = computed(() => {
   return clips;
 });
 
+const hasGroupedClip = computed(() =>
+  selectedClips.value.some((clip) => typeof clip.linkedGroupId === 'string' && clip.linkedGroupId.trim().length > 0),
+);
+
 function handleUnlinkSelected() {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
@@ -117,6 +124,35 @@ function handleUnlinkSelected() {
   }
 
   if (cmds.length === 0) return;
+  timelineStore.batchApplyTimeline(cmds as any);
+}
+
+function handleGroupSelected() {
+  if (props.items.length < 2) return;
+
+  const nextGroupId = generatedGroupId();
+  const cmds = props.items.map(({ trackId, itemId }) => ({
+    type: 'update_clip_properties' as const,
+    trackId,
+    itemId,
+    properties: {
+      linkedGroupId: nextGroupId,
+    },
+  }));
+
+  timelineStore.batchApplyTimeline(cmds as any);
+}
+
+function handleUngroupSelected() {
+  const cmds = props.items.map(({ trackId, itemId }) => ({
+    type: 'update_clip_properties' as const,
+    trackId,
+    itemId,
+    properties: {
+      linkedGroupId: undefined,
+    },
+  }));
+
   timelineStore.batchApplyTimeline(cmds as any);
 }
 
@@ -337,6 +373,26 @@ function handleQuantizeSelected() {
           :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
           :label="allDisabled ? t('granVideoEditor.timeline.enableClips', 'Enable clips') : t('granVideoEditor.timeline.disableClips', 'Disable clips')"
           @click="toggleDisabled"
+        />
+
+        <UButton
+          v-if="items.length > 1"
+          size="sm"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-link"
+          :label="t('granVideoEditor.timeline.groupClips', 'Group clips')"
+          @click="handleGroupSelected"
+        />
+
+        <UButton
+          v-if="hasGroupedClip"
+          size="sm"
+          color="neutral"
+          variant="soft"
+          icon="i-heroicons-link-slash"
+          :label="t('granVideoEditor.timeline.ungroupClips', 'Ungroup clips')"
+          @click="handleUngroupSelected"
         />
 
         <UButton

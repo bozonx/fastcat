@@ -4,8 +4,17 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import type { ClipEffect } from '~/timeline/types';
+import {
+  DEFAULT_TIMELINE_ZOOM_POSITION,
+  formatZoomMultiplier,
+  MAX_TIMELINE_ZOOM_POSITION,
+  MIN_TIMELINE_ZOOM_POSITION,
+  TIMELINE_ZOOM_POSITIONS,
+  timelineZoomPositionToScale,
+} from '~/utils/zoom';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -38,6 +47,23 @@ const masterMuted = computed({
     timelineStore.setMasterMuted(muted);
   },
 });
+
+const timelineZoom = computed({
+  get: () => timelineStore.timelineZoom,
+  set: (value: number) => {
+    timelineStore.setTimelineZoom(value);
+  },
+});
+
+const timelineZoomExact = computed({
+  get: () => timelineStore.timelineZoom,
+  set: (value: number) => {
+    timelineStore.setTimelineZoomExact(value);
+  },
+});
+
+const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
+const timelineZoomLabel = computed(() => formatZoomMultiplier(timelineZoomScale.value));
 
 function handleUpdateMasterEffects(effects: ClipEffect[]) {
   timelineStore.applyTimeline({
@@ -87,6 +113,36 @@ function handleAddAudioTrack() {
       </div>
 
       <div class="flex flex-col gap-2 mt-3 p-2 bg-ui-bg rounded border border-ui-border">
+        <div class="border-b border-ui-border pb-2 mb-1">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="text-xs text-ui-text-muted">{{
+              t('granVideoEditor.timeline.properties.zoom', 'Zoom')
+            }}</span>
+            <span class="text-[10px] font-mono text-ui-text-muted">{{ timelineZoomLabel }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+              <WheelSlider
+                v-model="timelineZoom"
+                :min="MIN_TIMELINE_ZOOM_POSITION"
+                :max="MAX_TIMELINE_ZOOM_POSITION"
+                :step="0.01"
+                :steps="TIMELINE_ZOOM_POSITIONS"
+                :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
+              />
+            </div>
+            <div class="w-24 shrink-0">
+              <WheelNumberInput
+                v-model="timelineZoomExact"
+                :min="MIN_TIMELINE_ZOOM_POSITION"
+                :max="MAX_TIMELINE_ZOOM_POSITION"
+                :step="0.01"
+                size="xs"
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
             t('granVideoEditor.timeline.properties.snapToFrames', 'Snap to frames')

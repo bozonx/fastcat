@@ -1101,6 +1101,7 @@ export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): Timelin
       itemId: move.itemId,
       startUs: move.startUs,
       quantizeToFrames: cmd.quantizeToFrames,
+      ignoreLinks: true,
     });
     currentDoc = res.next;
   }
@@ -1263,6 +1264,8 @@ export function moveItemToTrack(
       itemId: cmd.itemId,
       startUs: cmd.startUs,
       quantizeToFrames: cmd.quantizeToFrames,
+      ignoreLocks: cmd.ignoreLocks,
+      ignoreLinks: cmd.ignoreLinks,
     });
   }
 

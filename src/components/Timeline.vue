@@ -26,6 +26,7 @@ import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage, useResizeObserver } from '@vueuse/core';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
+import { formatZoomMultiplier, stepTimelineZoomPosition, timelineZoomPositionToScale } from '~/utils/zoom';
 
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -137,12 +138,7 @@ const dragPreview = ref<{
 } | null>(null);
 
 const zoomFactor = computed(() => {
-  const zoom = timelineStore.timelineZoom;
-  const pos = Math.min(110, Math.max(0, zoom));
-  const exponent = (pos - 50) / 7;
-  const factor = Math.pow(2, exponent);
-  // Show as "x1.25" format
-  return `x${factor.toFixed(2)}`;
+  return formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom));
 });
 
 let zoomTimeout: number | null = null;
@@ -322,8 +318,7 @@ function onTimelineRulerWheel(e: WheelEvent) {
 
     const prevZoom = timelineStore.timelineZoom;
     const dir = delta < 0 ? 1 : -1;
-    const step = 3;
-    const nextZoom = Math.min(110, Math.max(0, Math.round(prevZoom + dir * step)));
+    const nextZoom = stepTimelineZoomPosition(prevZoom, dir);
 
     const rect = el.getBoundingClientRect();
     const viewportX = e.clientX - rect.left;
@@ -393,8 +388,7 @@ function onTimelineWheel(e: WheelEvent) {
 
     const prevZoom = timelineStore.timelineZoom;
     const dir = delta < 0 ? 1 : -1;
-    const step = 3;
-    const nextZoom = Math.min(110, Math.max(0, Math.round(prevZoom + dir * step)));
+    const nextZoom = stepTimelineZoomPosition(prevZoom, dir);
 
     const rect = el.getBoundingClientRect();
     const viewportX = e.clientX - rect.left;

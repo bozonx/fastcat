@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
-import type { TimelineTrack } from '~/timeline/types';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
@@ -64,25 +62,6 @@ async function rippleTrimLeft() {
 
 async function rippleTrimRight() {
   await timelineStore.rippleTrimRight();
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function togglePlay() {
-  timelineStore.togglePlayback();
-}
-
-function stop() {
-  timelineStore.stopPlayback();
-}
-
-function onZoomInput(e: Event) {
-  const target = e.target as HTMLInputElement | null;
-  timelineStore.setTimelineZoom(Number(target?.value ?? 50));
 }
 </script>
 
@@ -166,22 +145,6 @@ function onZoomInput(e: Event) {
         :aria-label="t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right')"
         @click="rippleTrimRight"
       />
-    </div>
-
-    <div class="ml-auto flex items-center gap-4 mr-4">
-      <div class="flex items-center gap-2 text-ui-text-muted">
-        <UIcon name="i-heroicons-magnifying-glass-minus" class="w-4 h-4" />
-        <input
-          type="range"
-          min="0"
-          max="110"
-          step="1"
-          :value="timelineStore.timelineZoom"
-          class="w-32 h-1.5 bg-ui-border rounded-lg appearance-none cursor-pointer accent-primary-500"
-          @input="onZoomInput"
-        />
-        <UIcon name="i-heroicons-magnifying-glass-plus" class="w-4 h-4" />
-      </div>
     </div>
   </div>
 </template>

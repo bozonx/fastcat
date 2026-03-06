@@ -1,4 +1,9 @@
 import type { Ref } from 'vue';
+import {
+  MAX_TIMELINE_ZOOM_POSITION,
+  MIN_TIMELINE_ZOOM_POSITION,
+  snapTimelineZoomPosition,
+} from '~/utils/zoom';
 
 export interface TimelinePlaybackDeps {
   currentTime: Ref<number>;
@@ -48,9 +53,14 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
   }
 
   function setTimelineZoom(next: number) {
-    const parsed = Math.round(Number(next));
+    const parsed = Number(next);
     if (!Number.isFinite(parsed)) return;
-    deps.timelineZoom.value = Math.min(110, Math.max(0, parsed));
+
+    const clamped = Math.min(
+      MAX_TIMELINE_ZOOM_POSITION,
+      Math.max(MIN_TIMELINE_ZOOM_POSITION, parsed),
+    );
+    deps.timelineZoom.value = snapTimelineZoomPosition(clamped);
   }
 
   function setAudioVolume(next: number) {
