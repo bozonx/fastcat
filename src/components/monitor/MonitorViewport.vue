@@ -20,7 +20,8 @@ const viewportEl = ref<HTMLElement | null>(null);
 const {
   isPreviewSelected,
   zoom,
-  zoomPercent,
+  zoomExact,
+  zoomLabel,
   workspaceStyle,
   resetView,
   centerMonitor,
@@ -32,7 +33,7 @@ const {
   onViewportWheel,
 } = useMonitorGestures({ projectStore, viewportEl });
 
-defineExpose({ viewportEl, zoom, zoomPercent, resetView, centerMonitor, resetZoom });
+defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor, resetZoom });
 </script>
 
 <template>

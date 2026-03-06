@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
 
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -37,11 +38,13 @@ export function useGeneralHotkeys(
     });
   }
 
-  function startZoomHotkeyHold(params: { step: number; keyCode: string }) {
+  function startZoomHotkeyHold(params: { direction: 1 | -1; keyCode: string }) {
     zoomHoldRunner.startHold({
       keyCode: params.keyCode,
       action: () => {
-        timelineStore.setTimelineZoom(timelineStore.timelineZoom + params.step);
+        timelineStore.setTimelineZoom(
+          stepTimelineZoomPosition(timelineStore.timelineZoom, params.direction),
+        );
       },
     });
   }
@@ -129,7 +132,7 @@ export function useGeneralHotkeys(
 
     'general.zoomIn': (e) => {
       if (focusStore.effectiveFocus === 'timeline') {
-        startZoomHotkeyHold({ step: 3, keyCode: e.code });
+        startZoomHotkeyHold({ direction: 1, keyCode: e.code });
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
         uiStore.triggerPreviewZoom(1);
       } else if (focusStore.effectiveFocus === 'monitor') {
@@ -140,7 +143,7 @@ export function useGeneralHotkeys(
 
     'general.zoomOut': (e) => {
       if (focusStore.effectiveFocus === 'timeline') {
-        startZoomHotkeyHold({ step: -3, keyCode: e.code });
+        startZoomHotkeyHold({ direction: -1, keyCode: e.code });
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
         uiStore.triggerPreviewZoom(-1);
       } else if (focusStore.effectiveFocus === 'monitor') {
@@ -151,7 +154,7 @@ export function useGeneralHotkeys(
 
     'general.zoomReset': () => {
       if (focusStore.effectiveFocus === 'timeline') {
-        timelineStore.setTimelineZoom(50);
+        timelineStore.setTimelineZoom(DEFAULT_TIMELINE_ZOOM_POSITION);
       } else if (focusStore.effectiveFocus === 'right' || focusStore.effectiveFocus === 'left') {
         uiStore.triggerPreviewZoomReset();
       } else if (focusStore.effectiveFocus === 'monitor') {

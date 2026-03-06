@@ -14,6 +14,14 @@ import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import {
+  DEFAULT_MONITOR_ZOOM,
+  MAX_MONITOR_ZOOM,
+  MIN_MONITOR_ZOOM,
+  MONITOR_ZOOM_LEVELS,
+} from '~/utils/zoom';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
@@ -160,7 +168,23 @@ onMounted(() => {
 
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
-const zoomPercent = computed(() => viewportRef.value?.zoomPercent ?? 100);
+const monitorZoom = computed({
+  get: () => viewportRef.value?.zoom ?? DEFAULT_MONITOR_ZOOM,
+  set: (value: number) => {
+    if (!viewportRef.value) return;
+    viewportRef.value.zoom = value;
+  },
+});
+
+const monitorZoomExact = computed({
+  get: () => viewportRef.value?.zoomExact ?? DEFAULT_MONITOR_ZOOM,
+  set: (value: number) => {
+    if (!viewportRef.value) return;
+    viewportRef.value.zoomExact = value;
+  },
+});
+
+const monitorZoomLabel = computed(() => viewportRef.value?.zoomLabel ?? 'x1');
 
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
@@ -471,16 +495,39 @@ const emit = defineEmits<{
             />
           </UTooltip>
 
-          <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom (100%)')">
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              class="font-mono tabular-nums min-w-10 justify-center"
-              :label="`${zoomPercent}%`"
-              @click="resetZoom"
-            />
-          </UTooltip>
+          <div class="flex items-center gap-2 min-w-0">
+            <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom')">
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                class="font-mono tabular-nums min-w-12 justify-center"
+                :label="monitorZoomLabel"
+                @click="resetZoom"
+              />
+            </UTooltip>
+
+            <div class="w-28 min-w-0">
+              <WheelSlider
+                v-model="monitorZoom"
+                :min="MIN_MONITOR_ZOOM"
+                :max="MAX_MONITOR_ZOOM"
+                :step="0.001"
+                :steps="MONITOR_ZOOM_LEVELS"
+                :default-value="DEFAULT_MONITOR_ZOOM"
+              />
+            </div>
+
+            <div class="w-20 shrink-0">
+              <WheelNumberInput
+                v-model="monitorZoomExact"
+                :min="MIN_MONITOR_ZOOM"
+                :max="MAX_MONITOR_ZOOM"
+                :step="0.001"
+                size="xs"
+              />
+            </div>
+          </div>
 
           <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
             <UButton
