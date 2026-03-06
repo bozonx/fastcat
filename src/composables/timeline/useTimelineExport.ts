@@ -87,6 +87,7 @@ export async function toWorkerTimelineClips(
     layer?: number;
     trackKind?: 'video' | 'audio';
     visitedPaths?: Set<string>;
+    nestedPathStack?: string[];
     parentOpacity?: number;
     parentEffects?: ClipEffect[];
   },
@@ -94,6 +95,7 @@ export async function toWorkerTimelineClips(
   const clips: WorkerTimelineClip[] = [];
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
+  const nestedPathStack = options?.nestedPathStack ?? [];
 
   for (const item of items) {
     if (item.kind !== 'clip') continue;
@@ -143,7 +145,10 @@ export async function toWorkerTimelineClips(
 
       if (clipType === 'timeline') {
         if (visitedPaths.has(path)) {
-          console.warn('Circular dependency detected in nested timeline:', path);
+          console.warn(
+            'Circular dependency detected in nested timeline:',
+            [...nestedPathStack, path].join(' -> '),
+          );
           continue;
         }
 
@@ -159,6 +164,7 @@ export async function toWorkerTimelineClips(
             });
 
             const nextVisited = new Set(visitedPaths).add(path);
+            const nextNestedPathStack = [...nestedPathStack, path];
 
             if (trackKind === 'video') {
               const nestedVideoTracks = nestedDoc.tracks.filter(
@@ -179,6 +185,7 @@ export async function toWorkerTimelineClips(
                   layer: nestedLayer,
                   trackKind: 'video',
                   visitedPaths: nextVisited,
+                  nestedPathStack: nextNestedPathStack,
                   parentOpacity: combinedOpacity,
                   parentEffects: combinedTrackEffects,
                 });
@@ -257,6 +264,7 @@ export async function toWorkerTimelineClips(
                   layer: 0,
                   trackKind: 'audio',
                   visitedPaths: nextVisited,
+                  nestedPathStack: nextNestedPathStack,
                   parentOpacity: combinedOpacity,
                   parentEffects: combinedEffects,
                 },

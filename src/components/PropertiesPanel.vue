@@ -14,6 +14,7 @@ import TransitionProperties from '~/components/properties/TransitionProperties.v
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
+import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
@@ -78,6 +79,11 @@ const selectedMarkerId = computed<string | null>(() => {
   return null;
 });
 
+const hasSelectionRange = computed(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  return entity?.source === 'timeline' && entity.kind === 'selection-range';
+});
+
 const selectedClips = computed(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'timeline' && entity.kind === 'clips') {
@@ -105,12 +111,22 @@ const selectedClips = computed(() => {
 });
 
 const displayMode = computed<
-  'transition' | 'clip' | 'clips' | 'track' | 'file' | 'files' | 'marker' | 'timeline' | 'empty'
+  | 'transition'
+  | 'clip'
+  | 'clips'
+  | 'track'
+  | 'file'
+  | 'files'
+  | 'marker'
+  | 'selection-range'
+  | 'timeline'
+  | 'empty'
 >(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
   if (selectedClips.value) return 'clips';
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
+  if (hasSelectionRange.value) return 'selection-range';
 
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
@@ -290,6 +306,7 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'marker' && selectedMarkerId"
             v-model:marker-id="selectedMarkerId"
           />
+          <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
           <TimelineProperties v-else-if="displayMode === 'timeline'" />
           <div
             v-else

@@ -202,11 +202,17 @@ export interface TimelineMarker {
   color?: string;
 }
 
+export interface TimelineSelectionRange {
+  startUs: number;
+  endUs: number;
+}
+
 export interface TimelineGranMetadata {
   version?: number;
   docId?: string;
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];
+  selectionRange?: TimelineSelectionRange;
   playheadUs?: number;
   masterGain?: number;
   masterMuted?: boolean;

@@ -93,6 +93,11 @@ function handleConvertMarker() {
     timelineStore.convertMarkerToZone(marker.value.id);
   }
 }
+
+function handleConvertToSelectionRange() {
+  if (!marker.value || !isZone.value) return;
+  timelineStore.convertMarkerToSelectionRange(marker.value.id);
+}
 </script>
 
 <template>
@@ -124,6 +129,17 @@ function handleConvertMarker() {
           {{ t('common.delete', 'Delete') }}
         </UButton>
       </div>
+      <UButton
+        v-if="isZone"
+        size="xs"
+        variant="soft"
+        color="neutral"
+        icon="i-heroicons-rectangle-group"
+        class="w-full justify-center mt-2"
+        @click="handleConvertToSelectionRange"
+      >
+        {{ t('granVideoEditor.timeline.convertZoneToSelection', 'Convert to selection area') }}
+      </UButton>
     </PropertySection>
 
     <PropertySection :title="t('granVideoEditor.marker.info', 'Marker Info')">

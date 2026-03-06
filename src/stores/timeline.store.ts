@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
-import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
+import type { TimelineDocument, TimelineMarker, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
@@ -192,6 +192,120 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline,
   });
 
+  function getSelectionRange(): TimelineSelectionRange | null {
+    const range = timelineDoc.value?.metadata?.gran?.selectionRange;
+    if (!range) return null;
+    if (!Number.isFinite(range.startUs) || !Number.isFinite(range.endUs)) return null;
+
+    const startUs = Math.max(0, Math.round(range.startUs));
+    const endUs = Math.max(startUs, Math.round(range.endUs));
+
+    if (endUs <= startUs) return null;
+
+    return {
+      startUs,
+      endUs,
+    };
+  }
+
+  function updateSelectionRange(range: TimelineSelectionRange | null) {
+    const currentGran = timelineDoc.value?.metadata?.gran ?? {};
+    applyTimeline({
+      type: 'update_timeline_properties',
+      properties: {
+        ...currentGran,
+        selectionRange: range
+          ? {
+              startUs: Math.max(0, Math.round(range.startUs)),
+              endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
+            }
+          : undefined,
+      },
+    });
+  }
+
+  function createSelectionRangeAtPlayhead(durationUs = 5_000_000) {
+    const startUs = Math.max(0, Math.round(currentTime.value));
+    updateSelectionRange({
+      startUs,
+      endUs: startUs + Math.max(1, Math.round(durationUs)),
+    });
+    selectionStore.selectTimelineSelectionRange();
+  }
+
+  function removeSelectionRange() {
+    updateSelectionRange(null);
+    if (
+      selectionStore.selectedEntity?.source === 'timeline' &&
+      selectionStore.selectedEntity.kind === 'selection-range'
+    ) {
+      selectionStore.clearSelection();
+    }
+  }
+
+  function convertMarkerToSelectionRange(markerId: string) {
+    const marker = markerService.getMarkers().find((item) => item.id === markerId);
+    if (!marker) return;
+
+    const startUs = Math.max(0, Math.round(marker.timeUs));
+    const durationUs = Math.max(1, Math.round(marker.durationUs ?? 5_000_000));
+
+    updateSelectionRange({
+      startUs,
+      endUs: startUs + durationUs,
+    });
+    markerService.removeMarker(markerId);
+    selectionStore.selectTimelineSelectionRange();
+  }
+
+  function convertSelectionRangeToMarker() {
+    const range = getSelectionRange();
+    if (!range) return;
+
+    applyTimeline({
+      type: 'add_marker',
+      id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+      timeUs: range.startUs,
+      durationUs: range.endUs - range.startUs,
+      text: '',
+    });
+    removeSelectionRange();
+  }
+
+  function rippleTrimSelectionRange() {
+    const range = getSelectionRange();
+    const doc = timelineDoc.value;
+    if (!range || !doc) return;
+
+    trimming.rippleDeleteRange({
+      trackIds: doc.tracks.map((track) => track.id),
+      startUs: range.startUs,
+      endUs: range.endUs,
+    });
+
+    const deltaUs = range.endUs - range.startUs;
+    if (deltaUs > 0) {
+      const markers = markerService.getMarkers();
+      for (const marker of markers) {
+        const markerStartUs = marker.timeUs;
+        const markerEndUs = marker.timeUs + Math.max(0, marker.durationUs ?? 0);
+
+        if (markerEndUs <= range.startUs) continue;
+
+        if (markerStartUs >= range.endUs) {
+          markerService.updateMarker(marker.id, {
+            timeUs: Math.max(0, markerStartUs - deltaUs),
+          });
+          continue;
+        }
+
+        markerService.removeMarker(marker.id);
+      }
+    }
+
+    removeSelectionRange();
+  }
+
   const hydration = createTimelineHydration({
     mediaMetadata,
   });
@@ -204,6 +318,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
       return timelineDoc.value;
     },
+    getCurrentTimelinePath: () => currentTimelinePath.value,
     getTrackById: (trackId) => timelineDoc.value?.tracks.find((t) => t.id === trackId) ?? null,
     applyTimeline,
     getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
@@ -422,6 +537,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   return {
     timelineDoc,
     getMarkers: markerService.getMarkers,
+    getSelectionRange,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
@@ -469,10 +585,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     ...clips,
     addMarkerAtPlayhead: markerService.addMarkerAtPlayhead,
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,
+    createSelectionRangeAtPlayhead,
     updateMarker: markerService.updateMarker,
     removeMarker: markerService.removeMarker,
+    updateSelectionRange,
+    removeSelectionRange,
     convertMarkerToZone: markerService.convertMarkerToZone,
     convertZoneToMarker: markerService.convertZoneToMarker,
+    convertMarkerToSelectionRange,
+    convertSelectionRangeToMarker,
+    rippleTrimSelectionRange,
     moveItemToTrack,
     extractAudioToTrack,
     returnAudioToVideo,

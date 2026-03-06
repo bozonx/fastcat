@@ -144,4 +144,56 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.audioFadeInUs).toBe(150_000);
     expect(clip.audioFadeOutUs).toBe(250_000);
   });
+
+  it('infers nested timeline clip from .otio target_url without gran clipType', () => {
+    const parsed = parseTimelineFromOtio(
+      JSON.stringify({
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'Imported nested',
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'Video 1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'Nested external timeline',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: '_timelines/external-sequence.otio',
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: {
+                      OTIO_SCHEMA: 'RationalTime.1',
+                      value: 1_000_000,
+                      rate: 1_000_000,
+                    },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 4_000_000, rate: 1_000_000 },
+                  },
+                  metadata: {
+                    gran: {
+                      sourceDurationUs: 9_000_000,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        metadata: { gran: { docId: 'imported-doc', timebase: { fps: 25 } } },
+      }),
+      { id: 'doc1', name: 'Imported', fps: 25 },
+    );
+
+    const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
+    expect(clip.clipType).toBe('timeline');
+    expect(clip.source?.path).toBe('_timelines/external-sequence.otio');
+    expect(clip.sourceDurationUs).toBe(9_000_000);
+    expect(clip.sourceRange).toEqual({ startUs: 1_000_000, durationUs: 4_000_000 });
+  });
 });

@@ -4,6 +4,7 @@ import type {
   TimelineGapItem,
   TimelineMarker,
   TimelineRange,
+  TimelineSelectionRange,
   TimelineTimebase,
   TimelineTrack,
   TimelineTrackItem,
@@ -138,6 +139,10 @@ function safeGranMetadata(raw: any): any {
   const gran = (raw as any).gran;
   if (!gran || typeof gran !== 'object') return {};
   return gran;
+}
+
+function isOtioPath(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().toLowerCase().endsWith('.otio');
 }
 
 function clampNumber(value: unknown, min: number, max: number): number {
@@ -281,7 +286,9 @@ function parseClipItem(input: {
     clipTypeRaw === 'timeline' ||
     clipTypeRaw === 'text'
       ? clipTypeRaw
-      : 'media';
+      : isOtioPath(path)
+        ? 'timeline'
+        : 'media';
   const timelineStartUs = fallbackStartUs;
   const sourceDurationUs = Math.max(0, Math.round(Number(granMeta?.sourceDurationUs ?? 0)));
   const id = resolveStableItemId({
@@ -510,6 +517,23 @@ function coerceMarkers(raw: unknown): TimelineMarker[] {
   return result;
 }
 
+function coerceSelectionRange(raw: unknown): TimelineSelectionRange | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const startUs = Number((raw as any).startUs);
+  const endUs = Number((raw as any).endUs);
+  if (!Number.isFinite(startUs) || !Number.isFinite(endUs)) return undefined;
+
+  const nextStartUs = Math.max(0, Math.round(startUs));
+  const nextEndUs = Math.max(nextStartUs, Math.round(endUs));
+
+  if (nextEndUs <= nextStartUs) return undefined;
+
+  return {
+    startUs: nextStartUs,
+    endUs: nextEndUs,
+  };
+}
+
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const tracks: OtioTrack[] = doc.tracks.map((t) => {
     const sortedItems = [...t.items].sort(
@@ -565,6 +589,10 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           gran: {
             id: item.id,
             clipType: item.clipType,
+            otioClipKind:
+              item.clipType === 'timeline' && item.source?.path
+                ? 'nested_timeline_reference'
+                : undefined,
             locked: item.locked ? true : undefined,
             sourceDurationUs:
               item.clipType === 'media' || item.clipType === 'timeline'
@@ -634,6 +662,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         docId: doc.id,
         timebase: doc.timebase,
         markers: coerceMarkers((doc as any)?.metadata?.gran?.markers),
+        selectionRange: coerceSelectionRange((doc as any)?.metadata?.gran?.selectionRange),
         snapThresholdPx: (doc as any)?.metadata?.gran?.snapThresholdPx,
         playheadUs: (doc as any)?.metadata?.gran?.playheadUs,
       },
@@ -750,6 +779,7 @@ export function parseTimelineFromOtio(
   const version = typeof granMeta?.version === 'number' ? granMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
   const markers = coerceMarkers(granMeta?.markers);
+  const selectionRange = coerceSelectionRange(granMeta?.selectionRange);
   const playheadUs =
     typeof granMeta?.playheadUs === 'number' && Number.isFinite(granMeta.playheadUs)
       ? Math.max(0, Math.round(granMeta.playheadUs))
@@ -769,6 +799,7 @@ export function parseTimelineFromOtio(
         docId,
         timebase,
         markers,
+        selectionRange,
         playheadUs,
         snapThresholdPx,
       },

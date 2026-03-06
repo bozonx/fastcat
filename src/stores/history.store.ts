@@ -46,6 +46,7 @@ const COMMAND_LABELS: Record<TimelineCommand['type'], string> = {
   update_master_gain: 'Update master gain',
   update_master_muted: 'Toggle mute',
   update_master_effects: 'Update effects',
+  update_timeline_properties: 'Update timeline properties',
 };
 
 export const useHistoryStore = defineStore('history', () => {

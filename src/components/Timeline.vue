@@ -1019,7 +1019,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               The ruler height (h-7 = 28px) is subtracted from top so the line starts below ruler.
             -->
             <div
-              class="absolute bottom-0 pointer-events-auto cursor-ew-resize"
+              class="absolute bottom-0 pointer-events-none"
               :style="{
                 top: '27px',
                 left: `${playheadLeft}px`,
@@ -1027,7 +1027,6 @@ async function onDrop(e: DragEvent, trackId: string) {
                 zIndex: 50,
                 backgroundColor: 'var(--color-primary-500, #3b82f6)',
               }"
-              @pointerdown="startPlayheadDrag"
             />
 
             <!-- Zoom indicator — absolute in bottom-right of visible track area -->
