@@ -66,9 +66,9 @@ function isSelected(entry: FsEntry): boolean {
   <div class="flex flex-wrap gap-2 content-start">
     <UContextMenu v-for="entry in entries" :key="entry.path" :items="getContextMenuItems(entry)">
       <div
-        class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0"
+        class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0 focus:outline-none"
         :class="{
-          'bg-primary-500/10 border-primary-500/30': isSelected(entry),
+          'bg-ui-bg-elevated ring-1 ring-(--selection-ring)': isSelected(entry),
           'border-b-2 border-b-red-500':
             entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
           'opacity-30': entry.name.startsWith('.'),
@@ -97,7 +97,9 @@ function isSelected(entry: FsEntry): boolean {
             class="max-w-full max-h-full object-contain"
           />
           <img
-            v-else-if="entry.kind === 'file' && videoThumbnails && entry.path && videoThumbnails[entry.path]"
+            v-else-if="
+              entry.kind === 'file' && videoThumbnails && entry.path && videoThumbnails[entry.path]
+            "
             :src="videoThumbnails[entry.path]"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"

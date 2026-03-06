@@ -340,7 +340,7 @@ export class AudioEngine {
         return audioBuffer;
       } catch (err) {
         const name = (err as any)?.name;
-        if (name !== 'NoAudioTrackError') {
+        if (name !== 'NoAudioTrackError' && name !== 'UnsupportedFormatError') {
           console.warn('[AudioEngine] Failed to decode audio', err);
         }
         this.decodedCache.set(sourceKey, null);

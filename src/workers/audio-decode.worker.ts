@@ -164,9 +164,13 @@ self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
 
     (self as any).postMessage(response, [...result.channelBuffers]);
   } catch (err: any) {
+    let errName = err?.name;
+    if (err?.message === 'Input has an unsupported or unrecognizable format.') {
+      errName = 'UnsupportedFormatError';
+    }
     response.ok = false;
     response.error = {
-      name: err?.name,
+      name: errName,
       message: err?.message || String(err),
       stack: err?.stack,
     };
