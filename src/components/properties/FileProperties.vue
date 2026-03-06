@@ -293,14 +293,14 @@ function openAsTextPanel() {
             icon: 'i-heroicons-arrow-up-tray',
             onClick: triggerDirectoryUpload,
           },
-        ]"
-        :secondary-actions="[
           {
             id: 'createSubfolder',
-            label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+            title: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
             icon: 'i-heroicons-folder-plus',
             onClick: createSubfolder,
           },
+        ]"
+        :secondary-actions="[
           {
             id: 'createTimeline',
             label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
@@ -370,16 +370,16 @@ function openAsTextPanel() {
             hidden: !canOpenAsProjectTab || props.isFilesPage,
             onClick: openAsProjectTab,
           },
-        ]"
-        :secondary-actions="[
           {
             id: 'convertFile',
-            label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+            title: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
             icon: 'i-heroicons-arrow-path',
             hidden:
               mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image',
             onClick: () => emit('convert', props.selectedFsEntry),
           },
+        ]"
+        :secondary-actions="[
           {
             id: 'createProxy',
             label: hasExistingProxyForFile

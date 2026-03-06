@@ -110,7 +110,15 @@ const props = defineProps<{
   ) => Promise<void>;
 }>();
 
-const selectedPath = computed(() => uiStore.selectedFsEntry?.path ?? null);
+import { useFilesPageStore } from '~/stores/filesPage.store';
+
+const filesPageStore = useFilesPageStore();
+const selectedPath = computed(() => {
+  if (props.isFilesPage) {
+    return filesPageStore.selectedFolder?.path ?? projectStore.currentProjectName ?? null;
+  }
+  return uiStore.selectedFsEntry?.path ?? null;
+});
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
