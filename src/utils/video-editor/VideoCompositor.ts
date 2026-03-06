@@ -1,4 +1,5 @@
 import { safeDispose } from './utils';
+import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import type { Filter } from 'pixi.js';
 import {
@@ -520,7 +521,10 @@ export class VideoCompositor {
 
       const file = await fileHandle.getFile();
 
-      if (typeof file?.type === 'string' && file.type.startsWith('image/')) {
+      const isImage =
+        (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+        getMediaTypeFromFilename(sourcePath || '') === 'image';
+      if (isImage) {
         const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
         sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
 
@@ -659,8 +663,10 @@ export class VideoCompositor {
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
-      } catch (err) {
-        console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
+      } catch (err: any) {
+        if (err?.message !== 'Input has an unsupported or unrecognizable format.') {
+          console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
+        }
         sequentialTimeUs = Math.max(sequentialTimeUs, endUsFallback);
         continue;
       }

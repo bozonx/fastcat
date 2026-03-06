@@ -301,7 +301,114 @@ async function selectProjectRoot() {
   emit('select', rootEntry);
 }
 
-async function onEntrySelect(entry: FsEntry) {
+function getVisibleEntries(entries: FsEntry[]): FsEntry[] {
+  const list: FsEntry[] = [];
+  for (const e of entries) {
+    list.push(e);
+    if (e.kind === 'directory' && e.expanded && e.children) {
+      list.push(...getVisibleEntries(e.children));
+    }
+  }
+  return list;
+}
+
+async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
+  if (event && !props.isFilesPage) {
+    if (event.ctrlKey || event.metaKey) {
+      const selected = selectionStore.selectedEntity;
+      if (selected && selected.source === 'fileManager') {
+        let currentEntries: FsEntry[] = [];
+        if (selected.kind === 'multiple') {
+          currentEntries = [...selected.entries];
+        } else if (selected.kind === 'file' || selected.kind === 'directory') {
+          currentEntries = [selected.entry];
+        }
+
+        const existingIndex = currentEntries.findIndex((e) => e.path === entry.path);
+        if (existingIndex >= 0) {
+          currentEntries.splice(existingIndex, 1);
+          selectionStore.selectFsEntries(currentEntries);
+        } else {
+          // Enforce same level rule
+          if (currentEntries.length > 0) {
+            const firstParentPath = currentEntries[0]?.path
+              ? currentEntries[0].path.split('/').slice(0, -1).join('/')
+              : '';
+            const entryParentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
+            if (firstParentPath === entryParentPath) {
+              selectionStore.selectFsEntries([...currentEntries, entry]);
+            } else {
+              selectionStore.selectFsEntry(entry);
+              uiStore.selectedFsEntry = {
+                kind: entry.kind,
+                name: entry.name,
+                path: entry.path,
+                handle: entry.handle,
+              };
+            }
+          } else {
+            selectionStore.selectFsEntries([entry]);
+          }
+        }
+      } else {
+        selectionStore.selectFsEntry(entry);
+        uiStore.selectedFsEntry = {
+          kind: entry.kind,
+          name: entry.name,
+          path: entry.path,
+          handle: entry.handle,
+        };
+      }
+      return;
+    } else if (event.shiftKey) {
+      const selected = selectionStore.selectedEntity;
+      if (selected && selected.source === 'fileManager') {
+        const visibleEntries = getVisibleEntries(props.rootEntries);
+        const targetIndex = visibleEntries.findIndex((e) => e.path === entry.path);
+
+        let lastSelectedIndex = -1;
+        if (selected.kind === 'multiple' && selected.entries.length > 0) {
+          const lastSelected = selected.entries[selected.entries.length - 1];
+          lastSelectedIndex = visibleEntries.findIndex((e) => e.path === lastSelected?.path);
+        } else if ('path' in selected) {
+          lastSelectedIndex = visibleEntries.findIndex((e) => e.path === selected.path);
+        }
+
+        if (lastSelectedIndex >= 0 && targetIndex >= 0) {
+          const start = Math.min(lastSelectedIndex, targetIndex);
+          const end = Math.max(lastSelectedIndex, targetIndex);
+          let range = visibleEntries.slice(start, end + 1);
+
+          // Enforce same level rule
+          const entryParentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
+          range = range.filter((e) => {
+            const eParentPath = e.path ? e.path.split('/').slice(0, -1).join('/') : '';
+            return eParentPath === entryParentPath;
+          });
+
+          selectionStore.selectFsEntries(range);
+        } else {
+          selectionStore.selectFsEntry(entry);
+          uiStore.selectedFsEntry = {
+            kind: entry.kind,
+            name: entry.name,
+            path: entry.path,
+            handle: entry.handle,
+          };
+        }
+      } else {
+        selectionStore.selectFsEntry(entry);
+        uiStore.selectedFsEntry = {
+          kind: entry.kind,
+          name: entry.name,
+          path: entry.path,
+          handle: entry.handle,
+        };
+      }
+      return;
+    }
+  }
+
   uiStore.selectedFsEntry = {
     kind: entry.kind,
     name: entry.name,

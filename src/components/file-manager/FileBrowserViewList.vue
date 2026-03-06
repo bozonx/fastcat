@@ -199,9 +199,10 @@ function isSelected(entry: FsEntry): boolean {
         <template v-for="entry in entries" :key="entry.path">
           <UContextMenu :items="getContextMenuItems(entry)">
             <tr
-              class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors"
+              class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors focus:outline-none"
               :class="{
-                'bg-primary-500/10': isSelected(entry),
+                'bg-ui-bg-elevated ring-1 ring-(--selection-ring) ring-inset z-10 relative':
+                  isSelected(entry),
                 'opacity-30': entry.name.startsWith('.'),
                 'text-(--color-success)!':
                   fileManager.mediaCache.hasProxy(entry.path || '') &&

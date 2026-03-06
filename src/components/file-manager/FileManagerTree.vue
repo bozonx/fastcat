@@ -9,6 +9,7 @@ import {
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
@@ -45,7 +46,7 @@ const emit = defineEmits<{
   (e: 'toggle', entry: FsEntry): void;
   (e: 'commitRename', entry: FsEntry, newName: string): void;
   (e: 'stopRename'): void;
-  (e: 'select', entry: FsEntry): void;
+  (e: 'select', entry: FsEntry, event?: MouseEvent): void;
   (
     e: 'action',
     action:
@@ -109,10 +110,21 @@ function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
 }
 
+const selectionStore = useSelectionStore();
+
 function isSelected(entry: FsEntry): boolean {
-  if (!ctx.selectedPath.value) return false;
-  if (!entry.path) return false;
-  return ctx.selectedPath.value === entry.path;
+  if (props.isFilesPage) {
+    if (!ctx.selectedPath.value) return false;
+    if (!entry.path) return false;
+    return ctx.selectedPath.value === entry.path;
+  } else {
+    const selected = selectionStore.selectedEntity;
+    if (!selected || selected.source !== 'fileManager') return false;
+    if (selected.kind === 'multiple') {
+      return selected.entries.some((e) => e.path === entry.path);
+    }
+    return selected.path === entry.path;
+  }
 }
 
 function getEntryIconClass(entry: FsEntry): string {
@@ -144,14 +156,14 @@ function isConvertibleMediaFile(entry: FsEntry): boolean {
   return type === 'video' || type === 'audio' || type === 'image';
 }
 
-function onEntryClick(entry: FsEntry) {
-  emit('select', entry);
+function onEntryClick(event: MouseEvent, entry: FsEntry) {
+  emit('select', entry, event);
 }
 
-function onEntryEnter(entry: FsEntry) {
+function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
   if (entry.kind === 'directory') {
     emit('toggle', entry);
-    emit('select', entry);
+    emit('select', entry); // No mouse event for keyboard
   } else {
     emit('select', entry);
   }
@@ -317,14 +329,14 @@ const { getContextMenuItems } = useFileContextMenu(
             :aria-level="depth + 1"
             role="treeitem"
             tabindex="0"
-            @keydown.enter.prevent="onEntryEnter(entry)"
-            @keydown.space.prevent="onEntryEnter(entry)"
+            @keydown.enter.prevent="onEntryEnter($event, entry)"
+            @keydown.space.prevent="onEntryEnter($event, entry)"
             @dragstart="onDragStart($event, entry)"
             @dragend="onDragEnd()"
             @dragover.prevent="onDragOverDir($event, entry)"
             @dragleave.prevent="onDragLeaveDir($event, entry)"
             @drop.prevent="onDropDir($event, entry)"
-            @click="onEntryClick(entry)"
+            @click="onEntryClick($event, entry)"
             @dblclick.stop="emit('action', 'rename', entry)"
           >
             <!-- Chevron for directories -->
@@ -414,7 +426,7 @@ const { getContextMenuItems } = useFileContextMenu(
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"
-            @select="emit('select', $event)"
+            @select="(entry, event) => emit('select', entry, event)"
             @action="(action, childEntry) => emit('action', action, childEntry)"
             @request-move="emit('requestMove', $event)"
             @request-upload="emit('requestUpload', $event)"
