@@ -94,7 +94,14 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     }
   }
 
-  async function addClipToTimelineFromPath(input: AddClipToTimelineFromPathInput) {
+  async function addClipToTimelineFromPath(
+    input: AddClipToTimelineFromPathInput,
+    options?: {
+      historyMode?: 'debounced' | 'immediate';
+      historyDebounceMs?: number;
+      label?: string;
+    },
+  ) {
     const handle = await deps.getFileHandleByPath(input.path);
     if (!handle) throw new Error('Failed to access file handle');
 
@@ -135,17 +142,20 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     deps.ensureTimelineDoc();
 
-    deps.applyTimeline({
-      type: 'add_clip_to_track',
-      trackId: input.trackId,
-      name: input.name,
-      path: input.path,
-      clipType: 'media',
-      durationUs,
-      sourceDurationUs,
-      isImage: isImageLike,
-      startUs: input.startUs,
-    });
+    deps.applyTimeline(
+      {
+        type: 'add_clip_to_track',
+        trackId: input.trackId,
+        name: input.name,
+        path: input.path,
+        clipType: 'media',
+        durationUs,
+        sourceDurationUs,
+        isImage: isImageLike,
+        startUs: input.startUs,
+      },
+      options,
+    );
 
     return { durationUs };
   }
@@ -217,7 +227,14 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     });
   }
 
-  async function addTimelineClipFromPath(input: AddTimelineClipFromPathInput) {
+  async function addTimelineClipFromPath(
+    input: AddTimelineClipFromPathInput,
+    options?: {
+      historyMode?: 'debounced' | 'immediate';
+      historyDebounceMs?: number;
+      label?: string;
+    },
+  ) {
     const handle = await deps.getFileHandleByPath(input.path);
     if (!handle) throw new Error('Failed to access file handle');
 
@@ -242,16 +259,19 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const targetTrack = deps.getTrackById(input.trackId);
     if (!targetTrack) throw new Error('Track not found');
 
-    deps.applyTimeline({
-      type: 'add_clip_to_track',
-      trackId: targetTrack.id,
-      name: input.name,
-      path: input.path,
-      clipType: 'timeline',
-      durationUs,
-      sourceDurationUs: durationUs,
-      startUs: input.startUs,
-    });
+    deps.applyTimeline(
+      {
+        type: 'add_clip_to_track',
+        trackId: targetTrack.id,
+        name: input.name,
+        path: input.path,
+        clipType: 'timeline',
+        durationUs,
+        sourceDurationUs: durationUs,
+        startUs: input.startUs,
+      },
+      options,
+    );
 
     return { durationUs };
   }

@@ -61,6 +61,7 @@ export interface MoveItemCommand {
   itemId: string;
   startUs: number;
   ignoreLocks?: boolean;
+  ignoreLinks?: boolean;
   quantizeToFrames?: boolean;
 }
 
@@ -122,6 +123,8 @@ export interface MoveItemToTrackCommand {
   itemId: string;
   startUs: number;
   quantizeToFrames?: boolean;
+  ignoreLocks?: boolean;
+  ignoreLinks?: boolean;
 }
 
 export interface ExtractAudioToTrackCommand {
@@ -204,6 +207,8 @@ export interface OverlayPlaceItemCommand {
   itemId: string;
   startUs: number;
   quantizeToFrames?: boolean;
+  ignoreLocks?: boolean;
+  ignoreLinks?: boolean;
 }
 
 /**
@@ -266,6 +271,8 @@ export interface MoveItemsCommand {
     startUs: number;
   }[];
   quantizeToFrames?: boolean;
+  ignoreLocks?: boolean;
+  ignoreLinks?: boolean;
 }
 
 export type TimelineCommand =

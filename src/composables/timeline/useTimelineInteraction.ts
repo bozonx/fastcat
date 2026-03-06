@@ -272,7 +272,8 @@ export function useTimelineInteraction(
     const enableFrameSnap = settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
     const enableClipSnap = settingsStore.clipSnapMode === 'clips';
     const snapThresholdPx = settingsStore.snapThresholdPx;
-    const overlapMode = settingsStore.overlapMode;
+    const isShiftPressed = dragIsFreeOverride.value;
+    const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
 
     if (mode === 'move') {
       const dxPx = clientX - dragAnchorClientX.value;
@@ -402,6 +403,7 @@ export function useTimelineInteraction(
                 itemId: move.itemId,
                 startUs: move.startUs,
                 quantizeToFrames: enableFrameSnap,
+                ignoreLinks: isShiftPressed,
               }));
 
               timelineStore.batchApplyTimeline(cmds as any, {
@@ -414,6 +416,7 @@ export function useTimelineInteraction(
                 type: 'move_items',
                 moves,
                 quantizeToFrames: enableFrameSnap,
+                ignoreLinks: isShiftPressed,
               } as const;
 
               timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
@@ -448,6 +451,7 @@ export function useTimelineInteraction(
           itemId,
           startUs,
           quantizeToFrames: enableFrameSnap,
+          ignoreLinks: isShiftPressed,
         } as const;
         timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
         lastDragAppliedCmd.value = cmd as any;
@@ -576,24 +580,30 @@ export function useTimelineInteraction(
       applyDragFromPendingClientX();
     }
 
-    if (!cancel && draggingMode.value === 'move' && settingsStore.overlapMode === 'pseudo') {
-      const commit = pendingMoveCommit.value;
-      if (commit) {
-        try {
-          const enableFrameSnap =
-            settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
-          const cmd = {
-            type: 'overlay_place_item',
-            fromTrackId: commit.fromTrackId,
-            toTrackId: commit.toTrackId,
-            itemId: commit.itemId,
-            startUs: commit.startUs,
-            quantizeToFrames: enableFrameSnap,
-          } as const;
-          timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-          lastDragAppliedCmd.value = cmd as any;
-          hasPendingTimelinePersist.value = true;
-        } catch {}
+    if (!cancel && draggingMode.value === 'move') {
+      const isShiftPressed = dragIsFreeOverride.value;
+      const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
+
+      if (overlapMode === 'pseudo') {
+        const commit = pendingMoveCommit.value;
+        if (commit) {
+          try {
+            const enableFrameSnap =
+              settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
+            const cmd = {
+              type: 'overlay_place_item',
+              fromTrackId: commit.fromTrackId,
+              toTrackId: commit.toTrackId,
+              itemId: commit.itemId,
+              startUs: commit.startUs,
+              quantizeToFrames: enableFrameSnap,
+              ignoreLinks: isShiftPressed,
+            } as const;
+            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+            lastDragAppliedCmd.value = cmd as any;
+            hasPendingTimelinePersist.value = true;
+          } catch {}
+        }
       }
     }
 

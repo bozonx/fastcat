@@ -84,16 +84,25 @@ export interface TimelineClipsApi {
     text?: string;
     style?: TextClipStyle;
   }) => void;
-  addVirtualClipToTrack: (input: {
-    trackId: string;
-    startUs: number;
-    clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
-    name: string;
-    durationUs?: number;
-    backgroundColor?: string;
-    text?: string;
-    style?: TextClipStyle;
-  }) => void;
+  addVirtualClipToTrack: (
+    input: {
+      trackId: string;
+      startUs: number;
+      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
+      name: string;
+      durationUs?: number;
+      backgroundColor?: string;
+      text?: string;
+      style?: TextClipStyle;
+    },
+    options?: {
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      label?: string;
+    },
+  ) => void;
   addAdjustmentClipAtPlayhead: (options?: { durationUs?: number; name?: string }) => void;
   addBackgroundClipAtPlayhead: (options?: {
     durationUs?: number;
@@ -289,31 +298,43 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     });
   }
 
-  function addVirtualClipToTrack(input: {
-    trackId: string;
-    startUs: number;
-    clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
-    name: string;
-    durationUs?: number;
-    backgroundColor?: string;
-    text?: string;
-    style?: TextClipStyle;
-  }) {
+  function addVirtualClipToTrack(
+    input: {
+      trackId: string;
+      startUs: number;
+      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
+      name: string;
+      durationUs?: number;
+      backgroundColor?: string;
+      text?: string;
+      style?: TextClipStyle;
+    },
+    options?: {
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      label?: string;
+    },
+  ) {
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
 
-    deps.applyTimeline({
-      type: 'add_virtual_clip_to_track',
-      trackId: input.trackId,
-      clipType: input.clipType,
-      name: input.name,
-      durationUs: input.durationUs,
-      backgroundColor: input.backgroundColor,
-      text: input.text,
-      style: input.style,
-      startUs: input.startUs,
-    });
+    deps.applyTimeline(
+      {
+        type: 'add_virtual_clip_to_track',
+        trackId: input.trackId,
+        clipType: input.clipType,
+        name: input.name,
+        durationUs: input.durationUs,
+        backgroundColor: input.backgroundColor,
+        text: input.text,
+        style: input.style,
+        startUs: input.startUs,
+      },
+      options,
+    );
   }
 
   function addAdjustmentClipAtPlayhead(options?: { durationUs?: number; name?: string }) {
@@ -408,17 +429,17 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     updateClipProperties(target.trackId, target.itemId, { audioMuted: !item.audioMuted });
     await deps.requestTimelineSave({ immediate: true });
   }
- 
+
   function moveSelectedClips(deltaFrames: number) {
     const doc = deps.timelineDoc.value;
     if (!doc || deps.selectedItemIds.value.length === 0) return;
- 
+
     const fps = getDocFps(doc);
     const frameUs = 1_000_000 / fps;
     const deltaUs = deltaFrames * frameUs;
- 
+
     const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] = [];
- 
+
     const selectedSet = new Set(deps.selectedItemIds.value);
     for (const track of doc.tracks) {
       for (const item of track.items) {
@@ -432,20 +453,20 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         }
       }
     }
- 
+
     if (moves.length === 0) return;
- 
+
     deps.applyTimeline({
       type: 'move_items',
       moves,
       quantizeToFrames: true,
     });
   }
- 
+
   function adjustSelectedClipsVolume(deltaDb: number) {
     const doc = deps.timelineDoc.value;
     if (!doc || deps.selectedItemIds.value.length === 0) return;
- 
+
     const selectedSet = new Set(deps.selectedItemIds.value);
     for (const track of doc.tracks) {
       for (const item of track.items) {
@@ -454,7 +475,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
           const currentDb = 20 * Math.log10(currentGain || 0.0001);
           const nextDb = currentDb + deltaDb;
           const nextGain = Math.pow(10, nextDb / 20);
- 
+
           updateClipProperties(track.id, item.id, {
             audioGain: Math.max(0, Math.min(4, nextGain)),
           });
