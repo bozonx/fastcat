@@ -66,6 +66,7 @@ function isSelected(entry: FsEntry): boolean {
   <div class="flex flex-wrap gap-2 content-start">
     <UContextMenu v-for="entry in entries" :key="entry.path" :items="getContextMenuItems(entry)">
       <div
+        :data-entry-path="entry.path ?? null"
         class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0 focus:outline-none"
         :class="{
           'bg-ui-bg-elevated ring-1 ring-(--selection-ring)': isSelected(entry),

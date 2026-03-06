@@ -321,6 +321,9 @@ export function useFileConversion() {
     conversionError.value = null;
     conversionProgress.value = 0;
 
+    let createdFileName: string | null = null;
+    let createdDirHandle: FileSystemDirectoryHandle | null = null;
+
     try {
       const entry = targetEntry.value;
       const fileHandle = entry.handle as FileSystemFileHandle;
@@ -333,6 +336,8 @@ export function useFileConversion() {
       else if (type === 'video') newExt = videoFormat.value;
 
       const newFileName = `${baseName}_converted.${newExt}`;
+
+      createdFileName = newFileName;
 
       let dirHandle: FileSystemDirectoryHandle;
 
@@ -351,6 +356,8 @@ export function useFileConversion() {
         dirHandle = current;
       }
 
+      createdDirHandle = dirHandle;
+
       const targetHandle = await dirHandle.getFileHandle(newFileName, { create: true });
 
       if (type === 'image') {
@@ -360,18 +367,19 @@ export function useFileConversion() {
       }
 
       if (isCancelRequested.value) {
-        // Delete the partially created file
-        try {
-          await dirHandle.removeEntry(newFileName);
-        } catch {
-          // Ignore cleanup errors
+        if (createdDirHandle && createdFileName) {
+          try {
+            await createdDirHandle.removeEntry(createdFileName);
+          } catch {
+            // ignore
+          }
         }
         toast.add({
           title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
           color: 'neutral',
         });
         isModalOpen.value = false;
-        isConverting.value = false;
+        return;
       }
 
       toast.add({
@@ -385,6 +393,13 @@ export function useFileConversion() {
     } catch (err: any) {
       console.error('Conversion failed', err);
       if (isCancelRequested.value) {
+        if (createdDirHandle && createdFileName) {
+          try {
+            await createdDirHandle.removeEntry(createdFileName);
+          } catch {
+            // ignore
+          }
+        }
         toast.add({
           title: t('videoEditor.fileManager.convert.cancelled', 'Conversion cancelled'),
           color: 'neutral',

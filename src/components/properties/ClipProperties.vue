@@ -65,6 +65,14 @@ function toggleShowWaveform() {
     showWaveform: !current,
   });
 }
+ 
+function toggleShowThumbnails() {
+  const current =
+    (props.clip as import('~/timeline/types').TimelineClipItem).showThumbnails !== false;
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    showThumbnails: !current,
+  });
+}
 
 function selectTransitionEdge(edge: 'in' | 'out') {
   const clip = props.clip;
@@ -384,6 +392,22 @@ defineExpose({
             clip.showWaveform === false
               ? t('granVideoEditor.clip.showWaveform', 'Show Waveform')
               : t('granVideoEditor.clip.hideWaveform', 'Hide Waveform')
+          }}
+        </UButton>
+ 
+        <UButton
+          v-if="clipTrackKind === 'video'"
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-photo"
+          class="w-full justify-center mt-2"
+          @click="toggleShowThumbnails"
+        >
+          {{
+            clip.showThumbnails === false
+              ? t('granVideoEditor.clip.showThumbnails', 'Show Thumbnails')
+              : t('granVideoEditor.clip.hideThumbnails', 'Hide Thumbnails')
           }}
         </UButton>
 

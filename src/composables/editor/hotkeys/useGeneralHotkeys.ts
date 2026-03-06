@@ -159,6 +159,22 @@ export function useGeneralHotkeys(
       }
       return true;
     },
+    'general.switchViewFiles': () => {
+      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('files'));
+      return true;
+    },
+    'general.switchViewCut': () => {
+      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('cut'));
+      return true;
+    },
+    'general.switchViewSound': () => {
+      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('sound'));
+      return true;
+    },
+    'general.switchViewExport': () => {
+      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('export'));
+      return true;
+    },
   };
 
   async function handleFullscreen() {

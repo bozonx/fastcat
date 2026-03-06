@@ -124,6 +124,7 @@ interface TimelineClipBase {
   audioMuted?: boolean;
   audioWaveformMode?: 'half' | 'full';
   showWaveform?: boolean;
+  showThumbnails?: boolean;
   audioFromVideoDisabled?: boolean;
   linkedVideoClipId?: string;
   lockToLinkedVideo?: boolean;

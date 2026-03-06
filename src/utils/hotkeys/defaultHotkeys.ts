@@ -24,6 +24,10 @@ export type HotkeyCommandId =
   | 'general.tab7'
   | 'general.tab8'
   | 'general.tab9'
+  | 'general.switchViewFiles'
+  | 'general.switchViewCut'
+  | 'general.switchViewSound'
+  | 'general.switchViewExport'
   | 'timeline.trimToPlayheadLeft'
   | 'timeline.trimToPlayheadRight'
   | 'timeline.rippleTrimLeft'
@@ -42,6 +46,10 @@ export type HotkeyCommandId =
   | 'timeline.toggleVisibilityTrack'
   | 'timeline.toggleMuteTrack'
   | 'timeline.toggleSoloTrack'
+  | 'timeline.moveSelectedClipsLeft'
+  | 'timeline.moveSelectedClipsRight'
+  | 'timeline.increaseSelectedClipsVolume'
+  | 'timeline.decreaseSelectedClipsVolume'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
@@ -107,6 +115,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.tab7', groupId: 'general', title: 'Tab 7' },
     { id: 'general.tab8', groupId: 'general', title: 'Tab 8' },
     { id: 'general.tab9', groupId: 'general', title: 'Tab 9' },
+    { id: 'general.switchViewFiles', groupId: 'general', title: 'Switch to Files' },
+    { id: 'general.switchViewCut', groupId: 'general', title: 'Switch to Cut' },
+    { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
+    { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
 
     {
       id: 'timeline.trimToPlayheadLeft',
@@ -170,6 +182,26 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'timeline.toggleVisibilityTrack', groupId: 'timeline', title: 'Toggle track visibility' },
     { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Toggle track mute' },
     { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Toggle track solo' },
+    {
+      id: 'timeline.moveSelectedClipsLeft',
+      groupId: 'timeline',
+      title: 'Move selected clip(s) left (1 frame)',
+    },
+    {
+      id: 'timeline.moveSelectedClipsRight',
+      groupId: 'timeline',
+      title: 'Move selected clip(s) right (1 frame)',
+    },
+    {
+      id: 'timeline.increaseSelectedClipsVolume',
+      groupId: 'timeline',
+      title: 'Increase selected clip(s) volume',
+    },
+    {
+      id: 'timeline.decreaseSelectedClipsVolume',
+      groupId: 'timeline',
+      title: 'Decrease selected clip(s) volume',
+    },
 
     { id: 'playback.toggle', groupId: 'playback', title: 'Play / Pause (keeps current speed)' },
     { id: 'playback.toggle1', groupId: 'playback', title: 'Play / pause (1x)' },
@@ -218,6 +250,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.tab7': ['7'],
     'general.tab8': ['8'],
     'general.tab9': ['9'],
+    'general.switchViewFiles': ['Shift+1'],
+    'general.switchViewCut': ['Shift+2'],
+    'general.switchViewSound': ['Shift+3'],
+    'general.switchViewExport': ['Shift+4'],
 
     'timeline.trimToPlayheadLeft': ['V'],
     'timeline.trimToPlayheadRight': ['C'],
@@ -237,6 +273,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.toggleVisibilityTrack': ['Shift+W'],
     'timeline.toggleMuteTrack': ['Shift+Q'],
     'timeline.toggleSoloTrack': ['B'],
+    'timeline.moveSelectedClipsLeft': ['ArrowLeft'],
+    'timeline.moveSelectedClipsRight': ['ArrowRight'],
+    'timeline.increaseSelectedClipsVolume': ['ArrowUp'],
+    'timeline.decreaseSelectedClipsVolume': ['ArrowDown'],
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],

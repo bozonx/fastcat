@@ -28,15 +28,76 @@ interface ContextMenuDeps {
     generatingProxy: boolean;
   };
   isFilesPage?: boolean;
+  getSelectedEntries?: () => FsEntry[];
 }
 
 export function useFileContextMenu(
   deps: ContextMenuDeps,
-  onAction: (action: FileAction, entry: FsEntry) => void,
+  onAction: (action: FileAction, entry: FsEntry | FsEntry[]) => void,
 ) {
   const { t } = useI18n();
 
   function getContextMenuItems(entry: FsEntry) {
+    const selectedEntries = deps.getSelectedEntries ? deps.getSelectedEntries() : [];
+    const isMultiSelected = selectedEntries.length > 1;
+
+    if (isMultiSelected) {
+      const items = [];
+      const hasVideo = selectedEntries.some((e) => e.kind === 'file' && deps.isVideo(e));
+      const hasProxy = selectedEntries.some(
+        (e) => e.kind === 'file' && deps.getEntryMeta(e).hasProxy,
+      );
+      const generatingProxy = selectedEntries.some(
+        (e) => e.kind === 'file' && deps.getEntryMeta(e).generatingProxy,
+      );
+
+      if (hasVideo) {
+        if (!generatingProxy) {
+          items.push([
+            {
+              label: t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+              icon: 'i-heroicons-film',
+              onSelect: () => onAction('createProxy', selectedEntries),
+            },
+          ]);
+        }
+        if (generatingProxy) {
+          items.push([
+            {
+              label: t(
+                'videoEditor.fileManager.actions.cancelProxyGeneration',
+                'Cancel proxy generation',
+              ),
+              icon: 'i-heroicons-x-circle',
+              color: 'error',
+              onSelect: () => onAction('cancelProxy', selectedEntries),
+            },
+          ]);
+        }
+        if (hasProxy) {
+          items.push([
+            {
+              label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+              icon: 'i-heroicons-trash',
+              color: 'error',
+              onSelect: () => onAction('deleteProxy', selectedEntries),
+            },
+          ]);
+        }
+      }
+
+      items.push([
+        {
+          label: t('common.delete', 'Delete'),
+          icon: 'i-heroicons-trash',
+          color: 'error',
+          onSelect: () => onAction('delete', selectedEntries),
+        },
+      ]);
+
+      return items;
+    }
+
     const items = [];
 
     if (entry.kind === 'directory') {

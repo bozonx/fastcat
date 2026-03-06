@@ -57,6 +57,7 @@ export interface TimelineClipsApi {
         | 'audioMuted'
         | 'audioWaveformMode'
         | 'showWaveform'
+        | 'showThumbnails'
       >
     > & {
       backgroundColor?: string;
@@ -109,6 +110,8 @@ export interface TimelineClipsApi {
   resetClipFreezeFrame: (input: { trackId: string; itemId: string }) => void;
   toggleDisableTargetClip: () => Promise<void>;
   toggleMuteTargetClip: () => Promise<void>;
+  moveSelectedClips: (deltaFrames: number) => void;
+  adjustSelectedClipsVolume: (deltaDb: number) => void;
 }
 
 export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
@@ -141,6 +144,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         | 'audioMuted'
         | 'audioWaveformMode'
         | 'showWaveform'
+        | 'showThumbnails'
       >
     > & {
       backgroundColor?: string;
@@ -404,6 +408,60 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     updateClipProperties(target.trackId, target.itemId, { audioMuted: !item.audioMuted });
     await deps.requestTimelineSave({ immediate: true });
   }
+ 
+  function moveSelectedClips(deltaFrames: number) {
+    const doc = deps.timelineDoc.value;
+    if (!doc || deps.selectedItemIds.value.length === 0) return;
+ 
+    const fps = getDocFps(doc);
+    const frameUs = 1_000_000 / fps;
+    const deltaUs = deltaFrames * frameUs;
+ 
+    const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] = [];
+ 
+    const selectedSet = new Set(deps.selectedItemIds.value);
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (selectedSet.has(item.id)) {
+          moves.push({
+            fromTrackId: track.id,
+            toTrackId: track.id,
+            itemId: item.id,
+            startUs: quantizeTimeUsToFrames(item.timelineRange.startUs + deltaUs, fps, 'round'),
+          });
+        }
+      }
+    }
+ 
+    if (moves.length === 0) return;
+ 
+    deps.applyTimeline({
+      type: 'move_items',
+      moves,
+      quantizeToFrames: true,
+    });
+  }
+ 
+  function adjustSelectedClipsVolume(deltaDb: number) {
+    const doc = deps.timelineDoc.value;
+    if (!doc || deps.selectedItemIds.value.length === 0) return;
+ 
+    const selectedSet = new Set(deps.selectedItemIds.value);
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (selectedSet.has(item.id) && item.kind === 'clip') {
+          const currentGain = item.audioGain ?? 1;
+          const currentDb = 20 * Math.log10(currentGain || 0.0001);
+          const nextDb = currentDb + deltaDb;
+          const nextGain = Math.pow(10, nextDb / 20);
+ 
+          updateClipProperties(track.id, item.id, {
+            audioGain: Math.max(0, Math.min(4, nextGain)),
+          });
+        }
+      }
+    }
+  }
 
   return {
     renameItem,
@@ -421,5 +479,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     resetClipFreezeFrame,
     toggleDisableTargetClip,
     toggleMuteTargetClip,
+    moveSelectedClips,
+    adjustSelectedClipsVolume,
   };
 }

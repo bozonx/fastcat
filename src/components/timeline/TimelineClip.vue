@@ -14,6 +14,7 @@ import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { clampHandlePx, getClipClass, transitionSvgParts } from '~/utils/timeline/clip';
 import { getEffectManifest } from '~/effects';
+import { sanitizeFps } from '~/timeline/commands/utils';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -470,6 +471,19 @@ const { contextMenuItems } = useClipContextMenu({
   emitClipAction: (payload) => emit('clipAction', payload),
   t,
 });
+ 
+const isFreePosition = computed(() => {
+  if (!clipItem.value || !timelineStore.timelineDoc) return false;
+  const fps = sanitizeFps(timelineStore.timelineDoc.timebase.fps);
+  
+  const startFrame = (clipItem.value.timelineRange.startUs * fps) / 1_000_000;
+  const durFrame = (clipItem.value.timelineRange.durationUs * fps) / 1_000_000;
+  
+  const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
+  const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
+ 
+  return !isStartQuantized || !isDurationQuantized;
+});
 </script>
 
 <template>
@@ -486,6 +500,7 @@ const { contextMenuItems } = useClipContextMenu({
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
+        isFreePosition ? 'ring-2 ring-inset ring-yellow-400' : '',
         clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden)) ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
@@ -748,7 +763,11 @@ const { contextMenuItems } = useClipContextMenu({
 
       <!-- Main Content -->
       <div class="flex-1 flex w-full min-h-0 relative z-20">
-        <TimelineClipThumbnails v-if="isVideo(item)" :item="item as any" :width="clipWidthPx" />
+        <TimelineClipThumbnails
+          v-if="isVideo(item) && clipItem?.showThumbnails !== false"
+          :item="item as any"
+          :width="clipWidthPx"
+        />
 
         <TimelineAudioWaveform
           v-if="

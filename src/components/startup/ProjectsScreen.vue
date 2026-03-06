@@ -17,6 +17,7 @@ async function createNewProject() {
   if (workspaceStore.userSettings.openLastProjectOnStart) {
     await openProject(newProjectName.value.trim());
     projectStore.goToCut();
+    navigateTo('/editor');
   }
   newProjectName.value = '';
 }

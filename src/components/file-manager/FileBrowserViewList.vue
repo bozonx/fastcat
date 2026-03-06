@@ -199,6 +199,7 @@ function isSelected(entry: FsEntry): boolean {
         <template v-for="entry in entries" :key="entry.path">
           <UContextMenu :items="getContextMenuItems(entry)">
             <tr
+              :data-entry-path="entry.path ?? null"
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors focus:outline-none"
               :class="{
                 'bg-ui-bg-elevated ring-1 ring-(--selection-ring) ring-inset z-10 relative':

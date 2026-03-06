@@ -114,6 +114,30 @@ export function useTimelineHotkeys() {
       void timelineStore.toggleSoloTargetTrack();
       return true;
     },
+ 
+    'timeline.moveSelectedClipsLeft': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.moveSelectedClips(-1);
+      return true;
+    },
+ 
+    'timeline.moveSelectedClipsRight': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.moveSelectedClips(1);
+      return true;
+    },
+ 
+    'timeline.increaseSelectedClipsVolume': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.adjustSelectedClipsVolume(1);
+      return true;
+    },
+ 
+    'timeline.decreaseSelectedClipsVolume': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.adjustSelectedClipsVolume(-1);
+      return true;
+    },
   };
 
   return handlers;

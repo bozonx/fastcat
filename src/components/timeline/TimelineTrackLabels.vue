@@ -459,74 +459,47 @@ function toggleClipSnapMode() {
           />
         </UTooltip>
 
-        <div class="flex items-center gap-0.5 ml-auto">
-          <UTooltip
-            :text="
+        <UTooltip
+          :text="
+            settingsStore.overlapMode === 'pseudo'
+              ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode')
+              : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode')
+          "
+        >
+          <UButton
+            size="xs"
+            :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
+            :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
+            icon="i-heroicons-squares-2x2"
+            :aria-label="
               settingsStore.overlapMode === 'pseudo'
-                ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode')
-                : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode')
+                ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode (active)')
+                : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode (no overlap)')
             "
-          >
-            <UButton
-              size="xs"
-              :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
-              :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
-              icon="i-heroicons-squares-2x2"
-              :aria-label="
-                settingsStore.overlapMode === 'pseudo'
-                  ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode (active)')
-                  : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode (no overlap)')
-              "
-              @click="toggleOverlapMode"
-            />
-          </UTooltip>
+            @click="toggleOverlapMode"
+          />
+        </UTooltip>
 
-          <div class="w-px h-3.5 bg-ui-border mx-0.5" />
-
-          <UTooltip
-            :text="
-              settingsStore.frameSnapMode === 'frames'
-                ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames')
-                : t('granVideoEditor.timeline.frameSnapOff', 'Free placement')
-            "
-          >
-            <UButton
-              size="xs"
-              :variant="settingsStore.frameSnapMode === 'frames' ? 'solid' : 'ghost'"
-              :color="settingsStore.frameSnapMode === 'frames' ? 'primary' : 'neutral'"
-              icon="i-heroicons-film"
-              :aria-label="
-                settingsStore.frameSnapMode === 'frames'
-                  ? t('granVideoEditor.timeline.frameSnapOn', 'Snap to frames (active)')
-                  : t('granVideoEditor.timeline.frameSnapOff', 'Free placement (no frame snap)')
-              "
-              @click="toggleFrameSnapMode"
-            />
-          </UTooltip>
-
-          <UTooltip
-            :text="
+        <UTooltip
+          :text="
+            settingsStore.clipSnapMode === 'clips'
+              ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
+              : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
+          "
+        >
+          <UButton
+            size="xs"
+            :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
+            :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
+            icon="i-heroicons-link"
+            :aria-label="
               settingsStore.clipSnapMode === 'clips'
-                ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
+                ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
                 : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
             "
-          >
-            <UButton
-              size="xs"
-              :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
-              :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
-              icon="i-heroicons-link"
-              :aria-label="
-                settingsStore.clipSnapMode === 'clips'
-                  ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
-                  : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
-              "
-              @click="toggleClipSnapMode"
-            />
-          </UTooltip>
-
-          <div class="w-px h-3.5 bg-ui-border mx-0.5" />
-        </div>
+            @click="toggleClipSnapMode"
+          />
+        </UTooltip>
       </div>
     </UContextMenu>
     <div
