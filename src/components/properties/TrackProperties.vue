@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineBlendMode, TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -17,6 +17,42 @@ const timelineStore = useTimelineStore();
 const isDeleteConfirmOpen = ref(false);
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
+
+const blendModeOptions: Array<{ value: TimelineBlendMode; label: string }> = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'add', label: 'Add' },
+  { value: 'multiply', label: 'Multiply' },
+  { value: 'screen', label: 'Screen' },
+  { value: 'darken', label: 'Darken' },
+  { value: 'lighten', label: 'Lighten' },
+];
+
+const trackOpacity = computed({
+  get: () => {
+    const v = typeof props.track?.opacity === 'number' && Number.isFinite(props.track.opacity) ? props.track.opacity : 1;
+    return Math.max(0, Math.min(1, v));
+  },
+  set: (val: number) => {
+    const v = Math.max(0, Math.min(1, Number(val)));
+    timelineStore.updateTrackProperties(props.track.id, { opacity: v });
+  },
+});
+
+const trackBlendMode = computed({
+  get: () => props.track?.blendMode ?? 'normal',
+  set: (val: TimelineBlendMode | string) => {
+    const safe =
+      val === 'add' ||
+      val === 'multiply' ||
+      val === 'screen' ||
+      val === 'darken' ||
+      val === 'lighten'
+        ? val
+        : 'normal';
+
+    timelineStore.updateTrackProperties(props.track.id, { blendMode: safe });
+  },
+});
 
 const trackAudioGain = computed({
   get: () => {
@@ -96,6 +132,50 @@ function confirmDeleteTrack() {
         </UButton>
       </div>
     </PropertySection>
+
+    <div
+      v-if="track.kind === 'video'"
+      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+    >
+      <div
+        class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+      >
+        {{ t('granVideoEditor.track.video.title', 'Track compositing') }}
+      </div>
+
+      <div class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{
+          t('granVideoEditor.track.blendMode', 'Blend mode')
+        }}</span>
+        <USelectMenu
+          :model-value="trackBlendMode"
+          :items="blendModeOptions"
+          value-key="value"
+          label-key="label"
+          size="sm"
+          @update:model-value="(v: any) => (trackBlendMode = v)"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.track.opacity', 'Opacity')
+          }}</span>
+          <span class="text-xs font-mono text-ui-text-muted"
+            >{{ Math.round(trackOpacity * 100) }}%</span
+          >
+        </div>
+        <WheelSlider
+          :model-value="trackOpacity"
+          :min="0"
+          :max="1"
+          :step="0.01"
+          :default-value="1"
+          @update:model-value="(v: any) => (trackOpacity = Number(v))"
+        />
+      </div>
+    </div>
 
     <div
       v-if="track.kind === 'audio' || track.kind === 'video'"
