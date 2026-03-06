@@ -1,4 +1,4 @@
-import type { Filter } from 'pixi.js';
+import type { Filter, Texture } from 'pixi.js';
 
 export type TransitionType = string;
 
@@ -8,6 +8,8 @@ export interface TransitionShaderContext {
   progress: number;
   curve: TransitionCurve;
   params?: Record<string, unknown>;
+  fromTexture?: Texture;
+  toTexture?: Texture;
 }
 
 export interface TransitionManifest<T = Record<string, never>> {

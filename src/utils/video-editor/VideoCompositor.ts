@@ -115,6 +115,9 @@ export interface CompositorClip {
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
   transitionFilter?: Filter | null;
+  transitionSprite?: Sprite | null;
+  transitionFromTexture?: RenderTexture | null;
+  transitionToTexture?: RenderTexture | null;
   textDirty?: boolean;
 }
 
@@ -285,6 +288,12 @@ export class VideoCompositor {
         const bEndUs = bClip?.endUs ?? 0;
         if (aEndUs !== bEndUs) {
           return aEndUs - bEndUs;
+        }
+
+        const aOrder = typeof (a as any)?.__clipOrder === 'number' ? (a as any).__clipOrder : 0;
+        const bOrder = typeof (b as any)?.__clipOrder === 'number' ? (b as any).__clipOrder : 0;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
         }
 
         return String((a as any)?.__clipId ?? '').localeCompare(String((b as any)?.__clipId ?? ''));
@@ -1274,6 +1283,8 @@ export class VideoCompositor {
         this.stageSortDirty = false;
       }
 
+      this.applyShaderTransitions(active, timeUs);
+
       this.lastRenderedTimeUs = timeUs;
 
       if (
@@ -1388,6 +1399,156 @@ export class VideoCompositor {
     // Reject only for a large gap — allow small gaps to still show a reasonable blend shadow.
     if (clip.startUs - best.endUs > 1_000_000) return null;
     return best;
+  }
+
+  private ensureTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
+    const valid =
+      texture &&
+      !(texture as any).destroyed &&
+      typeof (texture as any).uid === 'number' &&
+      texture.width === this.width &&
+      texture.height === this.height;
+
+    if (valid) {
+      return texture as RenderTexture;
+    }
+
+    if (texture) {
+      try {
+        safeDispose(texture);
+      } catch {
+        // ignore
+      }
+    }
+
+    return RenderTexture.create({
+      width: this.width,
+      height: this.height,
+    });
+  }
+
+  private ensureTransitionSprite(clip: CompositorClip): Sprite {
+    let sprite = clip.transitionSprite ?? null;
+    if (!sprite) {
+      sprite = new Sprite(Texture.EMPTY);
+      (sprite as any).__clipId = clip.itemId;
+      (sprite as any).__clipOrder = 1;
+      sprite.visible = false;
+      clip.transitionSprite = sprite;
+    }
+
+    const parent = clip.sprite.parent;
+    if (parent && sprite.parent !== parent) {
+      parent.addChild(sprite);
+    }
+
+    sprite.x = 0;
+    sprite.y = 0;
+    sprite.width = this.width;
+    sprite.height = this.height;
+    sprite.anchor.set(0, 0);
+
+    return sprite;
+  }
+
+  private renderDisplayObjectToTexture(displayObject: Container, texture: RenderTexture) {
+    if (!this.app?.renderer) return;
+    this.app.renderer.render({
+      container: displayObject,
+      target: texture,
+      clear: true,
+    });
+  }
+
+  private renderLowerLayersToTexture(layer: number, texture: RenderTexture) {
+    if (!this.app?.renderer) return;
+
+    const children = this.app.stage.children;
+    const previous = children.map((child) => child.visible);
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i] as any;
+      if (!child) continue;
+      const track = this.trackById.get(child?.__trackId ?? '');
+      const childLayer = typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
+      child.visible = childLayer < layer;
+    }
+
+    this.app.renderer.render({
+      container: this.app.stage,
+      target: texture,
+      clear: true,
+    });
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (!child) continue;
+      child.visible = previous[i] ?? true;
+    }
+  }
+
+  private applyShaderTransitions(active: CompositorClip[], timeUs: number) {
+    for (const clip of this.clips) {
+      if (clip.transitionSprite) {
+        clip.transitionSprite.visible = false;
+        clip.transitionSprite.filters = null;
+      }
+    }
+
+    for (const clip of active) {
+      const state = this.getActiveTransitionState(clip, timeUs);
+      if (!state || state.manifest?.renderMode !== 'shader' || !clip.transitionFilter) {
+        continue;
+      }
+
+      const mode = state.transition.mode ?? 'blend_previous';
+      if (mode !== 'blend_previous' && mode !== 'blend' && mode !== 'composite') {
+        continue;
+      }
+
+      clip.transitionFromTexture = this.ensureTransitionRenderTexture(
+        clip.transitionFromTexture ?? null,
+      );
+      clip.transitionToTexture = this.ensureTransitionRenderTexture(
+        clip.transitionToTexture ?? null,
+      );
+
+      const transitionSprite = this.ensureTransitionSprite(clip);
+      this.renderDisplayObjectToTexture(clip.sprite, clip.transitionToTexture);
+
+      let fromTexture = clip.transitionFromTexture;
+      let prevClip: CompositorClip | null = null;
+
+      if (mode === 'composite') {
+        this.renderLowerLayersToTexture(clip.layer, fromTexture);
+      } else {
+        prevClip = this.findPrevClipOnLayer(clip);
+        if (!prevClip || !prevClip.sprite.visible) {
+          transitionSprite.visible = false;
+          continue;
+        }
+        this.renderDisplayObjectToTexture(prevClip.sprite, fromTexture);
+      }
+
+      state.manifest.updateFilter?.(clip.transitionFilter, {
+        progress: state.progress,
+        curve: state.curve,
+        params: state.transition.params,
+        fromTexture,
+        toTexture: clip.transitionToTexture,
+      });
+
+      transitionSprite.texture = clip.transitionToTexture;
+      transitionSprite.alpha = 1;
+      transitionSprite.blendMode = clip.blendMode ?? 'normal';
+      transitionSprite.filters = [clip.transitionFilter];
+      transitionSprite.visible = true;
+
+      clip.sprite.visible = false;
+      if (prevClip) {
+        prevClip.sprite.visible = false;
+      }
+    }
   }
 
   private ensureCanvasFallback(clip: CompositorClip) {
@@ -1524,6 +1685,10 @@ export class VideoCompositor {
         this.transitionFilters.delete(clip.itemId);
         clip.transitionFilter = null;
       }
+      if (clip.transitionSprite) {
+        clip.transitionSprite.visible = false;
+        clip.transitionSprite.filters = null;
+      }
       return;
     }
 
@@ -1531,14 +1696,6 @@ export class VideoCompositor {
     if (!filter) {
       filter = state.manifest.createFilter();
       this.transitionFilters.set(clip.itemId, filter);
-    }
-
-    if (state.manifest.updateFilter) {
-      state.manifest.updateFilter(filter, {
-        progress: state.progress,
-        curve: state.curve,
-        params: state.transition.params,
-      });
     }
 
     clip.transitionFilter = filter;
@@ -1588,10 +1745,6 @@ export class VideoCompositor {
       } catch {
         // ignore
       }
-    }
-
-    if (clip.transitionFilter) {
-      filters.push(clip.transitionFilter);
     }
 
     clip.sprite.filters = filters.length > 0 ? filters : null;
@@ -2260,6 +2413,9 @@ export class VideoCompositor {
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
     }
+    if (clip.transitionSprite && clip.transitionSprite.parent) {
+      clip.transitionSprite.parent.removeChild(clip.transitionSprite);
+    }
 
     if (clip.effectFilters) {
       for (const filter of clip.effectFilters.values()) {
@@ -2279,6 +2435,18 @@ export class VideoCompositor {
       }
       this.transitionFilters.delete(clip.itemId);
       clip.transitionFilter = null;
+    }
+    if (clip.transitionFromTexture) {
+      safeDispose(clip.transitionFromTexture);
+      clip.transitionFromTexture = null;
+    }
+    if (clip.transitionToTexture) {
+      safeDispose(clip.transitionToTexture);
+      clip.transitionToTexture = null;
+    }
+    if (clip.transitionSprite) {
+      clip.transitionSprite.destroy(true);
+      clip.transitionSprite = null;
     }
     clip.sprite.destroy(true);
   }
