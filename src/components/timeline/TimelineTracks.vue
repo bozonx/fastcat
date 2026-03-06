@@ -131,6 +131,7 @@ function updateLiveMarqueeSelection() {
     if (isYFullyInside) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
+        if (Boolean((item as any).locked)) continue;
 
         const clipStartPx = timeUsToPx(item.timelineRange.startUs, zoom);
         const clipEndPx = timeUsToPx(item.timelineRange.startUs + item.timelineRange.durationUs, zoom);
