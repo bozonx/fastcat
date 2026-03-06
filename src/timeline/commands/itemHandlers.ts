@@ -5,6 +5,7 @@ import type {
   RemoveItemCommand,
   DeleteItemsCommand,
   MoveItemCommand,
+  MoveItemsCommand,
   TrimItemCommand,
   SplitItemCommand,
   MoveItemToTrackCommand,

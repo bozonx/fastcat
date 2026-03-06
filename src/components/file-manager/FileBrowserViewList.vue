@@ -239,7 +239,12 @@ function isSelected(entry: FsEntry): boolean {
                     size="sm"
                   />
                   <img
-                    v-else-if="entry.kind === 'file' && videoThumbnails && entry.path && videoThumbnails[entry.path]"
+                    v-else-if="
+                      entry.kind === 'file' &&
+                      videoThumbnails &&
+                      entry.path &&
+                      videoThumbnails[entry.path]
+                    "
                     :src="videoThumbnails[entry.path]"
                     :alt="entry.name"
                     class="w-4 h-4 object-cover rounded-sm"

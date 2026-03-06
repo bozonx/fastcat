@@ -146,8 +146,13 @@ export function useTimelineInteraction(
     const item = tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId);
     if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
 
+    // If the item being dragged is already part of the selection, don't clear the other selected items.
+    // If it's not part of the selection, we should only select this item.
     if (!timelineStore.selectedItemIds.includes(itemId)) {
-      timelineStore.toggleSelection(itemId);
+      timelineStore.toggleSelection(itemId, { multi: false });
+
+      const selectionStore = useSelectionStore();
+      selectionStore.selectTimelineItems([{ trackId, itemId }]);
     }
 
     draggingMode.value = 'move';
