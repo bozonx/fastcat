@@ -2,6 +2,7 @@
 import { computed, watch, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import MediaEncodingSettings, {
   type FormatOption,
@@ -23,7 +24,12 @@ const { t } = useI18n();
 const toast = useToast();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
+const timelineStore = useTimelineStore();
 const saveAsDefaults = ref(false);
+const exportOnlySelectionRange = ref(true);
+
+const selectionRange = computed(() => timelineStore.getSelectionRange());
+const hasSelectionRange = computed(() => Boolean(selectionRange.value));
 
 const {
   isExporting,
@@ -100,6 +106,7 @@ watch(
     isExporting.value = false;
     cancelRequested.value = false;
     saveAsDefaults.value = false;
+    exportOnlySelectionRange.value = true;
 
     await loadCodecSupport();
 
@@ -257,6 +264,8 @@ async function handleConfirm() {
             author: metadataAuthor.value,
             tags: metadataTags.value,
           },
+          exportRangeUs:
+            hasSelectionRange.value && exportOnlySelectionRange.value ? selectionRange.value ?? undefined : undefined,
         },
         fileHandle,
         (progress) => {
@@ -326,6 +335,35 @@ async function handleConfirm() {
     </div>
 
     <div class="flex flex-col gap-6 max-w-2xl">
+      <div
+        v-if="hasSelectionRange"
+        class="rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-3"
+      >
+        <label class="flex items-center gap-3 cursor-pointer">
+          <UCheckbox v-model="exportOnlySelectionRange" :disabled="isExporting" />
+          <div class="flex items-center gap-2 min-w-0">
+            <UIcon
+              name="i-heroicons-exclamation-triangle-solid"
+              class="h-5 w-5 shrink-0"
+              :class="exportOnlySelectionRange ? 'text-yellow-400' : 'text-ui-text-dimmed'"
+            />
+            <div class="flex flex-col min-w-0">
+              <span class="text-sm font-medium text-ui-text">
+                {{ t('videoEditor.export.onlySelectionRange', 'Export only selected zone') }}
+              </span>
+              <span class="text-xs text-ui-text-muted">
+                {{
+                  t(
+                    'videoEditor.export.onlySelectionRangeHelp',
+                    'When enabled, export uses only the current selection zone. Disable to export the whole timeline.',
+                  )
+                }}
+              </span>
+            </div>
+          </div>
+        </label>
+      </div>
+
       <div class="flex flex-col gap-1.5">
         <UFormField
           :label="t('videoEditor.export.filename', 'Filename')"
