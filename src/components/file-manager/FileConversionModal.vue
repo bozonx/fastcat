@@ -240,6 +240,7 @@ const modalTitle = computed(() => {
           :hide-audio-bitrate="true"
           :show-audio-advanced="true"
           :original-audio-sample-rate="props.originalAudioSampleRate"
+          :allow-original-audio-sample-rate="true"
           :is-loading-codec-support="isLoadingCodecSupport"
           :format-options="formatOptions"
           :video-codec-options="videoCodecOptions"
@@ -263,6 +264,7 @@ const modalTitle = computed(() => {
           v-model:audio-channels="audioChannels"
           v-model:audio-sample-rate="audioSampleRate"
           :original-sample-rate="props.originalAudioSampleRate"
+          :allow-original-sample-rate="true"
           :disabled="isConverting"
         />
       </div>

@@ -8,7 +8,6 @@ import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
-import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
@@ -18,7 +17,6 @@ import SelectionRangeProperties from '~/components/properties/SelectionRangeProp
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
-import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
@@ -88,23 +86,6 @@ const selectedClips = computed(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'timeline' && entity.kind === 'clips') {
     return entity.items;
-  }
-
-  if (entity?.source === 'timeline' && entity.kind === 'clip') {
-    const doc = timelineStore.timelineDoc;
-    if (!doc) return null;
-
-    const ids = getLinkedClipGroupItemIds(doc, entity.itemId);
-    if (ids.length <= 1) return null;
-
-    const items = doc.tracks
-      .flatMap((track) =>
-        track.items
-          .filter((item) => item.kind === 'clip' && ids.includes(item.id))
-          .map((item) => ({ trackId: track.id, itemId: item.id })),
-      );
-
-    return items.length > 1 ? items : null;
   }
 
   return null;

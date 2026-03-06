@@ -87,6 +87,8 @@ export function useGeneralHotkeys(
         } else {
           uiStore.pendingFsEntryDelete = [selected.entry];
         }
+      } else if (timelineStore.getSelectionRange()) {
+        timelineStore.removeSelectionRange();
       } else if (selected?.source === 'timeline') {
         if (selected.kind === 'track') {
           timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });
