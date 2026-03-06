@@ -84,8 +84,13 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (track.kind === 'video' && !hasVideo && !isImageLike) {
       throw new Error('Only video sources can be added to video tracks');
     }
-    if (track.kind === 'audio' && isImageLike) {
-      throw new Error('Images cannot be added to audio tracks');
+    if (track.kind === 'audio') {
+      if (isImageLike) {
+        throw new Error('Images cannot be added to audio tracks');
+      }
+      if (hasVideo && !hasAudio) {
+        throw new Error('Video without audio cannot be added to audio tracks');
+      }
     }
   }
 
@@ -141,6 +146,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       isImage: isImageLike,
       startUs: input.startUs,
     });
+
+    return { durationUs };
   }
 
   async function moveItemToTrack(input: MoveItemToTrackInput) {
@@ -245,6 +252,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       sourceDurationUs: durationUs,
       startUs: input.startUs,
     });
+
+    return { durationUs };
   }
 
   return {

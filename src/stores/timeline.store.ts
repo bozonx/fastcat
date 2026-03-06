@@ -354,7 +354,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     path: string;
     startUs?: number;
   }) {
-    await commandService.addClipToTimelineFromPath(input);
+    return await commandService.addClipToTimelineFromPath(input);
   }
 
   async function addTimelineClipToTimelineFromPath(input: {
@@ -366,7 +366,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (currentTimelinePath.value && input.path === currentTimelinePath.value) {
       throw new Error('Cannot insert the currently opened timeline into itself');
     }
-    await commandService.addTimelineClipFromPath(input);
+    return await commandService.addTimelineClipFromPath(input);
   }
 
   async function loadTimelineMetadata() {
