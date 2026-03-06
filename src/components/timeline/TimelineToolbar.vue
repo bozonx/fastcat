@@ -92,16 +92,6 @@ function onZoomInput(e: Event) {
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <div class="ml-2 flex items-center gap-1.5">
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-cog-6-tooth"
-        :aria-label="t('granVideoEditor.timeline.properties.title', 'Timeline properties')"
-        @click="timelineStore.selectTimelineProperties()"
-      />
-
-      <div class="w-px h-5 bg-ui-border mx-1.5" />
 
       <div
         draggable="true"

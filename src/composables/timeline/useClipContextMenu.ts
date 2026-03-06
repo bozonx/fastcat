@@ -79,6 +79,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       let hasVideo = false;
       let allMuted = true;
       let allShowWaveform = true;
+      let allShowThumbnails = true;
       let allWaveformHalf = true;
 
       if (doc) {
@@ -99,6 +100,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
           if (!clip.audioMuted) allMuted = false;
           if (clip.showWaveform === false) allShowWaveform = false;
+          if (clip.showThumbnails === false) allShowThumbnails = false;
           if (clip.audioWaveformMode === 'full') allWaveformHalf = false;
         }
       }
@@ -173,6 +175,23 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
               trackId,
               itemId,
               properties: { showWaveform: !allShowWaveform },
+            }));
+            options.batchApplyTimeline(cmds);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+ 
+        mainGroup.push({
+          label: allShowThumbnails
+            ? options.t('granVideoEditor.timeline.hideThumbnails', 'Hide Thumbnails')
+            : options.t('granVideoEditor.timeline.showThumbnails', 'Show Thumbnails'),
+          icon: 'i-heroicons-photo',
+          onSelect: async () => {
+            const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
+              type: 'update_clip_properties' as const,
+              trackId,
+              itemId,
+              properties: { showThumbnails: !allShowThumbnails },
             }));
             options.batchApplyTimeline(cmds);
             await options.requestTimelineSave({ immediate: true });
@@ -282,6 +301,21 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
           await options.requestTimelineSave({ immediate: true });
         },
       });
+ 
+      if (track.kind === 'video') {
+        mainGroup.push({
+          label: clipItem.showThumbnails === false
+            ? options.t('granVideoEditor.timeline.showThumbnails', 'Show thumbnails')
+            : options.t('granVideoEditor.timeline.hideThumbnails', 'Hide thumbnails'),
+          icon: 'i-heroicons-photo',
+          onSelect: async () => {
+            options.updateClipProperties(track.id, clipItem.id, {
+              showThumbnails: clipItem.showThumbnails === false,
+            });
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
 
       const currentSpeed = clipItem.speed ?? 1;
 

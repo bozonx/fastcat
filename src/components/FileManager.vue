@@ -116,8 +116,28 @@ function onFileAction(
     | 'createTimeline'
     | 'createMarkdown'
     | 'addToTimeline',
-  entry: FsEntry,
+  entry: FsEntry | FsEntry[],
 ) {
+  if (Array.isArray(entry)) {
+    if (action === 'delete') {
+      onFileActionBase('delete', entry);
+      return;
+    }
+    if (action === 'createProxy') {
+      onFileActionBase('createProxy', entry);
+      return;
+    }
+    if (action === 'cancelProxy') {
+      onFileActionBase('cancelProxy', entry);
+      return;
+    }
+    if (action === 'deleteProxy') {
+      onFileActionBase('deleteProxy', entry);
+      return;
+    }
+    return;
+  }
+
   if (action === 'refresh') {
     void loadProjectDirectory({ fullRefresh: true });
     return;

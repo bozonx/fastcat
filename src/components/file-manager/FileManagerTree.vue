@@ -301,6 +301,14 @@ const { getContextMenuItems } = useFileContextMenu(
     isVideo,
     getEntryMeta: ctx.getEntryMeta,
     isFilesPage: props.isFilesPage,
+    getSelectedEntries: () => {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager') {
+        if (selected.kind === 'multiple') return selected.entries;
+        if ('entry' in selected) return [selected.entry];
+      }
+      return [];
+    },
   },
   (action: any, entry: any) => emit('action', action as any, entry),
 );

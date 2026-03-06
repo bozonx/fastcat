@@ -89,7 +89,27 @@ type FileAction =
   | 'openAsPanel'
   | 'openAsProjectTab';
 
-function onFileAction(action: string, entry: FsEntry) {
+function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
+  if (Array.isArray(entry)) {
+    if (action === 'delete') {
+      onFileActionBase('delete', entry);
+      return;
+    }
+    if (action === 'createProxy') {
+      onFileActionBase('createProxy', entry);
+      return;
+    }
+    if (action === 'cancelProxy') {
+      onFileActionBase('cancelProxy', entry);
+      return;
+    }
+    if (action === 'deleteProxy') {
+      onFileActionBase('deleteProxy', entry);
+      return;
+    }
+    return;
+  }
+
   if (action === 'createMarkdown') {
     if (entry.kind === 'directory') {
       if (entry.path) {

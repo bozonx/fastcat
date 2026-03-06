@@ -133,6 +133,143 @@ const {
 
 const rootContainer = ref<HTMLElement | null>(null);
 
+const isMarqueeSelecting = ref(false);
+const marqueeStart = ref<{ x: number; y: number } | null>(null);
+const marqueeCurrent = ref<{ x: number; y: number } | null>(null);
+
+function getPointInScrollContainer(
+  e: PointerEvent,
+  container: HTMLElement,
+): { x: number; y: number } {
+  const rect = container.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left + container.scrollLeft,
+    y: e.clientY - rect.top + container.scrollTop,
+  };
+}
+
+const marqueeRect = computed(() => {
+  if (!isMarqueeSelecting.value || !marqueeStart.value || !marqueeCurrent.value) return null;
+  const x1 = marqueeStart.value.x;
+  const y1 = marqueeStart.value.y;
+  const x2 = marqueeCurrent.value.x;
+  const y2 = marqueeCurrent.value.y;
+  const left = Math.min(x1, x2);
+  const top = Math.min(y1, y2);
+  const width = Math.abs(x1 - x2);
+  const height = Math.abs(y1 - y2);
+  return { left, top, width, height };
+});
+
+const marqueeStyle = computed(() => {
+  const r = marqueeRect.value;
+  if (!r) return null;
+  return {
+    left: `${r.left}px`,
+    top: `${r.top}px`,
+    width: `${r.width}px`,
+    height: `${r.height}px`,
+  };
+});
+
+function rectsIntersect(
+  a: { left: number; top: number; right: number; bottom: number },
+  b: { left: number; top: number; right: number; bottom: number },
+): boolean {
+  return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
+}
+
+function selectEntriesInMarquee() {
+  const container = rootContainer.value;
+  const r = marqueeRect.value;
+  if (!container || !r) return;
+
+  const selRect = {
+    left: r.left,
+    top: r.top,
+    right: r.left + r.width,
+    bottom: r.top + r.height,
+  };
+
+  const nodes = Array.from(container.querySelectorAll<HTMLElement>('[data-entry-path]'));
+  const byPath = new Map<string, FsEntry>();
+  for (const e of sortedEntries.value) {
+    if (e.path) byPath.set(e.path, e);
+  }
+
+  const selected: FsEntry[] = [];
+  const containerRect = container.getBoundingClientRect();
+
+  for (const el of nodes) {
+    const path = el.dataset.entryPath;
+    if (!path) continue;
+
+    const entry = byPath.get(path);
+    if (!entry) continue;
+
+    const elRect = el.getBoundingClientRect();
+    const left = elRect.left - containerRect.left + container.scrollLeft;
+    const top = elRect.top - containerRect.top + container.scrollTop;
+    const rect = {
+      left,
+      top,
+      right: left + elRect.width,
+      bottom: top + elRect.height,
+    };
+
+    if (rectsIntersect(selRect, rect)) {
+      selected.push(entry);
+    }
+  }
+
+  selectionStore.selectFsEntries(selected);
+}
+
+function onMarqueePointerDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  const container = rootContainer.value;
+  if (!container) return;
+
+  const target = e.target as HTMLElement | null;
+  if (target?.tagName === 'INPUT') return;
+  if (target?.closest?.('[data-entry-path]')) return;
+
+  const point = getPointInScrollContainer(e, container);
+  isMarqueeSelecting.value = true;
+  marqueeStart.value = point;
+  marqueeCurrent.value = point;
+
+  try {
+    container.setPointerCapture(e.pointerId);
+  } catch {
+    // ignore
+  }
+}
+
+function onMarqueePointerMove(e: PointerEvent) {
+  if (!isMarqueeSelecting.value) return;
+  const container = rootContainer.value;
+  if (!container) return;
+
+  marqueeCurrent.value = getPointInScrollContainer(e, container);
+  selectEntriesInMarquee();
+}
+
+function onMarqueePointerUp(e: PointerEvent) {
+  if (!isMarqueeSelecting.value) return;
+  const container = rootContainer.value;
+  if (container) {
+    try {
+      container.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  }
+  isMarqueeSelecting.value = false;
+  marqueeStart.value = null;
+  marqueeCurrent.value = null;
+}
+
 function onContainerKeyDown(e: KeyboardEvent) {
   const container = rootContainer.value;
   if (!container) return;
@@ -233,7 +370,27 @@ const {
   },
 });
 
-async function onFileAction(action: string, entry: FsEntry) {
+async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
+  if (Array.isArray(entry)) {
+    if (action === 'delete') {
+      onFileActionBase('delete', entry);
+      return;
+    }
+    if (action === 'createProxy') {
+      onFileActionBase('createProxy', entry);
+      return;
+    }
+    if (action === 'cancelProxy') {
+      onFileActionBase('cancelProxy', entry);
+      return;
+    }
+    if (action === 'deleteProxy') {
+      onFileActionBase('deleteProxy', entry);
+      return;
+    }
+    return;
+  }
+
   if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -459,11 +616,29 @@ const { getContextMenuItems } = useFileContextMenu(
       generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,
     }),
     isFilesPage: props.isFilesPage,
+    getSelectedEntries: () => {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager') {
+        if (selected.kind === 'multiple') return selected.entries;
+        if ('entry' in selected) return [selected.entry];
+      }
+      return [];
+    },
   },
-  (action: ContextMenuFileAction, entry: FsEntry) => onFileAction(action, entry),
+  (action: ContextMenuFileAction, entry: FsEntry | FsEntry[]) => onFileAction(action, entry),
 );
 
 const emptySpaceContextMenuItems = computed(() => {
+  const selected = selectionStore.selectedEntity;
+  if (
+    selected?.source === 'fileManager' &&
+    selected.kind === 'multiple' &&
+    selected.entries.length > 1
+  ) {
+    const first = selected.entries[0];
+    if (!first) return [];
+    return getContextMenuItems(first);
+  }
   if (!filesPageStore.selectedFolder) return [];
   return getContextMenuItems(filesPageStore.selectedFolder);
 });
@@ -560,7 +735,9 @@ async function loadFolderContent() {
   try {
     const path = filesPageStore.selectedFolder.path || '';
     const freshEntry = findEntryByPath(path);
-    const handle = (freshEntry ? toRaw(freshEntry.handle) : toRaw(filesPageStore.selectedFolder.handle)) as FileSystemDirectoryHandle;
+    const handle = (
+      freshEntry ? toRaw(freshEntry.handle) : toRaw(filesPageStore.selectedFolder.handle)
+    ) as FileSystemDirectoryHandle;
     const entries = await readDirectory(handle, path);
     // readDirectory already filters hidden files based on deps.showHiddenFiles(),
     // but just to be sure we also filter it here if needed.
@@ -948,10 +1125,19 @@ async function onDirectoryUploadChange(e: Event) {
     <!-- Main Content -->
     <div
       ref="rootContainer"
-      class="flex-1 overflow-auto p-4 content-scrollbar"
+      class="flex-1 overflow-auto p-4 content-scrollbar relative"
       @click.self="navigateToRoot"
       @keydown="onContainerKeyDown"
+      @pointerdown.capture="onMarqueePointerDown"
+      @pointermove="onMarqueePointerMove"
+      @pointerup="onMarqueePointerUp"
+      @pointercancel="onMarqueePointerUp"
     >
+      <div
+        v-if="marqueeStyle"
+        class="absolute border border-primary-400 bg-primary-400/15 rounded-sm pointer-events-none"
+        :style="marqueeStyle"
+      />
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col">
           <div

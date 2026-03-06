@@ -248,7 +248,9 @@ export function useFileManagerActions(actions: FileManagerActions) {
         handle: newEntry.handle,
       };
       selectionStore.selectFsEntry(newEntry);
-      actions.onFileSelect?.(newEntry);
+      if (newEntry.kind === 'directory') {
+        actions.onFileSelect?.(newEntry);
+      }
     }
   }
 

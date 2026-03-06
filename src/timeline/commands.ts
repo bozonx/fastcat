@@ -164,6 +164,7 @@ export interface UpdateClipPropertiesCommand {
       | 'audioMuted'
       | 'audioWaveformMode'
       | 'showWaveform'
+      | 'showThumbnails'
     >
   > & {
     backgroundColor?: string;

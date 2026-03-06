@@ -275,6 +275,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
     try {
       const payload = JSON.parse(fileDragData);
       if (payload.kind === 'file' && dropPosition.value) {
+        const panelPosition = dropPosition.value;
         if (!isOpenableProjectFileName(String(payload.name ?? ''))) {
           resetDragState();
           return;
@@ -290,13 +291,25 @@ function onDrop(event: DragEvent, targetPanelId: string) {
           mediaType = 'image';
 
         if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) {
-          projectStore.addTextPanel(
-            payload.path,
-            `File: ${payload.name}`,
-            payload.name,
-            targetPanelId,
-            dropPosition.value,
-          );
+          void (async () => {
+            let content = `File: ${payload.name}`;
+            try {
+              const handle = payload.handle as FileSystemFileHandle | undefined;
+              if (handle && typeof handle.getFile === 'function') {
+                const file = await handle.getFile();
+                content = await file.text();
+              }
+            } catch {
+              // ignore
+            }
+            projectStore.addTextPanel(
+              payload.path,
+              content,
+              payload.name,
+              targetPanelId,
+              panelPosition,
+            );
+          })();
         } else {
           // Add as media panel
           projectStore.addMediaPanel(
@@ -309,7 +322,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
             mediaType,
             payload.name,
             targetPanelId,
-            dropPosition.value,
+            panelPosition,
           );
         }
         resetDragState();

@@ -367,7 +367,6 @@ const emit = defineEmits<{
         },
       ]"
       @pointerdown.capture="focusStore.setMainFocus('monitor')"
-      @dblclick="centerMonitor()"
     >
       <!-- Video area: MonitorViewport handles pan/zoom/gestures -->
       <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight">

@@ -105,7 +105,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     proxyVideoBitrateMbps: 2,
     proxyAudioBitrateKbps: 128,
     proxyCopyOpusAudio: true,
-    autoCreateProxies: true,
+    autoCreateProxies: false,
     proxyConcurrency: 2,
   },
   projectDefaults: {
