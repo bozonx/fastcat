@@ -604,6 +604,12 @@ describe('TimelineStore', () => {
           name: 'Video 1',
           items: [],
         },
+        {
+          id: 'a1',
+          kind: 'audio',
+          name: 'Audio 1',
+          items: [],
+        },
       ],
     } as any;
 
@@ -669,5 +675,179 @@ describe('TimelineStore', () => {
     expect(added.clipType).toBe('timeline');
     expect(added.source.path).toBe('nested.otio');
     expect(added.timelineRange.durationUs).toBeGreaterThan(0);
+
+    await store.addTimelineClipToTimelineFromPath({
+      trackId: 'a1',
+      name: 'Nested audio.otio',
+      path: 'nested.otio',
+      startUs: 1_000_000,
+    });
+
+    const addedToAudio = (store.timelineDoc as any).tracks[1].items.find(
+      (it: any) => it.kind === 'clip',
+    );
+    expect(addedToAudio.clipType).toBe('timeline');
+    expect(addedToAudio.source.path).toBe('nested.otio');
+  });
+
+  it('rejects nested timeline without audio on audio track and allows moving nested timeline to audio track', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [],
+        },
+        {
+          id: 'a1',
+          kind: 'audio',
+          name: 'Audio 1',
+          items: [],
+        },
+      ],
+    } as any;
+
+    const videoOnlyNestedOtio = JSON.stringify(
+      {
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'Video only nested',
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'Video 1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'VideoOnly',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: 'video-only.mp4',
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
+                  },
+                  metadata: {
+                    gran: {
+                      clipType: 'media',
+                      sourceDurationUs: 2000000,
+                      audioFromVideoDisabled: true,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        metadata: { gran: { docId: 'nested-video-only', timebase: { fps: 25 } } },
+      },
+      null,
+      2,
+    );
+
+    const avNestedOtio = JSON.stringify(
+      {
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'AV nested',
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'Video 1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'AV',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: 'av.mp4',
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
+                  },
+                  metadata: {
+                    gran: {
+                      clipType: 'media',
+                      sourceDurationUs: 2000000,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        metadata: { gran: { docId: 'nested-av', timebase: { fps: 25 } } },
+      },
+      null,
+      2,
+    );
+
+    projectStoreMock.getFileHandleByPath.mockImplementation(async (path: string) => {
+      if (path === 'video-only.otio') {
+        return {
+          getFile: async () => ({
+            text: async () => videoOnlyNestedOtio,
+          }),
+        };
+      }
+
+      if (path === 'nested-av.otio') {
+        return {
+          getFile: async () => ({
+            text: async () => avNestedOtio,
+          }),
+        };
+      }
+
+      return null;
+    });
+
+    await expect(
+      store.addTimelineClipToTimelineFromPath({
+        trackId: 'a1',
+        name: 'Video only nested.otio',
+        path: 'video-only.otio',
+        startUs: 0,
+      }),
+    ).rejects.toThrow(/audio content/i);
+
+    await store.addTimelineClipToTimelineFromPath({
+      trackId: 'v1',
+      name: 'AV nested.otio',
+      path: 'nested-av.otio',
+      startUs: 0,
+    });
+
+    const videoClip = (store.timelineDoc as any).tracks[0].items.find(
+      (it: any) => it.kind === 'clip',
+    );
+    await store.moveItemToTrack({
+      fromTrackId: 'v1',
+      toTrackId: 'a1',
+      itemId: videoClip.id,
+      startUs: 500_000,
+    });
+
+    expect((store.timelineDoc as any).tracks[0].items).toHaveLength(0);
+    expect((store.timelineDoc as any).tracks[1].items).toHaveLength(1);
+    expect((store.timelineDoc as any).tracks[1].items[0].clipType).toBe('timeline');
+    expect((store.timelineDoc as any).tracks[1].items[0].timelineRange.startUs).toBe(500_000);
   });
 });

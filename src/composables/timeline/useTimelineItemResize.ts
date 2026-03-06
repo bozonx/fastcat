@@ -1,10 +1,16 @@
 import { onBeforeUnmount, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { pxToDeltaUs } from '~/utils/timeline/geometry';
 import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineStore = useTimelineStore();
+  const projectStore = useProjectStore();
+
+  function canEditClipContent(): boolean {
+    return projectStore.currentView === 'files';
+  }
 
   let activePointerMove: ((e: PointerEvent) => void) | null = null;
   let activePointerUp: ((e?: PointerEvent) => void) | null = null;
@@ -51,6 +57,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     currentVolume: number,
     clipHeight: number,
   ) {
+    if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
     resizeVolume.value = {
@@ -97,6 +104,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     edge: 'in' | 'out',
     currentFadeUs: number,
   ) {
+    if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
     resizeFade.value = {
@@ -243,6 +251,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     edge: 'in' | 'out',
     currentDurationUs: number,
   ) {
+    if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
     resizeTransition.value = {

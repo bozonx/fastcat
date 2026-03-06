@@ -6,9 +6,9 @@ import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();
@@ -28,6 +28,7 @@ const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 // Provide dummy tooltip context for testing purposes without needing a TooltipProvider wrapper
 if (process.env.NODE_ENV === 'test') {
@@ -412,13 +413,76 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
   }
 }
 
-function toggleOverlapMode() {
-  settingsStore.setOverlapMode(settingsStore.overlapMode === 'none' ? 'pseudo' : 'none');
+function onVirtualClipDragStart(e: DragEvent, kind: 'adjustment' | 'background' | 'text') {
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({
+        kind,
+        name: t(`granVideoEditor.timeline.${kind}ClipDefaultName`, kind),
+        path: '',
+      }),
+    );
+  }
+
+  const labels: Record<string, string> = {
+    adjustment: t('granVideoEditor.timeline.adjustmentClipDefaultName', 'Adjustment'),
+    background: t('granVideoEditor.timeline.backgroundClipDefaultName', 'Background'),
+    text: t('granVideoEditor.timeline.textClipDefaultName', 'Text'),
+  };
+
+  setDraggedFile({
+    kind,
+    name: labels[kind] ?? kind,
+    path: '',
+  });
 }
 
-function toggleFrameSnapMode() {
-  settingsStore.setFrameSnapMode(settingsStore.frameSnapMode === 'frames' ? 'free' : 'frames');
+function onVirtualClipDragEnd() {
+  clearDraggedFile();
 }
+
+async function splitClips() {
+  await timelineStore.splitClipsAtPlayhead();
+}
+
+async function rippleTrimLeft() {
+  await timelineStore.rippleTrimLeft();
+}
+
+async function rippleTrimRight() {
+  await timelineStore.rippleTrimRight();
+}
+
+function addAdjustmentClip() {
+  timelineStore.addAdjustmentClipAtPlayhead();
+}
+
+function addBackgroundClip() {
+  timelineStore.addBackgroundClipAtPlayhead();
+}
+
+function addTextClip() {
+  const defaultName = t('granVideoEditor.timeline.textClipDefaultName', 'Text');
+  const defaultText = t('granVideoEditor.timeline.textClipDefaultText', 'Text');
+  timelineStore.addTextClipAtPlayhead({ name: defaultName, text: defaultText });
+}
+
+const trimMenuItems = computed(() => [
+  [
+    {
+      label: t('granVideoEditor.timeline.rippleTrimLeft', 'Ripple trim left'),
+      icon: 'i-heroicons-arrow-left',
+      onSelect: rippleTrimLeft,
+    },
+    {
+      label: t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right'),
+      icon: 'i-heroicons-arrow-right',
+      onSelect: rippleTrimRight,
+    },
+  ],
+]);
 
 function toggleClipSnapMode() {
   settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
@@ -449,57 +513,120 @@ function toggleClipSnapMode() {
       <div
         class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
       >
-        <UTooltip :text="t('granVideoEditor.timeline.properties.title', 'Timeline properties')">
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-cog-6-tooth"
-            @click="selectTimelineProperties"
-          />
-        </UTooltip>
+        <div class="flex items-center gap-0.5 min-w-0 flex-1">
+          <UTooltip :text="t('granVideoEditor.timeline.properties.title', 'Timeline properties')">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-cog-6-tooth"
+              @click="selectTimelineProperties"
+            />
+          </UTooltip>
 
-        <UTooltip
-          :text="
-            settingsStore.overlapMode === 'pseudo'
-              ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode')
-              : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode')
-          "
-        >
-          <UButton
-            size="xs"
-            :variant="settingsStore.overlapMode === 'pseudo' ? 'solid' : 'ghost'"
-            :color="settingsStore.overlapMode === 'pseudo' ? 'primary' : 'neutral'"
-            icon="i-heroicons-squares-2x2"
-            :aria-label="
-              settingsStore.overlapMode === 'pseudo'
-                ? t('granVideoEditor.timeline.overlayModePseudo', 'Pseudo-overlay mode (active)')
-                : t('granVideoEditor.timeline.overlayModeNone', 'Normal mode (no overlap)')
-            "
-            @click="toggleOverlapMode"
-          />
-        </UTooltip>
-
-        <UTooltip
-          :text="
-            settingsStore.clipSnapMode === 'clips'
-              ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
-              : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
-          "
-        >
-          <UButton
-            size="xs"
-            :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
-            :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
-            icon="i-heroicons-link"
-            :aria-label="
+          <UTooltip
+            :text="
               settingsStore.clipSnapMode === 'clips'
-                ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
+                ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
                 : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
             "
-            @click="toggleClipSnapMode"
-          />
-        </UTooltip>
+          >
+            <UButton
+              size="xs"
+              :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
+              :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
+              icon="i-heroicons-link"
+              :aria-label="
+                settingsStore.clipSnapMode === 'clips'
+                  ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips (active)')
+                  : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
+              "
+              @click="toggleClipSnapMode"
+            />
+          </UTooltip>
+
+          <div class="ml-auto flex items-center gap-0.5">
+            <UTooltip :text="t('granVideoEditor.timeline.trim', 'Trim')">
+              <UiSplitDropdownButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="i-heroicons-scissors"
+                :ariaLabel="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
+                :caretAriaLabel="t('granVideoEditor.timeline.trimOptions', 'Trim options')"
+                :items="trimMenuItems"
+                @click="splitClips"
+              />
+            </UTooltip>
+
+            <div
+              draggable="true"
+              class="cursor-grab active:cursor-grabbing"
+              @dragstart="onVirtualClipDragStart($event, 'adjustment')"
+              @dragend="onVirtualClipDragEnd"
+            >
+              <UTooltip
+                :text="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
+              >
+                <UButton
+                  draggable="true"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-adjustments-horizontal"
+                  :aria-label="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
+                  @dragstart="onVirtualClipDragStart($event, 'adjustment')"
+                  @dragend="onVirtualClipDragEnd"
+                  @click="addAdjustmentClip"
+                />
+              </UTooltip>
+            </div>
+
+            <div
+              draggable="true"
+              class="cursor-grab active:cursor-grabbing"
+              @dragstart="onVirtualClipDragStart($event, 'background')"
+              @dragend="onVirtualClipDragEnd"
+            >
+              <UTooltip
+                :text="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
+              >
+                <UButton
+                  draggable="true"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-swatch"
+                  :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
+                  @dragstart="onVirtualClipDragStart($event, 'background')"
+                  @dragend="onVirtualClipDragEnd"
+                  @click="addBackgroundClip"
+                />
+              </UTooltip>
+            </div>
+
+            <div
+              draggable="true"
+              class="cursor-grab active:cursor-grabbing"
+              @dragstart="onVirtualClipDragStart($event, 'text')"
+              @dragend="onVirtualClipDragEnd"
+            >
+              <UTooltip :text="t('granVideoEditor.timeline.addTextClip', 'Add text clip')">
+                <UButton
+                  draggable="true"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-chat-bubble-bottom-center-text"
+                  :aria-label="t('granVideoEditor.timeline.addTextClip', 'Add text clip')"
+                  @dragstart="onVirtualClipDragStart($event, 'text')"
+                  @dragend="onVirtualClipDragEnd"
+                  @click="addTextClip"
+                />
+              </UTooltip>
+            </div>
+          </div>
+        </div>
       </div>
     </UContextMenu>
     <div

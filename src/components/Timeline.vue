@@ -60,6 +60,11 @@ function updateTrackHeight(trackId: string, height: number) {
   trackHeights.value[trackId] = height;
 }
 
+const canEditClipContent = computed(() => currentView.value === 'files');
+const canDropTimelineContent = computed(
+  () => currentView.value === 'files' || currentView.value === 'cut',
+);
+
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
@@ -604,6 +609,11 @@ function computeSnappedDropStartUs(rawStartUs: number, draggingItemDurationUs: n
 }
 
 function onTrackDragOver(e: DragEvent, trackId: string) {
+  if (!canDropTimelineContent.value) {
+    clearDragPreview();
+    return;
+  }
+
   const startUs = getDropStartUs(e);
   if (startUs === null) return;
 
@@ -715,6 +725,12 @@ async function onClipAction(payload: {
 }
 
 async function onDrop(e: DragEvent, trackId: string) {
+  if (!canDropTimelineContent.value) {
+    clearDragPreview();
+    clearDraggedFile();
+    return;
+  }
+
   clearDragPreview();
   const startUs = getDropStartUs(e);
 
@@ -975,6 +991,7 @@ async function onDrop(e: DragEvent, trackId: string) {
                 ref="timelineTracksRef"
                 :tracks="tracks"
                 :track-heights="trackHeights"
+                :can-edit-clip-content="canEditClipContent"
                 :drag-preview="dragPreview"
                 :move-preview="movePreview"
                 :dragging-mode="draggingMode"

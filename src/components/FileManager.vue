@@ -7,7 +7,6 @@ import type { FsEntry } from '~/types/fs';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
-import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 
 const _props = defineProps<{
   foldersOnly?: boolean;
@@ -95,8 +94,5 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         class="flex-1 min-h-0"
       />
     </div>
-
-    <!-- Timeline Toolbar at the bottom of the panel -->
-    <TimelineToolbar v-if="!foldersOnly" />
   </div>
 </template>

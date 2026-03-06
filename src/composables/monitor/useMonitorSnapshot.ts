@@ -23,6 +23,12 @@ export function useMonitorSnapshot(input: {
 
   const isSavingStopFrame = ref(false);
 
+  function getClipsPayload() {
+    return JSON.parse(
+      JSON.stringify(input.workerTimelineClips.value ?? input.rawWorkerTimelineClips.value),
+    );
+  }
+
   async function saveTimelineThumbnail() {
     if (input.isLoading.value || input.loadError.value) return;
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
@@ -34,9 +40,7 @@ export function useMonitorSnapshot(input: {
         onExportProgress: () => {},
       });
 
-      const clipsPayload = JSON.parse(
-        JSON.stringify(input.rawWorkerTimelineClips.value ?? input.workerTimelineClips.value),
-      );
+      const clipsPayload = getClipsPayload();
 
       const timeUs = input.uiCurrentTimeUs.value;
       const exportWidth = 400; // Manager thumbnail size
@@ -117,9 +121,7 @@ export function useMonitorSnapshot(input: {
         onExportProgress: () => {},
       });
 
-      const clipsPayload = JSON.parse(
-        JSON.stringify(input.rawWorkerTimelineClips.value ?? input.workerTimelineClips.value),
-      );
+      const clipsPayload = getClipsPayload();
 
       const blob = await client.extractFrameToBlob(
         timeUs,
