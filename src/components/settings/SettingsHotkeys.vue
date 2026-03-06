@@ -385,9 +385,9 @@ defineExpose({
         </label>
         <USelectMenu
           :model-value="workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift'"
-          :options="layerOptions"
-          value-attribute="value"
-          option-attribute="label"
+          :items="layerOptions"
+          value-key="value"
+          :search-input="false"
           @update:model-value="(val) => updateLayer1(val as LayerKey)"
         />
       </div>
@@ -397,9 +397,9 @@ defineExpose({
         </label>
         <USelectMenu
           :model-value="workspaceStore.userSettings.hotkeys.layer2 ?? 'Control'"
-          :options="layerOptions"
-          value-attribute="value"
-          option-attribute="label"
+          :items="layerOptions"
+          value-key="value"
+          :search-input="false"
           @update:model-value="(val) => updateLayer2(val as LayerKey)"
         />
       </div>
