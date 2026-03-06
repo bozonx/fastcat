@@ -85,7 +85,12 @@ export function useTimelineInteraction(
   const settingsStore = useTimelineSettingsStore();
   const selectionStore = useSelectionStore();
 
-  const canEditClipContent = computed(() => projectStore.currentView === 'files');
+  const canEditClipContent = computed(
+    () =>
+      projectStore.currentView === 'cut' ||
+      projectStore.currentView === 'files' ||
+      projectStore.currentView === 'sound',
+  );
   const canOpenClipProperties = computed(
     () => projectStore.currentView !== 'files' && projectStore.currentView !== 'cut',
   );
