@@ -233,7 +233,7 @@ const {
   },
 });
 
-function onFileAction(action: string, entry: FsEntry) {
+async function onFileAction(action: string, entry: FsEntry) {
   if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
@@ -278,8 +278,8 @@ function onFileAction(action: string, entry: FsEntry) {
     setActiveTab(tabId);
   } else if (action === 'createFolder') {
     const existingNames = folderEntries.value.map((e) => e.name);
-    onFileActionBase('createFolder', entry, () => existingNames);
-    void loadFolderContent();
+    await onFileActionBase('createFolder', entry, () => existingNames);
+    await loadFolderContent();
   } else if (action === 'createTimeline') {
     if (entry.kind === 'directory') {
       uiStore.pendingFsEntryCreateTimeline = entry;
@@ -558,8 +558,9 @@ async function loadFolderContent() {
   }
 
   try {
-    const handle = toRaw(filesPageStore.selectedFolder.handle) as FileSystemDirectoryHandle;
     const path = filesPageStore.selectedFolder.path || '';
+    const freshEntry = findEntryByPath(path);
+    const handle = (freshEntry ? toRaw(freshEntry.handle) : toRaw(filesPageStore.selectedFolder.handle)) as FileSystemDirectoryHandle;
     const entries = await readDirectory(handle, path);
     // readDirectory already filters hidden files based on deps.showHiddenFiles(),
     // but just to be sure we also filter it here if needed.

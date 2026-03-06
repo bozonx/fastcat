@@ -309,13 +309,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
     string,
     (entry: FsEntry | FsEntry[], getExistingNames?: () => string[]) => void | Promise<void>
   > = {
-    createFolder: (entry, getExistingNames) => {
+    createFolder: async (entry, getExistingNames) => {
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (!e) return;
       const existingNames = getExistingNames
         ? getExistingNames()
         : e.children?.map((c) => c.name) || [];
-      void handleCreateAutoFolder(
+      await handleCreateAutoFolder(
         e.kind === 'directory' ? (e.handle as FileSystemDirectoryHandle) : null,
         e.path ?? '',
         existingNames,
@@ -335,52 +335,52 @@ export function useFileManagerActions(actions: FileManagerActions) {
       const entries = Array.isArray(entry) ? entry : [entry];
       openDeleteConfirmModal(entries);
     },
-    createProxy: (entry) => {
+    createProxy: async (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
       for (const e of entries) {
         if (e.kind !== 'file' || !e.path) continue;
-        void actions.mediaCache.ensureProxy({
+        await actions.mediaCache.ensureProxy({
           fileHandle: e.handle as FileSystemFileHandle,
           projectRelativePath: e.path!,
         });
       }
     },
-    cancelProxy: (entry) => {
+    cancelProxy: async (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
       for (const e of entries) {
         if (e.kind === 'file' && e.path) {
-          void actions.mediaCache.cancelProxy(e.path);
+          await actions.mediaCache.cancelProxy(e.path);
         }
       }
     },
-    deleteProxy: (entry) => {
+    deleteProxy: async (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
       for (const e of entries) {
         if (e.kind === 'file' && e.path) {
-          void actions.mediaCache.removeProxy(e.path);
+          await actions.mediaCache.removeProxy(e.path);
         }
       }
     },
-    createOtioVersion: (entry) => {
+    createOtioVersion: async (entry) => {
       const e = Array.isArray(entry) ? entry[0] : entry;
-      if (e) void createOtioVersion(e);
+      if (e) await createOtioVersion(e);
     },
-    createMarkdown: (entry) => {
+    createMarkdown: async (entry) => {
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (e && e.kind === 'directory') {
-        void createMarkdownInDirectory(e);
+        await createMarkdownInDirectory(e);
       }
     },
   };
 
-  function onFileAction(
+  async function onFileAction(
     action: FileAction,
     entry: FsEntry | FsEntry[],
     getExistingNames?: () => string[],
   ) {
     const handler = fileActionHandlers[action];
     if (handler) {
-      void handler(entry, getExistingNames);
+      await handler(entry, getExistingNames);
     } else {
       console.warn(`[useFileManagerActions] Unhandled file action: ${action}`);
     }
