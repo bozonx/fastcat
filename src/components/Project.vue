@@ -14,7 +14,6 @@ import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
-import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 
 const { t } = useI18n();
 
@@ -335,8 +334,6 @@ onMounted(() => {
       <!-- Static tab component -->
       <component :is="activeStaticComponent" v-else-if="activeStaticComponent" />
     </div>
-
-    <TimelineToolbar />
   </div>
 </template>
 

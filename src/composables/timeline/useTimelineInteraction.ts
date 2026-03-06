@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
@@ -79,8 +80,15 @@ export function useTimelineInteraction(
   tracks: ComputedRef<TimelineTrack[]>,
 ) {
   const timelineStore = useTimelineStore();
+  const projectStore = useProjectStore();
   const historyStore = useHistoryStore();
   const settingsStore = useTimelineSettingsStore();
+  const selectionStore = useSelectionStore();
+
+  const canEditClipContent = computed(() => projectStore.currentView === 'files');
+  const canOpenClipProperties = computed(
+    () => projectStore.currentView !== 'files' && projectStore.currentView !== 'cut',
+  );
 
   const isDraggingPlayhead = ref(false);
   const draggingItemId = ref<string | null>(null);
@@ -163,11 +171,19 @@ export function useTimelineInteraction(
       .filter((x) => selectedIds.includes(x.item.id))
       .map((x) => ({ trackId: x.trackId, itemId: x.item.id }));
 
-    const selectionStore = useSelectionStore();
-    selectionStore.selectTimelineItems(items);
+    if (canOpenClipProperties.value) {
+      selectionStore.selectTimelineItems(items);
+      return;
+    }
+
+    const selectedEntity = selectionStore.selectedEntity;
+    if (selectedEntity?.source === 'timeline' && selectedEntity.kind !== 'marker') {
+      selectionStore.clearSelection();
+    }
   }
 
   function startMoveItem(e: PointerEvent, trackId: string, itemId: string, startUs: number) {
+    if (!canEditClipContent.value) return;
     if (e.button !== 0) return;
     e.stopPropagation();
 
@@ -181,12 +197,14 @@ export function useTimelineInteraction(
       const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
       timelineStore.selectTimelineItems(groupedIds);
 
-      const selectionStore = useSelectionStore();
       const groupedItems = tracks.value
         .flatMap((t) => t.items.map((it) => ({ trackId: t.id, item: it })))
         .filter((x) => groupedIds.includes(x.item.id))
         .map((x) => ({ trackId: x.trackId, itemId: x.item.id }));
-      selectionStore.selectTimelineItems(groupedItems);
+
+      if (canOpenClipProperties.value) {
+        selectionStore.selectTimelineItems(groupedItems);
+      }
     }
 
     draggingMode.value = 'move';
@@ -238,6 +256,7 @@ export function useTimelineInteraction(
     e: PointerEvent,
     input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ) {
+    if (!canEditClipContent.value) return;
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();

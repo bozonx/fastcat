@@ -3,6 +3,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
+import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 
 interface TimelineMediaMetadata {
   duration?: number;
@@ -94,6 +95,51 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     }
   }
 
+  function summarizeNestedTimeline(doc: TimelineDocument) {
+    const hasVideo = doc.tracks.some(
+      (track) =>
+        track.kind === 'video' &&
+        !track.videoHidden &&
+        track.items.some((item) => item.kind === 'clip' && !(item as TimelineClipItem).disabled),
+    );
+    const hasAudio = buildEffectiveAudioClipItems({
+      audioTracks: doc.tracks.filter((track) => track.kind === 'audio'),
+      videoTracks: doc.tracks.filter((track) => track.kind === 'video'),
+    }).some((item) => item.kind === 'clip');
+
+    return {
+      hasVideo,
+      hasAudio,
+    };
+  }
+
+  async function resolveNestedTimeline(path: string, name: string) {
+    const handle = await deps.getFileHandleByPath(path);
+    if (!handle) throw new Error('Failed to access file handle');
+
+    const file = await handle.getFile();
+    const text = await file.text();
+    const doc = deps.parseTimelineFromOtio(text, { id: 'nested', name, fps: 25 });
+
+    return {
+      handle,
+      doc,
+      summary: summarizeNestedTimeline(doc),
+    };
+  }
+
+  function ensureNestedTimelineTrackCompatibility(
+    track: TimelineTrack,
+    summary: { hasVideo: boolean; hasAudio: boolean },
+  ) {
+    if (track.kind === 'video' && !summary.hasVideo) {
+      throw new Error('Only nested timelines with video content can be added to video tracks');
+    }
+    if (track.kind === 'audio' && !summary.hasAudio) {
+      throw new Error('Only nested timelines with audio content can be added to audio tracks');
+    }
+  }
+
   async function addClipToTimelineFromPath(
     input: AddClipToTimelineFromPathInput,
     options?: {
@@ -173,15 +219,18 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       | undefined;
     if (!item || item.kind !== 'clip') throw new Error('Item not found');
 
-    if (item.clipType !== 'media') {
-      throw new Error('Only media clips can be moved across tracks');
-    }
-
     const path = item.source?.path;
     if (!path) throw new Error('Invalid source');
 
-    const metadata = await resolveMetadataByPath(path);
-    ensureTrackKindCompatibility(toTrack, metadata);
+    if (item.clipType === 'media') {
+      const metadata = await resolveMetadataByPath(path);
+      ensureTrackKindCompatibility(toTrack, metadata);
+    } else if (item.clipType === 'timeline') {
+      const nested = await resolveNestedTimeline(path, item.name);
+      ensureNestedTimelineTrackCompatibility(toTrack, nested.summary);
+    } else {
+      throw new Error('Only media and nested timeline clips can be moved across tracks');
+    }
 
     deps.applyTimeline({
       type: 'move_item_to_track',
@@ -235,18 +284,15 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       label?: string;
     },
   ) {
-    const handle = await deps.getFileHandleByPath(input.path);
-    if (!handle) throw new Error('Failed to access file handle');
-
     const track = deps.getTrackById(input.trackId);
     if (!track) throw new Error('Track not found');
 
+    const nested = await resolveNestedTimeline(input.path, input.name);
+    ensureNestedTimelineTrackCompatibility(track, nested.summary);
+
     let durationUs = 2_000_000;
     try {
-      const file = await handle.getFile();
-      const text = await file.text();
-      const nested = deps.parseTimelineFromOtio(text, { id: 'nested', name: input.name, fps: 25 });
-      const nestedDurationUs = deps.selectTimelineDurationUs(nested);
+      const nestedDurationUs = deps.selectTimelineDurationUs(nested.doc);
       if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {
         durationUs = Math.max(1, Math.round(nestedDurationUs));
       }

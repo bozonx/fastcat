@@ -103,4 +103,45 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.transitionIn).toBeUndefined();
     expect(clip.transitionOut).toBeUndefined();
   });
+
+  it('preserves nested timeline clips through OTIO round-trip', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              id: 'nested1',
+              trackId: 'v1',
+              name: 'Nested sequence',
+              clipType: 'timeline',
+              source: { path: '_timelines/sequence.otio' },
+              sourceDurationUs: 12_000_000,
+              timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+              sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
+              audioGain: 0.75,
+              audioFadeInUs: 150_000,
+              audioFadeOutUs: 250_000,
+            },
+          ],
+        },
+      ],
+    };
+
+    const serialized = serializeTimelineToOtio(doc);
+    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
+
+    const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
+    expect(clip.clipType).toBe('timeline');
+    expect(clip.source?.path).toBe('_timelines/sequence.otio');
+    expect(clip.sourceDurationUs).toBe(12_000_000);
+    expect(clip.sourceRange).toEqual({ startUs: 2_000_000, durationUs: 5_000_000 });
+    expect(clip.audioGain).toBe(0.75);
+    expect(clip.audioFadeInUs).toBe(150_000);
+    expect(clip.audioFadeOutUs).toBe(250_000);
+  });
 });

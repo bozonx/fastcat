@@ -17,6 +17,7 @@ import { sanitizeFps } from '~/timeline/commands/utils';
 interface UseClipContextMenuOptions {
   track: Ref<TimelineTrack>;
   item: Ref<TimelineTrackItem>;
+  canEditClipContent: Ref<boolean>;
   timelineDoc: Ref<TimelineDocument | null>;
   projectSettings: Ref<GranVideoEditorProjectSettings>;
   selectedItemIds: Ref<string[]>;
@@ -65,6 +66,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     const item = options.item.value;
 
     if (!item) return [];
+    if (item.kind === 'clip' && !options.canEditClipContent.value) return [];
 
     const isMultiSelection =
       options.selectedItemIds.value.length > 1 && options.selectedItemIds.value.includes(item.id);

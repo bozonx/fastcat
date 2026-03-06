@@ -22,6 +22,7 @@ const { selectedTransition } = storeToRefs(timelineStore);
 const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
+  canEditClipContent: boolean;
   dragPreview?: {
     trackId: string;
     startUs: number;
@@ -76,6 +77,8 @@ const movePreviewResolved = computed(() => {
     clipType: (clip as any).clipType as any,
   };
 });
+
+const canOpenClipProperties = computed(() => projectStore.currentView !== 'files' && projectStore.currentView !== 'cut');
 
 // Marquee Selection Logic
 const containerRef = ref<HTMLElement | null>(null);
@@ -149,7 +152,12 @@ function updateLiveMarqueeSelection() {
 
   if (selectedItems.length > 0) {
     timelineStore.selectTimelineItems(selectedItems.map((i) => i.itemId));
-    selectionStore.selectTimelineItems(selectedItems);
+
+    if (canOpenClipProperties.value) {
+      selectionStore.selectTimelineItems(selectedItems);
+    } else {
+      selectionStore.clearSelection();
+    }
   } else {
     timelineStore.clearSelection();
     selectionStore.clearSelection();
@@ -480,6 +488,7 @@ function selectTransition(
           :track="track"
           :item="item"
           :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+          :can-edit-clip-content="canEditClipContent"
           :is-dragging-current-item="
             Boolean(props.draggingMode && props.draggingItemId === item.id)
           "

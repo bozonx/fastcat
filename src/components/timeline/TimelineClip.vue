@@ -30,6 +30,7 @@ let activeClipPointerUp: ((e?: PointerEvent) => void) | null = null;
 let didStartClipDrag = false;
 
 function handleDragEnter(event: DragEvent) {
+  if (!props.canEditClipContent) return;
   if (event.dataTransfer?.types.includes('gran-effect')) {
     isDraggingOver.value = true;
   }
@@ -40,6 +41,7 @@ function handleDragLeave() {
 }
 
 function handleDragOver(event: DragEvent) {
+  if (!props.canEditClipContent) return;
   if (event.dataTransfer?.types.includes('gran-effect')) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
@@ -47,6 +49,7 @@ function handleDragOver(event: DragEvent) {
 }
 
 function handleDrop(event: DragEvent) {
+  if (!props.canEditClipContent) return;
   isDraggingOver.value = false;
   const effectType = event.dataTransfer?.getData('gran-effect');
   if (!effectType || !clipItem.value) return;
@@ -93,6 +96,7 @@ interface Props {
   track: TimelineTrack;
   item: TimelineTrackItem;
   trackHeight: number;
+  canEditClipContent: boolean;
   isDraggingCurrentItem: boolean;
   isMovePreviewCurrentItem: boolean;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
@@ -161,6 +165,8 @@ const clipItem = computed<TimelineClipItem | null>(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
 );
 
+const canEditClipContent = computed(() => props.canEditClipContent);
+
 let activeTransitionPointerMove: ((e: PointerEvent) => void) | null = null;
 let activeTransitionPointerUp: ((e?: PointerEvent) => void) | null = null;
 
@@ -176,6 +182,7 @@ function clearActiveTransitionPointerListeners() {
 }
 
 function onTransitionPointerdown(e: PointerEvent) {
+  if (!props.canEditClipContent) return;
   if (!clipItem.value || Boolean(clipItem.value.locked)) return;
   const startX = e.clientX;
   const startY = e.clientY;
@@ -221,6 +228,7 @@ function onClipClick(e: MouseEvent) {
 
 function onClipPointerdown(e: PointerEvent) {
   if (e.button !== 0) return;
+  if (!props.canEditClipContent) return;
   if (!clipItem.value || Boolean(clipItem.value.locked)) return;
 
   didStartClipDrag = false;
@@ -453,6 +461,7 @@ const selectedItemIdsRef = computed(() => timelineStore.selectedItemIds);
 const { contextMenuItems } = useClipContextMenu({
   track: trackRef,
   item: itemRef,
+  canEditClipContent: computed(() => props.canEditClipContent),
   timelineDoc: timelineDocRef,
   projectSettings: projectSettingsRef,
   selectedItemIds: selectedItemIdsRef,
@@ -607,6 +616,7 @@ const isFreePosition = computed(() => {
         v-if="
           clipItem &&
           clipHasAudio(item, track) &&
+          canEditClipContent &&
           !Boolean(clipItem.locked) &&
           !shouldCollapseFades(item)
         "
@@ -711,7 +721,7 @@ const isFreePosition = computed(() => {
         v-if="clipItem && clipHasAudio(item, track)"
         class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity"
         :class="[
-          !Boolean(clipItem.locked) ? 'cursor-ns-resize' : '',
+          canEditClipContent && !Boolean(clipItem.locked) ? 'cursor-ns-resize' : '',
           clipItem.audioMuted && !timelineStore.selectedItemIds.includes(item.id)
             ? 'opacity-0 group-hover/clip:opacity-100'
             : (clipItem.audioGain !== undefined && Math.abs(clipItem.audioGain - 1) > 0.001) ||
@@ -726,11 +736,13 @@ const isFreePosition = computed(() => {
           top: `${100 - ((clipItem.audioGain ?? 1) / 2) * 100}%`,
         }"
         @pointerdown.stop.prevent="
+          canEditClipContent &&
           $event.button === 0 &&
           !Boolean(clipItem.locked) &&
           emit('startResizeVolume', $event, track.id, item.id, clipItem.audioGain ?? 1, trackHeight)
         "
         @dblclick.stop.prevent="
+          canEditClipContent &&
           !Boolean(clipItem.locked) &&
           (() => {
             emit('resetVolume', track.id, item.id);
@@ -808,6 +820,7 @@ const isFreePosition = computed(() => {
             ]"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
+              canEditClipContent &&
               emit('selectTransition', $event, {
                 trackId: item.trackId,
                 itemId: item.id,
@@ -830,7 +843,7 @@ const isFreePosition = computed(() => {
               </template>
             </template>
             <div
-              v-if="!Boolean(clipItem.locked)"
+              v-if="canEditClipContent && !Boolean(clipItem.locked)"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
               @pointerdown.stop.prevent="
                 emit(
@@ -864,6 +877,7 @@ const isFreePosition = computed(() => {
             ]"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
+              canEditClipContent &&
               emit('selectTransition', $event, {
                 trackId: item.trackId,
                 itemId: item.id,
@@ -884,7 +898,7 @@ const isFreePosition = computed(() => {
               <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
             </template>
             <div
-              v-if="!Boolean(clipItem.locked)"
+              v-if="canEditClipContent && !Boolean(clipItem.locked)"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
               @pointerdown.stop.prevent="
                 emit(
@@ -903,7 +917,7 @@ const isFreePosition = computed(() => {
 
       <!-- Trim Handles -->
       <div
-        v-if="clipItem && !Boolean(clipItem.locked)"
+        v-if="clipItem && canEditClipContent && !Boolean(clipItem.locked)"
         class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
         @pointerdown.stop="
           emit('startTrimItem', $event, {
@@ -915,7 +929,7 @@ const isFreePosition = computed(() => {
         "
       />
       <div
-        v-if="clipItem && !Boolean(clipItem.locked)"
+        v-if="clipItem && canEditClipContent && !Boolean(clipItem.locked)"
         class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
         @pointerdown.stop="
           emit('startTrimItem', $event, {
