@@ -17,6 +17,7 @@ import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
@@ -43,6 +44,7 @@ function clearAllSelection() {
 
 const selectedClip = computed<TimelineClipItem | null>(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (selectedClips.value) return null;
   if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
   const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === entity.trackId);
   const item = track?.items.find((it) => it.id === entity.itemId);
@@ -81,6 +83,24 @@ const selectedClips = computed(() => {
   if (entity?.source === 'timeline' && entity.kind === 'clips') {
     return entity.items;
   }
+
+  if (entity?.source === 'timeline' && entity.kind === 'clip') {
+    const doc = timelineStore.timelineDoc;
+    if (!doc) return null;
+
+    const ids = getLinkedClipGroupItemIds(doc, entity.itemId);
+    if (ids.length <= 1) return null;
+
+    const items = doc.tracks
+      .flatMap((track) =>
+        track.items
+          .filter((item) => item.kind === 'clip' && ids.includes(item.id))
+          .map((item) => ({ trackId: track.id, itemId: item.id })),
+      );
+
+    return items.length > 1 ? items : null;
+  }
+
   return null;
 });
 

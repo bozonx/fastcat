@@ -500,7 +500,6 @@ const isFreePosition = computed(() => {
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        isFreePosition ? 'ring-2 ring-inset ring-yellow-400' : '',
         clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden)) ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
@@ -517,6 +516,11 @@ const isFreePosition = computed(() => {
       @dragleave="handleDragLeave"
       @drop="handleDrop"
     >
+      <div
+        v-if="isFreePosition"
+        class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none z-35"
+      ></div>
+
       <!-- Missing Media Overlay -->
       <div
         v-if="isMediaMissing"

@@ -112,6 +112,7 @@ interface TimelineClipBase {
   name: string;
   disabled?: boolean;
   locked?: boolean;
+  linkedGroupId?: string;
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
   source?: TimelineSourceRef;

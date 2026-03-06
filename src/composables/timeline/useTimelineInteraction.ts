@@ -21,7 +21,7 @@ import {
   pickBestSnapCandidateUs,
   computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
-import { sanitizeFps } from '~/timeline/commands/utils';
+import { sanitizeFps, getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
 export { BASE_PX_PER_SECOND, timeUsToPx, pxToTimeUs, pxToDeltaUs, computeAnchoredScrollLeft };
 
@@ -140,7 +140,22 @@ export function useTimelineInteraction(
 
   function selectItem(e: PointerEvent, itemId: string) {
     const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
-    timelineStore.toggleSelection(itemId, { multi: isMulti });
+
+    const doc = timelineStore.timelineDoc;
+    const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
+
+    if (isMulti) {
+      const nextSelectedIds = new Set(timelineStore.selectedItemIds);
+      const allGroupedSelected = groupedIds.every((id) => nextSelectedIds.has(id));
+      if (allGroupedSelected) {
+        for (const id of groupedIds) nextSelectedIds.delete(id);
+      } else {
+        for (const id of groupedIds) nextSelectedIds.add(id);
+      }
+      timelineStore.selectTimelineItems([...nextSelectedIds]);
+    } else {
+      timelineStore.selectTimelineItems(groupedIds);
+    }
 
     const selectedIds = timelineStore.selectedItemIds;
     const items = tracks.value
@@ -162,10 +177,16 @@ export function useTimelineInteraction(
     // If the item being dragged is already part of the selection, don't clear the other selected items.
     // If it's not part of the selection, we should only select this item.
     if (!timelineStore.selectedItemIds.includes(itemId)) {
-      timelineStore.toggleSelection(itemId, { multi: false });
+      const doc = timelineStore.timelineDoc;
+      const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
+      timelineStore.selectTimelineItems(groupedIds);
 
       const selectionStore = useSelectionStore();
-      selectionStore.selectTimelineItems([{ trackId, itemId }]);
+      const groupedItems = tracks.value
+        .flatMap((t) => t.items.map((it) => ({ trackId: t.id, item: it })))
+        .filter((x) => groupedIds.includes(x.item.id))
+        .map((x) => ({ trackId: x.trackId, itemId: x.item.id }));
+      selectionStore.selectTimelineItems(groupedItems);
     }
 
     draggingMode.value = 'move';

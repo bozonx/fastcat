@@ -365,6 +365,10 @@ function parseClipItem(input: {
             durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)),
           }
         : undefined,
+    linkedGroupId:
+      typeof granMeta?.linkedGroupId === 'string' && granMeta.linkedGroupId.trim().length > 0
+        ? granMeta.linkedGroupId
+        : undefined,
     linkedVideoClipId:
       typeof granMeta?.linkedVideoClipId === 'string' &&
       granMeta.linkedVideoClipId.trim().length > 0
@@ -580,6 +584,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             effects: item.effects,
             transitionIn: item.transitionIn,
             transitionOut: item.transitionOut,
+            linkedGroupId: item.linkedGroupId,
             linkedVideoClipId: item.clipType === 'media' ? item.linkedVideoClipId : undefined,
             lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
             backgroundColor:

@@ -85,6 +85,45 @@ export function findClipById(
   return null;
 }
 
+export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string): string[] {
+  const origin = findClipById(doc, itemId);
+  if (!origin) return [itemId];
+
+  const result = new Set<string>([origin.item.id]);
+  const linkedGroupId = String((origin.item as any).linkedGroupId ?? '').trim();
+
+  if (linkedGroupId) {
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (item.kind !== 'clip') continue;
+        if (String((item as any).linkedGroupId ?? '').trim() !== linkedGroupId) continue;
+        result.add(item.id);
+      }
+    }
+  }
+
+  const originLinkedVideoId = String((origin.item as any).linkedVideoClipId ?? '').trim();
+  if (originLinkedVideoId) {
+    result.add(originLinkedVideoId);
+  }
+
+  for (const track of doc.tracks) {
+    for (const item of track.items) {
+      if (item.kind !== 'clip') continue;
+      const linkedVideoId = String((item as any).linkedVideoClipId ?? '').trim();
+      if (!linkedVideoId) continue;
+      if (
+        linkedVideoId === origin.item.id ||
+        (originLinkedVideoId && linkedVideoId === originLinkedVideoId)
+      ) {
+        result.add(item.id);
+      }
+    }
+  }
+
+  return [...result];
+}
+
 export function updateLinkedLockedAudio(
   doc: TimelineDocument,
   videoItemId: string,
