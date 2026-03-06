@@ -426,8 +426,12 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
     </div>
 
     <!-- Main Editor Layout (Files / Cut / Sound) -->
-    <div v-else class="h-screen">
-      <Splitpanes class="flex-1 h-full editor-splitpanes" horizontal @resized="onMainSplitResize">
+    <div v-else class="flex flex-col h-full min-h-0 overflow-hidden">
+      <Splitpanes
+        class="flex-1 min-h-0 overflow-hidden editor-splitpanes"
+        horizontal
+        @resized="onMainSplitResize"
+      >
         <!-- Top Panel: varies by view -->
         <Pane :size="100 - projectStore.timelineHeight" min-size="10">
           <!-- Files View: FileManager + FileBrowser + Properties -->
@@ -685,7 +689,9 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
 
         <!-- Bottom Panel: Timeline (always visible, height varies) -->
         <Pane :size="projectStore.timelineHeight" min-size="5">
-          <Timeline class="h-full" />
+          <div class="h-full min-h-0 overflow-hidden">
+            <Timeline class="h-full" />
+          </div>
         </Pane>
       </Splitpanes>
     </div>

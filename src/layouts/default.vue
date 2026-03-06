@@ -106,13 +106,15 @@ useHead({
       <!-- Main Content (NuxtPage) -->
       <div
         v-show="!isStartingUp && workspaceStore.workspaceHandle && projectStore.currentProjectName"
-        class="flex-1 min-h-0 relative"
+        class="flex flex-col flex-1 min-h-0 relative"
       >
         <EditorHeader
           @open-project-settings="isProjectSettingsOpen = true"
           @open-editor-settings="isEditorSettingsOpen = true"
         />
-        <slot />
+        <div class="flex-1 min-h-0 overflow-hidden">
+          <slot />
+        </div>
       </div>
 
       <!-- Startup Screens (Overlays) -->

@@ -744,7 +744,7 @@ async function onDrop(e: DragEvent, trackId: string) {
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div
             ref="trackAreaRef"
-            class="flex flex-col h-full w-full relative"
+            class="flex flex-col h-full w-full relative min-h-0"
             @pointermove="onTimelinePointerMove"
             @pointerup="onTimelinePointerUp"
             @pointercancel="onTimelinePointerUp"
