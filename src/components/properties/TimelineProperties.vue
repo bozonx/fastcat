@@ -4,7 +4,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import type { ClipEffect } from '~/timeline/types';
 import {
@@ -55,15 +54,17 @@ const timelineZoom = computed({
   },
 });
 
-const timelineZoomExact = computed({
-  get: () => timelineStore.timelineZoom,
-  set: (value: number) => {
-    timelineStore.setTimelineZoomExact(value);
+const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
+
+const timelineZoomMultiplierInput = computed({
+  get: () => formatZoomMultiplier(timelineZoomScale.value),
+  set: (value: string | number) => {
+    const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/^x/, '');
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    timelineStore.setTimelineZoomExact((DEFAULT_TIMELINE_ZOOM_POSITION + 7 * Math.log2(parsed)));
   },
 });
-
-const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
-const timelineZoomLabel = computed(() => formatZoomMultiplier(timelineZoomScale.value));
 
 function handleUpdateMasterEffects(effects: ClipEffect[]) {
   timelineStore.applyTimeline({
@@ -118,7 +119,6 @@ function handleAddAudioTrack() {
             <span class="text-xs text-ui-text-muted">{{
               t('granVideoEditor.timeline.properties.zoom', 'Zoom')
             }}</span>
-            <span class="text-[10px] font-mono text-ui-text-muted">{{ timelineZoomLabel }}</span>
           </div>
           <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1">
@@ -132,13 +132,7 @@ function handleAddAudioTrack() {
               />
             </div>
             <div class="w-24 shrink-0">
-              <WheelNumberInput
-                v-model="timelineZoomExact"
-                :min="MIN_TIMELINE_ZOOM_POSITION"
-                :max="MAX_TIMELINE_ZOOM_POSITION"
-                :step="0.01"
-                size="xs"
-              />
+              <UInput v-model="timelineZoomMultiplierInput" size="xs" class="w-full font-mono" />
             </div>
           </div>
         </div>
