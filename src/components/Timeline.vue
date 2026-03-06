@@ -11,11 +11,14 @@ import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { isTimelineTextDropFileName } from '~/utils/timeline/textDrop';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import {
   computeAnchoredScrollLeft,
   timeUsToPx,
   pxToTimeUs,
   type TimelineZoomAnchor,
+  sanitizeSnapTargetsUs,
+  computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { Splitpanes, Pane } from 'splitpanes';
@@ -37,6 +40,7 @@ const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
+const timelineSettingsStore = useTimelineSettingsStore();
 const { draggedFile, clearDraggedFile } = useDraggedFile();
 const projectStore = useProjectStore();
 const { currentProjectId, currentView } = storeToRefs(projectStore);
@@ -468,6 +472,55 @@ function getDropStartUs(e: DragEvent): number | null {
   return pxToTimeUs(x, timelineStore.timelineZoom);
 }
 
+function computeDropSnapTargetsUs(): number[] {
+  const targets: number[] = [];
+  targets.push(0);
+
+  if (Number.isFinite(timelineStore.duration)) {
+    targets.push(Math.max(0, Math.round(timelineStore.duration)));
+  }
+
+  if (Number.isFinite(timelineStore.currentTime)) {
+    targets.push(Math.max(0, Math.round(timelineStore.currentTime)));
+  }
+
+  for (const m of timelineStore.getMarkers()) {
+    if (!Number.isFinite(m.timeUs)) continue;
+    targets.push(m.timeUs);
+    if (typeof m.durationUs === 'number' && Number.isFinite(m.durationUs)) {
+      targets.push(m.timeUs + m.durationUs);
+    }
+  }
+
+  for (const tr of tracks.value) {
+    for (const it of tr.items) {
+      if (it.kind !== 'clip') continue;
+      targets.push(it.timelineRange.startUs);
+      targets.push(it.timelineRange.startUs + it.timelineRange.durationUs);
+    }
+  }
+
+  return sanitizeSnapTargetsUs(targets);
+}
+
+function computeSnappedDropStartUs(rawStartUs: number, draggingItemDurationUs: number): number {
+  const fps = timelineStore.timelineDoc?.timebase?.fps ?? 0;
+  const enableFrameSnap = timelineSettingsStore.frameSnapMode === 'frames';
+  const enableClipSnap = timelineSettingsStore.clipSnapMode === 'clips';
+
+  return computeSnappedStartUs({
+    rawStartUs,
+    draggingItemDurationUs,
+    fps,
+    zoom: timelineStore.timelineZoom,
+    snapThresholdPx: timelineSettingsStore.snapThresholdPx,
+    snapTargetsUs: computeDropSnapTargetsUs(),
+    enableFrameSnap,
+    enableClipSnap,
+    frameOffsetUs: 0,
+  });
+}
+
 function onTrackDragOver(e: DragEvent, trackId: string) {
   const startUs = getDropStartUs(e);
   if (startUs === null) return;
@@ -532,7 +585,7 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
 
   dragPreview.value = {
     trackId,
-    startUs,
+    startUs: computeSnappedDropStartUs(startUs, durationUs),
     label: count > 1 ? `${count} items` : file.name,
     durationUs,
     kind: file.kind === 'file' ? 'file' : 'timeline-clip',
@@ -665,9 +718,15 @@ async function onDrop(e: DragEvent, trackId: string) {
     }
   }
 
-  const validItems = itemsToDrop.filter(item => {
+  const validItems = itemsToDrop.filter((item) => {
     const k = typeof item?.kind === 'string' ? item.kind : undefined;
-    return k === 'file' || k === 'timeline' || k === 'adjustment' || k === 'background' || k === 'text';
+    return (
+      k === 'file' ||
+      k === 'timeline' ||
+      k === 'adjustment' ||
+      k === 'background' ||
+      k === 'text'
+    );
   });
 
   if (validItems.length === 0) {
@@ -677,6 +736,7 @@ async function onDrop(e: DragEvent, trackId: string) {
 
   try {
     let currentStartUs = startUs ?? timelineStore.currentTime;
+    currentStartUs = computeSnappedDropStartUs(currentStartUs, dragPreview.value?.durationUs ?? 0);
     let addedCount = 0;
 
     for (const item of validItems) {

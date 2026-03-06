@@ -9,6 +9,7 @@ import {
 import {
   computeSnappedStartUs,
   quantizeStartUsToFrames,
+  pickBestSnapCandidateUs,
 } from '../../../../src/utils/timeline/geometry';
 
 describe('useTimelineInteraction', () => {
@@ -117,5 +118,21 @@ describe('useTimelineInteraction', () => {
     const base = Math.max(0, snapped - frameOffsetUs);
     expect(base).toBe(quantizeStartUsToFrames(base, fps));
     expect(snapped).toBe(base + frameOffsetUs);
+  });
+
+  it('pickBestSnapCandidateUs should snap to nearest marker edge within threshold', () => {
+    const thresholdUs = 10_000;
+    const zoneStartUs = 1_000_000;
+    const zoneEndUs = zoneStartUs + 500_000;
+
+    const rawUs = zoneEndUs + 2_000;
+    const res = pickBestSnapCandidateUs({
+      rawUs,
+      thresholdUs,
+      targetsUs: [zoneStartUs, zoneEndUs],
+    });
+
+    expect(res.snappedUs).toBe(zoneEndUs);
+    expect(res.distUs).toBe(2_000);
   });
 });

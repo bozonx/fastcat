@@ -3,8 +3,11 @@ import { ref } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
+  const workspaceStore = useWorkspaceStore();
+
   const overlapMode = useLocalStorage<OverlapMode>(
     'gran-editor-overlap-mode',
     DEFAULT_SNAP_SETTINGS.overlapMode,
@@ -20,10 +23,12 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     DEFAULT_SNAP_SETTINGS.clipSnapMode,
   );
 
-  const snapThresholdPx = useLocalStorage<number>(
+  const snapThresholdPxLegacy = useLocalStorage<number>(
     'gran-editor-snap-threshold-px',
     DEFAULT_SNAP_SETTINGS.snapThresholdPx,
   );
+
+  const snapThresholdPx = ref<number>(DEFAULT_SNAP_SETTINGS.snapThresholdPx);
 
   if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
     overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;
@@ -37,10 +42,15 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
   }
 
-  if (!Number.isFinite(Number(snapThresholdPx.value))) {
-    snapThresholdPx.value = DEFAULT_SNAP_SETTINGS.snapThresholdPx;
-  }
-  snapThresholdPx.value = Math.max(1, Math.round(Number(snapThresholdPx.value)));
+  const configuredSnapThresholdPx = Number(workspaceStore.userSettings.timeline?.snapThresholdPx);
+  const legacySnapThresholdPx = Number(snapThresholdPxLegacy.value);
+  const snapThresholdCandidate = Number.isFinite(configuredSnapThresholdPx)
+    ? configuredSnapThresholdPx
+    : legacySnapThresholdPx;
+  snapThresholdPx.value =
+    Number.isFinite(snapThresholdCandidate) && snapThresholdCandidate > 0
+      ? Math.max(1, Math.round(snapThresholdCandidate))
+      : DEFAULT_SNAP_SETTINGS.snapThresholdPx;
 
   function setOverlapMode(mode: OverlapMode) {
     overlapMode.value = mode;
@@ -55,7 +65,9 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   }
 
   function setSnapThresholdPx(value: number) {
-    snapThresholdPx.value = Math.max(1, Math.round(value));
+    const next = Math.max(1, Math.round(value));
+    snapThresholdPx.value = next;
+    workspaceStore.userSettings.timeline.snapThresholdPx = next;
   }
 
   return {

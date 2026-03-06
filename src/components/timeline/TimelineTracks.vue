@@ -159,10 +159,19 @@ function updateLiveMarqueeSelection() {
 function startMarquee(e: PointerEvent, onClick?: () => void) {
   if (e.button !== 0) return;
 
+  e.preventDefault();
+  e.stopPropagation();
+
   const coords = getPointerCoords(e);
   marqueeStart.value = coords;
   marqueeCurrent.value = coords;
   let didMove = false;
+
+  try {
+    containerRef.value?.setPointerCapture(e.pointerId);
+  } catch {
+    // ignore
+  }
 
   onMarqueeMove = (ev: PointerEvent) => {
     const currentCoords = getPointerCoords(ev);
@@ -190,6 +199,12 @@ function startMarquee(e: PointerEvent, onClick?: () => void) {
       updateLiveMarqueeSelection();
     } else {
       if (onClick) onClick();
+    }
+
+    try {
+      containerRef.value?.releasePointerCapture(ev.pointerId);
+    } catch {
+      // ignore
     }
     cleanupMarqueeListeners();
   };

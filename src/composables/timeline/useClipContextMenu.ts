@@ -12,6 +12,7 @@ import type {
   UpdateClipPropertiesCommand,
   UpdateClipTransitionCommand,
 } from '~/timeline/commands';
+import { sanitizeFps } from '~/timeline/commands/utils';
 
 interface UseClipContextMenuOptions {
   track: Ref<TimelineTrack>;
@@ -46,6 +47,19 @@ interface UseClipContextMenuOptions {
 }
 
 export function useClipContextMenu(options: UseClipContextMenuOptions) {
+  function isClipFreePosition(clip: TimelineClipItem): boolean {
+    const doc = options.timelineDoc.value;
+    if (!doc) return false;
+    const fps = sanitizeFps((doc as any)?.timebase?.fps);
+
+    const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
+    const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
+
+    const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
+    const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
+    return !isStartQuantized || !isDurationQuantized;
+  }
+
   const contextMenuItems = computed(() => {
     const track = options.track.value;
     const item = options.item.value;
@@ -74,6 +88,57 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       }
 
       const allDisabled = selectedClips.length > 0 && selectedClips.every((c) => c.disabled);
+      const hasFreeClip = selectedClips.some((c) => isClipFreePosition(c));
+
+      const selectedIds = new Set(options.selectedItemIds.value);
+      const selectedVideoIds: string[] = [];
+      if (doc) {
+        for (const t of doc.tracks) {
+          if (t.kind !== 'video') continue;
+          for (const it of t.items) {
+            if (it.kind !== 'clip') continue;
+            if (!selectedIds.has(it.id)) continue;
+            selectedVideoIds.push(it.id);
+          }
+        }
+      }
+
+      const hasLockedLinks = (() => {
+        if (!doc) return false;
+
+        for (const t of doc.tracks) {
+          for (const it of t.items) {
+            if (!selectedIds.has(it.id)) continue;
+            if (it.kind !== 'clip') continue;
+
+            if (
+              t.kind === 'audio' &&
+              Boolean((it as any).linkedVideoClipId) &&
+              Boolean((it as any).lockToLinkedVideo)
+            ) {
+              return true;
+            }
+
+            if (t.kind === 'video') {
+              const videoId = it.id;
+              const hasLinkedAudio = doc.tracks
+                .filter((x) => x.kind === 'audio')
+                .some((aTr) =>
+                  aTr.items.some(
+                    (a) =>
+                      a.kind === 'clip' &&
+                      Boolean((a as any).linkedVideoClipId) &&
+                      Boolean((a as any).lockToLinkedVideo) &&
+                      String((a as any).linkedVideoClipId) === videoId,
+                  ),
+                );
+              if (hasLinkedAudio) return true;
+            }
+          }
+        }
+
+        return false;
+      })();
 
       let hasAudioOrVideoWithAudio = false;
       let hasVideo = false;
@@ -163,6 +228,81 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         });
       }
 
+      if (hasFreeClip) {
+        mainGroup.push({
+          label: options.t('granVideoEditor.timeline.quantize', 'Quantize to frames'),
+          icon: 'i-heroicons-squares-2x2',
+          onSelect: async () => {
+            const doc = options.timelineDoc.value;
+            if (!doc) return;
+
+            const cmds: TimelineCommand[] = [];
+            for (const { trackId, itemId } of itemsToUpdate) {
+              const tr = doc.tracks.find((t) => t.id === trackId);
+              const clip = tr?.items.find((it) => it.id === itemId);
+              if (!clip || clip.kind !== 'clip') continue;
+              if (Boolean((clip as any).locked)) continue;
+              if (!isClipFreePosition(clip as TimelineClipItem)) continue;
+              cmds.push({
+                type: 'trim_item',
+                trackId,
+                itemId,
+                edge: 'end',
+                deltaUs: 0,
+                quantizeToFrames: true,
+              } as any);
+            }
+
+            if (cmds.length === 0) return;
+            options.batchApplyTimeline(cmds);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
+      if (hasLockedLinks) {
+        mainGroup.push({
+          label: options.t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio'),
+          icon: 'i-heroicons-link-slash',
+          onSelect: async () => {
+            const doc = options.timelineDoc.value;
+            if (!doc) return;
+
+            const cmds: TimelineCommand[] = [];
+            for (const t of doc.tracks) {
+              if (t.kind !== 'audio') continue;
+              for (const it of t.items) {
+                if (it.kind !== 'clip') continue;
+                const linked = String((it as any).linkedVideoClipId ?? '');
+                const isLocked = Boolean((it as any).lockToLinkedVideo);
+
+                const shouldUnlink =
+                  (selectedIds.has(it.id) && linked && isLocked) ||
+                  (selectedVideoIds.length > 0 &&
+                    linked &&
+                    isLocked &&
+                    selectedVideoIds.includes(linked));
+
+                if (!shouldUnlink) continue;
+                cmds.push({
+                  type: 'update_clip_properties',
+                  trackId: t.id,
+                  itemId: it.id,
+                  properties: {
+                    linkedVideoClipId: undefined,
+                    lockToLinkedVideo: false,
+                  },
+                } as any);
+              }
+            }
+
+            if (cmds.length === 0) return;
+            options.batchApplyTimeline(cmds);
+            await options.requestTimelineSave({ immediate: true });
+          },
+        });
+      }
+
       if (hasVideo) {
         mainGroup.push({
           label: allShowWaveform
@@ -180,7 +320,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
             await options.requestTimelineSave({ immediate: true });
           },
         });
- 
+
         mainGroup.push({
           label: allShowThumbnails
             ? options.t('granVideoEditor.timeline.hideThumbnails', 'Hide Thumbnails')
@@ -242,6 +382,32 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     if (item.kind === 'clip') {
       const clipItem = item as TimelineClipItem;
 
+      const isFree = isClipFreePosition(clipItem);
+
+      const doc = options.timelineDoc.value;
+      const lockedLinkedAudioClips =
+        doc?.tracks
+          .filter((t) => t.kind === 'audio')
+          .flatMap((t) => t.items)
+          .filter(
+            (it): it is TimelineClipItem =>
+              it.kind === 'clip' &&
+              Boolean((it as any).linkedVideoClipId) &&
+              Boolean((it as any).lockToLinkedVideo),
+          ) ?? [];
+
+      const linkedAudioForThisVideo =
+        track.kind === 'video'
+          ? lockedLinkedAudioClips.filter(
+              (a) => String((a as any).linkedVideoClipId) === clipItem.id,
+            )
+          : [];
+
+      const isLockedAudioClip =
+        track.kind === 'audio' &&
+        Boolean((clipItem as any).linkedVideoClipId) &&
+        Boolean((clipItem as any).lockToLinkedVideo);
+
       mainGroup.push({
         label: clipItem.disabled
           ? options.t('granVideoEditor.timeline.enableClip', 'Enable clip')
@@ -301,12 +467,13 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
           await options.requestTimelineSave({ immediate: true });
         },
       });
- 
+
       if (track.kind === 'video') {
         mainGroup.push({
-          label: clipItem.showThumbnails === false
-            ? options.t('granVideoEditor.timeline.showThumbnails', 'Show thumbnails')
-            : options.t('granVideoEditor.timeline.hideThumbnails', 'Hide thumbnails'),
+          label:
+            clipItem.showThumbnails === false
+              ? options.t('granVideoEditor.timeline.showThumbnails', 'Show thumbnails')
+              : options.t('granVideoEditor.timeline.hideThumbnails', 'Hide thumbnails'),
           icon: 'i-heroicons-photo',
           onSelect: async () => {
             options.updateClipProperties(track.id, clipItem.id, {
