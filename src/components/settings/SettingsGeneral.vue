@@ -2,15 +2,20 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const settingsStore = useTimelineSettingsStore();
 
 function resetDefaults() {
   workspaceStore.userSettings.locale = DEFAULT_USER_SETTINGS.locale;
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
   workspaceStore.userSettings.stopFrames.qualityPercent =
     DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+  workspaceStore.userSettings.timeline.snapThresholdPx =
+    DEFAULT_USER_SETTINGS.timeline.snapThresholdPx;
 }
 </script>
 
@@ -56,6 +61,22 @@ function resetDefaults() {
         :max="100"
         :step="1"
       />
+    </UFormField>
+
+    <UFormField :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')">
+      <div class="flex items-center gap-4">
+        <WheelSlider
+          :model-value="workspaceStore.userSettings.timeline.snapThresholdPx"
+          :min="1"
+          :max="100"
+          :step="1"
+          class="flex-1"
+          @update:model-value="settingsStore.setGlobalSnapThresholdPx"
+        />
+        <div class="text-xs font-mono text-ui-text-muted w-8 text-right">
+          {{ workspaceStore.userSettings.timeline.snapThresholdPx }}
+        </div>
+      </div>
     </UFormField>
 
     <div class="text-xs text-ui-text-muted">

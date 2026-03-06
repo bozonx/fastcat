@@ -4,9 +4,13 @@ import { useLocalStorage } from '@vueuse/core';
 import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { computed } from 'vue';
 
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();
+
+  const timelineStore = useTimelineStore();
 
   const overlapMode = useLocalStorage<OverlapMode>(
     'gran-editor-overlap-mode',
@@ -23,13 +27,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     DEFAULT_SNAP_SETTINGS.clipSnapMode,
   );
 
-  const snapThresholdPxLegacy = useLocalStorage<number>(
-    'gran-editor-snap-threshold-px',
-    DEFAULT_SNAP_SETTINGS.snapThresholdPx,
-  );
-
-  const snapThresholdPx = ref<number>(DEFAULT_SNAP_SETTINGS.snapThresholdPx);
-
   if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
     overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;
   }
@@ -42,15 +39,19 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
   }
 
-  const configuredSnapThresholdPx = Number(workspaceStore.userSettings.timeline?.snapThresholdPx);
-  const legacySnapThresholdPx = Number(snapThresholdPxLegacy.value);
-  const snapThresholdCandidate = Number.isFinite(configuredSnapThresholdPx)
-    ? configuredSnapThresholdPx
-    : legacySnapThresholdPx;
-  snapThresholdPx.value =
-    Number.isFinite(snapThresholdCandidate) && snapThresholdCandidate > 0
-      ? Math.max(1, Math.round(snapThresholdCandidate))
-      : DEFAULT_SNAP_SETTINGS.snapThresholdPx;
+  const snapThresholdPx = computed(() => {
+    const docThreshold = timelineStore.timelineDoc?.metadata?.gran?.snapThresholdPx;
+    if (typeof docThreshold === 'number' && Number.isFinite(docThreshold) && docThreshold > 0) {
+      return Math.round(docThreshold);
+    }
+
+    const globalThreshold = Number(workspaceStore.userSettings.timeline?.snapThresholdPx);
+    if (Number.isFinite(globalThreshold) && globalThreshold > 0) {
+      return Math.round(globalThreshold);
+    }
+
+    return DEFAULT_SNAP_SETTINGS.snapThresholdPx;
+  });
 
   function setOverlapMode(mode: OverlapMode) {
     overlapMode.value = mode;
@@ -66,7 +67,16 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
 
   function setSnapThresholdPx(value: number) {
     const next = Math.max(1, Math.round(value));
-    snapThresholdPx.value = next;
+    timelineStore.applyTimeline({
+      type: 'update_timeline_properties',
+      properties: {
+        snapThresholdPx: next,
+      },
+    });
+  }
+
+  function setGlobalSnapThresholdPx(value: number) {
+    const next = Math.max(1, Math.round(value));
     workspaceStore.userSettings.timeline.snapThresholdPx = next;
   }
 
@@ -79,5 +89,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     setFrameSnapMode,
     setClipSnapMode,
     setSnapThresholdPx,
+    setGlobalSnapThresholdPx,
   };
 });

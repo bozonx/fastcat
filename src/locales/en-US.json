@@ -178,6 +178,8 @@
       "hotkeysGroupTimeline": "Timeline",
       "hotkeysDuplicateTitle": "Duplicate hotkey",
       "hotkeysDuplicateConfirm": "Add anyway",
+      "snapThreshold": "Snap threshold (px)",
+      "snapThresholdDefault": "Snap threshold default (px)",
       "hotkeysDuplicateReplace": "Replace",
       "hotkeysResetAll": "Reset all",
       "hotkeysResetAllConfirmTitle": "Reset all hotkeys?",

@@ -210,6 +210,7 @@ export interface TimelineGranMetadata {
   masterGain?: number;
   masterMuted?: boolean;
   masterEffects?: ClipEffect[];
+  snapThresholdPx?: number;
 }
 
 export interface TimelineMetadata {
