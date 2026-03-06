@@ -607,7 +607,7 @@ function toggleClipSnapMode() {
 
         <!-- Empty clickable area below tracks, matches TimelineTracks.vue min-h-50 -->
         <UContextMenu :items="emptyAreaContextMenuItems" class="flex-1 flex flex-col min-h-0">
-          <div class="w-full flex-1 min-h-50" @click="selectTimelineProperties" />
+          <div class="w-full flex-1 min-h-7" @click="selectTimelineProperties" />
         </UContextMenu>
 
         <!-- Padding at the bottom for scroll space, matches TimelineTracks.vue pb-16 -->
