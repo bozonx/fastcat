@@ -3,6 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { pxToDeltaUs } from '~/utils/timeline/geometry';
 import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
+import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineStore = useTimelineStore();
@@ -216,8 +217,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
     let limitByHandle = Number.POSITIVE_INFINITY;
 
-    const mode = input.currentTransition.mode ?? 'blend';
-    if (mode === 'blend' && adjacent) {
+    const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
+    if (mode === 'blend_previous' && adjacent) {
       if (input.edge === 'in') {
         const prev = adjacent;
         const prevSourceEnd =

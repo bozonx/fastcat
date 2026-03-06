@@ -13,6 +13,7 @@ import type {
   UpdateClipTransitionCommand,
 } from '~/timeline/commands';
 import { sanitizeFps } from '~/timeline/commands/utils';
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 interface UseClipContextMenuOptions {
   track: Ref<TimelineTrack>;
@@ -695,8 +696,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
             const transition = {
               type: 'dissolve',
               durationUs: suggestedDurationUs,
-              mode: 'blend' as const,
-              curve: 'linear' as const,
+              mode: DEFAULT_TRANSITION_MODE,
+              curve: DEFAULT_TRANSITION_CURVE,
             };
             options.updateClipTransition(track.id, item.id, { transitionIn: transition });
             options.selectTransition({ trackId: track.id, itemId: item.id, edge: 'in' });
@@ -718,8 +719,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
             const transition = {
               type: 'dissolve',
               durationUs: suggestedDurationUs,
-              mode: 'blend' as const,
-              curve: 'linear' as const,
+              mode: DEFAULT_TRANSITION_MODE,
+              curve: DEFAULT_TRANSITION_CURVE,
             };
             options.updateClipTransition(track.id, item.id, { transitionOut: transition });
             options.selectTransition({ trackId: track.id, itemId: item.id, edge: 'out' });

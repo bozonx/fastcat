@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -376,7 +377,7 @@ function isCrossfadeTransitionIn(track: TimelineTrack, item: TimelineClipItem): 
 
   const transIn = item.transitionIn;
   if (!transIn) return false;
-  return transIn.mode === 'blend';
+  return (transIn.mode ?? DEFAULT_TRANSITION_MODE) === 'blend_previous';
 }
 
 function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): string | null {
@@ -384,9 +385,9 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
   const clip = item as TimelineClipItem;
   const tr = clip.transitionIn;
   if (!tr) return null;
-  const mode = tr.mode ?? 'blend';
+  const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-  if (mode === 'blend') {
+  if (mode === 'blend_previous') {
     const prev = getPrevClipForItem(track, item);
     if (!prev)
       return t(
@@ -427,9 +428,9 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   const clip = item as TimelineClipItem;
   const tr = clip.transitionOut;
   if (!tr) return null;
-  const mode = tr.mode ?? 'blend';
+  const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-  if (mode === 'blend') {
+  if (mode === 'blend_previous') {
     const next = getNextClipForItem(track, item);
     if (!next)
       return t('granVideoEditor.timeline.transition.errorNoNextClip', 'No next clip to blend with');
@@ -839,7 +840,7 @@ const isFreePosition = computed(() => {
           >
             <template v-if="!isCrossfadeTransitionIn(track, clipItem)">
               <svg
-                v-if="(clipItem.transitionIn.mode ?? 'blend') === 'blend'"
+                v-if="(clipItem.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'blend'"
                 class="w-full h-full block"
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
@@ -895,7 +896,7 @@ const isFreePosition = computed(() => {
             "
           >
             <svg
-              v-if="(clipItem.transitionOut.mode ?? 'blend') === 'blend'"
+              v-if="(clipItem.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'blend'"
               class="w-full h-full block"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"

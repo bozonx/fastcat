@@ -45,6 +45,7 @@ import {
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useFocusStore } from '~/stores/focus.store';
 
 import PQueue from 'p-queue';
 
@@ -52,6 +53,7 @@ const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
+const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const fileManager = useFileManager();
 const proxyStore = useProxyStore();
@@ -234,6 +236,8 @@ function onMarqueePointerDown(e: PointerEvent) {
   const container = rootContainer.value;
   if (!container) return;
 
+  focusBrowserPanel();
+
   const target = e.target as HTMLElement | null;
   if (target?.tagName === 'INPUT') return;
   if (target?.closest?.('[data-entry-path]')) return;
@@ -261,7 +265,12 @@ function onMarqueePointerMove(e: PointerEvent) {
 
 const preventClickClear = ref(false);
 
+function focusBrowserPanel() {
+  focusStore.setPanelFocus('filesBrowser');
+}
+
 function handleContainerClick() {
+  focusBrowserPanel();
   if (preventClickClear.value) return;
   selectionStore.clearSelection();
 }
@@ -1174,7 +1183,9 @@ async function onDirectoryUploadChange(e: Event) {
     class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
       'bg-primary-500/5 outline-2 outline-primary-500/30 -outline-offset-2': isDragOverPanel,
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('filesBrowser'),
     }"
+    @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"
     @dragleave="onPanelDragLeave"
     @drop.prevent="onPanelDrop"
@@ -1199,6 +1210,7 @@ async function onDirectoryUploadChange(e: Event) {
     <div
       ref="rootContainer"
       class="flex-1 overflow-auto p-4 content-scrollbar relative"
+      tabindex="0"
       @click.self="handleContainerClick"
       @keydown="onContainerKeyDown"
       @pointerdown.capture="onMarqueePointerDown"

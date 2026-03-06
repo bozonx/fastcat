@@ -3,6 +3,15 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
+function isPreviewPanelFocus(focusId: string) {
+  return (
+    focusId === 'left' ||
+    focusId === 'right' ||
+    focusId === 'project' ||
+    focusId.startsWith('dynamic:')
+  );
+}
+
 export function usePlaybackHotkeys() {
   const timelineStore = useTimelineStore();
   const focusStore = useFocusStore();
@@ -13,7 +22,7 @@ export function usePlaybackHotkeys() {
       const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
       if (!canUse) return false;
 
-      if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toggle');
         return true;
       }
@@ -26,7 +35,7 @@ export function usePlaybackHotkeys() {
       const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
       if (!canUse) return false;
 
-      if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toggle1');
         return true;
       }
@@ -44,7 +53,7 @@ export function usePlaybackHotkeys() {
     'playback.toStart': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toStart');
         return true;
       }
@@ -56,7 +65,7 @@ export function usePlaybackHotkeys() {
     'playback.toEnd': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toEnd');
         return true;
       }
@@ -124,7 +133,7 @@ export function usePlaybackHotkeys() {
       const canUse = focusStore.canUsePlaybackHotkeys;
       if (!canUse) return false;
 
-      if (focusStore.effectiveFocus === 'left' || focusStore.effectiveFocus === 'right') {
+      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }

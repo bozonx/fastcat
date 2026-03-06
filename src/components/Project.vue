@@ -14,8 +14,10 @@ import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
+import { useFocusStore } from '~/stores/focus.store';
 
 const { t } = useI18n();
+const focusStore = useFocusStore();
 
 const { tabs, activeTabId, setActiveTab, initDefaultTab, reorderTabs, addFileTab, removeFileTab } =
   useProjectTabs();
@@ -49,6 +51,15 @@ const tabContainerRef = ref<HTMLElement | null>(null);
 const emit = defineEmits<{
   (e: 'tab-drag-start', event: DragEvent, tabId: string): void;
 }>();
+
+function activateProjectFocus() {
+  focusStore.setPanelFocus('project');
+}
+
+function activateProjectTab(tabId: string) {
+  activateProjectFocus();
+  setActiveTab(tabId);
+}
 
 watch(activeTabId, async (newId) => {
   if (!newId) return;
@@ -237,6 +248,10 @@ onMounted(() => {
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden"
+    :class="{
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('project'),
+    }"
+    @pointerdown.capture="activateProjectFocus"
   >
     <!-- Tab bar -->
     <div
@@ -266,7 +281,7 @@ onMounted(() => {
           :title="tab.label"
           :draggable="tab.id !== 'files'"
           @dragstart="tab.id !== 'files' ? onStaticTabDragStart($event, tab) : undefined"
-          @click="setActiveTab(tab.id)"
+          @click="activateProjectTab(tab.id)"
         >
           <UIcon
             :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
@@ -292,7 +307,7 @@ onMounted(() => {
           :title="tab.fileName"
           draggable="true"
           @dragstart="onFileTabDragStart($event, tab)"
-          @click="setActiveTab(tab.id)"
+          @click="activateProjectTab(tab.id)"
         >
           <UIcon
             :name="tab.icon"
@@ -322,7 +337,7 @@ onMounted(() => {
     </div>
 
     <!-- Content area -->
-    <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div class="flex flex-col flex-1 min-h-0 overflow-hidden" @pointerdown.capture="activateProjectFocus">
       <!-- File viewer for file tabs -->
       <ProjectTabFileViewer
         v-if="activeFileTab"

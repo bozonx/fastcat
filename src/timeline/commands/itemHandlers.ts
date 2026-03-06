@@ -34,6 +34,11 @@ import {
   quantizeRangeToFrames,
 } from './utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
+import {
+  normalizeTransitionCurve,
+  normalizeTransitionMode,
+  normalizeTransitionParams,
+} from '~/transitions';
 
 function assertClipNotLocked(item: TimelineTrackItem, action: string) {
   if (item.kind !== 'clip') return;
@@ -1520,19 +1525,32 @@ export function updateClipTransition(
 
   const fps = getDocFps(doc);
 
-  function coerceTransition(
-    raw: any,
-  ): { type: string; durationUs: number; mode?: any; curve?: any } | null {
+  function coerceTransition(raw: any): {
+    type: string;
+    durationUs: number;
+    mode: 'blend' | 'blend_previous' | 'composite';
+    curve: 'linear' | 'bezier';
+    params?: Record<string, unknown>;
+  } | null {
     if (!raw) return null;
     const type = typeof raw.type === 'string' ? raw.type : '';
     const durationUs = Number(raw.durationUs);
     if (!type) return null;
-    if (!Number.isFinite(durationUs) || durationUs <= 0) return { type, durationUs: 0 };
+    if (!Number.isFinite(durationUs) || durationUs <= 0) {
+      return {
+        type,
+        durationUs: 0,
+        mode: normalizeTransitionMode(raw.mode),
+        curve: normalizeTransitionCurve(raw.curve),
+        params: normalizeTransitionParams(type, raw.params) as Record<string, unknown> | undefined,
+      };
+    }
     return {
       type,
       durationUs: Math.max(0, Math.round(durationUs)),
-      mode: raw.mode,
-      curve: raw.curve,
+      mode: normalizeTransitionMode(raw.mode),
+      curve: normalizeTransitionCurve(raw.curve),
+      params: normalizeTransitionParams(type, raw.params) as Record<string, unknown> | undefined,
     };
   }
 
@@ -1642,8 +1660,20 @@ export function updateClipTransition(
 
   function clampTransitionUs(input: {
     edge: 'in' | 'out';
-    requested: { type: string; durationUs: number; mode?: any; curve?: any };
-  }): { type: string; durationUs: number; mode?: any; curve?: any } {
+    requested: {
+      type: string;
+      durationUs: number;
+      mode: 'blend' | 'blend_previous' | 'composite';
+      curve: 'linear' | 'bezier';
+      params?: Record<string, unknown>;
+    };
+  }): {
+    type: string;
+    durationUs: number;
+    mode: 'blend' | 'blend_previous' | 'composite';
+    curve: 'linear' | 'bezier';
+    params?: Record<string, unknown>;
+  } {
     const maxUs = Math.max(0, clipDurationUs);
     return {
       ...input.requested,
@@ -1714,7 +1744,13 @@ export function updateClipTransition(
   function patchCut(params: {
     left: TimelineClipItem;
     right: TimelineClipItem;
-    requested: { type: string; durationUs: number; mode?: any; curve?: any } | null;
+    requested: {
+      type: string;
+      durationUs: number;
+      mode: 'blend' | 'blend_previous' | 'composite';
+      curve: 'linear' | 'bezier';
+      params?: Record<string, unknown>;
+    } | null;
     clear: boolean;
   }) {
     const leftEndUs = params.left.timelineRange.startUs + params.left.timelineRange.durationUs;
@@ -1773,6 +1809,7 @@ export function updateClipTransition(
         durationUs: allowedOverlapUs,
         mode: params.requested.mode,
         curve: params.requested.curve,
+        params: params.requested.params,
       },
     } as any);
     patchedItemsById.set(right.id, {
@@ -1782,6 +1819,7 @@ export function updateClipTransition(
         durationUs: allowedOverlapUs,
         mode: params.requested.mode,
         curve: params.requested.curve,
+        params: params.requested.params,
       },
     } as any);
   }

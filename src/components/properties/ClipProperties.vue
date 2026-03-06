@@ -21,6 +21,7 @@ import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { formatAudioChannels } from '~/utils/audio';
 import { sanitizeFps } from '~/timeline/commands/utils';
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -435,8 +436,8 @@ function toggleTransition(edge: 'in' | 'out') {
     const transition = {
       type: 'dissolve',
       durationUs: suggestedDurationUs,
-      mode: 'blend' as const,
-      curve: 'linear' as const,
+      mode: DEFAULT_TRANSITION_MODE,
+      curve: DEFAULT_TRANSITION_CURVE,
     };
     handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition });
     timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });

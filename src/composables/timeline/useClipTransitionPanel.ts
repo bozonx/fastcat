@@ -1,6 +1,12 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import type { ClipTransition } from '~/timeline/types';
+import {
+  DEFAULT_TRANSITION_CURVE,
+  DEFAULT_TRANSITION_MODE,
+  getTransitionManifest,
+  normalizeTransitionParams,
+} from '~/transitions';
 
 export interface ClipTransitionUpdatePayload {
   trackId: string;
@@ -25,9 +31,17 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   );
   const selectedType = ref(options.transition.value?.type ?? 'dissolve');
   const selectedMode = ref<'blend' | 'blend_previous' | 'composite'>(
-    options.transition.value?.mode ?? 'blend',
+    options.transition.value?.mode ?? DEFAULT_TRANSITION_MODE,
   );
-  const selectedCurve = ref<'linear' | 'bezier'>(options.transition.value?.curve ?? 'linear');
+  const selectedCurve = ref<'linear' | 'bezier'>(
+    options.transition.value?.curve ?? DEFAULT_TRANSITION_CURVE,
+  );
+  const selectedParams = ref<Record<string, unknown>>(
+    (normalizeTransitionParams(
+      options.transition.value?.type ?? 'dissolve',
+      options.transition.value?.params,
+    ) as Record<string, unknown> | undefined) ?? {},
+  );
 
   let isSyncingFromProps = false;
 
@@ -36,12 +50,31 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     if (t) {
       selectedType.value = t.type;
       durationSec.value = t.durationUs / 1_000_000;
-      selectedMode.value = t.mode ?? 'blend';
-      selectedCurve.value = t.curve ?? 'linear';
+      selectedMode.value = t.mode ?? DEFAULT_TRANSITION_MODE;
+      selectedCurve.value = t.curve ?? DEFAULT_TRANSITION_CURVE;
+      selectedParams.value =
+        (normalizeTransitionParams(t.type, t.params) as Record<string, unknown> | undefined) ?? {};
+    } else {
+      selectedType.value = 'dissolve';
+      durationSec.value = 0.5;
+      selectedMode.value = DEFAULT_TRANSITION_MODE;
+      selectedCurve.value = DEFAULT_TRANSITION_CURVE;
+      selectedParams.value =
+        (normalizeTransitionParams('dissolve') as Record<string, unknown> | undefined) ?? {};
     }
     void Promise.resolve().then(() => {
       isSyncingFromProps = false;
     });
+  });
+
+  watch(selectedType, (type) => {
+    const manifest = getTransitionManifest(type);
+    const nextParams = normalizeTransitionParams(type, selectedParams.value) as
+      | Record<string, unknown>
+      | undefined;
+    selectedParams.value = nextParams ?? {
+      ...(manifest?.defaultParams as Record<string, unknown> | undefined),
+    };
   });
 
   const edgeIcon = computed(() =>
@@ -50,8 +83,22 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       : 'i-heroicons-arrow-right-end-on-rectangle',
   );
 
+  const selectedManifest = computed(() => getTransitionManifest(selectedType.value));
+
+  function updateParam(key: string, value: unknown) {
+    selectedParams.value = {
+      ...selectedParams.value,
+      [key]: value,
+    };
+    emitUpdate();
+  }
+
   function emitUpdate() {
     if (isSyncingFromProps) return;
+
+    const normalizedParams = normalizeTransitionParams(selectedType.value, selectedParams.value) as
+      | Record<string, unknown>
+      | undefined;
 
     options.onUpdate({
       trackId: options.trackId.value,
@@ -62,6 +109,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
         durationUs: Math.round(durationSec.value * 1_000_000),
         mode: selectedMode.value,
         curve: selectedCurve.value,
+        params: normalizedParams,
       },
     });
   }
@@ -97,7 +145,10 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     edgeIcon,
     remove,
     selectedCurve,
+    selectedManifest,
     selectedMode,
+    selectedParams,
     selectedType,
+    updateParam,
   };
 }

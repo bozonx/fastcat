@@ -1,9 +1,16 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
-import { easeInOutCubic } from '../core/registry';
+import {
+  clampNumber,
+  easeInOutCubic,
+  hexColorToRgb01,
+  sanitizeTransitionColor,
+} from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface SlideParams {
-  softness?: number;
+  direction: 'left' | 'right' | 'up' | 'down';
+  gap: number;
+  gapColor: string;
 }
 
 const vertex = `
@@ -24,34 +31,105 @@ in vec2 vTextureCoord;
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
-uniform float uSoftness;
+uniform float uGap;
+uniform vec2 uAxis;
+uniform vec2 uResolution;
+uniform vec3 uGapColor;
 
 void main(void) {
-  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
   float progress = clamp(uProgress, 0.0, 1.0);
-  float softness = max(0.0001, uSoftness);
+  vec2 axis = normalize(uAxis);
+  vec2 resolution = max(uResolution, vec2(1.0, 1.0));
+  float minResolution = max(1.0, min(resolution.x, resolution.y));
+  vec2 gapVector = axis * uGap * vec2(minResolution / resolution.x, minResolution / resolution.y);
+  vec2 fromOffset = axis * progress + gapVector * 0.5;
+  vec2 toOffset = axis * (progress - 1.0) - gapVector * 0.5;
 
-  vec2 fromUv = vec2(uv.x - progress, uv.y);
-  vec2 toUv = vec2(uv.x + (1.0 - progress), uv.y);
+  vec2 fromUv = vTextureCoord - fromOffset;
+  vec2 toUv = vTextureCoord - toOffset;
 
   vec4 fromColor = texture(uFromTexture, fromUv);
   vec4 toColor = texture(uTexture, toUv);
 
-  float fromMask = 1.0 - smoothstep(1.0 - softness, 1.0, uv.x + progress);
-  float toMask = 1.0 - smoothstep(softness, 0.0, uv.x - (1.0 - progress));
+  float fromInside = step(0.0, fromUv.x) * step(fromUv.x, 1.0) * step(0.0, fromUv.y) * step(fromUv.y, 1.0);
+  float toInside = step(0.0, toUv.x) * step(toUv.x, 1.0) * step(0.0, toUv.y) * step(toUv.y, 1.0);
 
-  gl_FragColor = fromColor * fromMask + toColor * toMask;
+  vec4 color = vec4(0.0);
+  if (fromInside > 0.5) {
+    color = fromColor;
+  } else if (toInside > 0.5) {
+    color = toColor;
+  } else {
+    color = vec4(uGapColor, 1.0);
+  }
+
+  gl_FragColor = color;
 }
 `;
+
+function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
+  const direction =
+    params?.direction === 'right' ||
+    params?.direction === 'up' ||
+    params?.direction === 'down' ||
+    params?.direction === 'left'
+      ? params.direction
+      : 'left';
+
+  return {
+    direction,
+    gap: clampNumber(params?.gap, 0, 0.2, 0.02),
+    gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
+  };
+}
+
+function getDirectionVector(direction: SlideParams['direction']): { x: number; y: number } {
+  switch (direction) {
+    case 'right':
+      return { x: -1, y: 0 };
+    case 'up':
+      return { x: 0, y: 1 };
+    case 'down':
+      return { x: 0, y: -1 };
+    case 'left':
+    default:
+      return { x: 1, y: 0 };
+  }
+}
 
 export const slideManifest: TransitionManifest<SlideParams> = {
   type: 'slide',
   name: 'Slide',
   icon: 'i-heroicons-arrows-right-left',
   defaultDurationUs: 500_000,
-  defaultParams: {
-    softness: 0.02,
-  },
+  defaultParams: normalizeSlideParams(),
+  normalizeParams: normalizeSlideParams,
+  paramFields: [
+    {
+      key: 'direction',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
+      options: [
+        { value: 'left', labelKey: 'granVideoEditor.timeline.transition.directionLeft' },
+        { value: 'right', labelKey: 'granVideoEditor.timeline.transition.directionRight' },
+        { value: 'up', labelKey: 'granVideoEditor.timeline.transition.directionUp' },
+        { value: 'down', labelKey: 'granVideoEditor.timeline.transition.directionDown' },
+      ],
+    },
+    {
+      key: 'gap',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramGapSize',
+      min: 0,
+      max: 0.2,
+      step: 0.005,
+    },
+    {
+      key: 'gapColor',
+      kind: 'color',
+      labelKey: 'granVideoEditor.timeline.transition.paramGapColor',
+    },
+  ],
   renderMode: 'shader',
   createFilter: () =>
     new Filter({
@@ -60,7 +138,10 @@ export const slideManifest: TransitionManifest<SlideParams> = {
         uFromTexture: Texture.WHITE.source,
         slideUniforms: {
           uProgress: { value: 0, type: 'f32' },
-          uSoftness: { value: 0.02, type: 'f32' },
+          uGap: { value: 0.02, type: 'f32' },
+          uAxis: { value: [1, 0], type: 'vec2<f32>' },
+          uResolution: { value: [1920, 1080], type: 'vec2<f32>' },
+          uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
         },
       },
     }),
@@ -70,13 +151,25 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     if (!uniforms) return;
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
-    const softnessRaw = Number((context.params as SlideParams | undefined)?.softness ?? 0.02);
+    const params = normalizeSlideParams(context.params);
+    const axis = getDirectionVector(params.direction);
+    const rgb = hexColorToRgb01(params.gapColor);
+    const width = Number(
+      (context.toTexture as any)?.source?.width ??
+        (context.fromTexture as any)?.source?.width ??
+        1920,
+    );
+    const height = Number(
+      (context.toTexture as any)?.source?.height ??
+        (context.fromTexture as any)?.source?.height ??
+        1080,
+    );
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uSoftness = Math.max(
-      0.0001,
-      Math.min(0.2, Number.isFinite(softnessRaw) ? softnessRaw : 0.02),
-    );
+    uniforms.uGap = params.gap;
+    uniforms.uAxis = [axis.x, axis.y];
+    uniforms.uResolution = [Math.max(1, width), Math.max(1, height)];
+    uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
