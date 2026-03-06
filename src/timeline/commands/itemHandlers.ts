@@ -1117,6 +1117,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   }
 
   if (
+    !cmd.ignoreLinks &&
     item.kind === 'clip' &&
     item.clipType === 'media' &&
     item.linkedVideoClipId &&
@@ -1191,7 +1192,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
-  if (item.kind === 'clip' && track.kind === 'video') {
+  if (!cmd.ignoreLinks && item.kind === 'clip' && track.kind === 'video') {
     nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
       ...audio,
       timelineRange: { ...audio.timelineRange, startUs },
@@ -1224,8 +1225,12 @@ export function moveItemToTrack(
   if (!item) return { next: doc };
   if (!item.timelineRange) return { next: doc };
 
-  assertClipNotLocked(item, 'move');
+  if (!cmd.ignoreLocks) {
+    assertClipNotLocked(item, 'move');
+  }
+
   const isLockedLinkedAudio =
+    !cmd.ignoreLinks &&
     item.kind === 'clip' &&
     item.clipType === 'media' &&
     Boolean(item.linkedVideoClipId) &&
@@ -1776,7 +1781,16 @@ export function overlayPlaceItem(
   const item = fromTrack.items[itemIdx];
   if (!item || !item.timelineRange) return { next: doc };
 
-  assertClipNotLocked(item, 'move');
+  if (!cmd.ignoreLocks) {
+    assertClipNotLocked(item, 'move');
+  }
+
+  const isLockedLinkedAudio =
+    !cmd.ignoreLinks &&
+    item.kind === 'clip' &&
+    item.clipType === 'media' &&
+    Boolean(item.linkedVideoClipId) &&
+    Boolean(item.lockToLinkedVideo);
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -1927,6 +1941,57 @@ export function overlayPlaceItem(
       if (t.id === toTrack.id) return { ...t, items: normalizedDest };
       return t;
     });
+  }
+
+  if (
+    isLockedLinkedAudio &&
+    item.kind === 'clip' &&
+    item.clipType === 'media' &&
+    item.linkedVideoClipId
+  ) {
+    const linked = findClipById({ ...doc, tracks: nextTracks }, item.linkedVideoClipId);
+    if (linked && linked.track.kind === 'video') {
+      const linkedDurationUs = Math.max(0, linked.item.timelineRange.durationUs);
+      assertNoOverlap(linked.track, linked.item.id, startUs, linkedDurationUs);
+
+      nextTracks = nextTracks.map((t) => {
+        if (t.id !== linked.track.id) return t;
+        const nextItems: TimelineTrackItem[] = t.items.map((x) =>
+          x.id === linked.item.id
+            ? {
+                ...x,
+                timelineRange: { ...x.timelineRange, startUs },
+              }
+            : x,
+        );
+        nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+        return {
+          ...t,
+          items: normalizeGaps(doc, t.id, nextItems, {
+            quantizeToFrames: shouldQuantizeToFrames,
+          }),
+        };
+      });
+
+      nextTracks = updateLinkedLockedAudio(
+        { ...doc, tracks: nextTracks },
+        linked.item.id,
+        (audio) => ({
+          ...audio,
+          timelineRange: { ...audio.timelineRange, startUs },
+        }),
+      );
+    }
+  } else if (
+    !cmd.ignoreLinks &&
+    item.kind === 'clip' &&
+    fromTrack.kind === 'video' &&
+    toTrack.kind === 'video'
+  ) {
+    nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
+      ...audio,
+      timelineRange: { ...audio.timelineRange, startUs },
+    }));
   }
 
   return { next: { ...doc, tracks: nextTracks } };

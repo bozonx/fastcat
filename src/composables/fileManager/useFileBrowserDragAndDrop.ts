@@ -80,6 +80,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       kind,
       path: entry.path,
       count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
+      items: movePayload,
     };
     setDraggedFile(data);
     e.dataTransfer?.setData('application/json', JSON.stringify(data));

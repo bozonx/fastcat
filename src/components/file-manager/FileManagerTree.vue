@@ -178,11 +178,24 @@ function onCaretClick(e: MouseEvent, entry: FsEntry) {
 function onDragStart(e: DragEvent, entry: FsEntry) {
   if (!entry.path) return;
 
-  const movePayload = {
-    name: entry.name,
-    kind: entry.kind,
-    path: entry.path,
-  };
+  const selectionStore = useSelectionStore();
+  const selected = selectionStore.selectedEntity;
+
+  let entriesToMove: FsEntry[] = [entry];
+
+  // If dragging an already selected item, move the whole selection
+  if (selected?.source === 'fileManager') {
+    if (selected.kind === 'multiple') {
+      const isSelected = selected.entries.some((s) => s.path === entry.path);
+      if (isSelected) {
+        entriesToMove = selected.entries;
+      }
+    }
+  }
+
+  e.dataTransfer?.effectAllowed && (e.dataTransfer.effectAllowed = 'copyMove');
+
+  const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
 
   // Mark this as an internal drag so the global drop overlay is not shown
@@ -192,11 +205,12 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
   const isTimeline = entry.name.toLowerCase().endsWith('.otio');
   const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
-  const data = {
+  const data: DraggedFileData = {
     name: entry.name,
     kind,
     path: entry.path,
-    handle: entry.handle as FileSystemFileHandle,
+    count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
+    items: movePayload,
   };
   setDraggedFile(data);
   e.dataTransfer?.setData('application/json', JSON.stringify(data));

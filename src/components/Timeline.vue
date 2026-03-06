@@ -688,6 +688,11 @@ async function onDrop(e: DragEvent, trackId: string) {
       if (!name || (!isVirtual && !path)) continue;
 
       try {
+        const isFirst = addedCount === 0;
+        const options = isFirst 
+          ? { historyMode: 'immediate' as const, label: validItems.length > 1 ? `Add ${validItems.length} clips` : `Add ${name}` }
+          : { skipHistory: true, saveMode: 'none' as const };
+
         if (kind === 'adjustment' || kind === 'background' || kind === 'text') {
           const res = timelineStore.addVirtualClipToTrack({
             trackId,
@@ -695,7 +700,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             clipType: kind,
             name,
             text: kind === 'text' ? name : undefined,
-          });
+          }, options);
           currentStartUs += 5_000_000;
           addedCount++;
         } else if (kind === 'timeline') {
@@ -704,7 +709,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             name,
             path: path!,
             startUs: currentStartUs,
-          });
+          }, options);
           currentStartUs += res.durationUs;
           addedCount++;
         } else {
@@ -720,7 +725,7 @@ async function onDrop(e: DragEvent, trackId: string) {
                 clipType: 'text',
                 name,
                 text,
-              });
+              }, options);
               currentStartUs += 5_000_000;
               addedCount++;
             }
@@ -730,7 +735,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               name,
               path: path!,
               startUs: currentStartUs,
-            });
+            }, options);
             currentStartUs += res.durationUs;
             addedCount++;
           }

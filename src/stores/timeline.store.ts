@@ -348,25 +348,43 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const { undoTimeline, redoTimeline } = dispatcher;
 
-  async function addClipToTimelineFromPath(input: {
-    trackId: string;
-    name: string;
-    path: string;
-    startUs?: number;
-  }) {
-    return await commandService.addClipToTimelineFromPath(input);
+  async function addClipToTimelineFromPath(
+    input: {
+      trackId: string;
+      name: string;
+      path: string;
+      startUs?: number;
+    },
+    options?: {
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      label?: string;
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+    },
+  ) {
+    return await commandService.addClipToTimelineFromPath(input, options);
   }
 
-  async function addTimelineClipToTimelineFromPath(input: {
-    trackId: string;
-    name: string;
-    path: string;
-    startUs?: number;
-  }) {
+  async function addTimelineClipToTimelineFromPath(
+    input: {
+      trackId: string;
+      name: string;
+      path: string;
+      startUs?: number;
+    },
+    options?: {
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      label?: string;
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+    },
+  ) {
     if (currentTimelinePath.value && input.path === currentTimelinePath.value) {
       throw new Error('Cannot insert the currently opened timeline into itself');
     }
-    return await commandService.addTimelineClipFromPath(input);
+    return await commandService.addTimelineClipFromPath(input, options);
   }
 
   async function loadTimelineMetadata() {
