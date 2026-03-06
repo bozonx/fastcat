@@ -55,6 +55,11 @@ function scheduleDraw() {
 let activeMarkerPointerMove: ((e: PointerEvent) => void) | null = null;
 let activeMarkerPointerUp: ((e?: PointerEvent) => void) | null = null;
 
+type SelectionDragPart = 'move' | 'left' | 'right';
+
+let activeSelectionPointerMove: ((e: PointerEvent) => void) | null = null;
+let activeSelectionPointerUp: ((e?: PointerEvent) => void) | null = null;
+
 function clearMarkerPointerListeners() {
   if (activeMarkerPointerMove) {
     window.removeEventListener('pointermove', activeMarkerPointerMove);
@@ -63,6 +68,17 @@ function clearMarkerPointerListeners() {
   if (activeMarkerPointerUp) {
     window.removeEventListener('pointerup', activeMarkerPointerUp as any);
     activeMarkerPointerUp = null;
+  }
+}
+
+function clearSelectionPointerListeners() {
+  if (activeSelectionPointerMove) {
+    window.removeEventListener('pointermove', activeSelectionPointerMove);
+    activeSelectionPointerMove = null;
+  }
+  if (activeSelectionPointerUp) {
+    window.removeEventListener('pointerup', activeSelectionPointerUp as any);
+    activeSelectionPointerUp = null;
   }
 }
 
@@ -109,6 +125,7 @@ onUnmounted(() => {
   }
 
   clearMarkerPointerListeners();
+  clearSelectionPointerListeners();
   if (drawRafId !== null) {
     cancelAnimationFrame(drawRafId);
     drawRafId = null;
@@ -148,6 +165,13 @@ const draggedMarkerPart = ref<'left' | 'right'>('left');
 const markerDragStartX = ref(0);
 const markerDragStartUs = ref(0);
 const markerDragStartDurationUs = ref(0);
+
+const isDraggingSelectionRange = ref(false);
+const selectionDragPart = ref<SelectionDragPart>('move');
+const selectionDragStartX = ref(0);
+const selectionDragStartStartUs = ref(0);
+const selectionDragStartEndUs = ref(0);
+const suppressNextRulerClick = ref(false);
 
 const contextClickTimeUs = ref(0);
 
@@ -217,6 +241,81 @@ function onWindowPointerMove(e: PointerEvent) {
 function onWindowPointerUp() {
   draggedMarkerId.value = null;
   clearMarkerPointerListeners();
+}
+
+function updateSelectionRangeFromDrag(clientX: number) {
+  const range = selectionRange.value;
+  if (!range) return;
+
+  const dx = clientX - selectionDragStartX.value;
+  const deltaUs = pxToTimeUs(Math.abs(dx), zoom.value) * (dx < 0 ? -1 : 1);
+  const minDurationUs = Math.max(1, pxToTimeUs(6, zoom.value));
+
+  if (selectionDragPart.value === 'move') {
+    const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
+    const nextStartUs = Math.max(0, Math.round(selectionDragStartStartUs.value + deltaUs));
+    timelineStore.updateSelectionRange({
+      startUs: nextStartUs,
+      endUs: nextStartUs + durationUs,
+    });
+    return;
+  }
+
+  if (selectionDragPart.value === 'left') {
+    const maxStartUs = selectionDragStartEndUs.value - minDurationUs;
+    const nextStartUs = Math.max(
+      0,
+      Math.min(maxStartUs, Math.round(selectionDragStartStartUs.value + deltaUs)),
+    );
+    timelineStore.updateSelectionRange({
+      startUs: nextStartUs,
+      endUs: selectionDragStartEndUs.value,
+    });
+    return;
+  }
+
+  const nextEndUs = Math.max(
+    selectionDragStartStartUs.value + minDurationUs,
+    Math.round(selectionDragStartEndUs.value + deltaUs),
+  );
+  timelineStore.updateSelectionRange({
+    startUs: selectionDragStartStartUs.value,
+    endUs: nextEndUs,
+  });
+}
+
+function onSelectionPointerMove(e: PointerEvent) {
+  if (!isDraggingSelectionRange.value) return;
+  suppressNextRulerClick.value = true;
+  updateSelectionRangeFromDrag(e.clientX);
+}
+
+function onSelectionPointerUp() {
+  isDraggingSelectionRange.value = false;
+  window.setTimeout(() => {
+    suppressNextRulerClick.value = false;
+  }, 0);
+  clearSelectionPointerListeners();
+}
+
+function startSelectionRangeDrag(e: PointerEvent, part: SelectionDragPart) {
+  if (e.button !== 0 || !selectionRange.value) return;
+  e.stopPropagation();
+  e.preventDefault();
+
+  selectSelectionRange();
+  isDraggingSelectionRange.value = true;
+  selectionDragPart.value = part;
+  selectionDragStartX.value = e.clientX;
+  selectionDragStartStartUs.value = selectionRange.value.startUs;
+  selectionDragStartEndUs.value = selectionRange.value.endUs;
+  suppressNextRulerClick.value = part !== 'move';
+
+  clearSelectionPointerListeners();
+  activeSelectionPointerMove = onSelectionPointerMove;
+  activeSelectionPointerUp = onSelectionPointerUp;
+  window.addEventListener('pointermove', onSelectionPointerMove);
+  window.addEventListener('pointerup', onSelectionPointerUp);
 }
 
 function truncateForTooltip(text: string): string {
@@ -432,6 +531,10 @@ function onRulerContextMenu(e: MouseEvent) {
 // Single click: move playhead
 function onRulerClick(e: MouseEvent) {
   if (e.button !== 0) return;
+  if (suppressNextRulerClick.value) {
+    suppressNextRulerClick.value = false;
+    return;
+  }
   timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
 }
 
@@ -458,6 +561,7 @@ function onRulerDblClick(e: MouseEvent) {
 }
 
 function onRulerPointerDown(e: PointerEvent) {
+  if (isDraggingSelectionRange.value) return;
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
 
   if (e.button === 1) {
@@ -625,22 +729,39 @@ const selectionRangeMenuItems = computed(() => [
 
       <div class="absolute inset-0 pointer-events-none">
         <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems">
-          <button
-            type="button"
-            class="absolute inset-y-0 pointer-events-auto z-0 border-l border-r bg-primary-500/15 border-primary-500/60"
-            :class="
-              selectionStore.selectedEntity?.source === 'timeline' &&
-              selectionStore.selectedEntity?.kind === 'selection-range'
-                ? 'ring-2 ring-primary-400/60'
-                : ''
-            "
+          <div
+            class="absolute inset-y-0 pointer-events-auto z-0"
             :style="{
               left: `${selectionRangePoint.x}px`,
               width: `${selectionRangePoint.width}px`,
             }"
-            @click.stop="selectSelectionRange"
             @contextmenu.stop
-          />
+          >
+            <button
+              type="button"
+              class="absolute inset-y-0 left-0 right-0 border-l border-r bg-primary-500/15 border-primary-500/60"
+              :class="
+                selectionStore.selectedEntity?.source === 'timeline' &&
+                selectionStore.selectedEntity?.kind === 'selection-range'
+                  ? 'ring-2 ring-primary-400/60'
+                  : ''
+              "
+              @click.stop="selectSelectionRange"
+              @pointerdown.stop="startSelectionRangeDrag($event, 'move')"
+            />
+            <button
+              type="button"
+              class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize"
+              aria-label="Selection start handle"
+              @pointerdown.stop="startSelectionRangeDrag($event, 'left')"
+            />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize"
+              aria-label="Selection end handle"
+              @pointerdown.stop="startSelectionRangeDrag($event, 'right')"
+            />
+          </div>
         </UContextMenu>
 
         <div

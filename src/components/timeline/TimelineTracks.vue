@@ -90,27 +90,6 @@ const selectionRangeStyle = computed(() => {
   };
 });
 
-const selectionRangeMenuItems = computed(() => [
-  [
-    {
-      label: t('granVideoEditor.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
-      icon: 'i-heroicons-bookmark-square',
-      onSelect: () => timelineStore.convertSelectionRangeToMarker(),
-    },
-    {
-      label: t('granVideoEditor.timeline.rippleTrimSelection', 'Ripple trim selection'),
-      icon: 'i-heroicons-scissors',
-      onSelect: () => timelineStore.rippleTrimSelectionRange(),
-    },
-    {
-      label: t('common.delete', 'Delete'),
-      icon: 'i-heroicons-trash',
-      color: 'red' as const,
-      onSelect: () => timelineStore.removeSelectionRange(),
-    },
-  ],
-]);
-
 const canOpenClipProperties = computed(() => projectStore.currentView !== 'files' && projectStore.currentView !== 'cut');
 
 // Marquee Selection Logic
@@ -363,21 +342,11 @@ function selectTransition(
       }
     "
   >
-    <UContextMenu v-if="selectionRangeStyle" :items="selectionRangeMenuItems">
-      <button
-        type="button"
-        class="absolute top-0 bottom-0 z-20 border-l border-r border-primary-500/60 bg-primary-500/12"
-        :class="
-          selectionStore.selectedEntity?.source === 'timeline' &&
-          selectionStore.selectedEntity?.kind === 'selection-range'
-            ? 'ring-2 ring-primary-400/60'
-            : ''
-        "
-        :style="selectionRangeStyle"
-        @click.stop="selectionStore.selectTimelineSelectionRange()"
-        @contextmenu.stop
-      />
-    </UContextMenu>
+    <div
+      v-if="selectionRangeStyle"
+      class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-primary-500/60 bg-primary-500/12"
+      :style="selectionRangeStyle"
+    />
 
     <!-- Marquee Selection Rectangle -->
     <div
