@@ -34,6 +34,7 @@ const height = ref(0);
 const scrollLeft = ref(0);
 
 const markers = computed(() => timelineStore.getMarkers());
+const selectionRange = computed(() => timelineStore.getSelectionRange());
 
 // --- Styling Settings (Adjust these for desired look) ---
 const textColor = 'rgba(255, 255, 255, 0.5)';
@@ -126,12 +127,20 @@ watch(markers, () => {
   scheduleDraw();
 });
 
+watch(selectionRange, () => {
+  scheduleDraw();
+});
+
 function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
 
 function selectMarker(markerId: string) {
   selectionStore.selectTimelineMarker(markerId);
+}
+
+function selectSelectionRange() {
+  selectionStore.selectTimelineSelectionRange();
 }
 
 const draggedMarkerId = ref<string | null>(null);
@@ -239,6 +248,21 @@ const markerPoints = computed(() => {
     .filter(
       (p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20),
     );
+});
+
+const selectionRangePoint = computed(() => {
+  const range = selectionRange.value;
+  if (!range) return null;
+
+  const currentZoom = zoom.value;
+  const startPx = scrollLeft.value;
+  const x = timeUsToPx(range.startUs, currentZoom) - startPx;
+  const width = Math.max(1, timeUsToPx(range.endUs - range.startUs, currentZoom));
+
+  return {
+    x,
+    width,
+  };
 });
 
 function formatTime(us: number, fpsValue: number): string {
@@ -488,48 +512,103 @@ function onRulerWheel(e: WheelEvent) {
   e.preventDefault();
   emit('wheel', e);
 }
+
+const rulerContextMenuItems = computed(() => [
+  [
+    {
+      label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
+      icon: 'i-heroicons-bookmark',
+      onSelect: () => {
+        timelineStore.addMarkerAtPlayhead();
+        const latest = timelineStore.getMarkers().at(-1);
+        if (latest) selectMarker(latest.id);
+      },
+    },
+    {
+      label: t('granVideoEditor.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
+      icon: 'i-heroicons-arrows-right-left',
+      onSelect: () => {
+        timelineStore.addZoneMarkerAtPlayhead();
+        const latest = timelineStore.getMarkers().at(-1);
+        if (latest) selectMarker(latest.id);
+      },
+    },
+    {
+      label: t('granVideoEditor.timeline.createSelectionArea', 'Create selection area'),
+      icon: 'i-heroicons-rectangle-group',
+      onSelect: () => {
+        timelineStore.createSelectionRangeAtPlayhead();
+      },
+    },
+  ],
+]);
+
+function getZoneMarkerMenuItems(markerId: string) {
+  return [
+    [
+      {
+        label: t('granVideoEditor.timeline.convertZoneToMarker', 'Convert to normal marker'),
+        icon: 'i-heroicons-arrows-pointing-in',
+        onSelect: () => timelineStore.convertZoneToMarker(markerId),
+      },
+      {
+        label: t('granVideoEditor.timeline.convertZoneToSelection', 'Convert to selection area'),
+        icon: 'i-heroicons-rectangle-group',
+        onSelect: () => timelineStore.convertMarkerToSelectionRange(markerId),
+      },
+      {
+        label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+        icon: 'i-heroicons-trash',
+        color: 'red' as const,
+        onSelect: () => deleteMarker(markerId),
+      },
+    ],
+  ];
+}
+
+function getMarkerMenuItems(markerId: string) {
+  return [
+    [
+      {
+        label: t('granVideoEditor.timeline.convertMarkerToZone', 'Convert to zone marker'),
+        icon: 'i-heroicons-arrows-pointing-out',
+        onSelect: () => timelineStore.convertMarkerToZone(markerId),
+      },
+      {
+        label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+        icon: 'i-heroicons-trash',
+        color: 'red' as const,
+        onSelect: () => deleteMarker(markerId),
+      },
+    ],
+  ];
+}
+
+const selectionRangeMenuItems = computed(() => [
+  [
+    {
+      label: t('granVideoEditor.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+      icon: 'i-heroicons-bookmark-square',
+      onSelect: () => timelineStore.convertSelectionRangeToMarker(),
+    },
+    {
+      label: t('granVideoEditor.timeline.rippleTrimSelection', 'Ripple trim selection'),
+      icon: 'i-heroicons-scissors',
+      onSelect: () => timelineStore.rippleTrimSelectionRange(),
+    },
+    {
+      label: t('common.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      color: 'red' as const,
+      onSelect: () => timelineStore.removeSelectionRange(),
+    },
+  ],
+]);
 </script>
 
 <template>
   <UContextMenu
-    :items="[
-      [
-        {
-          label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
-          icon: 'i-heroicons-bookmark',
-          onSelect: () => {
-            const timeUs = currentTime;
-            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-            timelineStore.applyTimeline({
-              type: 'add_marker',
-              id: newMarkerId,
-              timeUs,
-              text: '',
-            });
-            selectMarker(newMarkerId);
-          },
-        },
-        {
-          label: t(
-            'granVideoEditor.timeline.addZoneMarkerAtPlayhead',
-            'Add zone marker at playhead',
-          ),
-          icon: 'i-heroicons-arrows-right-left',
-          onSelect: () => {
-            const timeUs = currentTime;
-            const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-            timelineStore.applyTimeline({
-              type: 'add_marker',
-              id: newMarkerId,
-              timeUs,
-              durationUs: 5_000_000,
-              text: '',
-            });
-            selectMarker(newMarkerId);
-          },
-        },
-      ],
-    ]"
+    :items="rulerContextMenuItems"
     class="w-full"
     @update:open="onContextMenuOpenChange"
   >
@@ -545,6 +624,25 @@ function onRulerWheel(e: WheelEvent) {
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
 
       <div class="absolute inset-0 pointer-events-none">
+        <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems">
+          <button
+            type="button"
+            class="absolute inset-y-0 pointer-events-auto z-0 border-l border-r bg-primary-500/15 border-primary-500/60"
+            :class="
+              selectionStore.selectedEntity?.source === 'timeline' &&
+              selectionStore.selectedEntity?.kind === 'selection-range'
+                ? 'ring-2 ring-primary-400/60'
+                : ''
+            "
+            :style="{
+              left: `${selectionRangePoint.x}px`,
+              width: `${selectionRangePoint.width}px`,
+            }"
+            @click.stop="selectSelectionRange"
+            @contextmenu.stop
+          />
+        </UContextMenu>
+
         <div
           v-for="p in markerPoints"
           :key="p.id"
@@ -559,47 +657,7 @@ function onRulerWheel(e: WheelEvent) {
 
           <!-- Left/Main Marker -->
           <div class="absolute bottom-0 left-0">
-            <UContextMenu
-              :items="
-                p.isZone
-                  ? [
-                      [
-                        {
-                          label: t(
-                            'granVideoEditor.timeline.convertZoneToMarker',
-                            'Convert to normal marker',
-                          ),
-                          icon: 'i-heroicons-arrows-pointing-in',
-                          onSelect: () => timelineStore.convertZoneToMarker(p.id),
-                        },
-                        {
-                          label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
-                          icon: 'i-heroicons-trash',
-                          color: 'red',
-                          onSelect: () => deleteMarker(p.id),
-                        },
-                      ],
-                    ]
-                  : [
-                      [
-                        {
-                          label: t(
-                            'granVideoEditor.timeline.convertMarkerToZone',
-                            'Convert to zone marker',
-                          ),
-                          icon: 'i-heroicons-arrows-pointing-out',
-                          onSelect: () => timelineStore.convertMarkerToZone(p.id),
-                        },
-                        {
-                          label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
-                          icon: 'i-heroicons-trash',
-                          color: 'red',
-                          onSelect: () => deleteMarker(p.id),
-                        },
-                      ],
-                    ]
-              "
-            >
+            <UContextMenu :items="p.isZone ? getZoneMarkerMenuItems(p.id) : getMarkerMenuItems(p.id)">
               <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
                 <button
                   type="button"
@@ -638,26 +696,7 @@ function onRulerWheel(e: WheelEvent) {
 
           <!-- Right Marker (for zones) -->
           <div v-if="p.isZone" class="absolute bottom-0 right-0">
-            <UContextMenu
-              :items="[
-                [
-                  {
-                    label: t(
-                      'granVideoEditor.timeline.convertZoneToMarker',
-                      'Convert to normal marker',
-                    ),
-                    icon: 'i-heroicons-arrows-pointing-in',
-                    onSelect: () => timelineStore.convertZoneToMarker(p.id),
-                  },
-                  {
-                    label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
-                    icon: 'i-heroicons-trash',
-                    color: 'red',
-                    onSelect: () => deleteMarker(p.id),
-                  },
-                ],
-              ]"
-            >
+            <UContextMenu :items="getZoneMarkerMenuItems(p.id)">
               <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
                 <button
                   type="button"

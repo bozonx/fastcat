@@ -854,4 +854,86 @@ describe('TimelineStore', () => {
     expect(movedClip.clipType).toBe('timeline');
     expect(movedClip.timelineRange.startUs).toBe(500_000);
   });
+
+  it('rejects transitive circular nested timeline dependency', async () => {
+    const store = useTimelineStore();
+
+    store.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Default',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [],
+        },
+      ],
+    } as any;
+
+    const nestedOtioWithBackReference = JSON.stringify(
+      {
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'Nested with back reference',
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'Video 1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'Back reference',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: 'timeline.otio',
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
+                  },
+                  metadata: {
+                    gran: {
+                      clipType: 'timeline',
+                      sourceDurationUs: 2000000,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        metadata: { gran: { docId: 'nested-backref', timebase: { fps: 25 } } },
+      },
+      null,
+      2,
+    );
+
+    projectStoreMock.getFileHandleByPath.mockImplementation(async (path: string) => {
+      if (path === 'nested-cycle.otio') {
+        return {
+          getFile: async () => ({
+            text: async () => nestedOtioWithBackReference,
+          }),
+        };
+      }
+
+      return null;
+    });
+
+    await expect(
+      store.addTimelineClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Nested cycle.otio',
+        path: 'nested-cycle.otio',
+        startUs: 0,
+      }),
+    ).rejects.toThrow(/circular nested timeline dependency/i);
+  });
 });

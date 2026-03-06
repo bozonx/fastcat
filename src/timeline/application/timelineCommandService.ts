@@ -14,6 +14,7 @@ interface TimelineMediaMetadata {
 export interface TimelineCommandServiceDeps {
   getTimelineDoc: () => TimelineDocument | null;
   ensureTimelineDoc: () => TimelineDocument;
+  getCurrentTimelinePath: () => string | null;
   getTrackById: (trackId: string) => TimelineTrack | null;
   applyTimeline: (
     cmd: TimelineCommand,
@@ -63,6 +64,10 @@ export interface AddTimelineClipFromPathInput {
   name: string;
   path: string;
   startUs?: number;
+}
+
+function isOtioPath(path: string) {
+  return path.trim().toLowerCase().endsWith('.otio');
 }
 
 export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
@@ -128,6 +133,69 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     };
   }
 
+  async function nestedTimelineReferencesPath(
+    path: string,
+    targetPath: string,
+    options?: {
+      cache?: Map<string, TimelineDocument>;
+      visiting?: Set<string>;
+    },
+  ): Promise<boolean> {
+    if (path === targetPath) return true;
+
+    const cache = options?.cache ?? new Map<string, TimelineDocument>();
+    const visiting = options?.visiting ?? new Set<string>();
+
+    if (visiting.has(path)) {
+      return false;
+    }
+
+    visiting.add(path);
+
+    try {
+      let doc = cache.get(path);
+      if (!doc) {
+        const nested = await resolveNestedTimeline(path, path.split('/').pop() ?? 'nested');
+        doc = nested.doc;
+        cache.set(path, doc);
+      }
+
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (item.kind !== 'clip' || item.clipType !== 'timeline') continue;
+
+          const nestedPath = item.source?.path;
+          if (!nestedPath) continue;
+          if (nestedPath === targetPath) return true;
+
+          const hasCycle = await nestedTimelineReferencesPath(nestedPath, targetPath, {
+            cache,
+            visiting,
+          });
+          if (hasCycle) return true;
+        }
+      }
+
+      return false;
+    } finally {
+      visiting.delete(path);
+    }
+  }
+
+  async function ensureNoNestedTimelineCycle(path: string) {
+    const currentTimelinePath = deps.getCurrentTimelinePath();
+    if (!currentTimelinePath) return;
+
+    if (path === currentTimelinePath) {
+      throw new Error('Cannot insert the currently opened timeline into itself');
+    }
+
+    const hasCycle = await nestedTimelineReferencesPath(path, currentTimelinePath);
+    if (hasCycle) {
+      throw new Error('Cannot create circular nested timeline dependency');
+    }
+  }
+
   function ensureNestedTimelineTrackCompatibility(
     track: TimelineTrack,
     summary: { hasVideo: boolean; hasAudio: boolean },
@@ -148,6 +216,10 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       label?: string;
     },
   ) {
+    if (isOtioPath(input.path)) {
+      return await addTimelineClipFromPath(input, options);
+    }
+
     const handle = await deps.getFileHandleByPath(input.path);
     if (!handle) throw new Error('Failed to access file handle');
 
@@ -286,6 +358,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   ) {
     const track = deps.getTrackById(input.trackId);
     if (!track) throw new Error('Track not found');
+
+    await ensureNoNestedTimelineCycle(input.path);
 
     const nested = await resolveNestedTimeline(input.path, input.name);
     ensureNestedTimelineTrackCompatibility(track, nested.summary);

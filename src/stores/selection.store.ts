@@ -41,6 +41,11 @@ export interface SelectedTimelineMarker extends SelectedEntityBase {
   markerId: string;
 }
 
+export interface SelectedTimelineSelectionRange extends SelectedEntityBase {
+  source: 'timeline';
+  kind: 'selection-range';
+}
+
 export interface SelectedFsEntry extends SelectedEntityBase {
   source: 'fileManager';
   kind: 'file' | 'directory';
@@ -74,6 +79,7 @@ export type SelectedEntity =
   | SelectedTimelineTrack
   | SelectedTimelineTransition
   | SelectedTimelineMarker
+  | SelectedTimelineSelectionRange
   | SelectedTimelineProperties
   | SelectedFsEntry
   | SelectedFsEntries;
@@ -135,6 +141,13 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
+  function selectTimelineSelectionRange() {
+    selectedEntity.value = {
+      source: 'timeline',
+      kind: 'selection-range',
+    };
+  }
+
   function selectFsEntry(entry: FsEntry) {
     selectedEntity.value = {
       source: 'fileManager',
@@ -179,6 +192,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineTrack,
     selectTimelineTransition,
     selectTimelineMarker,
+    selectTimelineSelectionRange,
     selectFsEntry,
     selectFsEntries,
     selectTimelineProperties,
