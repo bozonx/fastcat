@@ -92,7 +92,7 @@ export function useTimelineInteraction(
       projectStore.currentView === 'sound',
   );
   const canOpenClipProperties = computed(
-    () => projectStore.currentView !== 'files' && projectStore.currentView !== 'cut',
+    () => projectStore.currentView === 'cut' || projectStore.currentView === 'sound',
   );
 
   const isDraggingPlayhead = ref(false);
