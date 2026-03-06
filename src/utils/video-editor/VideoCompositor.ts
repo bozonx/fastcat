@@ -22,6 +22,7 @@ import {
   getTransitionManifest,
   normalizeTransitionParams,
 } from '../../transitions';
+import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from './clip-layout';
 import type {
   TextClipStyle,
   ClipEffect,
@@ -39,6 +40,34 @@ function resolveBlendMode(value: unknown): TimelineBlendMode {
     value === 'lighten'
     ? value
     : 'normal';
+}
+
+function arePaddingValuesEqual(a: TextClipStyle['padding'], b: TextClipStyle['padding']): boolean {
+  if (a === b) return true;
+  if (typeof a === 'number' || typeof b === 'number') {
+    return a === b;
+  }
+  if (!a || !b) return !a && !b;
+  return a.top === b.top && a.right === b.right && a.bottom === b.bottom && a.left === b.left;
+}
+
+function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): boolean {
+  if (a === b) return true;
+  if (!a || !b) return !a && !b;
+
+  return (
+    a.width === b.width &&
+    a.fontFamily === b.fontFamily &&
+    a.fontSize === b.fontSize &&
+    a.fontWeight === b.fontWeight &&
+    a.color === b.color &&
+    a.align === b.align &&
+    a.verticalAlign === b.verticalAlign &&
+    a.lineHeight === b.lineHeight &&
+    a.letterSpacing === b.letterSpacing &&
+    a.backgroundColor === b.backgroundColor &&
+    arePaddingValuesEqual(a.padding, b.padding)
+  );
 }
 
 export async function getVideoSampleWithZeroFallback(
@@ -535,8 +564,7 @@ export class VideoCompositor {
           const nextText = String((clipData as any).text ?? '');
           const nextStyle = (clipData as any).style;
           reusable.textDirty =
-            reusable.text !== nextText ||
-            JSON.stringify(reusable.style ?? null) !== JSON.stringify(nextStyle ?? null);
+            reusable.text !== nextText || !areTextClipStylesEqual(reusable.style, nextStyle);
           reusable.text = nextText;
           reusable.style = nextStyle;
         }
@@ -1056,8 +1084,7 @@ export class VideoCompositor {
       if (clip.clipKind === 'text') {
         const nextText = String((next as any).text ?? '');
         const nextStyle = (next as any).style;
-        const styleChanged =
-          JSON.stringify(clip.style ?? null) !== JSON.stringify(nextStyle ?? null);
+        const styleChanged = !areTextClipStylesEqual(clip.style, nextStyle);
         clip.textDirty = clip.text !== nextText || styleChanged || clip.textDirty === true;
         clip.text = nextText;
         clip.style = nextStyle;
@@ -1462,7 +1489,7 @@ export class VideoCompositor {
     for (const c of this.clips) {
       if (c.layer !== clip.layer) continue;
       if (c.itemId === clip.itemId) continue;
-      if (c.endUs > clip.startUs + 1_000) continue; // skip clips that end after current start
+      if (c.startUs > clip.startUs + 1_000) continue;
       if (!best || c.endUs > best.endUs) best = c;
     }
     if (!best) return null;
@@ -1514,8 +1541,7 @@ export class VideoCompositor {
 
     sprite.x = 0;
     sprite.y = 0;
-    sprite.width = this.width;
-    sprite.height = this.height;
+    sprite.scale.set(1, 1);
     sprite.anchor.set(0, 0);
 
     return sprite;
@@ -1649,51 +1675,28 @@ export class VideoCompositor {
   }
 
   private applySolidLayout(clip: CompositorClip) {
-    const tr = clip.transform;
-    const scaleX = typeof tr?.scale?.x === 'number' && Number.isFinite(tr.scale.x) ? tr.scale.x : 1;
-    const scaleY = typeof tr?.scale?.y === 'number' && Number.isFinite(tr.scale.y) ? tr.scale.y : 1;
-    const rotationDeg =
-      typeof tr?.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
-    const posX =
-      typeof tr?.position?.x === 'number' && Number.isFinite(tr.position.x) ? tr.position.x : 0;
-    const posY =
-      typeof tr?.position?.y === 'number' && Number.isFinite(tr.position.y) ? tr.position.y : 0;
-
-    const anchor = tr?.anchor;
-    const preset = typeof anchor?.preset === 'string' ? anchor.preset : 'center';
-    const normalizedAnchor = (() => {
-      switch (preset) {
-        case 'topLeft':
-          return { x: 0, y: 0 };
-        case 'topRight':
-          return { x: 1, y: 0 };
-        case 'bottomLeft':
-          return { x: 0, y: 1 };
-        case 'bottomRight':
-          return { x: 1, y: 1 };
-        case 'custom': {
-          const ax = typeof anchor?.x === 'number' && Number.isFinite(anchor.x) ? anchor.x : 0.5;
-          const ay = typeof anchor?.y === 'number' && Number.isFinite(anchor.y) ? anchor.y : 0.5;
-          return { x: ax, y: ay };
-        }
-        case 'center':
-        default:
-          return { x: 0.5, y: 0.5 };
-      }
-    })();
+    const layout = computeClipBoxLayout({
+      frameWidth: this.width,
+      frameHeight: this.height,
+      canvasWidth: this.width,
+      canvasHeight: this.height,
+      transform: clip.transform,
+    });
 
     this.applyTransformLayout({
       clip,
-      baseX: 0,
-      baseY: 0,
-      targetW: this.width,
-      targetH: this.height,
-      normalizedAnchor,
-      scaleX,
-      scaleY,
-      rotationDeg,
-      posX,
-      posY,
+      baseX: layout.baseX,
+      baseY: layout.baseY,
+      targetW: layout.targetWidth,
+      targetH: layout.targetHeight,
+      anchorOffsetX: layout.anchorOffsetX,
+      anchorOffsetY: layout.anchorOffsetY,
+      normalizedAnchor: { x: layout.anchorX, y: layout.anchorY },
+      scaleX: layout.scaleX,
+      scaleY: layout.scaleY,
+      rotationDeg: layout.rotationDeg,
+      stagePosX: layout.stagePositionX,
+      stagePosY: layout.stagePositionY,
     });
   }
 
@@ -2002,57 +2005,28 @@ export class VideoCompositor {
   }
 
   private applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip) {
-    const viewportScale = Math.min(this.width / frameW, this.height / frameH);
-    const targetW = frameW * viewportScale;
-    const targetH = frameH * viewportScale;
-    const baseX = (this.width - targetW) / 2;
-    const baseY = (this.height - targetH) / 2;
-
-    const tr = clip.transform;
-    const scaleX = typeof tr?.scale?.x === 'number' && Number.isFinite(tr.scale.x) ? tr.scale.x : 1;
-    const scaleY = typeof tr?.scale?.y === 'number' && Number.isFinite(tr.scale.y) ? tr.scale.y : 1;
-    const rotationDeg =
-      typeof tr?.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
-    const posX =
-      typeof tr?.position?.x === 'number' && Number.isFinite(tr.position.x) ? tr.position.x : 0;
-    const posY =
-      typeof tr?.position?.y === 'number' && Number.isFinite(tr.position.y) ? tr.position.y : 0;
-
-    const anchor = tr?.anchor;
-    const preset = typeof anchor?.preset === 'string' ? anchor.preset : 'center';
-    const normalizedAnchor = (() => {
-      switch (preset) {
-        case 'topLeft':
-          return { x: 0, y: 0 };
-        case 'topRight':
-          return { x: 1, y: 0 };
-        case 'bottomLeft':
-          return { x: 0, y: 1 };
-        case 'bottomRight':
-          return { x: 1, y: 1 };
-        case 'custom': {
-          const ax = typeof anchor?.x === 'number' && Number.isFinite(anchor.x) ? anchor.x : 0.5;
-          const ay = typeof anchor?.y === 'number' && Number.isFinite(anchor.y) ? anchor.y : 0.5;
-          return { x: ax, y: ay };
-        }
-        case 'center':
-        default:
-          return { x: 0.5, y: 0.5 };
-      }
-    })();
+    const layout = computeClipBoxLayout({
+      frameWidth: frameW,
+      frameHeight: frameH,
+      canvasWidth: this.width,
+      canvasHeight: this.height,
+      transform: clip.transform,
+    });
 
     this.applyTransformLayout({
       clip,
-      baseX,
-      baseY,
-      targetW,
-      targetH,
-      normalizedAnchor,
-      scaleX,
-      scaleY,
-      rotationDeg,
-      posX,
-      posY,
+      baseX: layout.baseX,
+      baseY: layout.baseY,
+      targetW: layout.targetWidth,
+      targetH: layout.targetHeight,
+      anchorOffsetX: layout.anchorOffsetX,
+      anchorOffsetY: layout.anchorOffsetY,
+      normalizedAnchor: { x: layout.anchorX, y: layout.anchorY },
+      scaleX: layout.scaleX,
+      scaleY: layout.scaleY,
+      rotationDeg: layout.rotationDeg,
+      stagePosX: layout.stagePositionX,
+      stagePosY: layout.stagePositionY,
     });
   }
 
@@ -2062,12 +2036,14 @@ export class VideoCompositor {
     baseY: number;
     targetW: number;
     targetH: number;
+    anchorOffsetX: number;
+    anchorOffsetY: number;
     normalizedAnchor: { x: number; y: number };
     scaleX: number;
     scaleY: number;
     rotationDeg: number;
-    posX: number;
-    posY: number;
+    stagePosX: number;
+    stagePosY: number;
   }) {
     input.clip.sprite.anchor.set(input.normalizedAnchor.x, input.normalizedAnchor.y);
     input.clip.sprite.width = input.targetW;
@@ -2076,14 +2052,8 @@ export class VideoCompositor {
     input.clip.sprite.scale.y = Math.abs(input.clip.sprite.scale.y) * input.scaleY;
     input.clip.sprite.rotation = (input.rotationDeg * Math.PI) / 180;
 
-    const anchorOffsetX = input.normalizedAnchor.x * input.targetW;
-    const anchorOffsetY = input.normalizedAnchor.y * input.targetH;
-
-    const stageScaleX = this.width / 1920;
-    const stageScaleY = this.height / 1080;
-
-    input.clip.sprite.x = input.baseX + anchorOffsetX + input.posX * stageScaleX;
-    input.clip.sprite.y = input.baseY + anchorOffsetY + input.posY * stageScaleY;
+    input.clip.sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
+    input.clip.sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
   }
 
   private drawTextClip(clip: CompositorClip) {
@@ -2109,7 +2079,7 @@ export class VideoCompositor {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const renderScale = canvas.height / 1080;
+    const renderScale = canvas.height / TRANSFORM_DESIGN_BASE.height;
 
     const style = clip.style ?? {};
     const baseFontSize =

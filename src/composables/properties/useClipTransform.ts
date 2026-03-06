@@ -56,7 +56,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
     rotationDeg: clampNumber(rotationDeg, -36000, 36000),
     anchor:
       preset === 'custom'
-        ? { preset, x: clampNumber(anchorX, -100, 100), y: clampNumber(anchorY, -100, 100) }
+        ? { preset, x: clampNumber(anchorX, -10, 10), y: clampNumber(anchorY, -10, 10) }
         : { preset },
   };
 }
