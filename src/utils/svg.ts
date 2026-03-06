@@ -179,20 +179,14 @@ export async function rasterizeSvgToBlob(
 
   const svgText = await file.text();
   const intrinsic = parseSvgDimensions(svgText);
-  const width = Math.max(
-    1,
-    Math.round(
-      Number(options.width) ||
-        computeSvgRasterSize({ intrinsic, maxWidth: options.maxWidth }).width,
-    ),
-  );
-  const height = Math.max(
-    1,
-    Math.round(
-      Number(options.height) ||
-        computeSvgRasterSize({ intrinsic, maxHeight: options.maxHeight }).height,
-    ),
-  );
+  const computedSize = computeSvgRasterSize({
+    intrinsic,
+    maxWidth: options.maxWidth,
+    maxHeight: options.maxHeight,
+  });
+
+  const width = Math.max(1, Math.round(Number(options.width) || computedSize.width));
+  const height = Math.max(1, Math.round(Number(options.height) || computedSize.height));
 
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);

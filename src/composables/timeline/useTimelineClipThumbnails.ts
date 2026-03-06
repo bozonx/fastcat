@@ -4,13 +4,13 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { isSvgFilename } from '~/utils/svg';
 import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { buildVideoWorkerPayloadFromTracks } from './useTimelineExport';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 
 export interface TimelineThumbnailChunk {
@@ -97,6 +97,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
     if (meta) {
       return !meta.video && !meta.audio;
     }
+    if (isSvgFilename(url)) return true;
     const ext = url.split('.').pop()?.toLowerCase();
     return ext ? ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff', 'tif'].includes(ext) : false;
   });
@@ -346,6 +347,8 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         name: options.item.value.name,
         fps: 25,
       });
+
+      const { buildVideoWorkerPayloadFromTracks } = await import('./useTimelineExport');
 
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: nestedDoc.tracks,

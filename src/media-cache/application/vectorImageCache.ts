@@ -1,5 +1,7 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
 
+const VECTOR_IMAGE_CACHE_VERSION = 'v3';
+
 export interface EnsureVectorImageRasterParams {
   projectId: string;
   projectRelativePath: string;
@@ -44,7 +46,7 @@ function getVectorImageRasterFileName(params: {
 }): string {
   const sourceStamp = `${params.sourceFile.lastModified}:${params.sourceFile.size}`;
   const dims = `${normalizeDimension(params.width)}x${normalizeDimension(params.height)}`;
-  return `${hashString(`${sourceStamp}:${dims}`)}.png`;
+  return `${hashString(`${VECTOR_IMAGE_CACHE_VERSION}:${sourceStamp}:${dims}`)}.png`;
 }
 
 async function ensureDirectory(

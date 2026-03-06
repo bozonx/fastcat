@@ -1333,6 +1333,10 @@ export class VideoCompositor {
         }
       }
 
+      if (!this.app || !this.canvas || !this.app.renderer) {
+        return null;
+      }
+
       if (this.stageSortDirty) {
         this.sortTrackContainerChildren();
         this.app.stage.children.sort((a: any, b: any) => {
@@ -1346,6 +1350,10 @@ export class VideoCompositor {
       }
 
       this.applyShaderTransitions(active, timeUs);
+
+      if (!this.app || !this.canvas || !this.app.renderer) {
+        return null;
+      }
 
       this.lastRenderedTimeUs = timeUs;
 
