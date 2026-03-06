@@ -326,6 +326,52 @@ describe('useMonitorTimeline', () => {
     expect(audioClipLayoutSignature.value).not.toBe(audioLayout1);
   });
 
+  it('updates clip layout signature when clip or track blendMode changes', () => {
+    const timelineStore = getTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          opacity: 1,
+          blendMode: 'normal',
+          items: [
+            {
+              id: 'clip1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'v1',
+              source: { path: 'a.mp4' },
+              opacity: 1,
+              blendMode: 'normal',
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { clipSourceSignature, clipLayoutSignature } = useMonitorTimeline();
+
+    const sourceBeforeClipBlend = clipSourceSignature.value;
+    const layoutBeforeClipBlend = clipLayoutSignature.value;
+
+    timelineStore.timelineDoc.tracks[0].items[0].blendMode = 'screen';
+
+    expect(clipSourceSignature.value).toBe(sourceBeforeClipBlend);
+    expect(clipLayoutSignature.value).not.toBe(layoutBeforeClipBlend);
+
+    const sourceBeforeTrackBlend = clipSourceSignature.value;
+    const layoutBeforeTrackBlend = clipLayoutSignature.value;
+
+    timelineStore.timelineDoc.tracks[0].blendMode = 'multiply';
+
+    expect(clipSourceSignature.value).toBe(sourceBeforeTrackBlend);
+    expect(clipLayoutSignature.value).not.toBe(layoutBeforeTrackBlend);
+  });
+
   it('filters hidden video tracks from workerTimelineClips', () => {
     const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {

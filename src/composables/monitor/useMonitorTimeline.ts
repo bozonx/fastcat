@@ -232,6 +232,15 @@ export function useMonitorTimeline() {
     const videoTracks = docTracks.filter((t) => t.kind === 'video' && !t.videoHidden);
     const trackById = new Map<string, TimelineTrack>(videoTracks.map((t) => [t.id, t]));
 
+    for (const track of videoTracks) {
+      hash = mixHash(hash, hashString(track.id));
+      hash = mixFloat(hash, track.opacity ?? 1, 1000);
+      hash = mixHash(hash, hashString(String(track.blendMode ?? 'normal')));
+      if (Array.isArray(track.effects)) {
+        hash = mixHash(hash, hashString(JSON.stringify(track.effects)));
+      }
+    }
+
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
       hash = mixTime(hash, item.timelineRange.startUs);
@@ -246,6 +255,7 @@ export function useMonitorTimeline() {
         }
 
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
+        hash = mixHash(hash, hashString(String(item.blendMode ?? 'normal')));
         hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
 
         const clipEffects = Array.isArray((item as any).effects) ? (item as any).effects : null;
@@ -274,8 +284,9 @@ export function useMonitorTimeline() {
         }
 
         const track = trackById.get((item as any).trackId);
-        if (Array.isArray((track as any)?.effects)) {
-          hash = mixHash(hash, hashString(JSON.stringify((track as any).effects)));
+        if (track) {
+          hash = mixFloat(hash, track.opacity ?? 1, 1000);
+          hash = mixHash(hash, hashString(String(track.blendMode ?? 'normal')));
         }
       }
     }
