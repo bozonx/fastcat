@@ -5,7 +5,9 @@ import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
-import type { TimelineClipItem } from '~/timeline/types';
+import type { TimelineClipItem, TimelineDocument, TimelineTrackItem } from '~/timeline/types';
+import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 
 const props = defineProps<{
   item: TimelineClipItem;
@@ -30,8 +32,13 @@ const fileUrl = computed(() => {
   return '';
 });
 
+const isNestedTimeline = computed(() => props.item.clipType === 'timeline');
+
+const nestedAudioPeaks = ref<number[][] | null>(null);
+
 const audioPeaks = computed(() => {
   if (!fileUrl.value) return null;
+  if (isNestedTimeline.value) return nestedAudioPeaks.value;
   const meta = mediaStore.mediaMetadata[fileUrl.value];
   return meta?.audioPeaks || null;
 });
@@ -40,6 +47,137 @@ const isExtracting = ref(false);
 
 let isUnmounted = false;
 let extractCallId = 0;
+
+function makeEmptyPeaks(channelCount: number, length: number) {
+  return Array.from({ length: channelCount }, () => Array.from({ length }, () => 0));
+}
+
+function mixPeakValue(target: number, next: number) {
+  return Math.max(Math.abs(target), Math.abs(next));
+}
+
+async function ensureMediaPeaks(path: string, maxLength: number): Promise<number[][] | null> {
+  const existing = mediaStore.mediaMetadata[path]?.audioPeaks;
+  if (existing && existing.length > 0) return existing;
+
+  const fileHandle = await projectStore.getFileHandleByPath(path);
+  if (!fileHandle) return null;
+
+  const engine = new AudioEngine();
+  try {
+    const peaks = await engine.extractPeaks(fileHandle, path, {
+      maxLength,
+      precision: 10000,
+    });
+    if (peaks) {
+      mediaStore.setAudioPeaks(path, peaks);
+      return peaks;
+    }
+    return null;
+  } finally {
+    try {
+      engine.destroy();
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function buildTimelinePeaks(params: {
+  doc: TimelineDocument;
+  durationUs: number;
+  maxLength: number;
+  visiting: Set<string>;
+}): Promise<number[][] | null> {
+  const { doc, durationUs, maxLength, visiting } = params;
+  if (durationUs <= 0 || maxLength <= 0) return null;
+
+  const effectiveItems = buildEffectiveAudioClipItems({
+    audioTracks: doc.tracks.filter((track) => track.kind === 'audio'),
+    videoTracks: doc.tracks.filter((track) => track.kind === 'video'),
+  });
+
+  let mixedPeaks: number[][] | null = null;
+
+  for (const item of effectiveItems) {
+    if (item.kind !== 'clip') continue;
+    const clip = item as TimelineClipItem;
+    const path = clip.source?.path;
+    if (!path) continue;
+
+    let sourcePeaks: number[][] | null = null;
+    let sourceDurationUs = Math.max(1, Math.round(clip.sourceDurationUs || clip.sourceRange.durationUs || 0));
+
+    if (clip.clipType === 'timeline') {
+      if (visiting.has(path)) continue;
+
+      const handle = await projectStore.getFileHandleByPath(path);
+      if (!handle) continue;
+
+      const file = await handle.getFile();
+      const text = await file.text();
+      const nestedDoc = parseTimelineFromOtio(text, {
+        id: 'nested-waveform',
+        name: clip.name,
+        fps: 25,
+      });
+
+      visiting.add(path);
+      sourcePeaks = await buildTimelinePeaks({
+        doc: nestedDoc,
+        durationUs: sourceDurationUs,
+        maxLength,
+        visiting,
+      });
+      visiting.delete(path);
+    } else {
+      sourcePeaks = await ensureMediaPeaks(path, maxLength);
+    }
+
+    if (!sourcePeaks || sourcePeaks.length === 0) continue;
+
+    const channelCount = sourcePeaks.length;
+    if (!mixedPeaks) {
+      mixedPeaks = makeEmptyPeaks(channelCount, maxLength);
+    } else if (mixedPeaks.length < channelCount) {
+      for (let channelIndex = mixedPeaks.length; channelIndex < channelCount; channelIndex++) {
+        mixedPeaks.push(Array.from({ length: maxLength }, () => 0));
+      }
+    }
+
+    const itemStartUs = Math.max(0, Math.round(clip.timelineRange.startUs));
+    const itemDurationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
+    const itemSourceStartUs = Math.max(0, Math.round(clip.sourceRange.startUs));
+    const itemSourceDurationUs = Math.max(1, Math.round(clip.sourceRange.durationUs));
+    const gain = Math.max(0, Math.min(10, Number(clip.audioGain ?? 1)));
+
+    const startIndex = Math.max(0, Math.floor((itemStartUs / durationUs) * maxLength));
+    const endIndex = Math.min(maxLength, Math.ceil(((itemStartUs + itemDurationUs) / durationUs) * maxLength));
+
+    for (let sampleIndex = startIndex; sampleIndex < endIndex; sampleIndex++) {
+      const parentRatio = sampleIndex / maxLength;
+      const absoluteUs = parentRatio * durationUs;
+      const localUs = absoluteUs - itemStartUs;
+      if (localUs < 0 || localUs > itemDurationUs) continue;
+
+      const sourceUs = itemSourceStartUs + (localUs / Math.max(1, itemDurationUs)) * itemSourceDurationUs;
+
+      for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
+        const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0] ?? [];
+        if (sourceChannel.length === 0) continue;
+        const sourceIndex = Math.min(
+          sourceChannel.length - 1,
+          Math.max(0, Math.floor((sourceUs / sourceDurationUs) * sourceChannel.length)),
+        );
+        const current = mixedPeaks[channelIndex]?.[sampleIndex] ?? 0;
+        const next = (sourceChannel[sourceIndex] ?? 0) * gain;
+        mixedPeaks[channelIndex]![sampleIndex] = mixPeakValue(current, next);
+      }
+    }
+  }
+
+  return mixedPeaks;
+}
 
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
@@ -51,6 +189,43 @@ const extractPeaks = async () => {
 
   try {
     isExtracting.value = true;
+
+    if (isNestedTimeline.value) {
+      const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
+      if (!fileHandle) return;
+
+      if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+        return;
+      }
+
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      const nestedDoc = parseTimelineFromOtio(text, {
+        id: 'nested-waveform-root',
+        name: props.item.name,
+        fps: 25,
+      });
+
+      const durationS = (props.item.sourceDurationUs || 0) / 1_000_000;
+      const samplesPerSecond = 1000;
+      const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
+
+      const peaks = await buildTimelinePeaks({
+        doc: nestedDoc,
+        durationUs: Math.max(1, Math.round(props.item.sourceDurationUs || props.item.sourceRange.durationUs)),
+        maxLength,
+        visiting: new Set<string>([fileUrl.value]),
+      });
+
+      if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+        return;
+      }
+
+      nestedAudioPeaks.value = peaks;
+      void redrawMountedChunks();
+      return;
+    }
+
     const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
     if (!fileHandle) return;
 

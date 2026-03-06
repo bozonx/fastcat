@@ -271,16 +271,25 @@ const clipWidthPx = computed(() => {
 });
 
 function isVideo(item: TimelineTrackItem): item is TimelineClipItem {
-  return item.kind === 'clip' && item.clipType === 'media' && props.track.kind === 'video';
+  return (
+    item.kind === 'clip' &&
+    (item.clipType === 'media' || item.clipType === 'timeline') &&
+    props.track.kind === 'video'
+  );
 }
 
 function isAudio(item: TimelineTrackItem): item is TimelineClipItem {
-  return item.kind === 'clip' && item.clipType === 'media' && props.track.kind === 'audio';
+  return (
+    item.kind === 'clip' &&
+    (item.clipType === 'media' || item.clipType === 'timeline') &&
+    props.track.kind === 'audio'
+  );
 }
 
 function clipHasAudio(item: TimelineTrackItem, track: TimelineTrack): boolean {
   if (item.kind !== 'clip') return false;
   const clip = item as TimelineClipItem;
+  if ((clip as any).clipType === 'timeline') return true;
   if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';

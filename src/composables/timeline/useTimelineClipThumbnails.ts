@@ -6,6 +6,10 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
+import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
+import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { toWorkerTimelineClips } from '~/composables/timeline/useTimelineExport';
 
 export interface TimelineThumbnailChunk {
   chunkIndex: number;
@@ -75,11 +79,13 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
 
   const fileUrl = computed(() => {
     const item = options.item.value;
-    if (item.clipType === 'media' && item.source) {
+    if ((item.clipType === 'media' || item.clipType === 'timeline') && item.source) {
       return item.source.path;
     }
     return '';
   });
+
+  const isNestedTimeline = computed(() => options.item.value.clipType === 'timeline');
 
   const isImage = computed(() => {
     const url = fileUrl.value;
@@ -125,6 +131,14 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
   const clipHash = computed(() => {
     if (!fileUrl.value || !projectStore.currentProjectId) return '';
     return getClipThumbnailsHash({
+      projectId: projectStore.currentProjectId,
+      projectRelativePath: fileUrl.value,
+    });
+  });
+
+  const fileThumbnailHash = computed(() => {
+    if (!fileUrl.value || !projectStore.currentProjectId) return '';
+    return getFileThumbnailHash({
       projectId: projectStore.currentProjectId,
       projectRelativePath: fileUrl.value,
     });
@@ -287,12 +301,120 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
     }
   }
 
+  async function generateNestedTimelinePreview() {
+    if (!fileUrl.value || duration.value <= 0 || !projectStore.currentProjectId) return;
+
+    const applySingleThumbnail = (url: string) => {
+      const nextMap = new Map<number, string>();
+      for (
+        let second = 0;
+        second < Math.max(1, Math.ceil(duration.value));
+        second += intervalSeconds
+      ) {
+        nextMap.set(second, url);
+      }
+      if (!nextMap.has(0)) {
+        nextMap.set(0, url);
+      }
+      thumbnailsBySecond.value = nextMap;
+      isGenerating.value = false;
+    };
+
+    if (fileThumbnailHash.value) {
+      fileThumbnailGenerator.addTask({
+        id: fileThumbnailHash.value,
+        projectId: projectStore.currentProjectId,
+        projectRelativePath: fileUrl.value,
+        onComplete: (url) => {
+          if (isUnmounted) return;
+          applySingleThumbnail(url);
+        },
+      });
+    }
+
+    try {
+      const handle = await projectStore.getFileHandleByPath(fileUrl.value);
+      if (!handle) return;
+
+      const file = await handle.getFile();
+      const text = await file.text();
+      const nestedDoc = parseTimelineFromOtio(text, {
+        id: 'nested-preview',
+        name: options.item.value.name,
+        fps: 25,
+      });
+
+      const nestedVideoTracks = nestedDoc.tracks.filter(
+        (track) => track.kind === 'video' && !track.videoHidden,
+      );
+      const rawClips = [] as Awaited<ReturnType<typeof toWorkerTimelineClips>>;
+
+      for (let i = 0; i < nestedVideoTracks.length; i++) {
+        const track = nestedVideoTracks[i];
+        if (!track) continue;
+        const layer = nestedVideoTracks.length - 1 - i;
+        const clips = await toWorkerTimelineClips(track.items, projectStore as any, {
+          layer,
+          trackKind: 'video',
+        });
+        rawClips.push(...clips);
+      }
+
+      if (rawClips.length === 0) {
+        isGenerating.value = false;
+        return;
+      }
+
+      const width = Math.max(
+        160,
+        Math.round(Number(projectStore.projectSettings?.project?.width ?? 320)),
+      );
+      const height = Math.max(
+        90,
+        Math.round(Number(projectStore.projectSettings?.project?.height ?? 180)),
+      );
+      const previewTimeUs = Math.max(
+        0,
+        Math.min(
+          Math.round(
+            (options.item.value.sourceRange.startUs ?? 0) +
+              options.item.value.sourceRange.durationUs / 2,
+          ),
+          Math.max(0, Math.round(duration.value * 1_000_000) - 1),
+        ),
+      );
+
+      const { client } = getExportWorkerClient();
+      setExportHostApi({
+        getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
+        onExportProgress: () => {},
+      });
+
+      const blob = await client.extractFrameToBlob(previewTimeUs, width, height, rawClips, 0.8);
+      if (!blob || isUnmounted) {
+        isGenerating.value = false;
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      applySingleThumbnail(url);
+    } catch (error) {
+      console.error('Failed to generate nested timeline preview thumbnails:', error);
+      isGenerating.value = false;
+    }
+  }
+
   const generate = () => {
     if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
     if (!projectStore.currentProjectId) return;
     if (isImage.value) return;
 
     isGenerating.value = true;
+
+    if (isNestedTimeline.value) {
+      void generateNestedTimelinePreview();
+      return;
+    }
 
     thumbnailGenerator.addTask({
       id: clipHash.value,
@@ -331,7 +453,10 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
 
   onMounted(() => {
     isUnmounted = false;
-    if (options.item.value.clipType === 'media' && !isImage.value) {
+    if (
+      (options.item.value.clipType === 'media' || options.item.value.clipType === 'timeline') &&
+      !isImage.value
+    ) {
       generate();
     }
   });
