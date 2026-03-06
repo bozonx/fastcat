@@ -28,6 +28,7 @@ import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes'
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import { formatZoomMultiplier, stepTimelineZoomPosition, timelineZoomPositionToScale } from '~/utils/zoom';
 import { frameToUs, sanitizeFps } from '~/timeline/commands/utils';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -406,7 +407,7 @@ function onTimelineRulerWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
-  const isShift = e.shiftKey;
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const isSecondary = isSecondaryWheel(e);
   const delta = getNormalizedWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
@@ -454,7 +455,7 @@ function onTimelineWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
-  const isShift = e.shiftKey;
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const isSecondary = isSecondaryWheel(e);
 
   const settings = workspaceStore.userSettings.mouse.timeline;

@@ -180,6 +180,8 @@
       "hotkeysDuplicateConfirm": "Add anyway",
       "snapThreshold": "Snap threshold (px)",
       "snapThresholdDefault": "Snap threshold default (px)",
+      "hotkeysLayer1": "Layer 1 (Default: Shift)",
+      "hotkeysLayer2": "Layer 2 (Default: Ctrl)",
       "hotkeysDuplicateReplace": "Replace",
       "hotkeysResetAll": "Reset all",
       "hotkeysResetAllConfirmTitle": "Reset all hotkeys?",

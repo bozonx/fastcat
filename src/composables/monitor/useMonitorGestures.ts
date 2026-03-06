@@ -11,6 +11,7 @@ import {
   snapMonitorZoom,
   stepMonitorZoom,
 } from '~/utils/zoom';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
 export function useMonitorGestures(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -169,7 +170,7 @@ export function useMonitorGestures(input: {
   function onViewportWheel(e: WheelEvent) {
     if (e.defaultPrevented) return;
 
-    const isShift = e.shiftKey;
+    const isShift = isLayer1Active(e, workspaceStore.userSettings);
     const settings = workspaceStore.userSettings.mouse.monitor;
 
     const action = isShift ? settings.wheelShift : settings.wheel;

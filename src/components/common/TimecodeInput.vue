@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
 const props = defineProps<{
   modelValue: number; // Time in microseconds
@@ -11,6 +13,7 @@ const emit = defineEmits<{
 }>();
 
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 
 const isFocused = ref(false);
@@ -91,7 +94,8 @@ function handleKeydown(e: KeyboardEvent) {
 function handleWheel(e: WheelEvent) {
   e.preventDefault();
   const direction = e.deltaY < 0 ? 1 : -1;
-  stepValue(direction, e.shiftKey);
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
+  stepValue(direction, isShift);
 }
 
 function stepValue(direction: number, isFrame: boolean) {

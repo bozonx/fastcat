@@ -11,6 +11,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { frameToUs, sanitizeFps } from '~/timeline/commands/utils';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
 const { t } = useI18n();
 
@@ -345,7 +346,7 @@ function seekByWheelDelta(delta: number) {
 }
 
 function onTrackAreaWheel(e: WheelEvent) {
-  const isShift = e.shiftKey;
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const isSecondary = isSecondaryWheel(e);
   const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
@@ -409,7 +410,7 @@ function onTrackAreaWheel(e: WheelEvent) {
 }
 
 function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
-  const isShift = e.shiftKey;
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const isSecondary = isSecondaryWheel(e);
   const settings = workspaceStore.userSettings.mouse.trackHeaders;
 

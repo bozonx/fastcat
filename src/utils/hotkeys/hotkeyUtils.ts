@@ -1,4 +1,6 @@
+import type { GranVideoEditorUserSettings } from '../settings/defaults';
 import type { HotkeyCombo } from './defaultHotkeys';
+import { isLayer1Active, isLayer2Active } from './layerUtils';
 
 export interface NormalizedHotkey {
   ctrl: boolean;
@@ -96,7 +98,10 @@ export function normalizeHotkeyCombo(combo: HotkeyCombo): HotkeyCombo | null {
   return stringifyHotkey(parsed);
 }
 
-export function hotkeyFromKeyboardEvent(e: KeyboardEvent): HotkeyCombo | null {
+export function hotkeyFromKeyboardEvent(
+  e: KeyboardEvent,
+  settings?: GranVideoEditorUserSettings,
+): HotkeyCombo | null {
   const useCode =
     e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Numpad');
   const key = normalizeKeyLabel(useCode ? e.code : e.key);
@@ -104,6 +109,21 @@ export function hotkeyFromKeyboardEvent(e: KeyboardEvent): HotkeyCombo | null {
 
   if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta') {
     return null;
+  }
+
+  // If settings are provided, use virtual layers.
+  // Layer 1 maps to virtual Shift, Layer 2 maps to virtual Ctrl.
+  if (settings) {
+    const isL1 = isLayer1Active(e, settings);
+    const isL2 = isLayer2Active(e, settings);
+
+    return stringifyHotkey({
+      ctrl: isL2,
+      meta: e.metaKey,
+      alt: e.altKey,
+      shift: isL1,
+      key,
+    });
   }
 
   return stringifyHotkey({

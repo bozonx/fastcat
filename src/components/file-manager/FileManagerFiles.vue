@@ -14,6 +14,8 @@ import type { FsEntry } from '~/types/fs';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -23,6 +25,7 @@ const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
+const workspaceStore = useWorkspaceStore();
 const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -322,7 +325,10 @@ function getVisibleEntries(entries: FsEntry[]): FsEntry[] {
 
 async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
   if (event && !props.isFilesPage) {
-    if (event.ctrlKey || event.metaKey) {
+    const isL1 = isLayer1Active(event, workspaceStore.userSettings);
+    const isL2 = isLayer2Active(event, workspaceStore.userSettings);
+
+    if (isL2) {
       const selected = selectionStore.selectedEntity;
       if (selected && selected.source === 'fileManager') {
         let currentEntries: FsEntry[] = [];
@@ -368,7 +374,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
         };
       }
       return;
-    } else if (event.shiftKey) {
+    } else if (isL1) {
       const selected = selectionStore.selectedEntity;
       if (selected && selected.source === 'fileManager') {
         const visibleEntries = getVisibleEntries(props.rootEntries);

@@ -7,6 +7,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import type { TimelineMarker } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import {
@@ -84,6 +86,7 @@ export function useTimelineInteraction(
   const historyStore = useHistoryStore();
   const settingsStore = useTimelineSettingsStore();
   const selectionStore = useSelectionStore();
+  const workspaceStore = useWorkspaceStore();
 
   const canEditClipContent = computed(
     () =>
@@ -152,7 +155,8 @@ export function useTimelineInteraction(
   }
 
   function selectItem(e: PointerEvent, itemId: string) {
-    const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
+    const isMulti =
+      isLayer1Active(e, workspaceStore.userSettings) || isLayer2Active(e, workspaceStore.userSettings);
 
     const doc = timelineStore.timelineDoc;
     const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
@@ -220,7 +224,7 @@ export function useTimelineInteraction(
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
-    dragIsFreeOverride.value = e.shiftKey;
+    dragIsFreeOverride.value = isLayer1Active(e, workspaceStore.userSettings);
     dragAnchorStartUs.value = startUs;
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
@@ -278,7 +282,7 @@ export function useTimelineInteraction(
     draggingItemId.value = input.itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
-    dragIsFreeOverride.value = e.shiftKey;
+    dragIsFreeOverride.value = isLayer1Active(e, workspaceStore.userSettings);
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
@@ -620,7 +624,7 @@ export function useTimelineInteraction(
 
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
-    dragIsFreeOverride.value = e.shiftKey;
+    dragIsFreeOverride.value = isLayer1Active(e, workspaceStore.userSettings);
     scheduleDragApply();
   }
 

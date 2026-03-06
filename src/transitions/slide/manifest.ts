@@ -10,9 +10,11 @@ const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
 
+uniform mat3 uFilterMatrix;
+
 void main(void) {
   gl_Position = vec4(aPosition * 2.0 - 1.0, 0.0, 1.0);
-  vTextureCoord = aPosition;
+  vTextureCoord = (uFilterMatrix * vec3(aPosition, 1.0)).xy;
 }
 `;
 
@@ -25,17 +27,18 @@ uniform float uProgress;
 uniform float uSoftness;
 
 void main(void) {
+  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
   float progress = clamp(uProgress, 0.0, 1.0);
   float softness = max(0.0001, uSoftness);
 
-  vec2 fromUv = vec2(vTextureCoord.x - progress, vTextureCoord.y);
-  vec2 toUv = vec2(vTextureCoord.x + (1.0 - progress), vTextureCoord.y);
+  vec2 fromUv = vec2(uv.x - progress, uv.y);
+  vec2 toUv = vec2(uv.x + (1.0 - progress), uv.y);
 
   vec4 fromColor = texture(uFromTexture, fromUv);
   vec4 toColor = texture(uTexture, toUv);
 
-  float fromMask = 1.0 - smoothstep(1.0 - softness, 1.0, vTextureCoord.x + progress);
-  float toMask = 1.0 - smoothstep(softness, 0.0, vTextureCoord.x - (1.0 - progress));
+  float fromMask = 1.0 - smoothstep(1.0 - softness, 1.0, uv.x + progress);
+  float toMask = 1.0 - smoothstep(softness, 0.0, uv.x - (1.0 - progress));
 
   gl_FragColor = fromColor * fromMask + toColor * toMask;
 }
@@ -68,9 +71,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const softnessRaw = Number((context.params as SlideParams | undefined)?.softness ?? 0.02);
-    if (context.fromTexture?.source) {
-      resources.uFromTexture = context.fromTexture.source;
-    }
+    resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uSoftness = Math.max(
       0.0001,

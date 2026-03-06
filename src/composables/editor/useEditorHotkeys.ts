@@ -44,7 +44,7 @@ export function useEditorHotkeys() {
     if (isEditableTarget(e.target) && e.key !== 'Escape') return;
     if (isEditableTarget(document.activeElement) && e.key !== 'Escape') return;
 
-    const combo = hotkeyFromKeyboardEvent(e);
+    const combo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
     if (!combo) return;
 
     const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
