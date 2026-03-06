@@ -8,8 +8,8 @@ import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { buildVideoWorkerPayloadFromTracks } from './useTimelineExport';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
-import { toWorkerTimelineClips } from '~/composables/timeline/useTimelineExport';
 
 export interface TimelineThumbnailChunk {
   chunkIndex: number;
@@ -344,21 +344,11 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         fps: 25,
       });
 
-      const nestedVideoTracks = nestedDoc.tracks.filter(
-        (track) => track.kind === 'video' && !track.videoHidden,
-      );
-      const rawClips = [] as Awaited<ReturnType<typeof toWorkerTimelineClips>>;
-
-      for (let i = 0; i < nestedVideoTracks.length; i++) {
-        const track = nestedVideoTracks[i];
-        if (!track) continue;
-        const layer = nestedVideoTracks.length - 1 - i;
-        const clips = await toWorkerTimelineClips(track.items, projectStore as any, {
-          layer,
-          trackKind: 'video',
-        });
-        rawClips.push(...clips);
-      }
+      const builtVideo = await buildVideoWorkerPayloadFromTracks({
+        tracks: nestedDoc.tracks,
+        projectStore: projectStore as any,
+      });
+      const rawClips = builtVideo.payload;
 
       if (rawClips.length === 0) {
         isGenerating.value = false;
