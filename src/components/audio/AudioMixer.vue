@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import AudioMixerTrack from './AudioMixerTrack.vue';
 import AudioMixerMain from './AudioMixerMain.vue';
@@ -9,6 +10,7 @@ import AudioMixerMain from './AudioMixerMain.vue';
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const focusStore = useFocusStore();
 
 function clipHasAudio(item: TimelineTrackItem, track: TimelineTrack): boolean {
   if (item.kind !== 'clip') return false;
@@ -37,10 +39,25 @@ function isTrackSelected(track: TimelineTrack): boolean {
   // Check if any clip in this track is selected
   return track.items.some((item) => selectedItemIds.value.includes(item.id));
 }
+
+function focusAudioMixer() {
+  focusStore.setPanelFocus('audioMixer');
+}
+
+function focusTrack(trackId: string) {
+  focusAudioMixer();
+  timelineStore.selectTrack(trackId);
+}
 </script>
 
 <template>
-  <div class="h-full bg-ui-bg flex flex-col border-r border-ui-border min-h-0">
+  <div
+    class="h-full bg-ui-bg flex flex-col border-r border-ui-border min-h-0"
+    :class="{
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('audioMixer'),
+    }"
+    @pointerdown.capture="focusAudioMixer"
+  >
     <div class="px-4 py-2 border-b border-ui-border bg-ui-bg-elevated shrink-0">
       <h3 class="font-medium text-sm text-ui-text">Микшер</h3>
     </div>
@@ -59,6 +76,7 @@ function isTrackSelected(track: TimelineTrack): boolean {
           :key="track.id"
           :track="track"
           :is-selected="isTrackSelected(track)"
+          @pointerdown.capture="focusTrack(track.id)"
         />
       </div>
     </div>

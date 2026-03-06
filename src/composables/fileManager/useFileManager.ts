@@ -7,7 +7,6 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { convertSvgToPng } from '~/utils/svg';
 import {
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
@@ -23,6 +22,7 @@ import {
   onVideoPathMovedCommand,
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
+import { clearVectorImageRaster } from '~/media-cache/application/vectorImageCache';
 import type { FsEntry } from '~/types/fs';
 import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
@@ -54,6 +54,7 @@ export interface FileManagerCreateDeps {
   isFileTreePathExpanded: (path: string) => boolean;
   setFileTreePathExpanded: (path: string, expanded: boolean) => void;
   getExpandedPaths: () => string[];
+  getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   getProjectName: () => string | null;
@@ -186,20 +187,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
             getProjectDirHandle: async () => projectDir,
             getTargetDirHandle: async ({ projectDir: pd, file }) =>
               await resolveDefaultTargetDir({ projectDir: pd, file }),
-            convertSvgToPng: async (file) =>
-              await convertSvgToPng(file, {
-                maxWidth: deps.getProjectSize().width,
-                maxHeight: deps.getProjectSize().height,
-              }),
-            onSvgConvertError: ({ file, error: e }) => {
-              console.warn('Failed to convert SVG to PNG', e);
-              error.value = `Failed to import SVG: ${file.name}`;
-              deps.toast.add({
-                color: 'red',
-                title: 'SVG Import Error',
-                description: error.value,
-              });
-            },
             onSkipProjectFile: ({ file }) => {
               deps.toast.add({
                 color: 'neutral',
@@ -263,6 +250,18 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     await deps.mediaStore.revalidateMissingMedia(usedPaths);
   }
 
+  async function clearVectorCacheForPath(path: string) {
+    const projectId = deps.getProjectId();
+    const workspaceHandle = deps.getWorkspaceHandle();
+    if (!projectId || !workspaceHandle) return;
+
+    await clearVectorImageRaster({
+      projectId,
+      projectRelativePath: path,
+      workspaceHandle,
+    });
+  }
+
   async function deleteEntry(target: FsEntry) {
     await runWithUiFeedback({
       action: async () => {
@@ -276,6 +275,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
               service: deps.mediaCache,
               projectRelativePath: path,
             });
+
+            await clearVectorCacheForPath(path);
 
             if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
               const projectId = deps.getProjectId();
@@ -546,6 +547,18 @@ export function useFileManager() {
     }
   }
 
+  async function clearVectorCacheForPath(path: string) {
+    const projectId = projectStore.currentProjectId;
+    const workspaceHandle = workspaceStore.workspaceHandle;
+    if (!projectId || !workspaceHandle) return;
+
+    await clearVectorImageRaster({
+      projectId,
+      projectRelativePath: path,
+      workspaceHandle,
+    });
+  }
+
   const api = createFileManager({
     t,
     toast,
@@ -561,6 +574,7 @@ export function useFileManager() {
       uiStore.setFileTreePathExpanded(projectName, path, expanded);
     },
     getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
+    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
     getProjectRootDirHandle: async () => {
       if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
       return await workspaceStore.projectsHandle.getDirectoryHandle(
@@ -608,6 +622,8 @@ export function useFileManager() {
     onEntryPathChanged: async ({ oldPath, newPath }) => {
       await mediaStore.removeMediaCache(oldPath);
       await mediaStore.removeMediaCache(newPath);
+      await clearVectorCacheForPath(oldPath);
+      await clearVectorCacheForPath(newPath);
       updateSelectionPath({ oldPath, newPath });
     },
     onDirectoryMoved: async () => {

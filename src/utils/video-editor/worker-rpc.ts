@@ -40,5 +40,13 @@ export type WorkerCallbacks = {
   // Functions the worker can call on the main thread
   onExportProgress: (progress: number) => void;
   onExportPhase?: (phase: 'encoding' | 'saving') => void;
+  getCurrentProjectId: () => Promise<string | null>;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  ensureVectorImageRaster: (params: {
+    projectId: string;
+    projectRelativePath: string;
+    width: number;
+    height: number;
+    sourceFileHandle: FileSystemFileHandle;
+  }) => Promise<FileSystemFileHandle | null>;
 };

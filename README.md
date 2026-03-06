@@ -8,6 +8,7 @@ Standalone video editor project extracted from Gran Publicador.
 - Timeline with multiple tracks (video/audio)
 - SVG images are rasterized to PNG on import for reliable worker rendering
 - Monitor playback with volume/mute controls for audio
+- Focus-aware panel hotkeys with routing to the currently active editor panel
 - File system access API integration for local file editing
 - OTIO (OpenTimelineIO) support for timeline serialization
 - High-performance rendering with Web Workers
@@ -60,6 +61,15 @@ You can clear temporary files from the UI:
 
 - **Workspace settings → Storage → Clear temporary files** — deletes `vardata/`
 - **Project settings → Storage → Clear temporary files** — deletes `vardata/projects/<projectId>`
+
+## Panel focus and keyboard routing
+
+- Hotkeys are routed to the currently focused panel instead of being handled globally by every visible panel.
+- In `Cut` and `Sound` views, `Tab` switches focus between the main editing panels and returns focus from side panels to the last active main panel.
+- In `Files` and `Export` views, `Tab` is not used for panel switching, but the focused panel still controls which hotkeys are allowed.
+- Fullscreen preview and modal dialogs block panel focus routing and `Tab` switching.
+- `Backspace` closes the currently focused detached panel in `Cut` view and restores focus to the last active main panel.
+- Text inputs and text editors keep their native keyboard behavior and do not receive editor hotkeys.
 
 ## License
 

@@ -103,13 +103,38 @@ async function navigateToParentFolder() {
   }
 }
 
+function getDynamicPanelFocusId(panelId: string) {
+  return `dynamic:${panelId}` as const;
+}
+
+function focusDynamicPanel(panelId: string) {
+  focusStore.setPanelFocus(getDynamicPanelFocusId(panelId));
+}
+
+function getActiveDetachedPanel() {
+  const focusId = focusStore.effectiveFocus;
+  if (!String(focusId).startsWith('dynamic:')) return null;
+  const panelId = String(focusId).slice('dynamic:'.length);
+  return projectStore.cutPanels.flatMap((column) => column.panels).find((panel) => panel.id === panelId) ?? null;
+}
+
 function onGlobalKeyDown(e: KeyboardEvent) {
   if (e.key !== 'Backspace') return;
   if (isEditableTarget(e.target)) return;
+
+  if (projectStore.currentView === 'cut') {
+    const activeDetachedPanel = getActiveDetachedPanel();
+    if (!activeDetachedPanel) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    closePanelAndRestoreTab(activeDetachedPanel, { restoreFocus: true });
+    return;
+  }
+
   if (projectStore.currentView !== 'files') return;
 
-  // If focus is on the timeline, let useTimelineHotkeys handle it (rippleDelete)
-  if (focusStore.effectiveFocus === 'timeline') return;
+  if (focusStore.effectiveFocus !== 'filesBrowser') return;
 
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -365,12 +390,16 @@ const panelTypeToTabId: Record<string, string> = {
 /**
  * Close a panel and restore the corresponding Project tab if it's a detached static tab.
  */
-function closePanelAndRestoreTab(panel: DynamicPanel) {
+function closePanelAndRestoreTab(panel: DynamicPanel, options?: { restoreFocus?: boolean }) {
   const tabId = panelTypeToTabId[panel.type];
   if (tabId) {
     showStaticTab(tabId);
   }
   projectStore.removePanel(panel.id);
+
+  if (options?.restoreFocus) {
+    focusStore.restoreLastCutMainPanel();
+  }
 }
 
 // Changes on every structural change — forces Splitpanes to remount and pick up new sizes
@@ -500,7 +529,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                         dragOverPanelId === panel.id && dropPosition === 'top',
                       'border-b-2 border-b-primary-500':
                         dragOverPanelId === panel.id && dropPosition === 'bottom',
+                      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+                        focusStore.isPanelFocused(getDynamicPanelFocusId(panel.id)),
                     }"
+                    @pointerdown.capture="focusDynamicPanel(panel.id)"
                     @dragenter.prevent
                     @dragover.prevent="(e) => onDragOver(e, panel.id)"
                     @dragleave="(e) => onDragLeave(e, panel.id)"
@@ -559,6 +591,7 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                         <MediaPanelWrapper
                           :file-path="panel.filePath || ''"
                           :media-type="panel.mediaType || 'unknown'"
+                          :focus-panel-id="getDynamicPanelFocusId(panel.id)"
                         />
                       </div>
                     </div>

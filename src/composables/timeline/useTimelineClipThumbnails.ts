@@ -2,12 +2,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } 
 import type { TimelineClipItem } from '~/timeline/types';
 import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildVideoWorkerPayloadFromTracks } from './useTimelineExport';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 
@@ -56,6 +58,7 @@ export function computeChunks(params: {
 export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem> }) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
   const mediaStore = useMediaStore();
 
   let isUnmounted = false;
@@ -375,10 +378,14 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
       );
 
       const { client } = getExportWorkerClient();
-      setExportHostApi({
-        getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
-        onExportProgress: () => {},
-      });
+      setExportHostApi(
+        createVideoCoreHostApi({
+          getCurrentProjectId: () => projectStore.currentProjectId,
+          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
+          onExportProgress: () => {},
+        }),
+      );
 
       const blob = await client.extractFrameToBlob(previewTimeUs, width, height, rawClips, 0.8);
       if (!blob || isUnmounted) {

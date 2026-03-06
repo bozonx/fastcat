@@ -3,6 +3,7 @@ import { computed, watch, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import MediaEncodingSettings, {
   type FormatOption,
@@ -25,8 +26,13 @@ const toast = useToast();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
+const focusStore = useFocusStore();
 const saveAsDefaults = ref(false);
 const exportOnlySelectionRange = ref(true);
+
+function focusExportForm() {
+  focusStore.setPanelFocus('exportForm');
+}
 
 const selectionRange = computed(() => timelineStore.getSelectionRange());
 const hasSelectionRange = computed(() => Boolean(selectionRange.value));
@@ -331,7 +337,13 @@ async function handleConfirm() {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar">
+  <div
+    class="flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar"
+    :class="{
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('exportForm'),
+    }"
+    @pointerdown.capture="focusExportForm"
+  >
     <div class="mb-6 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-ui-text">
         {{ t('videoEditor.export.title', 'Export Timeline') }}

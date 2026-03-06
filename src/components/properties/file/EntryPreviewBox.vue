@@ -12,6 +12,7 @@ const props = defineProps<{
   textContent: string;
   filePath?: string;
   fileName?: string;
+  focusPanelId?: string;
 }>();
 </script>
 
@@ -42,6 +43,7 @@ const props = defineProps<{
         :text-content="props.textContent"
         :file-path="props.filePath"
         :file-name="props.fileName"
+        :focus-panel-id="props.focusPanelId"
       />
     </div>
   </div>

@@ -1,6 +1,7 @@
 import { safeDispose } from './utils';
 import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
+import { isSvgFile } from '../svg';
 import type { Filter } from 'pixi.js';
 import {
   Application,
@@ -395,7 +396,17 @@ export class VideoCompositor {
 
   async loadTimeline(
     timelineClips: any[],
-    getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>,
+    deps: {
+      getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+      getCurrentProjectId?: () => Promise<string | null>;
+      ensureVectorImageRaster?: (params: {
+        projectId: string;
+        projectRelativePath: string;
+        width: number;
+        height: number;
+        sourceFileHandle: FileSystemFileHandle;
+      }) => Promise<FileSystemFileHandle | null>;
+    },
     checkCancel?: () => boolean,
   ): Promise<number> {
     if (!this.app) throw new Error('VideoCompositor not initialized');
@@ -743,7 +754,7 @@ export class VideoCompositor {
         this.replacedClipIds.add(itemId);
       }
 
-      const fileHandle = await getFileHandleByPath(sourcePath);
+      const fileHandle = await deps.getFileHandleByPath(sourcePath);
       if (!fileHandle) {
         sequentialTimeUs = Math.max(sequentialTimeUs, endUsFallback);
         continue;
@@ -768,7 +779,28 @@ export class VideoCompositor {
 
         let bmp: ImageBitmap | null = null;
         try {
-          bmp = await createImageBitmap(file);
+          let imageFile = file;
+          if (
+            isSvgFile({ file, path: sourcePath }) &&
+            deps.getCurrentProjectId &&
+            deps.ensureVectorImageRaster
+          ) {
+            const projectId = await deps.getCurrentProjectId();
+            if (projectId) {
+              const cachedRasterHandle = await deps.ensureVectorImageRaster({
+                projectId,
+                projectRelativePath: sourcePath,
+                width: this.width,
+                height: this.height,
+                sourceFileHandle: fileHandle,
+              });
+              if (cachedRasterHandle) {
+                imageFile = await cachedRasterHandle.getFile();
+              }
+            }
+          }
+
+          bmp = await createImageBitmap(imageFile);
           const frameW = Math.max(1, Math.round((bmp as any).width ?? 1));
           const frameH = Math.max(1, Math.round((bmp as any).height ?? 1));
           imageSource.resize(frameW, frameH);

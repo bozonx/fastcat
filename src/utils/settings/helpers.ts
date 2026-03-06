@@ -59,6 +59,8 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
       qualityPercent: DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
     },
     hotkeys: {
+      layer1: DEFAULT_USER_SETTINGS.hotkeys.layer1,
+      layer2: DEFAULT_USER_SETTINGS.hotkeys.layer2,
       bindings: {},
     },
     optimization: { ...DEFAULT_USER_SETTINGS.optimization },

@@ -2,15 +2,17 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
 import type { TimelineDocument } from '~/timeline/types';
+import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
-import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
 } from '~/composables/timeline/useTimelineExport';
-import { useUiStore } from '~/stores/ui.store';
 
 import type { WorkerTimelineClip } from './types';
 
@@ -64,6 +66,8 @@ export interface UseMonitorCoreOptions extends MonitorStoreState {
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
   const uiStore = useUiStore();
+  const workspaceStore = useWorkspaceStore();
+  const currentProjectStore = useProjectStore();
   const { projectStore, timelineStore, proxyStore, monitorTimeline, monitorDisplay } = options;
 
   const {
@@ -261,7 +265,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const audioClips = workerAudioClips.value;
       const audioEngineClips = (
         await Promise.all(
-          audioClips.map(async (clip) => {
+          audioClips.map(async (clip: WorkerTimelineClip) => {
             try {
               const path = clip.source?.path;
               if (!path) return null;
@@ -455,16 +459,20 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         return;
       }
 
-      setPreviewHostApi({
-        getFileHandleByPath: async (path) => {
-          if (useProxyInMonitor.value) {
-            const proxyHandle = await proxyStore.getProxyFileHandle(path);
-            if (proxyHandle) return proxyHandle;
-          }
-          return await projectStore.getFileHandleByPath(path);
-        },
-        onExportProgress: () => {},
-      });
+      setPreviewHostApi(
+        createVideoCoreHostApi({
+          getCurrentProjectId: () => currentProjectStore.currentProjectId,
+          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getFileHandleByPath: async (path) => {
+            if (useProxyInMonitor.value) {
+              const proxyHandle = await proxyStore.getProxyFileHandle(path);
+              if (proxyHandle) return proxyHandle;
+            }
+            return await projectStore.getFileHandleByPath(path);
+          },
+          onExportProgress: () => {},
+        }),
+      );
 
       const payload = cloneWorkerPayload(builtVideo.payload);
       const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
@@ -477,35 +485,50 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         audioChannels: projectStore.projectSettings?.project?.audioChannels,
       });
 
-      const audioEngineClips = (
-        await Promise.all(
-          audioClips.map(async (clip) => {
-            try {
-              const path = clip.source?.path;
-              if (!path) return null;
-              const handle = await getFileHandleForAudio(path);
-              if (!handle) return null;
-              return {
-                id: clip.id,
-                trackId: clip.trackId,
-                sourcePath: getAudioSourceKey(path),
-                fileHandle: handle,
-                startUs: clip.timelineRange.startUs,
-                durationUs: clip.timelineRange.durationUs,
-                sourceStartUs: clip.sourceRange.startUs,
-                sourceDurationUs: clip.sourceRange.durationUs,
-                speed: (clip as any).speed,
-                audioGain: (clip as any).audioGain,
-                audioBalance: (clip as any).audioBalance,
-                audioFadeInUs: (clip as any).audioFadeInUs,
-                audioFadeOutUs: (clip as any).audioFadeOutUs,
-              };
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter((it): it is NonNullable<typeof it> => Boolean(it));
+      const audioEngineClipCandidates: Array<{
+        id: string;
+        trackId?: string;
+        sourcePath: string;
+        fileHandle: FileSystemFileHandle;
+        startUs: number;
+        durationUs: number;
+        sourceStartUs: number;
+        sourceDurationUs: number;
+        speed?: number;
+        audioGain?: number;
+        audioBalance?: number;
+        audioFadeInUs?: number;
+        audioFadeOutUs?: number;
+      } | null> = await Promise.all(
+        audioClips.map(async (clip: WorkerTimelineClip) => {
+          try {
+            const path = clip.source?.path;
+            if (!path) return null;
+            const handle = await getFileHandleForAudio(path);
+            if (!handle) return null;
+            return {
+              id: clip.id,
+              trackId: clip.trackId,
+              sourcePath: getAudioSourceKey(path),
+              fileHandle: handle,
+              startUs: clip.timelineRange.startUs,
+              durationUs: clip.timelineRange.durationUs,
+              sourceStartUs: clip.sourceRange.startUs,
+              sourceDurationUs: clip.sourceRange.durationUs,
+              speed: (clip as any).speed,
+              audioGain: (clip as any).audioGain,
+              audioBalance: (clip as any).audioBalance,
+              audioFadeInUs: (clip as any).audioFadeInUs,
+              audioFadeOutUs: (clip as any).audioFadeOutUs,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const audioEngineClips = audioEngineClipCandidates.filter(
+        (it): it is NonNullable<typeof it> => Boolean(it),
+      );
       await audioEngine.loadClips(audioEngineClips);
 
       lastBuiltSourceSignature = clipSourceSignature.value;

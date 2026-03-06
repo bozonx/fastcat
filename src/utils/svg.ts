@@ -4,8 +4,36 @@ export interface SvgDimensions {
 }
 
 export interface SvgRasterizeOptions {
+  width?: number;
+  height?: number;
   maxWidth?: number;
   maxHeight?: number;
+}
+
+export function isSvgMimeType(value: string | null | undefined): boolean {
+  return (
+    String(value ?? '')
+      .trim()
+      .toLowerCase() === 'image/svg+xml'
+  );
+}
+
+export function isSvgFilename(value: string | null | undefined): boolean {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .endsWith('.svg');
+}
+
+export function isSvgFile(params: {
+  file?: Pick<File, 'type' | 'name'> | null;
+  path?: string | null;
+}): boolean {
+  return (
+    isSvgMimeType(params.file?.type) ||
+    isSvgFilename(params.file?.name) ||
+    isSvgFilename(params.path)
+  );
 }
 
 export function parseSvgDimensions(svgText: string): SvgDimensions {
@@ -129,6 +157,18 @@ export async function convertSvgToPng(
   file: File,
   options: SvgRasterizeOptions = {},
 ): Promise<File> {
+  const blob = await rasterizeSvgToBlob(file, options);
+  const pngName = file.name.replace(/\.svg$/i, '.png');
+  return new File([blob], pngName, {
+    type: 'image/png',
+    lastModified: file.lastModified,
+  });
+}
+
+export async function rasterizeSvgToBlob(
+  file: File,
+  options: SvgRasterizeOptions = {},
+): Promise<Blob> {
   if (
     typeof document === 'undefined' ||
     typeof Image === 'undefined' ||
@@ -139,11 +179,20 @@ export async function convertSvgToPng(
 
   const svgText = await file.text();
   const intrinsic = parseSvgDimensions(svgText);
-  const { width, height } = computeSvgRasterSize({
-    intrinsic,
-    maxWidth: options.maxWidth,
-    maxHeight: options.maxHeight,
-  });
+  const width = Math.max(
+    1,
+    Math.round(
+      Number(options.width) ||
+        computeSvgRasterSize({ intrinsic, maxWidth: options.maxWidth }).width,
+    ),
+  );
+  const height = Math.max(
+    1,
+    Math.round(
+      Number(options.height) ||
+        computeSvgRasterSize({ intrinsic, maxHeight: options.maxHeight }).height,
+    ),
+  );
 
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -170,13 +219,7 @@ export async function convertSvgToPng(
           return reject(new Error('Failed to convert canvas to blob'));
         }
 
-        const pngName = file.name.replace(/\.svg$/i, '.png');
-        const pngFile = new File([blob], pngName, {
-          type: 'image/png',
-          lastModified: file.lastModified,
-        });
-
-        resolve(pngFile);
+        resolve(blob);
       }, 'image/png');
     };
 

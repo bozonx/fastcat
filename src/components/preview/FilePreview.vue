@@ -61,16 +61,17 @@ onUnmounted(() => {
         v-if="props.mediaType === 'image' && props.url"
         :class="
           isFullscreenOpen
-            ? 'fixed inset-0 flex flex-col items-center justify-center z-[41]'
+            ? 'fixed inset-0 flex flex-col items-center justify-center'
             : 'w-full h-full'
         "
+        style="z-index: 41"
       >
         <UButton
           v-if="isFullscreenOpen"
           color="neutral"
           variant="ghost"
           icon="i-heroicons-x-mark"
-          class="absolute top-4 right-4 text-white hover:bg-white/20 z-[42]"
+          class="absolute top-4 right-4 text-white hover:bg-white/20 z-42"
           size="xl"
           @click="isFullscreenOpen = false"
         />
@@ -89,7 +90,7 @@ onUnmounted(() => {
         v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url"
         :class="
           isFullscreenOpen
-            ? 'fixed inset-0 flex flex-col items-center justify-center z-[41] pb-8'
+            ? 'fixed inset-0 flex flex-col items-center justify-center z-41 pb-8'
             : 'w-full h-full flex flex-col min-h-0'
         "
       >
@@ -98,7 +99,7 @@ onUnmounted(() => {
           color="neutral"
           variant="ghost"
           icon="i-heroicons-x-mark"
-          class="absolute top-4 right-4 text-white hover:bg-white/20 z-[42]"
+          class="absolute top-4 right-4 text-white hover:bg-white/20 z-42"
           size="xl"
           @click="isFullscreenOpen = false"
         />

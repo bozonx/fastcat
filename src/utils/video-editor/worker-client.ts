@@ -2,7 +2,15 @@ import type { VideoCoreWorkerAPI } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 
 export interface VideoCoreHostAPI {
+  getCurrentProjectId(): Promise<string | null>;
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
+  ensureVectorImageRaster(params: {
+    projectId: string;
+    projectRelativePath: string;
+    width: number;
+    height: number;
+    sourceFileHandle: FileSystemFileHandle;
+  }): Promise<FileSystemFileHandle | null>;
   onExportProgress(progress: number): void;
   onExportPhase?(phase: 'encoding' | 'saving'): void;
   onExportWarning?(message: string): void;
