@@ -118,6 +118,17 @@ function coerceId(raw: any, fallback: string): string {
   return v;
 }
 
+function coerceBlendMode(raw: unknown): import('./types').TimelineBlendMode | undefined {
+  return raw === 'add' ||
+    raw === 'multiply' ||
+    raw === 'screen' ||
+    raw === 'darken' ||
+    raw === 'lighten' ||
+    raw === 'normal'
+    ? raw
+    : undefined;
+}
+
 function coerceName(raw: any, fallback: string): string {
   const v = typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
   return v;
@@ -353,6 +364,7 @@ function parseClipItem(input: {
       typeof granMeta?.opacity === 'number' && Number.isFinite(granMeta.opacity)
         ? Math.max(0, Math.min(1, granMeta.opacity))
         : undefined,
+    blendMode: coerceBlendMode(granMeta?.blendMode),
     effects: Array.isArray(granMeta?.effects) ? (granMeta.effects as any[]) : undefined,
     transitionIn:
       granMeta?.transitionIn &&
@@ -408,17 +420,13 @@ function parseClipItem(input: {
     const style =
       granMeta?.style && typeof granMeta.style === 'object' ? granMeta.style : undefined;
     return {
-      kind: 'clip',
+      ...base,
       clipType: 'text',
-      id,
-      trackId,
-      name,
       sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
       timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
       sourceRange,
       text,
       style,
-      transform: coerceTransform(granMeta?.transform),
     };
   }
 
@@ -609,6 +617,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
               item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
             opacity: item.opacity,
+            blendMode: item.blendMode,
             effects: item.effects,
             transitionIn: item.transitionIn,
             transitionOut: item.transitionOut,
@@ -638,6 +647,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           kind: t.kind,
           name: t.name,
           videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
+          opacity: t.opacity,
+          blendMode: t.blendMode,
           audioMuted: Boolean(t.audioMuted),
           audioSolo: Boolean(t.audioSolo),
           audioGain: t.audioGain,
@@ -747,6 +758,11 @@ export function parseTimelineFromOtio(
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
     const videoHidden = kind === 'video' ? Boolean(trackGranMeta?.videoHidden) : undefined;
+    const opacity =
+      typeof trackGranMeta?.opacity === 'number' && Number.isFinite(trackGranMeta.opacity)
+        ? Math.max(0, Math.min(1, Number(trackGranMeta.opacity)))
+        : undefined;
+    const blendMode = coerceBlendMode(trackGranMeta?.blendMode);
     const audioMuted = Boolean(trackGranMeta?.audioMuted);
     const audioSolo = Boolean(trackGranMeta?.audioSolo);
     const audioGain =
@@ -766,6 +782,8 @@ export function parseTimelineFromOtio(
       kind,
       name,
       videoHidden,
+      opacity,
+      blendMode,
       audioMuted,
       audioSolo,
       audioGain,

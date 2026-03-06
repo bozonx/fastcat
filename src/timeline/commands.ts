@@ -158,6 +158,7 @@ export interface UpdateClipPropertiesCommand {
       | 'linkedVideoClipId'
       | 'lockToLinkedVideo'
       | 'opacity'
+      | 'blendMode'
       | 'effects'
       | 'freezeFrameSourceUs'
       | 'speed'
@@ -185,7 +186,14 @@ export interface UpdateTrackPropertiesCommand {
   properties: Partial<
     Pick<
       import('./types').TimelineTrack,
-      'videoHidden' | 'audioMuted' | 'audioSolo' | 'effects' | 'audioGain' | 'audioBalance'
+      | 'videoHidden'
+      | 'opacity'
+      | 'blendMode'
+      | 'audioMuted'
+      | 'audioSolo'
+      | 'effects'
+      | 'audioGain'
+      | 'audioBalance'
     >
   >;
 }

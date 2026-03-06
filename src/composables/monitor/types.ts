@@ -25,6 +25,7 @@ export interface WorkerTimelineClip {
   style?: import('~/timeline/types').TextClipStyle;
   freezeFrameSourceUs?: number;
   opacity?: number;
+  blendMode?: import('~/timeline/types').TimelineBlendMode;
   effects?: unknown[];
   transform?: import('~/timeline/types').ClipTransform;
   timelineRange: {

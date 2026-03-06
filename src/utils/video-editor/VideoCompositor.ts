@@ -16,8 +16,24 @@ import {
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
 import { getTransitionManifest, easeInOutCubic } from '../../transitions';
-import type { TextClipStyle, ClipEffect, ClipTransform, ClipTransition } from '~/timeline/types';
+import type {
+  TextClipStyle,
+  ClipEffect,
+  ClipTransform,
+  ClipTransition,
+  TimelineBlendMode,
+} from '~/timeline/types';
 import { VIDEO_CORE_LIMITS } from '../constants';
+
+function resolveBlendMode(value: unknown): TimelineBlendMode {
+  return value === 'add' ||
+    value === 'multiply' ||
+    value === 'screen' ||
+    value === 'darken' ||
+    value === 'lighten'
+    ? value
+    : 'normal';
+}
 
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
@@ -91,6 +107,7 @@ export interface CompositorClip {
   text?: string;
   style?: TextClipStyle;
   opacity?: number;
+  blendMode?: TimelineBlendMode;
   effects?: ClipEffect[];
   transform?: ClipTransform;
   effectFilters?: Map<string, Filter>;
@@ -328,6 +345,7 @@ export class VideoCompositor {
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
         reusable.opacity = clipData.opacity;
+        reusable.blendMode = resolveBlendMode((clipData as any).blendMode);
         reusable.effects = clipData.effects;
         reusable.transform = (clipData as any).transform;
         if (reusable.clipKind === 'solid') {
@@ -381,6 +399,7 @@ export class VideoCompositor {
           bitmap: null,
           backgroundColor,
           opacity: clipData.opacity,
+          blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: clipData.effects,
           transform: (clipData as any).transform,
         };
@@ -442,6 +461,7 @@ export class VideoCompositor {
           text: String((clipData as any).text ?? ''),
           style: (clipData as any).style,
           opacity: clipData.opacity,
+          blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: clipData.effects,
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
@@ -492,6 +512,7 @@ export class VideoCompositor {
           ctx: null,
           bitmap: null,
           opacity: clipData.opacity,
+          blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: clipData.effects,
           transform: (clipData as any).transform,
         };
@@ -580,6 +601,7 @@ export class VideoCompositor {
           bitmap: bmp,
           backgroundColor: undefined,
           opacity: clipData.opacity,
+          blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: clipData.effects,
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
@@ -655,6 +677,7 @@ export class VideoCompositor {
           bitmap: null,
           backgroundColor: undefined,
           opacity: clipData.opacity,
+          blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: clipData.effects,
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
@@ -747,6 +770,7 @@ export class VideoCompositor {
       clip.freezeFrameSourceUs = freezeFrameSourceUs;
       clip.layer = layer;
       clip.opacity = next.opacity;
+      clip.blendMode = resolveBlendMode((next as any).blendMode);
       clip.effects = next.effects;
       clip.transform = (next as any).transform;
       clip.transitionIn = (next as any).transitionIn;
@@ -807,6 +831,7 @@ export class VideoCompositor {
       for (const clip of active) {
         const effectiveOpacity = this.computeTransitionOpacity(clip, timeUs);
         clip.sprite.alpha = effectiveOpacity;
+        clip.sprite.blendMode = clip.blendMode ?? 'normal';
 
         this.applyClipEffects(clip);
 

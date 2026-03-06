@@ -10,6 +10,23 @@ import type {
 import { getTrackById, nextTrackId, normalizeTrackOrder } from './utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 
+function normalizeOpacity(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeBlendMode(value: unknown): TimelineTrack['blendMode'] {
+  return value === 'add' ||
+    value === 'multiply' ||
+    value === 'screen' ||
+    value === 'darken' ||
+    value === 'lighten' ||
+    value === 'normal'
+    ? value
+    : undefined;
+}
+
 export function addTrack(doc: TimelineDocument, cmd: AddTrackCommand): TimelineCommandResult {
   const idPrefix = cmd.kind === 'audio' ? 'a' : 'v';
   const id =
@@ -115,6 +132,14 @@ export function updateTrackProperties(
       const raw = (cmd.properties as any).audioBalance;
       const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
       next.audioBalance = v === undefined ? undefined : normalizeBalance(v, 0);
+    }
+
+    if ('opacity' in cmd.properties) {
+      next.opacity = normalizeOpacity((cmd.properties as any).opacity);
+    }
+
+    if ('blendMode' in cmd.properties) {
+      next.blendMode = normalizeBlendMode((cmd.properties as any).blendMode);
     }
 
     if (next.kind !== 'video') {

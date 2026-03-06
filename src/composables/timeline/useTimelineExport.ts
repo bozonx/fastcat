@@ -23,6 +23,7 @@ import type {
   TimelineTrackItem,
   ClipEffect,
   TimelineSelectionRange,
+  TimelineBlendMode,
 } from '~/timeline/types';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -80,8 +81,11 @@ export interface WorkerTimelineClip {
   style?: import('~/timeline/types').TextClipStyle;
   freezeFrameSourceUs?: number;
   opacity?: number;
+  blendMode?: TimelineBlendMode;
   effects?: unknown[];
   transform?: ClipTransform;
+  transitionIn?: import('~/timeline/types').ClipTransition;
+  transitionOut?: import('~/timeline/types').ClipTransition;
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
 }
@@ -122,6 +126,7 @@ export async function toWorkerTimelineClips(
     visitedPaths?: Set<string>;
     nestedPathStack?: string[];
     parentOpacity?: number;
+    parentBlendMode?: TimelineBlendMode;
     parentEffects?: ClipEffect[];
   },
 ): Promise<WorkerTimelineClip[]> {
@@ -138,6 +143,7 @@ export async function toWorkerTimelineClips(
     const parentOpacity = options?.parentOpacity ?? 1;
     const itemOpacity = item.opacity ?? 1;
     const combinedOpacity = parentOpacity * itemOpacity;
+    const combinedBlendMode = item.blendMode ?? options?.parentBlendMode;
 
     const parentEffects = options?.parentEffects ?? [];
     const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
@@ -160,8 +166,11 @@ export async function toWorkerTimelineClips(
       audioFadeInUs: (item as any).audioFadeInUs,
       audioFadeOutUs: (item as any).audioFadeOutUs,
       opacity: combinedOpacity,
+      blendMode: combinedBlendMode,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       transform: clonePlain((item as any).transform),
+      transitionIn: clonePlain((item as any).transitionIn),
+      transitionOut: clonePlain((item as any).transitionOut),
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
@@ -220,6 +229,7 @@ export async function toWorkerTimelineClips(
                   visitedPaths: nextVisited,
                   nestedPathStack: nextNestedPathStack,
                   parentOpacity: combinedOpacity,
+                  parentBlendMode: combinedBlendMode,
                   parentEffects: combinedTrackEffects,
                 });
 
@@ -299,6 +309,7 @@ export async function toWorkerTimelineClips(
                   visitedPaths: nextVisited,
                   nestedPathStack: nextNestedPathStack,
                   parentOpacity: combinedOpacity,
+                  parentBlendMode: combinedBlendMode,
                   parentEffects: combinedEffects,
                 },
               );
@@ -720,6 +731,8 @@ export function useTimelineExport() {
       const clips = await toWorkerTimelineClips(track.items ?? [], projectStore, {
         layer: videoTracks.length - 1 - index,
         trackKind: 'video',
+        parentOpacity: track.opacity ?? 1,
+        parentBlendMode: track.blendMode,
         parentEffects: trackEffects,
       });
 

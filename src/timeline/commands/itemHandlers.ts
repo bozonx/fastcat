@@ -578,6 +578,19 @@ export function updateClipProperties(
     return Math.max(min, Math.min(max, n));
   }
 
+  function sanitizeBlendMode(
+    value: unknown,
+  ): import('~/timeline/types').TimelineBlendMode | undefined {
+    return value === 'add' ||
+      value === 'multiply' ||
+      value === 'screen' ||
+      value === 'darken' ||
+      value === 'lighten' ||
+      value === 'normal'
+      ? value
+      : undefined;
+  }
+
   function clampAudioFadeUs(value: unknown, maxUs: number): number | undefined {
     if (value === undefined) return undefined;
     const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 0;
@@ -900,6 +913,26 @@ export function updateClipProperties(
       delete nextProps.transform;
     } else {
       nextProps.transform = safe;
+    }
+  }
+
+  if ('opacity' in nextProps) {
+    const raw = (nextProps as any).opacity;
+    const safe =
+      typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : undefined;
+    if (safe === undefined) {
+      delete (nextProps as any).opacity;
+    } else {
+      (nextProps as any).opacity = safe;
+    }
+  }
+
+  if ('blendMode' in nextProps) {
+    const safe = sanitizeBlendMode((nextProps as any).blendMode);
+    if (safe === undefined) {
+      delete (nextProps as any).blendMode;
+    } else {
+      (nextProps as any).blendMode = safe;
     }
   }
 
