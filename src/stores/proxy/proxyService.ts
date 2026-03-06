@@ -48,26 +48,31 @@ export function createProxyService(params: {
     dirHandle: FileSystemDirectoryHandle;
     dirPath: string;
   }): Promise<void> {
-    const iterator = (input.dirHandle as any).values?.() ?? (input.dirHandle as any).entries?.();
-    if (!iterator) return;
+    params.generatingProxies.value.add(input.dirPath);
+    try {
+      const iterator = (input.dirHandle as any).values?.() ?? (input.dirHandle as any).entries?.();
+      if (!iterator) return;
 
-    for await (const value of iterator) {
-      const handle = (Array.isArray(value) ? value[1] : value) as
-        | FileSystemFileHandle
-        | FileSystemDirectoryHandle;
-      const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
+      for await (const value of iterator) {
+        const handle = (Array.isArray(value) ? value[1] : value) as
+          | FileSystemFileHandle
+          | FileSystemDirectoryHandle;
+        const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
 
-      if (handle.kind === 'file') {
-        const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
-        if (!params.videoExtensions.has(ext)) continue;
-        if (params.existingProxies.value.has(fullPath)) continue;
+        if (handle.kind === 'file') {
+          const ext = handle.name.split('.').pop()?.toLowerCase() ?? '';
+          if (!params.videoExtensions.has(ext)) continue;
+          if (params.existingProxies.value.has(fullPath)) continue;
 
-        try {
-          await generateProxy(handle as FileSystemFileHandle, fullPath);
-        } catch (e) {
-          console.warn('Failed to generate proxy for file', fullPath, e);
+          try {
+            await generateProxy(handle as FileSystemFileHandle, fullPath);
+          } catch (e) {
+            console.warn('Failed to generate proxy for file', fullPath, e);
+          }
         }
       }
+    } finally {
+      params.generatingProxies.value.delete(input.dirPath);
     }
   }
 
