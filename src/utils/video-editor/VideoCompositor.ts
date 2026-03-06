@@ -15,7 +15,7 @@ import {
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
-import { getTransitionManifest, easeInOutCubic } from '../../transitions';
+import { getTransitionManifest } from '../../transitions';
 import type {
   TextClipStyle,
   ClipEffect,
@@ -114,6 +114,8 @@ export interface CompositorClip {
   effectFilters?: Map<string, Filter>;
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
+  transitionFilter?: Filter | null;
+  textDirty?: boolean;
 }
 
 export interface CompositorTrack {
@@ -149,6 +151,7 @@ export class VideoCompositor {
   private stageVisibilityState: boolean[] = [];
   private masterEffects: ClipEffect[] | null = null;
   private masterEffectFilters: Map<string, Filter> | null = null;
+  private transitionFilters = new Map<string, Filter>();
   private sampleRequestsInFlight = 0;
   private readonly sampleRequestQueue: Array<() => void> = [];
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
@@ -500,6 +503,17 @@ export class VideoCompositor {
         reusable.blendMode = resolveBlendMode((clipData as any).blendMode);
         reusable.effects = clipData.effects;
         reusable.transform = (clipData as any).transform;
+        reusable.transitionIn = clipData.transitionIn;
+        reusable.transitionOut = clipData.transitionOut;
+        if (reusable.clipKind === 'text') {
+          const nextText = String((clipData as any).text ?? '');
+          const nextStyle = (clipData as any).style;
+          reusable.textDirty =
+            reusable.text !== nextText ||
+            JSON.stringify(reusable.style ?? null) !== JSON.stringify(nextStyle ?? null);
+          reusable.text = nextText;
+          reusable.style = nextStyle;
+        }
         const reusableTrack = this.getTrackRuntimeForClip(reusable);
         if (reusableTrack && reusable.sprite.parent !== reusableTrack.container) {
           reusableTrack.container.addChild(reusable.sprite);
@@ -629,6 +643,8 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
+          transitionFilter: null,
+          textDirty: true,
         };
 
         (compositorClip as any).clipType = 'text';
@@ -971,6 +987,15 @@ export class VideoCompositor {
       clip.transform = (next as any).transform;
       clip.transitionIn = (next as any).transitionIn;
       clip.transitionOut = (next as any).transitionOut;
+      if (clip.clipKind === 'text') {
+        const nextText = String((next as any).text ?? '');
+        const nextStyle = (next as any).style;
+        const styleChanged =
+          JSON.stringify(clip.style ?? null) !== JSON.stringify(nextStyle ?? null);
+        clip.textDirty = clip.text !== nextText || styleChanged || clip.textDirty === true;
+        clip.text = nextText;
+        clip.style = nextStyle;
+      }
       const trackRuntime = this.getTrackRuntimeForClip(clip);
       if (trackRuntime && clip.sprite.parent !== trackRuntime.container) {
         trackRuntime.container.addChild(clip.sprite);
@@ -1036,6 +1061,7 @@ export class VideoCompositor {
       const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
 
       for (const clip of active) {
+        this.syncTransitionFilter(clip, timeUs);
         const effectiveOpacity = this.computeTransitionOpacity(clip, timeUs);
         clip.sprite.alpha = effectiveOpacity;
         clip.sprite.blendMode = clip.blendMode ?? 'normal';
@@ -1058,7 +1084,10 @@ export class VideoCompositor {
         }
 
         if (clip.clipKind === 'text') {
-          this.drawTextClip(clip);
+          if (clip.textDirty) {
+            this.drawTextClip(clip);
+            clip.textDirty = false;
+          }
           clip.sprite.visible = true;
           continue;
         }
@@ -1274,15 +1303,20 @@ export class VideoCompositor {
           this.stageVisibilityState[i] = children[i]?.visible ?? false;
         }
 
+        const visibleAdjustmentByParent = new Map<Container, CompositorClip>();
+        for (const clip of active) {
+          if (clip.clipKind !== 'adjustment' || !clip.sprite.visible) continue;
+          const parent = clip.sprite.parent;
+          if (!parent || !(parent instanceof Container)) continue;
+          visibleAdjustmentByParent.set(parent, clip);
+        }
+
         let applied = false;
         for (let i = 0; i < children.length; i++) {
           const child = children[i] as Container | undefined;
           if (!child) continue;
 
-          const adjustmentClip = this.clips.find(
-            (clip) =>
-              clip.clipKind === 'adjustment' && clip.sprite.visible && clip.sprite.parent === child,
-          );
+          const adjustmentClip = visibleAdjustmentByParent.get(child);
           if (!adjustmentClip) continue;
 
           // Hide adjustment layer itself and everything above it
@@ -1430,7 +1464,7 @@ export class VideoCompositor {
       // In composite mode the clip fades from the lower track composition — opacity still applies
       if (localTimeUs < dur) {
         const manifest = getTransitionManifest(clip.transitionIn.type);
-        if (manifest) {
+        if (manifest && manifest.renderMode !== 'shader') {
           const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
           opacity = Math.min(
             opacity,
@@ -1447,7 +1481,7 @@ export class VideoCompositor {
       const outStartUs = clipDurUs - dur;
       if (localTimeUs >= outStartUs) {
         const manifest = getTransitionManifest(clip.transitionOut.type);
-        if (manifest) {
+        if (manifest && manifest.renderMode !== 'shader') {
           const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
           opacity = Math.min(
             opacity,
@@ -1458,6 +1492,56 @@ export class VideoCompositor {
     }
 
     return Math.max(0, Math.min(1, opacity));
+  }
+
+  private getActiveTransitionState(clip: CompositorClip, timeUs: number) {
+    const transition = clip.transitionIn;
+    if (!transition || transition.durationUs <= 0) return null;
+
+    const localTimeUs = timeUs - clip.startUs;
+    if (localTimeUs < 0 || localTimeUs >= transition.durationUs) return null;
+
+    const progress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
+    const manifest = getTransitionManifest(transition.type);
+
+    return {
+      transition,
+      manifest,
+      progress,
+      curve: transition.curve ?? 'linear',
+    };
+  }
+
+  private syncTransitionFilter(clip: CompositorClip, timeUs: number) {
+    const state = this.getActiveTransitionState(clip, timeUs);
+    if (!state || state.manifest?.renderMode !== 'shader' || !state.manifest.createFilter) {
+      if (clip.transitionFilter) {
+        try {
+          clip.transitionFilter.destroy();
+        } catch {
+          // ignore
+        }
+        this.transitionFilters.delete(clip.itemId);
+        clip.transitionFilter = null;
+      }
+      return;
+    }
+
+    let filter = clip.transitionFilter ?? this.transitionFilters.get(clip.itemId) ?? null;
+    if (!filter) {
+      filter = state.manifest.createFilter();
+      this.transitionFilters.set(clip.itemId, filter);
+    }
+
+    if (state.manifest.updateFilter) {
+      state.manifest.updateFilter(filter, {
+        progress: state.progress,
+        curve: state.curve,
+        params: state.transition.params,
+      });
+    }
+
+    clip.transitionFilter = filter;
   }
 
   private applyClipEffects(clip: CompositorClip) {
@@ -1504,6 +1588,10 @@ export class VideoCompositor {
       } catch {
         // ignore
       }
+    }
+
+    if (clip.transitionFilter) {
+      filters.push(clip.transitionFilter);
     }
 
     clip.sprite.filters = filters.length > 0 ? filters : null;
@@ -2068,6 +2156,14 @@ export class VideoCompositor {
     for (const clip of this.clips) {
       this.destroyClip(clip);
     }
+    for (const filter of this.transitionFilters.values()) {
+      try {
+        filter.destroy();
+      } catch {
+        // ignore
+      }
+    }
+    this.transitionFilters.clear();
     for (const track of this.tracks) {
       if (track.effectFilters) {
         for (const filter of track.effectFilters.values()) {
@@ -2174,6 +2270,15 @@ export class VideoCompositor {
         }
       }
       clip.effectFilters.clear();
+    }
+    if (clip.transitionFilter) {
+      try {
+        clip.transitionFilter.destroy();
+      } catch {
+        // ignore
+      }
+      this.transitionFilters.delete(clip.itemId);
+      clip.transitionFilter = null;
     }
     clip.sprite.destroy(true);
   }

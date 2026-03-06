@@ -1,4 +1,14 @@
+import type { Filter } from 'pixi.js';
+
 export type TransitionType = string;
+
+export type TransitionCurve = 'linear' | 'bezier';
+
+export interface TransitionShaderContext {
+  progress: number;
+  curve: TransitionCurve;
+  params?: Record<string, unknown>;
+}
 
 export interface TransitionManifest<T = Record<string, never>> {
   type: TransitionType;
@@ -6,10 +16,13 @@ export interface TransitionManifest<T = Record<string, never>> {
   icon: string;
   defaultDurationUs: number;
   defaultParams: T;
+  renderMode?: 'opacity' | 'shader';
+  createFilter?: () => Filter;
+  updateFilter?: (filter: Filter, context: TransitionShaderContext) => void;
   /** Returns opacity [0..1] of the outgoing clip at `progress` [0..1] */
-  computeOutOpacity: (progress: number, params: T, curve: 'linear' | 'bezier') => number;
+  computeOutOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
   /** Returns opacity [0..1] of the incoming clip at `progress` [0..1] */
-  computeInOpacity: (progress: number, params: T, curve: 'linear' | 'bezier') => number;
+  computeInOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
 }
 
 /** Cubic ease-in-out approximation for bezier transition curve */

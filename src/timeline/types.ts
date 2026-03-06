@@ -89,6 +89,7 @@ export interface ClipTransition {
   mode?: 'blend' | 'blend_previous' | 'composite';
   /** Opacity interpolation curve */
   curve?: 'linear' | 'bezier';
+  params?: Record<string, unknown>;
 }
 
 export type ColorAdjustmentEffect = BaseClipEffect<ColorAdjustmentParams> & {
