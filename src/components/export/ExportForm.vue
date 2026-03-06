@@ -45,6 +45,7 @@ const {
   excludeAudio,
   audioCodec,
   audioBitrateKbps,
+  audioSampleRate,
   exportWidth,
   exportHeight,
   exportFps,
@@ -116,6 +117,7 @@ watch(
     excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
     audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
+    audioSampleRate.value = projectStore.projectSettings.exportDefaults.encoding.audioSampleRate;
     bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value =
       projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
@@ -234,6 +236,7 @@ async function handleConfirm() {
         projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
         projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
           audioBitrateKbps.value;
+        projectStore.projectSettings.exportDefaults.encoding.audioSampleRate = audioSampleRate.value;
         projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
         projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
           keyframeIntervalSec.value;
@@ -253,6 +256,7 @@ async function handleConfirm() {
           audioBitrate: audioBitrateKbps.value * 1000,
           audio: !excludeAudio.value,
           audioCodec: resolvedCodecs.audioCodec,
+          audioSampleRate: audioSampleRate.value,
           width: normalizedExportWidth.value,
           height: normalizedExportHeight.value,
           fps: normalizedExportFps.value,
@@ -407,12 +411,14 @@ async function handleConfirm() {
         v-model:exclude-audio="excludeAudio"
         v-model:audio-codec="audioCodec"
         v-model:audio-bitrate-kbps="audioBitrateKbps"
+        v-model:audio-sample-rate="audioSampleRate"
         v-model:bitrate-mode="bitrateMode"
         v-model:keyframe-interval-sec="keyframeIntervalSec"
         v-model:export-alpha="exportAlpha"
         v-model:metadata-title="metadataTitle"
         v-model:metadata-author="metadataAuthor"
         v-model:metadata-tags="metadataTags"
+        :show-audio-advanced="true"
         :show-metadata="true"
         :disabled="isExporting"
         :has-audio="true"

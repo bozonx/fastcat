@@ -27,6 +27,7 @@ import { useLocalStorage, useResizeObserver } from '@vueuse/core';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
 import { formatZoomMultiplier, stepTimelineZoomPosition, timelineZoomPositionToScale } from '~/utils/zoom';
+import { frameToUs, sanitizeFps } from '~/timeline/commands/utils';
 
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -280,6 +281,19 @@ function queueTimelineZoom(params: { delta: number; anchor: TimelineZoomAnchor }
   timelineZoomFrameId = window.requestAnimationFrame(flushPendingTimelineZoom);
 }
 
+function seekByWheelDelta(delta: number) {
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  const direction = delta < 0 ? 1 : -1;
+  const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+  const frameStepUs = frameToUs(1, fps);
+
+  return {
+    frame: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * frameStepUs),
+    second: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * 1_000_000),
+  };
+}
+
 const isPanning = ref(false);
 const panStartX = ref(0);
 const panStartScrollLeft = ref(0);
@@ -392,12 +406,16 @@ function onTimelineRulerWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
+  const isShift = e.shiftKey;
   const isSecondary = isSecondaryWheel(e);
   const delta = getNormalizedWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
   const settings = workspaceStore.userSettings.mouse.ruler;
-  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
+  let action = settings.wheel;
+  if (isSecondary && isShift) action = settings.wheelSecondaryShift;
+  else if (isSecondary) action = settings.wheelSecondary;
+  else if (isShift) action = settings.wheelShift;
 
   if (action === 'none') {
     e.preventDefault();
@@ -423,6 +441,12 @@ function onTimelineRulerWheel(e: WheelEvent) {
   } else if (action === 'scroll_horizontal') {
     e.preventDefault();
     el.scrollLeft += delta;
+  } else if (action === 'seek_frame') {
+    e.preventDefault();
+    seekByWheelDelta(delta)?.frame();
+  } else if (action === 'seek_second') {
+    e.preventDefault();
+    seekByWheelDelta(delta)?.second();
   }
 }
 
@@ -504,6 +528,17 @@ function onTimelineWheel(e: WheelEvent) {
       updateTrackHeight(track.id, nextHeight);
     }
     return;
+  }
+
+  if (action === 'seek_frame') {
+    e.preventDefault();
+    seekByWheelDelta(delta)?.frame();
+    return;
+  }
+
+  if (action === 'seek_second') {
+    e.preventDefault();
+    seekByWheelDelta(delta)?.second();
   }
 }
 
@@ -1045,7 +1080,7 @@ async function onDrop(e: DragEvent, trackId: string) {
             >
               <div
                 v-if="isZooming"
-                class="absolute bottom-12 right-5 px-3 py-1.5 text-sm font-mono font-semibold rounded-lg bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
+                class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono font-semibold rounded-md bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
                 :style="{ zIndex: 60 }"
               >
                 {{ zoomFactor }}

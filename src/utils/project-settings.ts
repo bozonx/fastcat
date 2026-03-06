@@ -20,6 +20,7 @@ export interface GranVideoEditorProjectSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
+      audioSampleRate: number;
       bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
       exportAlpha: boolean;
@@ -68,6 +69,7 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
       excludeAudio: false,
       audioCodec: 'aac',
       audioBitrateKbps: 128,
+      audioSampleRate: 48000,
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
@@ -119,6 +121,7 @@ function getProjectSettingsFromUserDefaults(
         excludeAudio: userSettings.exportDefaults.encoding.excludeAudio,
         audioCodec: userSettings.exportDefaults.encoding.audioCodec,
         audioBitrateKbps: userSettings.exportDefaults.encoding.audioBitrateKbps,
+        audioSampleRate: userSettings.exportDefaults.encoding.audioSampleRate,
         bitrateMode: userSettings.exportDefaults.encoding.bitrateMode,
         keyframeIntervalSec: userSettings.exportDefaults.encoding.keyframeIntervalSec,
         exportAlpha: userSettings.exportDefaults.encoding.exportAlpha,
@@ -174,6 +177,7 @@ export function normalizeProjectSettings(
 
   const bitrateMbps = Number(encodingInput.bitrateMbps);
   const audioBitrateKbps = Number(encodingInput.audioBitrateKbps);
+  const audioSampleRateRaw = Number(encodingInput.audioSampleRate);
   const format = encodingInput.format;
 
   const audioChannels = projectInput.audioChannels === 'mono' ? 'mono' : 'stereo';
@@ -259,6 +263,10 @@ export function normalizeProjectSettings(
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
+        audioSampleRate:
+          Number.isFinite(audioSampleRateRaw) && audioSampleRateRaw > 0
+            ? Math.round(Math.min(192000, Math.max(8000, audioSampleRateRaw)))
+            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioSampleRate,
         bitrateMode: encodingInput.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyframeIntervalSec: (() => {
           const v = Number(encodingInput.keyframeIntervalSec);

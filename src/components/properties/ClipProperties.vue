@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFilesPageStore } from '~/stores/filesPage.store';
 import type { TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
@@ -34,6 +35,7 @@ const editorViewStore = useEditorViewStore();
 const fileManager = useFileManager();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
+const filesPageStore = useFilesPageStore();
 
 const isRenameModalOpen = ref(false);
 
@@ -162,7 +164,7 @@ function toggleShowWaveform() {
     showWaveform: !current,
   });
 }
- 
+
 function toggleShowThumbnails() {
   const current =
     (props.clip as import('~/timeline/types').TimelineClipItem).showThumbnails !== false;
@@ -186,16 +188,12 @@ function handleRenameClip(newName: string) {
 async function handleSelectInFileManager() {
   if (props.clip.clipType !== 'media' || !props.clip.source?.path) return;
   const path = props.clip.source.path;
+  const parentPath = path.split('/').slice(0, -1).join('/');
 
-  // Switch to files view so the file manager is visible
-  if (editorViewStore.currentView !== 'files' && editorViewStore.currentView !== 'cut') {
-    editorViewStore.goToFiles();
-  }
+  editorViewStore.goToFiles();
 
-  // Make sure the file manager has up-to-date entries before trying to select.
   await fileManager.loadProjectDirectory();
 
-  // Expand parent directories so the item becomes visible in the tree.
   const parts = path.split('/').filter(Boolean);
   let currentPath = '';
   for (let i = 0; i < parts.length - 1; i += 1) {
@@ -205,6 +203,13 @@ async function handleSelectInFileManager() {
     const dirEntry = fileManager.findEntryByPath(currentPath);
     if (dirEntry && dirEntry.kind === 'directory' && !dirEntry.expanded) {
       await fileManager.toggleDirectory(dirEntry);
+    }
+  }
+
+  if (parentPath) {
+    const parentEntry = fileManager.findEntryByPath(parentPath);
+    if (parentEntry && parentEntry.kind === 'directory') {
+      filesPageStore.selectFolder(parentEntry);
     }
   }
 

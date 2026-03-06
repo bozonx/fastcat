@@ -46,7 +46,7 @@ export function useTimelineHotkeys() {
     'timeline.rippleDelete': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
 
-      if (timelineStore.isSelectionRangeSelected()) {
+      if (timelineStore.getSelectionRange()) {
         timelineStore.removeSelectionRange();
         return true;
       }

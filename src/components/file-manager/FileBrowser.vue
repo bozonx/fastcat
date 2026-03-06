@@ -132,6 +132,7 @@ const {
 });
 
 const rootContainer = ref<HTMLElement | null>(null);
+const pendingScrollToEntryPath = ref<string | null>(null);
 
 const isMarqueeSelecting = ref(false);
 const marqueeStart = ref<{ x: number; y: number } | null>(null);
@@ -717,6 +718,10 @@ watch(
     if (entry && entry.kind === 'directory' && entry.handle && entry.path) {
       void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
     }
+
+    if (entry?.kind === 'file' && entry.path) {
+      pendingScrollToEntryPath.value = entry.path;
+    }
   },
   { immediate: true },
 );
@@ -822,6 +827,32 @@ watch(
   async () => {
     await loadFolderContent();
     await loadParentFolders();
+
+    if (!pendingScrollToEntryPath.value) return;
+
+    const targetPath = pendingScrollToEntryPath.value;
+    const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
+    const targetParentPath = targetPath.split('/').slice(0, -1).join('/');
+
+    if (targetParentPath !== selectedFolderPath) return;
+
+    requestAnimationFrame(() => {
+      const container = rootContainer.value;
+      if (!container || !pendingScrollToEntryPath.value) return;
+
+      const targetNode = container.querySelector<HTMLElement>(
+        `[data-entry-path="${CSS.escape(pendingScrollToEntryPath.value)}"]`,
+      );
+      if (!targetNode) return;
+
+      targetNode.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+      targetNode.focus();
+      pendingScrollToEntryPath.value = null;
+    });
   },
   { immediate: true },
 );
@@ -835,6 +866,26 @@ watch(
     }
     // only reload the current view content, not the whole tree
     await loadFolderContent();
+
+    if (!pendingScrollToEntryPath.value) return;
+
+    requestAnimationFrame(() => {
+      const container = rootContainer.value;
+      if (!container || !pendingScrollToEntryPath.value) return;
+
+      const targetNode = container.querySelector<HTMLElement>(
+        `[data-entry-path="${CSS.escape(pendingScrollToEntryPath.value)}"]`,
+      );
+      if (!targetNode) return;
+
+      targetNode.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+      targetNode.focus();
+      pendingScrollToEntryPath.value = null;
+    });
   },
 );
 

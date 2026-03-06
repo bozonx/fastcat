@@ -7,6 +7,9 @@ import {
   MIDDLE_CLICK_ACTIONS,
   RULER_WHEEL_ACTIONS,
   RULER_DOUBLE_CLICK_ACTIONS,
+  TRACK_HEADERS_WHEEL_ACTIONS,
+  DRAG_ACTIONS,
+  SHIFT_CLICK_ACTIONS,
 } from '~/utils/mouse';
 
 const { t } = useI18n();
@@ -16,6 +19,8 @@ const rulerWheelOptions = computed(() => {
   const labels: Record<string, string> = {
     zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
     scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
+    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return RULER_WHEEL_ACTIONS.map((action) => ({
@@ -58,6 +63,8 @@ const timelineWheelOptions = computed(() => {
     scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
     zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
     zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
+    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return TIMELINE_WHEEL_ACTIONS.map((action) => ({
@@ -71,6 +78,8 @@ const trackHeadersWheelOptions = computed(() => {
     scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
     resize_track: t('videoEditor.settings.mouseActionResizeTrack', 'Resize track height'),
     zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
+    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return TRACK_HEADERS_WHEEL_ACTIONS.map((action) => ({
@@ -103,6 +112,7 @@ const middleClickOptions = computed(() => {
 function resetDefaults() {
   workspaceStore.userSettings.mouse.ruler = { ...DEFAULT_USER_SETTINGS.mouse.ruler };
   workspaceStore.userSettings.mouse.timeline = { ...DEFAULT_USER_SETTINGS.mouse.timeline };
+  workspaceStore.userSettings.mouse.trackHeaders = { ...DEFAULT_USER_SETTINGS.mouse.trackHeaders };
   workspaceStore.userSettings.mouse.monitor = { ...DEFAULT_USER_SETTINGS.mouse.monitor };
 }
 </script>
@@ -150,6 +160,26 @@ function resetDefaults() {
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
                   <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.wheelShift"
+                    :items="rulerWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) => (workspaceStore.userSettings.mouse.ruler.wheelShift = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
                   </span>
                 </td>
@@ -163,6 +193,33 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.wheelSecondary = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{
+                      t(
+                        'videoEditor.settings.mouseTimelineWheelSecondaryShift',
+                        'Secondary wheel + Shift',
+                      )
+                    }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.wheelSecondaryShift"
+                    :items="rulerWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.wheelSecondaryShift =
+                          v?.value ?? v)
                     "
                   />
                 </td>
@@ -409,6 +466,27 @@ function resetDefaults() {
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
                   <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.trackHeaders.wheelShift"
+                    :items="trackHeadersWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.trackHeaders.wheelShift = v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
                   </span>
                 </td>
@@ -422,6 +500,33 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.trackHeaders.wheelSecondary =
+                          v?.value ?? v)
+                    "
+                  />
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{
+                      t(
+                        'videoEditor.settings.mouseTimelineWheelSecondaryShift',
+                        'Secondary wheel + Shift',
+                      )
+                    }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.trackHeaders.wheelSecondaryShift"
+                    :items="trackHeadersWheelOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.trackHeaders.wheelSecondaryShift =
                           v?.value ?? v)
                     "
                   />

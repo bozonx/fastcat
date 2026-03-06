@@ -200,6 +200,7 @@ async function resetToDefaults() {
           v-model:audio-bitrate-kbps="
             projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
           "
+          v-model:audio-sample-rate="projectStore.projectSettings.exportDefaults.encoding.audioSampleRate"
           v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
           v-model:keyframe-interval-sec="
             projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
@@ -212,6 +213,7 @@ async function resetToDefaults() {
             projectStore.projectSettings.exportDefaults.encoding.metadata.author
           "
           v-model:metadata-tags="projectStore.projectSettings.exportDefaults.encoding.metadata.tags"
+          :show-audio-advanced="true"
           :show-metadata="true"
           :disabled="false"
           :has-audio="true"

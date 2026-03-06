@@ -41,6 +41,7 @@ export interface GranVideoEditorUserSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
+      audioSampleRate: number;
       bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
       exportAlpha: boolean;
@@ -48,38 +49,89 @@ export interface GranVideoEditorUserSettings {
   };
   mouse: {
     ruler: {
-      wheel: 'zoom_horizontal' | 'scroll_horizontal' | 'none';
-      wheelSecondary: 'zoom_horizontal' | 'scroll_horizontal' | 'none';
+      wheel: 'zoom_horizontal' | 'scroll_horizontal' | 'seek_frame' | 'seek_second' | 'none';
+      wheelShift: 'zoom_horizontal' | 'scroll_horizontal' | 'seek_frame' | 'seek_second' | 'none';
+      wheelSecondary:
+        | 'zoom_horizontal'
+        | 'scroll_horizontal'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
+      wheelSecondaryShift:
+        | 'zoom_horizontal'
+        | 'scroll_horizontal'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
       middleClick: 'pan' | 'move_playhead' | 'none';
       doubleClick: 'add_marker' | 'none';
       drag: 'pan' | 'move_playhead' | 'none';
       shiftClick: 'add_marker_and_edit' | 'none';
     };
     timeline: {
-      wheel: 'scroll_vertical' | 'scroll_horizontal' | 'zoom_horizontal' | 'zoom_vertical' | 'none';
+      wheel:
+        | 'scroll_vertical'
+        | 'scroll_horizontal'
+        | 'zoom_horizontal'
+        | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
       wheelShift:
         | 'scroll_vertical'
         | 'scroll_horizontal'
         | 'zoom_horizontal'
         | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
         | 'none';
       wheelSecondary:
         | 'scroll_vertical'
         | 'scroll_horizontal'
         | 'zoom_horizontal'
         | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
         | 'none';
       wheelSecondaryShift:
         | 'scroll_vertical'
         | 'scroll_horizontal'
         | 'zoom_horizontal'
         | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
         | 'none';
       middleClick: 'pan' | 'none';
     };
     trackHeaders: {
-      wheel: 'scroll_vertical' | 'resize_track' | 'zoom_vertical' | 'none';
-      wheelSecondary: 'scroll_vertical' | 'resize_track' | 'zoom_vertical' | 'none';
+      wheel:
+        | 'scroll_vertical'
+        | 'resize_track'
+        | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
+      wheelShift:
+        | 'scroll_vertical'
+        | 'resize_track'
+        | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
+      wheelSecondary:
+        | 'scroll_vertical'
+        | 'resize_track'
+        | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
+      wheelSecondaryShift:
+        | 'scroll_vertical'
+        | 'resize_track'
+        | 'zoom_vertical'
+        | 'seek_frame'
+        | 'seek_second'
+        | 'none';
     };
     monitor: {
       wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
@@ -134,6 +186,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       excludeAudio: false,
       audioCodec: 'aac',
       audioBitrateKbps: 128,
+      audioSampleRate: 48000,
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
@@ -142,7 +195,9 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   mouse: {
     ruler: {
       wheel: 'zoom_horizontal',
+      wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
+      wheelSecondaryShift: 'seek_frame',
       middleClick: 'pan',
       doubleClick: 'add_marker',
       drag: 'move_playhead',
@@ -157,7 +212,9 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     },
     trackHeaders: {
       wheel: 'scroll_vertical',
+      wheelShift: 'zoom_vertical',
       wheelSecondary: 'resize_track',
+      wheelSecondaryShift: 'seek_frame',
     },
     monitor: {
       wheel: 'zoom',
