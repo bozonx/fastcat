@@ -42,19 +42,22 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
   const isGeneratingProxyForFolder = computed(() => {
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'directory') return false;
-    const dirPath = typeof entry.path === 'string' ? entry.path : null;
 
     const gp = generatingProxies.value;
     if (!gp) return false;
 
-    // Non-recursive semantics: only treat the directory itself as a folder generation token.
-    // Nested file paths (e.g. /dir/x.mp4) are not considered folder generation.
-    if (dirPath && dirPath !== '') {
-      return gp.has(dirPath);
+    const dirPath = entry.path;
+    for (const p of gp) {
+      if (!dirPath) {
+        if (!p.includes('/')) return true;
+      } else {
+        if (p.startsWith(`${dirPath}/`)) {
+          const rel = p.slice(dirPath.length + 1);
+          if (!rel.includes('/')) return true;
+        }
+      }
     }
-
-    // Root folder: match explicit root marker only.
-    return gp.has('');
+    return false;
   });
 
   async function generateProxiesForSelectedFolder() {
