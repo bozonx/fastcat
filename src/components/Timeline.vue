@@ -141,8 +141,13 @@ const zoomFactor = computed(() => {
   return formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom));
 });
 
+const TIMELINE_ZOOM_WHEEL_STEP_DELTA = 100;
+
 let zoomTimeout: number | null = null;
 const isZooming = ref(false);
+let pendingTimelineZoomDelta = 0;
+let timelineZoomFrameId: number | null = null;
+let pendingTimelineZoomAnchor: TimelineZoomAnchor | null = null;
 
 watch(
   () => timelineStore.timelineZoom,
@@ -187,6 +192,82 @@ function applyZoomWithAnchor(params: { nextZoom: number; anchor: TimelineZoomAnc
   // Store anchor for the watcher to use
   pendingZoomAnchor.value = params.anchor;
   timelineStore.setTimelineZoom(params.nextZoom);
+}
+
+function getNormalizedWheelDelta(e: WheelEvent): number {
+  const delta = getWheelDelta(e);
+  if (!Number.isFinite(delta) || delta === 0) return 0;
+
+  if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+    return delta * 16;
+  }
+
+  if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+    return delta * Math.max(getViewportWidth(), 1);
+  }
+
+  return delta;
+}
+
+function stepTimelineZoomPositionByCount(currentZoom: number, stepCount: number): number {
+  if (!Number.isFinite(currentZoom) || stepCount === 0) return currentZoom;
+
+  const direction = stepCount > 0 ? 1 : -1;
+  let nextZoom = currentZoom;
+
+  for (let index = 0; index < Math.abs(stepCount); index += 1) {
+    const steppedZoom = stepTimelineZoomPosition(nextZoom, direction);
+    if (steppedZoom === nextZoom) break;
+    nextZoom = steppedZoom;
+  }
+
+  return nextZoom;
+}
+
+function flushPendingTimelineZoom() {
+  timelineZoomFrameId = null;
+
+  const anchor = pendingTimelineZoomAnchor;
+  const accumulatedDelta = pendingTimelineZoomDelta;
+  if (!anchor || accumulatedDelta === 0) return;
+
+  const rawStepCount = accumulatedDelta / TIMELINE_ZOOM_WHEEL_STEP_DELTA;
+  const stepCount = rawStepCount > 0 ? Math.floor(rawStepCount) : Math.ceil(rawStepCount);
+
+  if (stepCount === 0) {
+    return;
+  }
+
+  pendingTimelineZoomDelta -= stepCount * TIMELINE_ZOOM_WHEEL_STEP_DELTA;
+  if (Math.abs(pendingTimelineZoomDelta) < 1) {
+    pendingTimelineZoomDelta = 0;
+  }
+
+  const prevZoom = timelineStore.timelineZoom;
+  const nextZoom = stepTimelineZoomPositionByCount(prevZoom, stepCount);
+
+  if (nextZoom !== prevZoom) {
+    applyZoomWithAnchor({
+      nextZoom,
+      anchor,
+    });
+  } else {
+    pendingTimelineZoomDelta = 0;
+  }
+
+  if (pendingTimelineZoomDelta !== 0) {
+    timelineZoomFrameId = window.requestAnimationFrame(flushPendingTimelineZoom);
+  }
+}
+
+function queueTimelineZoom(params: { delta: number; anchor: TimelineZoomAnchor }) {
+  if (!Number.isFinite(params.delta) || params.delta === 0) return;
+
+  pendingTimelineZoomDelta += params.delta;
+  pendingTimelineZoomAnchor = params.anchor;
+
+  if (timelineZoomFrameId !== null) return;
+  timelineZoomFrameId = window.requestAnimationFrame(flushPendingTimelineZoom);
 }
 
 const isPanning = ref(false);
@@ -302,7 +383,7 @@ function onTimelineRulerWheel(e: WheelEvent) {
   if (!el) return;
 
   const isSecondary = isSecondaryWheel(e);
-  const delta = getWheelDelta(e);
+  const delta = getNormalizedWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
   const settings = workspaceStore.userSettings.mouse.ruler;
@@ -316,18 +397,14 @@ function onTimelineRulerWheel(e: WheelEvent) {
   if (action === 'zoom_horizontal') {
     e.preventDefault();
 
-    const prevZoom = timelineStore.timelineZoom;
-    const dir = delta < 0 ? 1 : -1;
-    const nextZoom = stepTimelineZoomPosition(prevZoom, dir);
-
     const rect = el.getBoundingClientRect();
     const viewportX = e.clientX - rect.left;
     const prevScrollLeft = el.scrollLeft;
     const anchorPx = prevScrollLeft + viewportX;
-    const anchorTimeUs = pxToTimeUs(anchorPx, prevZoom);
+    const anchorTimeUs = pxToTimeUs(anchorPx, timelineStore.timelineZoom);
 
-    applyZoomWithAnchor({
-      nextZoom,
+    queueTimelineZoom({
+      delta: -delta,
       anchor: {
         anchorTimeUs,
         anchorViewportX: viewportX,
@@ -359,7 +436,7 @@ function onTimelineWheel(e: WheelEvent) {
   }
 
   // Calculate delta amount based on event
-  const delta = getWheelDelta(e);
+  const delta = getNormalizedWheelDelta(e);
   if (!Number.isFinite(delta) || delta === 0) return;
 
   if (action === 'scroll_vertical') {
@@ -386,18 +463,14 @@ function onTimelineWheel(e: WheelEvent) {
   if (action === 'zoom_horizontal') {
     e.preventDefault();
 
-    const prevZoom = timelineStore.timelineZoom;
-    const dir = delta < 0 ? 1 : -1;
-    const nextZoom = stepTimelineZoomPosition(prevZoom, dir);
-
     const rect = el.getBoundingClientRect();
     const viewportX = e.clientX - rect.left;
     const prevScrollLeft = el.scrollLeft;
     const anchorPx = prevScrollLeft + viewportX;
-    const anchorTimeUs = pxToTimeUs(anchorPx, prevZoom);
+    const anchorTimeUs = pxToTimeUs(anchorPx, timelineStore.timelineZoom);
 
-    applyZoomWithAnchor({
-      nextZoom,
+    queueTimelineZoom({
+      delta: -delta,
       anchor: {
         anchorTimeUs,
         anchorViewportX: viewportX,
@@ -452,6 +525,21 @@ watch(
     scrollLeftRef.value = nextScrollLeft;
   },
   { flush: 'post' },
+);
+
+watch(
+  () => scrollEl.value,
+  (nextEl, prevEl) => {
+    if (nextEl || !prevEl) return;
+
+    if (timelineZoomFrameId !== null) {
+      window.cancelAnimationFrame(timelineZoomFrameId);
+      timelineZoomFrameId = null;
+    }
+
+    pendingTimelineZoomDelta = 0;
+    pendingTimelineZoomAnchor = null;
+  },
 );
 
 function clearDragPreview() {
