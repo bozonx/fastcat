@@ -295,9 +295,19 @@ export async function runExport(
   try {
     const maxVideoDurationUs = await localCompositor.loadTimeline(
       timelineClips,
-      async (path) => {
-        if (!hostClient) return null;
-        return hostClient.getFileHandleByPath(path);
+      {
+        getFileHandleByPath: async (path) => {
+          if (!hostClient) return null;
+          return hostClient.getFileHandleByPath(path);
+        },
+        getCurrentProjectId: async () => {
+          if (!hostClient) return null;
+          return await hostClient.getCurrentProjectId();
+        },
+        ensureVectorImageRaster: async (params) => {
+          if (!hostClient) return null;
+          return await hostClient.ensureVectorImageRaster(params);
+        },
       },
       checkCancel,
     );

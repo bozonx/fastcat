@@ -15,8 +15,6 @@ export interface HandleFilesDeps {
     projectDir: FileSystemDirectoryHandle;
     file: File;
   }) => Promise<{ dir: FileSystemDirectoryHandle; relativePathBase: string } | null>;
-  convertSvgToPng: (file: File) => Promise<File>;
-  onSvgConvertError: (params: { file: File; error: unknown }) => void;
   onSkipProjectFile: (params: { file: File }) => void;
   onMediaImported: (params: {
     fileHandle: FileSystemFileHandle;
@@ -40,16 +38,7 @@ export async function handleFilesCommand(
 
   const tasks = Array.from(files).map((inputFile) =>
     queue.add(async () => {
-      let file = inputFile;
-
-      if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
-        try {
-          file = await deps.convertSvgToPng(file);
-        } catch (e) {
-          deps.onSvgConvertError({ file, error: e });
-          return;
-        }
-      }
+      const file = inputFile;
 
       let targetDir = targetDirHandleRaw;
       let finalRelativePathBase = params.targetDirPath || '';

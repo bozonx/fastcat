@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FsEntry } from '../../../../src/types/fs';
 import {
+  handleFilesCommand,
   deleteEntryCommand,
   renameEntryCommand,
   moveEntryCommand,
@@ -55,6 +56,35 @@ function createDirEntry(params: { name: string; path: string; parent: FileSystem
 }
 
 describe('fileManagerCommands', () => {
+  it('handleFilesCommand keeps svg source file unchanged on import', async () => {
+    const projectDir = createDirHandleMock();
+    const targetDir = createDirHandleMock();
+    const writable = { write: vi.fn(async () => undefined), close: vi.fn(async () => undefined) };
+
+    (targetDir.getFileHandle as any)
+      .mockRejectedValueOnce(Object.assign(new Error('nf'), { name: 'NotFoundError' }))
+      .mockResolvedValueOnce({ createWritable: vi.fn(async () => writable) });
+
+    const file = new File(['<svg></svg>'], 'logo.svg', { type: 'image/svg+xml' });
+    const onMediaImported = vi.fn(async () => undefined);
+
+    await handleFilesCommand(
+      [file],
+      {},
+      {
+        getProjectDirHandle: async () => projectDir,
+        getTargetDirHandle: async () => ({ dir: targetDir, relativePathBase: 'images' }),
+        onSkipProjectFile: vi.fn(),
+        onMediaImported,
+      },
+    );
+
+    expect(targetDir.getFileHandle).toHaveBeenNthCalledWith(1, 'logo.svg');
+    expect(targetDir.getFileHandle).toHaveBeenNthCalledWith(2, 'logo.svg', { create: true });
+    expect(writable.write).toHaveBeenCalledWith(file);
+    expect(onMediaImported).not.toHaveBeenCalled();
+  });
+
   it('deleteEntryCommand calls removeEntry and onFileDeleted for files with path', async () => {
     const parent = createDirHandleMock();
     const { entry } = createFileEntry({ name: 'a.mp4', path: 'video/a.mp4', parent });
@@ -70,6 +100,23 @@ describe('fileManagerCommands', () => {
       recursive: true,
     });
     expect(onFileDeleted).toHaveBeenCalledWith({ path: 'video/a.mp4' });
+  });
+
+  it('deleteEntryCommand does not call onFileDeleted for directories', async () => {
+    const parent = createDirHandleMock();
+    const { entry } = createDirEntry({ name: 'images', path: 'images', parent });
+
+    const removeEntry = vi.fn(async () => undefined);
+    const onFileDeleted = vi.fn(async () => undefined);
+
+    await deleteEntryCommand(entry, { removeEntry, onFileDeleted });
+
+    expect(removeEntry).toHaveBeenCalledWith({
+      parentHandle: parent,
+      name: 'images',
+      recursive: true,
+    });
+    expect(onFileDeleted).not.toHaveBeenCalled();
   });
 
   it('renameEntryCommand uses handle.move when available', async () => {

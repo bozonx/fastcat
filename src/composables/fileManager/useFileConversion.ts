@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -58,6 +59,7 @@ const conversionModalRequestId = ref(0);
 export function useFileConversion() {
   const { t } = useI18n();
   const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
   const uiStore = useUiStore();
   const toast = useToast();
@@ -216,18 +218,22 @@ export function useFileConversion() {
     if (!targetEntry.value || !targetEntry.value.path) return;
     const { client } = getExportWorkerClient();
 
-    setExportHostApi({
-      getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-      onExportProgress: (progress) => {
-        conversionProgress.value = progress / 100;
-      },
-      onExportPhase: (phase) => {
-        conversionPhase.value = phase;
-      },
-      onExportWarning: (message) => {
-        console.warn(message);
-      },
-    });
+    setExportHostApi(
+      createVideoCoreHostApi({
+        getCurrentProjectId: () => projectStore.currentProjectId,
+        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        onExportProgress: (progress) => {
+          conversionProgress.value = progress / 100;
+        },
+        onExportPhase: (phase) => {
+          conversionPhase.value = phase;
+        },
+        onExportWarning: (message) => {
+          console.warn(message);
+        },
+      }),
+    );
 
     const meta = await client.extractMetadata(fileHandle);
     const durationUs = Math.round((meta.duration || 0) * 1_000_000);

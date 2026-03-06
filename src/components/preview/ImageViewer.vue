@@ -12,6 +12,7 @@ const props = defineProps<{
   src: string;
   alt?: string;
   isModal?: boolean;
+  focusPanelId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -59,6 +60,12 @@ function onClick(e: MouseEvent) {
   }
 }
 
+function shouldHandlePreviewZoom() {
+  if (props.isModal) return false;
+  if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
+  return focusStore.effectiveFocus === props.focusPanelId;
+}
+
 watch(
   () => props.src,
   () => {
@@ -69,18 +76,11 @@ watch(
 watch(
   () => uiStore.previewZoomTrigger,
   (trigger) => {
-    if (!trigger.timestamp) return;
-    if (!containerRef.value) return;
+    if (!trigger.timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
 
-    if (
-      focusStore.effectiveFocus === 'right' ||
-      focusStore.effectiveFocus === 'left' ||
-      document.activeElement?.closest('.image-viewer-container')
-    ) {
-      onCustomZoom(
-        new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
-      );
-    }
+    onCustomZoom(
+      new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
+    );
   },
   { deep: true },
 );
@@ -88,16 +88,9 @@ watch(
 watch(
   () => uiStore.previewZoomResetTrigger,
   (timestamp) => {
-    if (!timestamp) return;
-    if (!containerRef.value) return;
+    if (!timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
 
-    if (
-      focusStore.effectiveFocus === 'right' ||
-      focusStore.effectiveFocus === 'left' ||
-      document.activeElement?.closest('.image-viewer-container')
-    ) {
-      reset();
-    }
+    reset();
   },
 );
 

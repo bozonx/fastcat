@@ -11,13 +11,31 @@ import {
 
 function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] {
   if (!raw || typeof raw !== 'object') {
-    return { bindings: {} };
+    return {
+      layer1: DEFAULT_USER_SETTINGS.hotkeys.layer1,
+      layer2: DEFAULT_USER_SETTINGS.hotkeys.layer2,
+      bindings: {},
+    };
   }
 
   const input = raw as Record<string, unknown>;
+  const layer1 =
+    typeof input.layer1 === 'string' &&
+    input.layer1 in { [DEFAULT_USER_SETTINGS.hotkeys.layer1]: true }
+      ? (input.layer1 as GranVideoEditorUserSettings['hotkeys']['layer1'])
+      : DEFAULT_USER_SETTINGS.hotkeys.layer1;
+  const layer2 =
+    typeof input.layer2 === 'string' &&
+    input.layer2 in { [DEFAULT_USER_SETTINGS.hotkeys.layer2]: true }
+      ? (input.layer2 as GranVideoEditorUserSettings['hotkeys']['layer2'])
+      : DEFAULT_USER_SETTINGS.hotkeys.layer2;
   const bindingsInput = input.bindings;
   if (!bindingsInput || typeof bindingsInput !== 'object') {
-    return { bindings: {} };
+    return {
+      layer1,
+      layer2,
+      bindings: {},
+    };
   }
 
   const normalizedBindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>> = {};
@@ -40,7 +58,11 @@ function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] 
     }
   }
 
-  return { bindings: normalizedBindings };
+  return {
+    layer1,
+    layer2,
+    bindings: normalizedBindings,
+  };
 }
 
 function getProjectInput(raw: unknown): Record<string, unknown> {

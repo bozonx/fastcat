@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 
 export interface ProxyService {
   checkExistingProxies: (paths: string[]) => Promise<void>;
@@ -166,12 +167,16 @@ export function createProxyService(params: {
 
           const { client } = getExportWorkerClient();
 
-          setExportHostApi({
-            getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
-            onExportProgress: (progress) => {
-              params.proxyProgress.value[projectRelativePath] = progress;
-            },
-          });
+          setExportHostApi(
+            createVideoCoreHostApi({
+              getCurrentProjectId: () => null,
+              getWorkspaceHandle: () => null,
+              getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
+              onExportProgress: (progress) => {
+                params.proxyProgress.value[projectRelativePath] = progress;
+              },
+            }),
+          );
 
           const meta = await client.extractMetadata(fileHandle);
           const durationUs = Math.round((meta.duration || 0) * 1_000_000);

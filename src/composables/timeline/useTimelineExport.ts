@@ -18,6 +18,7 @@ import {
   terminateExportWorker,
   restartExportWorker,
 } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import type {
   ClipTransform,
   TimelineTrackItem,
@@ -1067,16 +1068,20 @@ export function useTimelineExport() {
 
     const { client } = getExportWorkerClient();
 
-    setExportHostApi({
-      getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-      onExportProgress: (progress) => onProgress(progress / 100),
-      onExportPhase: (phase) => {
-        exportPhase.value = phase;
-      },
-      onExportWarning: (message) => {
-        exportWarnings.value.push(message);
-      },
-    });
+    setExportHostApi(
+      createVideoCoreHostApi({
+        getCurrentProjectId: () => projectStore.currentProjectId,
+        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        onExportProgress: (progress) => onProgress(progress / 100),
+        onExportPhase: (phase) => {
+          exportPhase.value = phase;
+        },
+        onExportWarning: (message) => {
+          exportWarnings.value.push(message);
+        },
+      }),
+    );
 
     const finalOptions = {
       ...options,

@@ -45,9 +45,19 @@ const api: any = {
 
   async loadTimeline(clips: any[]) {
     if (!compositor) throw new Error('Compositor not initialized');
-    return compositor.loadTimeline(clips, async (path: string) => {
-      if (!hostClient) return null;
-      return hostClient.getFileHandleByPath(path);
+    return compositor.loadTimeline(clips, {
+      getFileHandleByPath: async (path: string) => {
+        if (!hostClient) return null;
+        return hostClient.getFileHandleByPath(path);
+      },
+      getCurrentProjectId: async () => {
+        if (!hostClient) return null;
+        return await hostClient.getCurrentProjectId();
+      },
+      ensureVectorImageRaster: async (params) => {
+        if (!hostClient) return null;
+        return await hostClient.ensureVectorImageRaster(params);
+      },
     });
   },
 
@@ -120,9 +130,19 @@ const api: any = {
     try {
       await localCompositor.loadTimeline(
         timelineClips,
-        async (path) => {
-          if (!hostClient) return null;
-          return hostClient.getFileHandleByPath(path);
+        {
+          getFileHandleByPath: async (path) => {
+            if (!hostClient) return null;
+            return hostClient.getFileHandleByPath(path);
+          },
+          getCurrentProjectId: async () => {
+            if (!hostClient) return null;
+            return await hostClient.getCurrentProjectId();
+          },
+          ensureVectorImageRaster: async (params) => {
+            if (!hostClient) return null;
+            return await hostClient.ensureVectorImageRaster(params);
+          },
         },
         () => false,
       );

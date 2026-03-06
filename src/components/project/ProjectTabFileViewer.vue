@@ -107,6 +107,7 @@ onUnmounted(() => {
       :file-path="filePath"
       :file-name="fileName"
       :alt="fileName"
+      focus-panel-id="project"
     />
   </div>
 </template>

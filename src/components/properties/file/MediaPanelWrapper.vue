@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 const props = defineProps<{
   filePath: string;
   mediaType: 'video' | 'audio' | 'image' | 'unknown' | null;
+  focusPanelId?: string;
 }>();
 
 const currentUrl = ref<string | null>(null);
@@ -58,6 +59,7 @@ onUnmounted(() => {
       :text-content="''"
       :file-path="props.filePath"
       :file-name="fileName"
+      :focus-panel-id="props.focusPanelId"
       class="border-none w-full h-full flex-1 max-h-full min-h-0 absolute inset-0"
     />
   </div>

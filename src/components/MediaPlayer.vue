@@ -12,6 +12,7 @@ const props = defineProps<{
   src: string;
   type: 'video' | 'audio';
   isModal?: boolean;
+  focusPanelId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -226,7 +227,9 @@ watch(
 );
 
 function shouldHandlePreviewPlaybackEvent() {
-  return Boolean(playerRootEl.value);
+  if (!playerRootEl.value || props.isModal) return false;
+  if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
+  return focusStore.effectiveFocus === props.focusPanelId;
 }
 
 watch(
@@ -276,18 +279,11 @@ watch(
 watch(
   () => uiStore.previewZoomTrigger,
   (trigger) => {
-    if (!trigger.timestamp) return;
-    if (!shouldHandlePreviewPlaybackEvent()) return;
+    if (!shouldHandlePreviewPlaybackEvent() || !trigger.timestamp) return;
 
-    if (
-      focusStore.effectiveFocus === 'right' ||
-      focusStore.effectiveFocus === 'left' ||
-      document.activeElement?.closest('.media-player-container')
-    ) {
-      onCustomZoom(
-        new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
-      );
-    }
+    onCustomZoom(
+      new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
+    );
   },
   { deep: true },
 );
@@ -295,16 +291,9 @@ watch(
 watch(
   () => uiStore.previewZoomResetTrigger,
   (timestamp) => {
-    if (!timestamp) return;
-    if (!shouldHandlePreviewPlaybackEvent()) return;
+    if (!shouldHandlePreviewPlaybackEvent() || !timestamp) return;
 
-    if (
-      focusStore.effectiveFocus === 'right' ||
-      focusStore.effectiveFocus === 'left' ||
-      document.activeElement?.closest('.media-player-container')
-    ) {
-      reset();
-    }
+    reset();
   },
 );
 

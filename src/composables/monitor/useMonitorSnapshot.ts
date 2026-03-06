@@ -5,6 +5,7 @@ import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 
@@ -35,10 +36,14 @@ export function useMonitorSnapshot(input: {
 
     try {
       const { client } = getExportWorkerClient();
-      setExportHostApi({
-        getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
-        onExportProgress: () => {},
-      });
+      setExportHostApi(
+        createVideoCoreHostApi({
+          getCurrentProjectId: () => input.projectStore.currentProjectId,
+          getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
+          getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
+          onExportProgress: () => {},
+        }),
+      );
 
       const clipsPayload = getClipsPayload();
 
@@ -116,10 +121,14 @@ export function useMonitorSnapshot(input: {
       );
 
       const { client } = getExportWorkerClient();
-      setExportHostApi({
-        getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
-        onExportProgress: () => {},
-      });
+      setExportHostApi(
+        createVideoCoreHostApi({
+          getCurrentProjectId: () => input.projectStore.currentProjectId,
+          getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
+          getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
+          onExportProgress: () => {},
+        }),
+      );
 
       const clipsPayload = getClipsPayload();
 
