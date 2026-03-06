@@ -233,6 +233,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectionStore.selectTimelineSelectionRange();
   }
 
+  function createSelectionRange(input: TimelineSelectionRange) {
+    updateSelectionRange({
+      startUs: Math.max(0, Math.round(input.startUs)),
+      endUs: Math.max(Math.round(input.startUs) + 1, Math.round(input.endUs)),
+    });
+    selectionStore.selectTimelineSelectionRange();
+  }
+
   function removeSelectionRange() {
     updateSelectionRange(null);
     if (
@@ -250,12 +258,31 @@ export const useTimelineStore = defineStore('timeline', () => {
     const startUs = Math.max(0, Math.round(marker.timeUs));
     const durationUs = Math.max(1, Math.round(marker.durationUs ?? 5_000_000));
 
-    updateSelectionRange({
+    createSelectionRange({
       startUs,
       endUs: startUs + durationUs,
     });
     markerService.removeMarker(markerId);
-    selectionStore.selectTimelineSelectionRange();
+  }
+
+  function createSelectionRangeFromMarker(markerId: string) {
+    const marker = markerService.getMarkers().find((item) => item.id === markerId);
+    if (!marker) return;
+
+    const startUs = Math.max(0, Math.round(marker.timeUs));
+    const durationUs = Math.max(1, Math.round(marker.durationUs ?? 5_000_000));
+
+    createSelectionRange({
+      startUs,
+      endUs: startUs + durationUs,
+    });
+  }
+
+  function isSelectionRangeSelected() {
+    return (
+      selectionStore.selectedEntity?.source === 'timeline' &&
+      selectionStore.selectedEntity.kind === 'selection-range'
+    );
   }
 
   function convertSelectionRangeToMarker() {
@@ -586,6 +613,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     addMarkerAtPlayhead: markerService.addMarkerAtPlayhead,
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,
     createSelectionRangeAtPlayhead,
+    createSelectionRange,
     updateMarker: markerService.updateMarker,
     removeMarker: markerService.removeMarker,
     updateSelectionRange,
@@ -593,7 +621,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     convertMarkerToZone: markerService.convertMarkerToZone,
     convertZoneToMarker: markerService.convertZoneToMarker,
     convertMarkerToSelectionRange,
+    createSelectionRangeFromMarker,
     convertSelectionRangeToMarker,
+    isSelectionRangeSelected,
     rippleTrimSelectionRange,
     moveItemToTrack,
     extractAudioToTrack,
