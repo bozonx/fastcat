@@ -19,6 +19,7 @@ import ClipTransitionsSection from '~/components/properties/clip/ClipTransitions
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { formatAudioChannels } from '~/utils/audio';
+import { sanitizeFps } from '~/timeline/commands/utils';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -46,8 +47,92 @@ const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video'
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
 
+const isFreePosition = computed(() => {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return false;
+  const fps = sanitizeFps(doc.timebase?.fps);
+
+  const startFrame = (props.clip.timelineRange.startUs * fps) / 1_000_000;
+  const durFrame = (props.clip.timelineRange.durationUs * fps) / 1_000_000;
+
+  const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
+  const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
+
+  return !isStartQuantized || !isDurationQuantized;
+});
+
+const hasLockedLinkedAudio = computed(() => {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return false;
+  if (clipTrackKind.value !== 'video') return false;
+  return doc.tracks
+    .filter((t) => t.kind === 'audio')
+    .some((t) =>
+      t.items.some(
+        (it) =>
+          it.kind === 'clip' &&
+          Boolean((it as any).linkedVideoClipId) &&
+          Boolean((it as any).lockToLinkedVideo) &&
+          String((it as any).linkedVideoClipId) === props.clip.id,
+      ),
+    );
+});
+
+const isLockedLinkedAudioClip = computed(() => {
+  if (clipTrackKind.value !== 'audio') return false;
+  return Boolean((props.clip as any).linkedVideoClipId) && Boolean((props.clip as any).lockToLinkedVideo);
+});
+
 function handleDeleteClip() {
   timelineStore.deleteSelectedItems(props.clip.trackId);
+}
+
+function handleUnlinkAudio() {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return;
+
+  if (isLockedLinkedAudioClip.value) {
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+      linkedVideoClipId: undefined,
+      lockToLinkedVideo: false,
+    } as any);
+    return;
+  }
+
+  if (clipTrackKind.value === 'video') {
+    const cmds = doc.tracks
+      .filter((t) => t.kind === 'audio')
+      .flatMap((t) => t.items)
+      .filter(
+        (it): it is import('~/timeline/types').TimelineClipItem =>
+          it.kind === 'clip' &&
+          Boolean((it as any).linkedVideoClipId) &&
+          Boolean((it as any).lockToLinkedVideo) &&
+          String((it as any).linkedVideoClipId) === props.clip.id,
+      )
+      .map((a) => ({
+        type: 'update_clip_properties' as const,
+        trackId: a.trackId,
+        itemId: a.id,
+        properties: {
+          linkedVideoClipId: undefined,
+          lockToLinkedVideo: false,
+        } as any,
+      }));
+    if (cmds.length === 0) return;
+    timelineStore.batchApplyTimeline(cmds as any);
+  }
+}
+
+function handleQuantizeClip() {
+  timelineStore.applyTimeline({
+    type: 'trim_item',
+    trackId: props.clip.trackId,
+    itemId: props.clip.id,
+    edge: 'end',
+    deltaUs: 0,
+    quantizeToFrames: true,
+  });
 }
 
 function toggleAudioWaveformMode() {
@@ -366,6 +451,30 @@ defineExpose({
           {{ t('common.delete', 'Delete') }}
         </UButton>
       </div>
+
+      <UButton
+        v-if="isFreePosition"
+        size="xs"
+        variant="soft"
+        color="neutral"
+        icon="i-heroicons-squares-2x2"
+        class="w-full justify-center mt-2"
+        @click="handleQuantizeClip"
+      >
+        {{ t('granVideoEditor.timeline.quantize', 'Quantize to frames') }}
+      </UButton>
+
+      <UButton
+        v-if="hasLockedLinkedAudio || isLockedLinkedAudioClip"
+        size="xs"
+        variant="soft"
+        color="neutral"
+        icon="i-heroicons-link-slash"
+        class="w-full justify-center mt-2"
+        @click="handleUnlinkAudio"
+      >
+        {{ t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio') }}
+      </UButton>
       <UButton
         v-if="clip.clipType === 'media'"
         size="xs"

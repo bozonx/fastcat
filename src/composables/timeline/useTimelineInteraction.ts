@@ -6,6 +6,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import type { TimelineMarker } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import {
   BASE_PX_PER_SECOND,
@@ -30,6 +31,8 @@ function computeSnapTargetsUs(params: {
   includeTimelineStart: boolean;
   includeTimelineEndUs: number | null;
   includePlayheadUs: number | null;
+  includeMarkers: boolean;
+  markers: TimelineMarker[];
 }): number[] {
   const targets: number[] = [];
   if (params.includeTimelineStart) targets.push(0);
@@ -41,6 +44,16 @@ function computeSnapTargetsUs(params: {
   }
   if (typeof params.includePlayheadUs === 'number' && Number.isFinite(params.includePlayheadUs)) {
     targets.push(params.includePlayheadUs);
+  }
+
+  if (params.includeMarkers) {
+    for (const m of params.markers) {
+      if (!Number.isFinite(m.timeUs)) continue;
+      targets.push(m.timeUs);
+      if (typeof m.durationUs === 'number' && Number.isFinite(m.durationUs)) {
+        targets.push(m.timeUs + m.durationUs);
+      }
+    }
   }
 
   for (const track of params.tracks) {
@@ -181,6 +194,8 @@ export function useTimelineInteraction(
       includeTimelineStart: true,
       includeTimelineEndUs: timelineEndUs,
       includePlayheadUs: timelineStore.currentTime,
+      includeMarkers: true,
+      markers: timelineStore.getMarkers(),
     });
 
     dragStartSnapshot.value = timelineStore.timelineDoc;
@@ -235,6 +250,8 @@ export function useTimelineInteraction(
       includeTimelineStart: true,
       includeTimelineEndUs: timelineEndUs,
       includePlayheadUs: timelineStore.currentTime,
+      includeMarkers: true,
+      markers: timelineStore.getMarkers(),
     });
 
     dragCancelRequested.value = false;
@@ -568,6 +585,7 @@ export function useTimelineInteraction(
         // ignore
       }
     }
+
     const cancel = dragCancelRequested.value;
     dragCancelRequested.value = false;
 
@@ -578,6 +596,84 @@ export function useTimelineInteraction(
 
     if (!cancel) {
       applyDragFromPendingClientX();
+    }
+
+    if (!cancel && draggingMode.value === 'move' && dragIsFreeOverride.value) {
+      const doc = timelineStore.timelineDoc;
+      if (doc) {
+        const movedVideoIds: string[] = [];
+
+        const movedPrimaryId = draggingItemId.value;
+        const movedPrimaryTrackId = draggingTrackId.value;
+
+        if (movedPrimaryId && movedPrimaryTrackId) {
+          const tr = doc.tracks.find((t) => t.id === movedPrimaryTrackId);
+          const it = tr?.items.find((x) => x.id === movedPrimaryId);
+          if (it && it.kind === 'clip') {
+            if (tr?.kind === 'video') {
+              movedVideoIds.push(it.id);
+            }
+
+            if (
+              tr?.kind === 'audio' &&
+              Boolean((it as any).linkedVideoClipId) &&
+              Boolean((it as any).lockToLinkedVideo)
+            ) {
+              try {
+                timelineStore.applyTimeline(
+                  {
+                    type: 'update_clip_properties',
+                    trackId: tr.id,
+                    itemId: it.id,
+                    properties: {
+                      linkedVideoClipId: undefined,
+                      lockToLinkedVideo: false,
+                    },
+                  } as any,
+                  {
+                    saveMode: 'none',
+                    skipHistory: true,
+                  },
+                );
+                hasPendingTimelinePersist.value = true;
+              } catch {}
+            }
+          }
+        }
+
+        if (movedVideoIds.length > 0) {
+          const cmds: any[] = [];
+          for (const t of doc.tracks) {
+            if (t.kind !== 'audio') continue;
+            for (const it of t.items) {
+              if (it.kind !== 'clip') continue;
+              const linked = String((it as any).linkedVideoClipId ?? '');
+              if (!linked) continue;
+              if (!Boolean((it as any).lockToLinkedVideo)) continue;
+              if (!movedVideoIds.includes(linked)) continue;
+              cmds.push({
+                type: 'update_clip_properties',
+                trackId: t.id,
+                itemId: it.id,
+                properties: {
+                  linkedVideoClipId: undefined,
+                  lockToLinkedVideo: false,
+                },
+              });
+            }
+          }
+
+          if (cmds.length > 0) {
+            try {
+              timelineStore.batchApplyTimeline(cmds as any, {
+                saveMode: 'none',
+                skipHistory: true,
+              });
+              hasPendingTimelinePersist.value = true;
+            } catch {}
+          }
+        }
+      }
     }
 
     if (!cancel && draggingMode.value === 'move') {

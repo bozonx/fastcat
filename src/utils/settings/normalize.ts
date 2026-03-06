@@ -169,6 +169,17 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
+  const legacyTimelineSnapThresholdPx = Number((input as Record<string, unknown>).snapThresholdPx);
+  const rawTimeline = (input as Record<string, unknown>).timeline as Record<string, unknown> | null;
+  const timelineSnapThresholdPxRaw = rawTimeline ? Number(rawTimeline.snapThresholdPx) : NaN;
+  const timelineSnapThresholdPxCandidate = Number.isFinite(timelineSnapThresholdPxRaw)
+    ? timelineSnapThresholdPxRaw
+    : legacyTimelineSnapThresholdPx;
+  const timelineSnapThresholdPx =
+    Number.isFinite(timelineSnapThresholdPxCandidate) && timelineSnapThresholdPxCandidate > 0
+      ? Math.max(1, Math.round(timelineSnapThresholdPxCandidate))
+      : DEFAULT_USER_SETTINGS.timeline.snapThresholdPx;
+
   const rawMouse = (raw as Record<string, unknown>).mouse;
   const normalizedMouse: GranVideoEditorUserSettings['mouse'] = {
     ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
@@ -288,6 +299,9 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   return {
     locale: normalizedLocale,
     openLastProjectOnStart,
+    timeline: {
+      snapThresholdPx: timelineSnapThresholdPx,
+    },
     stopFrames: {
       qualityPercent: stopFramesQualityPercent,
     },

@@ -54,6 +54,7 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
   return {
     locale: DEFAULT_USER_SETTINGS.locale,
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
+    timeline: { ...DEFAULT_USER_SETTINGS.timeline },
     stopFrames: {
       qualityPercent: DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
     },

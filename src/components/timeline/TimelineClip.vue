@@ -494,7 +494,7 @@ const isFreePosition = computed(() => {
       class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 cursor-pointer select-none transition-shadow group/clip"
       :class="[
         timelineStore.selectedItemIds.includes(item.id)
-          ? 'ring-2 ring-(--selection-ring) z-20 shadow-lg'
+          ? 'outline-2 outline-(--selection-ring) z-20 shadow-lg'
           : '',
         isDraggingOver ? 'ring-2 ring-primary-500 z-30' : '',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'

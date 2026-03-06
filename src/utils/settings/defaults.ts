@@ -4,6 +4,10 @@ import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 export interface GranVideoEditorUserSettings {
   locale: 'en-US' | 'ru-RU';
   openLastProjectOnStart: boolean;
+  timeline: {
+    /** Snap threshold in pixels. Used as snapping area size for clips/playhead/markers. */
+    snapThresholdPx: number;
+  };
   stopFrames: {
     qualityPercent: number;
   };
@@ -94,6 +98,9 @@ export interface GranVideoEditorWorkspaceSettings {
 export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   locale: 'en-US',
   openLastProjectOnStart: true,
+  timeline: {
+    snapThresholdPx: 8,
+  },
   stopFrames: {
     qualityPercent: 85,
   },
