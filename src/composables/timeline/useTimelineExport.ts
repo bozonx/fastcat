@@ -486,6 +486,7 @@ export function useTimelineExport() {
   const excludeAudio = ref(false);
   const audioCodec = ref<'aac' | 'opus'>('aac');
   const audioBitrateKbps = ref<number>(128);
+  const audioSampleRate = ref<number>(48000);
   const exportWidth = ref<number>(1920);
   const exportHeight = ref<number>(1080);
   const exportFps = ref<number>(30);
@@ -776,7 +777,7 @@ export function useTimelineExport() {
 
     const finalOptions = {
       ...options,
-      audioSampleRate: projectStore.projectSettings?.project?.sampleRate,
+      audioSampleRate: audioSampleRate.value,
       audioChannels: projectStore.projectSettings?.project?.audioChannels,
     };
     await (client as any).exportTimeline(fileHandle, finalOptions, videoPayload, croppedAudioClips);
@@ -822,6 +823,7 @@ export function useTimelineExport() {
     excludeAudio,
     audioCodec,
     audioBitrateKbps,
+    audioSampleRate,
     exportWidth,
     exportHeight,
     exportFps,

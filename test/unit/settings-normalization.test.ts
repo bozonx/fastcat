@@ -58,7 +58,9 @@ describe('settings normalization', () => {
       mouse: {
         ruler: {
           wheel: 'invalid_action',
+          wheelShift: 'seek_second',
           wheelSecondary: 'zoom_horizontal',
+          wheelSecondaryShift: 'invalid_action',
           middleClick: 'none',
           doubleClick: 'invalid_action',
         },
@@ -69,6 +71,12 @@ describe('settings normalization', () => {
           wheelSecondaryShift: 'none',
           middleClick: 'invalid',
         },
+        trackHeaders: {
+          wheel: 'seek_frame',
+          wheelShift: 'invalid_action',
+          wheelSecondary: 'resize_track',
+          wheelSecondaryShift: 'seek_second',
+        },
         monitor: {
           wheel: 'scroll_vertical',
           wheelShift: 'invalid_action',
@@ -78,7 +86,9 @@ describe('settings normalization', () => {
     });
 
     expect(normalized.mouse.ruler.wheel).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.wheelShift).toBe('seek_second');
     expect(normalized.mouse.ruler.wheelSecondary).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('seek_frame');
     expect(normalized.mouse.ruler.middleClick).toBe('none');
     expect(normalized.mouse.ruler.doubleClick).toBe('add_marker');
 
@@ -87,6 +97,11 @@ describe('settings normalization', () => {
     expect(normalized.mouse.timeline.wheelSecondary).toBe('scroll_horizontal');
     expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('none');
     expect(normalized.mouse.timeline.middleClick).toBe('pan');
+
+    expect(normalized.mouse.trackHeaders.wheel).toBe('seek_frame');
+    expect(normalized.mouse.trackHeaders.wheelShift).toBe('zoom_vertical');
+    expect(normalized.mouse.trackHeaders.wheelSecondary).toBe('resize_track');
+    expect(normalized.mouse.trackHeaders.wheelSecondaryShift).toBe('seek_second');
 
     expect(normalized.mouse.monitor.wheel).toBe('scroll_vertical');
     expect(normalized.mouse.monitor.wheelShift).toBe('scroll_horizontal');

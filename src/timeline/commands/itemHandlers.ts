@@ -467,6 +467,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     trackId: track.id,
     timelineRange: { startUs: atUs, durationUs: rightDurationUs },
     sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+    linkedGroupId: undefined,
     transitionIn: undefined,
     effects: item.effects ? structuredClone(item.effects) : undefined,
   };
@@ -533,12 +534,14 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           const rightAudio: TimelineClipItem = {
             ...it,
             id: nextItemId(t.id, 'clip'),
-            linkedVideoClipId: rightItemId,
+            trackId: t.id,
             timelineRange: { startUs: atUs, durationUs: rightAudioDurationUs },
             sourceRange: {
               startUs: Math.max(0, Math.round(it.sourceRange.startUs) + audioLocalCutUs),
               durationUs: Math.max(0, Math.round(it.sourceRange.durationUs) - audioLocalCutUs),
             },
+            linkedGroupId: undefined,
+            linkedVideoClipId: rightItemId,
             transitionIn: undefined,
             effects: it.effects ? structuredClone(it.effects) : undefined,
           };

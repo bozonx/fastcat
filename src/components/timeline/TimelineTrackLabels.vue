@@ -10,6 +10,7 @@ import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { frameToUs, sanitizeFps } from '~/timeline/commands/utils';
 
 const { t } = useI18n();
 
@@ -329,11 +330,29 @@ const emptyAreaContextMenuItems = computed(() => {
     ],
   ];
 });
+
+function seekByWheelDelta(delta: number) {
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  const direction = delta < 0 ? 1 : -1;
+  const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+  const frameStepUs = frameToUs(1, fps);
+
+  return {
+    frame: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * frameStepUs),
+    second: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * 1_000_000),
+  };
+}
+
 function onTrackAreaWheel(e: WheelEvent) {
+  const isShift = e.shiftKey;
   const isSecondary = isSecondaryWheel(e);
   const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
-  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
+  let action = settings.wheel;
+  if (isSecondary && isShift) action = settings.wheelSecondaryShift;
+  else if (isSecondary) action = settings.wheelSecondary;
+  else if (isShift) action = settings.wheelShift;
 
   if (action === 'none') {
     e.preventDefault();
@@ -345,7 +364,7 @@ function onTrackAreaWheel(e: WheelEvent) {
 
   if (action === 'scroll_vertical') {
     // Let browser handle vertical scrolling natively
-    if (!isSecondary) return;
+    if (!isSecondary && !isShift) return;
 
     e.preventDefault();
     if (labelsScrollContainer.value) {
@@ -374,13 +393,30 @@ function onTrackAreaWheel(e: WheelEvent) {
     }
     return;
   }
+
+  if (action === 'seek_frame') {
+    e.preventDefault();
+    e.stopPropagation();
+    seekByWheelDelta(delta)?.frame();
+    return;
+  }
+
+  if (action === 'seek_second') {
+    e.preventDefault();
+    e.stopPropagation();
+    seekByWheelDelta(delta)?.second();
+  }
 }
 
 function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
+  const isShift = e.shiftKey;
   const isSecondary = isSecondaryWheel(e);
   const settings = workspaceStore.userSettings.mouse.trackHeaders;
 
-  const action = isSecondary ? settings.wheelSecondary : settings.wheel;
+  let action = settings.wheel;
+  if (isSecondary && isShift) action = settings.wheelSecondaryShift;
+  else if (isSecondary) action = settings.wheelSecondary;
+  else if (isShift) action = settings.wheelShift;
 
   if (action === 'none') {
     e.preventDefault();
@@ -410,6 +446,20 @@ function onTrackWheel(e: WheelEvent, track: TimelineTrack) {
     );
 
     emit('update:trackHeight', track.id, nextHeight);
+    return;
+  }
+
+  if (action === 'seek_frame') {
+    e.preventDefault();
+    e.stopPropagation();
+    seekByWheelDelta(delta)?.frame();
+    return;
+  }
+
+  if (action === 'seek_second') {
+    e.preventDefault();
+    e.stopPropagation();
+    seekByWheelDelta(delta)?.second();
   }
 }
 

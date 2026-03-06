@@ -88,6 +88,11 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const bitrateMbps = Number(exportEncodingInputRec.bitrateMbps);
   const audioBitrateKbps = Number(exportEncodingInputRec.audioBitrateKbps);
   const format = exportEncodingInputRec.format;
+  const audioSampleRateRaw = Number(exportEncodingInputRec.audioSampleRate);
+  const audioSampleRate =
+    Number.isFinite(audioSampleRateRaw) && audioSampleRateRaw > 0
+      ? Math.round(Math.min(192000, Math.max(8000, audioSampleRateRaw)))
+      : 48000;
   const keyframeIntervalSecRaw = Number(exportEncodingInputRec.keyframeIntervalSec);
 
   const normalizedWidth =
@@ -193,7 +198,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       | Record<string, unknown>
       | undefined;
     if (rawRuler && typeof rawRuler === 'object') {
-      for (const k of ['wheel', 'wheelSecondary']) {
+      for (const k of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
         if ((RULER_WHEEL_ACTIONS as readonly string[]).includes(rawRuler[k] as string)) {
           (normalizedMouse.ruler as Record<string, unknown>)[k] = rawRuler[k];
         }
@@ -258,7 +263,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       | Record<string, unknown>
       | undefined;
     if (rawTrackHeaders && typeof rawTrackHeaders === 'object') {
-      for (const k of ['wheel', 'wheelSecondary']) {
+      for (const k of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
         if (
           (TRACK_HEADERS_WHEEL_ACTIONS as readonly string[]).includes(
             (rawTrackHeaders as Record<string, unknown>)[k] as string,
@@ -363,6 +368,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
+        audioSampleRate,
         bitrateMode: exportEncodingInputRec.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyframeIntervalSec:
           Number.isFinite(keyframeIntervalSecRaw) && keyframeIntervalSecRaw > 0
