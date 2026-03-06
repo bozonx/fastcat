@@ -7,8 +7,7 @@ import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
 import {
-  buildVideoWorkerPayload,
-  buildWorkerVideoTracks,
+  buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
 } from '~/composables/timeline/useTimelineExport';
 import { useUiStore } from '~/stores/ui.store';
@@ -207,33 +206,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         pendingLayoutClips = null;
         pendingLayoutAudioClips = null;
         try {
-          const mockItems = layoutClips.map(
-            (c) =>
-              ({
-                kind: 'clip',
-                clipType:
-                  c.clipType === 'media' && c.source?.path?.endsWith('.otio')
-                    ? 'timeline'
-                    : c.clipType,
-                id: c.id,
-                layer: c.layer,
-                speed: (c as any).speed,
-                source: c.source,
-                timelineRange: c.timelineRange,
-                sourceRange: c.sourceRange,
-                freezeFrameSourceUs: c.freezeFrameSourceUs,
-                opacity: c.opacity,
-                blendMode: c.blendMode,
-                effects: c.effects,
-                transform: (c as any).transform,
-                backgroundColor: c.backgroundColor,
-                text: (c as any).text,
-                style: (c as any).style,
-                transitionIn: c.transitionIn,
-                transitionOut: c.transitionOut,
-              }) as any,
-          );
-
           const mockAudioItems = layoutAudioClips.map(
             (c) =>
               ({
@@ -260,19 +232,18 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               }) as any,
           );
 
-          const flattenedClips = await toWorkerTimelineClips(mockItems, projectStore as any);
+          const builtVideo = await buildVideoWorkerPayloadFromTracks({
+            tracks: timelineStore.timelineDoc?.tracks ?? [],
+            projectStore: projectStore as any,
+            masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+          });
+          const flattenedClips = builtVideo.clips;
           const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
 
           workerTimelineClips.value = flattenedClips;
           workerAudioClips.value = flattenedAudio;
 
-          const payload = cloneWorkerPayload(
-            buildVideoWorkerPayload({
-              clips: flattenedClips,
-              tracks: buildWorkerVideoTracks(timelineStore.timelineDoc?.tracks ?? []),
-              masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
-            }),
-          );
+          const payload = cloneWorkerPayload(builtVideo.payload);
           const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(flattenedAudio);
           // Keep store duration at least as large as current value to avoid clamping
@@ -434,33 +405,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
       forceRecreateCompositorNextBuild = false;
 
-      const rawClips = rawWorkerTimelineClips?.value ?? workerTimelineClips.value;
       const rawAudio = rawWorkerAudioClips?.value ?? workerAudioClips.value;
-
-      const mockItems = rawClips.map(
-        (c) =>
-          ({
-            kind: 'clip',
-            clipType:
-              c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
-            id: c.id,
-            layer: c.layer,
-            speed: (c as any).speed,
-            source: c.source,
-            timelineRange: c.timelineRange,
-            sourceRange: c.sourceRange,
-            freezeFrameSourceUs: c.freezeFrameSourceUs,
-            opacity: c.opacity,
-            blendMode: c.blendMode,
-            effects: c.effects,
-            transform: (c as any).transform,
-            backgroundColor: c.backgroundColor,
-            text: (c as any).text,
-            style: (c as any).style,
-            transitionIn: c.transitionIn,
-            transitionOut: c.transitionOut,
-          }) as any,
-      );
 
       const mockAudioItems = rawAudio.map(
         (c) =>
@@ -486,7 +431,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           }) as any,
       );
 
-      const flattenedClips = await toWorkerTimelineClips(mockItems, projectStore as any);
+      const builtVideo = await buildVideoWorkerPayloadFromTracks({
+        tracks: timelineStore.timelineDoc?.tracks ?? [],
+        projectStore: projectStore as any,
+        masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+      });
+      const flattenedClips = builtVideo.clips;
       const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
 
       workerTimelineClips.value = flattenedClips;
@@ -516,13 +466,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         onExportProgress: () => {},
       });
 
-      const payload = cloneWorkerPayload(
-        buildVideoWorkerPayload({
-          clips,
-          tracks: buildWorkerVideoTracks(timelineStore.timelineDoc?.tracks ?? []),
-          masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
-        }),
-      );
+      const payload = cloneWorkerPayload(builtVideo.payload);
       const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
       if (clips.length === 0) {
         await client.clearClips();

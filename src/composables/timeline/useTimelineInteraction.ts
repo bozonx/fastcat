@@ -156,24 +156,26 @@ export function useTimelineInteraction(
 
     const doc = timelineStore.timelineDoc;
     const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
+    let nextSelectedIds: string[] = [];
 
     if (isMulti) {
-      const nextSelectedIds = new Set(timelineStore.selectedItemIds);
-      const allGroupedSelected = groupedIds.every((id) => nextSelectedIds.has(id));
+      const nextSelectedIdSet = new Set(timelineStore.selectedItemIds);
+      const allGroupedSelected = groupedIds.every((id) => nextSelectedIdSet.has(id));
       if (allGroupedSelected) {
-        for (const id of groupedIds) nextSelectedIds.delete(id);
+        for (const id of groupedIds) nextSelectedIdSet.delete(id);
       } else {
-        for (const id of groupedIds) nextSelectedIds.add(id);
+        for (const id of groupedIds) nextSelectedIdSet.add(id);
       }
-      timelineStore.selectTimelineItems([...nextSelectedIds]);
+      nextSelectedIds = [...nextSelectedIdSet];
+      timelineStore.selectTimelineItems(nextSelectedIds);
     } else {
+      nextSelectedIds = groupedIds;
       timelineStore.selectTimelineItems(groupedIds);
     }
 
-    const selectedIds = timelineStore.selectedItemIds;
     const items = tracks.value
       .flatMap((t) => t.items.map((it) => ({ trackId: t.id, item: it })))
-      .filter((x) => selectedIds.includes(x.item.id))
+      .filter((x) => nextSelectedIds.includes(x.item.id))
       .map((x) => ({ trackId: x.trackId, itemId: x.item.id }));
 
     if (canOpenClipProperties.value) {

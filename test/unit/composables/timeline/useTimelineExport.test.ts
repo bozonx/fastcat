@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildVideoWorkerPayloadFromTracks,
   buildVideoWorkerPayload,
   getExt,
   sanitizeBaseName,
@@ -307,6 +308,93 @@ describe('useTimelineExport pure functions', () => {
     expect(clips[0]?.clipType).toBe('media');
     expect(clips[0]?.source?.path).toBe('_timelines/media/video.mp4');
     expect(clips[0]?.trackId).toBeUndefined();
+  });
+
+  it('buildVideoWorkerPayloadFromTracks should emit explicit nested track payload items', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { gran: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'NestedV1',
+            kind: 'Video',
+            metadata: { gran: { opacity: 0.4, blendMode: 'screen' } },
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'NestedClip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'media/video.mp4',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                },
+                metadata: { gran: { clipType: 'media', sourceDurationUs: 1000000 } },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const projectStoreMock = {
+      getFileHandleByPath: async (path: string) => {
+        if (path !== '_timelines/nested.otio') return null;
+        return {
+          getFile: async () => ({ text: async () => nestedOtio }),
+        } as any;
+      },
+    } as any;
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          opacity: 0.5,
+          blendMode: 'multiply',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'timeline',
+              id: 'nested-1',
+              trackId: 'v1',
+              name: 'Nested',
+              source: { path: '_timelines/nested.otio' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        } as any,
+      ],
+      projectStore: projectStoreMock,
+    });
+
+    expect(result.tracks).toEqual([
+      expect.objectContaining({ id: 'v1', layer: 0, opacity: 0.5, blendMode: 'multiply' }),
+      expect.objectContaining({
+        id: 'v1::nested-1::v1',
+        layer: 0,
+        opacity: 0.2,
+        blendMode: 'screen',
+      }),
+    ]);
+    expect(result.clips).toHaveLength(1);
+    expect(result.clips[0]?.id.startsWith('nested-1_nested_')).toBe(true);
+    expect(result.clips[0]).toMatchObject({
+      trackId: 'v1::nested-1::v1',
+      source: { path: '_timelines/media/video.mp4' },
+    });
+    expect(result.payload.filter((item) => item.kind === 'track')).toHaveLength(2);
   });
 
   it('toWorkerTimelineClips should apply nested timeline parent audio gain/balance/fades when trackKind is audio', async () => {

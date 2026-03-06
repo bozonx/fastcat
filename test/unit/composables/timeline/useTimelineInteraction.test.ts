@@ -1,18 +1,28 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { defineComponent, h, ref, computed, nextTick } from 'vue';
+import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import {
   timeUsToPx,
   pxToTimeUs,
   pxToDeltaUs,
   BASE_PX_PER_SECOND,
   computeAnchoredScrollLeft,
+  useTimelineInteraction,
 } from '../../../../src/composables/timeline/useTimelineInteraction';
 import {
   computeSnappedStartUs,
   quantizeStartUsToFrames,
   pickBestSnapCandidateUs,
 } from '../../../../src/utils/timeline/geometry';
+import { useTimelineStore } from '../../../../src/stores/timeline.store';
+import { useSelectionStore } from '../../../../src/stores/selection.store';
 
 describe('useTimelineInteraction', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
   it('timeUsToPx should convert microseconds to pixels correctly', () => {
     // 1 second (1000000 us) should be BASE_PX_PER_SECOND at 1x zoom (slider position 50)
     expect(timeUsToPx(1_000_000, 50)).toBe(BASE_PX_PER_SECOND);
@@ -134,5 +144,71 @@ describe('useTimelineInteraction', () => {
 
     expect(res.snappedUs).toBe(zoneEndUs);
     expect(res.distUs).toBe(2_000);
+  });
+
+  it('selectItem should sync selectionStore with the current click immediately', async () => {
+    const scrollEl = ref<HTMLElement | null>(null);
+    const timelineStore = useTimelineStore() as any;
+    const selectionStore = useSelectionStore();
+
+    timelineStore.timelineDoc = {
+      timebase: { fps: 25 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          items: [
+            {
+              kind: 'clip',
+              id: 'clip-1',
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+            {
+              kind: 'clip',
+              id: 'clip-2',
+              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    timelineStore.selectedItemIds = ['clip-1'];
+
+    let selectItemHandler: (event: PointerEvent, itemId: string) => void = () => {};
+
+    const TestComp = defineComponent({
+      setup() {
+        const api = useTimelineInteraction(
+          scrollEl,
+          computed(() => timelineStore.timelineDoc.tracks),
+        );
+        selectItemHandler = api.selectItem;
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    selectItemHandler(
+      {
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+      } as PointerEvent,
+      'clip-2',
+    );
+    await nextTick();
+
+    expect(timelineStore.selectedItemIds).toEqual(['clip-2']);
+    expect(selectionStore.selectedEntity).toEqual({
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'v1',
+      itemId: 'clip-2',
+    });
+
+    wrapper.unmount();
   });
 });
