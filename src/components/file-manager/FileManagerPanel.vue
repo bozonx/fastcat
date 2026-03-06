@@ -15,6 +15,7 @@ import { createTimelineCommand } from '~/file-manager/application/fileManagerCom
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useUiStore } from '~/stores/ui.store';
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -35,6 +36,7 @@ const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
+const fileConversion = useFileConversion();
 const { addFileTab, setActiveTab } = useProjectTabs();
 
 const fileManager = useFileManager();
@@ -185,9 +187,9 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       }
     }
   } else if (action === 'convertFile') {
-    // This action is often handled by parent or useFileConversion, 
-    // but we can emit it or trigger something. 
-    // In current implementation it's often triggered directly from context menu or FileProperties.
+    if (entry.kind === 'file') {
+      void fileConversion.openConversionModal(entry);
+    }
   } else {
     onFileActionBase(action as FileActionBase, entry);
   }
