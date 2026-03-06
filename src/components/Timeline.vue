@@ -60,7 +60,12 @@ function updateTrackHeight(trackId: string, height: number) {
   trackHeights.value[trackId] = height;
 }
 
-const canEditClipContent = computed(() => currentView.value === 'files');
+const canEditClipContent = computed(
+  () =>
+    currentView.value === 'cut' ||
+    currentView.value === 'files' ||
+    currentView.value === 'sound',
+);
 const canDropTimelineContent = computed(
   () => currentView.value === 'files' || currentView.value === 'cut',
 );

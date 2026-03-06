@@ -9,7 +9,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const projectStore = useProjectStore();
 
   function canEditClipContent(): boolean {
-    return projectStore.currentView === 'files';
+    return (
+      projectStore.currentView === 'cut' ||
+      projectStore.currentView === 'files' ||
+      projectStore.currentView === 'sound'
+    );
   }
 
   let activePointerMove: ((e: PointerEvent) => void) | null = null;
