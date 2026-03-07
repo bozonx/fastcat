@@ -165,6 +165,7 @@ export function isRemoteFsEntry(entry: FsEntry | null | undefined): entry is Rem
 export function getRemoteFileDownloadUrl(params: {
   baseUrl: string;
   entry: RemoteVfsFileEntry;
+  token?: string;
   mediaIndex?: number;
 }): string {
   const media = params.entry.media?.[params.mediaIndex ?? 0];
@@ -172,12 +173,19 @@ export function getRemoteFileDownloadUrl(params: {
   if (/^https?:\/\//i.test(media.url)) return media.url;
 
   const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
-  return joinPath(rootBaseUrl, media.url);
+  const url = new URL(joinPath(rootBaseUrl, media.url));
+
+  if (params.token) {
+    url.searchParams.set('token', params.token);
+  }
+
+  return url.toString();
 }
 
 export function getRemoteThumbnailUrl(params: {
   baseUrl: string;
   mediaId: string;
+  token?: string;
   w?: number;
   h?: number;
   quality?: number;
@@ -189,6 +197,7 @@ export function getRemoteThumbnailUrl(params: {
     joinPath(rootBaseUrl, `/api/v1/external/vfs/media/${params.mediaId}/thumbnail`),
   );
 
+  if (params.token) url.searchParams.set('token', params.token);
   if (params.w) url.searchParams.set('w', params.w.toString());
   if (params.h) url.searchParams.set('h', params.h.toString());
   if (params.quality) url.searchParams.set('quality', params.quality.toString());
