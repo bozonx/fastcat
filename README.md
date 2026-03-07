@@ -63,6 +63,7 @@ Layout:
 - `vardata/projects/<projectId>/proxies` — generated proxy media for the project
 - `vardata/projects/<projectId>/thumbnails` — generated thumbnails for the project
 - `vardata/projects/<projectId>/cache` — cached metadata and other project-scoped data
+- `vardata/projects/<projectId>/cache/transcriptions` — cached STT responses for audio files
 
 You can clear temporary files from the UI:
 
@@ -77,7 +78,7 @@ Supported configuration modes:
 
 - **Gran Publicador** via connect flow or manual bearer token
 - **Manual Files API** with `baseUrl` and bearer token
-- **Manual STT API** with `baseUrl` and bearer token
+- **Manual STT API** with `baseUrl` (bearer token is optional)
 
 Current implementation scope:
 
@@ -88,6 +89,9 @@ Current implementation scope:
 - connect flow `scopes` generation based on active Files/STT overrides
 - provider override rules for `Files API` and `STT API`
 - `GET /api/v1/external/health` checks for Gran Publicador and resolved manual services
+- audio file transcription from the properties panel via `POST .../api/v1/transcribe/stream`
+- shared STT request settings: `provider`, `models`, `restorePunctuation`, `formatText`, `includeWords`
+- transcription cache in `vardata/projects/<projectId>/cache/transcriptions`
 
 Provider priority rules:
 
@@ -108,6 +112,22 @@ Notes:
 - `GPAN_PUBLICADOR_BASE_URL` defines the Gran Publicador instance URL for connect flow and API resolution
 - Gran connect app name is fixed globally and is not editable in user settings
 - user integration settings are stored in `.gran/user.settings.json`
+- manual STT `baseUrl` may point to the service root, `/api/v1`, `/api/v1/external/stt`, or the full `/api/v1/transcribe/stream` endpoint
+- Gran STT streaming uses `POST /api/v1/external/api/v1/transcribe/stream`
+
+### Audio transcription
+
+Local audio files expose a **Transcribe audio** action in the file properties panel.
+
+Behavior:
+
+- the modal allows an optional language override per request
+- requests use raw audio upload to the resolved STT stream endpoint
+- the editor sends `X-STT-Provider`, `X-STT-Language`, `X-STT-Restore-Punctuation`, `X-STT-Format-Text`, `X-STT-Include-Words`, and `X-STT-Models` when configured
+- `restorePunctuation` defaults to `true`
+- `formatText` defaults to `false`
+- `includeWords` defaults to `true`
+- successful responses are cached per file/version/request settings in `vardata/projects/<projectId>/cache/transcriptions`
 
 ### File exchange modal
 

@@ -4,6 +4,7 @@ export {
   type GranVideoEditorWorkspaceSettings,
   type GranPublicadorIntegrationSettings,
   type ManualExternalApiSettings,
+  type SttIntegrationSettings,
   DEFAULT_USER_SETTINGS,
   DEFAULT_WORKSPACE_SETTINGS,
 } from './settings/defaults';
