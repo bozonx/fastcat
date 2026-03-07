@@ -31,6 +31,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
+const route = useRoute();
 
 const { onGlobalDragOver, onGlobalDragLeave, onGlobalDrop } = useGlobalDragAndDrop();
 
@@ -105,10 +106,11 @@ useHead({
     <div class="flex flex-col flex-1 h-full min-h-0 relative">
       <!-- Main Content (NuxtPage) -->
       <div
-        v-show="!isStartingUp && workspaceStore.workspaceHandle && projectStore.currentProjectName"
+        v-show="!isStartingUp && workspaceStore.workspaceHandle"
         class="flex flex-col flex-1 min-h-0 relative"
       >
         <EditorHeader
+          v-if="projectStore.currentProjectName && route.path !== '/'"
           @open-project-settings="isProjectSettingsOpen = true"
           @open-editor-settings="isEditorSettingsOpen = true"
         />
@@ -123,9 +125,6 @@ useHead({
       </template>
       <template v-else-if="!workspaceStore.workspaceHandle">
         <WelcomeScreen />
-      </template>
-      <template v-else-if="!projectStore.currentProjectName">
-        <ProjectsScreen />
       </template>
 
       <!-- Modals -->

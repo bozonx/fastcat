@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
+import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
 
 const projectStore = useProjectStore();
 
@@ -11,5 +12,5 @@ if (projectStore.currentProjectName) {
 </script>
 
 <template>
-  <div></div>
+  <ProjectsScreen />
 </template>
