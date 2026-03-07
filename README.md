@@ -10,6 +10,8 @@ Standalone video editor project extracted from Gran Publicador.
 - Monitor playback with volume/mute controls for audio
 - Focus-aware panel hotkeys with routing to the currently active editor panel
 - File system access API integration for local file editing
+- Gran Publicador integration settings with connect flow and manual API override support
+- External service health checks for Gran Publicador, Files API and STT API
 - OTIO (OpenTimelineIO) support for timeline serialization
 - High-performance rendering with Web Workers
 
@@ -64,6 +66,34 @@ You can clear temporary files from the UI:
 
 - **Workspace settings → Storage → Clear temporary files** — deletes `vardata/`
 - **Project settings → Storage → Clear temporary files** — deletes `vardata/projects/<projectId>`
+
+## External integrations
+
+Editor settings now include an **Integrations** section for external services.
+
+Supported configuration modes:
+
+- **Gran Publicador** via connect flow or manual bearer token
+- **Manual Files API** with `baseUrl` and bearer token
+- **Manual STT API** with `baseUrl` and bearer token
+
+Current implementation scope:
+
+- settings and provider resolution
+- connect flow token capture via `?token=...`
+- provider override rules for `Files API` and `STT API`
+- `GET /health` checks for Gran Publicador and resolved manual services
+
+Provider priority rules:
+
+- if Gran Publicador is enabled and has `baseUrl` + token, it is the default source
+- manual `Files API` or `STT API` can override Gran independently
+- if Gran is not configured, manual services work standalone
+
+Notes:
+
+- user integration settings are stored in `.gran/user.settings.json`
+- current implementation does **not** yet embed these integrations into the file manager, export upload flow, or STT UI actions
 
 ## Panel focus and keyboard routing
 

@@ -53,6 +53,46 @@ describe('settings normalization', () => {
     expect(normalized.thumbnailsStorageLimitBytes).toBe(42);
   });
 
+  it('normalizes integration settings', () => {
+    const normalized = normalizeUserSettings({
+      integrations: {
+        granPublicador: {
+          enabled: true,
+          baseUrl: 'https://gran.example.com/api/v1/',
+          bearerToken: '  gp_token  ',
+          connectName: '  Custom App  ',
+        },
+        manualFilesApi: {
+          enabled: true,
+          baseUrl: 'https://files.example.com/api/',
+          bearerToken: ' files-token ',
+          overrideGran: 1,
+        },
+        manualSttApi: {
+          enabled: false,
+          baseUrl: 'https://stt.example.com/',
+          bearerToken: ' stt-token ',
+          overrideGran: 0,
+        },
+      },
+    });
+
+    expect(normalized.integrations.granPublicador.enabled).toBe(true);
+    expect(normalized.integrations.granPublicador.baseUrl).toBe('https://gran.example.com/api/v1');
+    expect(normalized.integrations.granPublicador.bearerToken).toBe('gp_token');
+    expect(normalized.integrations.granPublicador.connectName).toBe('Custom App');
+
+    expect(normalized.integrations.manualFilesApi.enabled).toBe(true);
+    expect(normalized.integrations.manualFilesApi.baseUrl).toBe('https://files.example.com/api');
+    expect(normalized.integrations.manualFilesApi.bearerToken).toBe('files-token');
+    expect(normalized.integrations.manualFilesApi.overrideGran).toBe(true);
+
+    expect(normalized.integrations.manualSttApi.enabled).toBe(false);
+    expect(normalized.integrations.manualSttApi.baseUrl).toBe('https://stt.example.com');
+    expect(normalized.integrations.manualSttApi.bearerToken).toBe('stt-token');
+    expect(normalized.integrations.manualSttApi.overrideGran).toBe(false);
+  });
+
   it('normalizes mouse settings and falls back to defaults for invalid values', () => {
     const normalized = normalizeUserSettings({
       mouse: {

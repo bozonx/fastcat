@@ -9,6 +9,25 @@ import {
   createDefaultWorkspaceSettings,
 } from './helpers';
 
+function normalizeUrlValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim().replace(/\/+$/, '') : '';
+}
+
+function normalizeTokenValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeConnectNameValue(value: unknown): string {
+  if (typeof value !== 'string') {
+    return DEFAULT_USER_SETTINGS.integrations.granPublicador.connectName;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0
+    ? normalized
+    : DEFAULT_USER_SETTINGS.integrations.granPublicador.connectName;
+}
+
 function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] {
   if (!raw || typeof raw !== 'object') {
     return {
@@ -193,6 +212,10 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const proxyCopyOpusAudio = (optimizationInput as Record<string, unknown>).proxyCopyOpusAudio;
   const autoCreateProxies = (optimizationInput as Record<string, unknown>).autoCreateProxies;
   const proxyConcurrency = Number((optimizationInput as Record<string, unknown>).proxyConcurrency);
+  const integrationsInput = (input.integrations ?? {}) as Record<string, unknown>;
+  const granPublicadorInput = (integrationsInput.granPublicador ?? {}) as Record<string, unknown>;
+  const manualFilesApiInput = (integrationsInput.manualFilesApi ?? {}) as Record<string, unknown>;
+  const manualSttApiInput = (integrationsInput.manualSttApi ?? {}) as Record<string, unknown>;
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
@@ -397,6 +420,26 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
             ? Math.round(Math.min(60, Math.max(1, keyframeIntervalSecRaw)))
             : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
         exportAlpha: Boolean(exportEncodingInputRec.exportAlpha),
+      },
+    },
+    integrations: {
+      granPublicador: {
+        enabled: Boolean(granPublicadorInput.enabled),
+        baseUrl: normalizeUrlValue(granPublicadorInput.baseUrl),
+        bearerToken: normalizeTokenValue(granPublicadorInput.bearerToken),
+        connectName: normalizeConnectNameValue(granPublicadorInput.connectName),
+      },
+      manualFilesApi: {
+        enabled: Boolean(manualFilesApiInput.enabled),
+        baseUrl: normalizeUrlValue(manualFilesApiInput.baseUrl),
+        bearerToken: normalizeTokenValue(manualFilesApiInput.bearerToken),
+        overrideGran: Boolean(manualFilesApiInput.overrideGran),
+      },
+      manualSttApi: {
+        enabled: Boolean(manualSttApiInput.enabled),
+        baseUrl: normalizeUrlValue(manualSttApiInput.baseUrl),
+        bearerToken: normalizeTokenValue(manualSttApiInput.bearerToken),
+        overrideGran: Boolean(manualSttApiInput.overrideGran),
       },
     },
     mouse: normalizedMouse,
