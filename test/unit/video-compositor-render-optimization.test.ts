@@ -228,4 +228,89 @@ describe('VideoCompositor render optimization', () => {
     expect(sprite.x).toBe(1080);
     expect(sprite.y).toBe(500);
   });
+
+  it('recreates invalid shader transition filter when resources are missing', async () => {
+    const compositor = new VideoCompositor() as any;
+    const recreatedFilter = { resources: {}, destroyed: false };
+    const createFilter = vi.fn(() => recreatedFilter);
+    const updateFilter = vi.fn();
+    const invalidFilter = {
+      resources: null,
+      destroyed: false,
+      destroy: vi.fn(),
+    };
+    const clip = {
+      itemId: 'clip-1',
+      startUs: 0,
+      endUs: 1_000,
+      durationUs: 1_000,
+      layer: 1,
+      blendMode: 'normal',
+      sprite: { visible: true },
+      transitionIn: {
+        type: 'fade-to-black',
+        durationUs: 1_000,
+        mode: 'fade',
+        curve: 'linear',
+        params: {},
+      },
+      transitionFilter: invalidFilter,
+      transitionFilterType: 'fade-to-black',
+      transitionSprite: null,
+      transitionFromTexture: { source: {} },
+      transitionToTexture: { source: {} },
+      transitionOutputTexture: {},
+    } as any;
+
+    compositor.clips = [clip];
+    compositor.transitionFilters = new Map([['clip-1', invalidFilter]]);
+    compositor.filterQuadSprite = {
+      texture: null,
+      scale: { set: vi.fn() },
+      width: 0,
+      height: 0,
+      filters: null,
+      x: 0,
+      y: 0,
+      anchor: { set: vi.fn() },
+    };
+    compositor.app = {
+      renderer: {
+        render: vi.fn(),
+      },
+    };
+    compositor.ensureTransitionRenderTexture = vi.fn((texture) => texture ?? { source: {} });
+    compositor.renderSingleClipToTexture = vi.fn();
+    compositor.renderLowerLayersToTexture = vi.fn();
+    compositor.ensureTransitionSprite = vi.fn(() => ({
+      texture: null,
+      scale: { set: vi.fn() },
+      width: 0,
+      height: 0,
+      alpha: 1,
+      blendMode: 'normal',
+      filters: null,
+      visible: false,
+    }));
+    compositor.getActiveTransitionState = vi.fn(() => ({
+      progress: 0.25,
+      curve: 'linear',
+      transition: clip.transitionIn,
+      manifest: {
+        renderMode: 'shader',
+        createFilter,
+        updateFilter,
+      },
+    }));
+
+    await expect(compositor.applyShaderTransitions([clip], 250)).resolves.toBeUndefined();
+    expect(invalidFilter.destroy).toHaveBeenCalledTimes(1);
+    expect(createFilter).toHaveBeenCalledTimes(1);
+    expect(updateFilter).toHaveBeenCalledWith(
+      recreatedFilter,
+      expect.objectContaining({ progress: 0.25 }),
+    );
+    expect(compositor.filterQuadSprite.filters).toEqual([recreatedFilter]);
+    expect(clip.transitionFilter).toBe(recreatedFilter);
+  });
 });

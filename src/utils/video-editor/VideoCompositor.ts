@@ -1857,6 +1857,11 @@ export class VideoCompositor {
         continue;
       }
 
+      const transitionFilter = this.ensureUsableTransitionFilter(clip, state.manifest);
+      if (!transitionFilter) {
+        continue;
+      }
+
       const mode = state.transition.mode ?? DEFAULT_TRANSITION_MODE;
       if (mode !== 'transition' && mode !== 'fade') {
         continue;
@@ -1892,13 +1897,23 @@ export class VideoCompositor {
         }
       }
 
-      state.manifest.updateFilter?.(clip.transitionFilter, {
+      const transitionContext = {
         progress: state.progress,
         curve: state.curve,
         params: state.transition.params,
         fromTexture,
         toTexture: clip.transitionToTexture,
-      });
+      };
+
+      const filterUpdated = this.updateTransitionFilterSafely(
+        clip,
+        state.manifest,
+        transitionFilter,
+        transitionContext,
+      );
+      if (!filterUpdated) {
+        continue;
+      }
 
       if (!this.filterQuadSprite) {
         this.filterQuadSprite = new Sprite(Texture.EMPTY);
@@ -1910,7 +1925,7 @@ export class VideoCompositor {
       this.filterQuadSprite.scale.set(1, 1);
       this.filterQuadSprite.width = this.width;
       this.filterQuadSprite.height = this.height;
-      this.filterQuadSprite.filters = [clip.transitionFilter];
+      this.filterQuadSprite.filters = [filterUpdated];
 
       this.app!.renderer.render({
         container: this.filterQuadSprite,
@@ -1932,6 +1947,87 @@ export class VideoCompositor {
       if (prevClip) {
         prevClip.sprite.visible = false;
       }
+    }
+  }
+
+  private ensureUsableTransitionFilter(clip: CompositorClip, manifest: any): Filter | null {
+    const currentFilter = clip.transitionFilter;
+    if (this.isTransitionFilterUsable(currentFilter)) {
+      return currentFilter;
+    }
+
+    return this.recreateTransitionFilter(clip, manifest);
+  }
+
+  private isTransitionFilterUsable(filter: Filter | null | undefined): filter is Filter {
+    if (!filter) {
+      return false;
+    }
+
+    const candidate = filter as any;
+    if (candidate.destroyed) {
+      return false;
+    }
+
+    return candidate.resources != null;
+  }
+
+  private recreateTransitionFilter(clip: CompositorClip, manifest: any): Filter | null {
+    if (clip.transitionFilter) {
+      try {
+        clip.transitionFilter.destroy();
+      } catch {
+        // ignore
+      }
+    }
+
+    this.transitionFilters.delete(clip.itemId);
+    clip.transitionFilter = null;
+
+    if (typeof manifest?.createFilter !== 'function') {
+      clip.transitionFilterType = null;
+      return null;
+    }
+
+    try {
+      const filter = manifest.createFilter();
+      clip.transitionFilter = filter;
+      this.transitionFilters.set(clip.itemId, filter);
+      return filter;
+    } catch (error) {
+      console.error('[VideoCompositor] Failed to recreate transition filter', error);
+      clip.transitionFilterType = null;
+      return null;
+    }
+  }
+
+  private updateTransitionFilterSafely(
+    clip: CompositorClip,
+    manifest: any,
+    filter: Filter,
+    context: any,
+  ): Filter | null {
+    const applyUpdate = (candidate: Filter) => {
+      manifest.updateFilter?.(candidate, context);
+      return candidate;
+    };
+
+    try {
+      return applyUpdate(filter);
+    } catch (error) {
+      console.error('[VideoCompositor] Failed to update transition filter', error);
+    }
+
+    const recreatedFilter = this.recreateTransitionFilter(clip, manifest);
+    if (!recreatedFilter) {
+      return null;
+    }
+
+    try {
+      return applyUpdate(recreatedFilter);
+    } catch (error) {
+      console.error('[VideoCompositor] Failed to update recreated transition filter', error);
+      return null;
     }
   }
 
