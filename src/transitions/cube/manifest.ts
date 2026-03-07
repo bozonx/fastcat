@@ -54,11 +54,16 @@ bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
 }
 
-vec2 xskew(vec2 p, float perspective, float center) {
+vec2 xskew(vec2 p, float perspective, float center, float unzoomAmt) {
   float x = mix(p.x, 1.0 - p.x, center);
+  float D = 1.0 + (perspective - 1.0) * x;
+  float correction = mix(perspective, 1.0, unzoomAmt);
+  D /= correction;
+  float y_out = 0.5 + (p.y - 0.5) / D;
+  
   return (
     (
-      vec2(x, (p.y - 0.5 * (1.0 - perspective) * x) / (1.0 + (perspective - 1.0) * x))
+      vec2(x, y_out)
       - vec2(0.5 - distance(center, 0.5), 0.0)
     )
     * vec2(0.5 / distance(center, 0.5) * (center < 0.5 ? 1.0 : -1.0), 1.0)
@@ -66,11 +71,16 @@ vec2 xskew(vec2 p, float perspective, float center) {
   );
 }
 
-vec2 yskew(vec2 p, float perspective, float center) {
+vec2 yskew(vec2 p, float perspective, float center, float unzoomAmt) {
   float y = mix(p.y, 1.0 - p.y, center);
+  float D = 1.0 + (perspective - 1.0) * y;
+  float correction = mix(perspective, 1.0, unzoomAmt);
+  D /= correction;
+  float x_out = 0.5 + (p.x - 0.5) / D;
+  
   return (
     (
-      vec2((p.x - 0.5 * (1.0 - perspective) * y) / (1.0 + (perspective - 1.0) * y), y)
+      vec2(x_out, y)
       - vec2(0.0, 0.5 - distance(center, 0.5))
     )
     * vec2(1.0, 0.5 / distance(center, 0.5) * (center < 0.5 ? 1.0 : -1.0))
@@ -97,23 +107,27 @@ void main(void) {
     mappedFromP = xskew(
       (mappedP - vec2(progress, 0.0)) / vec2(1.0 - progress, 1.0),
       1.0 - mix(progress, 0.0, persp),
-      0.0
+      0.0,
+      uUnzoomAmount
     );
     mappedToP = xskew(
       mappedP / vec2(progress, 1.0),
       mix(pow(progress, 2.0), 1.0, persp),
-      1.0
+      1.0,
+      uUnzoomAmount
     );
   } else if (abs(uDirectionY) > 0.5) {
     mappedFromP = yskew(
       (mappedP - vec2(0.0, progress)) / vec2(1.0, 1.0 - progress),
       1.0 - mix(progress, 0.0, persp),
-      0.0
+      0.0,
+      uUnzoomAmount
     );
     mappedToP = yskew(
       mappedP / vec2(1.0, progress),
       mix(pow(progress, 2.0), 1.0, persp),
-      1.0
+      1.0,
+      uUnzoomAmount
     );
   }
   
