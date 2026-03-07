@@ -1,13 +1,15 @@
 import { onBeforeUnmount, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
-import { pxToDeltaUs } from '~/utils/timeline/geometry';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
+  const timelineSettingsStore = useTimelineSettingsStore();
 
   function canEditClipContent(): boolean {
     return (
@@ -263,6 +265,57 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     return Math.min(maxWithinClip, limitByHandle);
   }
 
+  function computeTransitionHandleSnapDurationUs(input: {
+    trackId: string;
+    itemId: string;
+    edge: 'in' | 'out';
+    currentTransition: ClipTransition;
+    rawDurationUs: number;
+  }): number | null {
+    const resolved = getAdjacentClipForTransitionEdge({
+      trackId: input.trackId,
+      itemId: input.itemId,
+      edge: input.edge,
+    });
+    if (!resolved) return null;
+
+    const { clip, adjacent } = resolved;
+    const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
+    if (mode !== 'transition' || !adjacent) return null;
+
+    const clipEdgeUs =
+      input.edge === 'in'
+        ? clip.timelineRange.startUs
+        : clip.timelineRange.startUs + clip.timelineRange.durationUs;
+    const adjacentEdgeUs =
+      input.edge === 'in'
+        ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
+        : adjacent.timelineRange.startUs;
+    const gapUs = Math.abs(clipEdgeUs - adjacentEdgeUs);
+    if (gapUs > 1_000) return null;
+
+    let handleLimitUs = Number.POSITIVE_INFINITY;
+    if (input.edge === 'in') {
+      const adjacentSourceEnd =
+        (adjacent.sourceRange?.startUs ?? 0) + (adjacent.sourceRange?.durationUs ?? 0);
+      const adjacentMaxEnd =
+        (adjacent.clipType === 'media' || adjacent.clipType === 'timeline') && !adjacent.isImage
+          ? ((adjacent as any).sourceDurationUs ?? adjacentSourceEnd)
+          : Number.POSITIVE_INFINITY;
+      handleLimitUs = Number.isFinite(adjacentMaxEnd)
+        ? Math.max(0, Math.round(Number(adjacentMaxEnd)) - Math.round(adjacentSourceEnd))
+        : Number.POSITIVE_INFINITY;
+    } else {
+      handleLimitUs =
+        adjacent.clipType === 'media' || adjacent.clipType === 'timeline'
+          ? Math.max(0, Math.round(Number(adjacent.sourceRange?.startUs ?? 0)))
+          : Number.POSITIVE_INFINITY;
+    }
+
+    if (!Number.isFinite(handleLimitUs)) return null;
+    return Math.max(0, Math.round(handleLimitUs));
+  }
+
   function startResizeTransition(
     e: PointerEvent,
     trackId: string,
@@ -309,13 +362,45 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         currentTransition: current,
       });
 
-      if (maxUsRaw <= 0) return;
-      const maxUs = Math.max(minUs, maxUsRaw);
+      const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+      const oppositeTransitionUs = Math.max(
+        0,
+        Math.round(
+          edge === 'in'
+            ? ((item as TimelineClipItem).transitionOut?.durationUs ?? 0)
+            : ((item as TimelineClipItem).transitionIn?.durationUs ?? 0),
+        ),
+      );
+      const hardMaxUs = Math.max(minUs, Math.max(0, clipDurationUs - oppositeTransitionUs));
 
-      const newDurationUs = Math.min(
-        maxUs,
+      let newDurationUs = Math.min(
+        hardMaxUs,
         Math.max(minUs, resizeTransition.value.startDurationUs + deltaUs),
       );
+
+      if (timelineSettingsStore.clipSnapMode === 'clips') {
+        const thresholdUs = Math.round(
+          (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
+            1e6,
+        );
+        const handleSnapUs = computeTransitionHandleSnapDurationUs({
+          trackId,
+          itemId,
+          edge,
+          currentTransition: current,
+          rawDurationUs: newDurationUs,
+        });
+        if (handleSnapUs !== null) {
+          const snap = pickBestSnapCandidateUs({
+            rawUs: newDurationUs,
+            thresholdUs,
+            targetsUs: [handleSnapUs],
+          });
+          newDurationUs = snap.snappedUs;
+        }
+      }
+
+      if (maxUsRaw <= 0 && newDurationUs <= 0) return;
 
       timelineStore.updateClipTransition(trackId, itemId, {
         [edge === 'in' ? 'transitionIn' : 'transitionOut']: {

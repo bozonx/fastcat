@@ -34,14 +34,11 @@ void main(void) {
 `;
 
 const fragment = `
-precision highp float;
-
 in vec2 vTextureCoord;
 in vec2 vNormalizedCoord;
 in vec2 vTexScale;
 
-uniform sampler2D uSampler; // This is the FROM texture in the new transition model
-uniform sampler2D uTexture; // Custom uniform for TO texture, though typically we just use uSampler and we supply uFromTexture
+uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uDirection;
@@ -57,14 +54,19 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 p = vNormalizedCoord;
   
-  // In the current Pixi filter setup for transitions:
-  // uSampler is the filter target (the FROM clip)
-  // uFromTexture is the next clip (the TO clip) passed via context.fromTexture
+  // В PixiJS Custom Filters для переходов (например, cube или slide):
+  // uFromTexture: Целевая текстура, куда мы переходим (TO)
+  // uTexture: Исходная текстура, на которую наложен фильтр (FROM)
   
-  vec4 bgColor = texture(uFromTexture, p);
+  vec4 toColor = texture(uFromTexture, p);
   
   if (progress >= 1.0) {
-      gl_FragColor = bgColor;
+      gl_FragColor = toColor;
+      return;
+  }
+  
+  if (progress <= 0.0) {
+      gl_FragColor = texture(uTexture, vTextureCoord);
       return;
   }
   
@@ -72,28 +74,29 @@ void main(void) {
   float sizeFr = mix(1.0, depth, progress);
   float perspFr = perspective * progress;
   
-  if (uDirection < 0.5) {
-    // down (pivot bottom, y=1)
+  if (uDirection < 0.5) { // down
     pfr = (p + vec2(-0.5, -1.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * (1.0 - p.y)), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 1.0);
-  } else if (uDirection < 1.5) {
-    // up (pivot top, y=0)
+  } else if (uDirection < 1.5) { // up
     pfr = (p + vec2(-0.5, 0.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * p.y), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 0.0);
-  } else if (uDirection < 2.5) {
-    // right (pivot right, x=1)
+  } else if (uDirection < 2.5) { // right
     pfr = (p + vec2(-1.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * (1.0 - p.x))) + vec2(1.0, 0.5);
-  } else {
-    // left (pivot left, x=0)
+  } else { // left
     pfr = (p + vec2(0.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * p.x)) + vec2(0.0, 0.5);
   }
   
   if (inBounds(pfr)) {
       float shadow = mix(1.0, 0.3, progress);
-      vec4 cardColor = texture(uSampler, vTextureCoord + (pfr - p) * vTexScale);
+      // Берём текстуру из уходящего клипа (uTexture) с правильным смещением координат!
+      // pfr - это нормализованная координата (0..1), а uTexture требует vTextureCoord
+      vec2 offset = pfr - p;
+      vec4 cardColor = texture(uTexture, vTextureCoord + offset * vTexScale);
+      
+      // Поскольку PixiJS работает с Premultiplied Alpha
       cardColor.rgb *= shadow;
       
-      gl_FragColor = vec4(mix(bgColor.rgb, cardColor.rgb, cardColor.a), max(bgColor.a, cardColor.a));
+      gl_FragColor = cardColor + toColor * (1.0 - cardColor.a);
   } else {
-      gl_FragColor = bgColor;
+      gl_FragColor = toColor;
   }
 }
 `;

@@ -8,9 +8,9 @@ import type {
   ClipEffect,
 } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { clampHandlePx, getClipClass, transitionSvgParts } from '~/utils/timeline/clip';
@@ -324,6 +324,18 @@ function transitionUsToPx(us: number) {
   return timeUsToPx(us, timelineStore.timelineZoom);
 }
 
+function getTransitionButtonClass(isSelected: boolean, hasProblem: boolean): string {
+  if (isSelected) return 'ring-2 ring-inset ring-amber-300 z-10';
+  if (hasProblem) return 'ring-2 ring-inset ring-red-500 z-10';
+  return '';
+}
+
+function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean): string {
+  if (hasProblem) return 'rgba(239, 68, 68, 0.45)';
+  if (edge === 'in') return 'var(--clip-lower-tri)';
+  return 'rgba(255, 255, 255, 0.2)';
+}
+
 function shouldCollapseFades(item: TimelineTrackItem): boolean {
   if (item.kind !== 'clip') return false;
   const clip = item as TimelineClipItem;
@@ -370,10 +382,6 @@ function isCrossfadeTransitionIn(track: TimelineTrack, item: TimelineClipItem): 
   if (track.kind !== 'video') return false;
   const prev = getPrevClipForItem(track, item);
   if (!prev) return false;
-
-  const gapUs =
-    item.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs);
-  if (gapUs > 1000) return false;
 
   const transIn = item.transitionIn;
   if (!transIn) return false;
@@ -853,7 +861,7 @@ const isFreePosition = computed(() => {
         />
 
         <div
-          v-if="clipItem && !shouldCollapseTransitions(item)"
+          v-if="clipItem"
           class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none"
         >
           <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">
@@ -863,20 +871,14 @@ const isFreePosition = computed(() => {
 
         <!-- Transition In -->
         <div
-          v-if="clipItem?.transitionIn && !shouldCollapseTransitions(item)"
+          v-if="clipItem?.transitionIn"
           class="absolute left-0 top-0 bottom-0 z-10"
           :style="{ width: `${transitionUsToPx(clipItem.transitionIn.durationUs)}px` }"
         >
           <button
             type="button"
             class="w-full h-full overflow-hidden group/trans"
-            :class="[
-              selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in'
-                ? 'ring-2 ring-inset ring-amber-300 z-10'
-                : hasTransitionInProblem(track, item)
-                  ? 'ring-2 ring-inset ring-orange-500 z-10'
-                  : '',
-            ]"
+            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in', Boolean(hasTransitionInProblem(track, item)))"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               canEditClipContent &&
@@ -887,20 +889,20 @@ const isFreePosition = computed(() => {
               })
             "
           >
-            <template v-if="!isCrossfadeTransitionIn(track, clipItem)">
-              <svg
-                v-if="(clipItem.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'"
-                class="w-full h-full block"
-                preserveAspectRatio="none"
-                viewBox="0 0 100 100"
-              >
-                <path :d="transitionSvgParts(100, 100, 'in')" fill="var(--clip-lower-tri)" />
-              </svg>
-              <template v-else>
-                <div class="absolute inset-0 bg-linear-to-r from-transparent to-white/20" />
-                <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
-              </template>
-            </template>
+            <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+              <path
+                :d="transitionSvgParts(100, 100, 'in')"
+                :fill="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
+              />
+            </svg>
+            <span
+              v-if="(clipItem.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'"
+              class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+            />
+            <div
+              v-if="hasTransitionInProblem(track, item)"
+              class="absolute right-0.5 top-0.5 w-2 h-2 rounded-full bg-red-500 border border-white/70 z-30"
+            />
             <div
               v-if="canEditClipContent && !Boolean(clipItem.locked)"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
@@ -920,20 +922,14 @@ const isFreePosition = computed(() => {
 
         <!-- Transition Out -->
         <div
-          v-if="clipItem?.transitionOut && !shouldCollapseTransitions(item)"
+          v-if="clipItem?.transitionOut"
           class="absolute right-0 top-0 bottom-0 z-10"
           :style="{ width: `${transitionUsToPx(clipItem.transitionOut.durationUs)}px` }"
         >
           <button
             type="button"
             class="w-full h-full overflow-hidden group/trans"
-            :class="[
-              selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out'
-                ? 'ring-2 ring-inset ring-amber-300 z-10'
-                : hasTransitionOutProblem(track, item)
-                  ? 'ring-2 ring-inset ring-orange-500 z-10'
-                  : '',
-            ]"
+            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out', Boolean(hasTransitionOutProblem(track, item)))"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               canEditClipContent &&
@@ -944,18 +940,20 @@ const isFreePosition = computed(() => {
               })
             "
           >
-            <svg
-              v-if="(clipItem.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'"
-              class="w-full h-full block"
-              preserveAspectRatio="none"
-              viewBox="0 0 100 100"
-            >
-              <path :d="transitionSvgParts(100, 100, 'out')" fill="var(--clip-lower-tri)" />
+            <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+              <path
+                :d="transitionSvgParts(100, 100, 'out')"
+                :fill="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
+              />
             </svg>
-            <template v-else>
-              <div class="absolute inset-0 bg-linear-to-l from-transparent to-white/20" />
-              <span class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
-            </template>
+            <span
+              v-if="(clipItem.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'"
+              class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+            />
+            <div
+              v-if="hasTransitionOutProblem(track, item)"
+              class="absolute right-0.5 top-0.5 w-2 h-2 rounded-full bg-red-500 border border-white/70 z-30"
+            />
             <div
               v-if="canEditClipContent && !Boolean(clipItem.locked)"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
