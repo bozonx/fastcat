@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RemoteVfsFileEntry } from '../../src/types/remote-vfs';
 import {
+  createRemoteMediaFsEntry,
   getRemoteFileDownloadUrl,
   isRemoteFsEntry,
   toRemoteFsEntry,
@@ -89,5 +90,52 @@ describe('remote-vfs utils', () => {
         entry: remoteFile,
       }),
     ).toBe('https://cdn.example.com/uploads/clip.mp4');
+  });
+
+  it('prefers content item title and can create synthetic remote entry for a selected media', () => {
+    const remoteItem: RemoteVfsFileEntry = {
+      id: 'content-1',
+      name: 'internal-name',
+      title: 'News Package',
+      type: 'file',
+      path: '/virtual-all/content-1',
+      text: 'Lead text',
+      media: [
+        {
+          id: 'media-1',
+          name: 'shot-a.mp4',
+          type: 'original',
+          url: '/media/shot-a.mp4',
+          mimeType: 'video/mp4',
+          size: 2048,
+        },
+        {
+          id: 'media-2',
+          title: 'Narration',
+          type: 'original',
+          url: '/media/narration.mp3',
+          mimeType: 'audio/mpeg',
+          size: 1024,
+        },
+      ],
+    };
+
+    const itemEntry = toRemoteFsEntry(remoteItem);
+    const mediaEntry = createRemoteMediaFsEntry({
+      item: remoteItem,
+      media: remoteItem.media![1]!,
+      mediaIndex: 1,
+    });
+
+    expect(itemEntry).toMatchObject({ name: 'News Package' });
+    expect(isRemoteFsEntry(mediaEntry)).toBe(true);
+    expect(mediaEntry).toMatchObject({
+      name: 'Narration',
+      source: 'remote',
+      mimeType: 'audio/mpeg',
+      size: 1024,
+    });
+    expect((mediaEntry.remoteData as RemoteVfsFileEntry).media).toHaveLength(1);
+    expect((mediaEntry.remoteData as RemoteVfsFileEntry).media?.[0]?.id).toBe('media-2');
   });
 });

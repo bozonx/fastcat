@@ -192,7 +192,8 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     }
   } else if (action === 'uploadRemote') {
     if (entry.kind === 'file' && entry.source !== 'remote') {
-      uiStore.pendingRemoteUploadEntry = entry;
+      uiStore.remoteExchangeLocalEntry = entry;
+      uiStore.remoteExchangeModalOpen = true;
     }
   } else {
     onFileActionBase(action as FileActionBase, entry);

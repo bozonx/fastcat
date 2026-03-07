@@ -109,18 +109,21 @@ Notes:
 - Gran connect app name is fixed globally and is not editable in user settings
 - user integration settings are stored in `.gran/user.settings.json`
 
-### File manager remote mode
+### File exchange modal
 
 When the resolved `Files API` provider is available, the desktop file browser exposes a `Remote` button in the middle panel toolbar.
 
 The current behavior is:
 
-- left tree stays local and continues to represent the project file system
-- middle panel can switch between local folder content and Gran Publicador VFS content
-- clicking a remote file or folder shows remote properties in the properties panel
-- dragging a remote file into the local folder tree downloads it into the selected local directory
-- local files expose an `Upload to remote` action in the context menu and properties panel
-- upload and download transfers use a cancelable progress modal that cannot be dismissed any other way
+- the `Remote` button opens a dedicated large file exchange modal instead of switching the middle panel into a remote mode
+- the modal is split into three columns: local project tree, remote content library, and preview/details
+- the left column stays fully local and continues to represent the project file system
+- the center column renders remote entries as content item cards and supports multiple media assets per item
+- content item cards display the item title, a horizontal media gallery, and optional text tile
+- dragging a media tile from the remote library into the local tree downloads that specific media file
+- dragging a local file into the remote library creates a new remote content item with a single media asset
+- local files still expose an `Upload to remote` action in the context menu and properties panel, but it now opens the same exchange modal
+- upload and download transfers use cancelable progress modals
 
 ## Panel focus and keyboard routing
 

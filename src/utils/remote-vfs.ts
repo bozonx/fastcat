@@ -36,6 +36,50 @@ function joinPath(baseUrl: string, path: string): string {
   return `${normalizeBaseUrl(baseUrl)}/${path.replace(/^\/+/, '')}`;
 }
 
+function normalizeFileName(value: string): string {
+  return value.trim().replace(/[\\/]+/g, '-');
+}
+
+export function getRemoteEntryDisplayName(entry: Pick<RemoteVfsEntry, 'name' | 'title'>): string {
+  const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+  const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+  return title || name || 'Untitled';
+}
+
+export function getRemoteMediaDisplayName(params: {
+  entry: Pick<RemoteVfsFileEntry, 'name' | 'title'>;
+  media: RemoteVfsMedia;
+  mediaIndex?: number;
+}): string {
+  const mediaTitle = typeof params.media.title === 'string' ? params.media.title.trim() : '';
+  const mediaName = typeof params.media.name === 'string' ? params.media.name.trim() : '';
+  if (mediaTitle) return normalizeFileName(mediaTitle);
+  if (mediaName) return normalizeFileName(mediaName);
+
+  const itemName = getRemoteEntryDisplayName(params.entry);
+  const extensionFromMime = params.media.mimeType?.split('/').pop()?.toLowerCase() ?? '';
+  const extension =
+    extensionFromMime && extensionFromMime !== 'plain' ? `.${extensionFromMime}` : '';
+  return normalizeFileName(`${itemName}-${(params.mediaIndex ?? 0) + 1}${extension}`);
+}
+
+export function getRemoteMediaKind(
+  media: RemoteVfsMedia,
+): 'video' | 'audio' | 'image' | 'text' | 'document' | 'unknown' {
+  const mimeType = media.mimeType?.toLowerCase() ?? '';
+  const mediaType = media.type?.toLowerCase() ?? '';
+
+  if (mimeType.startsWith('video/') || mediaType.includes('video')) return 'video';
+  if (mimeType.startsWith('audio/') || mediaType.includes('audio')) return 'audio';
+  if (mimeType.startsWith('image/') || mediaType.includes('image')) return 'image';
+  if (mimeType.startsWith('text/') || mediaType.includes('text')) return 'text';
+  if (mimeType.includes('pdf') || mimeType.includes('document') || mediaType.includes('document')) {
+    return 'document';
+  }
+
+  return 'unknown';
+}
+
 function resolveMediaMimeType(media: RemoteVfsMedia[] | undefined): string {
   return media?.[0]?.mimeType || 'application/octet-stream';
 }
@@ -62,9 +106,10 @@ function getRemoteEntryUpdatedAt(entry: RemoteVfsEntry): number | undefined {
 export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   const size = resolveMediaSize(entry);
   const lastModified = getRemoteEntryUpdatedAt(entry);
+  const displayName = getRemoteEntryDisplayName(entry);
 
   return {
-    name: entry.name,
+    name: displayName,
     kind: entry.type,
     handle: {} as FileSystemFileHandle,
     path: entry.path,
@@ -77,6 +122,39 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
     size,
     created: lastModified,
     mimeType: entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
+  };
+}
+
+export function createRemoteMediaFsEntry(params: {
+  item: RemoteVfsFileEntry;
+  media: RemoteVfsMedia;
+  mediaIndex?: number;
+}): RemoteFsEntry {
+  const mediaName = getRemoteMediaDisplayName({
+    entry: params.item,
+    media: params.media,
+    mediaIndex: params.mediaIndex,
+  });
+  const remotePath = `${params.item.path}#media-${params.media.id || params.mediaIndex || 0}`;
+
+  return {
+    name: mediaName,
+    kind: 'file',
+    handle: {} as FileSystemFileHandle,
+    path: remotePath,
+    source: 'remote',
+    remoteId: `${params.item.id}:${params.media.id}`,
+    remotePath,
+    remoteType: 'file',
+    remoteData: {
+      ...params.item,
+      name: mediaName,
+      title: mediaName,
+      path: remotePath,
+      media: [params.media],
+    },
+    size: params.media.size ?? 0,
+    mimeType: params.media.mimeType ?? 'application/octet-stream',
   };
 }
 
@@ -95,6 +173,28 @@ export function getRemoteFileDownloadUrl(params: {
 
   const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
   return joinPath(rootBaseUrl, media.url);
+}
+
+export function getRemoteThumbnailUrl(params: {
+  baseUrl: string;
+  mediaId: string;
+  w?: number;
+  h?: number;
+  quality?: number;
+  fit?: string;
+}): string {
+  if (!params.mediaId) return '';
+  const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
+  const url = new URL(
+    joinPath(rootBaseUrl, `/api/v1/external/vfs/media/${params.mediaId}/thumbnail`),
+  );
+
+  if (params.w) url.searchParams.set('w', params.w.toString());
+  if (params.h) url.searchParams.set('h', params.h.toString());
+  if (params.quality) url.searchParams.set('quality', params.quality.toString());
+  if (params.fit) url.searchParams.set('fit', params.fit);
+
+  return url.toString();
 }
 
 export async function fetchRemoteVfsList(params: {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
+
 const colorMode = useColorMode();
 
 /**
@@ -15,6 +17,7 @@ if (colorMode.preference === 'system') {
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+    <RemoteFileExchangeModal />
   </UApp>
 </template>
 

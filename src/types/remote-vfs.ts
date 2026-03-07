@@ -1,15 +1,19 @@
 export interface RemoteVfsMedia {
   id: string;
+  name?: string;
   type: string;
   url: string;
   mimeType?: string;
   size?: number;
+  title?: string;
+  posterUrl?: string;
   meta?: Record<string, unknown>;
 }
 
 export interface RemoteVfsBaseEntry {
   id: string;
   name: string;
+  title?: string;
   type: 'file' | 'directory';
   path: string;
 }
@@ -27,6 +31,8 @@ export interface RemoteVfsFileEntry extends RemoteVfsBaseEntry {
   meta?: Record<string, unknown>;
   media?: RemoteVfsMedia[];
 }
+
+export interface RemoteVfsContentItem extends RemoteVfsFileEntry {}
 
 export type RemoteVfsEntry = RemoteVfsDirectoryEntry | RemoteVfsFileEntry;
 
