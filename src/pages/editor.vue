@@ -539,6 +539,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                     @drop.prevent="(e) => onDrop(e, panel.id)"
                     @dragend="onDragEnd"
                   >
+                    <div
+                      v-if="focusStore.isPanelFocused(getDynamicPanelFocusId(panel.id))"
+                      class="pointer-events-none absolute inset-0 z-30 ring-2 ring-primary-500/60 ring-inset"
+                    />
                     <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
                     <MonitorContainer
                       v-else-if="panel.type === 'monitor'"
