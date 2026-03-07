@@ -6,7 +6,8 @@ import { clockManifest } from './clock/manifest';
 import { slideManifest } from './slide/manifest';
 import { wipeManifest } from './wipe/manifest';
 import { cubeTransitionManifest } from './cube/manifest';
-import { flipTransitionManifest } from './flip/manifest';
+import { cardSwapTransitionManifest } from './card-swap/manifest';
+import { fallingCardTransitionManifest } from './falling-card/manifest';
 
 export function initTransitions(): void {
   registerTransition(dissolveManifest);
@@ -16,7 +17,8 @@ export function initTransitions(): void {
   registerTransition(circleManifest);
   registerTransition(wipeManifest);
   registerTransition(cubeTransitionManifest);
-  registerTransition(flipTransitionManifest);
+  registerTransition(cardSwapTransitionManifest);
+  registerTransition(fallingCardTransitionManifest);
 }
 
 export * from './core/registry';
@@ -27,4 +29,5 @@ export * from './fade-to-black/manifest';
 export * from './slide/manifest';
 export * from './wipe/manifest';
 export * from './cube/manifest';
-export * from './flip/manifest';
+export * from './card-swap/manifest';
+export * from './falling-card/manifest';
