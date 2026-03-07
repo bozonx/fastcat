@@ -53,8 +53,7 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 axis = normalize(uAxis);
   vec2 resolution = max(uResolution, vec2(1.0, 1.0));
-  float minResolution = max(1.0, min(resolution.x, resolution.y));
-  vec2 gapVector = axis * uGap * vec2(minResolution / resolution.x, minResolution / resolution.y);
+  vec2 gapVector = axis * uGap;
   vec2 fromOffset = axis * progress + gapVector * 0.5;
   vec2 toOffset = axis * (progress - 1.0) - gapVector * 0.5;
 
@@ -169,14 +168,10 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);
     const width = Number(
-      (context.toTexture as any)?.source?.width ??
-        (context.fromTexture as any)?.source?.width ??
-        1920,
+      (context.toTexture as any)?.width ?? (context.fromTexture as any)?.width ?? 1920,
     );
     const height = Number(
-      (context.toTexture as any)?.source?.height ??
-        (context.fromTexture as any)?.source?.height ??
-        1080,
+      (context.toTexture as any)?.height ?? (context.fromTexture as any)?.height ?? 1080,
     );
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));

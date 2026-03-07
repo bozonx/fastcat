@@ -42,8 +42,7 @@ uniform float uDirection;
 const float PI = 3.1415926535897932384626433832795;
 
 void main(void) {
-  // Flip Y to fix upside-down issue with RenderTextures in PIXI v8
-  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
+  vec2 uv = vTextureCoord;
   
   vec2 centered = uv - vec2(0.5, 0.5);
   

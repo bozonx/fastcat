@@ -97,14 +97,14 @@ function normalizeWipeParams(params?: Record<string, unknown>): WipeParams {
 function getDirectionVector(direction: WipeParams['direction']): { x: number; y: number } {
   switch (direction) {
     case 'right':
-      return { x: -1, y: 0 };
+      return { x: 1, y: 0 };
     case 'up':
-      return { x: 0, y: 1 };
-    case 'down':
       return { x: 0, y: -1 };
+    case 'down':
+      return { x: 0, y: 1 };
     case 'left':
     default:
-      return { x: 1, y: 0 };
+      return { x: -1, y: 0 };
   }
 }
 
@@ -166,14 +166,10 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);
     const width = Number(
-      (context.toTexture as any)?.source?.width ??
-        (context.fromTexture as any)?.source?.width ??
-        1920,
+      (context.toTexture as any)?.width ?? (context.fromTexture as any)?.width ?? 1920,
     );
     const height = Number(
-      (context.toTexture as any)?.source?.height ??
-        (context.fromTexture as any)?.source?.height ??
-        1080,
+      (context.toTexture as any)?.height ?? (context.fromTexture as any)?.height ?? 1080,
     );
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
