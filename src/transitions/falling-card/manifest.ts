@@ -46,7 +46,6 @@ uniform float uProgress;
 uniform float uDirection;
 
 const float PI = 3.14159265359;
-const float d = 0.8;
 
 bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
@@ -56,6 +55,7 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
   
+  // В V8 Custom Filters: uTexture = FROM клип (уходящий), uFromTexture = TO клип (приходящий)
   vec4 toColor = texture(uFromTexture, uv);
   vec4 fromColor = texture(uTexture, vTextureCoord);
   
@@ -79,30 +79,35 @@ void main(void) {
   float denom = 1.0;
   vec2 pfr = vec2(-1.0);
   
-  if (uDirection < 0.5) { // down
-    p = uv - vec2(0.5, 1.0);
-    denom = c * d - p.y * s;
-    py = p.y * d / denom;
-    px = p.x * (d + py * s) / d;
-    pfr = vec2(px, py) + vec2(0.5, 1.0);
-  } else if (uDirection < 1.5) { // up
+  // d: расстояние до камеры. Меньше d = сильнее перспектива
+  float d = 1.5;
+  
+  if (uDirection < 0.5) { // down: залипает верхний край (y=0)
     p = uv - vec2(0.5, 0.0);
-    denom = c * d + p.y * s;
-    py = p.y * d / denom;
+    // Обратное преобразование: вычисляем откуда взять пиксель из оригинального FROM-клипа
+    // Так как FROM падает *назад* (от нас), мы инвертируем знак sin по сравнению с "на нас"
+    denom = d * c + p.y * s;
+    py = (p.y * d) / denom;
     px = p.x * (d - py * s) / d;
     pfr = vec2(px, py) + vec2(0.5, 0.0);
-  } else if (uDirection < 2.5) { // right
-    p = uv - vec2(1.0, 0.5);
-    denom = c * d - p.x * s;
-    px = p.x * d / denom;
-    py = p.y * (d + px * s) / d;
-    pfr = vec2(px, py) + vec2(1.0, 0.5);
-  } else { // left
+  } else if (uDirection < 1.5) { // up: залипает нижний край (y=1)
+    p = uv - vec2(0.5, 1.0);
+    denom = d * c - p.y * s;
+    py = (p.y * d) / denom;
+    px = p.x * (d + py * s) / d;
+    pfr = vec2(px, py) + vec2(0.5, 1.0);
+  } else if (uDirection < 2.5) { // right: залипает левый край (x=0)
     p = uv - vec2(0.0, 0.5);
-    denom = c * d + p.x * s;
-    px = p.x * d / denom;
+    denom = d * c + p.x * s;
+    px = (p.x * d) / denom;
     py = p.y * (d - px * s) / d;
     pfr = vec2(px, py) + vec2(0.0, 0.5);
+  } else { // left: залипает правый край (x=1)
+    p = uv - vec2(1.0, 0.5);
+    denom = d * c - p.x * s;
+    px = (p.x * d) / denom;
+    py = p.y * (d + px * s) / d;
+    pfr = vec2(px, py) + vec2(1.0, 0.5);
   }
   
   if (denom <= 0.0) {
@@ -111,8 +116,10 @@ void main(void) {
   }
   
   if (inBounds(pfr)) {
+      // Берем FROM-клип (uTexture) с учетом искажений
       vec4 cardColor = texture(uTexture, vTextureCoord + (pfr - uv) * vTexScale);
       
+      // TO-клип (uFromTexture) служит фоном
       float outAlpha = cardColor.a + toColor.a * (1.0 - cardColor.a);
       if (outAlpha > 0.0) {
           vec3 outColor = (cardColor.rgb * cardColor.a + toColor.rgb * toColor.a * (1.0 - cardColor.a)) / outAlpha;

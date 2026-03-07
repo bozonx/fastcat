@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import AppModal from '~/components/ui/AppModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -15,7 +16,10 @@ import { createTimelineCommand } from '~/file-manager/application/fileManagerCom
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useUiStore } from '~/stores/ui.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { transcribeProjectAudioFile } from '~/utils/stt';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -34,10 +38,12 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
+const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const fileConversion = useFileConversion();
 const { addFileTab, setActiveTab } = useProjectTabs();
+const runtimeConfig = useRuntimeConfig();
 
 const fileManager = useFileManager();
 const {
@@ -63,6 +69,22 @@ const {
 
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const sttTranscriptionModalOpen = ref(false);
+const sttTranscriptionLanguage = ref('');
+const sttTranscriptionError = ref('');
+const sttTranscribing = ref(false);
+const sttTranscriptionEntry = ref<FsEntry | null>(null);
+
+const sttConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'stt',
+    integrations: workspaceStore.userSettings.integrations,
+    granPublicadorBaseUrl:
+      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.gpanPublicadorBaseUrl
+        : '',
+  }),
+);
 
 const {
   isDeleteConfirmModalOpen,
@@ -102,7 +124,82 @@ type FileAction =
   | 'createMarkdown'
   | 'createTimeline'
   | 'openAsPanel'
-  | 'openAsProjectTab';
+  | 'openAsProjectTab'
+  | 'transcribe';
+
+function isTranscribableMediaFile(entry: FsEntry): boolean {
+  if (entry.kind !== 'file' || entry.source === 'remote') return false;
+
+  const mediaType = getMediaTypeFromFilename(entry.name);
+
+  return (
+    (mediaType === 'audio' || mediaType === 'video') &&
+    Boolean(sttConfig.value) &&
+    Boolean(workspaceStore.workspaceHandle) &&
+    Boolean(projectStore.currentProjectId) &&
+    Boolean(entry.handle)
+  );
+}
+
+function openTranscriptionModal(entry: FsEntry) {
+  if (!isTranscribableMediaFile(entry)) return;
+  sttTranscriptionEntry.value = entry;
+  sttTranscriptionLanguage.value = '';
+  sttTranscriptionError.value = '';
+  sttTranscriptionModalOpen.value = true;
+}
+
+async function submitTranscription() {
+  const entry = sttTranscriptionEntry.value;
+
+  if (
+    !entry ||
+    entry.kind !== 'file' ||
+    !workspaceStore.workspaceHandle ||
+    !projectStore.currentProjectId
+  ) {
+    return;
+  }
+
+  sttTranscribing.value = true;
+  sttTranscriptionError.value = '';
+
+  try {
+    const mediaType = getMediaTypeFromFilename(entry.name);
+    const file = await (entry.handle as FileSystemFileHandle).getFile();
+    const result = await transcribeProjectAudioFile({
+      fileHandle: entry.handle as FileSystemFileHandle,
+      filePath: entry.path ?? entry.name,
+      fileName: entry.name,
+      fileType: typeof file.type === 'string' ? file.type : '',
+      language: sttTranscriptionLanguage.value,
+      granPublicadorBaseUrl:
+        typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+          ? runtimeConfig.public.gpanPublicadorBaseUrl
+          : '',
+      projectId: projectStore.currentProjectId,
+      userSettings: workspaceStore.userSettings,
+      workspaceHandle: workspaceStore.workspaceHandle,
+    });
+
+    sttTranscriptionModalOpen.value = false;
+
+    toast.add({
+      title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
+      description: result.cached
+        ? 'Cached transcription was loaded from vardata.'
+        : mediaType === 'video'
+          ? 'Video audio track was transcribed and saved to vardata cache.'
+          : 'Transcription was saved to vardata cache.',
+      color: 'success',
+    });
+  } catch (error: unknown) {
+    sttTranscriptionError.value =
+      error instanceof Error ? error.message : 'Failed to transcribe media';
+  } finally {
+    sttTranscribing.value = false;
+  }
+}
 
 async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
   if (Array.isArray(entry)) {
@@ -195,6 +292,8 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       uiStore.remoteExchangeLocalEntry = entry;
       uiStore.remoteExchangeModalOpen = true;
     }
+  } else if (action === 'transcribe') {
+    openTranscriptionModal(entry);
   } else {
     onFileActionBase(action as FileActionBase, entry);
   }
@@ -316,7 +415,7 @@ watch(
       openDeleteConfirmModal(entries);
       uiStore.pendingFsEntryDelete = null;
     }
-  }
+  },
 );
 
 watch(
@@ -327,7 +426,7 @@ watch(
       startRename(entry);
       (uiStore as any).pendingFsEntryRename = null;
     }
-  }
+  },
 );
 
 watch(
@@ -338,7 +437,7 @@ watch(
       onFileAction('createFolder', entry);
       (uiStore as any).pendingFsEntryCreateFolder = null;
     }
-  }
+  },
 );
 
 watch(
@@ -349,7 +448,7 @@ watch(
       await createTimelineInDirectory(entry);
       (uiStore as any).pendingFsEntryCreateTimeline = null;
     }
-  }
+  },
 );
 
 watch(
@@ -606,6 +705,53 @@ function onDrop(e: DragEvent) {
         </div>
       </div>
     </UiConfirmModal>
+
+    <AppModal
+      v-model:open="sttTranscriptionModalOpen"
+      :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
+      :close-button="!sttTranscribing"
+      :prevent-close="sttTranscribing"
+      :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
+    >
+      <div class="flex flex-col gap-4">
+        <div class="text-sm text-ui-text-muted">
+          {{
+            t(
+              'videoEditor.fileManager.audio.transcriptionHint',
+              'Send the current audio file to the configured STT service. Language is optional.',
+            )
+          }}
+        </div>
+
+        <div v-if="sttTranscriptionEntry" class="text-xs text-ui-text-muted break-all">
+          {{ sttTranscriptionEntry.name }}
+        </div>
+
+        <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
+          <UInput v-model="sttTranscriptionLanguage" :disabled="sttTranscribing" placeholder="en" />
+        </UFormField>
+
+        <div v-if="sttTranscriptionError" class="text-sm text-error-400">
+          {{ sttTranscriptionError }}
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :disabled="sttTranscribing"
+            @click="sttTranscriptionModalOpen = false"
+          >
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" :loading="sttTranscribing" @click="submitTranscription">
+            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
+          </UButton>
+        </div>
+      </template>
+    </AppModal>
 
     <!-- Global Drag Highlight -->
     <div
