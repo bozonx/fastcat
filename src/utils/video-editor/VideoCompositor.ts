@@ -170,6 +170,7 @@ export interface CompositorClip {
   transitionFromTexture?: RenderTexture | null;
   transitionToTexture?: RenderTexture | null;
   transitionOutputTexture?: RenderTexture | null;
+  transitionCombinedTexture?: RenderTexture | null;
   textDirty?: boolean;
 }
 
@@ -208,6 +209,7 @@ export class VideoCompositor {
   private masterEffectFilters: Map<string, Filter> | null = null;
   private transitionFilters = new Map<string, Filter>();
   private filterQuadSprite: Sprite | null = null;
+  private transitionCombineSprite: Sprite | null = null;
   private sampleRequestsInFlight = 0;
   private readonly sampleRequestQueue: Array<() => void> = [];
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
@@ -1541,6 +1543,63 @@ export class VideoCompositor {
     });
   }
 
+  private ensureCombinedTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
+    const valid =
+      texture &&
+      !(texture as any).destroyed &&
+      typeof (texture as any).uid === 'number' &&
+      texture.width === this.width * 2 &&
+      texture.height === this.height;
+
+    if (valid) {
+      return texture as RenderTexture;
+    }
+
+    if (texture) {
+      try {
+        safeDispose(texture);
+      } catch {
+        // ignore
+      }
+    }
+
+    return RenderTexture.create({
+      width: this.width * 2,
+      height: this.height,
+    });
+  }
+
+  private renderCombinedTransitionTexture(
+    fromTexture: RenderTexture,
+    toTexture: RenderTexture,
+    combined: RenderTexture,
+  ): void {
+    if (!this.app?.renderer) return;
+
+    if (!this.transitionCombineSprite) {
+      this.transitionCombineSprite = new Sprite(Texture.EMPTY);
+      this.transitionCombineSprite.anchor.set(0, 0);
+    }
+
+    const renderer = this.app.renderer;
+
+    this.transitionCombineSprite.texture = fromTexture;
+    this.transitionCombineSprite.x = 0;
+    this.transitionCombineSprite.y = 0;
+    this.transitionCombineSprite.scale.set(1, 1);
+    this.transitionCombineSprite.width = this.width;
+    this.transitionCombineSprite.height = this.height;
+    renderer.render({ container: this.transitionCombineSprite, target: combined, clear: true });
+
+    this.transitionCombineSprite.texture = toTexture;
+    this.transitionCombineSprite.x = this.width;
+    this.transitionCombineSprite.y = 0;
+    this.transitionCombineSprite.scale.set(1, 1);
+    this.transitionCombineSprite.width = this.width;
+    this.transitionCombineSprite.height = this.height;
+    renderer.render({ container: this.transitionCombineSprite, target: combined, clear: false });
+  }
+
   private ensureTransitionSprite(clip: CompositorClip): Sprite {
     let sprite = clip.transitionSprite ?? null;
     if (!sprite) {
@@ -1686,7 +1745,6 @@ export class VideoCompositor {
       clip.transitionOutputTexture = this.ensureTransitionRenderTexture(
         clip.transitionOutputTexture ?? null,
       );
-
       this.renderSingleClipToTexture(clip, clip.transitionToTexture);
 
       const fromTexture = clip.transitionFromTexture;
@@ -2462,6 +2520,10 @@ export class VideoCompositor {
     if (clip.transitionOutputTexture) {
       safeDispose(clip.transitionOutputTexture);
       clip.transitionOutputTexture = null;
+    }
+    if (clip.transitionCombinedTexture) {
+      safeDispose(clip.transitionCombinedTexture);
+      clip.transitionCombinedTexture = null;
     }
     if (clip.transitionSprite) {
       clip.transitionSprite.destroy(true);

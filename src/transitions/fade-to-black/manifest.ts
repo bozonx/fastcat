@@ -9,6 +9,7 @@ export interface FadeToBlackParams {
 const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
+out vec2 vNormalizedCoord;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -28,11 +29,13 @@ vec2 filterTextureCoord(void) {
 void main(void) {
   gl_Position = filterVertexPosition();
   vTextureCoord = filterTextureCoord();
+  vNormalizedCoord = aPosition;
 }
 `;
 
 const fragment = `
 in vec2 vTextureCoord;
+in vec2 vNormalizedCoord;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
@@ -40,9 +43,9 @@ uniform float uProgress;
 uniform vec3 uFadeColor;
 
 void main(void) {
-  vec2 uv = vTextureCoord;
+  vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
-  vec4 toColor = texture(uTexture, uv);
+  vec4 toColor = texture(uTexture, vTextureCoord);
   float progress = clamp(uProgress, 0.0, 1.0);
   vec4 fadeColor = vec4(uFadeColor, 1.0);
 

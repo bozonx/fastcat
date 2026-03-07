@@ -10,6 +10,7 @@ export interface CircleParams {
 const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
+out vec2 vNormalizedCoord;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -29,11 +30,13 @@ vec2 filterTextureCoord(void) {
 void main(void) {
   gl_Position = filterVertexPosition();
   vTextureCoord = filterTextureCoord();
+  vNormalizedCoord = aPosition;
 }
 `;
 
 const fragment = `
 in vec2 vTextureCoord;
+in vec2 vNormalizedCoord;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
@@ -42,7 +45,7 @@ uniform float uBlur;
 uniform float uDirection;
 
 void main(void) {
-  vec2 uv = vTextureCoord;
+  vec2 uv = vNormalizedCoord;
   vec2 centered = uv - vec2(0.5, 0.5);
   float distanceFromCenter = length(centered);
   float maxRadius = 0.70710678;
@@ -56,7 +59,7 @@ void main(void) {
   }
 
   vec4 fromColor = texture(uFromTexture, uv);
-  vec4 toColor = texture(uTexture, uv);
+  vec4 toColor = texture(uTexture, vTextureCoord);
 
   gl_FragColor = mix(fromColor, toColor, reveal);
 }

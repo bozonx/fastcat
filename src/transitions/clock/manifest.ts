@@ -9,6 +9,7 @@ export interface ClockParams {
 const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
+out vec2 vNormalizedCoord;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -28,11 +29,13 @@ vec2 filterTextureCoord(void) {
 void main(void) {
   gl_Position = filterVertexPosition();
   vTextureCoord = filterTextureCoord();
+  vNormalizedCoord = aPosition;
 }
 `;
 
 const fragment = `
 in vec2 vTextureCoord;
+in vec2 vNormalizedCoord;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
@@ -42,12 +45,9 @@ uniform float uDirection;
 const float PI = 3.1415926535897932384626433832795;
 
 void main(void) {
-  vec2 uv = vTextureCoord;
-  
+  vec2 uv = vNormalizedCoord;
   vec2 centered = uv - vec2(0.5, 0.5);
-  
-  // Angle starting from top (0, -0.5) and increasing clockwise.
-  // Using atan(x, -y) gives 0 at top and increases CW in screen coordinates.
+
   float angle = atan(centered.x, -centered.y);
   if (angle < 0.0) {
     angle += PI * 2.0;
@@ -63,12 +63,11 @@ void main(void) {
   float normalizedAngle = angle / (PI * 2.0);
   float progress = clamp(uProgress, 0.0, 1.0);
   float softness = 0.001;
-  
-  // normalizedAngle < progress means we reveal the incoming (to) texture
+
   float reveal = smoothstep(progress - softness, progress + softness, normalizedAngle);
 
   vec4 fromColor = texture(uFromTexture, uv);
-  vec4 toColor = texture(uTexture, uv);
+  vec4 toColor = texture(uTexture, vTextureCoord);
 
   gl_FragColor = mix(fromColor, toColor, 1.0 - reveal);
 }
