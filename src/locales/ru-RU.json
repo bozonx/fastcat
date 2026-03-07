@@ -727,8 +727,9 @@
         "modeUnzoom": "Отдаление",
         "modeFixed": "Фиксированный",
         "paramPerspective": "Высота по центру",
-        "paramFadeColor": "Цвет затухания",
+        "directionClockwise": "По часовой стрелке",
         "directionCounterclockwise": "Против часовой стрелки",
+        "directionSymmetric": "Симметрично",
         "directionFromCenter": "Из центра",
         "directionToCenter": "В центр",
         "errorNoPreviousClip": "Нет предыдущего клипа для перехода",
@@ -739,7 +740,8 @@
         "errorPrevHandleTooShort": "Хвост предыдущего клипа слишком короткий (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorNextHandleTooShort": "Начало следующего клипа слишком короткое (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorClipHeadHandleTooShort": "Начало клипа слишком короткое для перехода (нужно {needSeconds}с, есть {haveSeconds}с)",
-        "errorClipTailHandleTooShort": "Хвост клипа слишком короткий для перехода (нужно {needSeconds}с, есть {haveSeconds}с)"
+        "errorClipTailHandleTooShort": "Хвост клипа слишком короткий для перехода (нужно {needSeconds}с, есть {haveSeconds}с)",
+        "parameters": "Параметры"
       },
       "deleteTrackConfirm": "Дорожка не пуста. Удалить?",
       "convertZoneToMarker": "Преобразовать в обычный маркер",
