@@ -2,6 +2,7 @@
 import { computed, reactive, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
+import { GRAN_PUBLICADOR_APP_NAME } from '~/utils/constants';
 import {
   getGranPublicadorConnectUrl,
   getGranPublicadorHealthUrl,
@@ -21,6 +22,12 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
+const runtimeConfig = useRuntimeConfig();
+
+const granPublicadorBaseUrl = computed(() => {
+  const value = runtimeConfig.public.gpanPublicadorBaseUrl;
+  return typeof value === 'string' ? value.trim() : '';
+});
 
 const healthStates = reactive<Record<'gran' | 'files' | 'stt', HealthState>>({
   gran: { loading: false, status: 'idle', message: '' },
@@ -30,7 +37,10 @@ const healthStates = reactive<Record<'gran' | 'files' | 'stt', HealthState>>({
 
 const integrations = computed(() => workspaceStore.userSettings.integrations);
 const resolvedServices = computed(() =>
-  resolveExternalIntegrations({ userSettings: workspaceStore.userSettings }),
+  resolveExternalIntegrations({
+    userSettings: workspaceStore.userSettings,
+    granPublicadorBaseUrl: granPublicadorBaseUrl.value,
+  }),
 );
 
 const redirectUri = computed(() => {
@@ -40,8 +50,8 @@ const redirectUri = computed(() => {
 
 const granConnectUrl = computed(() =>
   getGranPublicadorConnectUrl({
-    baseUrl: integrations.value.granPublicador.baseUrl,
-    name: integrations.value.granPublicador.connectName,
+    baseUrl: granPublicadorBaseUrl.value,
+    name: GRAN_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
     scopes: resolveGranConnectScopes({ integrations: integrations.value }),
   }),
@@ -122,13 +132,13 @@ function getHealthTone(status: HealthState['status']) {
 
 async function runGranHealth() {
   const gran = integrations.value.granPublicador;
-  const healthUrl = getGranPublicadorHealthUrl(gran.baseUrl);
+  const healthUrl = getGranPublicadorHealthUrl(granPublicadorBaseUrl.value);
 
   if (!healthUrl || !gran.bearerToken.trim()) {
     healthStates.gran.status = 'error';
     healthStates.gran.message = t(
       'videoEditor.settings.integrationHealthMissingConfig',
-      'Set base URL and bearer token first.',
+      'Set Gran base URL in env and bearer token first.',
     );
     return;
   }
@@ -156,6 +166,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
   const resolved = resolveExternalServiceConfig({
     service: kind,
     integrations: integrations.value,
+    granPublicadorBaseUrl: granPublicadorBaseUrl.value,
   });
   const state = healthStates[kind];
 
@@ -209,7 +220,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
             {{
               t(
                 'videoEditor.settings.granIntegrationHint',
-                'Connect via Gran Publicador connect flow or set token manually for the external API.',
+                'Connect via Gran Publicador connect flow using the global GPAN_PUBLICADOR_BASE_URL or set token manually for the external API.',
               )
             }}
           </div>
@@ -222,25 +233,17 @@ async function runServiceHealth(kind: 'files' | 'stt') {
         </label>
       </div>
 
-      <UFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
-        <UInput
-          v-model="workspaceStore.userSettings.integrations.granPublicador.baseUrl"
-          class="w-full"
-          placeholder="https://your-gran-instance.com"
-        />
-      </UFormField>
+      <div class="text-xs text-ui-text-muted">
+        GPAN_PUBLICADOR_BASE_URL: {{ granPublicadorBaseUrl || '—' }}
+      </div>
 
       <div class="text-xs text-ui-text-muted">
         {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}: {{ granConnectScopesLabel }}
       </div>
 
-      <UFormField :label="t('videoEditor.settings.integrationConnectName', 'Connect app name')">
-        <UInput
-          v-model="workspaceStore.userSettings.integrations.granPublicador.connectName"
-          class="w-full"
-          placeholder="Gran Video Editor"
-        />
-      </UFormField>
+      <div class="text-xs text-ui-text-muted">
+        {{ t('videoEditor.settings.integrationConnectName', 'Connect app name') }}: {{ GRAN_PUBLICADOR_APP_NAME }}
+      </div>
 
       <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
         <UInput
@@ -259,7 +262,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
           :disabled="!granConnectUrl"
           @click="startGranConnect"
         >
-          {{ t('videoEditor.settings.integrationConnect', 'Connect') }}
+          {{ t('videoEditor.settings.integrationAutoConnect', 'Auto connect') }}
         </UButton>
         <UButton
           color="neutral"

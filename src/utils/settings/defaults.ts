@@ -3,9 +3,7 @@ import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 
 export interface GranPublicadorIntegrationSettings {
   enabled: boolean;
-  baseUrl: string;
   bearerToken: string;
-  connectName: string;
 }
 
 export interface ManualExternalApiSettings {
@@ -244,9 +242,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   integrations: {
     granPublicador: {
       enabled: false,
-      baseUrl: '',
       bearerToken: '',
-      connectName: 'Gran Video Editor',
     },
     manualFilesApi: {
       enabled: false,

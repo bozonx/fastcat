@@ -81,20 +81,21 @@ Current implementation scope:
 
 - settings and provider resolution
 - connect flow token capture via `?token=...`
+- auto-connect URL generation from `GPAN_PUBLICADOR_BASE_URL`
+- connect app name from a global constant
 - connect flow `scopes` generation based on active Files/STT overrides
 - provider override rules for `Files API` and `STT API`
 - `GET /api/v1/external/health` checks for Gran Publicador and resolved manual services
 
 Provider priority rules:
 
-- if Gran Publicador is enabled and has `baseUrl` + token, it is the default source
+- if Gran Publicador is enabled and has a token, it is the default source
 - manual `Files API` or `STT API` can override Gran independently
 - if Gran is not configured, manual services work standalone
 
 Requested Gran scopes:
 
 - `vfs:read`
-- `vfs:write`
 - `stt:transcribe`
 
 The editor requests only scopes that still need to be served by Gran Publicador.
@@ -102,6 +103,8 @@ If a manual Files or STT service explicitly overrides Gran, the related scope is
 
 Notes:
 
+- `GPAN_PUBLICADOR_BASE_URL` defines the Gran Publicador instance URL for connect flow and API resolution
+- Gran connect app name is fixed globally and is not editable in user settings
 - user integration settings are stored in `.gran/user.settings.json`
 - current implementation does **not** yet embed these integrations into the file manager, export upload flow, or STT UI actions
 

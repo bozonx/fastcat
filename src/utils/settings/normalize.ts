@@ -17,17 +17,6 @@ function normalizeTokenValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeConnectNameValue(value: unknown): string {
-  if (typeof value !== 'string') {
-    return DEFAULT_USER_SETTINGS.integrations.granPublicador.connectName;
-  }
-
-  const normalized = value.trim();
-  return normalized.length > 0
-    ? normalized
-    : DEFAULT_USER_SETTINGS.integrations.granPublicador.connectName;
-}
-
 function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] {
   if (!raw || typeof raw !== 'object') {
     return {
@@ -425,9 +414,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     integrations: {
       granPublicador: {
         enabled: Boolean(granPublicadorInput.enabled),
-        baseUrl: normalizeUrlValue(granPublicadorInput.baseUrl),
         bearerToken: normalizeTokenValue(granPublicadorInput.bearerToken),
-        connectName: normalizeConnectNameValue(granPublicadorInput.connectName),
       },
       manualFilesApi: {
         enabled: Boolean(manualFilesApiInput.enabled),
