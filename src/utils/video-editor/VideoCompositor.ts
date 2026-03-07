@@ -23,6 +23,7 @@ import {
   normalizeTransitionParams,
 } from '../../transitions';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from './clip-layout';
+import { computeTextLayoutMetrics } from './text-layout';
 import type {
   TextClipStyle,
   ClipEffect,
@@ -42,12 +43,26 @@ function resolveBlendMode(value: unknown): TimelineBlendMode {
     : 'normal';
 }
 
+function isEdgePadding(
+  value: TextClipStyle['padding'],
+): value is Extract<
+  TextClipStyle['padding'],
+  { top?: number; right?: number; bottom?: number; left?: number }
+> {
+  return (
+    Boolean(value) &&
+    typeof value === 'object' &&
+    ('top' in value || 'right' in value || 'bottom' in value || 'left' in value)
+  );
+}
+
 function arePaddingValuesEqual(a: TextClipStyle['padding'], b: TextClipStyle['padding']): boolean {
   if (a === b) return true;
   if (typeof a === 'number' || typeof b === 'number') {
     return a === b;
   }
   if (!a || !b) return !a && !b;
+  if (!isEdgePadding(a) || !isEdgePadding(b)) return false;
   return a.top === b.top && a.right === b.right && a.bottom === b.bottom && a.left === b.left;
 }
 
@@ -2160,195 +2175,36 @@ export class VideoCompositor {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const renderScale = canvas.height / TRANSFORM_DESIGN_BASE.height;
+    const layout = computeTextLayoutMetrics({
+      text: String(clip.text ?? ''),
+      style: clip.style,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      measureText: (text, font) => {
+        ctx.font = font;
+        return ctx.measureText(text).width;
+      },
+    });
 
-    const style = clip.style ?? {};
-    const baseFontSize =
-      typeof style.fontSize === 'number' && Number.isFinite(style.fontSize)
-        ? Math.max(1, Math.min(1000, Math.round(style.fontSize)))
-        : 64;
-    const fontSize = Math.max(1, Math.round(baseFontSize * renderScale));
-    const fontFamily =
-      typeof style.fontFamily === 'string' && style.fontFamily.length > 0
-        ? style.fontFamily
-        : 'sans-serif';
-    const fontWeight =
-      typeof style.fontWeight === 'string' || typeof style.fontWeight === 'number'
-        ? String(style.fontWeight)
-        : '700';
-    const color =
-      typeof style.color === 'string' && style.color.length > 0 ? style.color : '#ffffff';
-    const align =
-      style.align === 'left' || style.align === 'center' || style.align === 'right'
-        ? style.align
-        : 'center';
-
-    const verticalAlign =
-      style.verticalAlign === 'top' ||
-      style.verticalAlign === 'middle' ||
-      style.verticalAlign === 'bottom'
-        ? style.verticalAlign
-        : 'middle';
-
-    const lineHeightMultiplier =
-      typeof style.lineHeight === 'number' && Number.isFinite(style.lineHeight)
-        ? Math.max(0.1, Math.min(10, style.lineHeight))
-        : 1.2;
-    const lineHeightPx = Math.max(1, Math.round(fontSize * lineHeightMultiplier));
-
-    const baseLetterSpacing =
-      typeof style.letterSpacing === 'number' && Number.isFinite(style.letterSpacing)
-        ? Math.max(-1000, Math.min(1000, style.letterSpacing))
-        : 0;
-    const letterSpacing = Math.round(baseLetterSpacing * renderScale);
-
-    const backgroundColor =
-      typeof style.backgroundColor === 'string' && style.backgroundColor.trim().length > 0
-        ? style.backgroundColor.trim()
-        : '';
-
-    const padding = (() => {
-      const raw = (style as any).padding;
-      const clampPadding = (v: unknown) =>
-        typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(10_000, v)) : undefined;
-
-      if (typeof raw === 'number') {
-        const v = clampPadding(raw) ?? 0;
-        return { top: v, right: v, bottom: v, left: v };
-      }
-
-      if (raw && typeof raw === 'object') {
-        const anyPad = raw as any;
-        const x = clampPadding(anyPad.x);
-        const y = clampPadding(anyPad.y);
-        const top = clampPadding(anyPad.top);
-        const right = clampPadding(anyPad.right);
-        const bottom = clampPadding(anyPad.bottom);
-        const left = clampPadding(anyPad.left);
-
-        const fromXY =
-          x !== undefined || y !== undefined
-            ? { top: y ?? 0, right: x ?? 0, bottom: y ?? 0, left: x ?? 0 }
-            : undefined;
-        const fromEdges =
-          top !== undefined || right !== undefined || bottom !== undefined || left !== undefined
-            ? { top: top ?? 0, right: right ?? 0, bottom: bottom ?? 0, left: left ?? 0 }
-            : undefined;
-
-        return fromEdges ?? fromXY ?? { top: 60, right: 60, bottom: 60, left: 60 };
-      }
-
-      return { top: 60, right: 60, bottom: 60, left: 60 };
-    })();
-
-    padding.top = Math.round(padding.top * renderScale);
-    padding.right = Math.round(padding.right * renderScale);
-    padding.bottom = Math.round(padding.bottom * renderScale);
-    padding.left = Math.round(padding.left * renderScale);
-
-    const explicitWidthRaw =
-      typeof (style as any).width === 'number' &&
-      Number.isFinite((style as any).width) &&
-      (style as any).width > 0
-        ? (style as any).width
-        : undefined;
-    const explicitWidth =
-      explicitWidthRaw !== undefined ? Math.round(explicitWidthRaw * renderScale) : undefined;
-    const contentWidth =
-      explicitWidth !== undefined
-        ? Math.max(1, explicitWidth - padding.left - padding.right)
-        : undefined;
-
-    const safeW = Math.max(1, canvas.width);
-    const safeH = Math.max(1, canvas.height);
-
-    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-
-    const rawText = String(clip.text ?? '');
-    const paragraphs = rawText.split(/\r?\n/g);
-
-    const wrapLine = (line: string): string[] => {
-      if (contentWidth === undefined) return [line];
-      const trimmed = String(line);
-      if (trimmed.length === 0) return [''];
-
-      const words = trimmed.split(/\s+/g);
-      const lines: string[] = [];
-      let curr = '';
-
-      for (const w of words) {
-        const next = curr.length > 0 ? `${curr} ${w}` : w;
-        const width =
-          ctx.measureText(next).width + Math.max(0, next.length - 1) * Math.max(0, letterSpacing);
-        if (width <= contentWidth || curr.length === 0) {
-          curr = next;
-          continue;
-        }
-        lines.push(curr);
-        curr = w;
-      }
-      lines.push(curr);
-      return lines;
-    };
-
-    const lines = paragraphs.flatMap((p) => wrapLine(p));
-
-    let maxLineWidth = 0;
-    for (const line of lines) {
-      if (line.length === 0) continue;
-      const w =
-        ctx.measureText(line).width + Math.max(0, line.length - 1) * Math.max(0, letterSpacing);
-      if (w > maxLineWidth) maxLineWidth = w;
-    }
-
-    const textBlockW = contentWidth !== undefined ? contentWidth : maxLineWidth;
-    const textBlockH = lines.length * lineHeightPx;
-
-    let textBlockLeft = 0;
-    if (align === 'left') {
-      textBlockLeft = padding.left;
-    } else if (align === 'right') {
-      textBlockLeft = safeW - padding.right - textBlockW;
-    } else {
-      textBlockLeft = (safeW - textBlockW) / 2;
-    }
-
-    let startY = 0;
-    if (verticalAlign === 'top') {
-      startY = padding.top;
-    } else if (verticalAlign === 'bottom') {
-      startY = safeH - padding.bottom - textBlockH;
-    } else {
-      startY = (safeH - textBlockH) / 2;
-    }
-
-    const bgX = textBlockLeft - padding.left;
-    const bgY = startY - padding.top;
-    const bgW =
-      explicitWidth !== undefined ? explicitWidth : textBlockW + padding.left + padding.right;
-    const bgH = textBlockH + padding.top + padding.bottom;
-
-    if (backgroundColor.length > 0) {
+    if (layout.style.backgroundColor.length > 0) {
       ctx.save();
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(bgX, bgY, bgW, bgH);
+      ctx.fillStyle = layout.style.backgroundColor;
+      ctx.fillRect(
+        layout.backgroundX,
+        layout.backgroundY,
+        layout.backgroundWidth,
+        layout.backgroundHeight,
+      );
       ctx.restore();
     }
 
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
+    ctx.fillStyle = layout.style.color;
+    ctx.textAlign = layout.style.align;
     ctx.textBaseline = 'top';
-    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-
-    const startX =
-      align === 'left'
-        ? textBlockLeft
-        : align === 'right'
-          ? textBlockLeft + textBlockW
-          : textBlockLeft + textBlockW / 2;
+    ctx.font = `${layout.style.fontWeight} ${layout.fontSizePx}px ${layout.style.fontFamily}`;
 
     const drawWithLetterSpacing = (text: string, x: number, y: number) => {
-      if (!Number.isFinite(letterSpacing) || letterSpacing === 0) {
+      if (!Number.isFinite(layout.letterSpacingPx) || layout.letterSpacingPx === 0) {
         ctx.fillText(text, x, y);
         return;
       }
@@ -2356,17 +2212,17 @@ export class VideoCompositor {
       ctx.save();
       ctx.textAlign = 'left';
 
-      if (align === 'center' || align === 'right') {
+      if (layout.style.align === 'center' || layout.style.align === 'right') {
         const baseWidth = ctx.measureText(text).width;
-        const extra = Math.max(0, text.length - 1) * letterSpacing;
+        const extra = Math.max(0, text.length - 1) * layout.letterSpacingPx;
         const total = baseWidth + extra;
-        const leftX = align === 'center' ? x - total / 2 : x - total;
+        const leftX = layout.style.align === 'center' ? x - total / 2 : x - total;
 
         let dx = leftX;
         for (let i = 0; i < text.length; i++) {
           const ch = text[i] ?? '';
           ctx.fillText(ch, dx, y);
-          dx += ctx.measureText(ch).width + letterSpacing;
+          dx += ctx.measureText(ch).width + layout.letterSpacingPx;
         }
         ctx.restore();
         return;
@@ -2376,16 +2232,15 @@ export class VideoCompositor {
       for (let i = 0; i < text.length; i++) {
         const ch = text[i] ?? '';
         ctx.fillText(ch, dx, y);
-        dx += ctx.measureText(ch).width + letterSpacing;
+        dx += ctx.measureText(ch).width + layout.letterSpacingPx;
       }
       ctx.restore();
     };
 
-    const yOffset = (lineHeightPx - fontSize) / 2;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i] ?? '';
-      const y = startY + i * lineHeightPx + yOffset;
-      drawWithLetterSpacing(line, startX, y);
+    for (let i = 0; i < layout.lines.length; i++) {
+      const line = layout.lines[i] ?? '';
+      const y = layout.textBlockTopPx + i * layout.lineHeightPx + layout.yOffsetPx;
+      drawWithLetterSpacing(line, layout.textStartX, y);
     }
 
     try {

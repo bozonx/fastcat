@@ -4,6 +4,7 @@ import MediaPlayer from '~/components/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import { useUiStore } from '~/stores/ui.store';
+import type { PanelFocusId } from '~/stores/focus.store';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -15,7 +16,7 @@ const props = defineProps<{
   alt?: string;
   filePath?: string;
   fileName?: string;
-  focusPanelId?: string;
+  focusPanelId?: PanelFocusId;
 }>();
 
 const isFullscreenOpen = ref(false);
@@ -119,6 +120,7 @@ onUnmounted(() => {
         :file-path="props.filePath || ''"
         :file-name="props.fileName"
         :initial-content="props.textContent || ''"
+        :focus-panel-id="props.focusPanelId"
         class="w-full h-full"
       />
 

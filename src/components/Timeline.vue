@@ -982,7 +982,7 @@ async function onDrop(e: DragEvent, trackId: string) {
       'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
         focusStore.isPanelFocused('timeline'),
     }"
-    @pointerdown="focusStore.setMainFocus('timeline')"
+    @pointerdown.capture="focusStore.setMainFocus('timeline')"
   >
     <ClientOnly>
       <Splitpanes

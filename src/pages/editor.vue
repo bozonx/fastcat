@@ -587,7 +587,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
-                      <div class="flex-1 overflow-hidden min-h-0 relative">
+                      <div
+                        class="flex-1 overflow-hidden min-h-0 relative"
+                        @pointerdown.capture="focusDynamicPanel(panel.id)"
+                      >
                         <MediaPanelWrapper
                           :file-path="panel.filePath || ''"
                           :media-type="panel.mediaType || 'unknown'"
@@ -618,12 +621,16 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
                           @click="closePanelAndRestoreTab(panel)"
                         />
                       </div>
-                      <div class="flex-1 overflow-hidden min-h-0 relative">
+                      <div
+                        class="flex-1 overflow-hidden min-h-0 relative"
+                        @pointerdown.capture="focusDynamicPanel(panel.id)"
+                      >
                         <TextEditor
                           class="absolute inset-0 h-full w-full border-none"
                           :file-path="panel.filePath || ''"
                           :file-name="panel.title || ''"
                           :initial-content="panel.fileContent || ''"
+                          :focus-panel-id="getDynamicPanelFocusId(panel.id)"
                         />
                       </div>
                     </div>

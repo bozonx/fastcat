@@ -2,11 +2,12 @@
 import { watch, ref, computed, onUnmounted } from 'vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import { useProjectStore } from '~/stores/project.store';
+import type { PanelFocusId } from '~/stores/focus.store';
 
 const props = defineProps<{
   filePath: string;
   mediaType: 'video' | 'audio' | 'image' | 'unknown' | null;
-  focusPanelId?: string;
+  focusPanelId?: PanelFocusId;
 }>();
 
 const currentUrl = ref<string | null>(null);
