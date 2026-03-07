@@ -166,6 +166,7 @@ function resolveRemoteMediaUrl(item: RemoteVfsFileEntry, mediaIndex = 0): string
   return getRemoteFileDownloadUrl({
     baseUrl: config.baseUrl,
     entry: item,
+    token: config.bearerToken,
     mediaIndex,
   });
 }
@@ -189,6 +190,7 @@ function resolveRemotePosterUrl(
     return getRemoteThumbnailUrl({
       baseUrl: config.baseUrl,
       mediaId: media.id,
+      token: config.bearerToken,
       w: 400,
       h: 400,
       fit: 'cover',
