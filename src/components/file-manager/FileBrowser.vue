@@ -1627,7 +1627,6 @@ async function submitTranscription() {
     sttTranscribing.value = false;
   }
 }
-
 </script>
 
 <template>
@@ -1829,6 +1828,53 @@ async function submitTranscription() {
       :file-name="remoteTransferFileName"
       @cancel="cancelRemoteTransfer"
     />
+
+    <AppModal
+      v-model:open="sttTranscriptionModalOpen"
+      :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
+      :close-button="!sttTranscribing"
+      :prevent-close="sttTranscribing"
+      :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
+    >
+      <div class="flex flex-col gap-4">
+        <div class="text-sm text-ui-text-muted">
+          {{
+            t(
+              'videoEditor.fileManager.audio.transcriptionHint',
+              'Send the current audio file to the configured STT service. Language is optional.',
+            )
+          }}
+        </div>
+
+        <div v-if="sttTranscriptionEntry" class="text-xs text-ui-text-muted break-all">
+          {{ sttTranscriptionEntry.name }}
+        </div>
+
+        <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
+          <UInput v-model="sttTranscriptionLanguage" :disabled="sttTranscribing" placeholder="en" />
+        </UFormField>
+
+        <div v-if="sttTranscriptionError" class="text-sm text-error-400">
+          {{ sttTranscriptionError }}
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :disabled="sttTranscribing"
+            @click="sttTranscriptionModalOpen = false"
+          >
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" :loading="sttTranscribing" @click="submitTranscription">
+            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
+          </UButton>
+        </div>
+      </template>
+    </AppModal>
   </div>
 </template>
 

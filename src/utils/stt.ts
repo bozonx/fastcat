@@ -47,6 +47,22 @@ function normalizeFileType(fileType: string | undefined, file: File): string {
   return 'application/octet-stream';
 }
 
+function replaceFileExtension(fileName: string, extension: string): string {
+  const normalizedExtension = extension.startsWith('.') ? extension : `.${extension}`;
+  const trimmedFileName = fileName.trim();
+
+  if (!trimmedFileName) {
+    return `transcription${normalizedExtension}`;
+  }
+
+  const lastDotIndex = trimmedFileName.lastIndexOf('.');
+  if (lastDotIndex <= 0) {
+    return `${trimmedFileName}${normalizedExtension}`;
+  }
+
+  return `${trimmedFileName.slice(0, lastDotIndex)}${normalizedExtension}`;
+}
+
 async function createCacheKey(params: {
   filePath: string;
   fileName: string;
@@ -126,9 +142,12 @@ export async function transcribeProjectAudioFile(
   const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
   const normalizedFileType = normalizeFileType(input.fileType, file);
+  const requestFileName = normalizedFileType.startsWith('video/')
+    ? replaceFileExtension(input.fileName, 'wav')
+    : input.fileName;
   const cacheKey = await createCacheKey({
     filePath: input.filePath,
-    fileName: input.fileName,
+    fileName: requestFileName,
     fileSize: file.size,
     lastModified: file.lastModified,
     language,
@@ -156,7 +175,10 @@ export async function transcribeProjectAudioFile(
   if (normalizedFileType.startsWith('video/')) {
     const { createAudioStreamFromFile } = await import('~/utils/audio-streaming');
     const { stream } = await createAudioStreamFromFile(file);
-    body = stream as any;
+    const extractedAudioBlob = await new Response(stream).blob();
+    body = new File([extractedAudioBlob], requestFileName, {
+      type: 'audio/wav',
+    });
     contentType = 'audio/wav';
   } else {
     body = file;
@@ -164,7 +186,7 @@ export async function transcribeProjectAudioFile(
 
   const headers = createRequestHeaders({
     file,
-    fileName: input.fileName,
+    fileName: requestFileName,
     language,
     provider,
     models,
@@ -177,8 +199,6 @@ export async function transcribeProjectAudioFile(
     method: 'POST',
     headers,
     body,
-    // @ts-expect-error - duplex is required for streaming body
-    duplex: body instanceof ReadableStream ? 'half' : undefined,
   });
 
   if (!response.ok) {
