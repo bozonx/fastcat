@@ -48,15 +48,9 @@ uniform float uDirectionY;
 
 const float persp = 0.7;
 const float unzoom = 0.3;
-const float reflection = 0.4;
-const float floating = 3.0;
 
 bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
-}
-
-vec2 project(vec2 p) {
-  return p * vec2(1.0, -1.2) + vec2(0.0, -floating/100.);
 }
 
 vec2 xskew(vec2 p, float perspective, float center) {
@@ -90,96 +84,52 @@ void main(void) {
   float uz = unzoom * 2.0 * (0.5 - distance(0.5, progress));
   vec2 p = -uz * 0.5 + (1.0 + uz) * uv;
   
-  vec2 fromP = vec2(0.0);
-  vec2 toP = vec2(0.0);
+  float px = (uDirectionX < -0.5) ? 1.0 - p.x : p.x;
+  float py = (uDirectionY < -0.5) ? 1.0 - p.y : p.y;
+  vec2 mappedP = vec2(px, py);
   
-  if (abs(uDirectionX) > 0.0) {
-    float dirProgress = uDirectionX > 0.0 ? progress : 1.0 - progress;
-    float realProgress = uDirectionX > 0.0 ? progress : 1.0 - progress;
-    fromP = xskew(
-      (p - vec2(uDirectionX > 0.0 ? progress : -progress, 0.0)) / vec2(1.0 - progress, 1.0),
+  vec2 mappedFromP = vec2(-1.0);
+  vec2 mappedToP = vec2(-1.0);
+  
+  if (abs(uDirectionX) > 0.5) {
+    mappedFromP = xskew(
+      (mappedP - vec2(progress, 0.0)) / vec2(1.0 - progress, 1.0),
       1.0 - mix(progress, 0.0, persp),
       0.0
     );
-    toP = xskew(
-      p / vec2(progress, 1.0),
+    mappedToP = xskew(
+      mappedP / vec2(progress, 1.0),
       mix(pow(progress, 2.0), 1.0, persp),
       1.0
     );
-    
-    if (uDirectionX < 0.0) {
-      fromP = xskew(
-        (p - vec2(-progress, 0.0)) / vec2(1.0 - progress, 1.0),
-        1.0 - mix(progress, 0.0, persp),
-        1.0
-      );
-      toP = xskew(
-        (p - vec2(1.0 - progress, 0.0)) / vec2(progress, 1.0),
-        mix(pow(progress, 2.0), 1.0, persp),
-        0.0
-      );
-    }
-  } else {
-    // Vertical
-    if (uDirectionY > 0.0) {
-      fromP = yskew(
-        (p - vec2(0.0, progress)) / vec2(1.0, 1.0 - progress),
-        1.0 - mix(progress, 0.0, persp),
-        0.0
-      );
-      toP = yskew(
-        p / vec2(1.0, progress),
-        mix(pow(progress, 2.0), 1.0, persp),
-        1.0
-      );
-    } else {
-      fromP = yskew(
-        (p - vec2(0.0, -progress)) / vec2(1.0, 1.0 - progress),
-        1.0 - mix(progress, 0.0, persp),
-        1.0
-      );
-      toP = yskew(
-        (p - vec2(0.0, 1.0 - progress)) / vec2(1.0, progress),
-        mix(pow(progress, 2.0), 1.0, persp),
-        0.0
-      );
-    }
+  } else if (abs(uDirectionY) > 0.5) {
+    mappedFromP = yskew(
+      (mappedP - vec2(0.0, progress)) / vec2(1.0, 1.0 - progress),
+      1.0 - mix(progress, 0.0, persp),
+      0.0
+    );
+    mappedToP = yskew(
+      mappedP / vec2(1.0, progress),
+      mix(pow(progress, 2.0), 1.0, persp),
+      1.0
+    );
   }
   
-  if (uDirectionX < 0.0 || uDirectionY < 0.0) {
-     // Swap rendering order logic for negative directions if needed, but xskew/yskew handles most.
-     // To keep it simple, we use a basic cube approach without complex branch swapping.
-  }
+  vec2 fromP = vec2(
+    uDirectionX < -0.5 ? 1.0 - mappedFromP.x : mappedFromP.x,
+    uDirectionY < -0.5 ? 1.0 - mappedFromP.y : mappedFromP.y
+  );
+  vec2 toP = vec2(
+    uDirectionX < -0.5 ? 1.0 - mappedToP.x : mappedToP.x,
+    uDirectionY < -0.5 ? 1.0 - mappedToP.y : mappedToP.y
+  );
   
-  // A simplified cube effect that works well with PixiJS coordinates
-  vec2 axis = vec2(uDirectionX, uDirectionY);
-  float inv = 1.0 - progress;
-  
-  vec2 dispFrom = uv + axis * progress;
-  vec2 dispTo = uv - axis * inv;
-  
-  // Apply a fake perspective scale
-  float zFrom = mix(1.0, 0.5, progress);
-  float zTo = mix(0.5, 1.0, progress);
-  
-  vec2 center = vec2(0.5);
-  vec2 fromUv = center + (dispFrom - center) / zFrom;
-  vec2 toUv = center + (dispTo - center) / zTo;
-  
-  vec4 fromColor = texture(uFromTexture, fromUv);
-  vec4 toColor = texture(uTexture, vTextureCoord + (toUv - uv) * vTexScale);
-  
-  bool fromIn = inBounds(fromUv);
-  bool toIn = inBounds(toUv);
-  
-  if (progress < 0.5) {
-    if (fromIn) gl_FragColor = fromColor;
-    else if (toIn) gl_FragColor = toColor;
-    else gl_FragColor = vec4(0.0);
+  if (inBounds(fromP)) {
+    gl_FragColor = texture(uFromTexture, fromP);
+  } else if (inBounds(toP)) {
+    gl_FragColor = texture(uTexture, vTextureCoord + (toP - uv) * vTexScale);
   } else {
-    if (toIn) gl_FragColor = toColor;
-    else if (fromIn) gl_FragColor = fromColor;
-    else gl_FragColor = vec4(0.0);
+    gl_FragColor = vec4(0.0);
   }
 }
 `;
