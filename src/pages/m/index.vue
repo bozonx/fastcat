@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace.store'
 import { useProjectStore } from '~/stores/project.store'
 import { useProjectActions } from '~/composables/editor/useProjectActions'
+import WelcomeScreen from '~/components/startup/WelcomeScreen.vue'
 
 definePageMeta({
   layout: 'mobile'
@@ -14,15 +15,14 @@ const projectStore = useProjectStore()
 const { openProject, resetProjectState } = useProjectActions()
 const router = useRouter()
 
-// Локальная копия последнего проекта для отображения предложения,
-// так как из глобального стора мы его удалим
+// Локальная копия последнего проекта для отображения предложения
 const suggestedProject = ref<string | null>(workspaceStore.lastProjectName)
 
 // Сбрасываем состояние открытого проекта
 resetProjectState()
 
 onMounted(() => {
-  // Удаляем из local storage id открытого проекта, как просил пользователь
+  // Удаляем из local storage id открытого проекта
   workspaceStore.lastProjectName = null
 })
 
@@ -47,27 +47,38 @@ async function handleOpenProject(project: string) {
 </script>
 
 <template>
-  <div class="p-4 flex flex-col gap-6 bg-slate-950 min-h-screen">
+  <!-- Если рабочая область не выбрана -->
+  <WelcomeScreen v-if="!workspaceStore.workspaceHandle" />
+
+  <div v-else class="p-4 flex flex-col gap-6 bg-slate-950 min-h-screen">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-white">Projects</h1>
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="lucide:monitor"
-        to="/?mode=desktop"
-        label="Desktop"
-      />
+      <div class="flex gap-1">
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="lucide:monitor"
+          to="/?mode=desktop"
+          label="Desktop"
+        />
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-arrow-left-on-rectangle"
+          @click="workspaceStore.resetWorkspace"
+        />
+      </div>
     </div>
 
     <!-- Workspace Info -->
-    <div v-if="workspaceStore.workspaceHandle" class="text-sm text-slate-400 -mt-4">
-      Workspace: {{ workspaceStore.workspaceHandle.name }}
+    <div v-if="workspaceStore.workspaceHandle" class="text-sm text-slate-400 -mt-4 flex items-center justify-between px-1">
+      <span class="truncate">Workspace: {{ workspaceStore.workspaceHandle.name }}</span>
       <UButton
         size="xs"
         variant="link"
         color="primary"
-        class="ml-2"
         @click="workspaceStore.resetWorkspace"
       >
         Change
