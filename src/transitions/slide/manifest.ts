@@ -58,7 +58,7 @@ void main(void) {
   vec2 fromOffset = axis * progress + gapVector * 0.5;
   vec2 toOffset = axis * (progress - 1.0) - gapVector * 0.5;
 
-  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
+  vec2 uv = vTextureCoord;
   vec2 fromUv = uv - fromOffset;
   vec2 toUv = uv - toOffset;
 
