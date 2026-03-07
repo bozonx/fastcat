@@ -4,13 +4,15 @@ Standalone video editor project extracted from Gran Publicador.
 
 ## Features
 
-- Browser-based video editing using WebCodecs and PixiJS
-- Timeline with multiple tracks (video/audio)
+- Timeline editing with multi-track composition
 - SVG images are rasterized to PNG on import for reliable worker rendering
 - Monitor playback with volume/mute controls for audio
 - Focus-aware panel hotkeys with routing to the currently active editor panel
 - File system access API integration for local file editing
 - Gran Publicador integration settings with connect flow and manual API override support
+- Remote file browser mode backed by Gran Publicador VFS in the middle file manager panel
+- Remote-to-local download by drag-and-drop from remote files into the local folder tree
+- Local-to-remote upload action with remote folder picker and cancelable transfer progress modal
 - External service health checks for Gran Publicador, Files API and STT API
 - OTIO (OpenTimelineIO) support for timeline serialization
 - High-performance rendering with Web Workers
@@ -106,7 +108,19 @@ Notes:
 - `GPAN_PUBLICADOR_BASE_URL` defines the Gran Publicador instance URL for connect flow and API resolution
 - Gran connect app name is fixed globally and is not editable in user settings
 - user integration settings are stored in `.gran/user.settings.json`
-- current implementation does **not** yet embed these integrations into the file manager, export upload flow, or STT UI actions
+
+### File manager remote mode
+
+When the resolved `Files API` provider is available, the desktop file browser exposes a `Remote` button in the middle panel toolbar.
+
+The current behavior is:
+
+- left tree stays local and continues to represent the project file system
+- middle panel can switch between local folder content and Gran Publicador VFS content
+- clicking a remote file or folder shows remote properties in the properties panel
+- dragging a remote file into the local folder tree downloads it into the selected local directory
+- local files expose an `Upload to remote` action in the context menu and properties panel
+- upload and download transfers use a cancelable progress modal that cannot be dismissed any other way
 
 ## Panel focus and keyboard routing
 
