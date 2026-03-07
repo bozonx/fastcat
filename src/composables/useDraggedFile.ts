@@ -14,6 +14,8 @@ export const INTERNAL_DRAG_TYPE = 'application/gran-internal-file';
 
 export const FILE_MANAGER_MOVE_DRAG_TYPE = 'application/gran-file-manager-move';
 
+export const REMOTE_FILE_DRAG_TYPE = 'application/gran-remote-file';
+
 export function useDraggedFile() {
   function setDraggedFile(data: DraggedFileData) {
     draggedFile.value = data;

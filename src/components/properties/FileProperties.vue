@@ -24,6 +24,17 @@ import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo'
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import RemoteFolderPickerModal from '~/components/file-manager/RemoteFolderPickerModal.vue';
+import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import {
+  fetchRemoteVfsList,
+  type RemoteFsEntry,
+  toRemoteFsEntry,
+  uploadFileToRemote,
+} from '~/utils/remote-vfs';
+import type { RemoteVfsEntry } from '~/types/remote-vfs';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -44,11 +55,37 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
+const workspaceStore = useWorkspaceStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
 const fileManager = useFileManager();
+const runtimeConfig = useRuntimeConfig();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
+const remoteFolderPickerOpen = ref(false);
+const remoteUploadProgressOpen = ref(false);
+const remoteUploadProgress = ref(0);
+const remoteUploadFolders = ref<RemoteFsEntry[]>([]);
+const remoteUploadCurrentPath = ref('/');
+const remoteUploadLoading = ref(false);
+const remoteUploadTargetFolder = ref<RemoteFsEntry | null>(null);
+const remoteUploadAbortController = ref<AbortController | null>(null);
+
+const remoteFilesConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'files',
+    integrations: workspaceStore.userSettings.integrations,
+    granPublicadorBaseUrl:
+      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.gpanPublicadorBaseUrl
+        : '',
+  }),
+);
+
+const canUploadToRemote = computed(() => {
+  const entry = props.selectedFsEntry;
+  return entry?.kind === 'file' && entry?.source !== 'remote' && Boolean(remoteFilesConfig.value);
+});
 
 const uploadInputRef = ref<HTMLInputElement | null>(null);
 
@@ -229,6 +266,85 @@ function openAsTextPanel() {
     projectStore.addMediaPanel(entry, mediaType.value, entry.name);
   }
 }
+
+async function loadRemoteUploadFolders(path: string) {
+  const config = remoteFilesConfig.value;
+  if (!config) return;
+  remoteUploadLoading.value = true;
+  try {
+    const response = await fetchRemoteVfsList({
+      config,
+      path,
+    });
+    remoteUploadCurrentPath.value = path;
+    remoteUploadFolders.value = response.items
+      .filter((item): item is Extract<RemoteVfsEntry, { type: 'directory' }> => item.type === 'directory')
+      .map((item) => toRemoteFsEntry(item));
+  } finally {
+    remoteUploadLoading.value = false;
+  }
+}
+
+async function openRemoteUploadPicker() {
+  if (!canUploadToRemote.value) return;
+  remoteUploadTargetFolder.value = null;
+  await loadRemoteUploadFolders('/');
+  remoteFolderPickerOpen.value = true;
+}
+
+async function navigateRemoteUploadFolder(entry: RemoteFsEntry | null) {
+  await loadRemoteUploadFolders(entry?.remotePath || '/');
+}
+
+async function confirmRemoteUpload(entry: RemoteFsEntry | null) {
+  const config = remoteFilesConfig.value;
+  const selectedEntry = props.selectedFsEntry;
+  const targetFolder = entry ?? remoteUploadTargetFolder.value;
+  if (!config || !selectedEntry || selectedEntry.kind !== 'file' || !targetFolder?.remoteId) return;
+
+  remoteFolderPickerOpen.value = false;
+  remoteUploadProgress.value = 0;
+  remoteUploadProgressOpen.value = true;
+  const controller = new AbortController();
+  remoteUploadAbortController.value = controller;
+
+  try {
+    const file = await (selectedEntry.handle as FileSystemFileHandle).getFile();
+    await uploadFileToRemote({
+      config,
+      collectionId: targetFolder.remoteId,
+      file,
+      signal: controller.signal,
+      onProgress: (progress) => {
+        remoteUploadProgress.value = progress;
+      },
+    });
+  } catch (error) {
+    if ((error as Error | undefined)?.name !== 'AbortError') {
+      useToast().add({
+        color: 'error',
+        title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
+        description: error instanceof Error ? error.message : 'Upload failed',
+      });
+    }
+  } finally {
+    remoteUploadAbortController.value = null;
+    remoteUploadProgressOpen.value = false;
+    uiStore.pendingRemoteUploadEntry = null;
+  }
+}
+
+function cancelRemoteUpload() {
+  remoteUploadAbortController.value?.abort();
+}
+
+watch(
+  () => uiStore.pendingRemoteUploadEntry,
+  async (entry) => {
+    if (!entry || entry.path !== props.selectedFsEntry?.path) return;
+    await openRemoteUploadPicker();
+  },
+);
 </script>
 
 <template>
@@ -377,6 +493,13 @@ function openAsTextPanel() {
             hidden:
               mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image',
             onClick: () => emit('convert', props.selectedFsEntry),
+          },
+          {
+            id: 'uploadRemote',
+            title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
+            icon: 'i-heroicons-cloud-arrow-up',
+            hidden: !canUploadToRemote,
+            onClick: openRemoteUploadPicker,
           },
         ]"
         :secondary-actions="[
@@ -576,6 +699,25 @@ function openAsTextPanel() {
       />
       <PropertyRow v-if="isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
     </PropertySection>
+
+    <RemoteFolderPickerModal
+      v-model:open="remoteFolderPickerOpen"
+      :title="t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote')"
+      :folders="remoteUploadFolders"
+      :current-path="remoteUploadCurrentPath"
+      :loading="remoteUploadLoading"
+      @navigate="navigateRemoteUploadFolder"
+      @confirm="confirmRemoteUpload"
+    />
+
+    <RemoteTransferProgressModal
+      v-model:open="remoteUploadProgressOpen"
+      :title="t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote')"
+      :description="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+      :progress="remoteUploadProgress"
+      :file-name="selectedFsEntry?.name"
+      @cancel="cancelRemoteUpload"
+    />
 
     <!-- Usage in timelines -->
     <div

@@ -190,6 +190,10 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     if (entry.kind === 'file') {
       void fileConversion.openConversionModal(entry);
     }
+  } else if (action === 'uploadRemote') {
+    if (entry.kind === 'file' && entry.source !== 'remote') {
+      uiStore.pendingRemoteUploadEntry = entry;
+    }
   } else {
     onFileActionBase(action as FileActionBase, entry);
   }
