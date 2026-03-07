@@ -341,6 +341,37 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean): string {
   return 'rgba(255, 255, 255, 0.2)';
 }
 
+function getFadeLineColor(hasProblem: boolean): string {
+  if (hasProblem) return 'rgba(127, 29, 29, 0.95)';
+  return 'rgba(0, 0, 0, 0.82)';
+}
+
+function buildFadeLinePattern(edge: 'in' | 'out'): Array<{ x: number; width: number }> {
+  const positions: number[] = [];
+  let offset = 1;
+  let gap = 1.25;
+
+  while (offset < 100) {
+    positions.push(Math.min(99.25, offset));
+    offset += gap;
+    gap *= 1.18;
+  }
+
+  const normalized = edge === 'in' ? positions : positions.map((position) => 100 - position).reverse();
+
+  return normalized.map((x) => ({
+    x: Math.max(0, Math.min(99.5, x)),
+    width: 0.8,
+  }));
+}
+
+const fadeLinePatternIn = buildFadeLinePattern('in');
+const fadeLinePatternOut = buildFadeLinePattern('out');
+
+function getFadeLinePattern(edge: 'in' | 'out') {
+  return edge === 'in' ? fadeLinePatternIn : fadeLinePatternOut;
+}
+
 function shouldCollapseFades(item: TimelineTrackItem): boolean {
   if (item.kind !== 'clip') return false;
   const clip = item as TimelineClipItem;
@@ -894,7 +925,30 @@ const isFreePosition = computed(() => {
               })
             "
           >
-            <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <template v-if="(clipItem.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
+              <svg
+                class="w-full h-full block absolute inset-0"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
+                <rect
+                  v-for="line in getFadeLinePattern('in')"
+                  :key="`fade-in-${line.x}`"
+                  :x="line.x"
+                  y="0"
+                  :width="line.width"
+                  height="100"
+                  :fill="getFadeLineColor(Boolean(hasTransitionInProblem(track, item)))"
+                />
+              </svg>
+            </template>
+            <svg
+              v-else
+              class="w-full h-full block absolute inset-0"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+            >
               <path
                 :d="transitionSvgParts(100, 100, 'in')"
                 :fill="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
@@ -949,7 +1003,30 @@ const isFreePosition = computed(() => {
               })
             "
           >
-            <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <template v-if="(clipItem.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
+              <svg
+                class="w-full h-full block absolute inset-0"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
+                <rect
+                  v-for="line in getFadeLinePattern('out')"
+                  :key="`fade-out-${line.x}`"
+                  :x="line.x"
+                  y="0"
+                  :width="line.width"
+                  height="100"
+                  :fill="getFadeLineColor(Boolean(hasTransitionOutProblem(track, item)))"
+                />
+              </svg>
+            </template>
+            <svg
+              v-else
+              class="w-full h-full block absolute inset-0"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+            >
               <path
                 :d="transitionSvgParts(100, 100, 'out')"
                 :fill="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
