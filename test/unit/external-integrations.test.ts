@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { createDefaultUserSettings } from '../../src/utils/settings';
+import { GRAN_PUBLICADOR_APP_NAME } from '../../src/utils/constants';
 import {
   getGranPublicadorConnectUrl,
   getGranPublicadorHealthUrl,
@@ -22,7 +23,7 @@ describe('external integrations', () => {
     expect(
       getGranPublicadorConnectUrl({
         baseUrl: 'https://gran.example.com/api/v1',
-        name: 'Gran Video Editor',
+        name: GRAN_PUBLICADOR_APP_NAME,
         redirectUri: 'http://localhost:3000/editor',
         scopes: ['vfs:read', 'stt:transcribe'],
       }),
@@ -46,11 +47,7 @@ describe('external integrations', () => {
   it('resolves Gran connect scopes based on active overrides', () => {
     const integrations = createDefaultUserSettings().integrations;
 
-    expect(resolveGranConnectScopes({ integrations })).toEqual([
-      'vfs:read',
-      'vfs:write',
-      'stt:transcribe',
-    ]);
+    expect(resolveGranConnectScopes({ integrations })).toEqual(['vfs:read', 'stt:transcribe']);
 
     integrations.manualFilesApi.enabled = true;
     integrations.manualFilesApi.overrideGran = true;
@@ -66,7 +63,6 @@ describe('external integrations', () => {
   it('prefers Gran Publicador when manual service does not override it', () => {
     const userSettings = createDefaultUserSettings();
     userSettings.integrations.granPublicador.enabled = true;
-    userSettings.integrations.granPublicador.baseUrl = 'https://gran.example.com';
     userSettings.integrations.granPublicador.bearerToken = 'gp_token';
     userSettings.integrations.manualFilesApi.enabled = true;
     userSettings.integrations.manualFilesApi.baseUrl =
@@ -74,7 +70,10 @@ describe('external integrations', () => {
     userSettings.integrations.manualFilesApi.bearerToken = 'files_token';
     userSettings.integrations.manualFilesApi.overrideGran = false;
 
-    const resolved = resolveExternalIntegrations({ userSettings });
+    const resolved = resolveExternalIntegrations({
+      userSettings,
+      granPublicadorBaseUrl: 'https://gran.example.com',
+    });
 
     expect(resolved.files).toEqual({
       source: 'gran_publicador',
@@ -87,7 +86,6 @@ describe('external integrations', () => {
   it('uses manual service when override is enabled', () => {
     const integrations = createDefaultUserSettings().integrations;
     integrations.granPublicador.enabled = true;
-    integrations.granPublicador.baseUrl = 'https://gran.example.com';
     integrations.granPublicador.bearerToken = 'gp_token';
     integrations.manualSttApi.enabled = true;
     integrations.manualSttApi.baseUrl = 'https://stt.example.com/api/v1/external/stt';
@@ -97,6 +95,7 @@ describe('external integrations', () => {
     const resolved = resolveExternalServiceConfig({
       service: 'stt',
       integrations,
+      granPublicadorBaseUrl: 'https://gran.example.com',
     });
 
     expect(resolved).toEqual({

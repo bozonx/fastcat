@@ -11,7 +11,7 @@ export interface ResolvedExternalServiceConfig {
   healthUrl: string;
 }
 
-const FILES_SCOPES: GranIntegrationScope[] = ['vfs:read', 'vfs:write'];
+const FILES_SCOPES: GranIntegrationScope[] = ['vfs:read'];
 const STT_SCOPES: GranIntegrationScope[] = ['stt:transcribe'];
 
 function trimTrailingSlashes(value: string): string {
@@ -110,12 +110,13 @@ export function resolveGranConnectScopes(params: {
 export function resolveExternalServiceConfig(params: {
   service: ExternalServiceKind;
   integrations: ExternalIntegrationsSettings;
+  granPublicadorBaseUrl: string;
 }): ResolvedExternalServiceConfig | null {
-  const { integrations, service } = params;
+  const { integrations, service, granPublicadorBaseUrl } = params;
   const gran = integrations.granPublicador;
   const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
 
-  const canUseGran = gran.enabled && gran.baseUrl.trim() && gran.bearerToken.trim();
+  const canUseGran = gran.enabled && granPublicadorBaseUrl.trim() && gran.bearerToken.trim();
   const canUseManual = manual.enabled && manual.baseUrl.trim() && manual.bearerToken.trim();
 
   if (canUseManual && (!canUseGran || manual.overrideGran)) {
@@ -129,7 +130,7 @@ export function resolveExternalServiceConfig(params: {
 
   if (!canUseGran) return null;
 
-  const granExternalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(gran.baseUrl);
+  const granExternalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(granPublicadorBaseUrl);
   const serviceBaseUrl =
     service === 'files'
       ? joinUrl(granExternalApiBaseUrl, 'vfs')
@@ -139,16 +140,27 @@ export function resolveExternalServiceConfig(params: {
     source: 'gran_publicador',
     baseUrl: serviceBaseUrl,
     bearerToken: gran.bearerToken.trim(),
-    healthUrl: getGranPublicadorHealthUrl(gran.baseUrl),
+    healthUrl: getGranPublicadorHealthUrl(granPublicadorBaseUrl),
   };
 }
 
-export function resolveExternalIntegrations(params: { userSettings: GranVideoEditorUserSettings }) {
+export function resolveExternalIntegrations(params: {
+  userSettings: GranVideoEditorUserSettings;
+  granPublicadorBaseUrl: string;
+}) {
   const { integrations } = params.userSettings;
 
   return {
-    files: resolveExternalServiceConfig({ service: 'files', integrations }),
-    stt: resolveExternalServiceConfig({ service: 'stt', integrations }),
+    files: resolveExternalServiceConfig({
+      service: 'files',
+      integrations,
+      granPublicadorBaseUrl: params.granPublicadorBaseUrl,
+    }),
+    stt: resolveExternalServiceConfig({
+      service: 'stt',
+      integrations,
+      granPublicadorBaseUrl: params.granPublicadorBaseUrl,
+    }),
   };
 }
 

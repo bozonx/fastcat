@@ -58,9 +58,7 @@ describe('settings normalization', () => {
       integrations: {
         granPublicador: {
           enabled: true,
-          baseUrl: 'https://gran.example.com/api/v1/',
           bearerToken: '  gp_token  ',
-          connectName: '  Custom App  ',
         },
         manualFilesApi: {
           enabled: true,
@@ -78,9 +76,7 @@ describe('settings normalization', () => {
     });
 
     expect(normalized.integrations.granPublicador.enabled).toBe(true);
-    expect(normalized.integrations.granPublicador.baseUrl).toBe('https://gran.example.com/api/v1');
     expect(normalized.integrations.granPublicador.bearerToken).toBe('gp_token');
-    expect(normalized.integrations.granPublicador.connectName).toBe('Custom App');
 
     expect(normalized.integrations.manualFilesApi.enabled).toBe(true);
     expect(normalized.integrations.manualFilesApi.baseUrl).toBe('https://files.example.com/api');

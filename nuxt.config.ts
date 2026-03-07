@@ -40,6 +40,12 @@ export default defineNuxtConfig({
     strict: true,
   },
 
+  runtimeConfig: {
+    public: {
+      gpanPublicadorBaseUrl: process.env.GPAN_PUBLICADOR_BASE_URL || '',
+    },
+  },
+
   vite: {
     worker: {
       format: 'es',
