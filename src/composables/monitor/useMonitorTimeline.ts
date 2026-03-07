@@ -262,6 +262,8 @@ export function useMonitorTimeline() {
         hash = mixHash(hash, hashString(String((item as any).clipType ?? '')));
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
+        hash = mixHash(hash, hashString(JSON.stringify((item as any).transitionIn ?? null)));
+        hash = mixHash(hash, hashString(JSON.stringify((item as any).transitionOut ?? null)));
 
         if (item.clipType === 'media') {
           hash = mixTime(hash, item.freezeFrameSourceUs ?? 0);

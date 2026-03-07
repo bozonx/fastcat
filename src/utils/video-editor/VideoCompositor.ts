@@ -1125,7 +1125,7 @@ export class VideoCompositor {
     this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
-    this.lastRenderedTimeUs = 0;
+    this.lastRenderedTimeUs = Number.NaN;
     this.activeTracker.reset();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
