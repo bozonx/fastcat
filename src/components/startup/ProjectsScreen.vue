@@ -25,6 +25,7 @@ async function createNewProject() {
 async function handleOpenProject(project: string) {
   await openProject(project);
   projectStore.goToCut();
+  navigateTo('/editor');
 }
 </script>
 
@@ -40,14 +41,24 @@ async function handleOpenProject(project: string) {
             Workspace: {{ workspaceStore.workspaceHandle?.name }}
           </p>
         </div>
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-arrow-left-on-rectangle"
-          :label="t('granVideoEditor.projects.changeWorkspace', 'Change Workspace')"
-          @click="workspaceStore.resetWorkspace"
-        />
+        <div class="flex gap-2">
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="primary"
+            icon="lucide:smartphone"
+            to="/m"
+            :label="t('granVideoEditor.projects.mobileView', 'Mobile View')"
+          />
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-arrow-left-on-rectangle"
+            :label="t('granVideoEditor.projects.changeWorkspace', 'Change Workspace')"
+            @click="workspaceStore.resetWorkspace"
+          />
+        </div>
       </div>
 
       <div v-if="workspaceStore.error" class="text-error-400 text-sm">
