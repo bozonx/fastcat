@@ -9,12 +9,15 @@ import { cubeTransitionManifest } from './cube/manifest';
 import { cardSwapTransitionManifest } from './card-swap/manifest';
 import { fallingCardTransitionManifest } from './falling-card/manifest';
 
+import { rectangleManifest } from './rectangle/manifest';
+
 export function initTransitions(): void {
   registerTransition(dissolveManifest);
   registerTransition(fadeToBlackManifest);
   registerTransition(slideManifest);
   registerTransition(clockManifest);
   registerTransition(circleManifest);
+  registerTransition(rectangleManifest);
   registerTransition(wipeManifest);
   registerTransition(cubeTransitionManifest);
   registerTransition(cardSwapTransitionManifest);
@@ -23,6 +26,7 @@ export function initTransitions(): void {
 
 export * from './core/registry';
 export * from './circle/manifest';
+export * from './rectangle/manifest';
 export * from './clock/manifest';
 export * from './dissolve/manifest';
 export * from './fade-to-black/manifest';
