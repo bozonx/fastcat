@@ -372,6 +372,22 @@ function getFadeLinePattern(edge: 'in' | 'out') {
   return edge === 'in' ? fadeLinePatternIn : fadeLinePatternOut;
 }
 
+function getTransitionProblem(track: TimelineTrack, item: TimelineTrackItem, edge: 'in' | 'out'): string | null {
+  return edge === 'in' ? hasTransitionInProblem(track, item) : hasTransitionOutProblem(track, item);
+}
+
+function getTransitionButtonTitle(track: TimelineTrack, item: TimelineTrackItem, edge: 'in' | 'out'): string | undefined {
+  if (item.kind !== 'clip') return undefined;
+
+  const transition = edge === 'in' ? item.transitionIn : item.transitionOut;
+  if (!transition) return undefined;
+
+  const mode = transition.mode ?? DEFAULT_TRANSITION_MODE;
+  if (mode !== 'transition') return undefined;
+
+  return getTransitionProblem(track, item, edge) ?? undefined;
+}
+
 function shouldCollapseFades(item: TimelineTrackItem): boolean {
   if (item.kind !== 'clip') return false;
   const clip = item as TimelineClipItem;
@@ -446,6 +462,8 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
   if (!tr) return null;
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
+  if (mode === 'fade') return null;
+
   const needS = tr.durationUs / 1e6;
   const clipDurS = clip.timelineRange.durationUs / 1e6;
   if (clipDurS < needS) {
@@ -484,16 +502,6 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
     return null;
   }
 
-  if (mode === 'fade') {
-    const clipHeadHandleUs = getClipHeadHandleUs(clip);
-    if (clipHeadHandleUs < tr.durationUs - 1_000) {
-      return t('granVideoEditor.timeline.transition.errorClipHeadHandleTooShort', {
-        needSeconds: needS.toFixed(2),
-        haveSeconds: Math.max(0, clipHeadHandleUs / 1e6).toFixed(2),
-      });
-    }
-  }
-
   return null;
 }
 
@@ -503,6 +511,8 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   const tr = clip.transitionOut;
   if (!tr) return null;
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
+
+  if (mode === 'fade') return null;
 
   const clipDurS = clip.timelineRange.durationUs / 1e6;
   const needS = tr.durationUs / 1e6;
@@ -528,15 +538,6 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
       return t('granVideoEditor.timeline.transition.errorNextHandleTooShort', {
         needSeconds: needS.toFixed(2),
         haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
-      });
-  }
-
-  if (mode === 'fade') {
-    const clipTailHandleUs = getClipTailHandleUs(clip);
-    if (clipTailHandleUs < tr.durationUs - 1_000)
-      return t('granVideoEditor.timeline.transition.errorClipTailHandleTooShort', {
-        needSeconds: needS.toFixed(2),
-        haveSeconds: Math.max(0, clipTailHandleUs / 1e6).toFixed(2),
       });
   }
 
@@ -915,6 +916,7 @@ const isFreePosition = computed(() => {
             type="button"
             class="w-full h-full overflow-hidden group/trans"
             :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in', Boolean(hasTransitionInProblem(track, item)), clipItem.transitionIn.isOverridden)"
+            :title="getTransitionButtonTitle(track, item, 'in')"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               canEditClipContent &&
@@ -993,6 +995,7 @@ const isFreePosition = computed(() => {
             type="button"
             class="w-full h-full overflow-hidden group/trans"
             :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out', Boolean(hasTransitionOutProblem(track, item)), clipItem.transitionOut.isOverridden)"
+            :title="getTransitionButtonTitle(track, item, 'out')"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               canEditClipContent &&
