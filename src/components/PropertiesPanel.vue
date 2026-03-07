@@ -11,6 +11,7 @@ import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
+import RemoteFileProperties from '~/components/properties/RemoteFileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
@@ -273,12 +274,16 @@ function onPanelFocusOut() {
           />
 
           <FileProperties
-            v-else-if="displayMode === 'file' && selectedFsEntry"
+            v-else-if="displayMode === 'file' && selectedFsEntry && selectedFsEntry.source !== 'remote'"
             :selected-fs-entry="selectedFsEntry"
             :has-proxy="hasProxy"
             :preview-mode="previewMode"
             @update:preview-mode="(m) => (previewMode = m)"
             @convert="(entry) => fileConversion.openConversionModal(entry)"
+          />
+          <RemoteFileProperties
+            v-else-if="displayMode === 'file' && selectedFsEntry && selectedFsEntry.source === 'remote'"
+            :selected-fs-entry="selectedFsEntry"
           />
           <MultiFileProperties
             v-else-if="displayMode === 'files' && selectedFsEntries"

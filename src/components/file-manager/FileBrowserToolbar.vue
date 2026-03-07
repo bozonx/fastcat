@@ -6,10 +6,13 @@ import WheelSlider from '~/components/ui/WheelSlider.vue';
 defineProps<{
   gridSizes: number[];
   currentGridSizeName: string;
+  remoteAvailable?: boolean;
+  remoteMode?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
+  (e: 'toggleRemote'): void;
 }>();
 
 const { t } = useI18n();
@@ -63,6 +66,16 @@ const sortFields: { label: string; value: FileSortField }[] = [
     </div>
 
     <div class="ml-auto flex items-center gap-2">
+      <UButton
+        v-if="remoteAvailable"
+        :color="remoteMode ? 'primary' : 'neutral'"
+        :variant="remoteMode ? 'soft' : 'ghost'"
+        size="xs"
+        icon="i-heroicons-cloud"
+        @click="emit('toggleRemote')"
+      >
+        Remote
+      </UButton>
       <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
       <USelectMenu
         v-model="filesPageStore.sortOption.field"

@@ -9,6 +9,10 @@ const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const { openProject } = useProjectActions();
 
+// Локальная копия последнего проекта для отображения "Continue Working"
+// так как в родительском компоненте мы его удаляем из глобального стора
+const suggestedProject = ref<string | null>(workspaceStore.lastProjectName);
+
 const newProjectName = ref('');
 
 async function createNewProject() {
@@ -68,16 +72,16 @@ async function handleOpenProject(project: string) {
       <!-- Last Project Hero Section -->
       <div
         v-if="
-          workspaceStore.lastProjectName &&
-          workspaceStore.projects.includes(workspaceStore.lastProjectName)
+          suggestedProject &&
+          workspaceStore.projects.includes(suggestedProject)
         "
-        class="bg-linear-to-r from-primary-950/80 to-primary-900/40 border border-primary-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6"
+        class="bg-linear-to-r from-primary-950/80 to-primary-900/40 border border-primary-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-primary-500/10"
       >
         <div class="space-y-2">
           <span class="text-primary-400 text-xs font-bold uppercase tracking-widest">
             {{ t('granVideoEditor.projects.continueWorking', 'Continue Working') }}
           </span>
-          <h2 class="text-3xl font-bold text-ui-text">{{ workspaceStore.lastProjectName }}</h2>
+          <h2 class="text-3xl font-bold text-ui-text">{{ suggestedProject }}</h2>
         </div>
         <UButton
           size="xl"
@@ -85,7 +89,7 @@ async function handleOpenProject(project: string) {
           class="px-8 shadow-lg shadow-primary-500/20"
           icon="i-heroicons-play"
           :label="t('granVideoEditor.projects.openLast', 'Open Project')"
-          @click="handleOpenProject(workspaceStore.lastProjectName!)"
+          @click="handleOpenProject(suggestedProject!)"
         />
       </div>
 

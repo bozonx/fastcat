@@ -10,6 +10,10 @@ export interface FsEntrySelection {
   name: string;
   path?: string;
   handle: FileSystemFileHandle | FileSystemDirectoryHandle;
+  source?: 'local' | 'remote';
+  remoteId?: string;
+  remotePath?: string;
+  remoteData?: unknown;
 }
 
 export const useUiStore = defineStore('ui', () => {
@@ -44,6 +48,7 @@ export const useUiStore = defineStore('ui', () => {
   const pendingFsEntryCreateTimeline = ref<FsEntry | null>(null);
   const pendingFsEntryCreateMarkdown = ref<FsEntry | null>(null);
   const pendingOtioCreateVersion = ref<FsEntry | null>(null);
+  const pendingRemoteUploadEntry = ref<FsEntry | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
 
@@ -127,6 +132,7 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryCreateMarkdown,
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,
+    pendingRemoteUploadEntry,
 
     fsSidebarWidth,
     setFsSidebarWidth,

@@ -7,4 +7,8 @@ export interface FsEntry {
   expanded?: boolean;
   path?: string;
   lastModified?: number;
+  source?: 'local' | 'remote';
+  remoteId?: string;
+  remotePath?: string;
+  remoteData?: unknown;
 }

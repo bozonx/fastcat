@@ -15,7 +15,8 @@ export type FileAction =
   | 'createTimeline'
   | 'openAsPanel'
   | 'openAsProjectTab'
-  | 'convertFile';
+  | 'convertFile'
+  | 'uploadRemote';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
@@ -175,6 +176,16 @@ export function useFileContextMenu(
           label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
           icon: 'i-heroicons-arrow-path',
           onSelect: () => onAction('convertFile', entry),
+        },
+      ]);
+    }
+
+    if (entry.kind === 'file' && entry.source !== 'remote') {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
+          icon: 'i-heroicons-cloud-arrow-up',
+          onSelect: () => onAction('uploadRemote', entry),
         },
       ]);
     }

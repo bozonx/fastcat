@@ -478,6 +478,10 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     if (entry.kind === 'file') {
       fileConversion.openConversionModal(entry);
     }
+  } else if (action === 'uploadRemote') {
+    if (entry.kind === 'file' && entry.source !== 'remote') {
+      uiStore.pendingRemoteUploadEntry = entry;
+    }
   } else if (action === 'delete') {
     onFileActionBase('delete', entry);
   } else if (action === 'rename') {
