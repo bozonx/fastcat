@@ -166,7 +166,6 @@ function resolveRemoteMediaUrl(item: RemoteVfsFileEntry, mediaIndex = 0): string
   return getRemoteFileDownloadUrl({
     baseUrl: config.baseUrl,
     entry: item,
-    token: config.bearerToken,
     mediaIndex,
   });
 }
@@ -185,15 +184,10 @@ function resolveRemotePosterUrl(
     return `${base.replace(/\/+$/, '')}/${media.posterUrl.replace(/^\/+/, '')}`;
   }
 
-  const kind = getRemoteMediaKind(media);
-  if (media.id && (kind === 'image' || kind === 'video')) {
+  if (media.thumbnailUrl) {
     return getRemoteThumbnailUrl({
       baseUrl: config.baseUrl,
-      mediaId: media.id,
-      token: config.bearerToken,
-      w: 400,
-      h: 400,
-      fit: 'cover',
+      media,
     });
   }
 
