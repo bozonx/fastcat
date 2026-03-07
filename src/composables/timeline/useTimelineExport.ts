@@ -232,6 +232,10 @@ async function buildVideoTrackTree(
         transitionIn: clonePlain((item as any).transitionIn),
         transitionOut: clonePlain((item as any).transitionOut),
         freezeFrameSourceUs: item.freezeFrameSourceUs,
+        sourceDurationUs:
+          typeof (item as any).sourceDurationUs === 'number'
+            ? (item as any).sourceDurationUs
+            : undefined,
         timelineRange: {
           startUs: item.timelineRange.startUs,
           durationUs: item.timelineRange.durationUs,

@@ -515,7 +515,8 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     }
   } else if (action === 'uploadRemote') {
     if (entry.kind === 'file' && entry.source !== 'remote') {
-      uiStore.pendingRemoteUploadEntry = entry;
+      uiStore.remoteExchangeLocalEntry = entry;
+      uiStore.remoteExchangeModalOpen = true;
     }
   } else if (action === 'delete') {
     onFileActionBase('delete', entry);
@@ -587,6 +588,10 @@ function setSelectedFsEntry(entry: FsEntry | null) {
     remoteData: entry.remoteData,
   };
   selectionStore.selectFsEntry(entry);
+}
+
+function openRemoteExchangeModal() {
+  uiStore.remoteExchangeModalOpen = true;
 }
 
 async function toggleRemoteMode() {
@@ -1560,9 +1565,8 @@ async function onDirectoryUploadChange(e: Event) {
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
       :remote-available="isRemoteAvailable"
-      :remote-mode="isRemoteMode"
       @refresh="refreshFileTree"
-      @toggle-remote="toggleRemoteMode"
+      @open-remote="openRemoteExchangeModal"
     />
 
     <!-- Main Content -->

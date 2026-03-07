@@ -7,12 +7,11 @@ defineProps<{
   gridSizes: number[];
   currentGridSizeName: string;
   remoteAvailable?: boolean;
-  remoteMode?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
-  (e: 'toggleRemote'): void;
+  (e: 'openRemote'): void;
 }>();
 
 const { t } = useI18n();
@@ -68,11 +67,11 @@ const sortFields: { label: string; value: FileSortField }[] = [
     <div class="ml-auto flex items-center gap-2">
       <UButton
         v-if="remoteAvailable"
-        :color="remoteMode ? 'primary' : 'neutral'"
-        :variant="remoteMode ? 'soft' : 'ghost'"
+        color="neutral"
+        variant="ghost"
         size="xs"
         icon="i-heroicons-cloud"
-        @click="emit('toggleRemote')"
+        @click="emit('openRemote')"
       >
         Remote
       </UButton>

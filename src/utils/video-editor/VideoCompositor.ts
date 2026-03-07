@@ -526,13 +526,14 @@ export class VideoCompositor {
         0,
         Math.round(Number(clipData.sourceRange?.durationUs ?? requestedTimelineDurationUs)),
       );
+      const clipSourceDurationRaw = (clipData as any).sourceDurationUs;
       const requestedSourceDurationUs = Math.max(
         0,
         Math.round(
           Number(
-            (clipData as any).sourceDurationUs ||
-              clipData.sourceRange?.durationUs ||
-              requestedTimelineDurationUs,
+            typeof clipSourceDurationRaw === 'number' && clipSourceDurationRaw > 0
+              ? clipSourceDurationRaw
+              : clipData.sourceRange?.durationUs || requestedTimelineDurationUs,
           ),
         ),
       );
@@ -1075,11 +1076,14 @@ export class VideoCompositor {
         0,
         Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceRangeDurationUs)),
       );
+      const nextSourceDurationRaw = (next as any).sourceDurationUs;
       const sourceDurationUs = Math.max(
         0,
         Math.round(
           Number(
-            (next as any).sourceDurationUs || next.sourceRange?.durationUs || clip.sourceDurationUs,
+            typeof nextSourceDurationRaw === 'number' && nextSourceDurationRaw > 0
+              ? nextSourceDurationRaw
+              : clip.sourceDurationUs,
           ),
         ),
       );
@@ -1240,6 +1244,14 @@ export class VideoCompositor {
         const speed = typeof clip.speed === 'number' ? clip.speed : 1;
         const maxTimelineUs = speed > 0 ? Math.round(clip.sourceDurationUs / speed) : 0;
         if (localTimeUs < 0 || localTimeUs >= maxTimelineUs) {
+          console.warn('[DBG] clip hidden by maxTimelineUs', {
+            id: clip.itemId,
+            localTimeUs,
+            maxTimelineUs,
+            sourceDurationUs: clip.sourceDurationUs,
+            sourceRangeDurationUs: clip.sourceRangeDurationUs,
+            durationUs: clip.durationUs,
+          });
           clip.sprite.visible = false;
           continue;
         }
@@ -1249,6 +1261,21 @@ export class VideoCompositor {
           typeof freezeUs === 'number'
             ? Math.max(0, freezeUs) / 1_000_000
             : (clip.sourceStartUs + Math.round(localTimeUs * speed)) / 1_000_000;
+
+        if (clip.transitionIn) {
+          console.warn('[DBG-IN]', {
+            id: clip.itemId,
+            localTimeUs,
+            sampleTimeS,
+            freezeUs,
+            sourceStartUs: clip.sourceStartUs,
+            sourceRangeDurationUs: clip.sourceRangeDurationUs,
+            sourceDurationUs: clip.sourceDurationUs,
+            durationUs: clip.durationUs,
+            maxTimelineUs,
+          });
+        }
+
         if (!clip.sink) {
           clip.sprite.visible = false;
           continue;
