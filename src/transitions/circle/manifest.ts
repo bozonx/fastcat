@@ -42,7 +42,7 @@ uniform float uBlur;
 uniform float uDirection;
 
 void main(void) {
-  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
+  vec2 uv = vTextureCoord;
   vec2 centered = uv - vec2(0.5, 0.5);
   float distanceFromCenter = length(centered);
   float maxRadius = 0.70710678;

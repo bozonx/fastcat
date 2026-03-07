@@ -40,7 +40,7 @@ uniform float uProgress;
 uniform vec3 uFadeColor;
 
 void main(void) {
-  vec2 uv = vec2(vTextureCoord.x, 1.0 - vTextureCoord.y);
+  vec2 uv = vTextureCoord;
   vec4 fromColor = texture(uFromTexture, uv);
   vec4 toColor = texture(uTexture, uv);
   float progress = clamp(uProgress, 0.0, 1.0);
