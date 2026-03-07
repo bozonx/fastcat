@@ -2,6 +2,16 @@
 import { describe, it, expect } from 'vitest';
 import { createTranscriptionCacheRepository } from '../../../src/repositories/transcription-cache.repository';
 
+interface FileHandleWithMeta {
+  kind: 'file';
+  name: string;
+  getFile: () => Promise<{ text: () => Promise<string> }>;
+  createWritable: () => Promise<{
+    write: (data: string) => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+}
+
 function createFileHandleMock(input: { text: string }) {
   let text = input.text;
   return {
@@ -26,7 +36,7 @@ function createFileHandleMock(input: { text: string }) {
 }
 
 function createDirMock() {
-  const files = new Map<string, any>();
+  const files = new Map<string, FileHandleWithMeta>();
   const dirs = new Map<string, any>();
 
   return {
@@ -48,9 +58,18 @@ function createDirMock() {
         err.name = 'NotFoundError';
         throw err;
       }
-      const next = createFileHandleMock({ text: '' });
+      const next = {
+        kind: 'file' as const,
+        name,
+        ...createFileHandleMock({ text: '' }),
+      };
       files.set(name, next);
       return next;
+    },
+    async *values() {
+      for (const handle of files.values()) {
+        yield handle;
+      }
     },
   };
 }
@@ -98,5 +117,43 @@ describe('transcription-cache.repository', () => {
       models: ['universal-3-pro'],
       response: { text: 'hello world' },
     });
+  });
+
+  it('lists saved transcription cache records ordered by createdAt desc', async () => {
+    const workspaceDir = createDirMock();
+    const repo = createTranscriptionCacheRepository({
+      workspaceDir: workspaceDir as any,
+      projectId: 'project-1',
+    });
+
+    await repo.save({
+      key: 'first',
+      createdAt: '2026-03-07T00:00:00.000Z',
+      sourcePath: 'audio/first.mp3',
+      sourceName: 'first.mp3',
+      sourceSize: 1,
+      sourceLastModified: 1,
+      language: 'en',
+      provider: 'assemblyai',
+      models: [],
+      response: { text: 'first' },
+    });
+    await repo.save({
+      key: 'second',
+      createdAt: '2026-03-08T00:00:00.000Z',
+      sourcePath: 'audio/second.mp3',
+      sourceName: 'second.mp3',
+      sourceSize: 2,
+      sourceLastModified: 2,
+      language: 'ru',
+      provider: 'assemblyai',
+      models: [],
+      response: { text: 'second' },
+    });
+
+    await expect(repo.list()).resolves.toMatchObject([
+      { key: 'second', sourceName: 'second.mp3' },
+      { key: 'first', sourceName: 'first.mp3' },
+    ]);
   });
 });

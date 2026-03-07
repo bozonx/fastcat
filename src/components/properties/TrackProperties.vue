@@ -6,6 +6,7 @@ import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -15,6 +16,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
 const isDeleteConfirmOpen = ref(false);
+const isGenerateCaptionsOpen = ref(false);
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
 
@@ -109,7 +111,7 @@ function confirmDeleteTrack() {
 <template>
   <div class="w-full flex flex-col gap-2">
     <PropertySection :title="t('granVideoEditor.track.actions', 'Actions')">
-      <div class="flex gap-2 w-full">
+      <div class="flex gap-2 w-full flex-wrap">
         <UButton
           size="xs"
           variant="soft"
@@ -129,6 +131,17 @@ function confirmDeleteTrack() {
           @click="requestDeleteTrack"
         >
           {{ t('common.delete', 'Delete') }}
+        </UButton>
+        <UButton
+          v-if="track.kind === 'video'"
+          size="xs"
+          variant="soft"
+          color="primary"
+          icon="i-heroicons-chat-bubble-bottom-center-text"
+          class="w-full justify-center"
+          @click="isGenerateCaptionsOpen = true"
+        >
+          {{ t('granVideoEditor.captions.generate', 'Generate captions') }}
         </UButton>
       </div>
     </PropertySection>
@@ -242,6 +255,12 @@ function confirmDeleteTrack() {
       color="error"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDeleteTrack"
+    />
+
+    <GenerateCaptionsModal
+      v-if="track.kind === 'video'"
+      v-model:open="isGenerateCaptionsOpen"
+      :track-id="track.id"
     />
   </div>
 </template>

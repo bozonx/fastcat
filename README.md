@@ -129,6 +129,19 @@ Behavior:
 - `includeWords` defaults to `true`
 - successful responses are cached per file/version/request settings in `vardata/projects/<projectId>/cache/transcriptions`
 
+### Caption generation from STT cache
+
+Video track properties now expose a **Generate captions** action.
+
+Behavior:
+
+- caption generation never starts transcription by itself
+- the user must first prepare transcription cache records through the existing transcription flow
+- the modal lists available cache records from `vardata/projects/<projectId>/cache/transcriptions`
+- captions are generated as regular timeline `text` clips on the selected video track
+- the selected target track must be an empty video track reserved for captions
+- chunking is configurable with `max words per clip`, `max clip duration`, `split on silence gap`, and `split on punctuation`
+
 ### File exchange modal
 
 When the resolved `Files API` provider is available, the desktop file browser exposes a `Remote` button in the middle panel toolbar.
