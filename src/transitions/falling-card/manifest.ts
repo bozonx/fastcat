@@ -4,6 +4,7 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface FallingCardParams {
   direction: 'down' | 'up' | 'left' | 'right';
+  depthDirection: 'forward' | 'backward';
 }
 
 const vertex = `
@@ -44,6 +45,7 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uDirection;
+uniform float uDepthDirection;
 
 const float PI = 3.14159265359;
 
@@ -81,33 +83,44 @@ void main(void) {
   
   // d: расстояние до камеры. Меньше d = сильнее перспектива
   float d = 1.5;
+  float Z = 0.0;
   
   if (uDirection < 0.5) { // down: залипает верхний край (y=0)
     p = uv - vec2(0.5, 0.0);
-    // Обратное преобразование: вычисляем откуда взять пиксель из оригинального FROM-клипа
-    // Так как FROM падает *назад* (от нас), мы инвертируем знак sin по сравнению с "на нас"
-    denom = d * c + p.y * s;
-    py = (p.y * d) / denom;
-    px = p.x * (d - py * s) / d;
-    pfr = vec2(px, py) + vec2(0.5, 0.0);
+    denom = d * c - uDepthDirection * p.y * s;
+    if (denom > 0.0) {
+        py = (p.y * d) / denom;
+        Z = uDepthDirection * py * s;
+        px = p.x * (d + Z) / d;
+        pfr = vec2(px, py) + vec2(0.5, 0.0);
+    }
   } else if (uDirection < 1.5) { // up: залипает нижний край (y=1)
     p = uv - vec2(0.5, 1.0);
-    denom = d * c - p.y * s;
-    py = (p.y * d) / denom;
-    px = p.x * (d + py * s) / d;
-    pfr = vec2(px, py) + vec2(0.5, 1.0);
+    denom = d * c + uDepthDirection * p.y * s;
+    if (denom > 0.0) {
+        py = (p.y * d) / denom;
+        Z = uDepthDirection * (-py) * s;
+        px = p.x * (d + Z) / d;
+        pfr = vec2(px, py) + vec2(0.5, 1.0);
+    }
   } else if (uDirection < 2.5) { // right: залипает левый край (x=0)
     p = uv - vec2(0.0, 0.5);
-    denom = d * c + p.x * s;
-    px = (p.x * d) / denom;
-    py = p.y * (d - px * s) / d;
-    pfr = vec2(px, py) + vec2(0.0, 0.5);
+    denom = d * c - uDepthDirection * p.x * s;
+    if (denom > 0.0) {
+        px = (p.x * d) / denom;
+        Z = uDepthDirection * px * s;
+        py = p.y * (d + Z) / d;
+        pfr = vec2(px, py) + vec2(0.0, 0.5);
+    }
   } else { // left: залипает правый край (x=1)
     p = uv - vec2(1.0, 0.5);
-    denom = d * c - p.x * s;
-    px = (p.x * d) / denom;
-    py = p.y * (d + px * s) / d;
-    pfr = vec2(px, py) + vec2(1.0, 0.5);
+    denom = d * c + uDepthDirection * p.x * s;
+    if (denom > 0.0) {
+        px = (p.x * d) / denom;
+        Z = uDepthDirection * (-px) * s;
+        py = p.y * (d + Z) / d;
+        pfr = vec2(px, py) + vec2(1.0, 0.5);
+    }
   }
   
   if (denom <= 0.0) {
@@ -135,9 +148,11 @@ void main(void) {
 
 function normalizeFallingCardParams(params?: Record<string, unknown>): FallingCardParams {
   const dir = params?.direction as string;
+  const depthDir = params?.depthDirection as string;
   const validDirs = ['down', 'up', 'left', 'right'];
   return {
     direction: validDirs.includes(dir) ? (dir as FallingCardParams['direction']) : 'down',
+    depthDirection: depthDir === 'forward' ? 'forward' : 'backward',
   };
 }
 
@@ -172,6 +187,21 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
         },
       ],
     },
+    {
+      key: 'depthDirection',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramDepthDirection',
+      options: [
+        {
+          value: 'backward',
+          labelKey: 'granVideoEditor.timeline.transition.depthDirectionBackward',
+        },
+        {
+          value: 'forward',
+          labelKey: 'granVideoEditor.timeline.transition.depthDirectionForward',
+        },
+      ],
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -182,6 +212,7 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
         fallingCardUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uDirection: { value: 0, type: 'f32' },
+          uDepthDirection: { value: 1, type: 'f32' },
         },
       },
     }),
@@ -201,6 +232,7 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uDirection = dirFloat;
+    uniforms.uDepthDirection = params.depthDirection === 'forward' ? 1.0 : -1.0;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

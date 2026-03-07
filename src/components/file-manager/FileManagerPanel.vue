@@ -142,7 +142,6 @@ function isTranscribableMediaFile(entry: FsEntry): boolean {
 }
 
 function openTranscriptionModal(entry: FsEntry) {
-  if (!isTranscribableMediaFile(entry)) return;
   sttTranscriptionEntry.value = entry;
   sttTranscriptionLanguage.value = '';
   sttTranscriptionError.value = '';
