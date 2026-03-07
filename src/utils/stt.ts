@@ -9,6 +9,7 @@ export interface SttTranscriptionRequest {
   fileHandle: FileSystemFileHandle;
   filePath: string;
   fileName: string;
+  fileType: string;
   language?: string;
   granPublicadorBaseUrl: string;
   projectId: string;
@@ -53,16 +54,17 @@ async function createCacheKey(params: {
 }
 
 function createRequestHeaders(params: {
-  file: File;
+  file: File | null;
   fileName: string;
   language: string;
   provider: string;
   models: string[];
   bearerToken: string;
   settings: GranVideoEditorUserSettings['integrations']['stt'];
+  contentType?: string;
 }): Headers {
   const headers = new Headers();
-  headers.set('Content-Type', params.file.type || 'application/octet-stream');
+  headers.set('Content-Type', params.contentType || params.file?.type || 'application/octet-stream');
   headers.set('X-File-Name', params.fileName);
   headers.set('X-STT-Restore-Punctuation', String(params.settings.restorePunctuation));
   headers.set('X-STT-Format-Text', String(params.settings.formatText));
@@ -132,6 +134,18 @@ export async function transcribeProjectAudioFile(
     };
   }
 
+  let body: BodyInit;
+  let contentType: string | undefined;
+
+  if (input.fileType.startsWith('video/')) {
+    const { createAudioStreamFromFile } = await import('~/utils/audio-streaming');
+    const { stream } = await createAudioStreamFromFile(file);
+    body = stream as any;
+    contentType = 'audio/wav';
+  } else {
+    body = file;
+  }
+
   const headers = createRequestHeaders({
     file,
     fileName: input.fileName,
@@ -140,12 +154,15 @@ export async function transcribeProjectAudioFile(
     models,
     bearerToken: resolvedConfig.bearerToken,
     settings: input.userSettings.integrations.stt,
+    contentType,
   });
 
   const response = await fetch(endpoint, {
     method: 'POST',
     headers,
-    body: file,
+    body,
+    // @ts-expect-error - duplex is required for streaming body
+    duplex: body instanceof ReadableStream ? 'half' : undefined,
   });
 
   if (!response.ok) {
