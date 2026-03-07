@@ -59,8 +59,9 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
   
-  vec4 toColor = texture(uFromTexture, uv);
-  vec4 fromColor = texture(uTexture, vTextureCoord);
+  // В нашем движке: uTexture = TO (приходящий), uFromTexture = FROM (уходящий)
+  vec4 toColor = texture(uTexture, vTextureCoord);
+  vec4 fromColor = texture(uFromTexture, uv);
   
   if (progress >= 1.0) {
       gl_FragColor = toColor;
@@ -134,7 +135,7 @@ void main(void) {
   if (inBounds(pMoved)) {
       if (isRise) {
           // В режиме rise TO-клип поднимается, FROM-клип остается фоном
-          vec4 movingColor = texture(uFromTexture, pMoved);
+          vec4 movingColor = texture(uTexture, vTextureCoord + (pMoved - uv) * vTexScale);
           float outAlpha = movingColor.a + fromColor.a * (1.0 - movingColor.a);
           if (outAlpha > 0.0) {
               vec3 outColor = (movingColor.rgb * movingColor.a + fromColor.rgb * fromColor.a * (1.0 - movingColor.a)) / outAlpha;
@@ -144,7 +145,7 @@ void main(void) {
           }
       } else {
           // В режиме fall FROM-клип падает, TO-клип проступает фоном
-          vec4 movingColor = texture(uTexture, vTextureCoord + (pMoved - uv) * vTexScale);
+          vec4 movingColor = texture(uFromTexture, pMoved);
           float outAlpha = movingColor.a + toColor.a * (1.0 - movingColor.a);
           if (outAlpha > 0.0) {
               vec3 outColor = (movingColor.rgb * movingColor.a + toColor.rgb * toColor.a * (1.0 - movingColor.a)) / outAlpha;
