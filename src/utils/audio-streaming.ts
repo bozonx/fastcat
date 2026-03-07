@@ -51,7 +51,8 @@ export function createWavHeader(params: {
 export function floatTo16BitPcm(input: Float32Array): Int16Array {
   const output = new Int16Array(input.length);
   for (let i = 0; i < input.length; i++) {
-    const s = Math.max(-1, Math.min(1, input[i]));
+    const val = input[i] ?? 0;
+    const s = Math.max(-1, Math.min(1, val));
     output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
   return output;
@@ -119,7 +120,8 @@ export async function createAudioStreamFromFile(file: File): Promise<{
           if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
           if ('dispose' in input && typeof (input as any).dispose === 'function')
             (input as any).dispose();
-          else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+          else if ('close' in input && typeof (input as any).close === 'function')
+            (input as any).close();
         }
       },
     });

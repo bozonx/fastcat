@@ -157,4 +157,56 @@ describe('transcription captions utils', () => {
       },
     ]);
   });
+
+  it('normalizes chunks so they do not overlap after aggregation', () => {
+    const result = buildCaptionChunksFromWords({
+      words: [
+        {
+          start: 0,
+          end: 200,
+          text: 'first',
+          timelineStartMs: 1000,
+          timelineEndMs: 1400,
+          sourcePath: '_video/a.mp4',
+          sourceName: 'a.mp4',
+          trackId: 'v1',
+          clipId: 'c1',
+          trackOrder: 0,
+        },
+        {
+          start: 300,
+          end: 500,
+          text: 'second',
+          timelineStartMs: 1300,
+          timelineEndMs: 1700,
+          sourcePath: '_video/b.mp4',
+          sourceName: 'b.mp4',
+          trackId: 'v1',
+          clipId: 'c2',
+          trackOrder: 0,
+        },
+      ],
+      settings: {
+        maxWordsPerClip: 1,
+        maxDurationMs: 5000,
+        silenceGapMs: 0,
+        splitOnPunctuation: false,
+      },
+    });
+
+    expect(result).toEqual([
+      {
+        startMs: 1000,
+        endMs: 1400,
+        text: 'first',
+        words: [{ start: 1000, end: 1400, text: 'first', confidence: undefined }],
+      },
+      {
+        startMs: 1400,
+        endMs: 1700,
+        text: 'second',
+        words: [{ start: 1400, end: 1700, text: 'second', confidence: undefined }],
+      },
+    ]);
+  });
 });
