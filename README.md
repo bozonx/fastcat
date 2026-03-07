@@ -137,7 +137,11 @@ Behavior:
 
 - caption generation never starts transcription by itself
 - the user must first prepare transcription cache records through the existing transcription flow
-- the modal lists available cache records from `vardata/projects/<projectId>/cache/transcriptions`
+- the generator scans all active audio and video media clips across the timeline and loads their existing cache automatically
+- disabled clips are ignored
+- clips on hidden video tracks or muted tracks are ignored
+- clip trims are respected via `sourceRange` and `timelineRange`
+- when multiple sources overlap in time, only the top visible video source is used for captions in the covered range
 - captions are generated as regular timeline `text` clips on the selected video track
 - the selected target track must be an empty video track reserved for captions
 - chunking is configurable with `max words per clip`, `max clip duration`, `split on silence gap`, and `split on punctuation`

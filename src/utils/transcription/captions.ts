@@ -22,10 +22,14 @@ export interface CaptionChunk {
   words: TranscriptionWord[];
 }
 
-export interface CaptionGenerationResult {
-  chunks: CaptionChunk[];
-  sourceName: string;
+export interface TimelineCaptionWord extends TranscriptionWord {
+  timelineStartMs: number;
+  timelineEndMs: number;
   sourcePath: string;
+  sourceName: string;
+  trackId: string;
+  clipId: string;
+  trackOrder: number;
 }
 
 export interface CaptionStylePreset {
@@ -61,11 +65,14 @@ function normalizeWord(word: TranscriptionWord): TranscriptionWord | null {
   };
 }
 
-function extractWords(record: TranscriptionCacheRecord): TranscriptionWord[] {
+export function extractTranscriptionWords(record: TranscriptionCacheRecord): TranscriptionWord[] {
   const response = record.response as { words?: unknown } | null;
   const rawWords = Array.isArray(response?.words) ? response.words : [];
 
-  return rawWords.filter(isWordLike).map(normalizeWord).filter((word): word is TranscriptionWord => word !== null);
+  return rawWords
+    .filter(isWordLike)
+    .map(normalizeWord)
+    .filter((word): word is TranscriptionWord => word !== null);
 }
 
 function shouldSplitAtWord(params: {
@@ -104,8 +111,34 @@ function wordsToChunk(words: TranscriptionWord[]): CaptionChunk | null {
   return {
     startMs: first.start,
     endMs: last.end,
-    text: words.map((word) => word.text).join(' ').replace(/\s+/g, ' ').trim(),
+    text: words
+      .map((word) => word.text)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
     words: [...words],
+  };
+}
+
+function timelineWordsToChunk(words: TimelineCaptionWord[]): CaptionChunk | null {
+  const first = words[0];
+  const last = words[words.length - 1];
+  if (!first || !last) return null;
+
+  return {
+    startMs: first.timelineStartMs,
+    endMs: last.timelineEndMs,
+    text: words
+      .map((word) => word.text)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    words: words.map((word) => ({
+      start: word.timelineStartMs,
+      end: word.timelineEndMs,
+      text: word.text,
+      confidence: word.confidence,
+    })),
   };
 }
 
@@ -134,35 +167,53 @@ export function createDefaultCaptionGenerationSettings(): CaptionGenerationSetti
   };
 }
 
-export function buildCaptionChunks(params: {
-  record: TranscriptionCacheRecord;
+export function buildCaptionChunksFromWords(params: {
+  words: TimelineCaptionWord[];
   settings: CaptionGenerationSettings;
-}): CaptionGenerationResult {
-  const words = extractWords(params.record);
-  if (words.length === 0) {
+}): CaptionChunk[] {
+  if (params.words.length === 0) {
     throw new Error('Transcription cache does not contain word timings');
   }
 
   const chunks: CaptionChunk[] = [];
-  let currentWords: TranscriptionWord[] = [];
+  let currentWords: TimelineCaptionWord[] = [];
+
+  const words = [...params.words].sort((a, b) => {
+    if (a.timelineStartMs !== b.timelineStartMs) {
+      return a.timelineStartMs - b.timelineStartMs;
+    }
+
+    if (a.timelineEndMs !== b.timelineEndMs) {
+      return a.timelineEndMs - b.timelineEndMs;
+    }
+
+    return a.trackOrder - b.trackOrder;
+  });
 
   for (let index = 0; index < words.length; index += 1) {
     const word = words[index]!;
     currentWords.push(word);
 
     const nextWord = words[index + 1] ?? null;
-    const currentDurationMs = word.end - currentWords[0]!.start;
-    const nextGapMs = nextWord ? Math.max(0, nextWord.start - word.end) : Number.POSITIVE_INFINITY;
+    const currentDurationMs = word.timelineEndMs - currentWords[0]!.timelineStartMs;
+    const nextGapMs = nextWord
+      ? Math.max(0, nextWord.timelineStartMs - word.timelineEndMs)
+      : Number.POSITIVE_INFINITY;
 
     if (
       shouldSplitAtWord({
-        currentWords,
+        currentWords: currentWords.map((currentWord) => ({
+          start: currentWord.timelineStartMs,
+          end: currentWord.timelineEndMs,
+          text: currentWord.text,
+          confidence: currentWord.confidence,
+        })),
         currentDurationMs,
         nextGapMs,
         settings: params.settings,
       })
     ) {
-      const chunk = wordsToChunk(currentWords);
+      const chunk = timelineWordsToChunk(currentWords);
       if (chunk) {
         chunks.push(chunk);
       }
@@ -171,7 +222,7 @@ export function buildCaptionChunks(params: {
   }
 
   if (currentWords.length > 0) {
-    const chunk = wordsToChunk(currentWords);
+    const chunk = timelineWordsToChunk(currentWords);
     if (chunk) {
       chunks.push(chunk);
     }
@@ -181,8 +232,33 @@ export function buildCaptionChunks(params: {
     throw new Error('Failed to build caption chunks from transcription cache');
   }
 
+  return chunks;
+}
+
+export function buildCaptionChunks(params: {
+  record: TranscriptionCacheRecord;
+  settings: CaptionGenerationSettings;
+}): { chunks: CaptionChunk[]; sourceName: string; sourcePath: string } {
+  const words = extractTranscriptionWords(params.record);
+  if (words.length === 0) {
+    throw new Error('Transcription cache does not contain word timings');
+  }
+
+  const chunks = words
+    .map((word) => ({
+      ...word,
+      timelineStartMs: word.start,
+      timelineEndMs: word.end,
+      sourcePath: params.record.sourcePath,
+      sourceName: params.record.sourceName,
+      trackId: '',
+      clipId: '',
+      trackOrder: 0,
+    }))
+    .slice();
+
   return {
-    chunks,
+    chunks: buildCaptionChunksFromWords({ words: chunks, settings: params.settings }),
     sourceName: params.record.sourceName,
     sourcePath: params.record.sourcePath,
   };

@@ -6,7 +6,6 @@ import {
   createDefaultCaptionGenerationSettings,
   type CaptionGenerationSettings,
 } from '~/utils/transcription/captions';
-import type { TranscriptionCacheRecord } from '~/repositories/transcription-cache.repository';
 
 const props = defineProps<{
   open: boolean;
@@ -27,56 +26,18 @@ const isOpen = computed({
   set: (value: boolean) => emit('update:open', value),
 });
 
-const records = ref<TranscriptionCacheRecord[]>([]);
-const selectedKey = ref('');
-const isLoading = ref(false);
 const isGenerating = ref(false);
 const settings = ref<CaptionGenerationSettings>(createDefaultCaptionGenerationSettings());
-
-const selectedRecord = computed(
-  () => records.value.find((record) => record.key === selectedKey.value) ?? null,
-);
-
-const selectItems = computed(() =>
-  records.value.map((record) => ({
-    label: `${record.sourceName} · ${record.language || 'auto'} · ${new Date(record.createdAt).toLocaleString()}`,
-    value: record.key,
-  })),
-);
 
 function resetState() {
   settings.value = createDefaultCaptionGenerationSettings();
 }
 
-async function loadRecords() {
-  if (!isOpen.value) return;
-
-  isLoading.value = true;
-  try {
-    const nextRecords = await timelineStore.listCachedTranscriptions();
-    records.value = nextRecords;
-    selectedKey.value = nextRecords[0]?.key ?? '';
-  } catch (error: unknown) {
-    records.value = [];
-    selectedKey.value = '';
-    toast.add({
-      color: 'red',
-      title: t('common.error', 'Error'),
-      description: error instanceof Error ? error.message : 'Failed to load transcription cache',
-    });
-  } finally {
-    isLoading.value = false;
-  }
-}
-
 async function generateCaptions() {
-  if (!selectedKey.value) return;
-
   isGenerating.value = true;
   try {
-    const result = await timelineStore.generateCaptionsFromCache({
+    const result = await timelineStore.generateCaptionsFromTimeline({
       trackId: props.trackId,
-      transcriptionKey: selectedKey.value,
       settings: {
         maxWordsPerClip: Math.max(1, Math.round(settings.value.maxWordsPerClip)),
         maxDurationMs: Math.max(100, Math.round(settings.value.maxDurationMs)),
@@ -90,7 +51,7 @@ async function generateCaptions() {
       title: t('granVideoEditor.captions.generated', 'Captions generated'),
       description: t(
         'granVideoEditor.captions.generatedDescription',
-        `${result.addedCount} text clips were created from ${result.sourceName}`,
+        `${result.addedCount} text clips were created from ${result.sourceCount} source files`,
       ),
     });
     emit('generated');
@@ -108,10 +69,9 @@ async function generateCaptions() {
 
 watch(
   () => props.open,
-  async (open) => {
+  (open) => {
     if (open) {
       resetState();
-      await loadRecords();
     }
   },
 );
@@ -124,32 +84,19 @@ watch(
     :description="
       t(
         'granVideoEditor.captions.modalDescription',
-        'Create text clips from an existing transcription cache record. Transcription is not started here.',
+        'Create text clips from transcription cache of active audio and video clips across the timeline.',
       )
     "
     :ui="{ content: 'sm:max-w-2xl' }"
   >
     <div class="flex flex-col gap-4">
-      <div class="flex flex-col gap-1.5">
-        <span class="text-xs text-ui-text-muted">
-          {{ t('granVideoEditor.captions.cacheRecord', 'Transcription cache') }}
-        </span>
-        <USelectMenu
-          :model-value="selectedKey"
-          :items="selectItems"
-          value-key="value"
-          label-key="label"
-          size="sm"
-          :loading="isLoading"
-          :disabled="isLoading || records.length === 0"
-          @update:model-value="(value: string) => (selectedKey = value)"
-        />
-        <span v-if="selectedRecord" class="text-[11px] text-ui-text-muted">
-          {{ selectedRecord.sourcePath }}
-        </span>
-        <span v-else-if="!isLoading" class="text-[11px] text-ui-text-muted">
-          {{ t('granVideoEditor.captions.noCache', 'No prepared transcription cache records found') }}
-        </span>
+      <div class="text-xs text-ui-text-muted bg-ui-bg-elevated rounded border border-ui-border p-3">
+        {{
+          t(
+            'granVideoEditor.captions.timelineWideDescription',
+            'The editor will scan all active audio and video media clips on non-muted, visible tracks, load their existing transcription cache, account for trims, and keep only the top visible source on overlaps.',
+          )
+        }}
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -209,7 +156,6 @@ watch(
         </UButton>
         <UButton
           color="primary"
-          :disabled="!selectedKey || isLoading"
           :loading="isGenerating"
           @click="generateCaptions"
         >
