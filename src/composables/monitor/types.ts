@@ -12,14 +12,14 @@ export interface WorkerTimelineClip {
   transitionIn?: {
     type: string;
     durationUs: number;
-    mode?: 'blend' | 'blend_previous' | 'composite';
+    mode?: 'transition' | 'fade';
     curve?: 'linear' | 'bezier';
     params?: Record<string, unknown>;
   };
   transitionOut?: {
     type: string;
     durationUs: number;
-    mode?: 'blend' | 'blend_previous' | 'composite';
+    mode?: 'transition' | 'fade';
     curve?: 'linear' | 'bezier';
     params?: Record<string, unknown>;
   };

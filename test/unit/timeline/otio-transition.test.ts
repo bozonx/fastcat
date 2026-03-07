@@ -69,8 +69,20 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.locked).toBe(true);
     expect(clip.opacity).toBe(0.5);
     expect(clip.blendMode).toBe('multiply');
-    expect(clip.transitionIn).toEqual({ type: 'dissolve', durationUs: 300_000 });
-    expect(clip.transitionOut).toEqual({ type: 'dissolve', durationUs: 500_000 });
+    expect(clip.transitionIn).toEqual({
+      type: 'dissolve',
+      durationUs: 300_000,
+      mode: 'transition',
+      curve: undefined,
+      params: undefined,
+    });
+    expect(clip.transitionOut).toEqual({
+      type: 'dissolve',
+      durationUs: 500_000,
+      mode: 'transition',
+      curve: undefined,
+      params: undefined,
+    });
     expect(clip.audioGain).toBe(1.25);
     expect(clip.audioFadeInUs).toBe(200_000);
     expect(clip.audioFadeOutUs).toBe(400_000);
@@ -103,14 +115,14 @@ describe('timeline/otioSerializer: transitions', () => {
               transitionIn: {
                 type: 'clock',
                 durationUs: 300_000,
-                mode: 'composite',
+                mode: 'fade',
                 curve: 'bezier',
                 params: { direction: 'counterclockwise' },
               },
               transitionOut: {
                 type: 'wipe',
                 durationUs: 500_000,
-                mode: 'blend_previous',
+                mode: 'transition',
                 curve: 'linear',
                 params: {
                   direction: 'right',
@@ -131,14 +143,14 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.transitionIn).toEqual({
       type: 'clock',
       durationUs: 300_000,
-      mode: 'composite',
+      mode: 'fade',
       curve: 'bezier',
       params: { direction: 'counterclockwise' },
     });
     expect(clip.transitionOut).toEqual({
       type: 'wipe',
       durationUs: 500_000,
-      mode: 'blend_previous',
+      mode: 'transition',
       curve: 'linear',
       params: {
         direction: 'right',
@@ -146,6 +158,49 @@ describe('timeline/otioSerializer: transitions', () => {
         gapColor: '#00ff00',
       },
     });
+  });
+
+  it('normalizes legacy OTIO transition modes on parse', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              id: 'c1',
+              trackId: 'v1',
+              name: 'Clip1',
+              clipType: 'media',
+              source: { path: 'file.mp4' },
+              sourceDurationUs: 10_000_000,
+              timelineRange: { startUs: 0, durationUs: 5_000_000 },
+              sourceRange: { startUs: 0, durationUs: 5_000_000 },
+              transitionIn: { type: 'clock', durationUs: 300_000, mode: 'fade' },
+              transitionOut: { type: 'wipe', durationUs: 500_000, mode: 'transition' },
+            },
+          ],
+        },
+      ],
+    };
+
+    const serialized = JSON.parse(serializeTimelineToOtio(doc)) as any;
+    const gran = serialized.tracks.children[0].children[0].metadata.gran;
+    gran.transitionIn.mode = 'composite';
+    gran.transitionOut.mode = 'blend_previous';
+
+    const parsed = parseTimelineFromOtio(JSON.stringify(serialized), {
+      id: 'doc1',
+      name: 'Test',
+      fps: 30,
+    });
+    const clip = parsed.tracks[0]?.items[0] as any;
+
+    expect(clip.transitionIn.mode).toBe('fade');
+    expect(clip.transitionOut.mode).toBe('transition');
   });
 
   it('omits transitions when not set', () => {

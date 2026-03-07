@@ -218,31 +218,45 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     let limitByHandle = Number.POSITIVE_INFINITY;
 
     const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
-    if (mode === 'blend_previous' && adjacent) {
+    if (mode === 'transition' && adjacent) {
       if (input.edge === 'in') {
         const prev = adjacent;
         const prevSourceEnd =
           (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
         const prevMaxEnd =
-          prev.clipType === 'media' && !prev.isImage
+          (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
             ? ((prev as any).sourceDurationUs ?? prevSourceEnd)
             : Number.POSITIVE_INFINITY;
         const prevTailHandleUs = Number.isFinite(prevMaxEnd)
           ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
           : Number.POSITIVE_INFINITY;
-        limitByHandle = Math.max(0, prevTailHandleUs + input.currentTransition.durationUs);
+        limitByHandle = Math.max(0, prevTailHandleUs);
       } else {
-        const curr = clip;
-        const currSourceEnd =
-          (curr.sourceRange?.startUs ?? 0) + (curr.sourceRange?.durationUs ?? 0);
-        const currMaxEnd =
-          curr.clipType === 'media' && !curr.isImage
-            ? ((curr as any).sourceDurationUs ?? currSourceEnd)
+        const next = adjacent;
+        const nextHeadHandleUs = Math.max(0, Math.round(Number(next.sourceRange?.startUs ?? 0)));
+        limitByHandle =
+          next.clipType === 'media' || next.clipType === 'timeline'
+            ? nextHeadHandleUs
             : Number.POSITIVE_INFINITY;
-        const currTailHandleUs = Number.isFinite(currMaxEnd)
-          ? Math.max(0, Math.round(Number(currMaxEnd)) - Math.round(currSourceEnd))
+      }
+    }
+
+    if (mode === 'fade') {
+      if (input.edge === 'in') {
+        limitByHandle =
+          clip.clipType === 'media' || clip.clipType === 'timeline'
+            ? Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)))
+            : Number.POSITIVE_INFINITY;
+      } else {
+        const clipSourceEnd =
+          (clip.sourceRange?.startUs ?? 0) + (clip.sourceRange?.durationUs ?? 0);
+        const clipMaxEnd =
+          (clip.clipType === 'media' || clip.clipType === 'timeline') && !clip.isImage
+            ? ((clip as any).sourceDurationUs ?? clipSourceEnd)
+            : Number.POSITIVE_INFINITY;
+        limitByHandle = Number.isFinite(clipMaxEnd)
+          ? Math.max(0, Math.round(Number(clipMaxEnd)) - Math.round(clipSourceEnd))
           : Number.POSITIVE_INFINITY;
-        limitByHandle = Math.max(0, currTailHandleUs + input.currentTransition.durationUs);
       }
     }
 
