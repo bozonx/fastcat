@@ -2,7 +2,7 @@ import { Filter, GlProgram, Texture } from 'pixi.js';
 import { clampNumber, easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
-export interface CircleParams {
+export interface RectangleParams {
   blur: number;
   direction: 'from-center' | 'to-center';
   anchor: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -51,26 +51,34 @@ uniform float uBlur;
 uniform float uDirection;
 uniform vec2 uCenter;
 
+// Function to calculate distance from a point to the edge of a rectangle
+// centered at uCenter and with dimensions that scale with progress.
+float rectDistance(vec2 p, vec2 center, vec2 size) {
+  vec2 d = abs(p - center) - size;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec2 centered = uv - uCenter;
   centered.x *= vAspectRatio;
-  float distanceFromCenter = length(centered);
   
-  vec2 corner0 = vec2(0.0, 0.0) - uCenter; corner0.x *= vAspectRatio;
-  vec2 corner1 = vec2(1.0, 0.0) - uCenter; corner1.x *= vAspectRatio;
-  vec2 corner2 = vec2(0.0, 1.0) - uCenter; corner2.x *= vAspectRatio;
-  vec2 corner3 = vec2(1.0, 1.0) - uCenter; corner3.x *= vAspectRatio;
+  // Calculate max dimensions needed to cover the entire screen from the center
+  float maxDistX = max(uCenter.x, 1.0 - uCenter.x) * vAspectRatio;
+  float maxDistY = max(uCenter.y, 1.0 - uCenter.y);
+  vec2 maxSize = vec2(maxDistX, maxDistY);
   
-  float maxRadius = max(
-    max(length(corner0), length(corner1)),
-    max(length(corner2), length(corner3))
-  );
-
   float progress = clamp(uProgress, 0.0, 1.0);
   float blur = max(0.0001, uBlur);
-  float radius = (uDirection > 0.0 ? progress : (1.0 - progress)) * maxRadius;
-  float reveal = 1.0 - smoothstep(radius - blur, radius + blur, distanceFromCenter);
+  
+  // Size of the rectangle
+  float t = uDirection > 0.0 ? progress : (1.0 - progress);
+  vec2 currentSize = maxSize * t;
+  
+  // distance from current point to rectangle boundary
+  float dist = rectDistance(centered, vec2(0.0), currentSize);
+  
+  float reveal = 1.0 - smoothstep(-blur, blur, dist);
 
   if (uDirection < 0.0) {
     reveal = 1.0 - reveal;
@@ -83,11 +91,11 @@ void main(void) {
 }
 `;
 
-function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
+function normalizeRectangleParams(params?: Record<string, unknown>): RectangleParams {
   const anchor =
     typeof params?.anchor === 'string' &&
     ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(params.anchor)
-      ? (params.anchor as CircleParams['anchor'])
+      ? (params.anchor as RectangleParams['anchor'])
       : 'center';
 
   return {
@@ -99,18 +107,18 @@ function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
   };
 }
 
-export const circleManifest: TransitionManifest<CircleParams> = {
-  type: 'circle',
-  name: 'Circle',
-  icon: 'i-heroicons-stop-circle',
+export const rectangleManifest: TransitionManifest<RectangleParams> = {
+  type: 'rectangle',
+  name: 'Rectangle',
+  icon: 'i-heroicons-stop',
   defaultDurationUs: 600_000,
-  defaultParams: normalizeCircleParams(),
-  normalizeParams: normalizeCircleParams,
+  defaultParams: normalizeRectangleParams(),
+  normalizeParams: normalizeRectangleParams,
   paramFields: [
     {
       key: 'blur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramCircleBlur',
+      labelKey: 'granVideoEditor.timeline.transition.paramRectangleBlur',
       min: 0.0001,
       max: 0.2,
       step: 0.0025,
@@ -165,7 +173,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
         uFromTexture: Texture.WHITE.source,
-        circleUniforms: {
+        rectangleUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uBlur: { value: 0.015, type: 'f32' },
           uDirection: { value: 1, type: 'f32' },
@@ -175,11 +183,11 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     }),
   updateFilter: (filter, context) => {
     const resources = (filter as any).resources;
-    const uniforms = resources?.circleUniforms?.uniforms;
+    const uniforms = resources?.rectangleUniforms?.uniforms;
     if (!uniforms) return;
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
-    const params = normalizeCircleParams(context.params);
+    const params = normalizeRectangleParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uBlur = params.blur;
