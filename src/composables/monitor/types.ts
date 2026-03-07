@@ -34,6 +34,7 @@ export interface WorkerTimelineClip {
   blendMode?: import('~/timeline/types').TimelineBlendMode;
   effects?: unknown[];
   transform?: import('~/timeline/types').ClipTransform;
+  sourceDurationUs?: number;
   timelineRange: {
     startUs: number;
     durationUs: number;
