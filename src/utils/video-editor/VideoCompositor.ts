@@ -154,6 +154,7 @@ export interface CompositorClip {
   transitionSprite?: Sprite | null;
   transitionFromTexture?: RenderTexture | null;
   transitionToTexture?: RenderTexture | null;
+  transitionOutputTexture?: RenderTexture | null;
   textDirty?: boolean;
 }
 
@@ -191,6 +192,7 @@ export class VideoCompositor {
   private masterEffects: ClipEffect[] | null = null;
   private masterEffectFilters: Map<string, Filter> | null = null;
   private transitionFilters = new Map<string, Filter>();
+  private filterQuadSprite: Sprite | null = null;
   private sampleRequestsInFlight = 0;
   private readonly sampleRequestQueue: Array<() => void> = [];
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
@@ -1061,6 +1063,7 @@ export class VideoCompositor {
       clip.blendMode = resolveBlendMode((next as any).blendMode);
       clip.effects = next.effects;
       clip.transform = (next as any).transform;
+      this.applyClipLayoutForCurrentSource(clip);
       const prevTransitionInType = clip.transitionIn?.type ?? null;
       const nextTransitionInType = (next as any).transitionIn?.type ?? null;
       clip.transitionIn = (next as any).transitionIn;
@@ -1098,7 +1101,6 @@ export class VideoCompositor {
           (next as any).backgroundColor ?? clip.backgroundColor ?? '#000000',
         );
         clip.sprite.tint = parseHexColor(clip.backgroundColor);
-        this.applySolidLayout(clip);
       }
       if (!clip.effectFilters) {
         clip.effectFilters = new Map();
@@ -1541,8 +1543,10 @@ export class VideoCompositor {
 
     sprite.x = 0;
     sprite.y = 0;
-    sprite.scale.set(1, 1);
     sprite.anchor.set(0, 0);
+    sprite.scale.set(1, 1);
+    sprite.width = this.width;
+    sprite.height = this.height;
 
     return sprite;
   }
@@ -1621,9 +1625,12 @@ export class VideoCompositor {
       clip.transitionToTexture = this.ensureTransitionRenderTexture(
         clip.transitionToTexture ?? null,
       );
+      clip.transitionOutputTexture = this.ensureTransitionRenderTexture(
+        clip.transitionOutputTexture ?? null,
+      );
 
-      const transitionSprite = this.ensureTransitionSprite(clip);
-      this.renderDisplayObjectToTexture(clip.sprite, clip.transitionToTexture);
+      // Render the "to" clip content into toTexture at full canvas resolution.
+      this.renderDisplayObjectToTextureForcedVisible(clip.sprite, clip.transitionToTexture);
 
       const fromTexture = clip.transitionFromTexture;
       let prevClip: CompositorClip | null = null;
@@ -1633,7 +1640,6 @@ export class VideoCompositor {
       } else {
         prevClip = this.findPrevClipOnLayer(clip);
         if (!prevClip) {
-          transitionSprite.visible = false;
           continue;
         }
         this.renderDisplayObjectToTextureForcedVisible(prevClip.sprite, fromTexture);
@@ -1647,10 +1653,32 @@ export class VideoCompositor {
         toTexture: clip.transitionToTexture,
       });
 
-      transitionSprite.texture = clip.transitionToTexture;
+      if (!this.filterQuadSprite) {
+        this.filterQuadSprite = new Sprite(Texture.EMPTY);
+        this.filterQuadSprite.x = 0;
+        this.filterQuadSprite.y = 0;
+        this.filterQuadSprite.anchor.set(0, 0);
+      }
+      this.filterQuadSprite.texture = clip.transitionToTexture;
+      this.filterQuadSprite.scale.set(1, 1);
+      this.filterQuadSprite.width = this.width;
+      this.filterQuadSprite.height = this.height;
+      this.filterQuadSprite.filters = [clip.transitionFilter];
+
+      this.app!.renderer.render({
+        container: this.filterQuadSprite,
+        target: clip.transitionOutputTexture!,
+        clear: true,
+      });
+
+      const transitionSprite = this.ensureTransitionSprite(clip);
+      transitionSprite.texture = clip.transitionOutputTexture!;
+      transitionSprite.scale.set(1, 1);
+      transitionSprite.width = this.width;
+      transitionSprite.height = this.height;
       transitionSprite.alpha = 1;
       transitionSprite.blendMode = clip.blendMode ?? 'normal';
-      transitionSprite.filters = [clip.transitionFilter];
+      transitionSprite.filters = null;
       transitionSprite.visible = true;
 
       clip.sprite.visible = false;
@@ -1698,6 +1726,17 @@ export class VideoCompositor {
       stagePosX: layout.stagePositionX,
       stagePosY: layout.stagePositionY,
     });
+  }
+
+  private applyClipLayoutForCurrentSource(clip: CompositorClip) {
+    if (clip.clipKind === 'solid' || clip.clipKind === 'text' || clip.clipKind === 'adjustment') {
+      this.applySolidLayout(clip);
+      return;
+    }
+
+    const frameW = Math.max(1, Math.round(clip.imageSource?.width ?? 1));
+    const frameH = Math.max(1, Math.round(clip.imageSource?.height ?? 1));
+    this.applySpriteLayout(frameW, frameH, clip);
   }
 
   private computeTransitionOpacity(clip: CompositorClip, timeUs: number): number {
@@ -2430,6 +2469,10 @@ export class VideoCompositor {
       safeDispose(this.adjustmentTexture);
       this.adjustmentTexture = null;
     }
+    if (this.filterQuadSprite) {
+      this.filterQuadSprite.destroy();
+      this.filterQuadSprite = null;
+    }
     if (this.app) {
       const pixiApp = this.app as any;
 
@@ -2518,6 +2561,10 @@ export class VideoCompositor {
     if (clip.transitionToTexture) {
       safeDispose(clip.transitionToTexture);
       clip.transitionToTexture = null;
+    }
+    if (clip.transitionOutputTexture) {
+      safeDispose(clip.transitionOutputTexture);
+      clip.transitionOutputTexture = null;
     }
     if (clip.transitionSprite) {
       clip.transitionSprite.destroy(true);

@@ -137,7 +137,17 @@ describe('VideoCompositor render optimization', () => {
       transitionSprite: null,
       transitionFilter: null,
       transitionFilterType: null,
-      sprite: { parent: null },
+      sprite: {
+        parent: null,
+        anchor: { set: vi.fn() },
+        scale: { x: 1, y: 1 },
+        width: 1,
+        height: 1,
+        rotation: 0,
+        x: 0,
+        y: 0,
+      },
+      imageSource: { width: 1920, height: 1080 },
       effectFilters: new Map(),
     } as any;
 
@@ -159,5 +169,63 @@ describe('VideoCompositor render optimization', () => {
     ]);
 
     expect(clip.textDirty).toBe(false);
+  });
+
+  it('reapplies sprite layout immediately when transform changes in updateTimelineLayout', () => {
+    const compositor = new VideoCompositor() as any;
+    compositor.width = 1920;
+    compositor.height = 1080;
+    compositor.syncTrackRuntimes = vi.fn();
+    compositor.getTrackRuntimeForClip = () => null;
+
+    const sprite = {
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 1,
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      anchor: { set: vi.fn() },
+      parent: null,
+      tint: 0,
+    } as any;
+
+    compositor.clips = [
+      {
+        itemId: 'text-1',
+        startUs: 0,
+        endUs: 1_000,
+        durationUs: 1_000,
+        sourceStartUs: 0,
+        sourceDurationUs: 1_000,
+        layer: 0,
+        trackId: 'track_0',
+        clipKind: 'text',
+        sourceKind: 'canvas',
+        imageSource: { width: 1920, height: 1080 },
+        sprite,
+        transform: { position: { x: 0, y: 0 }, anchor: { preset: 'center' } },
+        text: 'Hello',
+        style: undefined,
+        textDirty: false,
+        effectFilters: new Map(),
+      },
+    ];
+
+    compositor.updateTimelineLayout([
+      {
+        kind: 'clip',
+        id: 'text-1',
+        trackId: 'track_0',
+        layer: 0,
+        timelineRange: { startUs: 0, durationUs: 1_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000 },
+        text: 'Hello',
+        transform: { position: { x: 120, y: -40 }, anchor: { preset: 'center' } },
+      },
+    ]);
+
+    expect(sprite.x).toBe(1080);
+    expect(sprite.y).toBe(500);
   });
 });
