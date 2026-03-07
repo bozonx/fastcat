@@ -22,6 +22,15 @@ import { createTimelineHistoryDebounce } from '~/stores/timeline/timelineHistory
 import { createTimelineDispatcher } from '~/stores/timeline/timelineDispatcher';
 
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import {
+  createDefaultCaptionStylePreset,
+  buildCaptionChunks,
+  type CaptionGenerationSettings,
+} from '~/utils/transcription/captions';
+import {
+  createTranscriptionCacheRepository,
+  type TranscriptionCacheRecord,
+} from '~/repositories/transcription-cache.repository';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -551,6 +560,93 @@ export const useTimelineStore = defineStore('timeline', () => {
     await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
   }
 
+  async function listCachedTranscriptions(): Promise<TranscriptionCacheRecord[]> {
+    const workspaceHandle = workspaceStore.workspaceHandle;
+    const projectId = projectStore.currentProjectId;
+    if (!workspaceHandle || !projectId) return [];
+
+    const repository = createTranscriptionCacheRepository({
+      workspaceDir: workspaceHandle,
+      projectId,
+    });
+
+    return await repository.list();
+  }
+
+  async function generateCaptionsFromCache(input: {
+    trackId: string;
+    transcriptionKey: string;
+    settings: CaptionGenerationSettings;
+  }) {
+    const doc = timelineDoc.value;
+    if (!doc) {
+      throw new Error('Timeline not loaded');
+    }
+
+    const track = doc.tracks.find((item) => item.id === input.trackId) ?? null;
+    if (!track || track.kind !== 'video') {
+      throw new Error('Captions can only be generated on a video track');
+    }
+    if (track.items.some((item) => item.kind === 'clip')) {
+      throw new Error('Select an empty video track for generated captions');
+    }
+
+    const workspaceHandle = workspaceStore.workspaceHandle;
+    const projectId = projectStore.currentProjectId;
+    if (!workspaceHandle || !projectId) {
+      throw new Error('Project workspace is not available');
+    }
+
+    const repository = createTranscriptionCacheRepository({
+      workspaceDir: workspaceHandle,
+      projectId,
+    });
+    const record = await repository.load(input.transcriptionKey);
+    if (!record) {
+      throw new Error('Transcription cache record not found');
+    }
+
+    const built = buildCaptionChunks({
+      record,
+      settings: input.settings,
+    });
+    const stylePreset = createDefaultCaptionStylePreset();
+
+    let addedCount = 0;
+    for (const chunk of built.chunks) {
+      const durationUs = Math.max(1_000, Math.round((chunk.endMs - chunk.startMs) * 1000));
+      clips.addVirtualClipToTrack(
+        {
+          trackId: input.trackId,
+          startUs: Math.max(0, Math.round(chunk.startMs * 1000)),
+          clipType: 'text',
+          name: `${built.sourceName} captions`,
+          durationUs,
+          text: chunk.text,
+          style: stylePreset.textStyle,
+        },
+        {
+          skipHistory: addedCount > 0,
+          saveMode: 'none',
+          historyMode: 'immediate',
+        },
+      );
+      addedCount += 1;
+    }
+
+    if (addedCount === 0) {
+      throw new Error('No caption clips were generated from transcription cache');
+    }
+
+    await requestTimelineSave({ immediate: true });
+
+    return {
+      addedCount,
+      sourceName: built.sourceName,
+      sourcePath: built.sourcePath,
+    };
+  }
+
   function setTimelineZoomExact(next: number) {
     const parsed = Number(next);
     if (!Number.isFinite(parsed)) return;
@@ -596,6 +692,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath,
     loadTimelineMetadata,
+    listCachedTranscriptions,
+    generateCaptionsFromCache,
     clearSelection: () => selection.clearSelection(),
     selectTrack: (trackId: string | null) => selection.selectTrack(trackId),
     toggleSelection: (itemId: string, options?: { multi?: boolean }) =>

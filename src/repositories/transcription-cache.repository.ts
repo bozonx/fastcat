@@ -16,6 +16,7 @@ export interface TranscriptionCacheRecord {
 
 export interface TranscriptionCacheRepository {
   load: (key: string) => Promise<TranscriptionCacheRecord | null>;
+  list: () => Promise<TranscriptionCacheRecord[]>;
   save: (record: TranscriptionCacheRecord) => Promise<void>;
 }
 
@@ -31,6 +32,18 @@ async function ensureDirectoryChain(params: {
   }
 
   return current;
+}
+
+function sortRecordsByCreatedAtDesc(
+  records: TranscriptionCacheRecord[],
+): TranscriptionCacheRecord[] {
+  return [...records].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt);
+    const bTime = Date.parse(b.createdAt);
+    const safeATime = Number.isFinite(aTime) ? aTime : 0;
+    const safeBTime = Number.isFinite(bTime) ? bTime : 0;
+    return safeBTime - safeATime;
+  });
 }
 
 export function createTranscriptionCacheRepository(params: {
@@ -60,6 +73,32 @@ export function createTranscriptionCacheRepository(params: {
 
         throw error;
       }
+    },
+
+    async list() {
+      const cacheDir = await getCacheDir();
+      if (!cacheDir?.values) return [];
+
+      const records: TranscriptionCacheRecord[] = [];
+      for await (const handle of cacheDir.values()) {
+        if (handle.kind !== 'file' || !handle.name.endsWith('.json')) continue;
+
+        try {
+          const fileHandle = await cacheDir.getFileHandle(handle.name, { create: false });
+          const record = await readJsonFromFileHandle<TranscriptionCacheRecord>(fileHandle);
+          if (record) {
+            records.push(record);
+          }
+        } catch (error: unknown) {
+          if ((error as { name?: unknown }).name === 'NotFoundError') {
+            continue;
+          }
+
+          throw error;
+        }
+      }
+
+      return sortRecordsByCreatedAtDesc(records);
     },
 
     async save(record) {

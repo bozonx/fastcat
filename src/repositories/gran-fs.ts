@@ -3,7 +3,9 @@ export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWrita
 export type DirectoryHandleLike = Pick<
   FileSystemDirectoryHandle,
   'getDirectoryHandle' | 'getFileHandle'
->;
+> & {
+  values?: () => AsyncIterable<FileSystemHandle>;
+};
 
 export async function ensureGranFileHandle(input: {
   baseDir: DirectoryHandleLike;
