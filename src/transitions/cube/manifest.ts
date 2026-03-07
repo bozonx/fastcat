@@ -54,91 +54,65 @@ bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
 }
 
-vec2 xskew(vec2 p, float perspective, float center, float unzoomAmt) {
-  float x = mix(p.x, 1.0 - p.x, center);
-  float D = 1.0 + (perspective - 1.0) * x;
-  float correction = mix(perspective, 1.0, unzoomAmt);
-  D /= correction;
-  float y_out = 0.5 + (p.y - 0.5) / D;
-  
-  return (
-    (
-      vec2(x, y_out)
-      - vec2(0.5 - distance(center, 0.5), 0.0)
-    )
-    * vec2(0.5 / distance(center, 0.5) * (center < 0.5 ? 1.0 : -1.0), 1.0)
-    + vec2(center < 0.5 ? 0.0 : 1.0, 0.0)
-  );
-}
-
-vec2 yskew(vec2 p, float perspective, float center, float unzoomAmt) {
-  float y = mix(p.y, 1.0 - p.y, center);
-  float D = 1.0 + (perspective - 1.0) * y;
-  float correction = mix(perspective, 1.0, unzoomAmt);
-  D /= correction;
-  float x_out = 0.5 + (p.x - 0.5) / D;
-  
-  return (
-    (
-      vec2(x_out, y)
-      - vec2(0.0, 0.5 - distance(center, 0.5))
-    )
-    * vec2(1.0, 0.5 / distance(center, 0.5) * (center < 0.5 ? 1.0 : -1.0))
-    + vec2(0.0, center < 0.5 ? 0.0 : 1.0)
-  );
-}
-
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
   
   float unzoom = 0.3 * uUnzoomAmount;
-  float uz = unzoom * 2.0 * (0.5 - distance(0.5, progress));
+  float uz = unzoom * 2.0 * (0.5 - abs(progress - 0.5));
   vec2 p = -uz * 0.5 + (1.0 + uz) * uv;
   
-  float px = (uDirectionX < -0.5) ? 1.0 - p.x : p.x;
-  float py = (uDirectionY < -0.5) ? 1.0 - p.y : p.y;
-  vec2 mappedP = vec2(px, py);
+  vec2 fromP = vec2(-1.0);
+  vec2 toP = vec2(-1.0);
   
-  vec2 mappedFromP = vec2(-1.0);
-  vec2 mappedToP = vec2(-1.0);
-  
-  if (abs(uDirectionX) > 0.5) {
-    mappedFromP = xskew(
-      (mappedP - vec2(progress, 0.0)) / vec2(1.0 - progress, 1.0),
-      1.0 - mix(progress, 0.0, uPerspective),
-      0.0,
-      uUnzoomAmount
-    );
-    mappedToP = xskew(
-      mappedP / vec2(progress, 1.0),
-      mix(pow(progress, 2.0), 1.0, uPerspective),
-      1.0,
-      uUnzoomAmount
-    );
-  } else if (abs(uDirectionY) > 0.5) {
-    mappedFromP = yskew(
-      (mappedP - vec2(0.0, progress)) / vec2(1.0, 1.0 - progress),
-      1.0 - mix(progress, 0.0, uPerspective),
-      0.0,
-      uUnzoomAmount
-    );
-    mappedToP = yskew(
-      mappedP / vec2(1.0, progress),
-      mix(pow(progress, 2.0), 1.0, uPerspective),
-      1.0,
-      uUnzoomAmount
-    );
+  float P = mix(1.0, uPerspective, sin(progress * 3.14159265359));
+  float fromWidth = max(0.0001, 1.0 - progress);
+  float toWidth = max(0.0001, progress);
+
+  if (uDirectionX < -0.5) { // Left
+    // from is on the left [0, 1-progress]
+    float u_from = p.x / fromWidth;
+    float H_from = mix(1.0, P, u_from);
+    fromP = vec2(u_from, (p.y - 0.5) / H_from + 0.5);
+    
+    // to is on the right [1-progress, 1]
+    float u_to = (p.x - fromWidth) / toWidth;
+    float H_to = mix(P, 1.0, u_to);
+    toP = vec2(u_to, (p.y - 0.5) / H_to + 0.5);
+    
+  } else if (uDirectionX > 0.5) { // Right
+    // from is on the right [progress, 1]
+    float u_from = (p.x - toWidth) / fromWidth;
+    float H_from = mix(P, 1.0, u_from);
+    fromP = vec2(u_from, (p.y - 0.5) / H_from + 0.5);
+    
+    // to is on the left [0, progress]
+    float u_to = p.x / toWidth;
+    float H_to = mix(1.0, P, u_to);
+    toP = vec2(u_to, (p.y - 0.5) / H_to + 0.5);
+    
+  } else if (uDirectionY < -0.5) { // Up
+    // from is on top [0, 1-progress]
+    float u_from = p.y / fromWidth;
+    float H_from = mix(1.0, P, u_from);
+    fromP = vec2((p.x - 0.5) / H_from + 0.5, u_from);
+    
+    // to is on bottom [1-progress, 1]
+    float u_to = (p.y - fromWidth) / toWidth;
+    float H_to = mix(P, 1.0, u_to);
+    toP = vec2((p.x - 0.5) / H_to + 0.5, u_to);
+    
+  } else if (uDirectionY > 0.5) { // Down
+    // from is on bottom [progress, 1]
+    float u_from = (p.y - toWidth) / fromWidth;
+    float H_from = mix(P, 1.0, u_from);
+    fromP = vec2((p.x - 0.5) / H_from + 0.5, u_from);
+    
+    // to is on top [0, progress]
+    float u_to = p.y / toWidth;
+    float H_to = mix(1.0, P, u_to);
+    toP = vec2((p.x - 0.5) / H_to + 0.5, u_to);
   }
-  
-  vec2 fromP = vec2(
-    uDirectionX < -0.5 ? 1.0 - mappedFromP.x : mappedFromP.x,
-    uDirectionY < -0.5 ? 1.0 - mappedFromP.y : mappedFromP.y
-  );
-  vec2 toP = vec2(
-    uDirectionX < -0.5 ? 1.0 - mappedToP.x : mappedToP.x,
-    uDirectionY < -0.5 ? 1.0 - mappedToP.y : mappedToP.y
-  );
   
   if (inBounds(fromP)) {
     gl_FragColor = texture(uFromTexture, fromP);
@@ -198,8 +172,8 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
       kind: 'number',
       labelKey: 'granVideoEditor.timeline.transition.paramPerspective',
       min: 0.1,
-      max: 1.0,
-      step: 0.05,
+      max: 3.0,
+      step: 0.1,
     },
   ],
   renderMode: 'shader',
