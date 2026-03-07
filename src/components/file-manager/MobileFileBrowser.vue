@@ -104,7 +104,12 @@ async function goBack() {
 }
 
 function isSelected(entry: FsEntry) {
-  return selectionStore.selectedEntity?.path === entry.path
+  const selected = selectionStore.selectedEntity
+  if (!selected || selected.source !== 'fileManager') return false
+  if ('path' in selected) {
+    return selected.path === entry.path
+  }
+  return false
 }
 
 function getStatusColor(entry: FsEntry) {
@@ -193,7 +198,7 @@ onMounted(() => {
                 {{ entry.name }}
               </span>
               <span v-if="entry.kind === 'file'" class="text-[10px] text-slate-500 tabular-nums">
-                {{ formatBytes(entry.size || 0) }}
+                {{ formatBytes((entry as any).size || 0) }}
               </span>
             </div>
             <div class="text-[10px] text-slate-500 flex items-center gap-2">
@@ -227,7 +232,7 @@ onMounted(() => {
             color="primary"
             icon="lucide:plus"
             label="Add to project"
-            @click="/* TODO: Добавление на таймлайн или открытие */"
+            @click="() => {}"
           />
         </div>
       </div>

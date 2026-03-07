@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, watch, provide } from 'vue';
+import { ref, computed, provide } from 'vue';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useFilesPageStore } from '~/stores/filesPage.store';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
-import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
@@ -20,7 +19,6 @@ import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
@@ -113,8 +111,6 @@ const props = defineProps<{
     targetDirPath?: string,
   ) => Promise<void>;
 }>();
-
-import { useFilesPageStore } from '~/stores/filesPage.store';
 
 const filesPageStore = useFilesPageStore();
 const selectedPath = computed(() => {

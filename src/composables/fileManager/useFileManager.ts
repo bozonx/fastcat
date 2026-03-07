@@ -16,6 +16,7 @@ import {
 } from '~/utils/constants';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
+import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { createProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import {
   clearVideoThumbnailsCommand,

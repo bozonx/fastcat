@@ -278,7 +278,9 @@ async function loadRemoteUploadFolders(path: string) {
     });
     remoteUploadCurrentPath.value = path;
     remoteUploadFolders.value = response.items
-      .filter((item): item is Extract<RemoteVfsEntry, { type: 'directory' }> => item.type === 'directory')
+      .filter(
+        (item): item is Extract<RemoteVfsEntry, { type: 'directory' }> => item.type === 'directory',
+      )
       .map((item) => toRemoteFsEntry(item));
   } finally {
     remoteUploadLoading.value = false;
@@ -490,8 +492,7 @@ watch(
             id: 'convertFile',
             title: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
             icon: 'i-heroicons-arrow-path',
-            hidden:
-              mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image',
+            hidden: mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image',
             onClick: () => emit('convert', props.selectedFsEntry),
           },
           {
