@@ -14,6 +14,12 @@ const projectStore = useProjectStore()
 const { openProject } = useProjectActions()
 const router = useRouter()
 
+// If project is already open, navigate to editor
+if (projectStore.currentProjectName) {
+  projectStore.goToCut()
+  router.push('/m/editor')
+}
+
 const newProjectName = ref('')
 
 async function createNewProject() {
@@ -22,7 +28,7 @@ async function createNewProject() {
   if (workspaceStore.userSettings.openLastProjectOnStart) {
     await openProject(newProjectName.value.trim())
     projectStore.goToCut()
-    router.push('/m/edit')
+    router.push('/m/editor')
   }
   newProjectName.value = ''
 }
@@ -30,7 +36,7 @@ async function createNewProject() {
 async function handleOpenProject(project: string) {
   await openProject(project)
   projectStore.goToCut()
-  router.push('/m/edit')
+  router.push('/m/editor')
 }
 </script>
 
