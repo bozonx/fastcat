@@ -16,13 +16,15 @@ export type FileAction =
   | 'openAsPanel'
   | 'openAsProjectTab'
   | 'convertFile'
-  | 'uploadRemote';
+  | 'uploadRemote'
+  | 'transcribe';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
   folderHasVideos: (entry: FsEntry) => boolean;
   isOpenableMediaFile: (entry: FsEntry) => boolean;
   isConvertibleMediaFile: (entry: FsEntry) => boolean;
+  isTranscribableMediaFile?: (entry: FsEntry) => boolean;
   isVideo: (entry: FsEntry) => boolean;
   getEntryMeta: (entry: FsEntry) => {
     hasProxy: boolean;
@@ -197,6 +199,16 @@ export function useFileContextMenu(
           label: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
           icon: 'i-heroicons-cloud-arrow-up',
           onSelect: () => onAction('uploadRemote', entry),
+        },
+      ]);
+    }
+
+    if (deps.isTranscribableMediaFile?.(entry)) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+          icon: 'i-heroicons-microphone',
+          onSelect: () => onAction('transcribe', entry),
         },
       ]);
     }

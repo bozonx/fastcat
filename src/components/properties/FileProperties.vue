@@ -258,7 +258,7 @@ const isGeneratingProxyForFile = computed(() => {
 
 const isAudioFile = computed(() => mediaType.value === 'audio');
 
-const canTranscribeAudio = computed(() => {
+const canTranscribeMedia = computed(() => {
   const entry = props.selectedFsEntry;
   return (
     entry?.kind === 'file' &&
@@ -314,7 +314,7 @@ function openRemoteUploadPicker() {
 }
 
 function openTranscriptionModal() {
-  if (!canTranscribeAudio.value) return;
+  if (!canTranscribeMedia.value) return;
   transcriptionError.value = '';
   isTranscriptionModalOpen.value = true;
 }
@@ -380,6 +380,7 @@ watch(
     isTranscribingAudio.value = false;
   },
 );
+
 </script>
 
 <template>
@@ -536,10 +537,10 @@ watch(
             onClick: openRemoteUploadPicker,
           },
           {
-            id: 'transcribeAudio',
-            title: t('videoEditor.fileManager.actions.transcribeAudio', 'Transcribe audio'),
-            icon: 'i-heroicons-language',
-            hidden: !canTranscribeAudio,
+            id: 'transcribe',
+            title: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+            icon: 'i-heroicons-microphone',
+            hidden: !canTranscribeMedia,
             onClick: openTranscriptionModal,
           },
         ]"
@@ -668,11 +669,11 @@ watch(
             size="xs"
             color="primary"
             variant="soft"
-            icon="i-heroicons-language"
-            :disabled="!canTranscribeAudio"
+            icon="i-heroicons-microphone"
+            :disabled="!canTranscribeMedia"
             @click="openTranscriptionModal"
           >
-            {{ t('videoEditor.fileManager.actions.transcribeAudio', 'Transcribe audio') }}
+            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
           </UButton>
           <span v-if="latestTranscriptionCacheKey" class="text-xs text-ui-text-muted self-center">
             {{
@@ -721,11 +722,11 @@ watch(
             size="xs"
             color="primary"
             variant="soft"
-            icon="i-heroicons-language"
-            :disabled="!canTranscribeAudio"
+            icon="i-heroicons-microphone"
+            :disabled="!canTranscribeMedia"
             @click="openTranscriptionModal"
           >
-            {{ t('videoEditor.fileManager.actions.transcribeAudio', 'Transcribe audio') }}
+            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
           </UButton>
           <span v-if="latestTranscriptionCacheKey" class="text-xs text-ui-text-muted self-center">
             {{
@@ -882,7 +883,7 @@ watch(
 
     <AppModal
       v-model:open="isTranscriptionModalOpen"
-      :title="t('videoEditor.fileManager.audio.transcriptionTitle', 'Transcribe audio')"
+      :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
       :close-button="!isTranscribingAudio"
       :prevent-close="isTranscribingAudio"
       :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"

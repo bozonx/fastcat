@@ -35,6 +35,18 @@ function normalizeModels(models: string[]): string[] {
   return models.map((model) => model.trim()).filter(Boolean);
 }
 
+function normalizeFileType(fileType: string | undefined, file: File): string {
+  if (typeof fileType === 'string' && fileType.trim()) {
+    return fileType.trim().toLowerCase();
+  }
+
+  if (typeof file.type === 'string' && file.type.trim()) {
+    return file.type.trim().toLowerCase();
+  }
+
+  return 'application/octet-stream';
+}
+
 async function createCacheKey(params: {
   filePath: string;
   fileName: string;
@@ -64,7 +76,10 @@ function createRequestHeaders(params: {
   contentType?: string;
 }): Headers {
   const headers = new Headers();
-  headers.set('Content-Type', params.contentType || params.file?.type || 'application/octet-stream');
+  headers.set(
+    'Content-Type',
+    params.contentType || params.file?.type || 'application/octet-stream',
+  );
   headers.set('X-File-Name', params.fileName);
   headers.set('X-STT-Restore-Punctuation', String(params.settings.restorePunctuation));
   headers.set('X-STT-Format-Text', String(params.settings.formatText));
@@ -110,6 +125,7 @@ export async function transcribeProjectAudioFile(
   const language = normalizeLanguage(input.language);
   const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
+  const normalizedFileType = normalizeFileType(input.fileType, file);
   const cacheKey = await createCacheKey({
     filePath: input.filePath,
     fileName: input.fileName,
@@ -137,7 +153,7 @@ export async function transcribeProjectAudioFile(
   let body: BodyInit;
   let contentType: string | undefined;
 
-  if (input.fileType.startsWith('video/')) {
+  if (normalizedFileType.startsWith('video/')) {
     const { createAudioStreamFromFile } = await import('~/utils/audio-streaming');
     const { stream } = await createAudioStreamFromFile(file);
     body = stream as any;

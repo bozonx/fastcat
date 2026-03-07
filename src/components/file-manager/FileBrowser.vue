@@ -58,6 +58,8 @@ import {
 } from '~/utils/remote-vfs';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
+import { transcribeProjectAudioFile } from '~/utils/stt';
+import AppModal from '~/components/ui/AppModal.vue';
 
 import PQueue from 'p-queue';
 
@@ -399,6 +401,17 @@ const remoteFilesConfig = computed(() =>
 
 const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
 
+const sttConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'stt',
+    integrations: workspaceStore.userSettings.integrations,
+    granPublicadorBaseUrl:
+      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.gpanPublicadorBaseUrl
+        : '',
+  }),
+);
+
 const {
   isDeleteConfirmModalOpen,
   editingEntryPath,
@@ -518,6 +531,8 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       uiStore.remoteExchangeLocalEntry = entry;
       uiStore.remoteExchangeModalOpen = true;
     }
+  } else if (action === 'transcribe') {
+    openTranscriptionModal(entry);
   } else if (action === 'delete') {
     onFileActionBase('delete', entry);
   } else if (action === 'rename') {
@@ -857,6 +872,26 @@ function isVideo(entry: FsEntry): boolean {
   return getMediaTypeFromFilename(entry.name) === 'video';
 }
 
+function isTranscribableMediaFile(entry: FsEntry): boolean {
+  if (entry.kind !== 'file' || entry.source === 'remote') return false;
+
+  const type = getMediaTypeFromFilename(entry.name);
+
+  return (
+    (type === 'audio' || type === 'video') &&
+    Boolean(sttConfig.value) &&
+    Boolean(workspaceStore.workspaceHandle) &&
+    Boolean(projectStore.currentProjectId) &&
+    Boolean(entry.handle)
+  );
+}
+
+const sttTranscriptionModalOpen = ref(false);
+const sttTranscriptionLanguage = ref('');
+const sttTranscriptionError = ref('');
+const sttTranscribing = ref(false);
+const sttTranscriptionEntry = ref<FsEntry | null>(null);
+
 const { getContextMenuItems } = useFileContextMenu(
   {
     isGeneratingProxyInDirectory,
@@ -870,6 +905,7 @@ const { getContextMenuItems } = useFileContextMenu(
       const type = getMediaTypeFromFilename(entry.name);
       return type === 'video' || type === 'audio' || type === 'image';
     },
+    isTranscribableMediaFile,
     isVideo,
     getEntryMeta: (entry: FsEntry) => ({
       hasProxy: entry.path ? fileManager.mediaCache.hasProxy(entry.path) : false,
@@ -1531,6 +1567,67 @@ async function onDirectoryUploadChange(e: Event) {
 }
 
 // Panel drop handled by useFileBrowserDragAndDrop
+
+function openTranscriptionModal(entry: FsEntry) {
+  if (!isTranscribableMediaFile(entry)) return;
+  sttTranscriptionLanguage.value = '';
+  sttTranscriptionError.value = '';
+  sttTranscriptionModalOpen.value = true;
+  sttTranscriptionEntry.value = entry;
+}
+
+async function submitTranscription() {
+  const entry = sttTranscriptionEntry.value;
+
+  if (
+    !entry ||
+    entry.kind !== 'file' ||
+    !workspaceStore.workspaceHandle ||
+    !projectStore.currentProjectId
+  ) {
+    return;
+  }
+
+  sttTranscribing.value = true;
+  sttTranscriptionError.value = '';
+
+  try {
+    const mediaType = getMediaTypeFromFilename(entry.name);
+    const entryMimeType = (entry as ExtendedFsEntry).mimeType;
+    const result = await transcribeProjectAudioFile({
+      fileHandle: entry.handle as FileSystemFileHandle,
+      filePath: entry.path ?? entry.name,
+      fileName: entry.name,
+      fileType: typeof entryMimeType === 'string' ? entryMimeType : '',
+      language: sttTranscriptionLanguage.value,
+      granPublicadorBaseUrl:
+        typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+          ? runtimeConfig.public.gpanPublicadorBaseUrl
+          : '',
+      projectId: projectStore.currentProjectId,
+      userSettings: workspaceStore.userSettings,
+      workspaceHandle: workspaceStore.workspaceHandle,
+    });
+
+    sttTranscriptionModalOpen.value = false;
+
+    toast.add({
+      title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
+      description: result.cached
+        ? 'Cached transcription was loaded from vardata.'
+        : mediaType === 'video'
+          ? 'Video audio track was transcribed and saved to vardata cache.'
+          : 'Transcription was saved to vardata cache.',
+      color: 'success',
+    });
+  } catch (error: unknown) {
+    sttTranscriptionError.value =
+      error instanceof Error ? error.message : 'Failed to transcribe media';
+  } finally {
+    sttTranscribing.value = false;
+  }
+}
+
 </script>
 
 <template>
