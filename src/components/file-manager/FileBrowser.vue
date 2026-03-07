@@ -34,6 +34,7 @@ import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
+  REMOTE_FILE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
@@ -46,6 +47,17 @@ import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import { useFocusStore } from '~/stores/focus.store';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import {
+  downloadRemoteFile,
+  fetchRemoteVfsList,
+  getRemoteFileDownloadUrl,
+  isRemoteFsEntry,
+  type RemoteFsEntry,
+  toRemoteFsEntry,
+} from '~/utils/remote-vfs';
+import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
+import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 
 import PQueue from 'p-queue';
 
@@ -59,6 +71,8 @@ const fileManager = useFileManager();
 const proxyStore = useProxyStore();
 const workspaceStore = useWorkspaceStore();
 const { addFileTab, setActiveTab } = useProjectTabs();
+const runtimeConfig = useRuntimeConfig();
+const toast = useToast();
 
 const fileConversion = useFileConversion();
 const {
@@ -363,6 +377,27 @@ function onContainerKeyDown(e: KeyboardEvent) {
 
 const folderEntries = ref<FsEntry[]>([]);
 const parentFolders = ref<FsEntry[]>([]);
+const isRemoteMode = ref(false);
+const remoteCurrentFolder = ref<RemoteFsEntry | null>(null);
+const lastLocalFolder = ref<FsEntry | null>(null);
+const remoteTransferOpen = ref(false);
+const remoteTransferProgress = ref(0);
+const remoteTransferPhase = ref('');
+const remoteTransferFileName = ref('');
+const remoteTransferAbortController = ref<AbortController | null>(null);
+
+const remoteFilesConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'files',
+    integrations: workspaceStore.userSettings.integrations,
+    granPublicadorBaseUrl:
+      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.gpanPublicadorBaseUrl
+        : '',
+  }),
+);
+
+const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
 
 const {
   isDeleteConfirmModalOpen,
@@ -498,8 +533,162 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
 }
 
 async function refreshFileTree() {
+  if (isRemoteMode.value) {
+    await loadFolderContent();
+    return;
+  }
   folderSizes.value = {};
   await loadProjectDirectory({ fullRefresh: true } as any);
+}
+
+function buildRemoteDirectoryEntry(path: string): RemoteFsEntry {
+  const normalizedPath = path || '/';
+  const name = normalizedPath === '/' ? 'Remote' : normalizedPath.split('/').filter(Boolean).at(-1) || 'Remote';
+  const remoteData: RemoteVfsEntry = {
+    id: normalizedPath,
+    name,
+    path: normalizedPath,
+    type: 'directory',
+  };
+
+  return {
+    name,
+    kind: 'directory',
+    handle: {} as FileSystemDirectoryHandle,
+    path: normalizedPath,
+    source: 'remote',
+    remoteId: normalizedPath,
+    remotePath: normalizedPath,
+    remoteType: 'directory',
+    remoteData,
+    mimeType: 'folder',
+    size: 0,
+  };
+}
+
+function setSelectedFsEntry(entry: FsEntry | null) {
+  if (!entry) {
+    uiStore.selectedFsEntry = null;
+    selectionStore.clearSelection();
+    return;
+  }
+
+  uiStore.selectedFsEntry = {
+    kind: entry.kind,
+    name: entry.name,
+    path: entry.path,
+    handle: entry.handle,
+    source: entry.source ?? 'local',
+    remoteId: entry.remoteId,
+    remotePath: entry.remotePath,
+    remoteData: entry.remoteData,
+  };
+  selectionStore.selectFsEntry(entry);
+}
+
+async function toggleRemoteMode() {
+  if (!isRemoteAvailable.value) return;
+
+  if (!isRemoteMode.value) {
+    lastLocalFolder.value = filesPageStore.selectedFolder;
+    isRemoteMode.value = true;
+    remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
+    await loadFolderContent();
+    await loadParentFolders();
+    setSelectedFsEntry(remoteCurrentFolder.value);
+    return;
+  }
+
+  isRemoteMode.value = false;
+  remoteCurrentFolder.value = null;
+  await loadParentFolders();
+  if (lastLocalFolder.value) {
+    filesPageStore.selectFolder(lastLocalFolder.value);
+  } else {
+    await navigateToRoot();
+  }
+}
+
+function onBrowserEntryDragStart(e: DragEvent, entry: FsEntry) {
+  if (isRemoteMode.value && isRemoteFsEntry(entry)) {
+    if (entry.kind !== 'file' || !e.dataTransfer) return;
+
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(entry));
+    e.dataTransfer.setData(INTERNAL_DRAG_TYPE, '1');
+
+    const data: DraggedFileData = {
+      name: entry.name,
+      kind: 'file',
+      path: entry.remotePath,
+    };
+    useDraggedFile().setDraggedFile(data);
+    e.dataTransfer.setData('application/json', JSON.stringify(data));
+    return;
+  }
+
+  onEntryDragStart(e, entry);
+}
+
+function onBrowserEntryDragEnd() {
+  useDraggedFile().clearDraggedFile();
+  onEntryDragEnd();
+}
+
+async function performRemoteDownload(params: {
+  entry: RemoteFsEntry;
+  targetDirHandle: FileSystemDirectoryHandle;
+  targetDirPath: string;
+}) {
+  const config = remoteFilesConfig.value;
+  if (!config) return;
+  if (params.entry.kind !== 'file') return;
+
+  const remoteFile = params.entry.remoteData as RemoteVfsFileEntry;
+  const downloadUrl = getRemoteFileDownloadUrl({
+    baseUrl: config.baseUrl,
+    entry: remoteFile,
+  });
+
+  if (!downloadUrl) {
+    throw new Error('Remote file download URL is missing');
+  }
+
+  const controller = new AbortController();
+  remoteTransferAbortController.value = controller;
+  remoteTransferFileName.value = params.entry.name;
+  remoteTransferProgress.value = 0;
+  remoteTransferPhase.value = t('videoEditor.fileManager.actions.downloadFiles', 'Download files');
+  remoteTransferOpen.value = true;
+
+  try {
+    const blob = await downloadRemoteFile({
+      url: downloadUrl,
+      signal: controller.signal,
+      onProgress: (progress) => {
+        remoteTransferProgress.value = progress;
+      },
+    });
+
+    const file = new File([blob], params.entry.name, {
+      type: blob.type || params.entry.mimeType || 'application/octet-stream',
+    });
+
+    remoteTransferPhase.value = t('videoEditor.fileManager.actions.uploadFiles', 'Upload files');
+    await handleFiles([file], params.targetDirHandle, params.targetDirPath);
+    uiStore.notifyFileManagerUpdate();
+    await loadFolderContent();
+  } finally {
+    remoteTransferAbortController.value = null;
+    remoteTransferOpen.value = false;
+    remoteTransferProgress.value = 0;
+    remoteTransferPhase.value = '';
+    remoteTransferFileName.value = '';
+  }
+}
+
+function cancelRemoteTransfer() {
+  remoteTransferAbortController.value?.abort();
 }
 
 async function createTimelineInDirectory(entry: FsEntry) {
@@ -731,6 +920,13 @@ async function calculateFolderSize(path: string, handle: FileSystemDirectoryHand
 watch(
   () => uiStore.selectedFsEntry,
   (entry) => {
+    if (isRemoteMode.value) {
+      if (entry?.kind === 'file' && entry.path) {
+        pendingScrollToEntryPath.value = entry.path;
+      }
+      return;
+    }
+
     if (entry && entry.kind === 'directory' && entry.handle && entry.path) {
       void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
     }
@@ -746,6 +942,8 @@ watch(
 watch(
   () => [folderEntries.value, filesPageStore.viewMode],
   () => {
+    if (isRemoteMode.value) return;
+
     if (filesPageStore.viewMode === 'list' && folderEntries.value.length > 0) {
       for (const entry of folderEntries.value) {
         if (
@@ -763,6 +961,31 @@ watch(
 );
 
 async function loadFolderContent() {
+  if (isRemoteMode.value) {
+    if (!remoteCurrentFolder.value || !remoteFilesConfig.value) {
+      folderEntries.value = [];
+      return;
+    }
+
+    try {
+      const response = await fetchRemoteVfsList({
+        config: remoteFilesConfig.value,
+        path: remoteCurrentFolder.value.remotePath || '/',
+      });
+      cleanupObjectUrls();
+      folderEntries.value = response.items.map((entry) => toRemoteFsEntry(entry));
+    } catch (error) {
+      console.error('Failed to load remote folder content:', error);
+      folderEntries.value = [];
+      toast.add({
+        color: 'error',
+        title: t('common.error', 'Error'),
+        description: error instanceof Error ? error.message : 'Failed to load remote folder',
+      });
+    }
+    return;
+  }
+
   if (!filesPageStore.selectedFolder || !filesPageStore.selectedFolder.handle) {
     cleanupObjectUrls();
     folderEntries.value = [];
@@ -806,6 +1029,19 @@ onUnmounted(() => {
 
 async function loadParentFolders() {
   parentFolders.value = [];
+
+  if (isRemoteMode.value) {
+    const currentPath = remoteCurrentFolder.value?.remotePath || '/';
+    const parts = currentPath.split('/').filter(Boolean);
+    let accum = '';
+
+    for (const part of parts) {
+      accum = `${accum}/${part}`;
+      parentFolders.value.push(buildRemoteDirectoryEntry(accum));
+    }
+    return;
+  }
+
   if (!filesPageStore.selectedFolder?.path) return;
 
   const rootHandle = await getProjectRootDirHandle();
@@ -841,6 +1077,7 @@ watch(
 watch(
   () => filesPageStore.selectedFolder,
   async () => {
+    if (isRemoteMode.value) return;
     await loadFolderContent();
     await loadParentFolders();
 
@@ -871,6 +1108,27 @@ watch(
     });
   },
   { immediate: true },
+);
+
+watch(
+  () => uiStore.pendingRemoteDownloadRequest,
+  async (request) => {
+    if (!request) return;
+
+    try {
+      await performRemoteDownload(request);
+    } catch (error) {
+      if ((error as Error | undefined)?.name !== 'AbortError') {
+        toast.add({
+          color: 'error',
+          title: t('common.error', 'Error'),
+          description: error instanceof Error ? error.message : 'Remote download failed',
+        });
+      }
+    } finally {
+      uiStore.pendingRemoteDownloadRequest = null;
+    }
+  },
 );
 
 watch(
@@ -1013,6 +1271,11 @@ const stats = computed(() => {
 });
 
 function handleEntryClick(event: MouseEvent, entry: FsEntry) {
+  if (isRemoteMode.value) {
+    setSelectedFsEntry(entry);
+    return;
+  }
+
   const isL1 = isLayer1Active(event, workspaceStore.userSettings);
   const isL2 = isLayer2Active(event, workspaceStore.userSettings);
 
@@ -1070,6 +1333,16 @@ function handleEntryClick(event: MouseEvent, entry: FsEntry) {
 }
 
 function handleEntryDoubleClick(entry: FsEntry) {
+  if (isRemoteMode.value) {
+    if (entry.kind === 'directory' && isRemoteFsEntry(entry)) {
+      remoteCurrentFolder.value = entry;
+      void loadFolderContent();
+      void loadParentFolders();
+      setSelectedFsEntry(entry);
+    }
+    return;
+  }
+
   if (entry.kind === 'directory') {
     filesPageStore.openFolder(entry);
   } else {
@@ -1085,7 +1358,11 @@ function handleEntryDoubleClick(entry: FsEntry) {
 }
 
 function handleEntryEnter(entry: FsEntry) {
-  filesPageStore.selectFile(entry);
+  if (!isRemoteMode.value) {
+    filesPageStore.selectFile(entry);
+  } else {
+    setSelectedFsEntry(entry);
+  }
   handleEntryDoubleClick(entry);
 }
 
@@ -1103,6 +1380,14 @@ function handleSort(field: FileSortField) {
 function navigateToFolder(index: number) {
   const targetFolder = parentFolders.value[index];
   if (targetFolder) {
+    if (isRemoteMode.value && isRemoteFsEntry(targetFolder)) {
+      remoteCurrentFolder.value = targetFolder;
+      void loadFolderContent();
+      void loadParentFolders();
+      setSelectedFsEntry(targetFolder);
+      return;
+    }
+
     filesPageStore.selectFolder(targetFolder);
   }
 }
@@ -1110,6 +1395,15 @@ function navigateToFolder(index: number) {
 function navigateBack() {
   if (parentFolders.value.length > 1) {
     const parentIndex = parentFolders.value.length - 2;
+    if (isRemoteMode.value && isRemoteFsEntry(parentFolders.value[parentIndex])) {
+      const target = parentFolders.value[parentIndex] as RemoteFsEntry;
+      remoteCurrentFolder.value = target;
+      void loadFolderContent();
+      void loadParentFolders();
+      setSelectedFsEntry(target);
+      return;
+    }
+
     filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
   } else {
     void navigateToRoot();
@@ -1119,6 +1413,15 @@ function navigateBack() {
 function navigateUp() {
   if (parentFolders.value.length > 1) {
     const parentIndex = parentFolders.value.length - 2;
+    if (isRemoteMode.value && isRemoteFsEntry(parentFolders.value[parentIndex])) {
+      const target = parentFolders.value[parentIndex] as RemoteFsEntry;
+      remoteCurrentFolder.value = target;
+      void loadFolderContent();
+      void loadParentFolders();
+      setSelectedFsEntry(target);
+      return;
+    }
+
     filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
   } else if (parentFolders.value.length === 1) {
     void navigateToRoot();
@@ -1126,6 +1429,14 @@ function navigateUp() {
 }
 
 async function navigateToRoot() {
+  if (isRemoteMode.value) {
+    remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
+    await loadFolderContent();
+    await loadParentFolders();
+    setSelectedFsEntry(remoteCurrentFolder.value);
+    return;
+  }
+
   const rootHandle = await getProjectRootDirHandle();
   if (!rootHandle) return;
   const rootEntry: FsEntry = {
@@ -1196,7 +1507,7 @@ async function onDirectoryUploadChange(e: Event) {
   >
     <!-- Navigation bar -->
     <FileBrowserBreadcrumbs
-      v-if="filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== ''"
+      v-if="(isRemoteMode && parentFolders.length > 0) || (!isRemoteMode && filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== '')"
       :parent-folders="parentFolders"
       @navigate-back="navigateBack"
       @navigate-up="navigateUp"
@@ -1207,7 +1518,10 @@ async function onDirectoryUploadChange(e: Event) {
     <FileBrowserToolbar
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
+      :remote-available="isRemoteAvailable"
+      :remote-mode="isRemoteMode"
       @refresh="refreshFileTree"
+      @toggle-remote="toggleRemoteMode"
     />
 
     <!-- Main Content -->
@@ -1230,7 +1544,7 @@ async function onDirectoryUploadChange(e: Event) {
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col">
           <div
-            v-if="!filesPageStore.selectedFolder"
+            v-if="!isRemoteMode && !filesPageStore.selectedFolder"
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
           >
             <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
@@ -1247,7 +1561,13 @@ async function onDirectoryUploadChange(e: Event) {
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
           >
             <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
-            <span>{{ t('common.empty', 'Folder is empty') }}</span>
+            <span>
+              {{
+                isRemoteMode
+                  ? t('common.empty', 'Folder is empty')
+                  : t('common.empty', 'Folder is empty')
+              }}
+            </span>
           </div>
 
           <!-- Grid View -->
@@ -1265,8 +1585,8 @@ async function onDirectoryUploadChange(e: Event) {
             @root-drag-over="onRootDragOver"
             @root-drag-leave="onRootDragLeave"
             @root-drop="onRootDrop"
-            @entry-drag-start="onEntryDragStart"
-            @entry-drag-end="onEntryDragEnd"
+            @entry-drag-start="onBrowserEntryDragStart"
+            @entry-drag-end="onBrowserEntryDragEnd"
             @entry-drag-over="onEntryDragOver"
             @entry-drag-leave="onEntryDragLeave"
             @entry-drop="onEntryDrop"
@@ -1356,6 +1676,16 @@ async function onDirectoryUploadChange(e: Event) {
       multiple
       class="hidden"
       @change="onDirectoryUploadChange"
+    />
+
+    <RemoteTransferProgressModal
+      v-model:open="remoteTransferOpen"
+      :title="t('videoEditor.fileManager.actions.downloadFiles', 'Download files')"
+      :description="t('videoEditor.fileManager.actions.downloadFiles', 'Download files')"
+      :progress="remoteTransferProgress"
+      :phase="remoteTransferPhase"
+      :file-name="remoteTransferFileName"
+      @cancel="cancelRemoteTransfer"
     />
   </div>
 </template>
