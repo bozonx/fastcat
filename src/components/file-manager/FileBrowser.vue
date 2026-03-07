@@ -543,7 +543,10 @@ async function refreshFileTree() {
 
 function buildRemoteDirectoryEntry(path: string): RemoteFsEntry {
   const normalizedPath = path || '/';
-  const name = normalizedPath === '/' ? 'Remote' : normalizedPath.split('/').filter(Boolean).at(-1) || 'Remote';
+  const name =
+    normalizedPath === '/'
+      ? 'Remote'
+      : normalizedPath.split('/').filter(Boolean).at(-1) || 'Remote';
   const remoteData: RemoteVfsEntry = {
     id: normalizedPath,
     name,
@@ -633,6 +636,36 @@ function onBrowserEntryDragStart(e: DragEvent, entry: FsEntry) {
 function onBrowserEntryDragEnd() {
   useDraggedFile().clearDraggedFile();
   onEntryDragEnd();
+}
+
+function onBrowserEntryDragOver(e: DragEvent, entry: FsEntry) {
+  if (isRemoteMode.value) return;
+  onEntryDragOver(e, entry);
+}
+
+function onBrowserEntryDragLeave(e: DragEvent, entry: FsEntry) {
+  if (isRemoteMode.value) return;
+  onEntryDragLeave(e, entry);
+}
+
+async function onBrowserEntryDrop(e: DragEvent, entry: FsEntry) {
+  if (isRemoteMode.value) return;
+  await onEntryDrop(e, entry);
+}
+
+function onBrowserRootDragOver(e: DragEvent) {
+  if (isRemoteMode.value) return;
+  onRootDragOver(e);
+}
+
+function onBrowserRootDragLeave(e: DragEvent) {
+  if (isRemoteMode.value) return;
+  onRootDragLeave(e);
+}
+
+async function onBrowserRootDrop(e: DragEvent) {
+  if (isRemoteMode.value) return;
+  await onRootDrop(e);
 }
 
 async function performRemoteDownload(params: {
@@ -851,6 +884,8 @@ const { getContextMenuItems } = useFileContextMenu(
 );
 
 const emptySpaceContextMenuItems = computed(() => {
+  if (isRemoteMode.value) return [];
+
   const selected = selectionStore.selectedEntity;
   if (
     selected?.source === 'fileManager' &&
@@ -1498,7 +1533,8 @@ async function onDirectoryUploadChange(e: Event) {
     class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
       'bg-primary-500/5 outline-2 outline-primary-500/30 -outline-offset-2': isDragOverPanel,
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('filesBrowser'),
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+        focusStore.isPanelFocused('filesBrowser'),
     }"
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"
@@ -1507,7 +1543,12 @@ async function onDirectoryUploadChange(e: Event) {
   >
     <!-- Navigation bar -->
     <FileBrowserBreadcrumbs
-      v-if="(isRemoteMode && parentFolders.length > 0) || (!isRemoteMode && filesPageStore.selectedFolder && filesPageStore.selectedFolder.path !== '')"
+      v-if="
+        (isRemoteMode && parentFolders.length > 0) ||
+        (!isRemoteMode &&
+          filesPageStore.selectedFolder &&
+          filesPageStore.selectedFolder.path !== '')
+      "
       :parent-folders="parentFolders"
       @navigate-back="navigateBack"
       @navigate-up="navigateUp"
@@ -1582,14 +1623,14 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
             :video-thumbnails="videoThumbnails"
-            @root-drag-over="onRootDragOver"
-            @root-drag-leave="onRootDragLeave"
-            @root-drop="onRootDrop"
+            @root-drag-over="onBrowserRootDragOver"
+            @root-drag-leave="onBrowserRootDragLeave"
+            @root-drop="onBrowserRootDrop"
             @entry-drag-start="onBrowserEntryDragStart"
             @entry-drag-end="onBrowserEntryDragEnd"
-            @entry-drag-over="onEntryDragOver"
-            @entry-drag-leave="onEntryDragLeave"
-            @entry-drop="onEntryDrop"
+            @entry-drag-over="onBrowserEntryDragOver"
+            @entry-drag-leave="onBrowserEntryDragLeave"
+            @entry-drop="onBrowserEntryDrop"
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"
@@ -1611,14 +1652,14 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
             :video-thumbnails="videoThumbnails"
-            @root-drag-over="onRootDragOver"
-            @root-drag-leave="onRootDragLeave"
-            @root-drop="onRootDrop"
-            @entry-drag-start="onEntryDragStart"
-            @entry-drag-end="onEntryDragEnd"
-            @entry-drag-over="onEntryDragOver"
-            @entry-drag-leave="onEntryDragLeave"
-            @entry-drop="onEntryDrop"
+            @root-drag-over="onBrowserRootDragOver"
+            @root-drag-leave="onBrowserRootDragLeave"
+            @root-drop="onBrowserRootDrop"
+            @entry-drag-start="onBrowserEntryDragStart"
+            @entry-drag-end="onBrowserEntryDragEnd"
+            @entry-drag-over="onBrowserEntryDragOver"
+            @entry-drag-leave="onBrowserEntryDragLeave"
+            @entry-drop="onBrowserEntryDrop"
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"

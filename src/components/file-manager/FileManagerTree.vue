@@ -94,7 +94,6 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const { t } = useI18n();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
 
@@ -203,7 +202,9 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     }
   }
 
-  e.dataTransfer?.effectAllowed && (e.dataTransfer.effectAllowed = 'copyMove');
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'copyMove';
+  }
 
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));

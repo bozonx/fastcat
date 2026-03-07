@@ -42,6 +42,17 @@ export function useFileContextMenu(
     const selectedEntries = deps.getSelectedEntries ? deps.getSelectedEntries() : [];
     const isMultiSelected = selectedEntries.length > 1;
 
+    if (
+      isMultiSelected &&
+      selectedEntries.some((selectedEntry) => selectedEntry.source === 'remote')
+    ) {
+      return [];
+    }
+
+    if (entry.source === 'remote') {
+      return [];
+    }
+
     if (isMultiSelected) {
       const items = [];
       const hasVideo = selectedEntries.some((e) => e.kind === 'file' && deps.isVideo(e));
@@ -180,7 +191,7 @@ export function useFileContextMenu(
       ]);
     }
 
-    if (entry.kind === 'file' && entry.source !== 'remote') {
+    if (entry.kind === 'file') {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
