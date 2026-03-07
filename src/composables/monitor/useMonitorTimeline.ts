@@ -97,6 +97,10 @@ export function useMonitorTimeline() {
           transform: (item as any).transform,
           transitionIn: sanitizeTransition((item as any).transitionIn),
           transitionOut: sanitizeTransition((item as any).transitionOut),
+          sourceDurationUs:
+            typeof (item as any).sourceDurationUs === 'number'
+              ? (item as any).sourceDurationUs
+              : undefined,
           timelineRange: {
             startUs: item.timelineRange.startUs,
             durationUs: item.timelineRange.durationUs,

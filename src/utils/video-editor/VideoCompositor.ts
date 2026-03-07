@@ -1311,8 +1311,11 @@ export class VideoCompositor {
         }
 
         if (handleUs < 1_000) {
-          // No extra source material: freeze the last available frame of the previous clip.
-          const lastUs = Math.max(0, prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000);
+          // No extra source material: freeze the last frame of the used source range.
+          const lastUs = Math.max(
+            0,
+            prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000,
+          );
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
           const req = this.withVideoSampleSlot(() =>
             getVideoSampleWithZeroFallback(
@@ -1777,7 +1780,7 @@ export class VideoCompositor {
     const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
     const sampleUs =
       handleUs < 1_000
-        ? Math.max(0, clip.sourceStartUs + clip.sourceDurationUs - 1_000)
+        ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
         : Math.min(
             sourceRangeEndUs + transitionOffsetUs,
             clip.sourceStartUs + clip.sourceDurationUs - 1_000,

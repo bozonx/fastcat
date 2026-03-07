@@ -88,6 +88,7 @@ export interface WorkerTimelineClip {
   transform?: ClipTransform;
   transitionIn?: import('~/timeline/types').ClipTransition;
   transitionOut?: import('~/timeline/types').ClipTransition;
+  sourceDurationUs?: number;
   timelineRange: { startUs: number; durationUs: number };
   sourceRange: { startUs: number; durationUs: number };
 }
@@ -472,6 +473,10 @@ export async function toWorkerTimelineClips(
       transform: clonePlain((item as any).transform),
       transitionIn: clonePlain((item as any).transitionIn),
       transitionOut: clonePlain((item as any).transitionOut),
+      sourceDurationUs:
+        typeof (item as any).sourceDurationUs === 'number'
+          ? (item as any).sourceDurationUs
+          : undefined,
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
