@@ -17,8 +17,10 @@ uniform vec4 uOutputFrame;
 uniform vec4 uOutputTexture;
 
 vec4 filterVertexPosition(void) {
-  vec2 position = aPosition * max(uOutputFrame.zw, vec2(0.)) + uOutputFrame.xy;
-  return vec4((position / uOutputTexture.zw) * 2.0 - 1.0, 0.0, 1.0);
+  vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
+  position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
+  position.y = position.y * (2.0 * uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
+  return vec4(position, 0.0, 1.0);
 }
 
 vec2 filterTextureCoord(void) {
@@ -52,13 +54,19 @@ bool inBounds(vec2 p) {
 
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
-  vec2 p = vNormalizedCoord;
+  vec2 uv = vNormalizedCoord;
   
-  // В PixiJS Custom Filters для переходов (например, cube или slide):
-  // uFromTexture: Целевая текстура, куда мы переходим (TO)
-  // uTexture: Исходная текстура, на которую наложен фильтр (FROM)
+  // uFromTexture -> FROM clip (тот что уходит, то есть карточка)
+  // uTexture -> TO clip (тот что приходит, то есть фон)
   
-  vec4 toColor = texture(uFromTexture, p);
+  // В PixiJS Custom Filters для переходов (v8):
+  // Если мы используем uFromTexture как источник для карточки (как в wipe, slide, cube)
+  // ВАЖНО: uFromTexture мапится на нормализованные координаты 0..1 (uv) без vTexScale
+  
+  // Читаем фоновый (приходящий) клип
+  vec4 toColor = texture(uTexture, vTextureCoord);
+  // Читаем исходный (уходящий) клип
+  vec4 fromColor = texture(uFromTexture, uv);
   
   if (progress >= 1.0) {
       gl_FragColor = toColor;
@@ -66,7 +74,7 @@ void main(void) {
   }
   
   if (progress <= 0.0) {
-      gl_FragColor = texture(uTexture, vTextureCoord);
+      gl_FragColor = fromColor;
       return;
   }
   
@@ -75,26 +83,31 @@ void main(void) {
   float perspFr = perspective * progress;
   
   if (uDirection < 0.5) { // down
-    pfr = (p + vec2(-0.5, -1.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * (1.0 - p.y)), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 1.0);
+    pfr = (uv + vec2(-0.5, -1.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * (1.0 - uv.y)), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 1.0);
   } else if (uDirection < 1.5) { // up
-    pfr = (p + vec2(-0.5, 0.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * p.y), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 0.0);
+    pfr = (uv + vec2(-0.5, 0.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * uv.y), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 0.0);
   } else if (uDirection < 2.5) { // right
-    pfr = (p + vec2(-1.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * (1.0 - p.x))) + vec2(1.0, 0.5);
+    pfr = (uv + vec2(-1.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * (1.0 - uv.x))) + vec2(1.0, 0.5);
   } else { // left
-    pfr = (p + vec2(0.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * p.x)) + vec2(0.0, 0.5);
+    pfr = (uv + vec2(0.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * uv.x)) + vec2(0.0, 0.5);
   }
   
   if (inBounds(pfr)) {
       float shadow = mix(1.0, 0.3, progress);
-      // Берём текстуру из уходящего клипа (uTexture) с правильным смещением координат!
-      // pfr - это нормализованная координата (0..1), а uTexture требует vTextureCoord
-      vec2 offset = pfr - p;
-      vec4 cardColor = texture(uTexture, vTextureCoord + offset * vTexScale);
+      // Берём текстуру из uFromTexture по искажённым нормализованным координатам
+      vec4 cardColor = texture(uFromTexture, pfr);
       
-      // Поскольку PixiJS работает с Premultiplied Alpha
+      // Premultiplied alpha shadow
       cardColor.rgb *= shadow;
       
-      gl_FragColor = cardColor + toColor * (1.0 - cardColor.a);
+      // Смешиваем падающую карточку поверх TO-клипа
+      float outAlpha = cardColor.a + toColor.a * (1.0 - cardColor.a);
+      if (outAlpha > 0.0) {
+          vec3 outColor = (cardColor.rgb * cardColor.a + toColor.rgb * toColor.a * (1.0 - cardColor.a)) / outAlpha;
+          gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+      } else {
+          gl_FragColor = vec4(0.0);
+      }
   } else {
       gl_FragColor = toColor;
   }

@@ -8,6 +8,7 @@ import SettingsMouse from '~/components/settings/SettingsMouse.vue';
 import SettingsOptimization from '~/components/settings/SettingsOptimization.vue';
 import SettingsProjectDefaults from '~/components/settings/SettingsProjectDefaults.vue';
 import SettingsExportDefaults from '~/components/settings/SettingsExportDefaults.vue';
+import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
 
 interface Props {
@@ -30,6 +31,7 @@ type SettingsSection =
   | 'user.optimization'
   | 'user.project'
   | 'user.export'
+  | 'user.integrations'
   | 'workspace.storage';
 
 const activeSection = ref<SettingsSection>('user.general');
@@ -120,6 +122,14 @@ watch(
               :disabled="activeSection === 'user.export'"
               @click="activeSection = 'user.export'"
             />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userIntegrations', 'Integrations')"
+              :disabled="activeSection === 'user.integrations'"
+              @click="activeSection = 'user.integrations'"
+            />
           </div>
 
           <div class="flex flex-col gap-2">
@@ -148,6 +158,7 @@ watch(
           v-else-if="activeSection === 'user.export'"
           :is-active="activeSection === 'user.export'"
         />
+        <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
         <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
       </div>
     </div>

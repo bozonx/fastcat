@@ -1,6 +1,26 @@
 import { STORAGE_LIMITS } from '../constants';
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 
+export interface GranPublicadorIntegrationSettings {
+  enabled: boolean;
+  baseUrl: string;
+  bearerToken: string;
+  connectName: string;
+}
+
+export interface ManualExternalApiSettings {
+  enabled: boolean;
+  baseUrl: string;
+  bearerToken: string;
+  overrideGran: boolean;
+}
+
+export interface ExternalIntegrationsSettings {
+  granPublicador: GranPublicadorIntegrationSettings;
+  manualFilesApi: ManualExternalApiSettings;
+  manualSttApi: ManualExternalApiSettings;
+}
+
 export interface GranVideoEditorUserSettings {
   locale: 'en-US' | 'ru-RU';
   openLastProjectOnStart: boolean;
@@ -73,6 +93,7 @@ export interface GranVideoEditorUserSettings {
       exportAlpha: boolean;
     };
   };
+  integrations: ExternalIntegrationsSettings;
   mouse: {
     ruler: {
       wheel: 'zoom_horizontal' | 'scroll_horizontal' | 'seek_frame' | 'seek_second' | 'none';
@@ -218,6 +239,26 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
+    },
+  },
+  integrations: {
+    granPublicador: {
+      enabled: false,
+      baseUrl: '',
+      bearerToken: '',
+      connectName: 'Gran Video Editor',
+    },
+    manualFilesApi: {
+      enabled: false,
+      baseUrl: '',
+      bearerToken: '',
+      overrideGran: false,
+    },
+    manualSttApi: {
+      enabled: false,
+      baseUrl: '',
+      bearerToken: '',
+      overrideGran: false,
     },
   },
   mouse: {
