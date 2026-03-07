@@ -1573,6 +1573,49 @@ export class VideoCompositor {
     }
   }
 
+  private renderSingleClipToTexture(clip: CompositorClip, texture: RenderTexture) {
+    if (!this.app?.renderer) return;
+
+    const stageChildren = this.app.stage.children;
+    const stagePrev = stageChildren.map((child) => child.visible);
+
+    // Hide all track containers except the one owning this clip.
+    for (let i = 0; i < stageChildren.length; i++) {
+      const child = stageChildren[i] as any;
+      if (!child) continue;
+      const track = this.trackById.get(child?.__trackId ?? '');
+      child.visible = track?.id === clip.trackId;
+    }
+
+    // Within the clip's track container, hide all sibling sprites except this clip's sprite.
+    const trackContainer = this.trackById.get(clip.trackId ?? '')?.container ?? null;
+    const containerChildren = trackContainer ? [...trackContainer.children] : [];
+    const containerPrev = containerChildren.map((c) => c.visible);
+    for (const c of containerChildren) {
+      (c as any).visible = c === clip.sprite;
+    }
+
+    const previousClipVisible = clip.sprite.visible;
+    clip.sprite.visible = true;
+
+    this.app.renderer.render({
+      container: this.app.stage,
+      target: texture,
+      clear: true,
+    });
+
+    clip.sprite.visible = previousClipVisible;
+
+    for (let i = 0; i < containerChildren.length; i++) {
+      (containerChildren[i] as any).visible = containerPrev[i] ?? true;
+    }
+    for (let i = 0; i < stageChildren.length; i++) {
+      const child = stageChildren[i];
+      if (!child) continue;
+      child.visible = stagePrev[i] ?? true;
+    }
+  }
+
   private renderLowerLayersToTexture(layer: number, texture: RenderTexture) {
     if (!this.app?.renderer) return;
 
@@ -1629,8 +1672,7 @@ export class VideoCompositor {
         clip.transitionOutputTexture ?? null,
       );
 
-      // Render the "to" clip content into toTexture at full canvas resolution.
-      this.renderDisplayObjectToTextureForcedVisible(clip.sprite, clip.transitionToTexture);
+      this.renderSingleClipToTexture(clip, clip.transitionToTexture);
 
       const fromTexture = clip.transitionFromTexture;
       let prevClip: CompositorClip | null = null;
@@ -1642,7 +1684,7 @@ export class VideoCompositor {
         if (!prevClip) {
           continue;
         }
-        this.renderDisplayObjectToTextureForcedVisible(prevClip.sprite, fromTexture);
+        this.renderSingleClipToTexture(prevClip, fromTexture);
       }
 
       state.manifest.updateFilter?.(clip.transitionFilter, {
