@@ -814,13 +814,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
     const stylePreset = createDefaultCaptionStylePreset();
 
+    const fps = sanitizeFps(doc.timebase?.fps ?? 30);
     let addedCount = 0;
+    let lastEndUs = 0;
+
     for (const chunk of chunks) {
-      const durationUs = Math.max(1_000, Math.round((chunk.endMs - chunk.startMs) * 1000));
+      const rawStartUs = Math.max(lastEndUs, Math.round(chunk.startMs * 1000));
+      const rawDurationUs = Math.max(1_000, Math.round((chunk.endMs - chunk.startMs) * 1000));
+
+      const startUs = quantizeTimeUsToFrames(rawStartUs, fps, 'round');
+      const durationUs = quantizeTimeUsToFrames(rawDurationUs, fps, 'round');
+
+      if (durationUs <= 0) continue;
+
       clips.addVirtualClipToTrack(
         {
           trackId: input.trackId,
-          startUs: Math.max(0, Math.round(chunk.startMs * 1000)),
+          startUs,
           clipType: 'text',
           name: 'Generated captions',
           durationUs,
@@ -833,6 +843,7 @@ export const useTimelineStore = defineStore('timeline', () => {
           historyMode: 'immediate',
         },
       );
+      lastEndUs = startUs + durationUs;
       addedCount += 1;
     }
 

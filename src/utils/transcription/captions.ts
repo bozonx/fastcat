@@ -142,6 +142,41 @@ function timelineWordsToChunk(words: TimelineCaptionWord[]): CaptionChunk | null
   };
 }
 
+function normalizeCaptionChunks(chunks: CaptionChunk[]): CaptionChunk[] {
+  const sortedChunks = [...chunks].sort((a, b) => {
+    if (a.startMs !== b.startMs) {
+      return a.startMs - b.startMs;
+    }
+
+    return a.endMs - b.endMs;
+  });
+
+  const normalized: CaptionChunk[] = [];
+  for (const chunk of sortedChunks) {
+    const previousChunk = normalized[normalized.length - 1] ?? null;
+    const nextStartMs = previousChunk
+      ? Math.max(chunk.startMs, previousChunk.endMs)
+      : chunk.startMs;
+    const nextEndMs = Math.max(nextStartMs, chunk.endMs);
+    if (nextEndMs <= nextStartMs) continue;
+
+    normalized.push({
+      ...chunk,
+      startMs: nextStartMs,
+      endMs: nextEndMs,
+      words: chunk.words
+        .map((word) => ({
+          ...word,
+          start: Math.max(word.start, nextStartMs),
+          end: Math.max(Math.max(word.start, nextStartMs), Math.min(word.end, nextEndMs)),
+        }))
+        .filter((word) => word.end > word.start),
+    });
+  }
+
+  return normalized;
+}
+
 export function createDefaultCaptionStylePreset(): CaptionStylePreset {
   return {
     textStyle: {
@@ -232,7 +267,7 @@ export function buildCaptionChunksFromWords(params: {
     throw new Error('Failed to build caption chunks from transcription cache');
   }
 
-  return chunks;
+  return normalizeCaptionChunks(chunks);
 }
 
 export function buildCaptionChunks(params: {

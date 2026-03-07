@@ -5,6 +5,7 @@ import type { TransitionManifest } from '../core/registry';
 export interface FallingCardParams {
   direction: 'down' | 'up' | 'left' | 'right';
   depthDirection: 'forward' | 'backward';
+  action: 'fall' | 'rise';
 }
 
 const vertex = `
@@ -46,6 +47,7 @@ uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uDirection;
 uniform float uDepthDirection;
+uniform float uAction;
 
 const float PI = 3.14159265359;
 
@@ -57,7 +59,6 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
   
-  // В V8 Custom Filters: uTexture = FROM клип (уходящий), uFromTexture = TO клип (приходящий)
   vec4 toColor = texture(uFromTexture, uv);
   vec4 fromColor = texture(uTexture, vTextureCoord);
   
@@ -71,7 +72,10 @@ void main(void) {
       return;
   }
   
-  float angle = progress * PI / 2.0;
+  bool isRise = uAction > 0.5;
+  float animProgress = isRise ? (1.0 - progress) : progress;
+  
+  float angle = animProgress * PI / 2.0;
   float c = cos(angle);
   float s = sin(angle);
   
@@ -79,9 +83,8 @@ void main(void) {
   float px = 0.0;
   float py = 0.0;
   float denom = 1.0;
-  vec2 pfr = vec2(-1.0);
+  vec2 pMoved = vec2(-1.0);
   
-  // d: расстояние до камеры. Меньше d = сильнее перспектива
   float d = 1.5;
   float Z = 0.0;
   
@@ -92,7 +95,7 @@ void main(void) {
         py = (p.y * d) / denom;
         Z = uDepthDirection * py * s;
         px = p.x * (d + Z) / d;
-        pfr = vec2(px, py) + vec2(0.5, 0.0);
+        pMoved = vec2(px, py) + vec2(0.5, 0.0);
     }
   } else if (uDirection < 1.5) { // up: залипает нижний край (y=1)
     p = uv - vec2(0.5, 1.0);
@@ -101,7 +104,7 @@ void main(void) {
         py = (p.y * d) / denom;
         Z = uDepthDirection * (-py) * s;
         px = p.x * (d + Z) / d;
-        pfr = vec2(px, py) + vec2(0.5, 1.0);
+        pMoved = vec2(px, py) + vec2(0.5, 1.0);
     }
   } else if (uDirection < 2.5) { // right: залипает левый край (x=0)
     p = uv - vec2(0.0, 0.5);
@@ -110,7 +113,7 @@ void main(void) {
         px = (p.x * d) / denom;
         Z = uDepthDirection * px * s;
         py = p.y * (d + Z) / d;
-        pfr = vec2(px, py) + vec2(0.0, 0.5);
+        pMoved = vec2(px, py) + vec2(0.0, 0.5);
     }
   } else { // left: залипает правый край (x=1)
     p = uv - vec2(1.0, 0.5);
@@ -119,29 +122,39 @@ void main(void) {
         px = (p.x * d) / denom;
         Z = uDepthDirection * (-px) * s;
         py = p.y * (d + Z) / d;
-        pfr = vec2(px, py) + vec2(1.0, 0.5);
+        pMoved = vec2(px, py) + vec2(1.0, 0.5);
     }
   }
   
   if (denom <= 0.0) {
-      gl_FragColor = toColor;
+      gl_FragColor = isRise ? fromColor : toColor;
       return;
   }
   
-  if (inBounds(pfr)) {
-      // Берем FROM-клип (uTexture) с учетом искажений
-      vec4 cardColor = texture(uTexture, vTextureCoord + (pfr - uv) * vTexScale);
-      
-      // TO-клип (uFromTexture) служит фоном
-      float outAlpha = cardColor.a + toColor.a * (1.0 - cardColor.a);
-      if (outAlpha > 0.0) {
-          vec3 outColor = (cardColor.rgb * cardColor.a + toColor.rgb * toColor.a * (1.0 - cardColor.a)) / outAlpha;
-          gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+  if (inBounds(pMoved)) {
+      if (isRise) {
+          // В режиме rise TO-клип поднимается, FROM-клип остается фоном
+          vec4 movingColor = texture(uFromTexture, pMoved);
+          float outAlpha = movingColor.a + fromColor.a * (1.0 - movingColor.a);
+          if (outAlpha > 0.0) {
+              vec3 outColor = (movingColor.rgb * movingColor.a + fromColor.rgb * fromColor.a * (1.0 - movingColor.a)) / outAlpha;
+              gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+          } else {
+              gl_FragColor = vec4(0.0);
+          }
       } else {
-          gl_FragColor = vec4(0.0);
+          // В режиме fall FROM-клип падает, TO-клип проступает фоном
+          vec4 movingColor = texture(uTexture, vTextureCoord + (pMoved - uv) * vTexScale);
+          float outAlpha = movingColor.a + toColor.a * (1.0 - movingColor.a);
+          if (outAlpha > 0.0) {
+              vec3 outColor = (movingColor.rgb * movingColor.a + toColor.rgb * toColor.a * (1.0 - movingColor.a)) / outAlpha;
+              gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+          } else {
+              gl_FragColor = vec4(0.0);
+          }
       }
   } else {
-      gl_FragColor = toColor;
+      gl_FragColor = isRise ? fromColor : toColor;
   }
 }
 `;
@@ -149,10 +162,12 @@ void main(void) {
 function normalizeFallingCardParams(params?: Record<string, unknown>): FallingCardParams {
   const dir = params?.direction as string;
   const depthDir = params?.depthDirection as string;
+  const act = params?.action as string;
   const validDirs = ['down', 'up', 'left', 'right'];
   return {
     direction: validDirs.includes(dir) ? (dir as FallingCardParams['direction']) : 'down',
     depthDirection: depthDir === 'forward' ? 'forward' : 'backward',
+    action: act === 'rise' ? 'rise' : 'fall',
   };
 }
 
@@ -164,6 +179,21 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
   defaultParams: normalizeFallingCardParams(),
   normalizeParams: normalizeFallingCardParams,
   paramFields: [
+    {
+      key: 'action',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramAction',
+      options: [
+        {
+          value: 'fall',
+          labelKey: 'granVideoEditor.timeline.transition.actionFall',
+        },
+        {
+          value: 'rise',
+          labelKey: 'granVideoEditor.timeline.transition.actionRise',
+        },
+      ],
+    },
     {
       key: 'direction',
       kind: 'select',
@@ -213,6 +243,7 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
           uProgress: { value: 0, type: 'f32' },
           uDirection: { value: 0, type: 'f32' },
           uDepthDirection: { value: 1, type: 'f32' },
+          uAction: { value: 0, type: 'f32' },
         },
       },
     }),
@@ -232,7 +263,8 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uDirection = dirFloat;
-    uniforms.uDepthDirection = params.depthDirection === 'forward' ? 1.0 : -1.0;
+    uniforms.uDepthDirection = params.depthDirection === 'forward' ? -1.0 : 1.0;
+    uniforms.uAction = params.action === 'rise' ? 1.0 : 0.0;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
