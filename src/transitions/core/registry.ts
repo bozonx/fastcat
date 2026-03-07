@@ -2,11 +2,11 @@ import type { Filter, Texture } from 'pixi.js';
 
 export type TransitionType = string;
 
-export type TransitionMode = 'blend' | 'blend_previous' | 'composite';
+export type TransitionMode = 'transition' | 'fade';
 
 export type TransitionCurve = 'linear' | 'bezier';
 
-export const DEFAULT_TRANSITION_MODE: TransitionMode = 'blend_previous';
+export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transition';
 
 export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
 
@@ -95,9 +95,19 @@ export function hexColorToRgb01(color: string): { r: number; g: number; b: numbe
 }
 
 export function normalizeTransitionMode(value: unknown): TransitionMode {
-  return value === 'blend_previous' || value === 'composite' || value === 'blend'
-    ? value
-    : DEFAULT_TRANSITION_MODE;
+  if (value === 'transition' || value === 'fade') {
+    return value;
+  }
+
+  if (value === 'blend_previous') {
+    return 'transition';
+  }
+
+  if (value === 'composite' || value === 'blend') {
+    return 'fade';
+  }
+
+  return DEFAULT_TRANSITION_MODE;
 }
 
 export function normalizeTransitionCurve(value: unknown): TransitionCurve {

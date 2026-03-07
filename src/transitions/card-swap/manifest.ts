@@ -2,7 +2,7 @@ import { Filter, GlProgram, Texture } from 'pixi.js';
 import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
-export interface FlipParams {
+export interface CardSwapParams {
   direction: 'horizontal' | 'vertical';
 }
 
@@ -99,19 +99,19 @@ void main(void) {
 }
 `;
 
-function normalizeFlipParams(params?: Record<string, unknown>): FlipParams {
+function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapParams {
   return {
     direction: params?.direction === 'vertical' ? 'vertical' : 'horizontal',
   };
 }
 
-export const flipTransitionManifest: TransitionManifest<FlipParams> = {
-  type: 'flip' as any,
-  name: 'Flip',
+export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
+  type: 'card-swap' as any,
+  name: 'Card Swap',
   icon: 'i-heroicons-arrow-path-rounded-square',
   defaultDurationUs: 500_000,
-  defaultParams: normalizeFlipParams(),
-  normalizeParams: normalizeFlipParams,
+  defaultParams: normalizeCardSwapParams(),
+  normalizeParams: normalizeCardSwapParams,
   paramFields: [
     {
       key: 'direction',
@@ -132,7 +132,7 @@ export const flipTransitionManifest: TransitionManifest<FlipParams> = {
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
         uFromTexture: Texture.WHITE.source,
-        flipUniforms: {
+        cardSwapUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uDirection: { value: 1, type: 'f32' },
         },
@@ -140,11 +140,11 @@ export const flipTransitionManifest: TransitionManifest<FlipParams> = {
     }),
   updateFilter: (filter, context) => {
     const resources = (filter as any).resources;
-    const uniforms = resources?.flipUniforms?.uniforms;
+    const uniforms = resources?.cardSwapUniforms?.uniforms;
     if (!uniforms) return;
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
-    const params = normalizeFlipParams(context.params);
+    const params = normalizeCardSwapParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uDirection = params.direction === 'vertical' ? 0 : 1;
