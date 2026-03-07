@@ -310,6 +310,7 @@
         "dropZone": "Move to folder",
         "cancelProxyGeneration": "Cancel proxy generation",
         "convertFile": "Convert file",
+        "transcribe": "Transcribe",
         "title": "Actions"
       },
       "projectRoot": {

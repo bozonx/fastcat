@@ -65,7 +65,8 @@ const emit = defineEmits<{
       | 'createMarkdown'
       | 'convertFile'
       | 'openAsPanel'
-      | 'openAsProjectTab',
+      | 'openAsProjectTab'
+      | 'transcribe',
     entry: FsEntry,
   ): void;
   (
@@ -163,6 +164,12 @@ function isConvertibleMediaFile(entry: FsEntry): boolean {
   if (entry.kind !== 'file') return false;
   const type = getMediaTypeFromFilename(entry.name);
   return type === 'video' || type === 'audio' || type === 'image';
+}
+
+function isTranscribableMediaFile(entry: FsEntry): boolean {
+  if (entry.kind !== 'file' || entry.source === 'remote') return false;
+  const type = getMediaTypeFromFilename(entry.name);
+  return type === 'audio' || type === 'video';
 }
 
 function onEntryClick(event: MouseEvent, entry: FsEntry) {
@@ -351,6 +358,7 @@ const { getContextMenuItems } = useFileContextMenu(
     folderHasVideos,
     isOpenableMediaFile,
     isConvertibleMediaFile,
+    isTranscribableMediaFile,
     isVideo,
     getEntryMeta: ctx.getEntryMeta,
     isFilesPage: props.isFilesPage,

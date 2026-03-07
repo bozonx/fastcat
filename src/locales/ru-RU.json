@@ -314,6 +314,7 @@
         "dropZone": "Переместить в папку",
         "cancelProxyGeneration": "Отменить генерацию прокси",
         "convertFile": "Конвертировать файл",
+        "transcribe": "Транскрибировать",
         "title": "Действия"
       },
       "projectRoot": {
