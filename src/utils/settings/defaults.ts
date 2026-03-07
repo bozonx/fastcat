@@ -13,10 +13,19 @@ export interface ManualExternalApiSettings {
   overrideGran: boolean;
 }
 
+export interface SttIntegrationSettings {
+  provider: string;
+  models: string[];
+  restorePunctuation: boolean;
+  formatText: boolean;
+  includeWords: boolean;
+}
+
 export interface ExternalIntegrationsSettings {
   granPublicador: GranPublicadorIntegrationSettings;
   manualFilesApi: ManualExternalApiSettings;
   manualSttApi: ManualExternalApiSettings;
+  stt: SttIntegrationSettings;
 }
 
 export interface GranVideoEditorUserSettings {
@@ -255,6 +264,13 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       baseUrl: '',
       bearerToken: '',
       overrideGran: false,
+    },
+    stt: {
+      provider: '',
+      models: [],
+      restorePunctuation: true,
+      formatText: false,
+      includeWords: true,
     },
   },
   mouse: {

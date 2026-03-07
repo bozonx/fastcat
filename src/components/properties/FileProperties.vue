@@ -26,6 +26,8 @@ import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import AppModal from '~/components/ui/AppModal.vue';
+import { transcribeProjectAudioFile } from '~/utils/stt';
 
 const props = defineProps<{
   selectedFsEntry: any;
@@ -47,12 +49,20 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
+const toast = useToast();
 const { addFileTab, setActiveTab } = useProjectTabs();
 const fileManager = useFileManager();
 const runtimeConfig = useRuntimeConfig();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
+const isTranscriptionModalOpen = ref(false);
+const transcriptionLanguage = ref('');
+const isTranscribingAudio = ref(false);
+const transcriptionError = ref('');
+const latestTranscriptionText = ref('');
+const latestTranscriptionCacheKey = ref('');
+const latestTranscriptionWasCached = ref(false);
 
 const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
@@ -69,6 +79,17 @@ const canUploadToRemote = computed(() => {
   const entry = props.selectedFsEntry;
   return entry?.kind === 'file' && entry?.source !== 'remote' && Boolean(remoteFilesConfig.value);
 });
+
+const sttConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'stt',
+    integrations: workspaceStore.userSettings.integrations,
+    granPublicadorBaseUrl:
+      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.gpanPublicadorBaseUrl
+        : '',
+  }),
+);
 
 const uploadInputRef = ref<HTMLInputElement | null>(null);
 
@@ -159,10 +180,29 @@ const {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    useToast().add({ title: 'Copied to clipboard' });
+    toast.add({ title: 'Copied to clipboard' });
   } catch (e) {
     console.error('Failed to copy to clipboard', e);
   }
+}
+
+function extractTranscriptionText(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return '';
+
+  const data = payload as Record<string, unknown>;
+  for (const key of ['text', 'formattedText', 'transcript']) {
+    const value = data[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  const result = data.result;
+  if (result && typeof result === 'object') {
+    return extractTranscriptionText(result);
+  }
+
+  return '';
 }
 
 function openAsProjectTab() {
@@ -216,6 +256,21 @@ const isGeneratingProxyForFile = computed(() => {
   return proxyStore.generatingProxies.has(selectedPath.value!);
 });
 
+const isAudioFile = computed(() => mediaType.value === 'audio');
+
+const canTranscribeAudio = computed(() => {
+  const entry = props.selectedFsEntry;
+  return (
+    entry?.kind === 'file' &&
+    entry?.source !== 'remote' &&
+    isAudioFile.value &&
+    Boolean(sttConfig.value) &&
+    Boolean(workspaceStore.workspaceHandle) &&
+    Boolean(projectStore.currentProjectId) &&
+    Boolean(entry.handle)
+  );
+});
+
 const hasExistingProxyForFile = computed(() => {
   if (!showVideoProxyActions.value) return false;
   return proxyStore.existingProxies.has(selectedPath.value!);
@@ -257,6 +312,73 @@ function openRemoteUploadPicker() {
   uiStore.remoteExchangeLocalEntry = selectedEntry;
   uiStore.remoteExchangeModalOpen = true;
 }
+
+function openTranscriptionModal() {
+  if (!canTranscribeAudio.value) return;
+  transcriptionError.value = '';
+  isTranscriptionModalOpen.value = true;
+}
+
+async function submitAudioTranscription() {
+  const selectedEntry = props.selectedFsEntry;
+  if (
+    !selectedEntry ||
+    selectedEntry.kind !== 'file' ||
+    !workspaceStore.workspaceHandle ||
+    !projectStore.currentProjectId
+  ) {
+    return;
+  }
+
+  isTranscribingAudio.value = true;
+  transcriptionError.value = '';
+
+  try {
+    const result = await transcribeProjectAudioFile({
+      fileHandle: selectedEntry.handle as FileSystemFileHandle,
+      filePath: selectedEntry.path ?? selectedEntry.name,
+      fileName: selectedEntry.name,
+      language: transcriptionLanguage.value,
+      granPublicadorBaseUrl:
+        typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
+          ? runtimeConfig.public.gpanPublicadorBaseUrl
+          : '',
+      projectId: projectStore.currentProjectId,
+      userSettings: workspaceStore.userSettings,
+      workspaceHandle: workspaceStore.workspaceHandle,
+    });
+
+    latestTranscriptionText.value = extractTranscriptionText(result.record.response);
+    latestTranscriptionCacheKey.value = result.cacheKey;
+    latestTranscriptionWasCached.value = result.cached;
+    isTranscriptionModalOpen.value = false;
+
+    toast.add({
+      title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
+      description: result.cached
+        ? 'Cached transcription was loaded from vardata.'
+        : 'Transcription was saved to vardata cache.',
+      color: 'success',
+    });
+  } catch (error: unknown) {
+    transcriptionError.value = error instanceof Error ? error.message : 'Failed to transcribe audio';
+  } finally {
+    isTranscribingAudio.value = false;
+  }
+}
+
+watch(
+  () => props.selectedFsEntry?.path,
+  () => {
+    transcriptionLanguage.value = '';
+    transcriptionError.value = '';
+    latestTranscriptionText.value = '';
+    latestTranscriptionCacheKey.value = '';
+    latestTranscriptionWasCached.value = false;
+    isTranscriptionModalOpen.value = false;
+    isTranscribingAudio.value = false;
+  },
+);
 </script>
 
 <template>
@@ -412,6 +534,13 @@ function openRemoteUploadPicker() {
             hidden: !canUploadToRemote,
             onClick: openRemoteUploadPicker,
           },
+          {
+            id: 'transcribeAudio',
+            title: t('videoEditor.fileManager.actions.transcribeAudio', 'Transcribe audio'),
+            icon: 'i-heroicons-language',
+            hidden: !canTranscribeAudio,
+            onClick: openTranscriptionModal,
+          },
         ]"
         :secondary-actions="[
           {
@@ -537,7 +666,7 @@ function openRemoteUploadPicker() {
       v-if="fileInfo?.kind === 'file' && mediaType === 'audio'"
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
-      <div class="flex flex-col">
+      <div class="flex flex-col gap-2">
         <PropertyRow
           :label="t('common.duration', 'Duration')"
           :value="formatDurationSeconds(mediaMeta?.duration)"
@@ -556,6 +685,33 @@ function openRemoteUploadPicker() {
           {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
           {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
         </PropertyRow>
+
+        <div class="flex flex-wrap gap-2 pt-1">
+          <UButton
+            size="xs"
+            color="primary"
+            variant="soft"
+            icon="i-heroicons-language"
+            :disabled="!canTranscribeAudio"
+            @click="openTranscriptionModal"
+          >
+            {{ t('videoEditor.fileManager.actions.transcribeAudio', 'Transcribe audio') }}
+          </UButton>
+          <span v-if="latestTranscriptionCacheKey" class="text-xs text-ui-text-muted self-center">
+            {{
+              latestTranscriptionWasCached
+                ? t('videoEditor.fileManager.audio.transcriptionCached', 'Loaded from cache')
+                : t('videoEditor.fileManager.audio.transcriptionSaved', 'Saved to cache')
+            }}
+          </span>
+        </div>
+
+        <UTextarea
+          v-if="latestTranscriptionText"
+          :model-value="latestTranscriptionText"
+          :rows="8"
+          readonly
+        />
       </div>
     </div>
 
@@ -693,5 +849,52 @@ function openRemoteUploadPicker() {
         >{{ exifYaml }}</pre
       >
     </PropertySection>
+
+    <AppModal
+      v-model:open="isTranscriptionModalOpen"
+      :title="t('videoEditor.fileManager.audio.transcriptionTitle', 'Transcribe audio')"
+      :close-button="!isTranscribingAudio"
+      :prevent-close="isTranscribingAudio"
+      :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
+    >
+      <div class="flex flex-col gap-4">
+        <div class="text-sm text-ui-text-muted">
+          {{
+            t(
+              'videoEditor.fileManager.audio.transcriptionHint',
+              'Send the current audio file to the configured STT service. Language is optional.',
+            )
+          }}
+        </div>
+
+        <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
+          <UInput
+            v-model="transcriptionLanguage"
+            :disabled="isTranscribingAudio"
+            placeholder="en"
+          />
+        </UFormField>
+
+        <div v-if="transcriptionError" class="text-sm text-error-400">
+          {{ transcriptionError }}
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :disabled="isTranscribingAudio"
+            @click="isTranscriptionModalOpen = false"
+          >
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" :loading="isTranscribingAudio" @click="submitAudioTranscription">
+            {{ t('videoEditor.fileManager.audio.transcriptionSubmit', 'Transcribe') }}
+          </UButton>
+        </div>
+      </template>
+    </AppModal>
   </div>
 </template>

@@ -72,6 +72,13 @@ describe('settings normalization', () => {
           bearerToken: ' stt-token ',
           overrideGran: 0,
         },
+        stt: {
+          provider: ' assemblyai ',
+          models: [' universal-3-pro ', '', 'universal-2'],
+          restorePunctuation: false,
+          formatText: true,
+          includeWords: false,
+        },
       },
     });
 
@@ -87,6 +94,12 @@ describe('settings normalization', () => {
     expect(normalized.integrations.manualSttApi.baseUrl).toBe('https://stt.example.com');
     expect(normalized.integrations.manualSttApi.bearerToken).toBe('stt-token');
     expect(normalized.integrations.manualSttApi.overrideGran).toBe(false);
+
+    expect(normalized.integrations.stt.provider).toBe('assemblyai');
+    expect(normalized.integrations.stt.models).toEqual(['universal-3-pro', 'universal-2']);
+    expect(normalized.integrations.stt.restorePunctuation).toBe(false);
+    expect(normalized.integrations.stt.formatText).toBe(true);
+    expect(normalized.integrations.stt.includeWords).toBe(false);
   });
 
   it('normalizes mouse settings and falls back to defaults for invalid values', () => {

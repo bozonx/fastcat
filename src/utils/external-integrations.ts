@@ -69,6 +69,11 @@ export function getGranPublicadorHealthUrl(baseUrl: string): string {
   return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'health') : '';
 }
 
+export function getGranPublicadorSttStreamUrl(baseUrl: string): string {
+  const externalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(baseUrl);
+  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'api/v1/transcribe/stream') : '';
+}
+
 export function getManualServiceHealthUrl(baseUrl: string): string {
   const normalizedBaseUrl = trimTrailingSlashes(baseUrl.trim());
 
@@ -82,6 +87,21 @@ export function getManualServiceHealthUrl(baseUrl: string): string {
   }
 
   return joinUrl(normalizedBaseUrl, 'api/v1/external/health');
+}
+
+export function getManualSttStreamUrl(baseUrl: string): string {
+  const normalizedBaseUrl = trimTrailingSlashes(baseUrl.trim());
+
+  if (!normalizedBaseUrl) return '';
+  if (/\/api\/v1\/transcribe\/stream$/i.test(normalizedBaseUrl)) return normalizedBaseUrl;
+  if (/\/api\/v1\/external\/stt$/i.test(normalizedBaseUrl)) {
+    return normalizedBaseUrl.replace(/\/api\/v1\/external\/stt$/i, '/api/v1/transcribe/stream');
+  }
+  if (/\/api\/v1$/i.test(normalizedBaseUrl)) {
+    return joinUrl(normalizedBaseUrl, 'transcribe/stream');
+  }
+
+  return joinUrl(normalizedBaseUrl, 'api/v1/transcribe/stream');
 }
 
 export function resolveGranConnectScopes(params: {
@@ -115,9 +135,16 @@ export function resolveExternalServiceConfig(params: {
   const { integrations, service, granPublicadorBaseUrl } = params;
   const gran = integrations.granPublicador;
   const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
+  const requiresBearerToken = service === 'files';
 
-  const canUseGran = gran.enabled && granPublicadorBaseUrl.trim() && gran.bearerToken.trim();
-  const canUseManual = manual.enabled && manual.baseUrl.trim() && manual.bearerToken.trim();
+  const canUseGran =
+    gran.enabled &&
+    granPublicadorBaseUrl.trim() &&
+    (!requiresBearerToken || Boolean(gran.bearerToken.trim()));
+  const canUseManual =
+    manual.enabled &&
+    manual.baseUrl.trim() &&
+    (!requiresBearerToken || Boolean(manual.bearerToken.trim()));
 
   if (canUseManual && (!canUseGran || manual.overrideGran)) {
     return {
@@ -162,6 +189,23 @@ export function resolveExternalIntegrations(params: {
       granPublicadorBaseUrl: params.granPublicadorBaseUrl,
     }),
   };
+}
+
+export function resolveSttStreamUrl(params: {
+  userSettings: GranVideoEditorUserSettings;
+  granPublicadorBaseUrl: string;
+}): string {
+  const resolved = resolveExternalServiceConfig({
+    service: 'stt',
+    integrations: params.userSettings.integrations,
+    granPublicadorBaseUrl: params.granPublicadorBaseUrl,
+  });
+
+  if (!resolved) return '';
+
+  return resolved.source === 'gran_publicador'
+    ? getGranPublicadorSttStreamUrl(params.granPublicadorBaseUrl)
+    : getManualSttStreamUrl(resolved.baseUrl);
 }
 
 export async function runExternalHealthCheck(params: {

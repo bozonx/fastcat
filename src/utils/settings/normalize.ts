@@ -205,6 +205,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const granPublicadorInput = (integrationsInput.granPublicador ?? {}) as Record<string, unknown>;
   const manualFilesApiInput = (integrationsInput.manualFilesApi ?? {}) as Record<string, unknown>;
   const manualSttApiInput = (integrationsInput.manualSttApi ?? {}) as Record<string, unknown>;
+  const sttInput = (integrationsInput.stt ?? {}) as Record<string, unknown>;
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
@@ -427,6 +428,30 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         baseUrl: normalizeUrlValue(manualSttApiInput.baseUrl),
         bearerToken: normalizeTokenValue(manualSttApiInput.bearerToken),
         overrideGran: Boolean(manualSttApiInput.overrideGran),
+      },
+      stt: {
+        provider:
+          typeof sttInput.provider === 'string'
+            ? sttInput.provider.trim()
+            : DEFAULT_USER_SETTINGS.integrations.stt.provider,
+        models: Array.isArray(sttInput.models)
+          ? sttInput.models
+              .filter((model): model is string => typeof model === 'string')
+              .map((model) => model.trim())
+              .filter(Boolean)
+          : [...DEFAULT_USER_SETTINGS.integrations.stt.models],
+        restorePunctuation:
+          typeof sttInput.restorePunctuation === 'boolean'
+            ? sttInput.restorePunctuation
+            : DEFAULT_USER_SETTINGS.integrations.stt.restorePunctuation,
+        formatText:
+          typeof sttInput.formatText === 'boolean'
+            ? sttInput.formatText
+            : DEFAULT_USER_SETTINGS.integrations.stt.formatText,
+        includeWords:
+          typeof sttInput.includeWords === 'boolean'
+            ? sttInput.includeWords
+            : DEFAULT_USER_SETTINGS.integrations.stt.includeWords,
       },
     },
     mouse: normalizedMouse,

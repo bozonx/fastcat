@@ -24,6 +24,16 @@ const route = useRoute();
 const router = useRouter();
 const runtimeConfig = useRuntimeConfig();
 
+const sttModelsText = computed({
+  get: () => workspaceStore.userSettings.integrations.stt.models.join(', '),
+  set: (value: string) => {
+    workspaceStore.userSettings.integrations.stt.models = value
+      .split(',')
+      .map((model) => model.trim())
+      .filter(Boolean);
+  },
+});
+
 const granPublicadorBaseUrl = computed(() => {
   const value = runtimeConfig.public.gpanPublicadorBaseUrl;
   return typeof value === 'string' ? value.trim() : '';
@@ -82,6 +92,10 @@ function resetDefaults() {
     granPublicador: { ...DEFAULT_USER_SETTINGS.integrations.granPublicador },
     manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },
     manualSttApi: { ...DEFAULT_USER_SETTINGS.integrations.manualSttApi },
+    stt: {
+      ...DEFAULT_USER_SETTINGS.integrations.stt,
+      models: [...DEFAULT_USER_SETTINGS.integrations.stt.models],
+    },
   };
 
   for (const state of Object.values(healthStates)) {
@@ -397,6 +411,43 @@ async function runServiceHealth(kind: 'files' | 'stt') {
           placeholder="Bearer token"
         />
       </UFormField>
+
+      <UFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
+        <UInput
+          v-model="workspaceStore.userSettings.integrations.stt.provider"
+          class="w-full"
+          placeholder="assemblyai"
+        />
+      </UFormField>
+
+      <UFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
+        <UInput
+          v-model="sttModelsText"
+          class="w-full"
+          placeholder="universal-3-pro, universal-2"
+        />
+      </UFormField>
+
+      <label class="flex items-center gap-3 cursor-pointer">
+        <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.restorePunctuation" />
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.integrationSttRestorePunctuation', 'Restore punctuation') }}
+        </span>
+      </label>
+
+      <label class="flex items-center gap-3 cursor-pointer">
+        <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.formatText" />
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.integrationSttFormatText', 'Format text') }}
+        </span>
+      </label>
+
+      <label class="flex items-center gap-3 cursor-pointer">
+        <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.includeWords" />
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.integrationSttIncludeWords', 'Include word timestamps') }}
+        </span>
+      </label>
 
       <div class="flex flex-wrap gap-2">
         <UButton

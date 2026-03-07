@@ -10,6 +10,8 @@ export const VARDATA_PROJECT_WAVEFORMS_DIR_NAME = 'waveforms' as const;
 
 export const VARDATA_PROJECT_CACHE_DIR_NAME = 'cache' as const;
 
+export const VARDATA_PROJECT_TRANSCRIPTIONS_DIR_NAME = 'transcriptions' as const;
+
 export function getProjectVardataSegments(projectId: string): string[] {
   return [VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME, projectId];
 }
@@ -28,4 +30,8 @@ export function getProjectWaveformsSegments(projectId: string): string[] {
 
 export function getProjectCacheSegments(projectId: string): string[] {
   return [...getProjectVardataSegments(projectId), VARDATA_PROJECT_CACHE_DIR_NAME];
+}
+
+export function getProjectTranscriptionsSegments(projectId: string): string[] {
+  return [...getProjectCacheSegments(projectId), VARDATA_PROJECT_TRANSCRIPTIONS_DIR_NAME];
 }

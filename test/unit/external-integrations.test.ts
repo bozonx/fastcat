@@ -5,10 +5,13 @@ import { GRAN_PUBLICADOR_APP_NAME } from '../../src/utils/constants';
 import {
   getGranPublicadorConnectUrl,
   getGranPublicadorHealthUrl,
+  getGranPublicadorSttStreamUrl,
+  getManualSttStreamUrl,
   getManualServiceHealthUrl,
   resolveExternalIntegrations,
   resolveGranConnectScopes,
   resolveExternalServiceConfig,
+  resolveSttStreamUrl,
 } from '../../src/utils/external-integrations';
 
 describe('external integrations', () => {
@@ -41,6 +44,22 @@ describe('external integrations', () => {
     );
     expect(getManualServiceHealthUrl('https://stt.example.com/api/v1/external')).toBe(
       'https://stt.example.com/api/v1/external/health',
+    );
+  });
+
+  it('builds STT stream URLs for Gran proxy and manual gateway', () => {
+    expect(getGranPublicadorSttStreamUrl('https://gran.example.com')).toBe(
+      'https://gran.example.com/api/v1/external/api/v1/transcribe/stream',
+    );
+
+    expect(getManualSttStreamUrl('https://stt.example.com')).toBe(
+      'https://stt.example.com/api/v1/transcribe/stream',
+    );
+    expect(getManualSttStreamUrl('https://stt.example.com/api/v1')).toBe(
+      'https://stt.example.com/api/v1/transcribe/stream',
+    );
+    expect(getManualSttStreamUrl('https://stt.example.com/api/v1/external/stt')).toBe(
+      'https://stt.example.com/api/v1/transcribe/stream',
     );
   });
 
@@ -89,7 +108,6 @@ describe('external integrations', () => {
     integrations.granPublicador.bearerToken = 'gp_token';
     integrations.manualSttApi.enabled = true;
     integrations.manualSttApi.baseUrl = 'https://stt.example.com/api/v1/external/stt';
-    integrations.manualSttApi.bearerToken = 'stt_token';
     integrations.manualSttApi.overrideGran = true;
 
     const resolved = resolveExternalServiceConfig({
@@ -101,8 +119,22 @@ describe('external integrations', () => {
     expect(resolved).toEqual({
       source: 'manual',
       baseUrl: 'https://stt.example.com/api/v1/external/stt',
-      bearerToken: 'stt_token',
+      bearerToken: '',
       healthUrl: 'https://stt.example.com/api/v1/external/health',
     });
+  });
+
+  it('resolves STT stream URL from the active provider', () => {
+    const userSettings = createDefaultUserSettings();
+    userSettings.integrations.manualSttApi.enabled = true;
+    userSettings.integrations.manualSttApi.baseUrl = 'https://stt.example.com';
+    userSettings.integrations.manualSttApi.overrideGran = true;
+
+    expect(
+      resolveSttStreamUrl({
+        userSettings,
+        granPublicadorBaseUrl: 'https://gran.example.com',
+      }),
+    ).toBe('https://stt.example.com/api/v1/transcribe/stream');
   });
 });

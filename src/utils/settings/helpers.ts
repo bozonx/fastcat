@@ -72,6 +72,10 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
       granPublicador: { ...DEFAULT_USER_SETTINGS.integrations.granPublicador },
       manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },
       manualSttApi: { ...DEFAULT_USER_SETTINGS.integrations.manualSttApi },
+      stt: {
+        ...DEFAULT_USER_SETTINGS.integrations.stt,
+        models: [...DEFAULT_USER_SETTINGS.integrations.stt.models],
+      },
     },
     mouse: {
       timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
