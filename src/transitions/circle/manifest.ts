@@ -11,6 +11,7 @@ const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
 out vec2 vNormalizedCoord;
+out float vAspectRatio;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -31,12 +32,14 @@ void main(void) {
   gl_Position = filterVertexPosition();
   vTextureCoord = filterTextureCoord();
   vNormalizedCoord = aPosition;
+  vAspectRatio = uOutputTexture.x / uOutputTexture.y;
 }
 `;
 
 const fragment = `
 in vec2 vTextureCoord;
 in vec2 vNormalizedCoord;
+in float vAspectRatio;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
@@ -47,8 +50,9 @@ uniform float uDirection;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec2 centered = uv - vec2(0.5, 0.5);
+  centered.x *= vAspectRatio;
   float distanceFromCenter = length(centered);
-  float maxRadius = 0.70710678;
+  float maxRadius = length(vec2(0.5 * vAspectRatio, 0.5));
   float progress = clamp(uProgress, 0.0, 1.0);
   float blur = max(0.0001, uBlur);
   float radius = (uDirection > 0.0 ? progress : (1.0 - progress)) * maxRadius;

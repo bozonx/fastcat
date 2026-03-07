@@ -65,12 +65,12 @@ void main(void) {
   float cutEnd = edge + gapHalf;
 
   if (axisValue < cutStart) {
-    gl_FragColor = fromColor;
+    gl_FragColor = toColor;
     return;
   }
 
   if (axisValue > cutEnd) {
-    gl_FragColor = toColor;
+    gl_FragColor = fromColor;
     return;
   }
 
