@@ -641,7 +641,7 @@
         "mode": "Mode",
         "modeTransitionShort": "Transition",
         "modeTransition": "Transition with adjacent clip on same track",
-        "modeFadeShort": "Overlay",
+        "modeFadeShort": "Fade",
         "modeFade": "Fade with lower tracks",
         "cube": "Cube",
         "card-swap": "Card Swap",
