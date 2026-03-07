@@ -2,8 +2,9 @@ import { Filter, GlProgram, Texture } from 'pixi.js';
 import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
-export interface BoxParams {
+export interface CubeParams {
   direction: 'left' | 'right' | 'up' | 'down';
+  zoomMode: 'unzoom' | 'fixed';
 }
 
 const vertex = `
@@ -45,9 +46,9 @@ uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uDirectionX;
 uniform float uDirectionY;
+uniform float uUnzoomAmount;
 
 const float persp = 0.7;
-const float unzoom = 0.3;
 
 bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
@@ -81,6 +82,7 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
   
+  float unzoom = 0.3 * uUnzoomAmount;
   float uz = unzoom * 2.0 * (0.5 - distance(0.5, progress));
   vec2 p = -uz * 0.5 + (1.0 + uz) * uv;
   
@@ -134,7 +136,7 @@ void main(void) {
 }
 `;
 
-function normalizeBoxParams(params?: Record<string, unknown>): BoxParams {
+function normalizeCubeParams(params?: Record<string, unknown>): CubeParams {
   const direction =
     params?.direction === 'right' ||
     params?.direction === 'up' ||
@@ -143,16 +145,18 @@ function normalizeBoxParams(params?: Record<string, unknown>): BoxParams {
       ? params.direction
       : 'left';
 
-  return { direction };
+  const zoomMode = params?.zoomMode === 'fixed' ? 'fixed' : 'unzoom';
+
+  return { direction, zoomMode };
 }
 
-export const boxTransitionManifest: TransitionManifest<BoxParams> = {
-  type: 'box',
-  name: 'Box',
+export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
+  type: 'cube' as any,
+  name: 'Cube',
   icon: 'i-heroicons-cube',
   defaultDurationUs: 500_000,
-  defaultParams: normalizeBoxParams(),
-  normalizeParams: normalizeBoxParams,
+  defaultParams: normalizeCubeParams(),
+  normalizeParams: normalizeCubeParams,
   paramFields: [
     {
       key: 'direction',
@@ -165,6 +169,15 @@ export const boxTransitionManifest: TransitionManifest<BoxParams> = {
         { value: 'down', labelKey: 'granVideoEditor.timeline.transition.directionDown' },
       ],
     },
+    {
+      key: 'zoomMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramMode',
+      options: [
+        { value: 'unzoom', labelKey: 'granVideoEditor.timeline.transition.modeUnzoom' },
+        { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.modeFixed' },
+      ],
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -172,20 +185,21 @@ export const boxTransitionManifest: TransitionManifest<BoxParams> = {
       glProgram: new GlProgram({ vertex, fragment }),
       resources: {
         uFromTexture: Texture.WHITE.source,
-        boxUniforms: {
+        cubeUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uDirectionX: { value: 1, type: 'f32' },
           uDirectionY: { value: 0, type: 'f32' },
+          uUnzoomAmount: { value: 1, type: 'f32' },
         },
       },
     }),
   updateFilter: (filter, context) => {
     const resources = (filter as any).resources;
-    const uniforms = resources?.boxUniforms?.uniforms;
+    const uniforms = resources?.cubeUniforms?.uniforms;
     if (!uniforms) return;
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
-    const params = normalizeBoxParams(context.params);
+    const params = normalizeCubeParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
 
     let dx = 0;
@@ -198,6 +212,7 @@ export const boxTransitionManifest: TransitionManifest<BoxParams> = {
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uDirectionX = dx;
     uniforms.uDirectionY = dy;
+    uniforms.uUnzoomAmount = params.zoomMode === 'fixed' ? 0 : 1;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

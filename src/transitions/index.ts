@@ -5,7 +5,7 @@ import { circleManifest } from './circle/manifest';
 import { clockManifest } from './clock/manifest';
 import { slideManifest } from './slide/manifest';
 import { wipeManifest } from './wipe/manifest';
-import { boxTransitionManifest } from './box/manifest';
+import { cubeTransitionManifest } from './cube/manifest';
 import { flipTransitionManifest } from './flip/manifest';
 
 export function initTransitions(): void {
@@ -15,7 +15,7 @@ export function initTransitions(): void {
   registerTransition(clockManifest);
   registerTransition(circleManifest);
   registerTransition(wipeManifest);
-  registerTransition(boxTransitionManifest);
+  registerTransition(cubeTransitionManifest);
   registerTransition(flipTransitionManifest);
 }
 
@@ -26,5 +26,5 @@ export * from './dissolve/manifest';
 export * from './fade-to-black/manifest';
 export * from './slide/manifest';
 export * from './wipe/manifest';
-export * from './box/manifest';
+export * from './cube/manifest';
 export * from './flip/manifest';
