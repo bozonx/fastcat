@@ -81,14 +81,24 @@ Current implementation scope:
 
 - settings and provider resolution
 - connect flow token capture via `?token=...`
+- connect flow `scopes` generation based on active Files/STT overrides
 - provider override rules for `Files API` and `STT API`
-- `GET /health` checks for Gran Publicador and resolved manual services
+- `GET /api/v1/external/health` checks for Gran Publicador and resolved manual services
 
 Provider priority rules:
 
 - if Gran Publicador is enabled and has `baseUrl` + token, it is the default source
 - manual `Files API` or `STT API` can override Gran independently
 - if Gran is not configured, manual services work standalone
+
+Requested Gran scopes:
+
+- `vfs:read`
+- `vfs:write`
+- `stt:transcribe`
+
+The editor requests only scopes that still need to be served by Gran Publicador.
+If a manual Files or STT service explicitly overrides Gran, the related scope is omitted from the connect flow.
 
 Notes:
 

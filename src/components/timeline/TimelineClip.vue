@@ -324,9 +324,14 @@ function transitionUsToPx(us: number) {
   return timeUsToPx(us, timelineStore.timelineZoom);
 }
 
-function getTransitionButtonClass(isSelected: boolean, hasProblem: boolean): string {
+function getTransitionButtonClass(
+  isSelected: boolean,
+  hasProblem: boolean,
+  isOverridden?: boolean,
+): string {
   if (isSelected) return 'ring-2 ring-inset ring-amber-300 z-10';
   if (hasProblem) return 'ring-2 ring-inset ring-red-500 z-10';
+  if (isOverridden) return 'ring-2 ring-inset ring-yellow-400 z-10';
   return '';
 }
 
@@ -878,7 +883,7 @@ const isFreePosition = computed(() => {
           <button
             type="button"
             class="w-full h-full overflow-hidden group/trans"
-            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in', Boolean(hasTransitionInProblem(track, item)))"
+            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in', Boolean(hasTransitionInProblem(track, item)), clipItem.transitionIn.isOverridden)"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               canEditClipContent &&
@@ -902,6 +907,10 @@ const isFreePosition = computed(() => {
             <div
               v-if="hasTransitionInProblem(track, item)"
               class="absolute right-0.5 top-0.5 w-2 h-2 rounded-full bg-red-500 border border-white/70 z-30"
+            />
+            <div
+              v-else-if="clipItem.transitionIn.isOverridden"
+              class="absolute right-0.5 top-0.5 w-1.5 h-1.5 rounded-full bg-yellow-400 border border-white/70 z-30"
             />
             <div
               v-if="canEditClipContent && !Boolean(clipItem.locked)"
@@ -929,7 +938,7 @@ const isFreePosition = computed(() => {
           <button
             type="button"
             class="w-full h-full overflow-hidden group/trans"
-            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out', Boolean(hasTransitionOutProblem(track, item)))"
+            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out', Boolean(hasTransitionOutProblem(track, item)), clipItem.transitionOut.isOverridden)"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
               canEditClipContent &&
@@ -953,6 +962,10 @@ const isFreePosition = computed(() => {
             <div
               v-if="hasTransitionOutProblem(track, item)"
               class="absolute right-0.5 top-0.5 w-2 h-2 rounded-full bg-red-500 border border-white/70 z-30"
+            />
+            <div
+              v-else-if="clipItem.transitionOut.isOverridden"
+              class="absolute right-0.5 top-0.5 w-1.5 h-1.5 rounded-full bg-yellow-400 border border-white/70 z-30"
             />
             <div
               v-if="canEditClipContent && !Boolean(clipItem.locked)"

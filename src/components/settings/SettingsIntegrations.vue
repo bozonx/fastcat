@@ -6,6 +6,7 @@ import {
   getGranPublicadorConnectUrl,
   getGranPublicadorHealthUrl,
   resolveExternalIntegrations,
+  resolveGranConnectScopes,
   resolveExternalServiceConfig,
   runExternalHealthCheck,
 } from '~/utils/external-integrations';
@@ -42,7 +43,12 @@ const granConnectUrl = computed(() =>
     baseUrl: integrations.value.granPublicador.baseUrl,
     name: integrations.value.granPublicador.connectName,
     redirectUri: redirectUri.value,
+    scopes: resolveGranConnectScopes({ integrations: integrations.value }),
   }),
+);
+
+const granConnectScopesLabel = computed(() =>
+  resolveGranConnectScopes({ integrations: integrations.value }).join(', '),
 );
 
 const filesSourceLabel = computed(() => {
@@ -203,7 +209,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
             {{
               t(
                 'videoEditor.settings.granIntegrationHint',
-                'Connect via Gran Publicador connect flow or set token manually for the shared external API.',
+                'Connect via Gran Publicador connect flow or set token manually for the external API.',
               )
             }}
           </div>
@@ -223,6 +229,10 @@ async function runServiceHealth(kind: 'files' | 'stt') {
           placeholder="https://your-gran-instance.com"
         />
       </UFormField>
+
+      <div class="text-xs text-ui-text-muted">
+        {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}: {{ granConnectScopesLabel }}
+      </div>
 
       <UFormField :label="t('videoEditor.settings.integrationConnectName', 'Connect app name')">
         <UInput
@@ -279,7 +289,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
             {{
               t(
                 'videoEditor.settings.integrationFilesHint',
-                'Manual file API can work standalone or override Gran Publicador for file access.',
+                'Manual file API can work standalone or override Gran Publicador for file access. Health uses /api/v1/external/health.',
               )
             }}
           </div>
@@ -345,7 +355,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
             {{
               t(
                 'videoEditor.settings.integrationSttHint',
-                'Manual STT API can work standalone or override Gran Publicador for speech recognition.',
+                'Manual STT API can work standalone or override Gran Publicador for speech recognition. Health uses /api/v1/external/health.',
               )
             }}
           </div>

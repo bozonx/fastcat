@@ -56,17 +56,15 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
   
-  // uFromTexture -> FROM clip (тот что уходит, то есть карточка)
-  // uTexture -> TO clip (тот что приходит, то есть фон)
-  
-  // В PixiJS Custom Filters для переходов (v8):
-  // Если мы используем uFromTexture как источник для карточки (как в wipe, slide, cube)
-  // ВАЖНО: uFromTexture мапится на нормализованные координаты 0..1 (uv) без vTexScale
+  // В Pixi V8 Custom Filters для переходов (например, fade, wipe, slide):
+  // Мы применяем фильтр к FROM-клипу (который уходит)
+  // uTexture: FROM-клип (читается по vTextureCoord, так как может быть частью атласа/иметь смещение)
+  // uFromTexture: TO-клип (переданная текстура, читается по нормализованному uv 0..1)
   
   // Читаем фоновый (приходящий) клип
-  vec4 toColor = texture(uTexture, vTextureCoord);
+  vec4 toColor = texture(uFromTexture, uv);
   // Читаем исходный (уходящий) клип
-  vec4 fromColor = texture(uFromTexture, uv);
+  vec4 fromColor = texture(uTexture, vTextureCoord);
   
   if (progress >= 1.0) {
       gl_FragColor = toColor;
@@ -94,13 +92,12 @@ void main(void) {
   
   if (inBounds(pfr)) {
       float shadow = mix(1.0, 0.3, progress);
-      // Берём текстуру из uFromTexture по искажённым нормализованным координатам
-      vec4 cardColor = texture(uFromTexture, pfr);
+      // Берём текстуру из исходного клипа по искаженным координатам!
+      vec4 cardColor = texture(uTexture, vTextureCoord + (pfr - uv) * vTexScale);
       
-      // Premultiplied alpha shadow
-      cardColor.rgb *= shadow;
+      // Смешиваем (cardColor поверх toColor)
+      cardColor.rgb *= shadow; // Premultiplied alpha shadow
       
-      // Смешиваем падающую карточку поверх TO-клипа
       float outAlpha = cardColor.a + toColor.a * (1.0 - cardColor.a);
       if (outAlpha > 0.0) {
           vec3 outColor = (cardColor.rgb * cardColor.a + toColor.rgb * toColor.a * (1.0 - cardColor.a)) / outAlpha;

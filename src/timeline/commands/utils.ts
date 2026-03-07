@@ -242,6 +242,40 @@ export function normalizeGaps(
 
   clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
+  // Auto-adjust transitions based on adjacency before generating gaps
+  for (let i = 0; i < clips.length; i++) {
+    const current = clips[i];
+    if (!current) continue;
+    const prev = i > 0 ? clips[i - 1] : null;
+    const next = i < clips.length - 1 ? clips[i + 1] : null;
+
+    // Check left adjacency
+    let isAdjacentLeft = false;
+    if (prev) {
+      const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
+      if (Math.abs(prevEnd - current.timelineRange.startUs) < 1000) {
+        isAdjacentLeft = true;
+      }
+    }
+
+    // Check right adjacency
+    let isAdjacentRight = false;
+    if (next) {
+      const currentEnd = current.timelineRange.startUs + current.timelineRange.durationUs;
+      if (Math.abs(currentEnd - next.timelineRange.startUs) < 1000) {
+        isAdjacentRight = true;
+      }
+    }
+
+    if (current.transitionIn && !current.transitionIn.isOverridden) {
+      current.transitionIn.mode = isAdjacentLeft ? 'transition' : 'fade';
+    }
+
+    if (current.transitionOut && !current.transitionOut.isOverridden) {
+      current.transitionOut.mode = isAdjacentRight ? 'transition' : 'fade';
+    }
+  }
+
   const result: TimelineTrackItem[] = [];
   let cursorUs = 0;
 

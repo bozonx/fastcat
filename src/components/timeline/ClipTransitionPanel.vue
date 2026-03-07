@@ -53,8 +53,16 @@ const {
 });
 
 const modeOptions = computed(() => [
-  { value: 'transition', label: t('granVideoEditor.timeline.transition.modeTransition') },
-  { value: 'fade', label: t('granVideoEditor.timeline.transition.modeFade') },
+  {
+    value: 'transition',
+    label: t('granVideoEditor.timeline.transition.modeTransitionShort'),
+    title: t('granVideoEditor.timeline.transition.modeTransition'),
+  },
+  {
+    value: 'fade',
+    label: t('granVideoEditor.timeline.transition.modeFadeShort'),
+    title: t('granVideoEditor.timeline.transition.modeFade'),
+  },
 ]);
 
 const curveOptions = computed(() => [

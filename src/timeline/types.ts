@@ -87,6 +87,8 @@ export interface ClipTransition {
   durationUs: number;
   /** 'transition' = use adjacent clip on the same track. 'fade' = fade with lower tracks */
   mode?: 'transition' | 'fade';
+  /** True if the user manually changed the transition mode */
+  isOverridden?: boolean;
   /** Opacity interpolation curve */
   curve?: 'linear' | 'bezier';
   params?: Record<string, unknown>;

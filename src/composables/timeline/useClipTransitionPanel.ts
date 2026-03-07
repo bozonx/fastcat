@@ -53,6 +53,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       options.transition.value?.params,
     ) as Record<string, unknown> | undefined) ?? {},
   );
+  const isOverridden = ref(options.transition.value?.isOverridden ?? false);
 
   let syncGeneration = 0;
 
@@ -63,6 +64,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       durationSec.value = t.durationUs / 1_000_000;
       selectedMode.value = t.mode ?? DEFAULT_TRANSITION_MODE;
       selectedCurve.value = t.curve ?? DEFAULT_TRANSITION_CURVE;
+      isOverridden.value = t.isOverridden ?? false;
       const incomingParams =
         (normalizeTransitionParams(t.type, t.params) as Record<string, unknown> | undefined) ?? {};
       if (!shallowEqualParams(selectedParams.value, incomingParams)) {
@@ -73,6 +75,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       durationSec.value = 0.5;
       selectedMode.value = DEFAULT_TRANSITION_MODE;
       selectedCurve.value = DEFAULT_TRANSITION_CURVE;
+      isOverridden.value = false;
       const incomingParams =
         (normalizeTransitionParams('dissolve') as Record<string, unknown> | undefined) ?? {};
       if (!shallowEqualParams(selectedParams.value, incomingParams)) {
@@ -110,8 +113,12 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     emitUpdate();
   }
 
-  function emitUpdate() {
+  function emitUpdate(source?: 'mode') {
     if (syncGeneration > 0) return;
+
+    if (source === 'mode') {
+      isOverridden.value = true;
+    }
 
     const normalizedParams = normalizeTransitionParams(selectedType.value, selectedParams.value) as
       | Record<string, unknown>
@@ -127,15 +134,16 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
         mode: selectedMode.value,
         curve: selectedCurve.value,
         params: normalizedParams,
+        isOverridden: isOverridden.value,
       },
     });
   }
 
-  const emitDebouncedDuration = useDebounceFn(emitUpdate, options.debounceMs ?? 80);
+  const emitDebouncedDuration = useDebounceFn(() => emitUpdate(), options.debounceMs ?? 80);
 
-  watch(selectedType, emitUpdate);
-  watch(selectedMode, emitUpdate);
-  watch(selectedCurve, emitUpdate);
+  watch(selectedType, () => emitUpdate());
+  watch(selectedMode, () => emitUpdate('mode'));
+  watch(selectedCurve, () => emitUpdate());
   watch(durationSec, () => {
     if (syncGeneration > 0) return;
     emitDebouncedDuration();
