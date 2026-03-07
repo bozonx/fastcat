@@ -1,23 +1,12 @@
 {
   "common": {
-    "accessDenied": "Доступ запрещён",
     "actions": "Действия",
     "active": "Активные",
     "endOfList": "Больше ничего нет",
     "all": "Все",
     "apply": "Применить",
-    "archive": "В архив",
-    "archived": "В архиве",
     "areYouSure": "Вы уверены?",
-    "assistant": "Ассистент",
     "back": "Назад",
-    "back_to_channel": "Назад к каналу",
-    "back_to_channels": "Назад к каналам",
-    "back_to_drafts": "Назад к черновикам",
-    "back_to_project": "Назад к проекту",
-    "back_to_projects": "Назад к проектам",
-    "back_to_publications": "Назад к публикациям",
-    "back_to_users": "Назад к пользователям",
     "cancel": "Отмена",
     "clear": "Очистить",
     "clearSelection": "Очистить",
@@ -142,7 +131,13 @@
     "color": "Цвет",
     "path": "Путь",
     "updated": "Обновлено",
-    "show": "Показать"
+    "show": "Показать",
+    "enabled": "Включено",
+    "items": "Элементы",
+    "itemsSelected": "Выбрано: {count}",
+    "root": "Корень",
+    "tags": "Теги",
+    "text": "Текст"
   },
   "videoEditor": {
     "settings": {
@@ -228,7 +223,33 @@
       "codecUnsupportedTitle": "Кодек не поддерживается",
       "codecUnsupportedDesc": "Ваш браузер не поддерживает аппаратное ускорение для этого кодека. Производительность может быть снижена.",
       "hotkeysCapturing": "Запись...",
-      "hotkeysResetCommand": "Сбросить"
+      "hotkeysResetCommand": "Сбросить",
+      "integrationActiveSource": "Активный источник: {name}",
+      "integrationAutoConnect": "Автоматически подключаться при запуске",
+      "integrationBaseUrl": "Base URL API",
+      "integrationBearerToken": "Токен Bearer",
+      "integrationConnectName": "Имя подключения",
+      "integrationDisconnect": "Отключить",
+      "integrationFilesApi": "API Файлов",
+      "integrationHealthCheck": "Проверить соединение",
+      "integrationHealthOk": "Соединение установлено",
+      "integrationInactive": "Нет активной интеграции",
+      "integrationOverrideGran": "Переопределить настройки Gran",
+      "integrationScopes": "Области доступа (Scopes)",
+      "integrationSourceGran": "Gran Publicador",
+      "integrationSourceManual": "Ручной API",
+      "integrationStatusWaiting": "Ожидание проверки",
+      "integrationSttApi": "API STT",
+      "integrationSttFormatText": "Форматировать текст",
+      "integrationSttIncludeWords": "Включить временные метки слов",
+      "integrationSttModels": "Модели",
+      "integrationSttProvider": "Провайдер",
+      "integrationSttRestorePunctuation": "Восстановить пунктуацию",
+      "mouseActionResizeTrack": "Изменить высоту дорожки",
+      "mouseActionSeekFrame": "Перемотка (1 кадр)",
+      "mouseActionSeekSecond": "Перемотка (1 секунда)",
+      "mouseTrackHeaders": "Заголовки дорожек",
+      "userIntegrations": "Интеграции"
     },
     "projectSettings": {
       "title": "Настройки проекта",
@@ -257,11 +278,11 @@
       "portrait": "Портрет",
       "finalResolution": "Итоговое разрешение:",
       "preset": {
-        "720p": "720p (HD)",
-        "1080p": "1080p (FHD)",
         "2": {
           "7k": "2.7K (QHD)"
         },
+        "720p": "720p (HD)",
+        "1080p": "1080p (FHD)",
         "4k": "4K (UHD)",
         "480p": "480p (Предпросмотр)"
       },
@@ -315,7 +336,9 @@
         "cancelProxyGeneration": "Отменить генерацию прокси",
         "convertFile": "Конвертировать файл",
         "transcribe": "Транскрибировать",
-        "title": "Действия"
+        "title": "Действия",
+        "downloadFiles": "Скачать файлы",
+        "uploadRemote": "Загрузить по ссылке"
       },
       "projectRoot": {
         "title": "Корень проекта",
@@ -347,7 +370,11 @@
       "audio": {
         "channels": "Каналы",
         "format": "Формат",
-        "codec": "Аудио кодек"
+        "codec": "Аудио кодек",
+        "transcriptionCached": "Используется кэшированная транскрипция",
+        "transcriptionLanguage": "Язык",
+        "transcriptionSaved": "Транскрипция сохранена",
+        "transcriptionSubmit": "Транскрибировать"
       },
       "proxy": {
         "regenerate": "Перегенерировать прокси",
@@ -363,6 +390,21 @@
         "videoTracks": "Видео дорожки",
         "audioTracks": "Аудио дорожки",
         "clips": "Клипов"
+      },
+      "convert": {
+        "cancelled": "Конвертация отменена",
+        "imageFormat": "Формат изображения",
+        "imageQuality": "Качество изображения",
+        "outputFile": "Выходной файл",
+        "parameters": "Параметры конвертации",
+        "start": "Конвертировать",
+        "success": "Файл успешно конвертирован",
+        "targetFile": "Целевой файл",
+        "title": "Конвертация файла"
+      },
+      "remote": {
+        "exchange": "Токен авторизации",
+        "exchangeDescription": "Введите токен с платформы Gran для доступа к вашим удаленным файлам."
       }
     },
     "export": {
@@ -411,7 +453,8 @@
       "metadata": "Метаданные",
       "metadataTitle": "Заголовок",
       "metadataAuthor": "Автор",
-      "metadataTags": "Теги"
+      "metadataTags": "Теги",
+      "onlySelectionRange": "Только выделенную область"
     },
     "hotkeys": {
       "general": {
@@ -491,7 +534,8 @@
       "mono": "Моно",
       "audioSettings": "Настройки аудио",
       "channels": "Каналы",
-      "sampleRate": "Частота дискретизации"
+      "sampleRate": "Частота дискретизации",
+      "original": "Оригинальное аудио"
     }
   },
   "granVideoEditor": {
@@ -505,7 +549,9 @@
       "add": "Добавить",
       "empty": "Эффектов нет",
       "trackTitle": "Эффекты дорожки",
-      "clipTitle": "Эффекты клипа"
+      "clipTitle": "Эффекты клипа",
+      "dropHint": "Перетащите эффекты сюда",
+      "masterTitle": "Мастер-эффекты"
     },
     "clip": {
       "actions": "Действия",
@@ -542,7 +588,14 @@
         },
         "flipHorizontal": "Отразить по горизонтали",
         "flipVertical": "Отразить по вертикали"
-      }
+      },
+      "blendMode": "Режим наложения",
+      "fullWaveform": "Полная вейвформа",
+      "halfWaveform": "Половина вейвформы",
+      "hideThumbnails": "Скрыть миниатюры",
+      "hideWaveform": "Скрыть вейвформу",
+      "showThumbnails": "Показать миниатюры",
+      "showWaveform": "Показать вейвформу"
     },
     "welcome": {
       "selectFolder": "Выберите папку рабочей области на вашем компьютере. В этой папке будут храниться все ваши файлы проектов, медиа-прокси и кэш.",
@@ -557,7 +610,8 @@
       "continueWorking": "Продолжить работу",
       "openLast": "Открыть проект",
       "newProject": "Новый проект",
-      "projectNamePlaceholder": "Название проекта"
+      "projectNamePlaceholder": "Название проекта",
+      "mobileView": "Управление проектами не оптимизировано для маленьких экранов. Пожалуйста, используйте настольный браузер."
     },
     "preview": {
       "unsupported": "Формат не поддерживается",
@@ -706,7 +760,27 @@
       "quantize": "Привязать к кадрам",
       "unlinkAudio": "Открепить аудио",
       "adjustmentClipDefaultName": "Корректировка",
-      "backgroundClipDefaultName": "Фон"
+      "backgroundClipDefaultName": "Фон",
+      "convertSelectionToZoneMarker": "Преобразовать в маркер зоны",
+      "convertZoneToSelection": "Преобразовать зону в выделение",
+      "createSelectionArea": "Создать область выделения",
+      "createSelectionFromZone": "Создать выделение из зоны",
+      "groupClips": "Сгруппировать клипы",
+      "multipleSelection": "Множественное выделение",
+      "properties": {
+        "actions": "Действия",
+        "masterVolume": "Общая громкость",
+        "overlapMode": "Режим наложения",
+        "snapToClips": "Привязка к клипам",
+        "snapToFrames": "Привязка к кадрам",
+        "title": "Настройки таймлайна",
+        "zoom": "Масштаб"
+      },
+      "removeFromGroup": "Удалить из группы",
+      "rippleTrimSelection": "Удалить выделение со сдвигом",
+      "trim": "Обрезать",
+      "trimOptions": "Настройки обрезки",
+      "ungroupClips": "Разгруппировать клипы"
     },
     "textClip": {
       "text": "Текст",
@@ -725,25 +799,35 @@
         "title": "Аудио дорожки",
         "volume": "Громкость",
         "balance": "Баланс"
+      },
+      "blendMode": "Режим наложения",
+      "opacity": "Прозрачность",
+      "video": {
+        "title": "Видеодорожки"
       }
     },
     "marker": {
       "actions": "Действия",
       "info": "Инфо маркера",
       "text": "Текст"
+    },
+    "captions": {
+      "generate": "Создать субтитры",
+      "generated": "Субтитры созданы",
+      "maxDurationMs": "Макс. длительность (мс)",
+      "maxWordsPerClip": "Макс. слов в клипе",
+      "modalTitle": "Генерация субтитров",
+      "silenceGapMs": "Пауза тишины (мс)",
+      "splitOnPunctuation": "Разделять по пунктуации"
+    },
+    "selectionRange": {
+      "actions": "Действия",
+      "info": "Выбранная область"
     }
   },
   "navigation": {
-    "admin": "Администрирование",
-    "channels": "Каналы",
-    "dashboard": "Панель управления",
     "granVideoEditor": "Видеоредактор",
-    "my_projects": "Мои проекты",
-    "news": "Новости",
-    "projects": "Проекты",
-    "publications": "Публикации",
-    "settings": "Настройки",
-    "users": "Пользователи"
+    "settings": "Настройки"
   },
   "errors": {
     "notFound": "Не найдено"

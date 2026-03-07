@@ -1,23 +1,12 @@
 {
   "common": {
-    "accessDenied": "Access denied",
     "actions": "Actions",
     "active": "Active",
     "endOfList": "Nothing else",
     "all": "All",
     "apply": "Apply",
-    "archive": "Archive",
-    "archived": "Archived",
     "areYouSure": "Are you sure?",
-    "assistant": "Assistant",
     "back": "Back",
-    "back_to_channel": "Back to Channel",
-    "back_to_channels": "Back to Channels",
-    "back_to_drafts": "Back to Drafts",
-    "back_to_project": "Back to Project",
-    "back_to_projects": "Back to Projects",
-    "back_to_publications": "Back to Publications",
-    "back_to_users": "Back to Users",
     "cancel": "Cancel",
     "clear": "Clear",
     "clearSelection": "Clear",
@@ -142,7 +131,13 @@
     "color": "Color",
     "path": "Path",
     "updated": "Updated",
-    "show": "Show"
+    "show": "Show",
+    "enabled": "Enabled",
+    "items": "Items",
+    "itemsSelected": "Selected: {count}",
+    "root": "Root",
+    "tags": "Tags",
+    "text": "Text"
   },
   "videoEditor": {
     "settings": {
@@ -228,7 +223,33 @@
       "codecUnsupportedTitle": "Codec not supported",
       "codecUnsupportedDesc": "Your browser does not support hardware acceleration for this codec. Performance may be degraded.",
       "hotkeysCapturing": "Listening",
-      "hotkeysResetCommand": "Reset"
+      "hotkeysResetCommand": "Reset",
+      "integrationActiveSource": "Active source: {name}",
+      "integrationAutoConnect": "Automatically connect on start",
+      "integrationBaseUrl": "API Base URL",
+      "integrationBearerToken": "Bearer Token",
+      "integrationConnectName": "Connection name",
+      "integrationDisconnect": "Disconnect",
+      "integrationFilesApi": "Files API",
+      "integrationHealthCheck": "Check connection",
+      "integrationHealthOk": "Connection OK",
+      "integrationInactive": "No active integration",
+      "integrationOverrideGran": "Override Gran settings",
+      "integrationScopes": "Scopes",
+      "integrationSourceGran": "Gran Publicador",
+      "integrationSourceManual": "Manual API",
+      "integrationStatusWaiting": "Waiting for check",
+      "integrationSttApi": "STT API",
+      "integrationSttFormatText": "Format text",
+      "integrationSttIncludeWords": "Include word timestamps",
+      "integrationSttModels": "Models",
+      "integrationSttProvider": "Provider",
+      "integrationSttRestorePunctuation": "Restore punctuation",
+      "mouseActionResizeTrack": "Resize track height",
+      "mouseActionSeekFrame": "Seek (1 frame)",
+      "mouseActionSeekSecond": "Seek (1 second)",
+      "mouseTrackHeaders": "Track Headers",
+      "userIntegrations": "Integrations"
     },
     "projectSettings": {
       "title": "Project Settings",
@@ -257,11 +278,11 @@
       "portrait": "Portrait",
       "finalResolution": "Final Resolution:",
       "preset": {
-        "720p": "720p (HD)",
-        "1080p": "1080p (FHD)",
         "2": {
           "7k": "2.7K (QHD)"
         },
+        "720p": "720p (HD)",
+        "1080p": "1080p (FHD)",
         "4k": "4K (UHD)",
         "480p": "480p (Preview)"
       },
@@ -311,7 +332,9 @@
         "cancelProxyGeneration": "Cancel proxy generation",
         "convertFile": "Convert file",
         "transcribe": "Transcribe",
-        "title": "Actions"
+        "title": "Actions",
+        "downloadFiles": "Download files",
+        "uploadRemote": "Upload from URL"
       },
       "projectRoot": {
         "title": "Project root",
@@ -343,7 +366,11 @@
       "audio": {
         "channels": "Channels",
         "format": "Format",
-        "codec": "Audio codec"
+        "codec": "Audio codec",
+        "transcriptionCached": "Using cached transcription",
+        "transcriptionLanguage": "Language",
+        "transcriptionSaved": "Transcription saved",
+        "transcriptionSubmit": "Transcribe"
       },
       "proxy": {
         "regenerate": "Regenerate proxy",
@@ -359,6 +386,21 @@
         "videoTracks": "Video tracks",
         "audioTracks": "Audio tracks",
         "clips": "Clips"
+      },
+      "convert": {
+        "cancelled": "Conversion cancelled",
+        "imageFormat": "Image format",
+        "imageQuality": "Image quality",
+        "outputFile": "Output file",
+        "parameters": "Conversion parameters",
+        "start": "Convert",
+        "success": "File converted successfully",
+        "targetFile": "Target file",
+        "title": "Convert file"
+      },
+      "remote": {
+        "exchange": "Authentication token",
+        "exchangeDescription": "Enter the token from the Gran platform to access your remote files."
       }
     },
     "export": {
@@ -407,7 +449,8 @@
       "metadata": "Metadata",
       "metadataTitle": "Title",
       "metadataAuthor": "Author",
-      "metadataTags": "Tags"
+      "metadataTags": "Tags",
+      "onlySelectionRange": "Only selection range"
     },
     "hotkeys": {
       "general": {
@@ -487,7 +530,8 @@
       "mono": "Mono",
       "audioSettings": "Audio settings",
       "channels": "Channels",
-      "sampleRate": "Sample Rate"
+      "sampleRate": "Sample Rate",
+      "original": "Original Audio"
     }
   },
   "granVideoEditor": {
@@ -501,7 +545,9 @@
       "add": "Add",
       "empty": "No effects",
       "trackTitle": "Track effects",
-      "clipTitle": "Clip effects"
+      "clipTitle": "Clip effects",
+      "dropHint": "Drop effects here",
+      "masterTitle": "Master effects"
     },
     "clip": {
       "actions": "Actions",
@@ -538,7 +584,14 @@
         },
         "flipHorizontal": "Flip Horizontal",
         "flipVertical": "Flip Vertical"
-      }
+      },
+      "blendMode": "Blend mode",
+      "fullWaveform": "Full waveform",
+      "halfWaveform": "Half waveform",
+      "hideThumbnails": "Hide thumbnails",
+      "hideWaveform": "Hide waveform",
+      "showThumbnails": "Show thumbnails",
+      "showWaveform": "Show waveform"
     },
     "welcome": {
       "selectFolder": "Select a workspace folder on your computer. This folder will store all your project files, media proxies, and cache.",
@@ -553,7 +606,8 @@
       "continueWorking": "Continue Working",
       "openLast": "Open Project",
       "newProject": "New Project",
-      "projectNamePlaceholder": "Project Name"
+      "projectNamePlaceholder": "Project Name",
+      "mobileView": "Project management is not best experienced on small screens. Please use a desktop browser."
     },
     "preview": {
       "unsupported": "Unsupported file format",
@@ -704,7 +758,27 @@
       "quantize": "Quantize to frames",
       "unlinkAudio": "Unlink audio",
       "adjustmentClipDefaultName": "Adjustment",
-      "backgroundClipDefaultName": "Background"
+      "backgroundClipDefaultName": "Background",
+      "convertSelectionToZoneMarker": "Convert to zone marker",
+      "convertZoneToSelection": "Convert zone to selection",
+      "createSelectionArea": "Create selection area",
+      "createSelectionFromZone": "Create selection from zone",
+      "groupClips": "Group clips",
+      "multipleSelection": "Multiple selection",
+      "properties": {
+        "actions": "Actions",
+        "masterVolume": "Master Volume",
+        "overlapMode": "Overlap Mode",
+        "snapToClips": "Snap to clips",
+        "snapToFrames": "Snap to frames",
+        "title": "Timeline settings",
+        "zoom": "Zoom"
+      },
+      "removeFromGroup": "Remove from group",
+      "rippleTrimSelection": "Ripple trim selection",
+      "trim": "Trim",
+      "trimOptions": "Trim options",
+      "ungroupClips": "Ungroup clips"
     },
     "textClip": {
       "text": "Text",
@@ -723,25 +797,35 @@
         "title": "Track audio",
         "volume": "Volume",
         "balance": "Balance"
+      },
+      "blendMode": "Blend mode",
+      "opacity": "Opacity",
+      "video": {
+        "title": "Video tracks"
       }
     },
     "marker": {
       "actions": "Actions",
       "info": "Marker Info",
       "text": "Text"
+    },
+    "captions": {
+      "generate": "Generate captions",
+      "generated": "Captions generated",
+      "maxDurationMs": "Max duration (ms)",
+      "maxWordsPerClip": "Max words per clip",
+      "modalTitle": "Generate captions",
+      "silenceGapMs": "Silence gap (ms)",
+      "splitOnPunctuation": "Split on punctuation"
+    },
+    "selectionRange": {
+      "actions": "Actions",
+      "info": "Selected area"
     }
   },
   "navigation": {
-    "admin": "Administration",
-    "channels": "Channels",
-    "dashboard": "Dashboard",
     "granVideoEditor": "Video Editor",
-    "my_projects": "My Projects",
-    "news": "News",
-    "projects": "Projects",
-    "publications": "Publications",
-    "settings": "Settings",
-    "users": "Users"
+    "settings": "Settings"
   },
   "errors": {
     "notFound": "Not found"

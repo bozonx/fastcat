@@ -87,41 +87,45 @@ void main(void) {
   vec2 pMoved = vec2(-1.0);
   
   float d = 1.5;
+  // Когда карточка падает на зрителя (forward, uDepthDirection < 0.0), 
+  // падающий край сильно приближается и увеличивается (выходит за экран).
+  // Чтобы этого избежать, мы визуально отодвигаем всю карточку вглубь сцены.
+  float zBase = (uDepthDirection < 0.0) ? (s * 0.8) : 0.0;
   float Z = 0.0;
   
-  if (uDirection < 0.5) { // down: залипает верхний край (y=0)
+  if (uDirection < 0.5) { // up: залипает верхний край (y=0)
     p = uv - vec2(0.5, 0.0);
     denom = d * c - uDepthDirection * p.y * s;
     if (denom > 0.0) {
-        py = (p.y * d) / denom;
-        Z = uDepthDirection * py * s;
+        py = p.y * (d + zBase) / denom;
+        Z = zBase + uDepthDirection * py * s;
         px = p.x * (d + Z) / d;
         pMoved = vec2(px, py) + vec2(0.5, 0.0);
     }
-  } else if (uDirection < 1.5) { // up: залипает нижний край (y=1)
+  } else if (uDirection < 1.5) { // down: залипает нижний край (y=1)
     p = uv - vec2(0.5, 1.0);
     denom = d * c + uDepthDirection * p.y * s;
     if (denom > 0.0) {
-        py = (p.y * d) / denom;
-        Z = uDepthDirection * (-py) * s;
+        py = p.y * (d + zBase) / denom;
+        Z = zBase + uDepthDirection * (-py) * s;
         px = p.x * (d + Z) / d;
         pMoved = vec2(px, py) + vec2(0.5, 1.0);
     }
-  } else if (uDirection < 2.5) { // right: залипает левый край (x=0)
+  } else if (uDirection < 2.5) { // left: залипает левый край (x=0)
     p = uv - vec2(0.0, 0.5);
     denom = d * c - uDepthDirection * p.x * s;
     if (denom > 0.0) {
-        px = (p.x * d) / denom;
-        Z = uDepthDirection * px * s;
+        px = p.x * (d + zBase) / denom;
+        Z = zBase + uDepthDirection * px * s;
         py = p.y * (d + Z) / d;
         pMoved = vec2(px, py) + vec2(0.0, 0.5);
     }
-  } else { // left: залипает правый край (x=1)
+  } else { // right: залипает правый край (x=1)
     p = uv - vec2(1.0, 0.5);
     denom = d * c + uDepthDirection * p.x * s;
     if (denom > 0.0) {
-        px = (p.x * d) / denom;
-        Z = uDepthDirection * (-px) * s;
+        px = p.x * (d + zBase) / denom;
+        Z = zBase + uDepthDirection * (-px) * s;
         py = p.y * (d + Z) / d;
         pMoved = vec2(px, py) + vec2(1.0, 0.5);
     }
