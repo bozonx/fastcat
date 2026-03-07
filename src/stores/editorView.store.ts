@@ -41,6 +41,47 @@ function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
+function sanitizePanel(panel: unknown): DynamicPanel | null {
+  if (!panel || typeof panel !== 'object') return null;
+
+  const candidate = panel as Partial<DynamicPanel>;
+
+  if (typeof candidate.id !== 'string' || !candidate.id) return null;
+  if (typeof candidate.type !== 'string' || !candidate.type) return null;
+
+  return candidate as DynamicPanel;
+}
+
+function sanitizePanelColumns(columns: unknown, fallback: PanelColumn[]): PanelColumn[] {
+  if (!Array.isArray(columns) || columns.length === 0) {
+    return fallback.map((col) => ({ id: col.id, panels: [...col.panels] }));
+  }
+
+  const sanitized = columns
+    .map((column) => {
+      if (!column || typeof column !== 'object') return null;
+
+      const candidate = column as Partial<PanelColumn> & { panels?: unknown[] };
+      const panels = Array.isArray(candidate.panels)
+        ? candidate.panels
+            .map((panel) => sanitizePanel(panel))
+            .filter((panel): panel is DynamicPanel => panel !== null)
+        : [];
+
+      if (panels.length === 0) return null;
+
+      return {
+        id: typeof candidate.id === 'string' && candidate.id ? candidate.id : `col-${generateId()}`,
+        panels,
+      } satisfies PanelColumn;
+    })
+    .filter((column): column is PanelColumn => column !== null);
+
+  if (sanitized.length > 0) return sanitized;
+
+  return fallback.map((col) => ({ id: col.id, panels: [...col.panels] }));
+}
+
 export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   const currentView = ref<EditorView>('cut');
 
@@ -65,18 +106,22 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
         // Migration from 1D to 2D columns
         if (!Array.isArray(stored[0]) && !stored[0].panels) {
           // 1D array of panels
-          cutPanels.value = stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] }));
+          cutPanels.value = sanitizePanelColumns(
+            stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] })),
+            defaultCutPanels,
+          );
         } else if (Array.isArray(stored[0])) {
           // 2D array without column IDs
-          cutPanels.value = stored.map((col) => ({ id: `col-${generateId()}`, panels: col }));
+          cutPanels.value = sanitizePanelColumns(
+            stored.map((col) => ({ id: `col-${generateId()}`, panels: col })),
+            defaultCutPanels,
+          );
         } else {
           // Already PanelColumn format
-          cutPanels.value = stored;
+          cutPanels.value = sanitizePanelColumns(stored, defaultCutPanels);
         }
       } else {
-        cutPanels.value = [
-          ...defaultCutPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
-        ];
+        cutPanels.value = sanitizePanelColumns(defaultCutPanels, defaultCutPanels);
       }
     },
     { immediate: true },
@@ -86,7 +131,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   watch(
     cutPanels,
     (panels) => {
-      writeLocalStorageJson(cutPanelsKey.value, panels);
+      writeLocalStorageJson(cutPanelsKey.value, sanitizePanelColumns(panels, defaultCutPanels));
     },
     { deep: true },
   );
@@ -95,6 +140,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     if (!targetPanelId || !position) {
       const middleIndex = Math.floor(cutPanels.value.length / 2);
       cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+      cutPanels.value = sanitizePanelColumns(cutPanels.value, defaultCutPanels);
       return;
     }
 
@@ -125,7 +171,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       }
     }
 
-    cutPanels.value = cols;
+    cutPanels.value = sanitizePanelColumns(cols, defaultCutPanels);
   }
 
   function addTextPanel(
@@ -170,7 +216,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
         newPanels.push({ id: col.id, panels: newColPanels });
       }
     }
-    cutPanels.value = newPanels;
+    cutPanels.value = sanitizePanelColumns(newPanels, defaultCutPanels);
   }
 
   function movePanel(panelId: string, targetPanelId: string, position: PanelPosition) {
@@ -234,7 +280,10 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       cols[adjustedToColIdx]!.panels.splice(adjustedToRowIdx + 1, 0, movedPanel);
     }
 
-    cutPanels.value = cols.filter((col) => col.panels.length > 0);
+    cutPanels.value = sanitizePanelColumns(
+      cols.filter((col) => col.panels.length > 0),
+      defaultCutPanels,
+    );
   }
 
   const timelineHeightKey = computed(() =>
