@@ -256,10 +256,14 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const params = normalizeFallingCardParams(context.params);
 
-    let dirFloat = 0;
-    if (params.direction === 'up') dirFloat = 1;
-    else if (params.direction === 'right') dirFloat = 2;
-    else if (params.direction === 'left') dirFloat = 3;
+    // down = 1 (anchor bottom, top falls down)
+    // up = 0 (anchor top, bottom falls up)
+    // right = 3 (anchor right, left falls right)
+    // left = 2 (anchor left, right falls left)
+    let dirFloat = 1;
+    if (params.direction === 'up') dirFloat = 0;
+    else if (params.direction === 'left') dirFloat = 2;
+    else if (params.direction === 'right') dirFloat = 3;
 
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
