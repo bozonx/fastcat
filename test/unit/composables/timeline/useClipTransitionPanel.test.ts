@@ -14,7 +14,7 @@ describe('useClipTransitionPanel', () => {
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
         durationUs: 1_000_000,
-        mode: 'blend',
+        mode: 'fade',
         curve: 'linear',
       }),
       maxDuration: ref(3),
@@ -68,7 +68,7 @@ describe('useClipTransitionPanel', () => {
       transition: ref<ClipTransition | undefined>({
         type: 'wipe',
         durationUs: 1_000_000,
-        mode: 'blend_previous',
+        mode: 'transition',
         curve: 'linear',
         params: {
           direction: 'up',
@@ -87,7 +87,7 @@ describe('useClipTransitionPanel', () => {
     expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject({
       transition: {
         type: 'wipe',
-        mode: 'blend_previous',
+        mode: 'transition',
         params: {
           direction: 'up',
           gap: 0.05,

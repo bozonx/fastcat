@@ -39,7 +39,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionOut).toEqual({
       type: 'dissolve',
       durationUs: 500_000,
-      mode: 'blend_previous',
+      mode: 'transition',
       curve: 'linear',
       params: {},
     });
@@ -60,7 +60,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionIn).toEqual({
       type: 'dissolve',
       durationUs: 300_000,
-      mode: 'blend_previous',
+      mode: 'transition',
       curve: 'linear',
       params: {},
     });
@@ -118,7 +118,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(next).toBe(doc);
   });
 
-  it('auto-overlaps adjacent clips when setting transitionOut on a cut', () => {
+  it('keeps clip geometry unchanged and does not mirror to adjacent clip when setting transitionOut on a cut', () => {
     const left = {
       ...baseClip,
       id: 'c1',
@@ -149,27 +149,20 @@ describe('timeline/commands update_clip_transition', () => {
     const nextLeft = items.find((it) => it.id === 'c1');
     const nextRight = items.find((it) => it.id === 'c2');
 
-    // Overlap is limited by left clip tail handle. We extend the left clip into the right clip by 2s.
-    expect(nextLeft.timelineRange.durationUs).toBe(7_000_000);
+    expect(nextLeft.timelineRange.durationUs).toBe(5_000_000);
     expect(nextRight.timelineRange.startUs).toBe(5_000_000);
     expect(nextRight.timelineRange.durationUs).toBe(5_000_000);
     expect(nextLeft.transitionOut).toEqual({
       type: 'dissolve',
       durationUs: 2_000_000,
-      mode: 'blend_previous',
+      mode: 'transition',
       curve: 'linear',
       params: {},
     });
-    expect(nextRight.transitionIn).toEqual({
-      type: 'dissolve',
-      durationUs: 2_000_000,
-      mode: 'blend_previous',
-      curve: 'linear',
-      params: {},
-    });
+    expect(nextRight.transitionIn).toBeUndefined();
   });
 
-  it('does not collapse an existing overlap when updating transition duration', () => {
+  it('updates only the target clip when changing transition duration on a cut', () => {
     const left = {
       ...baseClip,
       id: 'c1',
@@ -202,13 +195,12 @@ describe('timeline/commands update_clip_transition', () => {
     const nextLeft = items.find((it) => it.id === 'c1');
     const nextRight = items.find((it) => it.id === 'c2');
 
-    expect(nextLeft.timelineRange.durationUs).toBeGreaterThan(0);
-    expect(nextLeft.transitionOut.durationUs).toBeGreaterThan(0);
-    expect(nextRight.transitionIn.durationUs).toBeGreaterThan(0);
-    expect(nextLeft.transitionOut.durationUs).toBe(nextRight.transitionIn.durationUs);
+    expect(nextLeft.timelineRange.durationUs).toBe(7_000_000);
+    expect(nextLeft.transitionOut.durationUs).toBe(2_100_000);
+    expect(nextRight.transitionIn?.durationUs).toBe(2_000_000);
   });
 
-  it('reduces opposite transition when adding a new transition to fit exactly within clip', () => {
+  it('keeps opposite transition unchanged when adding a new transition on the same clip', () => {
     const clip = {
       ...baseClip,
       transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
@@ -224,12 +216,10 @@ describe('timeline/commands update_clip_transition', () => {
 
     const nextClip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(nextClip.transitionIn.durationUs).toBe(4_000_000);
-    expect(nextClip.transitionOut.durationUs).toBe(1_000_000);
+    expect(nextClip.transitionOut.durationUs).toBe(3_000_000);
   });
 
-  it('grows an existing crossfade overlap when resize-dragging transition (simulates mousemove)', () => {
-    // State after initial 2s crossfade: left extended by 2s, source tail partially consumed.
-    // left: sourceDuration=10s, sourceRange={0..7s}, timelineRange={0..7s}, overlap=2s with right at 5s
+  it('keeps existing overlap geometry unchanged when editing the target transition only', () => {
     const left = {
       ...baseClip,
       id: 'c1',
@@ -263,13 +253,12 @@ describe('timeline/commands update_clip_transition', () => {
     const nextLeft = items.find((it) => it.id === 'c1');
     const nextRight = items.find((it) => it.id === 'c2');
 
-    // Overlap should grow from 2s to 3s
     const overlapUs =
       nextLeft.timelineRange.startUs +
       nextLeft.timelineRange.durationUs -
       nextRight.timelineRange.startUs;
-    expect(overlapUs).toBe(3_000_000);
-    expect(nextLeft.transitionOut.durationUs).toBe(3_000_000);
+    expect(overlapUs).toBe(2_000_000);
+    expect(nextLeft.transitionOut.durationUs).toBe(2_000_000);
     expect(nextRight.transitionIn.durationUs).toBe(3_000_000);
   });
 
@@ -295,7 +284,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionOut).toEqual({
       type: 'wipe',
       durationUs: 500_000,
-      mode: 'blend_previous',
+      mode: 'transition',
       curve: 'linear',
       params: {
         direction: 'up',
@@ -326,7 +315,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionIn).toEqual({
       type: 'circle',
       durationUs: 300_000,
-      mode: 'blend_previous',
+      mode: 'transition',
       curve: 'linear',
       params: {
         blur: 0.2,

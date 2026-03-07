@@ -53,9 +53,8 @@ const {
 });
 
 const modeOptions = computed(() => [
-  { value: 'blend_previous', label: t('granVideoEditor.timeline.transition.modeBlendPrevious') },
-  { value: 'blend', label: t('granVideoEditor.timeline.transition.modeBlend') },
-  { value: 'composite', label: t('granVideoEditor.timeline.transition.modeComposite') },
+  { value: 'transition', label: t('granVideoEditor.timeline.transition.modeTransition') },
+  { value: 'fade', label: t('granVideoEditor.timeline.transition.modeFade') },
 ]);
 
 const curveOptions = computed(() => [

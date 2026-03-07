@@ -7,6 +7,7 @@ import {
   getTransitionManifest,
   normalizeTransitionParams,
 } from '~/transitions';
+import type { TransitionMode } from '~/transitions/core/registry';
 
 export interface ClipTransitionUpdatePayload {
   trackId: string;
@@ -40,7 +41,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     options.transition.value ? options.transition.value.durationUs / 1_000_000 : 0.5,
   );
   const selectedType = ref(options.transition.value?.type ?? 'dissolve');
-  const selectedMode = ref<'blend' | 'blend_previous' | 'composite'>(
+  const selectedMode = ref<TransitionMode>(
     options.transition.value?.mode ?? DEFAULT_TRANSITION_MODE,
   );
   const selectedCurve = ref<'linear' | 'bezier'>(

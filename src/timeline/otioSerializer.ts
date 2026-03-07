@@ -10,6 +10,7 @@ import type {
   TimelineTrackItem,
   TrackKind,
 } from './types';
+import { normalizeTransitionMode } from '~/transitions';
 
 interface OtioRationalTime {
   OTIO_SCHEMA: 'RationalTime.1';
@@ -373,12 +374,7 @@ function parseClipItem(input: {
         ? {
             type: granMeta.transitionIn.type,
             durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)),
-            mode:
-              granMeta.transitionIn.mode === 'blend' ||
-              granMeta.transitionIn.mode === 'blend_previous' ||
-              granMeta.transitionIn.mode === 'composite'
-                ? granMeta.transitionIn.mode
-                : undefined,
+            mode: normalizeTransitionMode(granMeta.transitionIn.mode),
             curve:
               granMeta.transitionIn.curve === 'bezier' || granMeta.transitionIn.curve === 'linear'
                 ? granMeta.transitionIn.curve
@@ -396,12 +392,7 @@ function parseClipItem(input: {
         ? {
             type: granMeta.transitionOut.type,
             durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)),
-            mode:
-              granMeta.transitionOut.mode === 'blend' ||
-              granMeta.transitionOut.mode === 'blend_previous' ||
-              granMeta.transitionOut.mode === 'composite'
-                ? granMeta.transitionOut.mode
-                : undefined,
+            mode: normalizeTransitionMode(granMeta.transitionOut.mode),
             curve:
               granMeta.transitionOut.curve === 'bezier' || granMeta.transitionOut.curve === 'linear'
                 ? granMeta.transitionOut.curve

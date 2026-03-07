@@ -135,6 +135,37 @@ export function useMonitorTimeline() {
         }
       }
     }
+
+    const clipsByTrack = new Map<string, WorkerTimelineClip[]>();
+    for (const clip of clips) {
+      const trackId = clip.trackId;
+      if (!trackId) continue;
+      const list = clipsByTrack.get(trackId) ?? [];
+      list.push(clip);
+      clipsByTrack.set(trackId, list);
+    }
+
+    for (const trackClips of clipsByTrack.values()) {
+      trackClips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+      for (let index = 0; index < trackClips.length - 1; index += 1) {
+        const current = trackClips[index];
+        const next = trackClips[index + 1];
+        if (!current || !next) continue;
+
+        const transitionOut = current.transitionOut;
+        if (!transitionOut || (transitionOut.mode ?? 'transition') !== 'transition') continue;
+
+        const currentEndUs = current.timelineRange.startUs + current.timelineRange.durationUs;
+        const gapUs = next.timelineRange.startUs - currentEndUs;
+        if (gapUs > 1_000) continue;
+
+        if (!next.transitionIn) {
+          next.transitionIn = JSON.parse(JSON.stringify(transitionOut));
+        }
+      }
+    }
+
     return clips;
   });
 

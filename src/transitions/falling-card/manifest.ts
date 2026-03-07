@@ -38,90 +38,59 @@ precision highp float;
 
 in vec2 vTextureCoord;
 in vec2 vNormalizedCoord;
+in vec2 vTexScale;
 
-uniform sampler2D uSampler;
+uniform sampler2D uSampler; // This is the FROM texture in the new transition model
+uniform sampler2D uTexture; // Custom uniform for TO texture, though typically we just use uSampler and we supply uFromTexture
 uniform sampler2D uFromTexture;
-uniform vec4 uInputSize;
 uniform float uProgress;
-uniform int uDirection; // 0: down, 1: up, 2: right, 3: left
+uniform float uDirection;
 
-vec2 inverseProject(vec2 p, int dir, float progress, float aspect, float depth) {
-    float theta = progress * 1.5707963; // up to 90 degrees
-    float cos_t = cos(theta);
-    float sin_t = sin(theta);
-    
-    float px, py, denom, local_y, local_x, orig_x, orig_y;
-    
-    if (dir == 0) { // down, pivot y=1
-        px = (p.x - 0.5) * aspect;
-        py = p.y - 1.0;
-        denom = cos_t - py * sin_t / depth;
-        if (denom <= 0.0) return vec2(-1.0);
-        local_y = py / denom;
-        orig_y = local_y + 1.0;
-        local_x = px * (1.0 + local_y * sin_t / depth);
-        orig_x = local_x / aspect + 0.5;
-        return vec2(orig_x, orig_y);
-    } 
-    else if (dir == 1) { // up, pivot y=0
-        px = (p.x - 0.5) * aspect;
-        py = p.y - 0.0;
-        denom = cos_t - py * sin_t / depth;
-        if (denom <= 0.0) return vec2(-1.0);
-        local_y = py / denom;
-        orig_y = local_y + 0.0;
-        local_x = px * (1.0 + local_y * sin_t / depth);
-        orig_x = local_x / aspect + 0.5;
-        return vec2(orig_x, orig_y);
-    }
-    else if (dir == 2) { // right, pivot x=1
-        px = p.y - 0.5; 
-        py = (p.x - 1.0) * aspect; 
-        denom = cos_t - py * sin_t / depth;
-        if (denom <= 0.0) return vec2(-1.0);
-        local_y = py / denom; 
-        orig_y = local_y / aspect + 1.0; 
-        local_x = px * (1.0 + local_y * sin_t / depth); 
-        orig_x = local_x + 0.5; 
-        return vec2(orig_y, orig_x); 
-    }
-    else if (dir == 3) { // left, pivot x=0
-        px = p.y - 0.5; 
-        py = (p.x - 0.0) * aspect; 
-        denom = cos_t - py * sin_t / depth;
-        if (denom <= 0.0) return vec2(-1.0);
-        local_y = py / denom; 
-        orig_y = local_y / aspect + 0.0; 
-        local_x = px * (1.0 + local_y * sin_t / depth); 
-        orig_x = local_x + 0.5; 
-        return vec2(orig_y, orig_x); 
-    }
-    return vec2(-1.0);
+const float depth = 3.0;
+const float perspective = 0.2;
+
+bool inBounds(vec2 p) {
+  return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
 }
 
-void main() {
+void main(void) {
+  float progress = clamp(uProgress, 0.0, 1.0);
   vec2 p = vNormalizedCoord;
-  float aspect = uInputSize.x / uInputSize.y;
-  float depth = 2.0; // perspective depth
   
-  vec4 bgColor = texture(uSampler, vTextureCoord);
+  // In the current Pixi filter setup for transitions:
+  // uSampler is the filter target (the FROM clip)
+  // uFromTexture is the next clip (the TO clip) passed via context.fromTexture
   
-  if (uProgress >= 1.0) {
+  vec4 bgColor = texture(uFromTexture, p);
+  
+  if (progress >= 1.0) {
       gl_FragColor = bgColor;
       return;
   }
   
-  vec2 pfr = inverseProject(p, uDirection, uProgress, aspect, depth);
+  vec2 pfr = vec2(-1.0);
+  float sizeFr = mix(1.0, depth, progress);
+  float perspFr = perspective * progress;
   
-  if (pfr.x >= 0.0 && pfr.x <= 1.0 && pfr.y >= 0.0 && pfr.y <= 1.0) {
-      // It's inside the falling card
-      // Add some shading to make it look 3D
-      float shadow = mix(1.0, 0.3, uProgress);
-      vec4 cardColor = texture(uFromTexture, pfr);
+  if (uDirection < 0.5) {
+    // down (pivot bottom, y=1)
+    pfr = (p + vec2(-0.5, -1.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * (1.0 - p.y)), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 1.0);
+  } else if (uDirection < 1.5) {
+    // up (pivot top, y=0)
+    pfr = (p + vec2(-0.5, 0.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * p.y), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 0.0);
+  } else if (uDirection < 2.5) {
+    // right (pivot right, x=1)
+    pfr = (p + vec2(-1.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * (1.0 - p.x))) + vec2(1.0, 0.5);
+  } else {
+    // left (pivot left, x=0)
+    pfr = (p + vec2(0.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * p.x)) + vec2(0.0, 0.5);
+  }
+  
+  if (inBounds(pfr)) {
+      float shadow = mix(1.0, 0.3, progress);
+      vec4 cardColor = texture(uSampler, vTextureCoord + (pfr - p) * vTexScale);
       cardColor.rgb *= shadow;
       
-      // We assume the background (to texture) is underneath
-      // Standard alpha blending
       gl_FragColor = vec4(mix(bgColor.rgb, cardColor.rgb, cardColor.a), max(bgColor.a, cardColor.a));
   } else {
       gl_FragColor = bgColor;
@@ -177,7 +146,7 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
         uFromTexture: Texture.WHITE.source,
         fallingCardUniforms: {
           uProgress: { value: 0, type: 'f32' },
-          uDirection: { value: 0, type: 'i32' },
+          uDirection: { value: 0, type: 'f32' },
         },
       },
     }),
@@ -189,14 +158,14 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const params = normalizeFallingCardParams(context.params);
     
-    let dirInt = 0;
-    if (params.direction === 'up') dirInt = 1;
-    else if (params.direction === 'right') dirInt = 2;
-    else if (params.direction === 'left') dirInt = 3;
+    let dirFloat = 0;
+    if (params.direction === 'up') dirFloat = 1;
+    else if (params.direction === 'right') dirFloat = 2;
+    else if (params.direction === 'left') dirFloat = 3;
 
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uDirection = dirInt;
+    uniforms.uDirection = dirFloat;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

@@ -377,7 +377,22 @@ function isCrossfadeTransitionIn(track: TimelineTrack, item: TimelineClipItem): 
 
   const transIn = item.transitionIn;
   if (!transIn) return false;
-  return (transIn.mode ?? DEFAULT_TRANSITION_MODE) === 'blend_previous';
+  return (transIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transition';
+}
+
+function getClipHeadHandleUs(clip: TimelineClipItem): number {
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.round(clip.sourceRange?.startUs ?? 0));
+}
+
+function getClipTailHandleUs(clip: TimelineClipItem): number {
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
+  const sourceEndUs = Math.max(
+    0,
+    Math.round(Number(clip.sourceRange?.startUs ?? 0) + Number(clip.sourceRange?.durationUs ?? 0)),
+  );
+  return Math.max(0, sourceDurationUs - sourceEndUs);
 }
 
 function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): string | null {
@@ -387,12 +402,21 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
   if (!tr) return null;
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-  if (mode === 'blend_previous') {
+  const needS = tr.durationUs / 1e6;
+  const clipDurS = clip.timelineRange.durationUs / 1e6;
+  if (clipDurS < needS) {
+    return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+      need: needS.toFixed(2),
+      have: clipDurS.toFixed(2),
+    });
+  }
+
+  if (mode === 'transition') {
     const prev = getPrevClipForItem(track, item);
     if (!prev)
       return t(
         'granVideoEditor.timeline.transition.errorNoPreviousClip',
-        'No previous clip to blend with',
+        'No previous clip found for transition',
       );
     const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
     const gapUs = clip.timelineRange.startUs - prevEndUs;
@@ -401,23 +425,29 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
     const prevDurS = prev.timelineRange.durationUs / 1e6;
-    const needS = tr.durationUs / 1e6;
     if (prevDurS < needS)
       return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
-        needSeconds: needS.toFixed(2),
-        haveSeconds: prevDurS.toFixed(2),
+        need: needS.toFixed(2),
+        have: prevDurS.toFixed(2),
       });
-    if (prev.clipType === 'media') {
-      const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
-      const prevTimelineEnd = prev.timelineRange.durationUs;
-      const handleUs = prevSourceEnd - prevTimelineEnd;
-      if (handleUs < tr.durationUs - 1_000)
-        return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
-          needSeconds: needS.toFixed(2),
-          haveSeconds: Math.max(0, handleUs / 1e6).toFixed(2),
-        });
+    const prevTailHandleUs = getClipTailHandleUs(prev);
+    if (prevTailHandleUs < tr.durationUs - 1_000) {
+      return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: Math.max(0, prevTailHandleUs / 1e6).toFixed(2),
+      });
     }
     return null;
+  }
+
+  if (mode === 'fade') {
+    const clipHeadHandleUs = getClipHeadHandleUs(clip);
+    if (clipHeadHandleUs < tr.durationUs - 1_000) {
+      return t('granVideoEditor.timeline.transition.errorClipHeadHandleTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: Math.max(0, clipHeadHandleUs / 1e6).toFixed(2),
+      });
+    }
   }
 
   return null;
@@ -430,22 +460,39 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   if (!tr) return null;
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-  if (mode === 'blend_previous') {
+  const clipDurS = clip.timelineRange.durationUs / 1e6;
+  const needS = tr.durationUs / 1e6;
+  if (clipDurS < needS) {
+    return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+      need: needS.toFixed(2),
+      have: clipDurS.toFixed(2),
+    });
+  }
+
+  if (mode === 'transition') {
     const next = getNextClipForItem(track, item);
     if (!next)
-      return t('granVideoEditor.timeline.transition.errorNoNextClip', 'No next clip to blend with');
+      return t('granVideoEditor.timeline.transition.errorNoNextClip', 'No next clip found for transition');
     const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
     if (gapUs > 1_000)
       return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
-    const clipDurS = clip.timelineRange.durationUs / 1e6;
-    const needS = tr.durationUs / 1e6;
-    if (clipDurS < needS)
-      return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+    const nextHeadHandleUs = getClipHeadHandleUs(next);
+    if (nextHeadHandleUs < tr.durationUs - 1_000)
+      return t('granVideoEditor.timeline.transition.errorNextHandleTooShort', {
         needSeconds: needS.toFixed(2),
-        haveSeconds: clipDurS.toFixed(2),
+        haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
+      });
+  }
+
+  if (mode === 'fade') {
+    const clipTailHandleUs = getClipTailHandleUs(clip);
+    if (clipTailHandleUs < tr.durationUs - 1_000)
+      return t('granVideoEditor.timeline.transition.errorClipTailHandleTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: Math.max(0, clipTailHandleUs / 1e6).toFixed(2),
       });
   }
 
@@ -712,14 +759,16 @@ const isFreePosition = computed(() => {
         </div>
         <div
           v-if="shouldCollapseTransitions(item) && clipItem.transitionIn"
-          class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm"
+          class="w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-sm"
+          :class="hasTransitionInProblem(track, item) ? 'bg-red-500' : 'bg-green-500'"
           title="Transition In"
         >
           <UIcon name="i-heroicons-arrow-right" class="w-2.5 h-2.5 text-white" />
         </div>
         <div
           v-if="shouldCollapseTransitions(item) && clipItem.transitionOut"
-          class="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shadow-sm"
+          class="w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-sm"
+          :class="hasTransitionOutProblem(track, item) ? 'bg-red-500' : 'bg-green-500'"
           title="Transition Out"
         >
           <UIcon name="i-heroicons-arrow-left" class="w-2.5 h-2.5 text-white" />
@@ -840,7 +889,7 @@ const isFreePosition = computed(() => {
           >
             <template v-if="!isCrossfadeTransitionIn(track, clipItem)">
               <svg
-                v-if="(clipItem.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'blend'"
+                v-if="(clipItem.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'"
                 class="w-full h-full block"
                 preserveAspectRatio="none"
                 viewBox="0 0 100 100"
@@ -896,7 +945,7 @@ const isFreePosition = computed(() => {
             "
           >
             <svg
-              v-if="(clipItem.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'blend'"
+              v-if="(clipItem.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'"
               class="w-full h-full block"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"

@@ -85,8 +85,8 @@ export interface ClipTransform {
 export interface ClipTransition {
   type: string;
   durationUs: number;
-  /** 'blend_previous' = cross-fade with the previous clip on the same track. 'composite' = fade with lower tracks */
-  mode?: 'blend' | 'blend_previous' | 'composite';
+  /** 'transition' = use adjacent clip on the same track. 'fade' = fade with lower tracks */
+  mode?: 'transition' | 'fade';
   /** Opacity interpolation curve */
   curve?: 'linear' | 'bezier';
   params?: Record<string, unknown>;
