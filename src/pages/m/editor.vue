@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useProjectStore } from '~/stores/project.store'
 import { useProjectActions } from '~/composables/editor/useProjectActions'
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue'
+import MobileExportForm from '~/components/export/MobileExportForm.vue'
 
 definePageMeta({
   layout: 'mobile'
@@ -59,9 +60,8 @@ async function handleBack() {
         <div class="text-slate-400">Mobile audio editor will be here.</div>
       </div>
 
-      <div v-show="activeTab === 'export'" class="p-4 h-full">
-        <h2 class="text-xl font-bold mb-4">Export</h2>
-        <div class="text-slate-400">Mobile export options will be here.</div>
+      <div v-show="activeTab === 'export'" class="h-full">
+        <MobileExportForm />
       </div>
     </main>
 
