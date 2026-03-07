@@ -16,6 +16,7 @@ import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -170,6 +171,14 @@ async function onRequestUpload(params: {
 }) {
   await props.handleFiles(params.files, params.targetDirHandle, params.targetDirPath);
   uiStore.notifyFileManagerUpdate();
+}
+
+function onRequestDownload(params: {
+  entry: RemoteFsEntry;
+  targetDirHandle: FileSystemDirectoryHandle;
+  targetDirPath: string;
+}) {
+  uiStore.pendingRemoteDownloadRequest = params;
 }
 
 const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
@@ -488,6 +497,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
             @action="(action, entry) => emit('action', action as any, entry)"
             @request-move="onRequestMove"
             @request-upload="onRequestUpload"
+            @request-download="onRequestDownload"
           />
         </div>
 

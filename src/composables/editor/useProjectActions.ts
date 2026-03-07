@@ -19,15 +19,14 @@ export function useProjectActions() {
   }
 
   async function leaveProject(redirectPath: string = '/') {
+    const router = useRouter();
     try {
+      // Сначала сбрасываем состояние
       resetProjectState();
-      await navigateTo(redirectPath);
+      // Затем переходим на указанный путь
+      await router.push(redirectPath);
     } catch (e) {
-      toast.add({
-        color: 'red',
-        title: 'Failed to leave project',
-        description: e instanceof Error ? e.message : String(e),
-      });
+      console.warn('Failed to leave project:', e);
     }
   }
 

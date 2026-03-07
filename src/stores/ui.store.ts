@@ -4,6 +4,7 @@ import { ref, watch } from 'vue';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import { createUiFileTreePersistenceModule } from '~/stores/ui/uiFileTreePersistence';
 import type { FsEntry } from '~/types/fs';
+import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 export interface FsEntrySelection {
   kind: 'file' | 'directory';
@@ -14,6 +15,12 @@ export interface FsEntrySelection {
   remoteId?: string;
   remotePath?: string;
   remoteData?: unknown;
+}
+
+export interface PendingRemoteDownloadRequest {
+  entry: RemoteFsEntry;
+  targetDirHandle: FileSystemDirectoryHandle;
+  targetDirPath: string;
 }
 
 export const useUiStore = defineStore('ui', () => {
@@ -49,6 +56,7 @@ export const useUiStore = defineStore('ui', () => {
   const pendingFsEntryCreateMarkdown = ref<FsEntry | null>(null);
   const pendingOtioCreateVersion = ref<FsEntry | null>(null);
   const pendingRemoteUploadEntry = ref<FsEntry | null>(null);
+  const pendingRemoteDownloadRequest = ref<PendingRemoteDownloadRequest | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
 
@@ -133,6 +141,7 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,
     pendingRemoteUploadEntry,
+    pendingRemoteDownloadRequest,
 
     fsSidebarWidth,
     setFsSidebarWidth,

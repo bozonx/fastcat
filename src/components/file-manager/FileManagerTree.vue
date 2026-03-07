@@ -5,6 +5,7 @@ import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
+  REMOTE_FILE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
@@ -14,6 +15,7 @@ import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
+import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -78,6 +80,14 @@ const emit = defineEmits<{
     e: 'requestUpload',
     params: {
       files: File[];
+      targetDirHandle: FileSystemDirectoryHandle;
+      targetDirPath: string;
+    },
+  ): void;
+  (
+    e: 'requestDownload',
+    params: {
+      entry: RemoteFsEntry;
       targetDirHandle: FileSystemDirectoryHandle;
       targetDirPath: string;
     },
@@ -232,6 +242,12 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
     return;
   }
 
+  if (types.includes(REMOTE_FILE_DRAG_TYPE)) {
+    isDragOver.value = entry.path || null;
+    e.dataTransfer.dropEffect = 'copy';
+    return;
+  }
+
   // External files import
   if (types.includes('Files')) {
     isDragOver.value = entry.path || null;
@@ -271,6 +287,28 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
     emit('requestMove', {
       sourcePath,
+      targetDirHandle: entry.handle as FileSystemDirectoryHandle,
+      targetDirPath: entry.path ?? '',
+    });
+    return;
+  }
+
+  const remoteRaw = e.dataTransfer?.getData(REMOTE_FILE_DRAG_TYPE);
+  if (remoteRaw) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(remoteRaw);
+    } catch {
+      return;
+    }
+
+    if (!parsed || typeof parsed !== 'object') return;
+
+    const remoteEntry = parsed as RemoteFsEntry;
+    if (!isRemoteFsEntry(remoteEntry) || remoteEntry.kind !== 'file') return;
+
+    emit('requestDownload', {
+      entry: remoteEntry,
       targetDirHandle: entry.handle as FileSystemDirectoryHandle,
       targetDirPath: entry.path ?? '',
     });
@@ -452,6 +490,7 @@ const { getContextMenuItems } = useFileContextMenu(
             @action="(action, childEntry) => emit('action', action, childEntry)"
             @request-move="emit('requestMove', $event)"
             @request-upload="emit('requestUpload', $event)"
+            @request-download="emit('requestDownload', $event)"
           />
         </div>
       </li>
