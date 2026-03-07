@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
-import type { TimelineDocument, TimelineMarker, TimelineSelectionRange } from '~/timeline/types';
+import type {
+  TimelineDocument,
+  TimelineMarker,
+  TimelineSelectionRange,
+  TimelineMediaClipItem,
+  TimelineTrackItem,
+} from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
@@ -24,13 +30,16 @@ import { createTimelineDispatcher } from '~/stores/timeline/timelineDispatcher';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import {
   createDefaultCaptionStylePreset,
-  buildCaptionChunks,
+  buildCaptionChunksFromWords,
+  extractTranscriptionWords,
   type CaptionGenerationSettings,
+  type TimelineCaptionWord,
 } from '~/utils/transcription/captions';
 import {
   createTranscriptionCacheRepository,
   type TranscriptionCacheRecord,
 } from '~/repositories/transcription-cache.repository';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -41,6 +50,7 @@ import { useSelectionStore } from './selection.store';
 import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
+import { useTimelineSettingsStore } from './timelineSettings.store';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
@@ -573,9 +583,215 @@ export const useTimelineStore = defineStore('timeline', () => {
     return await repository.list();
   }
 
-  async function generateCaptionsFromCache(input: {
+  function isTrackActiveForCaptions(track: TimelineDocument['tracks'][number]): boolean {
+    if (track.kind === 'video' && track.videoHidden) return false;
+    if (track.audioMuted) return false;
+    return true;
+  }
+
+  function isClipActiveForCaptions(
+    item: TimelineDocument['tracks'][number]['items'][number],
+  ): boolean {
+    if (item.kind !== 'clip') return false;
+    if (item.clipType !== 'media') return false;
+    if (item.disabled || item.audioMuted) return false;
+    if (!item.source?.path) return false;
+    return true;
+  }
+
+  function asActiveCaptionMediaClip(item: TimelineTrackItem): TimelineMediaClipItem | null {
+    if (!isClipActiveForCaptions(item)) return null;
+    return item as TimelineMediaClipItem;
+  }
+
+  function findMatchingTranscriptionRecord(params: {
+    records: TranscriptionCacheRecord[];
+    sourcePath: string;
+  }): TranscriptionCacheRecord | null {
+    return params.records.find((record) => record.sourcePath === params.sourcePath) ?? null;
+  }
+
+  function projectClipWordsToTimeline(params: {
     trackId: string;
-    transcriptionKey: string;
+    trackOrder: number;
+    clipId: string;
+    sourceName: string;
+    sourcePath: string;
+    sourceStartUs: number;
+    sourceEndUs: number;
+    timelineStartUs: number;
+    speed: number;
+    words: ReturnType<typeof extractTranscriptionWords>;
+  }): TimelineCaptionWord[] {
+    const result: TimelineCaptionWord[] = [];
+
+    for (const word of params.words) {
+      const wordStartUs = Math.round(word.start * 1000);
+      const wordEndUs = Math.round(word.end * 1000);
+      if (wordEndUs <= params.sourceStartUs || wordStartUs >= params.sourceEndUs) continue;
+
+      const clippedStartUs = Math.max(wordStartUs, params.sourceStartUs);
+      const clippedEndUs = Math.min(wordEndUs, params.sourceEndUs);
+      if (clippedEndUs <= clippedStartUs) continue;
+
+      const relativeStartUs = clippedStartUs - params.sourceStartUs;
+      const relativeEndUs = clippedEndUs - params.sourceStartUs;
+      const timelineStartUs = params.timelineStartUs + Math.round(relativeStartUs / params.speed);
+      const timelineEndUs = params.timelineStartUs + Math.round(relativeEndUs / params.speed);
+      if (timelineEndUs <= timelineStartUs) continue;
+
+      result.push({
+        start: word.start,
+        end: word.end,
+        text: word.text,
+        confidence: word.confidence,
+        timelineStartMs: Math.round(timelineStartUs / 1000),
+        timelineEndMs: Math.round(timelineEndUs / 1000),
+        sourcePath: params.sourcePath,
+        sourceName: params.sourceName,
+        trackId: params.trackId,
+        clipId: params.clipId,
+        trackOrder: params.trackOrder,
+      });
+    }
+
+    return result;
+  }
+
+  function trimWordsByCoveredRanges(params: {
+    words: TimelineCaptionWord[];
+    coveredRanges: Array<{ startMs: number; endMs: number }>;
+  }): TimelineCaptionWord[] {
+    if (params.coveredRanges.length === 0) return params.words;
+
+    const result: TimelineCaptionWord[] = [];
+    for (const word of params.words) {
+      let segments = [{ startMs: word.timelineStartMs, endMs: word.timelineEndMs }];
+
+      for (const covered of params.coveredRanges) {
+        const nextSegments: Array<{ startMs: number; endMs: number }> = [];
+        for (const segment of segments) {
+          if (covered.endMs <= segment.startMs || covered.startMs >= segment.endMs) {
+            nextSegments.push(segment);
+            continue;
+          }
+
+          if (covered.startMs > segment.startMs) {
+            nextSegments.push({ startMs: segment.startMs, endMs: covered.startMs });
+          }
+          if (covered.endMs < segment.endMs) {
+            nextSegments.push({ startMs: covered.endMs, endMs: segment.endMs });
+          }
+        }
+        segments = nextSegments.filter((segment) => segment.endMs > segment.startMs);
+        if (segments.length === 0) break;
+      }
+
+      for (const segment of segments) {
+        result.push({
+          ...word,
+          timelineStartMs: segment.startMs,
+          timelineEndMs: segment.endMs,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  async function collectTimelineCaptionWords(): Promise<TimelineCaptionWord[]> {
+    const doc = timelineDoc.value;
+    if (!doc) {
+      throw new Error('Timeline not loaded');
+    }
+
+    const workspaceHandle = workspaceStore.workspaceHandle;
+    const projectId = projectStore.currentProjectId;
+    if (!workspaceHandle || !projectId) {
+      throw new Error('Project workspace is not available');
+    }
+
+    const repository = createTranscriptionCacheRepository({
+      workspaceDir: workspaceHandle,
+      projectId,
+    });
+    const records = await repository.list();
+
+    const allWords: TimelineCaptionWord[] = [];
+
+    for (const [trackOrder, track] of doc.tracks.entries()) {
+      if (!isTrackActiveForCaptions(track)) continue;
+
+      for (const item of track.items) {
+        const clip = asActiveCaptionMediaClip(item);
+        if (!clip) continue;
+
+        const sourcePath = clip.source.path;
+        const mediaType = getMediaTypeFromFilename(sourcePath);
+        if (mediaType !== 'video' && mediaType !== 'audio') continue;
+
+        const record = findMatchingTranscriptionRecord({ records, sourcePath });
+        if (!record) continue;
+
+        const words = extractTranscriptionWords(record);
+        if (words.length === 0) continue;
+
+        const speed =
+          typeof clip.speed === 'number' && Number.isFinite(clip.speed)
+            ? Math.max(0.1, clip.speed)
+            : 1;
+
+        allWords.push(
+          ...projectClipWordsToTimeline({
+            trackId: track.id,
+            trackOrder,
+            clipId: clip.id,
+            sourceName: record.sourceName,
+            sourcePath,
+            sourceStartUs: Math.max(0, Math.round(clip.sourceRange.startUs)),
+            sourceEndUs: Math.max(
+              0,
+              Math.round(clip.sourceRange.startUs + clip.sourceRange.durationUs),
+            ),
+            timelineStartUs: Math.max(0, Math.round(clip.timelineRange.startUs)),
+            speed,
+            words,
+          }),
+        );
+      }
+    }
+
+    if (allWords.length === 0) {
+      throw new Error('No active transcription cache was found for timeline media clips');
+    }
+
+    const visibleWords: TimelineCaptionWord[] = [];
+    const coveredRanges: Array<{ startMs: number; endMs: number }> = [];
+
+    for (const track of doc.tracks) {
+      if (!isTrackActiveForCaptions(track)) continue;
+
+      const trackWords = allWords.filter((word) => word.trackId === track.id);
+      const trimmed = trimWordsByCoveredRanges({ words: trackWords, coveredRanges });
+      visibleWords.push(...trimmed);
+
+      if (track.kind === 'video') {
+        for (const item of track.items) {
+          const clip = asActiveCaptionMediaClip(item);
+          if (!clip) continue;
+          coveredRanges.push({
+            startMs: Math.round(clip.timelineRange.startUs / 1000),
+            endMs: Math.round((clip.timelineRange.startUs + clip.timelineRange.durationUs) / 1000),
+          });
+        }
+      }
+    }
+
+    return visibleWords.sort((a, b) => a.timelineStartMs - b.timelineStartMs);
+  }
+
+  async function generateCaptionsFromTimeline(input: {
+    trackId: string;
     settings: CaptionGenerationSettings;
   }) {
     const doc = timelineDoc.value;
@@ -591,36 +807,22 @@ export const useTimelineStore = defineStore('timeline', () => {
       throw new Error('Select an empty video track for generated captions');
     }
 
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    const projectId = projectStore.currentProjectId;
-    if (!workspaceHandle || !projectId) {
-      throw new Error('Project workspace is not available');
-    }
-
-    const repository = createTranscriptionCacheRepository({
-      workspaceDir: workspaceHandle,
-      projectId,
-    });
-    const record = await repository.load(input.transcriptionKey);
-    if (!record) {
-      throw new Error('Transcription cache record not found');
-    }
-
-    const built = buildCaptionChunks({
-      record,
+    const words = await collectTimelineCaptionWords();
+    const chunks = buildCaptionChunksFromWords({
+      words,
       settings: input.settings,
     });
     const stylePreset = createDefaultCaptionStylePreset();
 
     let addedCount = 0;
-    for (const chunk of built.chunks) {
+    for (const chunk of chunks) {
       const durationUs = Math.max(1_000, Math.round((chunk.endMs - chunk.startMs) * 1000));
       clips.addVirtualClipToTrack(
         {
           trackId: input.trackId,
           startUs: Math.max(0, Math.round(chunk.startMs * 1000)),
           clipType: 'text',
-          name: `${built.sourceName} captions`,
+          name: 'Generated captions',
           durationUs,
           text: chunk.text,
           style: stylePreset.textStyle,
@@ -642,8 +844,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     return {
       addedCount,
-      sourceName: built.sourceName,
-      sourcePath: built.sourcePath,
+      sourceCount: new Set(words.map((word) => word.sourcePath)).size,
     };
   }
 
@@ -693,7 +894,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     addTimelineClipToTimelineFromPath,
     loadTimelineMetadata,
     listCachedTranscriptions,
-    generateCaptionsFromCache,
+    generateCaptionsFromTimeline,
     clearSelection: () => selection.clearSelection(),
     selectTrack: (trackId: string | null) => selection.selectTrack(trackId),
     toggleSelection: (itemId: string, options?: { multi?: boolean }) =>
