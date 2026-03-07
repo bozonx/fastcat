@@ -263,7 +263,7 @@ const canTranscribeAudio = computed(() => {
   return (
     entry?.kind === 'file' &&
     entry?.source !== 'remote' &&
-    isAudioFile.value &&
+    (isAudioFile.value || isVideoFile.value) &&
     Boolean(sttConfig.value) &&
     Boolean(workspaceStore.workspaceHandle) &&
     Boolean(projectStore.currentProjectId) &&
@@ -338,6 +338,7 @@ async function submitAudioTranscription() {
       fileHandle: selectedEntry.handle as FileSystemFileHandle,
       filePath: selectedEntry.path ?? selectedEntry.name,
       fileName: selectedEntry.name,
+      fileType: selectedEntry.mimeType || (isVideoFile.value ? 'video/mp4' : 'audio/mpeg'),
       language: transcriptionLanguage.value,
       granPublicadorBaseUrl:
         typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
@@ -619,14 +620,16 @@ watch(
     </div>
 
     <div
-      v-if="fileInfo?.kind === 'file' && mediaType === 'video'"
+      v-if="fileInfo?.kind === 'file' && isVideoFile"
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
     >
-      <div class="flex flex-col">
-        <PropertyRow
-          :label="t('common.duration', 'Duration')"
-          :value="formatDurationSeconds(mediaMeta?.duration)"
-        />
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col">
+          <PropertyRow
+            :label="t('common.duration', 'Duration')"
+            :value="formatDurationSeconds(mediaMeta?.duration)"
+          />
+        </div>
         <PropertyRow
           :label="t('videoEditor.fileManager.video.resolution', 'Resolution')"
           :value="
@@ -659,6 +662,33 @@ watch(
           {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
           {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
         </PropertyRow>
+
+        <div class="flex flex-wrap gap-2 pt-1">
+          <UButton
+            size="xs"
+            color="primary"
+            variant="soft"
+            icon="i-heroicons-language"
+            :disabled="!canTranscribeAudio"
+            @click="openTranscriptionModal"
+          >
+            {{ t('videoEditor.fileManager.actions.transcribeAudio', 'Transcribe audio') }}
+          </UButton>
+          <span v-if="latestTranscriptionCacheKey" class="text-xs text-ui-text-muted self-center">
+            {{
+              latestTranscriptionWasCached
+                ? t('videoEditor.fileManager.audio.transcriptionCached', 'Loaded from cache')
+                : t('videoEditor.fileManager.audio.transcriptionSaved', 'Saved to cache')
+            }}
+          </span>
+        </div>
+
+        <UTextarea
+          v-if="latestTranscriptionText"
+          :model-value="latestTranscriptionText"
+          :rows="8"
+          readonly
+        />
       </div>
     </div>
 
