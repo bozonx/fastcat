@@ -53,10 +53,10 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     ) as Record<string, unknown> | undefined) ?? {},
   );
 
-  let isSyncingFromProps = false;
+  let syncGeneration = 0;
 
   watch(options.transition, (t) => {
-    isSyncingFromProps = true;
+    const gen = ++syncGeneration;
     if (t) {
       selectedType.value = t.type;
       durationSec.value = t.durationUs / 1_000_000;
@@ -79,7 +79,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       }
     }
     void Promise.resolve().then(() => {
-      isSyncingFromProps = false;
+      if (syncGeneration === gen) syncGeneration = 0;
     });
   });
 
@@ -110,7 +110,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   }
 
   function emitUpdate() {
-    if (isSyncingFromProps) return;
+    if (syncGeneration > 0) return;
 
     const normalizedParams = normalizeTransitionParams(selectedType.value, selectedParams.value) as
       | Record<string, unknown>
@@ -135,7 +135,10 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   watch(selectedType, emitUpdate);
   watch(selectedMode, emitUpdate);
   watch(selectedCurve, emitUpdate);
-  watch(durationSec, emitDebouncedDuration);
+  watch(durationSec, () => {
+    if (syncGeneration > 0) return;
+    emitDebouncedDuration();
+  });
 
   function remove() {
     options.onUpdate({

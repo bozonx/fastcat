@@ -16,6 +16,7 @@ export interface WipeParams {
 const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
+out vec2 vNormalizedCoord;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -35,29 +36,28 @@ vec2 filterTextureCoord(void) {
 void main(void) {
   gl_Position = filterVertexPosition();
   vTextureCoord = filterTextureCoord();
+  vNormalizedCoord = aPosition;
 }
 `;
 
 const fragment = `
 in vec2 vTextureCoord;
+in vec2 vNormalizedCoord;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uGap;
 uniform vec2 uAxis;
-uniform vec2 uResolution;
 uniform vec3 uGapColor;
 
 void main(void) {
-  vec2 uv = vTextureCoord;
+  vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
-  vec4 toColor = texture(uTexture, uv);
+  vec4 toColor = texture(uTexture, vTextureCoord);
+
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 axis = normalize(uAxis);
-  vec2 resolution = max(uResolution, vec2(1.0, 1.0));
-  float minResolution = max(1.0, min(resolution.x, resolution.y));
-  vec2 aspectScale = vec2(minResolution / resolution.x, minResolution / resolution.y);
   float gapHalf = uGap * 0.5;
   float axisValue = dot(uv - vec2(0.5, 0.5), axis);
   float edge = mix(-0.5 - gapHalf, 0.5 + gapHalf, progress);
@@ -151,7 +151,6 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
           uProgress: { value: 0, type: 'f32' },
           uGap: { value: 0.02, type: 'f32' },
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
-          uResolution: { value: [1920, 1080], type: 'vec2<f32>' },
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
         },
       },
@@ -165,17 +164,10 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     const params = normalizeWipeParams(context.params);
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);
-    const width = Number(
-      (context.toTexture as any)?.width ?? (context.fromTexture as any)?.width ?? 1920,
-    );
-    const height = Number(
-      (context.toTexture as any)?.height ?? (context.fromTexture as any)?.height ?? 1080,
-    );
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uGap = params.gap;
     uniforms.uAxis = [axis.x, axis.y];
-    uniforms.uResolution = [Math.max(1, width), Math.max(1, height)];
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
   },
   computeOutOpacity: () => 1,

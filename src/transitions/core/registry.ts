@@ -16,6 +16,8 @@ export interface TransitionShaderContext {
   params?: Record<string, unknown>;
   fromTexture?: Texture;
   toTexture?: Texture;
+  /** Combined texture: from occupies left half [0..0.5], to occupies right half [0.5..1] in UV.x */
+  combinedTexture?: Texture;
 }
 
 export interface TransitionParamOption {
