@@ -23,7 +23,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
         color="neutral"
         icon="i-heroicons-arrow-left"
         class="shrink-0"
-        @click="leaveProject"
+        to="/"
       />
 
       <div

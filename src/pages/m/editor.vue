@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useProjectStore } from '~/stores/project.store'
 import { useProjectActions } from '~/composables/editor/useProjectActions'
+import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue'
 
 definePageMeta({
   layout: 'mobile'
@@ -44,9 +45,8 @@ async function handleBack() {
 
     <!-- Main Content Area (Virtual Tabs) -->
     <main class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
-      <div v-show="activeTab === 'files'" class="p-4 h-full">
-        <h2 class="text-xl font-bold mb-4">Files</h2>
-        <div class="text-slate-400">Mobile file manager will be here.</div>
+      <div v-show="activeTab === 'files'" class="h-full">
+        <MobileFileBrowser />
       </div>
 
       <div v-show="activeTab === 'edit'" class="p-4 h-full">
