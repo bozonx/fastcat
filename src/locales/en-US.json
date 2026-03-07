@@ -727,6 +727,7 @@
         "depthDirectionForward": "Forward (towards viewer)",
         "directionClockwise": "Clockwise",
         "directionCounterclockwise": "Counterclockwise",
+        "directionSymmetric": "Symmetric",
         "directionFromCenter": "From center",
         "directionToCenter": "To center",
         "errorPrevClipTooShort": "Previous clip is too short for this transition (needs {need}s, has {have}s)",

@@ -3,7 +3,7 @@ import { easeInOutCubic } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface ClockParams {
-  direction: 'clockwise' | 'counterclockwise';
+  direction: 'clockwise' | 'counterclockwise' | 'symmetric';
 }
 
 const vertex = `
@@ -58,6 +58,12 @@ void main(void) {
     if (angle >= PI * 2.0) {
       angle -= PI * 2.0;
     }
+  } else if (uDirection == 2.0) {
+    // Symmetric
+    if (angle > PI) {
+      angle = PI * 2.0 - angle;
+    }
+    angle *= 2.0; // scale to 0..2PI range so normalizedAngle works out
   }
 
   float normalizedAngle = angle / (PI * 2.0);
@@ -74,8 +80,10 @@ void main(void) {
 `;
 
 function normalizeClockParams(params?: Record<string, unknown>): ClockParams {
+  const direction = params?.direction as ClockParams['direction'];
   return {
-    direction: params?.direction === 'counterclockwise' ? 'counterclockwise' : 'clockwise',
+    direction:
+      direction === 'counterclockwise' || direction === 'symmetric' ? direction : 'clockwise',
   };
 }
 
@@ -99,6 +107,10 @@ export const clockManifest: TransitionManifest<ClockParams> = {
         {
           value: 'counterclockwise',
           labelKey: 'granVideoEditor.timeline.transition.directionCounterclockwise',
+        },
+        {
+          value: 'symmetric',
+          labelKey: 'granVideoEditor.timeline.transition.directionSymmetric',
         },
       ],
     },
@@ -124,7 +136,8 @@ export const clockManifest: TransitionManifest<ClockParams> = {
     const params = normalizeClockParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uDirection = params.direction === 'counterclockwise' ? -1 : 1;
+    uniforms.uDirection =
+      params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
