@@ -2,14 +2,17 @@
 import { onUnmounted, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 
 const props = defineProps<{
   filePath: string;
   fileName?: string;
   initialContent: string;
+  focusPanelId?: PanelFocusId;
 }>();
 
 const projectStore = useProjectStore();
+const focusStore = useFocusStore();
 
 const content = ref(props.initialContent);
 const isSaving = ref(false);
@@ -89,10 +92,15 @@ onUnmounted(() => {
   clearTimer();
   void saveNow();
 });
+
+function focusPanel() {
+  if (!props.focusPanelId) return;
+  focusStore.setPanelFocus(props.focusPanelId);
+}
 </script>
 
 <template>
-  <div class="flex flex-col h-full w-full bg-ui-bg">
+  <div class="flex flex-col h-full w-full bg-ui-bg" @pointerdown.capture="focusPanel">
     <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border text-xs">
       <div class="flex items-center gap-2">
         <span class="text-ui-text-muted">Autosave enabled</span>
@@ -118,6 +126,7 @@ onUnmounted(() => {
       v-model="content"
       class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
       spellcheck="false"
+      @focus="focusPanel"
     />
 
     <TextEditorModal

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import FilePreview from '~/components/preview/FilePreview.vue';
+import type { PanelFocusId } from '~/stores/focus.store';
 
 const { t } = useI18n();
 
@@ -12,7 +13,7 @@ const props = defineProps<{
   textContent: string;
   filePath?: string;
   fileName?: string;
-  focusPanelId?: string;
+  focusPanelId?: PanelFocusId;
 }>();
 </script>
 

@@ -15,6 +15,7 @@ import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 import MonitorAudioControl from './MonitorAudioControl.vue';
+import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 
@@ -62,6 +63,17 @@ const {
   audioClipSourceSignature,
   audioClipLayoutSignature,
 } = useMonitorTimeline();
+
+const selectedTimelineClip = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'clip') {
+    return null;
+  }
+
+  return rawWorkerTimelineClips.value.find((clip) => clip.id === entity.itemId) ?? null;
+});
+
+const isTextClipSelected = computed(() => selectedTimelineClip.value?.clipType === 'text');
 
 const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useMonitorDisplay();
 
@@ -390,8 +402,14 @@ const emit = defineEmits<{
             />
           </g>
 
+          <MonitorTextTransformBox
+            v-if="!isReadonly && isTextClipSelected"
+            :render-width="renderWidth"
+            :render-height="renderHeight"
+          />
+
           <MonitorTransformBox
-            v-if="!isReadonly"
+            v-else-if="!isReadonly"
             :render-width="renderWidth"
             :render-height="renderHeight"
           />

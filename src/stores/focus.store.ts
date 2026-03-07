@@ -127,7 +127,9 @@ export const useFocusStore = defineStore('focus', () => {
     return effectiveFocus.value === panel;
   }
 
-  const canUseTimelineHotkeys = computed(() => effectiveFocus.value === 'timeline');
+  const canUseTimelineHotkeys = computed(
+    () => effectiveFocus.value === 'timeline' || effectiveFocus.value === 'audioMixer',
+  );
   const canUsePlaybackHotkeys = computed(
     () =>
       effectiveFocus.value === 'monitor' ||
