@@ -35,7 +35,7 @@ export interface TransitionParamField {
   options?: TransitionParamOption[];
 }
 
-export interface TransitionManifest<T = Record<string, never>> {
+export interface TransitionManifest<T = Record<string, any>> {
   type: TransitionType;
   name: string;
   icon: string;
@@ -118,7 +118,7 @@ export function getTransitionManifest(type: TransitionType): TransitionManifest<
   return registry.get(type);
 }
 
-export function normalizeTransitionParams<T = Record<string, never>>(
+export function normalizeTransitionParams<T = Record<string, any>>(
   type: TransitionType,
   params?: Record<string, unknown>,
 ): T | Record<string, unknown> | undefined {
