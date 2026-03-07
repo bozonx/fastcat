@@ -2199,15 +2199,21 @@ export class VideoCompositor {
     stagePosX: number;
     stagePosY: number;
   }) {
-    input.clip.sprite.anchor.set(input.normalizedAnchor.x, input.normalizedAnchor.y);
-    input.clip.sprite.width = input.targetW;
-    input.clip.sprite.height = input.targetH;
-    input.clip.sprite.scale.x = Math.abs(input.clip.sprite.scale.x) * input.scaleX;
-    input.clip.sprite.scale.y = Math.abs(input.clip.sprite.scale.y) * input.scaleY;
-    input.clip.sprite.rotation = (input.rotationDeg * Math.PI) / 180;
+    const sprite = input.clip.sprite;
+    if (!sprite) return;
 
-    input.clip.sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
-    input.clip.sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
+    sprite.anchor?.set?.(input.normalizedAnchor.x, input.normalizedAnchor.y);
+    sprite.width = input.targetW;
+    sprite.height = input.targetH;
+
+    if (sprite.scale) {
+      sprite.scale.x = Math.abs(sprite.scale.x) * input.scaleX;
+      sprite.scale.y = Math.abs(sprite.scale.y) * input.scaleY;
+    }
+
+    sprite.rotation = (input.rotationDeg * Math.PI) / 180;
+    sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
+    sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
   }
 
   private drawTextClip(clip: CompositorClip) {

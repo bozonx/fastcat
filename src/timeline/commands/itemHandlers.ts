@@ -1535,6 +1535,7 @@ export function updateClipTransition(
     mode: 'transition' | 'fade';
     curve: 'linear' | 'bezier';
     params?: Record<string, unknown>;
+    isOverridden?: boolean;
   } | null {
     if (!raw) return null;
     const type = typeof raw.type === 'string' ? raw.type : '';
@@ -1547,6 +1548,7 @@ export function updateClipTransition(
         mode: normalizeTransitionMode(raw.mode),
         curve: normalizeTransitionCurve(raw.curve),
         params: normalizeTransitionParams(type, raw.params) as Record<string, unknown> | undefined,
+        isOverridden: raw.isOverridden,
       };
     }
     return {
@@ -1555,6 +1557,7 @@ export function updateClipTransition(
       mode: normalizeTransitionMode(raw.mode),
       curve: normalizeTransitionCurve(raw.curve),
       params: normalizeTransitionParams(type, raw.params) as Record<string, unknown> | undefined,
+      isOverridden: raw.isOverridden,
     };
   }
 
@@ -1570,6 +1573,7 @@ export function updateClipTransition(
       mode: 'transition' | 'fade';
       curve: 'linear' | 'bezier';
       params?: Record<string, unknown>;
+      isOverridden?: boolean;
     };
   }): {
     type: string;
@@ -1577,6 +1581,7 @@ export function updateClipTransition(
     mode: 'transition' | 'fade';
     curve: 'linear' | 'bezier';
     params?: Record<string, unknown>;
+    isOverridden?: boolean;
   } {
     const maxUs = Math.max(0, clipDurationUs);
     return {

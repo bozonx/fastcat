@@ -2,6 +2,7 @@ import type { ExternalIntegrationsSettings, GranVideoEditorUserSettings } from '
 
 export type ExternalServiceKind = 'files' | 'stt';
 export type ExternalServiceSource = 'gran_publicador' | 'manual';
+export type GranIntegrationScope = 'vfs:read' | 'vfs:write' | 'stt:transcribe' | 'llm:chat';
 
 export interface ResolvedExternalServiceConfig {
   source: ExternalServiceSource;
@@ -9,6 +10,9 @@ export interface ResolvedExternalServiceConfig {
   bearerToken: string;
   healthUrl: string;
 }
+
+const FILES_SCOPES: GranIntegrationScope[] = ['vfs:read', 'vfs:write'];
+const STT_SCOPES: GranIntegrationScope[] = ['stt:transcribe'];
 
 function trimTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, '');
@@ -46,6 +50,7 @@ export function getGranPublicadorConnectUrl(params: {
   baseUrl: string;
   name: string;
   redirectUri: string;
+  scopes?: GranIntegrationScope[];
 }): string {
   const instanceBaseUrl = getGranPublicadorInstanceBaseUrl(params.baseUrl);
   if (!instanceBaseUrl) return '';
@@ -53,17 +58,53 @@ export function getGranPublicadorConnectUrl(params: {
   const url = new URL(joinUrl(instanceBaseUrl, 'integrations/connect'));
   url.searchParams.set('name', params.name.trim());
   url.searchParams.set('redirect_uri', params.redirectUri);
+  if (params.scopes?.length) {
+    url.searchParams.set('scopes', params.scopes.join(','));
+  }
   return url.toString();
 }
 
 export function getGranPublicadorHealthUrl(baseUrl: string): string {
-  const instanceBaseUrl = getGranPublicadorInstanceBaseUrl(baseUrl);
-  return instanceBaseUrl ? joinUrl(instanceBaseUrl, 'health') : '';
+  const externalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(baseUrl);
+  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'health') : '';
 }
 
 export function getManualServiceHealthUrl(baseUrl: string): string {
-  const instanceBaseUrl = getServiceInstanceBaseUrl(baseUrl);
-  return instanceBaseUrl ? joinUrl(instanceBaseUrl, 'health') : '';
+  const normalizedBaseUrl = trimTrailingSlashes(baseUrl.trim());
+
+  if (!normalizedBaseUrl) return '';
+  if (/\/health$/i.test(normalizedBaseUrl)) return normalizedBaseUrl;
+  if (/\/api\/v1\/external$/i.test(normalizedBaseUrl)) {
+    return joinUrl(normalizedBaseUrl, 'health');
+  }
+  if (/\/api\/v1\/external\/(vfs|stt|llm)$/i.test(normalizedBaseUrl)) {
+    return normalizedBaseUrl.replace(/\/(vfs|stt|llm)$/i, '/health');
+  }
+
+  return joinUrl(normalizedBaseUrl, 'api/v1/external/health');
+}
+
+export function resolveGranConnectScopes(params: {
+  integrations: ExternalIntegrationsSettings;
+}): GranIntegrationScope[] {
+  const scopes = new Set<GranIntegrationScope>();
+
+  if (
+    !params.integrations.manualFilesApi.enabled ||
+    !params.integrations.manualFilesApi.overrideGran
+  ) {
+    for (const scope of FILES_SCOPES) {
+      scopes.add(scope);
+    }
+  }
+
+  if (!params.integrations.manualSttApi.enabled || !params.integrations.manualSttApi.overrideGran) {
+    for (const scope of STT_SCOPES) {
+      scopes.add(scope);
+    }
+  }
+
+  return Array.from(scopes);
 }
 
 export function resolveExternalServiceConfig(params: {
