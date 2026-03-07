@@ -187,22 +187,29 @@ export const circleManifest: TransitionManifest<CircleParams> = {
 
     let cx = 0.5;
     let cy = 0.5;
+    let signX = 1;
+    let signY = 1;
+
     if (params.anchor === 'top-left') {
       cx = 0;
       cy = 0;
     } else if (params.anchor === 'top-right') {
       cx = 1;
       cy = 0;
+      signX = -1;
     } else if (params.anchor === 'bottom-left') {
       cx = 0;
       cy = 1;
+      signY = -1;
     } else if (params.anchor === 'bottom-right') {
       cx = 1;
       cy = 1;
+      signX = -1;
+      signY = -1;
     }
 
-    cx += params.offsetX / 100;
-    cy += params.offsetY / 100;
+    cx += (params.offsetX / 100) * signX;
+    cy += (params.offsetY / 100) * signY;
 
     uniforms.uCenter = [cx, cy];
   },
