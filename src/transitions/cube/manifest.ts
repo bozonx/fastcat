@@ -5,6 +5,7 @@ import type { TransitionManifest } from '../core/registry';
 export interface CubeParams {
   direction: 'left' | 'right' | 'up' | 'down';
   zoomMode: 'unzoom' | 'fixed';
+  perspective: number;
 }
 
 const vertex = `
@@ -47,8 +48,7 @@ uniform float uProgress;
 uniform float uDirectionX;
 uniform float uDirectionY;
 uniform float uUnzoomAmount;
-
-const float persp = 0.7;
+uniform float uPerspective;
 
 bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
@@ -106,26 +106,26 @@ void main(void) {
   if (abs(uDirectionX) > 0.5) {
     mappedFromP = xskew(
       (mappedP - vec2(progress, 0.0)) / vec2(1.0 - progress, 1.0),
-      1.0 - mix(progress, 0.0, persp),
+      1.0 - mix(progress, 0.0, uPerspective),
       0.0,
       uUnzoomAmount
     );
     mappedToP = xskew(
       mappedP / vec2(progress, 1.0),
-      mix(pow(progress, 2.0), 1.0, persp),
+      mix(pow(progress, 2.0), 1.0, uPerspective),
       1.0,
       uUnzoomAmount
     );
   } else if (abs(uDirectionY) > 0.5) {
     mappedFromP = yskew(
       (mappedP - vec2(0.0, progress)) / vec2(1.0, 1.0 - progress),
-      1.0 - mix(progress, 0.0, persp),
+      1.0 - mix(progress, 0.0, uPerspective),
       0.0,
       uUnzoomAmount
     );
     mappedToP = yskew(
       mappedP / vec2(1.0, progress),
-      mix(pow(progress, 2.0), 1.0, persp),
+      mix(pow(progress, 2.0), 1.0, uPerspective),
       1.0,
       uUnzoomAmount
     );
@@ -160,8 +160,9 @@ function normalizeCubeParams(params?: Record<string, unknown>): CubeParams {
       : 'left';
 
   const zoomMode = params?.zoomMode === 'fixed' ? 'fixed' : 'unzoom';
+  const perspective = typeof params?.perspective === 'number' ? params.perspective : 0.7;
 
-  return { direction, zoomMode };
+  return { direction, zoomMode, perspective };
 }
 
 export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
@@ -192,6 +193,14 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
         { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.modeFixed' },
       ],
     },
+    {
+      key: 'perspective',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramPerspective',
+      min: 0.1,
+      max: 1.0,
+      step: 0.05,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -204,6 +213,7 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
           uDirectionX: { value: 1, type: 'f32' },
           uDirectionY: { value: 0, type: 'f32' },
           uUnzoomAmount: { value: 1, type: 'f32' },
+          uPerspective: { value: 0.7, type: 'f32' },
         },
       },
     }),
@@ -227,6 +237,7 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
     uniforms.uDirectionX = dx;
     uniforms.uDirectionY = dy;
     uniforms.uUnzoomAmount = params.zoomMode === 'fixed' ? 0 : 1;
+    uniforms.uPerspective = params.perspective;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
