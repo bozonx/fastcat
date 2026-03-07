@@ -143,6 +143,9 @@ export interface CompositorClip {
   endUs: number;
   durationUs: number;
   sourceStartUs: number;
+  /** Duration of the used source range (trimmed), i.e. sourceRange.durationUs */
+  sourceRangeDurationUs: number;
+  /** Full duration of the source media file, used to compute available handle material */
   sourceDurationUs: number;
   speed?: number;
   freezeFrameSourceUs?: number;
@@ -519,9 +522,19 @@ export class VideoCompositor {
         0,
         Math.round(Number(clipData.timelineRange?.durationUs ?? 0)),
       );
-      const requestedSourceDurationUs = Math.max(
+      const requestedSourceRangeDurationUs = Math.max(
         0,
         Math.round(Number(clipData.sourceRange?.durationUs ?? requestedTimelineDurationUs)),
+      );
+      const requestedSourceDurationUs = Math.max(
+        0,
+        Math.round(
+          Number(
+            (clipData as any).sourceDurationUs ||
+              clipData.sourceRange?.durationUs ||
+              requestedTimelineDurationUs,
+          ),
+        ),
       );
 
       const speedRaw = (clipData as any).speed;
@@ -568,6 +581,10 @@ export class VideoCompositor {
         reusable.durationUs = safeTimelineDurationUs;
         reusable.endUs = startUs + safeTimelineDurationUs;
         reusable.sourceStartUs = sourceStartUs;
+        reusable.sourceRangeDurationUs =
+          requestedSourceRangeDurationUs > 0
+            ? requestedSourceRangeDurationUs
+            : reusable.sourceRangeDurationUs;
         reusable.sourceDurationUs = safeSourceDurationUs;
         reusable.speed = speed;
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
@@ -630,6 +647,7 @@ export class VideoCompositor {
           endUs,
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
+          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
           sprite,
@@ -698,6 +716,7 @@ export class VideoCompositor {
           endUs,
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
+          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
           sprite,
@@ -761,6 +780,7 @@ export class VideoCompositor {
           endUs,
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
+          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
           sprite,
@@ -877,6 +897,7 @@ export class VideoCompositor {
           endUs,
           durationUs: Math.max(0, requestedTimelineDurationUs),
           sourceStartUs: 0,
+          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
           sprite,
@@ -959,6 +980,8 @@ export class VideoCompositor {
           endUs,
           durationUs,
           sourceStartUs,
+          sourceRangeDurationUs:
+            requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
           sourceDurationUs,
           speed,
           freezeFrameSourceUs,
@@ -1048,9 +1071,17 @@ export class VideoCompositor {
         0,
         Math.round(Number(next.sourceRange?.startUs ?? clip.sourceStartUs)),
       );
+      const sourceRangeDurationUs = Math.max(
+        0,
+        Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceRangeDurationUs)),
+      );
       const sourceDurationUs = Math.max(
         0,
-        Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceDurationUs)),
+        Math.round(
+          Number(
+            (next as any).sourceDurationUs || next.sourceRange?.durationUs || clip.sourceDurationUs,
+          ),
+        ),
       );
       const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
       const speedRaw = (next as any).speed;
@@ -1068,6 +1099,7 @@ export class VideoCompositor {
       clip.durationUs = timelineDurationUs;
       clip.endUs = startUs + timelineDurationUs;
       clip.sourceStartUs = sourceStartUs;
+      clip.sourceRangeDurationUs = sourceRangeDurationUs;
       clip.sourceDurationUs = sourceDurationUs;
       clip.speed = speed;
       clip.freezeFrameSourceUs = freezeFrameSourceUs;
@@ -1270,8 +1302,9 @@ export class VideoCompositor {
         }
 
         // Check if source media has frames beyond the clip's out-point (handle material)
-        // handleUs = total available source after clip end
-        const handleUs = prevClip.sourceDurationUs - prevClip.durationUs;
+        // handleUs = full media duration minus the used source end point
+        const handleUs =
+          prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs;
         if (!prevClip.sink) {
           prevClip.sprite.visible = false;
           continue;
@@ -1294,9 +1327,10 @@ export class VideoCompositor {
           continue;
         }
 
-        // Seek into handle material: frames at sourceStartUs + durationUs + overrun
+        // Seek into handle material: frames past the source range end point
         const overrunUs = localTimeUs;
-        const handleSampleUs = prevClip.sourceStartUs + prevClip.durationUs + overrunUs;
+        const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
+        const handleSampleUs = sourceRangeEndUs + overrunUs;
         // Clamp to available handle
         const clampedUs = Math.min(
           handleSampleUs,
@@ -1395,7 +1429,7 @@ export class VideoCompositor {
         this.stageSortDirty = false;
       }
 
-      this.applyShaderTransitions(active, timeUs);
+      await this.applyShaderTransitions(active, timeUs);
 
       if (!this.app || !this.canvas || !this.app.renderer) {
         return null;
@@ -1717,7 +1751,69 @@ export class VideoCompositor {
     }
   }
 
-  private applyShaderTransitions(active: CompositorClip[], timeUs: number) {
+  private async renderTransitionClipToTexture(
+    clip: CompositorClip,
+    texture: RenderTexture,
+    options?: { transitionOffsetUs?: number },
+  ): Promise<boolean> {
+    if (clip.clipKind === 'image' || clip.clipKind === 'solid' || clip.clipKind === 'text') {
+      this.renderSingleClipToTexture(clip, texture);
+      return true;
+    }
+
+    if (clip.clipKind === 'adjustment') {
+      return false;
+    }
+
+    if (!clip.sink) {
+      return false;
+    }
+
+    const transitionOffsetUs = Math.max(0, Math.round(options?.transitionOffsetUs ?? 0));
+    const handleUs = Math.max(
+      0,
+      clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
+    );
+    const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
+    const sampleUs =
+      handleUs < 1_000
+        ? Math.max(0, clip.sourceStartUs + clip.sourceDurationUs - 1_000)
+        : Math.min(
+            sourceRangeEndUs + transitionOffsetUs,
+            clip.sourceStartUs + clip.sourceDurationUs - 1_000,
+          );
+
+    const sample = await this.withVideoSampleSlot(() =>
+      getVideoSampleWithZeroFallback(
+        clip.sink as any,
+        Math.max(0, sampleUs / 1_000_000),
+        clip.firstTimestampS,
+      ),
+    ).catch(() => null);
+
+    if (!sample) {
+      return false;
+    }
+
+    try {
+      await this.updateClipTextureFromSample(sample, clip);
+      clip.sprite.visible = true;
+      this.renderSingleClipToTexture(clip, texture);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (typeof (sample as any).close === 'function') {
+        try {
+          (sample as any).close();
+        } catch {
+          /**/
+        }
+      }
+    }
+  }
+
+  private async applyShaderTransitions(active: CompositorClip[], timeUs: number) {
     for (const clip of this.clips) {
       if (clip.transitionSprite) {
         clip.transitionSprite.visible = false;
@@ -1757,7 +1853,13 @@ export class VideoCompositor {
         if (!prevClip) {
           continue;
         }
-        this.renderSingleClipToTexture(prevClip, fromTexture);
+        const transitionOffsetUs = Math.max(0, timeUs - clip.startUs);
+        const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
+          transitionOffsetUs,
+        });
+        if (!rendered) {
+          continue;
+        }
       }
 
       state.manifest.updateFilter?.(clip.transitionFilter, {
