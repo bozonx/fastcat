@@ -1569,7 +1569,6 @@ async function onDirectoryUploadChange(e: Event) {
 // Panel drop handled by useFileBrowserDragAndDrop
 
 function openTranscriptionModal(entry: FsEntry) {
-  if (!isTranscribableMediaFile(entry)) return;
   sttTranscriptionLanguage.value = '';
   sttTranscriptionError.value = '';
   sttTranscriptionModalOpen.value = true;

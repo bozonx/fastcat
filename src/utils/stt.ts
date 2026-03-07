@@ -169,20 +169,11 @@ export async function transcribeProjectAudioFile(
     };
   }
 
-  let body: BodyInit;
-  let contentType: string | undefined;
-
-  if (normalizedFileType.startsWith('video/')) {
-    const { createAudioStreamFromFile } = await import('~/utils/audio-streaming');
-    const { stream } = await createAudioStreamFromFile(file);
-    const extractedAudioBlob = await new Response(stream).blob();
-    body = new File([extractedAudioBlob], requestFileName, {
-      type: 'audio/wav',
-    });
-    contentType = 'audio/wav';
-  } else {
-    body = file;
-  }
+  // Send the original file directly to STT without local WAV extraction.
+  // Modern STT services (e.g. Whisper) can extract audio from video containers natively.
+  // This avoids OOM crashes, UI freezes, and 'failed to fetch' caused by chunked requests or giant Blobs.
+  const body: BodyInit = file;
+  const contentType = file.type || 'application/octet-stream';
 
   const headers = createRequestHeaders({
     file,
