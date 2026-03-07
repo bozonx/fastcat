@@ -165,7 +165,6 @@ export function isRemoteFsEntry(entry: FsEntry | null | undefined): entry is Rem
 export function getRemoteFileDownloadUrl(params: {
   baseUrl: string;
   entry: RemoteVfsFileEntry;
-  token?: string;
   mediaIndex?: number;
 }): string {
   const media = params.entry.media?.[params.mediaIndex ?? 0];
@@ -173,37 +172,18 @@ export function getRemoteFileDownloadUrl(params: {
   if (/^https?:\/\//i.test(media.url)) return media.url;
 
   const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
-  const url = new URL(joinPath(rootBaseUrl, media.url));
-
-  if (params.token) {
-    url.searchParams.set('token', params.token);
-  }
-
-  return url.toString();
+  return joinPath(rootBaseUrl, media.url);
 }
 
 export function getRemoteThumbnailUrl(params: {
   baseUrl: string;
-  mediaId: string;
-  token?: string;
-  w?: number;
-  h?: number;
-  quality?: number;
-  fit?: string;
+  media: RemoteVfsMedia;
 }): string {
-  if (!params.mediaId) return '';
+  if (!params.media.thumbnailUrl) return '';
+  if (/^https?:\/\//i.test(params.media.thumbnailUrl)) return params.media.thumbnailUrl;
+
   const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
-  const url = new URL(
-    joinPath(rootBaseUrl, `/api/v1/external/vfs/media/${params.mediaId}/thumbnail`),
-  );
-
-  if (params.token) url.searchParams.set('token', params.token);
-  if (params.w) url.searchParams.set('w', params.w.toString());
-  if (params.h) url.searchParams.set('h', params.h.toString());
-  if (params.quality) url.searchParams.set('quality', params.quality.toString());
-  if (params.fit) url.searchParams.set('fit', params.fit);
-
-  return url.toString();
+  return joinPath(rootBaseUrl, params.media.thumbnailUrl);
 }
 
 export async function fetchRemoteVfsList(params: {
