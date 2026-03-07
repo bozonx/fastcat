@@ -18,10 +18,10 @@ export function useProjectActions() {
     projectStore.closeProject();
   }
 
-  async function leaveProject() {
+  async function leaveProject(redirectPath: string = '/') {
     try {
       resetProjectState();
-      await navigateTo('/');
+      await navigateTo(redirectPath);
     } catch (e) {
       toast.add({
         color: 'red',
