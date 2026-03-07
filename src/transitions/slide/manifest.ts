@@ -100,14 +100,14 @@ function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
 function getDirectionVector(direction: SlideParams['direction']): { x: number; y: number } {
   switch (direction) {
     case 'right':
-      return { x: -1, y: 0 };
+      return { x: 1, y: 0 };
     case 'up':
-      return { x: 0, y: 1 };
-    case 'down':
       return { x: 0, y: -1 };
+    case 'down':
+      return { x: 0, y: 1 };
     case 'left':
     default:
-      return { x: 1, y: 0 };
+      return { x: -1, y: 0 };
   }
 }
 

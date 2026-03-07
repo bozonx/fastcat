@@ -25,6 +25,16 @@ interface UseClipTransitionPanelOptions {
   debounceMs?: number;
 }
 
+function shallowEqualParams(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
 export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   const durationSec = ref(
     options.transition.value ? options.transition.value.durationUs / 1_000_000 : 0.5,
@@ -52,15 +62,21 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       durationSec.value = t.durationUs / 1_000_000;
       selectedMode.value = t.mode ?? DEFAULT_TRANSITION_MODE;
       selectedCurve.value = t.curve ?? DEFAULT_TRANSITION_CURVE;
-      selectedParams.value =
+      const incomingParams =
         (normalizeTransitionParams(t.type, t.params) as Record<string, unknown> | undefined) ?? {};
+      if (!shallowEqualParams(selectedParams.value, incomingParams)) {
+        selectedParams.value = incomingParams;
+      }
     } else {
       selectedType.value = 'dissolve';
       durationSec.value = 0.5;
       selectedMode.value = DEFAULT_TRANSITION_MODE;
       selectedCurve.value = DEFAULT_TRANSITION_CURVE;
-      selectedParams.value =
+      const incomingParams =
         (normalizeTransitionParams('dissolve') as Record<string, unknown> | undefined) ?? {};
+      if (!shallowEqualParams(selectedParams.value, incomingParams)) {
+        selectedParams.value = incomingParams;
+      }
     }
     void Promise.resolve().then(() => {
       isSyncingFromProps = false;
