@@ -6,6 +6,7 @@ export interface CubeParams {
   direction: 'left' | 'right' | 'up' | 'down';
   zoomMode: 'unzoom' | 'fixed';
   perspective: number;
+  gapSize: number;
 }
 
 const vertex = `
@@ -49,6 +50,7 @@ uniform float uDirectionX;
 uniform float uDirectionY;
 uniform float uUnzoomAmount;
 uniform float uPerspective;
+uniform float uGapSize;
 
 bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
@@ -66,52 +68,75 @@ void main(void) {
   vec2 toP = vec2(-1.0);
   
   float P = mix(1.0, uPerspective, sin(progress * 3.14159265359));
-  float fromWidth = max(0.0001, 1.0 - progress);
-  float toWidth = max(0.0001, progress);
+  float gapHalf = uGapSize * 0.5;
 
   if (uDirectionX < -0.5) { // Left
-    // from is on the left [0, 1-progress]
-    float u_from = p.x / fromWidth;
-    float H_from = mix(1.0, P, u_from);
-    fromP = vec2(u_from, (p.y - 0.5) / H_from + 0.5);
+    float bound = 1.0 - progress;
+    float fromBound = bound - gapHalf;
+    float toBound = bound + gapHalf;
+    float fromWidth = max(0.0001, fromBound);
+    float toWidth = max(0.0001, 1.0 - toBound);
     
-    // to is on the right [1-progress, 1]
-    float u_to = (p.x - fromWidth) / toWidth;
-    float H_to = mix(P, 1.0, u_to);
-    toP = vec2(u_to, (p.y - 0.5) / H_to + 0.5);
+    if (p.x <= fromBound) {
+      float u_from = p.x / fromWidth;
+      float H_from = mix(1.0, P, u_from);
+      fromP = vec2(u_from, (p.y - 0.5) / H_from + 0.5);
+    } else if (p.x >= toBound) {
+      float u_to = (p.x - toBound) / toWidth;
+      float H_to = mix(P, 1.0, u_to);
+      toP = vec2(u_to, (p.y - 0.5) / H_to + 0.5);
+    }
     
   } else if (uDirectionX > 0.5) { // Right
-    // from is on the right [progress, 1]
-    float u_from = (p.x - toWidth) / fromWidth;
-    float H_from = mix(P, 1.0, u_from);
-    fromP = vec2(u_from, (p.y - 0.5) / H_from + 0.5);
+    float bound = progress;
+    float toBound = bound - gapHalf;
+    float fromBound = bound + gapHalf;
+    float toWidth = max(0.0001, toBound);
+    float fromWidth = max(0.0001, 1.0 - fromBound);
     
-    // to is on the left [0, progress]
-    float u_to = p.x / toWidth;
-    float H_to = mix(1.0, P, u_to);
-    toP = vec2(u_to, (p.y - 0.5) / H_to + 0.5);
+    if (p.x <= toBound) {
+      float u_to = p.x / toWidth;
+      float H_to = mix(1.0, P, u_to);
+      toP = vec2(u_to, (p.y - 0.5) / H_to + 0.5);
+    } else if (p.x >= fromBound) {
+      float u_from = (p.x - fromBound) / fromWidth;
+      float H_from = mix(P, 1.0, u_from);
+      fromP = vec2(u_from, (p.y - 0.5) / H_from + 0.5);
+    }
     
   } else if (uDirectionY < -0.5) { // Up
-    // from is on top [0, 1-progress]
-    float u_from = p.y / fromWidth;
-    float H_from = mix(1.0, P, u_from);
-    fromP = vec2((p.x - 0.5) / H_from + 0.5, u_from);
+    float bound = 1.0 - progress;
+    float fromBound = bound - gapHalf;
+    float toBound = bound + gapHalf;
+    float fromWidth = max(0.0001, fromBound);
+    float toWidth = max(0.0001, 1.0 - toBound);
     
-    // to is on bottom [1-progress, 1]
-    float u_to = (p.y - fromWidth) / toWidth;
-    float H_to = mix(P, 1.0, u_to);
-    toP = vec2((p.x - 0.5) / H_to + 0.5, u_to);
+    if (p.y <= fromBound) {
+      float u_from = p.y / fromWidth;
+      float H_from = mix(1.0, P, u_from);
+      fromP = vec2((p.x - 0.5) / H_from + 0.5, u_from);
+    } else if (p.y >= toBound) {
+      float u_to = (p.y - toBound) / toWidth;
+      float H_to = mix(P, 1.0, u_to);
+      toP = vec2((p.x - 0.5) / H_to + 0.5, u_to);
+    }
     
   } else if (uDirectionY > 0.5) { // Down
-    // from is on bottom [progress, 1]
-    float u_from = (p.y - toWidth) / fromWidth;
-    float H_from = mix(P, 1.0, u_from);
-    fromP = vec2((p.x - 0.5) / H_from + 0.5, u_from);
+    float bound = progress;
+    float toBound = bound - gapHalf;
+    float fromBound = bound + gapHalf;
+    float toWidth = max(0.0001, toBound);
+    float fromWidth = max(0.0001, 1.0 - fromBound);
     
-    // to is on top [0, progress]
-    float u_to = p.y / toWidth;
-    float H_to = mix(1.0, P, u_to);
-    toP = vec2((p.x - 0.5) / H_to + 0.5, u_to);
+    if (p.y <= toBound) {
+      float u_to = p.y / toWidth;
+      float H_to = mix(1.0, P, u_to);
+      toP = vec2((p.x - 0.5) / H_to + 0.5, u_to);
+    } else if (p.y >= fromBound) {
+      float u_from = (p.y - fromBound) / fromWidth;
+      float H_from = mix(P, 1.0, u_from);
+      fromP = vec2((p.x - 0.5) / H_from + 0.5, u_from);
+    }
   }
   
   if (inBounds(fromP)) {
@@ -135,8 +160,9 @@ function normalizeCubeParams(params?: Record<string, unknown>): CubeParams {
 
   const zoomMode = params?.zoomMode === 'fixed' ? 'fixed' : 'unzoom';
   const perspective = typeof params?.perspective === 'number' ? params.perspective : 0.7;
+  const gapSize = typeof params?.gapSize === 'number' ? Math.max(0, params.gapSize) : 0;
 
-  return { direction, zoomMode, perspective };
+  return { direction, zoomMode, perspective, gapSize };
 }
 
 export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
@@ -175,6 +201,14 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
       max: 3.0,
       step: 0.1,
     },
+    {
+      key: 'gapSize',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramGapSize',
+      min: 0,
+      max: 0.5,
+      step: 0.01,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -188,6 +222,7 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
           uDirectionY: { value: 0, type: 'f32' },
           uUnzoomAmount: { value: 1, type: 'f32' },
           uPerspective: { value: 0.7, type: 'f32' },
+          uGapSize: { value: 0, type: 'f32' },
         },
       },
     }),
@@ -212,6 +247,7 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
     uniforms.uDirectionY = dy;
     uniforms.uUnzoomAmount = params.zoomMode === 'fixed' ? 0 : 1;
     uniforms.uPerspective = params.perspective;
+    uniforms.uGapSize = params.gapSize;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
