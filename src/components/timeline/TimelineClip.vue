@@ -614,12 +614,6 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): 
       return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
-    const prevDurS = prev.timelineRange.durationUs / 1e6;
-    if (prevDurS < needS)
-      return t('granVideoEditor.timeline.transition.errorPrevClipTooShort', {
-        need: needS.toFixed(2),
-        have: prevDurS.toFixed(2),
-      });
     const prevTailHandleUs = getClipTailHandleUs(prev);
     if (prevTailHandleUs < tr.durationUs - 1_000) {
       return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
