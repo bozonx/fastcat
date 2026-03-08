@@ -1,5 +1,5 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
-import { easeInOutCubic } from '../core/registry';
+import { applyTransitionCurve } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface ClockParams {
@@ -131,8 +131,7 @@ export const clockManifest: TransitionManifest<ClockParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.clockUniforms?.uniforms;
     if (!uniforms) return;
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeClockParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));

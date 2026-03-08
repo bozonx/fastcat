@@ -7,7 +7,7 @@ import {
   getTransitionManifest,
   normalizeTransitionParams,
 } from '~/transitions';
-import type { TransitionMode } from '~/transitions/core/registry';
+import type { TransitionCurve, TransitionMode } from '~/transitions/core/registry';
 
 export interface ClipTransitionUpdatePayload {
   trackId: string;
@@ -44,7 +44,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   const selectedMode = ref<TransitionMode>(
     options.transition.value?.mode ?? DEFAULT_TRANSITION_MODE,
   );
-  const selectedCurve = ref<'linear' | 'bezier'>(
+  const selectedCurve = ref<TransitionCurve>(
     options.transition.value?.curve ?? DEFAULT_TRANSITION_CURVE,
   );
   const selectedParams = ref<Record<string, unknown>>(

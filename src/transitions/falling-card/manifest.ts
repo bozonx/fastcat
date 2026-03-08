@@ -1,5 +1,5 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
-import { easeInOutCubic } from '../core/registry';
+import { applyTransitionCurve } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface FallingCardParams {
@@ -256,8 +256,7 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
     const resources = (filter as any).resources;
     const uniforms = resources?.fallingCardUniforms?.uniforms;
     if (!uniforms) return;
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeFallingCardParams(context.params);
 
     // down = 1 (anchor bottom, top falls down)

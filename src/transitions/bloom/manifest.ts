@@ -1,6 +1,6 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
 import type { TransitionManifest } from '../core/registry';
-import { easeInOutCubic } from '../core/registry';
+import { applyTransitionCurve } from '../core/registry';
 
 export interface BloomParams {
   brightness: number;
@@ -193,8 +193,7 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
     const uniforms = resources?.bloomUniforms?.uniforms;
     if (!uniforms) return;
 
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeBloomParams(context.params);
 
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
