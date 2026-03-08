@@ -86,13 +86,20 @@ function getColorValue(value: unknown): string {
 const visibleParamFields = computed<TransitionParamField[]>(() => {
   const fields = selectedManifest.value?.paramFields ?? [];
 
+  const filtered = fields.filter((field) => {
+    if (field.showIf && !field.showIf(selectedParams.value)) {
+      return false;
+    }
+    return true;
+  });
+
   if (selectedType.value !== 'wipe' && selectedType.value !== 'barn-door') {
-    return fields;
+    return filtered;
   }
 
   const edgeMode = selectedParams.value.edgeMode === 'blur' ? 'blur' : 'gap';
 
-  return fields.filter((field) => {
+  return filtered.filter((field) => {
     if (field.key === 'gap' || field.key === 'gapColor') {
       return edgeMode === 'gap';
     }
