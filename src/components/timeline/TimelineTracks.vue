@@ -148,10 +148,13 @@ function updateLiveMarqueeSelection() {
     if (isYFullyInside) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (Boolean((item as any).locked)) continue;
+        if ((item as any).locked) continue;
 
         const clipStartPx = timeUsToPx(item.timelineRange.startUs, zoom);
-        const clipEndPx = timeUsToPx(item.timelineRange.startUs + item.timelineRange.durationUs, zoom);
+        const clipEndPx = timeUsToPx(
+          item.timelineRange.startUs + item.timelineRange.durationUs,
+          zoom,
+        );
 
         const isXFullyInside = clipStartPx >= left && clipEndPx <= right;
 
@@ -197,7 +200,7 @@ function startMarquee(e: PointerEvent, onClick?: () => void) {
 
   onMarqueeMove = (ev: PointerEvent) => {
     const currentCoords = getPointerCoords(ev);
-    
+
     if (!didMove) {
       const dx = Math.abs(currentCoords.x - marqueeStart.value.x);
       const dy = Math.abs(currentCoords.y - marqueeStart.value.y);

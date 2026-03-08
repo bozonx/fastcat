@@ -6,7 +6,12 @@ import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransfe
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { useDraggedFile, FILE_MANAGER_MOVE_DRAG_TYPE, INTERNAL_DRAG_TYPE, REMOTE_FILE_DRAG_TYPE } from '~/composables/useDraggedFile';
+import {
+  useDraggedFile,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+  INTERNAL_DRAG_TYPE,
+  REMOTE_FILE_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
@@ -290,7 +295,12 @@ function onRemoteDragLeave(event: DragEvent) {
   }
 }
 
-function onMediaDragStart(event: DragEvent, item: RemoteVfsFileEntry, media: RemoteVfsMedia, mediaIndex: number) {
+function onMediaDragStart(
+  event: DragEvent,
+  item: RemoteVfsFileEntry,
+  media: RemoteVfsMedia,
+  mediaIndex: number,
+) {
   if (!event.dataTransfer) return;
   const remoteEntry = createRemoteMediaFsEntry({ item, media, mediaIndex });
   event.dataTransfer.effectAllowed = 'copy';
@@ -404,7 +414,12 @@ onBeforeUnmount(() => {
   <AppModal
     v-model:open="isOpen"
     :title="t('videoEditor.fileManager.remote.exchange', 'File exchange')"
-    :description="t('videoEditor.fileManager.remote.exchangeDescription', 'Exchange files between the local project and the remote content library')"
+    :description="
+      t(
+        'videoEditor.fileManager.remote.exchangeDescription',
+        'Exchange files between the local project and the remote content library',
+      )
+    "
     :ui="{
       content: 'max-w-[96vw] w-[96vw] h-[92vh]',
       body: '!p-0 !overflow-hidden',
@@ -412,11 +427,17 @@ onBeforeUnmount(() => {
     }"
   >
     <div class="flex h-full min-h-0 flex-col">
-      <div v-if="!remoteFilesConfig" class="flex h-full items-center justify-center p-8 text-center text-sm text-ui-text-muted">
+      <div
+        v-if="!remoteFilesConfig"
+        class="flex h-full items-center justify-center p-8 text-center text-sm text-ui-text-muted"
+      >
         {{ t('videoEditor.settings.integrationInactive', 'Not configured') }}
       </div>
 
-      <div v-else class="grid h-full min-h-0 grid-cols-[minmax(300px,1fr)_minmax(480px,1.35fr)_minmax(320px,0.95fr)] divide-x divide-ui-border">
+      <div
+        v-else
+        class="grid h-full min-h-0 grid-cols-[minmax(300px,1fr)_minmax(480px,1.35fr)_minmax(320px,0.95fr)] divide-x divide-ui-border"
+      >
         <div class="min-h-0 overflow-hidden bg-ui-bg-elevated">
           <FileManagerPanel class="h-full" @select="selectLocalEntry" />
         </div>
@@ -468,11 +489,17 @@ onBeforeUnmount(() => {
             </div>
 
             <div v-if="remoteLoading" class="flex h-full items-center justify-center">
-              <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-ui-text-muted" />
+              <UIcon
+                name="i-heroicons-arrow-path"
+                class="h-6 w-6 animate-spin text-ui-text-muted"
+              />
             </div>
 
             <div v-else class="flex min-h-full flex-col gap-4">
-              <div v-if="remoteDirectories.length > 0" class="grid grid-cols-2 gap-3 xl:grid-cols-3">
+              <div
+                v-if="remoteDirectories.length > 0"
+                class="grid grid-cols-2 gap-3 xl:grid-cols-3"
+              >
                 <button
                   v-for="directory in remoteDirectories"
                   :key="directory.id"
@@ -489,7 +516,10 @@ onBeforeUnmount(() => {
                 </button>
               </div>
 
-              <div v-if="remoteItems.length === 0" class="flex flex-1 items-center justify-center rounded-xl border border-dashed border-ui-border p-8 text-sm text-ui-text-muted">
+              <div
+                v-if="remoteItems.length === 0"
+                class="flex flex-1 items-center justify-center rounded-xl border border-dashed border-ui-border p-8 text-sm text-ui-text-muted"
+              >
                 {{ t('common.empty', 'Folder is empty') }}
               </div>
 
@@ -498,7 +528,11 @@ onBeforeUnmount(() => {
                   v-for="item in remoteItems"
                   :key="item.id"
                   class="rounded-2xl border p-4 transition"
-                  :class="selectedRemoteFile?.id === item.id ? 'border-primary-500 bg-primary-500/5' : 'border-ui-border bg-ui-bg-elevated hover:border-primary-500/30'"
+                  :class="
+                    selectedRemoteFile?.id === item.id
+                      ? 'border-primary-500 bg-primary-500/5'
+                      : 'border-ui-border bg-ui-bg-elevated hover:border-primary-500/30'
+                  "
                 >
                   <button class="mb-3 block w-full text-left" @click="selectRemoteItem(item)">
                     <div class="truncate text-sm font-semibold text-ui-text">
@@ -520,9 +554,14 @@ onBeforeUnmount(() => {
                         @dragstart="onMediaDragStart($event, item, media, mediaIndex)"
                         @dragend="onMediaDragEnd"
                       >
-                        <div class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-ui-bg-elevated">
+                        <div
+                          class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-ui-bg-elevated"
+                        >
                           <img
-                            v-if="getRemoteMediaKind(media) === 'image' || getRemoteMediaKind(media) === 'video'"
+                            v-if="
+                              getRemoteMediaKind(media) === 'image' ||
+                              getRemoteMediaKind(media) === 'video'
+                            "
                             :src="resolveRemotePosterUrl(item, media, mediaIndex)"
                             class="h-full w-full object-cover"
                             alt=""
@@ -552,7 +591,11 @@ onBeforeUnmount(() => {
                           </div>
                         </div>
                         <div class="line-clamp-2 text-[11px] leading-4 text-ui-text">
-                          {{ media.title || media.name || `${getRemoteEntryDisplayName(item)} ${mediaIndex + 1}` }}
+                          {{
+                            media.title ||
+                            media.name ||
+                            `${getRemoteEntryDisplayName(item)} ${mediaIndex + 1}`
+                          }}
                         </div>
                       </button>
 
@@ -561,7 +604,9 @@ onBeforeUnmount(() => {
                         class="flex w-32 shrink-0 flex-col gap-2 rounded-xl border border-ui-border bg-ui-bg p-2 text-left transition hover:border-primary-500/40"
                         @click="selectRemoteItem(item)"
                       >
-                        <div class="flex aspect-square items-center justify-center rounded-lg bg-ui-bg-elevated p-2 text-[10px] leading-4 text-ui-text-muted">
+                        <div
+                          class="flex aspect-square items-center justify-center rounded-lg bg-ui-bg-elevated p-2 text-[10px] leading-4 text-ui-text-muted"
+                        >
                           <div class="line-clamp-6 w-full text-left">
                             {{ item.text }}
                           </div>
@@ -581,7 +626,10 @@ onBeforeUnmount(() => {
             {{ t('common.preview', 'Preview') }}
           </div>
           <div class="flex-1 overflow-auto p-4">
-            <div v-if="!selectedEntry" class="flex h-full items-center justify-center text-sm text-ui-text-muted">
+            <div
+              v-if="!selectedEntry"
+              class="flex h-full items-center justify-center text-sm text-ui-text-muted"
+            >
               {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
             </div>
 
@@ -594,12 +642,22 @@ onBeforeUnmount(() => {
                   {{ selectedEntry.path || '/' }}
                 </div>
                 <div class="mt-2 text-xs text-ui-text-muted">
-                  {{ selectedEntry.source === 'remote' ? 'Remote content library' : 'Local project files' }}
+                  {{
+                    selectedEntry.source === 'remote'
+                      ? 'Remote content library'
+                      : 'Local project files'
+                  }}
                 </div>
               </div>
 
-              <div v-if="previewLoading" class="flex min-h-60 items-center justify-center rounded-xl border border-ui-border bg-ui-bg">
-                <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-ui-text-muted" />
+              <div
+                v-if="previewLoading"
+                class="flex min-h-60 items-center justify-center rounded-xl border border-ui-border bg-ui-bg"
+              >
+                <UIcon
+                  name="i-heroicons-arrow-path"
+                  class="h-6 w-6 animate-spin text-ui-text-muted"
+                />
               </div>
 
               <div
@@ -613,7 +671,12 @@ onBeforeUnmount(() => {
                 v-else-if="previewKind === 'video' && previewUrl"
                 class="overflow-hidden rounded-xl border border-ui-border bg-black"
               >
-                <video :src="previewUrl" :poster="previewPoster" controls class="max-h-112 w-full" />
+                <video
+                  :src="previewUrl"
+                  :poster="previewPoster"
+                  controls
+                  class="max-h-112 w-full"
+                />
               </div>
 
               <div
@@ -636,11 +699,18 @@ onBeforeUnmount(() => {
               >
                 <UIcon name="i-heroicons-document" class="mb-3 h-10 w-10" />
                 <div class="text-sm">
-                  {{ previewKind === 'document' ? 'Document preview is not available' : 'Preview is not available' }}
+                  {{
+                    previewKind === 'document'
+                      ? 'Document preview is not available'
+                      : 'Preview is not available'
+                  }}
                 </div>
               </div>
 
-              <div v-if="selectedRemoteFile" class="rounded-xl border border-ui-border bg-ui-bg p-4">
+              <div
+                v-if="selectedRemoteFile"
+                class="rounded-xl border border-ui-border bg-ui-bg p-4"
+              >
                 <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
                   Remote item
                 </div>

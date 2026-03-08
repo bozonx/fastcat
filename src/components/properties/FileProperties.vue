@@ -299,7 +299,14 @@ function openAsTextPanel(view: 'cut' | 'sound' = 'cut') {
   }
 
   if (mediaType.value === 'text') {
-    projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name, undefined, undefined, view);
+    projectStore.addTextPanel(
+      entry.path ?? entry.name,
+      textContent.value,
+      entry.name,
+      undefined,
+      undefined,
+      view,
+    );
   } else if (
     mediaType.value === 'video' ||
     mediaType.value === 'audio' ||
@@ -366,7 +373,8 @@ async function submitAudioTranscription() {
       color: 'success',
     });
   } catch (error: unknown) {
-    transcriptionError.value = error instanceof Error ? error.message : 'Failed to transcribe audio';
+    transcriptionError.value =
+      error instanceof Error ? error.message : 'Failed to transcribe audio';
   } finally {
     isTranscribingAudio.value = false;
   }
@@ -384,7 +392,6 @@ watch(
     isTranscribingAudio.value = false;
   },
 );
-
 </script>
 
 <template>

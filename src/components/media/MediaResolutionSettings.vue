@@ -296,13 +296,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.fps', 'FPS') }}
       </label>
-      <WheelNumberInput
-        v-model="localFps"
-        :min="1"
-        :max="240"
-        :step="0.001"
-        :disabled="disabled"
-      />
+      <WheelNumberInput v-model="localFps" :min="1" :max="240" :step="0.001" :disabled="disabled" />
     </div>
 
     <div class="h-px bg-ui-border my-2"></div>

@@ -340,7 +340,8 @@ function seekByWheelDelta(delta: number) {
   const frameStepUs = frameToUs(1, fps);
 
   return {
-    frame: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * frameStepUs),
+    frame: () =>
+      timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * frameStepUs),
     second: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * 1_000_000),
   };
 }
@@ -603,8 +604,8 @@ function toggleClipSnapMode() {
                 variant="ghost"
                 color="neutral"
                 icon="i-heroicons-scissors"
-                :ariaLabel="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
-                :caretAriaLabel="t('granVideoEditor.timeline.trimOptions', 'Trim options')"
+                :aria-label="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
+                :caret-aria-label="t('granVideoEditor.timeline.trimOptions', 'Trim options')"
                 :items="trimMenuItems"
                 @click="splitClips"
               />
@@ -625,7 +626,9 @@ function toggleClipSnapMode() {
                   variant="ghost"
                   color="neutral"
                   icon="i-heroicons-adjustments-horizontal"
-                  :aria-label="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
+                  :aria-label="
+                    t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')
+                  "
                   @dragstart="onVirtualClipDragStart($event, 'adjustment')"
                   @dragend="onVirtualClipDragEnd"
                   @click="addAdjustmentClip"
@@ -648,7 +651,9 @@ function toggleClipSnapMode() {
                   variant="ghost"
                   color="neutral"
                   icon="i-heroicons-swatch"
-                  :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
+                  :aria-label="
+                    t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')
+                  "
                   @dragstart="onVirtualClipDragStart($event, 'background')"
                   @dragend="onVirtualClipDragEnd"
                   @click="addBackgroundClip"

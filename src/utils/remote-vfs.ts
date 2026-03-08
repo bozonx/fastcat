@@ -175,10 +175,7 @@ export function getRemoteFileDownloadUrl(params: {
   return joinPath(rootBaseUrl, media.url);
 }
 
-export function getRemoteThumbnailUrl(params: {
-  baseUrl: string;
-  media: RemoteVfsMedia;
-}): string {
+export function getRemoteThumbnailUrl(params: { baseUrl: string; media: RemoteVfsMedia }): string {
   if (!params.media.thumbnailUrl) return '';
   if (/^https?:\/\//i.test(params.media.thumbnailUrl)) return params.media.thumbnailUrl;
 

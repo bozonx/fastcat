@@ -93,7 +93,9 @@ function resetDefaults() {
       v-model:audio-bitrate-kbps="
         workspaceStore.userSettings.exportDefaults.encoding.audioBitrateKbps
       "
-      v-model:audio-sample-rate="workspaceStore.userSettings.exportDefaults.encoding.audioSampleRate"
+      v-model:audio-sample-rate="
+        workspaceStore.userSettings.exportDefaults.encoding.audioSampleRate
+      "
       v-model:bitrate-mode="workspaceStore.userSettings.exportDefaults.encoding.bitrateMode"
       v-model:keyframe-interval-sec="
         workspaceStore.userSettings.exportDefaults.encoding.keyframeIntervalSec

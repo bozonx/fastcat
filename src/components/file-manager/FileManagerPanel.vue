@@ -256,9 +256,23 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       try {
         const file = await (entry.handle as FileSystemFileHandle).getFile();
         const content = await file.text();
-        projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name, undefined, undefined, view);
+        projectStore.addTextPanel(
+          entry.path ?? entry.name,
+          content,
+          entry.name,
+          undefined,
+          undefined,
+          view,
+        );
       } catch {
-        projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name, undefined, undefined, view);
+        projectStore.addTextPanel(
+          entry.path ?? entry.name,
+          '',
+          entry.name,
+          undefined,
+          undefined,
+          view,
+        );
       }
     } else if (['video', 'audio', 'image'].includes(mediaType)) {
       projectStore.addMediaPanel(entry, mediaType as any, entry.name, undefined, undefined, view);

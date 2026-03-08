@@ -55,7 +55,7 @@ function focusAndSelectName() {
 onMounted(() => {
   nextTick(() => {
     focusAndSelectName();
-    
+
     // Context menus often restore focus to their trigger element when closing.
     // We wait for that to finish, then assert focus again and mark as ready.
     setTimeout(() => {
@@ -78,7 +78,7 @@ function onBlur() {
     focusAndSelectName();
     return;
   }
-  
+
   // Delay finish so that if focus immediately returns we don't cancel
   blurTimer = setTimeout(() => {
     blurTimer = null;

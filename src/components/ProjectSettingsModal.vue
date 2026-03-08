@@ -200,7 +200,9 @@ async function resetToDefaults() {
           v-model:audio-bitrate-kbps="
             projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
           "
-          v-model:audio-sample-rate="projectStore.projectSettings.exportDefaults.encoding.audioSampleRate"
+          v-model:audio-sample-rate="
+            projectStore.projectSettings.exportDefaults.encoding.audioSampleRate
+          "
           v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
           v-model:keyframe-interval-sec="
             projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec

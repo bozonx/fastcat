@@ -357,7 +357,8 @@ function buildFadeLinePattern(edge: 'in' | 'out'): Array<{ x: number; width: num
     gap *= 1.18;
   }
 
-  const normalized = edge === 'in' ? positions : positions.map((position) => 100 - position).reverse();
+  const normalized =
+    edge === 'in' ? positions : positions.map((position) => 100 - position).reverse();
 
   return normalized.map((x) => ({
     x: Math.max(0, Math.min(99.5, x)),
@@ -372,11 +373,19 @@ function getFadeLinePattern(edge: 'in' | 'out') {
   return edge === 'in' ? fadeLinePatternIn : fadeLinePatternOut;
 }
 
-function getTransitionProblem(track: TimelineTrack, item: TimelineTrackItem, edge: 'in' | 'out'): string | null {
+function getTransitionProblem(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+  edge: 'in' | 'out',
+): string | null {
   return edge === 'in' ? hasTransitionInProblem(track, item) : hasTransitionOutProblem(track, item);
 }
 
-function getTransitionButtonTitle(track: TimelineTrack, item: TimelineTrackItem, edge: 'in' | 'out'): string | undefined {
+function getTransitionButtonTitle(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+  edge: 'in' | 'out',
+): string | undefined {
   if (item.kind !== 'clip') return undefined;
 
   const transition = edge === 'in' ? item.transitionIn : item.transitionOut;
@@ -526,7 +535,10 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineTrackItem):
   if (mode === 'transition') {
     const next = getNextClipForItem(track, item);
     if (!next)
-      return t('granVideoEditor.timeline.transition.errorNoNextClip', 'No next clip found for transition');
+      return t(
+        'granVideoEditor.timeline.transition.errorNoNextClip',
+        'No next clip found for transition',
+      );
     const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
     if (gapUs > 1_000)
@@ -582,17 +594,17 @@ const { contextMenuItems } = useClipContextMenu({
   emitClipAction: (payload) => emit('clipAction', payload),
   t,
 });
- 
+
 const isFreePosition = computed(() => {
   if (!clipItem.value || !timelineStore.timelineDoc) return false;
   const fps = sanitizeFps(timelineStore.timelineDoc.timebase.fps);
-  
+
   const startFrame = (clipItem.value.timelineRange.startUs * fps) / 1_000_000;
   const durFrame = (clipItem.value.timelineRange.durationUs * fps) / 1_000_000;
-  
+
   const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
   const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
- 
+
   return !isStartQuantized || !isDurationQuantized;
 });
 </script>
@@ -915,7 +927,13 @@ const isFreePosition = computed(() => {
           <button
             type="button"
             class="w-full h-full overflow-hidden group/trans"
-            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in', Boolean(hasTransitionInProblem(track, item)), clipItem.transitionIn.isOverridden)"
+            :class="
+              getTransitionButtonClass(
+                selectedTransition?.itemId === item.id && selectedTransition?.edge === 'in',
+                Boolean(hasTransitionInProblem(track, item)),
+                clipItem.transitionIn.isOverridden,
+              )
+            "
             :title="getTransitionButtonTitle(track, item, 'in')"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="
@@ -994,7 +1012,13 @@ const isFreePosition = computed(() => {
           <button
             type="button"
             class="w-full h-full overflow-hidden group/trans"
-            :class="getTransitionButtonClass(selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out', Boolean(hasTransitionOutProblem(track, item)), clipItem.transitionOut.isOverridden)"
+            :class="
+              getTransitionButtonClass(
+                selectedTransition?.itemId === item.id && selectedTransition?.edge === 'out',
+                Boolean(hasTransitionOutProblem(track, item)),
+                clipItem.transitionOut.isOverridden,
+              )
+            "
             :title="getTransitionButtonTitle(track, item, 'out')"
             @pointerdown.stop="onTransitionPointerdown($event)"
             @click.stop="

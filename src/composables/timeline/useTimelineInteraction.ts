@@ -1,7 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineTrack, TimelineMarker } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -9,7 +9,6 @@ import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import type { TimelineMarker } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import {
   BASE_PX_PER_SECOND,
@@ -156,7 +155,8 @@ export function useTimelineInteraction(
 
   function selectItem(e: PointerEvent, itemId: string) {
     const isMulti =
-      isLayer1Active(e, workspaceStore.userSettings) || isLayer2Active(e, workspaceStore.userSettings);
+      isLayer1Active(e, workspaceStore.userSettings) ||
+      isLayer2Active(e, workspaceStore.userSettings);
 
     const doc = timelineStore.timelineDoc;
     const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
@@ -700,7 +700,7 @@ export function useTimelineInteraction(
               if (it.kind !== 'clip') continue;
               const linked = String((it as any).linkedVideoClipId ?? '');
               if (!linked) continue;
-              if (!Boolean((it as any).lockToLinkedVideo)) continue;
+              if (!(it as any).lockToLinkedVideo) continue;
               if (!movedVideoIds.includes(linked)) continue;
               cmds.push({
                 type: 'update_clip_properties',

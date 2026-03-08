@@ -71,10 +71,7 @@ async function handleOpenProject(project: string) {
 
       <!-- Last Project Hero Section -->
       <div
-        v-if="
-          suggestedProject &&
-          workspaceStore.projects.includes(suggestedProject)
-        "
+        v-if="suggestedProject && workspaceStore.projects.includes(suggestedProject)"
         class="bg-linear-to-r from-primary-950/80 to-primary-900/40 border border-primary-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-primary-500/10"
       >
         <div class="space-y-2">

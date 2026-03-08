@@ -29,7 +29,6 @@ const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
 const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
 
-
 const playbackSpeedOptions = [
   { label: '0.5x', value: 0.5 },
   { label: '0.75x', value: 0.75 },
@@ -284,7 +283,6 @@ watch(
     saveTimelineThumbnail();
   },
 );
-
 
 const toolbarPosition = computed(
   () => projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom',

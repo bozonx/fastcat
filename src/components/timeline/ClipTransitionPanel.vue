@@ -97,7 +97,7 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
       return edgeMode === 'gap';
     }
 
-    if (field.key === 'blur') {
+    if (field.key === 'blur' || field.key === 'blurMode') {
       return edgeMode === 'blur';
     }
 
@@ -181,7 +181,9 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
     </div>
 
     <div v-if="visibleParamFields.length" class="flex flex-col gap-2">
-      <div class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.parameters') }}</div>
+      <div class="text-ui-text-muted">
+        {{ t('granVideoEditor.timeline.transition.parameters') }}
+      </div>
 
       <div
         v-for="field in visibleParamFields"

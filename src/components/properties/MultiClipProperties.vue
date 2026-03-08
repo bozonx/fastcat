@@ -18,11 +18,9 @@ const generatedGroupId = () =>
   `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 const selectedCountLabel = computed(() => {
-  return (t as any)(
-    'granVideoEditor.timeline.selectedClipsCount',
-    '{count} clips selected',
-    { count: props.items.length },
-  ) as string;
+  return (t as any)('granVideoEditor.timeline.selectedClipsCount', '{count} clips selected', {
+    count: props.items.length,
+  }) as string;
 });
 
 const hasLockedLinks = computed(() => {
@@ -35,7 +33,11 @@ const hasLockedLinks = computed(() => {
     for (const it of track.items) {
       if (!selectedIds.has(it.id)) continue;
       if (it.kind !== 'clip') continue;
-      if (track.kind === 'audio' && Boolean((it as any).linkedVideoClipId) && Boolean((it as any).lockToLinkedVideo)) {
+      if (
+        track.kind === 'audio' &&
+        Boolean((it as any).linkedVideoClipId) &&
+        Boolean((it as any).lockToLinkedVideo)
+      ) {
         return true;
       }
       if (track.kind === 'video') {
@@ -63,7 +65,7 @@ const selectedClips = computed(() => {
   const clips: TimelineClipItem[] = [];
   const doc = timelineStore.timelineDoc;
   if (!doc) return clips;
-  
+
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track) continue;
@@ -76,7 +78,9 @@ const selectedClips = computed(() => {
 });
 
 const hasGroupedClip = computed(() =>
-  selectedClips.value.some((clip) => typeof clip.linkedGroupId === 'string' && clip.linkedGroupId.trim().length > 0),
+  selectedClips.value.some(
+    (clip) => typeof clip.linkedGroupId === 'string' && clip.linkedGroupId.trim().length > 0,
+  ),
 );
 
 function handleUnlinkSelected() {
@@ -172,7 +176,9 @@ const hasFreeClip = computed(() => {
 const allDisabled = computed(() => selectedClips.value.every((c) => c.disabled));
 const allMuted = computed(() => selectedClips.value.every((c) => c.audioMuted));
 const allShowWaveform = computed(() => selectedClips.value.every((c) => c.showWaveform !== false));
-const allWaveformHalf = computed(() => selectedClips.value.every((c) => c.audioWaveformMode !== 'full'));
+const allWaveformHalf = computed(() =>
+  selectedClips.value.every((c) => c.audioWaveformMode !== 'full'),
+);
 
 const hasAudioOrVideoWithAudio = computed(() => {
   const doc = timelineStore.timelineDoc;
@@ -182,11 +188,19 @@ const hasAudioOrVideoWithAudio = computed(() => {
     if (!track) return false;
     const clip = track.items.find((it) => it.id === itemId);
     if (!clip || clip.kind !== 'clip') return false;
-    
+
     if (track.kind === 'audio') return true;
-    if (track.kind === 'video' && clip.clipType === 'media' && Boolean((clip as any).linkedVideoClipId))
+    if (
+      track.kind === 'video' &&
+      clip.clipType === 'media' &&
+      Boolean((clip as any).linkedVideoClipId)
+    )
       return true;
-    if (track.kind === 'video' && clip.clipType === 'media' && Boolean((clip as any).source?.hasAudio))
+    if (
+      track.kind === 'video' &&
+      clip.clipType === 'media' &&
+      Boolean((clip as any).source?.hasAudio)
+    )
       return true;
     return false;
   });
@@ -275,7 +289,7 @@ function handleSetUniformDuration(durationUs: number) {
     if (!track) continue;
     const clip = track.items.find((it) => it.id === itemId);
     if (!clip || clip.kind !== 'clip') continue;
-    if (Boolean((clip as any).locked)) continue;
+    if ((clip as any).locked) continue;
 
     const currentDurationUs = Math.max(0, Math.round(Number(clip.timelineRange.durationUs)));
     const deltaUs = nextDurationUs - currentDurationUs;
@@ -313,7 +327,7 @@ function handleQuantizeSelected() {
     if (!track) continue;
     const clip = track.items.find((it) => it.id === itemId);
     if (!clip || clip.kind !== 'clip') continue;
-    if (Boolean((clip as any).locked)) continue;
+    if ((clip as any).locked) continue;
 
     const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
     const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
@@ -371,7 +385,11 @@ function handleQuantizeSelected() {
           color="neutral"
           variant="soft"
           :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-          :label="allDisabled ? t('granVideoEditor.timeline.enableClips', 'Enable clips') : t('granVideoEditor.timeline.disableClips', 'Disable clips')"
+          :label="
+            allDisabled
+              ? t('granVideoEditor.timeline.enableClips', 'Enable clips')
+              : t('granVideoEditor.timeline.disableClips', 'Disable clips')
+          "
           @click="toggleDisabled"
         />
 
@@ -421,27 +439,39 @@ function handleQuantizeSelected() {
             color="neutral"
             variant="soft"
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-            :label="allMuted ? t('granVideoEditor.timeline.unmuteClips', 'Unmute clips') : t('granVideoEditor.timeline.muteClips', 'Mute clips')"
+            :label="
+              allMuted
+                ? t('granVideoEditor.timeline.unmuteClips', 'Unmute clips')
+                : t('granVideoEditor.timeline.muteClips', 'Mute clips')
+            "
             @click="toggleMuted"
           />
-          
+
           <UButton
             size="sm"
             color="neutral"
             variant="soft"
             icon="i-heroicons-chart-bar"
-            :label="allWaveformHalf ? t('granVideoEditor.timeline.waveformFull', 'Waveform: Full') : t('granVideoEditor.timeline.waveformHalf', 'Waveform: Half')"
+            :label="
+              allWaveformHalf
+                ? t('granVideoEditor.timeline.waveformFull', 'Waveform: Full')
+                : t('granVideoEditor.timeline.waveformHalf', 'Waveform: Half')
+            "
             @click="toggleWaveformMode"
           />
         </template>
-        
+
         <template v-if="hasVideo">
           <UButton
             size="sm"
             color="neutral"
             variant="soft"
             :icon="allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-            :label="allShowWaveform ? t('granVideoEditor.timeline.hideWaveform', 'Hide Waveform') : t('granVideoEditor.timeline.showWaveform', 'Show Waveform')"
+            :label="
+              allShowWaveform
+                ? t('granVideoEditor.timeline.hideWaveform', 'Hide Waveform')
+                : t('granVideoEditor.timeline.showWaveform', 'Show Waveform')
+            "
             @click="toggleShowWaveform"
           />
         </template>

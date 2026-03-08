@@ -71,7 +71,6 @@ async function rippleTrimRight() {
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <div class="ml-2 flex items-center gap-1.5">
-
       <div
         draggable="true"
         class="cursor-grab active:cursor-grabbing"

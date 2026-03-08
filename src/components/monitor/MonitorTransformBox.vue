@@ -152,7 +152,8 @@ function flushPendingTransform() {
 function scheduleTransformUpdate(patch: Partial<ClipTransform>) {
   if (!selectedClipId.value || !selectedTrackId.value) return;
 
-  const current = pendingTransform ?? ((clipData.value as any)?.transform as ClipTransform | undefined) ?? {};
+  const current =
+    pendingTransform ?? ((clipData.value as any)?.transform as ClipTransform | undefined) ?? {};
   const next: ClipTransform = {
     ...current,
     ...patch,
@@ -348,8 +349,10 @@ function onPointerMove(e: PointerEvent) {
       newScaleY = Math.sign(dragStartTransform.scaleY) * Math.abs(newScaleX) * ratio;
     }
 
-    const clampedScaleX = Math.abs(newScaleX) < 0.001 ? Math.sign(newScaleX || 1) * 0.001 : newScaleX;
-    const clampedScaleY = Math.abs(newScaleY) < 0.001 ? Math.sign(newScaleY || 1) * 0.001 : newScaleY;
+    const clampedScaleX =
+      Math.abs(newScaleX) < 0.001 ? Math.sign(newScaleX || 1) * 0.001 : newScaleX;
+    const clampedScaleY =
+      Math.abs(newScaleY) < 0.001 ? Math.sign(newScaleY || 1) * 0.001 : newScaleY;
 
     scheduleTransformUpdate({
       scale: { x: clampedScaleX, y: clampedScaleY, linked: dragType.length > 7 },
@@ -381,7 +384,11 @@ function onPointerMove(e: PointerEvent) {
         : dy - dAy * H;
 
     scheduleTransformUpdate({
-      anchor: { preset: 'custom', x: Math.max(-10, Math.min(10, newAx)), y: Math.max(-10, Math.min(10, newAy)) },
+      anchor: {
+        preset: 'custom',
+        x: Math.max(-10, Math.min(10, newAx)),
+        y: Math.max(-10, Math.min(10, newAy)),
+      },
       position: { x: dragStartTransform.posX + deltaPosX, y: dragStartTransform.posY + deltaPosY },
     });
   }

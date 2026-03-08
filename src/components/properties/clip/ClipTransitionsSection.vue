@@ -76,7 +76,10 @@ const transitionOptions = computed(() =>
             label-key="label"
             size="xs"
             class="mb-2"
-            @update:model-value="(value: any) => value && emit('updateType', { edge: 'in', type: value?.value ?? value })"
+            @update:model-value="
+              (value: any) =>
+                value && emit('updateType', { edge: 'in', type: value?.value ?? value })
+            "
           />
           <DurationSliderInput
             :model-value="props.transitionIn.durationUs / 1_000_000"
@@ -134,7 +137,10 @@ const transitionOptions = computed(() =>
             label-key="label"
             size="xs"
             class="mb-2"
-            @update:model-value="(value: any) => value && emit('updateType', { edge: 'out', type: value?.value ?? value })"
+            @update:model-value="
+              (value: any) =>
+                value && emit('updateType', { edge: 'out', type: value?.value ?? value })
+            "
           />
           <DurationSliderInput
             :model-value="props.transitionOut.durationUs / 1_000_000"

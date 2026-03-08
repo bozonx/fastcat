@@ -54,7 +54,8 @@ function focusTrack(trackId: string) {
   <div
     class="h-full bg-ui-bg flex flex-col border-r border-ui-border min-h-0"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('audioMixer'),
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+        focusStore.isPanelFocused('audioMixer'),
     }"
     @pointerdown.capture="focusAudioMixer"
   >

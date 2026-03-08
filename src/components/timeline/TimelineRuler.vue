@@ -820,7 +820,9 @@ const selectionRangeMenuItems = computed(() => [
 
           <!-- Left/Main Marker -->
           <div class="absolute bottom-0 left-0">
-            <UContextMenu :items="p.isZone ? getZoneMarkerMenuItems(p.id) : getMarkerMenuItems(p.id)">
+            <UContextMenu
+              :items="p.isZone ? getZoneMarkerMenuItems(p.id) : getMarkerMenuItems(p.id)"
+            >
               <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
                 <button
                   type="button"

@@ -1,11 +1,10 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { computed } from 'vue';
 
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();

@@ -47,7 +47,10 @@ function handleRippleTrim() {
 
 function handleDelete() {
   timelineStore.removeSelectionRange();
-  if (selectionStore.selectedEntity?.source === 'timeline' && selectionStore.selectedEntity.kind === 'selection-range') {
+  if (
+    selectionStore.selectedEntity?.source === 'timeline' &&
+    selectionStore.selectedEntity.kind === 'selection-range'
+  ) {
     selectionStore.clearSelection();
   }
 }
@@ -93,12 +96,18 @@ function handleDelete() {
     <PropertySection :title="t('granVideoEditor.selectionRange.info', 'Selection Range')">
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
-        <TimecodeInput :model-value="selectionRange.startUs" @update:model-value="handleUpdateStartTime" />
+        <TimecodeInput
+          :model-value="selectionRange.startUs"
+          @update:model-value="handleUpdateStartTime"
+        />
       </div>
 
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }}</span>
-        <TimecodeInput :model-value="selectionRange.endUs" @update:model-value="handleUpdateEndTime" />
+        <TimecodeInput
+          :model-value="selectionRange.endUs"
+          @update:model-value="handleUpdateEndTime"
+        />
       </div>
     </PropertySection>
   </div>

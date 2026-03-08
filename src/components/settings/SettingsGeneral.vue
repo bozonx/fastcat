@@ -63,7 +63,9 @@ function resetDefaults() {
       />
     </UFormField>
 
-    <UFormField :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')">
+    <UFormField
+      :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')"
+    >
       <div class="flex items-center gap-4">
         <WheelSlider
           :model-value="workspaceStore.userSettings.timeline.snapThresholdPx"

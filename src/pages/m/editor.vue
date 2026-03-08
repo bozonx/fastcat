@@ -1,37 +1,39 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useProjectStore } from '~/stores/project.store'
-import { useProjectActions } from '~/composables/editor/useProjectActions'
-import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue'
-import MobileExportForm from '~/components/export/MobileExportForm.vue'
+import { ref } from 'vue';
+import { useProjectStore } from '~/stores/project.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
+import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
+import MobileExportForm from '~/components/export/MobileExportForm.vue';
 
 definePageMeta({
-  layout: 'mobile'
-})
+  layout: 'mobile',
+});
 
-const projectStore = useProjectStore()
-const { leaveProject } = useProjectActions()
+const projectStore = useProjectStore();
+const { leaveProject } = useProjectActions();
 
-type TabId = 'files' | 'edit' | 'sound' | 'export'
+type TabId = 'files' | 'edit' | 'sound' | 'export';
 
-const activeTab = ref<TabId>('edit')
+const activeTab = ref<TabId>('edit');
 
 const navItems = [
   { id: 'files' as const, icon: 'lucide:file-video', label: 'Files' },
   { id: 'edit' as const, icon: 'lucide:film', label: 'Edit' },
   { id: 'sound' as const, icon: 'lucide:music', label: 'Sound' },
   { id: 'export' as const, icon: 'lucide:download', label: 'Export' },
-]
+];
 
 async function handleBack() {
-  await leaveProject('/m')
+  await leaveProject('/m');
 }
 </script>
 
 <template>
   <div class="flex flex-col h-full w-full">
     <!-- Header -->
-    <header class="shrink-0 flex items-center justify-between h-12 px-4 border-b border-slate-800 bg-slate-900">
+    <header
+      class="shrink-0 flex items-center justify-between h-12 px-4 border-b border-slate-800 bg-slate-900"
+    >
       <div class="flex items-center gap-2">
         <UButton
           size="sm"
