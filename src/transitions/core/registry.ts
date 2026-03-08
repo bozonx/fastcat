@@ -13,6 +13,7 @@ export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
 export interface TransitionShaderContext {
   progress: number;
   curve: TransitionCurve;
+  edge?: 'in' | 'out';
   params?: Record<string, unknown>;
   fromTexture?: Texture;
   toTexture?: Texture;

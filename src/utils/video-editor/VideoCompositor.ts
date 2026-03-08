@@ -1900,6 +1900,7 @@ export class VideoCompositor {
       const transitionContext = {
         progress: state.progress,
         curve: state.curve,
+        edge: 'in' as const,
         params: state.transition.params,
         fromTexture,
         toTexture: clip.transitionToTexture,

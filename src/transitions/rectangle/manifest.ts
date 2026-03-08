@@ -65,40 +65,61 @@ float rectDistance(vec2 p, vec2 center, vec2 size) {
 
 void main(void) {
   vec2 uv = vNormalizedCoord;
-  vec2 centered = uv - uCenter;
-  centered.x *= vAspectRatio;
-  
-  // Calculate max dimensions needed to cover the entire screen from the center
-  float maxDistX = max(uCenter.x, 1.0 - uCenter.x) * vAspectRatio;
-  float maxDistY = max(uCenter.y, 1.0 - uCenter.y);
-  vec2 maxSize = vec2(maxDistX, maxDistY);
   
   float progress = clamp(uProgress, 0.0, 1.0);
   float blur = max(0.0001, uBlur);
-  
-  // Size of the rectangle
   float t = uDirection > 0.0 ? progress : (1.0 - progress);
-  vec2 currentSize = maxSize * t;
-  
-  // distance from current point to rectangle boundary
-  float dist = rectDistance(centered, vec2(0.0), currentSize);
-  
-  float reveal = 1.0 - smoothstep(-blur, blur, dist);
 
-  if (uDirection < 0.0) {
-    reveal = 1.0 - reveal;
-  }
-
+  float reveal = 0.0;
   vec2 uvFrom = uv;
   vec2 coordTo = vTextureCoord;
 
   if (uContentMode > 0.5) {
-    float scale = max(0.001, t);
+    float scale = max(0.0001, t);
     vec2 uvScaled = uCenter + (uv - uCenter) / scale;
+    
     if (uDirection > 0.0) {
       coordTo = vTextureCoord + (uvScaled - uv) * vTexScale;
     } else {
       uvFrom = uvScaled;
+    }
+    
+    // Bounds of the scaled image
+    vec2 bMin = uCenter - uCenter * scale;
+    vec2 bMax = uCenter + (1.0 - uCenter) * scale;
+    
+    // Distance in aspect-corrected space
+    vec2 p = uv;
+    p.x *= vAspectRatio;
+    vec2 boxMin = bMin;
+    boxMin.x *= vAspectRatio;
+    vec2 boxMax = bMax;
+    boxMax.x *= vAspectRatio;
+    
+    vec2 boxCenter = (boxMin + boxMax) * 0.5;
+    vec2 boxSize = (boxMax - boxMin) * 0.5;
+    
+    float dist = rectDistance(p, boxCenter, boxSize);
+    
+    reveal = 1.0 - smoothstep(-blur, blur, dist);
+    if (uDirection < 0.0) {
+      reveal = 1.0 - reveal;
+    }
+  } else {
+    vec2 centered = uv - uCenter;
+    centered.x *= vAspectRatio;
+    
+    // Calculate max dimensions needed to cover the entire screen from the center
+    float maxDistX = max(uCenter.x, 1.0 - uCenter.x) * vAspectRatio;
+    float maxDistY = max(uCenter.y, 1.0 - uCenter.y);
+    vec2 maxSize = vec2(maxDistX, maxDistY);
+    
+    vec2 currentSize = maxSize * t;
+    float dist = rectDistance(centered, vec2(0.0), currentSize);
+    
+    reveal = 1.0 - smoothstep(-blur, blur, dist);
+    if (uDirection < 0.0) {
+      reveal = 1.0 - reveal;
     }
   }
 
