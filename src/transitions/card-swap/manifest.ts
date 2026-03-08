@@ -10,6 +10,7 @@ export interface CardSwapParams {
   shadowSize: number;
   shadowOpacity: number;
   blurStrength: number;
+  bloom: number;
 }
 
 const vertex = `
@@ -56,9 +57,14 @@ uniform float uMaxDarkness;
 uniform float uShadowSize;
 uniform float uShadowOpacity;
 uniform float uBlurStrength;
+uniform float uBloom;
 
 const float depth = 3.0;
 const float perspective = 0.2;
+
+float getLuma(vec3 color) {
+  return dot(color, vec3(0.299, 0.587, 0.114));
+}
 
 bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
@@ -166,20 +172,30 @@ void main(void) {
     
     if (pfrIn) {
       vec4 c = vec4(0.0);
+      float tw = 0.0;
       for(int i = 0; i < SAMPLES; i++) {
         float offset = (float(i) / (fSamples - 1.0) - 0.5) * blurAmount;
-        c += texture(uFromTexture, pfr + blurDir * offset);
+        vec4 sc = texture(uFromTexture, pfr + blurDir * offset);
+        float w = 1.0 + pow(getLuma(sc.rgb), 2.0) * uBloom * 5.0;
+        c += sc * w;
+        tw += w;
       }
-      c /= fSamples;
+      c /= tw;
+      c.rgb += c.rgb * max(0.0, getLuma(c.rgb) - 0.5) * uBloom * 2.0;
       finalCFr = vec4(c.rgb * (1.0 - darkFr), c.a);
     }
     if (ptoIn) {
       vec4 c = vec4(0.0);
+      float tw = 0.0;
       for(int i = 0; i < SAMPLES; i++) {
         float offset = (float(i) / (fSamples - 1.0) - 0.5) * blurAmount;
-        c += texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + blurDir * offset) * vTexScale);
+        vec4 sc = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + blurDir * offset) * vTexScale);
+        float w = 1.0 + pow(getLuma(sc.rgb), 2.0) * uBloom * 5.0;
+        c += sc * w;
+        tw += w;
       }
-      c /= fSamples;
+      c /= tw;
+      c.rgb += c.rgb * max(0.0, getLuma(c.rgb) - 0.5) * uBloom * 2.0;
       finalCTo = vec4(c.rgb * (1.0 - darkTo), c.a);
     }
   } else {
@@ -189,26 +205,36 @@ void main(void) {
     
     if (pfrIn) {
       vec4 c = vec4(0.0);
+      float tw = 0.0;
       for(int i = 0; i < SAMPLES; i++) {
         vec2 offset = vec2(
           cos(float(i) * 2.39996) * blurAmountFr,
           sin(float(i) * 2.39996) * blurAmountFr
         ) * (float(i) / fSamples);
-        c += texture(uFromTexture, pfr + offset);
+        vec4 sc = texture(uFromTexture, pfr + offset);
+        float w = 1.0 + pow(getLuma(sc.rgb), 2.0) * uBloom * 5.0;
+        c += sc * w;
+        tw += w;
       }
-      c /= fSamples;
+      c /= tw;
+      c.rgb += c.rgb * max(0.0, getLuma(c.rgb) - 0.5) * uBloom * 2.0;
       finalCFr = vec4(c.rgb * (1.0 - darkFr), c.a);
     }
     if (ptoIn) {
       vec4 c = vec4(0.0);
+      float tw = 0.0;
       for(int i = 0; i < SAMPLES; i++) {
         vec2 offset = vec2(
           cos(float(i) * 2.39996) * blurAmountTo,
           sin(float(i) * 2.39996) * blurAmountTo
         ) * (float(i) / fSamples);
-        c += texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + offset) * vTexScale);
+        vec4 sc = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + offset) * vTexScale);
+        float w = 1.0 + pow(getLuma(sc.rgb), 2.0) * uBloom * 5.0;
+        c += sc * w;
+        tw += w;
       }
-      c /= fSamples;
+      c /= tw;
+      c.rgb += c.rgb * max(0.0, getLuma(c.rgb) - 0.5) * uBloom * 2.0;
       finalCTo = vec4(c.rgb * (1.0 - darkTo), c.a);
     }
   }
@@ -254,6 +280,7 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
       typeof params?.blurStrength === 'number'
         ? Math.max(0, Math.min(1, params.blurStrength))
         : 0.5,
+    bloom: typeof params?.bloom === 'number' ? Math.max(0, Math.min(1, params.bloom)) : 0.0,
   };
 }
 
@@ -327,6 +354,14 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       max: 1,
       step: 0.05,
     },
+    {
+      key: 'bloom',
+      kind: 'slider',
+      labelKey: 'granVideoEditor.timeline.transition.paramBloom',
+      min: 0,
+      max: 1,
+      step: 0.05,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -343,6 +378,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
           uShadowSize: { value: 0.2, type: 'f32' },
           uShadowOpacity: { value: 0.6, type: 'f32' },
           uBlurStrength: { value: 0.5, type: 'f32' },
+          uBloom: { value: 0.0, type: 'f32' },
         },
       },
     }),
@@ -361,6 +397,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
     uniforms.uShadowSize = params.shadowSize;
     uniforms.uShadowOpacity = params.shadowOpacity;
     uniforms.uBlurStrength = params.blurStrength;
+    uniforms.uBloom = params.bloom;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
