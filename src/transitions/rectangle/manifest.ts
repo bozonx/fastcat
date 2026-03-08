@@ -4,6 +4,7 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface RectangleParams {
   blur: number;
+  blurMode: 'fixed' | 'scaled';
   direction: 'from-center' | 'to-center';
   anchor: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   offsetX: number;
@@ -52,6 +53,7 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uBlur;
+uniform float uBlurMode;
 uniform float uDirection;
 uniform float uContentMode;
 uniform vec2 uCenter;
@@ -67,8 +69,8 @@ void main(void) {
   vec2 uv = vNormalizedCoord;
   
   float progress = clamp(uProgress, 0.0, 1.0);
-  float blur = max(0.0001, uBlur);
   float t = uDirection > 0.0 ? progress : (1.0 - progress);
+  float blur = max(0.0001, uBlur * (uBlurMode > 0.5 ? t : 1.0));
 
   float reveal = 0.0;
   vec2 uvFrom = uv;
@@ -139,6 +141,7 @@ function normalizeRectangleParams(params?: Record<string, unknown>): RectanglePa
 
   return {
     blur: clampNumber(params?.blur, 0.0001, 0.2, 0.015),
+    blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
     direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
     anchor,
     offsetX: clampNumber(params?.offsetX, -100, 100, 0),
@@ -162,6 +165,15 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
       min: 0.0001,
       max: 0.2,
       step: 0.0025,
+    },
+    {
+      key: 'blurMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
+      options: [
+        { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },
+        { value: 'scaled', labelKey: 'granVideoEditor.timeline.transition.blurModeScaled' },
+      ],
     },
     {
       key: 'direction',
@@ -225,6 +237,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
         rectangleUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uBlur: { value: 0.015, type: 'f32' },
+          uBlurMode: { value: 0, type: 'f32' },
           uDirection: { value: 1, type: 'f32' },
           uContentMode: { value: 0, type: 'f32' },
           uCenter: { value: [0.5, 0.5], type: 'vec2<f32>' },
@@ -241,6 +254,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uBlur = params.blur;
+    uniforms.uBlurMode = params.blurMode === 'scaled' ? 1 : 0;
     uniforms.uDirection = params.direction === 'to-center' ? -1 : 1;
     uniforms.uContentMode = params.contentMode === 'zoom' ? 1 : 0;
 

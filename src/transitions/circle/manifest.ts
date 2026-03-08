@@ -4,6 +4,7 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface CircleParams {
   blur: number;
+  blurMode: 'fixed' | 'scaled';
   direction: 'from-center' | 'to-center';
   anchor: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   offsetX: number;
@@ -50,6 +51,7 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uBlur;
+uniform float uBlurMode;
 uniform float uDirection;
 uniform vec2 uCenter;
 uniform vec2 uScale;
@@ -75,8 +77,9 @@ void main(void) {
   );
 
   float progress = clamp(uProgress, 0.0, 1.0);
-  float blur = max(0.0001, uBlur);
-  float radius = (uDirection > 0.0 ? progress : (1.0 - progress)) * maxRadius;
+  float t = uDirection > 0.0 ? progress : (1.0 - progress);
+  float radius = t * maxRadius;
+  float blur = max(0.0001, uBlur * (uBlurMode > 0.5 ? t : 1.0));
   float reveal = 1.0 - smoothstep(radius - blur, radius + blur, distanceFromCenter);
 
   if (uDirection < 0.0) {
@@ -99,6 +102,7 @@ function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
 
   return {
     blur: clampNumber(params?.blur, 0.0001, 0.2, 0.015),
+    blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
     direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
     anchor,
     offsetX: clampNumber(params?.offsetX, -100, 100, 0),
@@ -123,6 +127,15 @@ export const circleManifest: TransitionManifest<CircleParams> = {
       min: 0.0001,
       max: 0.2,
       step: 0.0025,
+    },
+    {
+      key: 'blurMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
+      options: [
+        { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },
+        { value: 'scaled', labelKey: 'granVideoEditor.timeline.transition.blurModeScaled' },
+      ],
     },
     {
       key: 'direction',
@@ -193,6 +206,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
         circleUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uBlur: { value: 0.015, type: 'f32' },
+          uBlurMode: { value: 0, type: 'f32' },
           uDirection: { value: 1, type: 'f32' },
           uCenter: { value: [0.5, 0.5], type: 'vec2<f32>' },
           uScale: { value: [1.0, 1.0], type: 'vec2<f32>' },
@@ -209,6 +223,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uBlur = params.blur;
+    uniforms.uBlurMode = params.blurMode === 'scaled' ? 1 : 0;
     uniforms.uDirection = params.direction === 'to-center' ? -1 : 1;
 
     let cx = 0.5;
