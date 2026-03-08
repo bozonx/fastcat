@@ -205,7 +205,8 @@ const emit = defineEmits<{
       | 'createMarkdown'
       | 'createTimeline'
       | 'createFolder'
-      | 'openAsPanel'
+      | 'openAsPanelCut'
+      | 'openAsPanelSound'
       | 'openAsProjectTab'
       | 'createOtioVersion'
       | 'convertFile',
