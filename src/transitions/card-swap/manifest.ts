@@ -7,6 +7,7 @@ export interface CardSwapParams {
   mode: 'zoom' | 'slide';
   slideOrder: 'normal' | 'reverse';
   maxDarkness: number;
+  shadowSize: number;
 }
 
 const vertex = `
@@ -50,6 +51,7 @@ uniform float uDirection;
 uniform float uMode;
 uniform float uSlideOrder;
 uniform float uMaxDarkness;
+uniform float uShadowSize;
 
 const float depth = 3.0;
 const float perspective = 0.2;
@@ -62,85 +64,113 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 p = vNormalizedCoord;
   
-  if (uMode > 0.5) {
-    // Slide mode
-    vec2 dir = uDirection > 0.5 ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    float sign = uSlideOrder > 0.5 ? -1.0 : 1.0;
-    
-    float mag = progress < 0.5 ? progress : (1.0 - progress);
-    
-    // If sign=1.0, from moves left (-dir), so to sample it we add dir*mag
-    vec2 pfr = p + sign * dir * mag;
-    vec2 pto = p - sign * dir * mag;
-    
-    if (progress < 0.5) {
-      if (inBounds(pfr)) {
-        gl_FragColor = texture(uFromTexture, pfr);
-        return;
-      }
-      if (inBounds(pto)) {
-        vec4 c = texture(uTexture, vTextureCoord + (pto - p) * vTexScale);
-        float dark = uMaxDarkness * (1.0 - 2.0 * progress);
-        gl_FragColor = vec4(c.rgb * (1.0 - dark), c.a);
-        return;
-      }
-    } else {
-      if (inBounds(pto)) {
-        gl_FragColor = texture(uTexture, vTextureCoord + (pto - p) * vTexScale);
-        return;
-      }
-      if (inBounds(pfr)) {
-        vec4 c = texture(uFromTexture, pfr);
-        float dark = uMaxDarkness * (2.0 * progress - 1.0);
-        gl_FragColor = vec4(c.rgb * (1.0 - dark), c.a);
-        return;
-      }
-    }
-    
-    gl_FragColor = vec4(0.0);
-    return;
+  // Mirror logic for Slide Order (Reverse)
+  float sign_order = uSlideOrder > 0.5 ? -1.0 : 1.0;
+  if (sign_order < 0.0) {
+    if (uDirection > 0.5) p.x = 1.0 - p.x;
+    else p.y = 1.0 - p.y;
   }
   
   vec2 pfr = vec2(-1.0);
   vec2 pto = vec2(-1.0);
-  
-  float sizeFr = mix(1.0, depth, progress);
-  float perspFr = perspective * progress;
-  
-  float sizeTo = mix(1.0, depth, 1.0 - progress);
-  float perspTo = perspective * (1.0 - progress);
-  
-  if (uDirection > 0.5) {
-    // Horizontal
-    pfr = (p + vec2(-0.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * p.x)) + vec2(0.0, 0.5);
-    pto = (p + vec2(-1.0, -0.5)) * vec2(sizeTo / (1.0 - perspective * (1.0 - progress)), sizeTo / (1.0 - sizeTo * perspTo * (0.5 - p.x))) + vec2(1.0, 0.5);
+  float sizeFr = 1.0;
+  float sizeTo = 1.0;
+  float darkFr = 0.0;
+  float darkTo = 0.0;
+
+  if (uMode > 0.5) {
+    // Slide mode
+    vec2 dir = uDirection > 0.5 ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    float mag = progress < 0.5 ? progress : (1.0 - progress);
+    
+    pfr = p + dir * mag;
+    pto = p - dir * mag;
+    
+    darkFr = progress < 0.5 ? 0.0 : uMaxDarkness * (2.0 * progress - 1.0);
+    darkTo = progress < 0.5 ? uMaxDarkness * (1.0 - 2.0 * progress) : 0.0;
   } else {
-    // Vertical
-    pfr = (p + vec2(-0.5, -0.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * p.y), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 0.0);
-    pto = (p + vec2(-0.5, -1.0)) * vec2(sizeTo / (1.0 - sizeTo * perspTo * (0.5 - p.y)), sizeTo / (1.0 - perspective * (1.0 - progress))) + vec2(0.5, 1.0);
+    // Zoom mode
+    sizeFr = mix(1.0, depth, progress);
+    float perspFr = perspective * progress;
+    
+    sizeTo = mix(1.0, depth, 1.0 - progress);
+    float perspTo = perspective * (1.0 - progress);
+    
+    darkFr = uMaxDarkness * progress;
+    darkTo = uMaxDarkness * (1.0 - progress);
+    
+    if (uDirection > 0.5) {
+      // Horizontal
+      pfr = (p + vec2(0.0, -0.5)) * vec2(sizeFr / (1.0 - perspective * progress), sizeFr / (1.0 - sizeFr * perspFr * p.x)) + vec2(0.0, 0.5);
+      pto = (p + vec2(-1.0, -0.5)) * vec2(sizeTo / (1.0 - perspective * (1.0 - progress)), sizeTo / (1.0 - sizeTo * perspTo * (1.0 - p.x))) + vec2(1.0, 0.5);
+    } else {
+      // Vertical
+      pfr = (p + vec2(-0.5, 0.0)) * vec2(sizeFr / (1.0 - sizeFr * perspFr * p.y), sizeFr / (1.0 - perspective * progress)) + vec2(0.5, 0.0);
+      pto = (p + vec2(-0.5, -1.0)) * vec2(sizeTo / (1.0 - sizeTo * perspTo * (1.0 - p.y)), sizeTo / (1.0 - perspective * (1.0 - progress))) + vec2(0.5, 1.0);
+    }
   }
   
+  // Un-mirror UVs
+  if (sign_order < 0.0) {
+    if (uDirection > 0.5) {
+      pfr.x = 1.0 - pfr.x;
+      pto.x = 1.0 - pto.x;
+    } else {
+      pfr.y = 1.0 - pfr.y;
+      pto.y = 1.0 - pto.y;
+    }
+  }
+  
+  bool pfrIn = inBounds(pfr);
+  bool ptoIn = inBounds(pto);
+  
+  // Compute shadows
+  float shadowFr = 0.0;
+  if (!pfrIn && uShadowSize > 0.0) {
+    vec2 d2 = max(vec2(0.0) - pfr, pfr - vec2(1.0));
+    float dist = length(max(d2, 0.0)) / sizeFr;
+    float maxDist = uShadowSize * 0.2;
+    if (dist < maxDist && maxDist > 0.0) {
+      shadowFr = (1.0 - dist / maxDist) * 0.6; // Max 60% opacity shadow
+    }
+  }
+  
+  float shadowTo = 0.0;
+  if (!ptoIn && uShadowSize > 0.0) {
+    vec2 d2 = max(vec2(0.0) - pto, pto - vec2(1.0));
+    float dist = length(max(d2, 0.0)) / sizeTo;
+    float maxDist = uShadowSize * 0.2;
+    if (dist < maxDist && maxDist > 0.0) {
+      shadowTo = (1.0 - dist / maxDist) * 0.6;
+    }
+  }
+
+  // Draw front-to-back
   if (progress < 0.5) {
-    if (inBounds(pfr)) {
-      gl_FragColor = texture(uFromTexture, pfr);
-      return;
-    }
-    if (inBounds(pto)) {
-      gl_FragColor = texture(uTexture, vTextureCoord + (pto - p) * vTexScale);
-      return;
+    // From is on top
+    if (pfrIn) {
+      vec4 c = texture(uFromTexture, pfr);
+      gl_FragColor = vec4(c.rgb * (1.0 - darkFr), c.a);
+    } else if (ptoIn) {
+      vec4 c = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord) * vTexScale);
+      float totalDark = min(1.0, darkTo + shadowFr);
+      gl_FragColor = vec4(c.rgb * (1.0 - totalDark), c.a);
+    } else {
+      gl_FragColor = vec4(0.0);
     }
   } else {
-    if (inBounds(pto)) {
-      gl_FragColor = texture(uTexture, vTextureCoord + (pto - p) * vTexScale);
-      return;
-    }
-    if (inBounds(pfr)) {
-      gl_FragColor = texture(uFromTexture, pfr);
-      return;
+    // To is on top
+    if (ptoIn) {
+      vec4 c = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord) * vTexScale);
+      gl_FragColor = vec4(c.rgb * (1.0 - darkTo), c.a);
+    } else if (pfrIn) {
+      vec4 c = texture(uFromTexture, pfr);
+      float totalDark = min(1.0, darkFr + shadowTo);
+      gl_FragColor = vec4(c.rgb * (1.0 - totalDark), c.a);
+    } else {
+      gl_FragColor = vec4(0.0);
     }
   }
-  
-  gl_FragColor = vec4(0.0);
 }
 `;
 
@@ -151,6 +181,8 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
     slideOrder: params?.slideOrder === 'reverse' ? 'reverse' : 'normal',
     maxDarkness:
       typeof params?.maxDarkness === 'number' ? Math.max(0, Math.min(1, params.maxDarkness)) : 0.5,
+    shadowSize:
+      typeof params?.shadowSize === 'number' ? Math.max(0, Math.min(1, params.shadowSize)) : 0.2,
   };
 }
 
@@ -191,7 +223,6 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
         { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.slideOrderNormal' },
         { value: 'reverse', labelKey: 'granVideoEditor.timeline.transition.slideOrderReverse' },
       ],
-      showIf: (params: any) => params.mode === 'slide',
     },
     {
       key: 'maxDarkness',
@@ -200,7 +231,14 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       min: 0,
       max: 1,
       step: 0.05,
-      showIf: (params: any) => params.mode === 'slide',
+    },
+    {
+      key: 'shadowSize',
+      kind: 'slider',
+      labelKey: 'granVideoEditor.timeline.transition.paramShadowSize',
+      min: 0,
+      max: 1,
+      step: 0.05,
     },
   ],
   renderMode: 'shader',
@@ -215,6 +253,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
           uMode: { value: 0, type: 'f32' },
           uSlideOrder: { value: 0, type: 'f32' },
           uMaxDarkness: { value: 0.5, type: 'f32' },
+          uShadowSize: { value: 0.2, type: 'f32' },
         },
       },
     }),
@@ -231,6 +270,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
     uniforms.uMode = params.mode === 'slide' ? 1 : 0;
     uniforms.uSlideOrder = params.slideOrder === 'reverse' ? 1 : 0;
     uniforms.uMaxDarkness = params.maxDarkness;
+    uniforms.uShadowSize = params.shadowSize;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
