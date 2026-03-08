@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -35,30 +36,26 @@ let activeClipPointerMove: ((e: PointerEvent) => void) | null = null;
 let activeClipPointerUp: ((e?: PointerEvent) => void) | null = null;
 let didStartClipDrag = false;
 
-function handleDragEnter(event: DragEvent) {
-  if (!props.canEditClipContent) return;
-  if (event.dataTransfer?.types.includes('gran-effect')) {
-    isDraggingOver.value = true;
+function hasSupportedClipDrop(event: DragEvent): boolean {
+  return Boolean(
+    event.dataTransfer?.types.includes('gran-effect') ||
+      event.dataTransfer?.types.includes('gran-transition'),
+  );
+}
+
+function getDropTransitionEdge(event: DragEvent): 'in' | 'out' {
+  const currentTarget = event.currentTarget;
+  if (!(currentTarget instanceof HTMLElement)) {
+    return 'out';
   }
+
+  const rect = currentTarget.getBoundingClientRect();
+  const relativeX = event.clientX - rect.left;
+  return relativeX <= rect.width / 2 ? 'in' : 'out';
 }
 
-function handleDragLeave() {
-  isDraggingOver.value = false;
-}
-
-function handleDragOver(event: DragEvent) {
-  if (!props.canEditClipContent) return;
-  if (event.dataTransfer?.types.includes('gran-effect')) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-  }
-}
-
-function handleDrop(event: DragEvent) {
-  if (!props.canEditClipContent) return;
-  isDraggingOver.value = false;
-  const effectType = event.dataTransfer?.getData('gran-effect');
-  if (!effectType || !clipItem.value) return;
+function handleEffectDrop(effectType: string) {
+  if (!clipItem.value) return;
 
   const manifest = getEffectManifest(effectType);
   if (!manifest) return;
@@ -75,13 +72,81 @@ function handleDrop(event: DragEvent) {
     effects: [newEffect, ...currentEffects],
   });
 
-  // Select the clip
   selectionStore.selectTimelineItem(props.track.id, props.item.id, props.item.kind as 'clip');
 
-  // Trigger scroll to effects
   setTimeout(() => {
     uiStore.triggerScrollToEffects();
   }, 50);
+}
+
+function handleTransitionDrop(transitionType: string, edge: 'in' | 'out') {
+  if (!clipItem.value) return;
+
+  const manifest = getTransitionManifest(transitionType);
+  if (!manifest) return;
+
+  const clipDurationUs = Math.max(0, Math.round(Number(clipItem.value.timelineRange.durationUs ?? 0)));
+  const defaultDurationUs = Math.max(0, Math.round(Number(manifest.defaultDurationUs ?? 0)));
+  const durationUs =
+    clipDurationUs > 0 && clipDurationUs < defaultDurationUs
+      ? Math.round(clipDurationUs * 0.3)
+      : defaultDurationUs;
+
+  const transition = {
+    type: transitionType,
+    durationUs,
+    mode: DEFAULT_TRANSITION_MODE,
+    curve: DEFAULT_TRANSITION_CURVE,
+    params: normalizeTransitionParams(transitionType) as Record<string, unknown> | undefined,
+  };
+
+  timelineStore.updateClipTransition(
+    props.track.id,
+    props.item.id,
+    edge === 'in' ? { transitionIn: transition } : { transitionOut: transition },
+  );
+
+  timelineStore.selectTransition({ trackId: props.track.id, itemId: props.item.id, edge });
+  selectionStore.selectTimelineTransition(props.track.id, props.item.id, edge);
+}
+
+function handleDragEnter(event: DragEvent) {
+  if (!props.canEditClipContent) return;
+  if (hasSupportedClipDrop(event)) {
+    isDraggingOver.value = true;
+  }
+}
+
+function handleDragLeave() {
+  isDraggingOver.value = false;
+}
+
+function handleDragOver(event: DragEvent) {
+  if (!props.canEditClipContent) return;
+  if (hasSupportedClipDrop(event)) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+}
+
+function handleDrop(event: DragEvent) {
+  if (!props.canEditClipContent) return;
+  isDraggingOver.value = false;
+
+  if (!clipItem.value || !hasSupportedClipDrop(event)) return;
+
+  const effectType = event.dataTransfer?.getData('gran-effect');
+  const transitionType = event.dataTransfer?.getData('gran-transition');
+
+  if (effectType) {
+    handleEffectDrop(effectType);
+  } else if (transitionType) {
+    handleTransitionDrop(transitionType, getDropTransitionEdge(event));
+  } else {
+    return;
+  }
 
   event.preventDefault();
   event.stopPropagation();

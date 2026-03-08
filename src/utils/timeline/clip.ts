@@ -165,12 +165,45 @@ export function getFadeLinePattern(
   width = 100,
 ): FadePatternLine[] {
   const count = 28;
-  const positions: number[] = [];
+  const sampleSteps = 256;
+  const dt = 1 / sampleSteps;
+  const minWeight = 0.02;
 
+  // Build cumulative weight based on curve slope.
+  // Where the curve is steeper, slope is higher => more lines.
+  const cumulative: number[] = [0];
+  for (let i = 1; i <= sampleSteps; i += 1) {
+    const t = i / sampleSteps;
+    const tPrev = Math.max(0, t - dt);
+    const tNext = Math.min(1, t + dt);
+    const yPrev = applyTransitionCurve(tPrev, curve);
+    const yNext = applyTransitionCurve(tNext, curve);
+    const slope = Math.abs(yNext - yPrev) / (tNext - tPrev || dt);
+    const weight = Math.max(minWeight, slope);
+    cumulative[i] = (cumulative[i - 1] ?? 0) + weight;
+  }
+
+  const total = cumulative[sampleSteps] ?? 0;
+  if (total <= 0) {
+    return [];
+  }
+
+  const positions: number[] = [];
   for (let index = 1; index <= count; index += 1) {
-    const t = index / (count + 1);
-    const position = applyTransitionCurve(t, curve) * width;
-    positions.push(edge === 'in' ? position : width - position);
+    const target = (index / (count + 1)) * total;
+
+    // Find first i where cumulative[i] >= target.
+    let i = 1;
+    while (i < sampleSteps && (cumulative[i] ?? 0) < target) {
+      i += 1;
+    }
+
+    const left = cumulative[i - 1] ?? 0;
+    const right = cumulative[i] ?? left;
+    const frac = right > left ? (target - left) / (right - left) : 0;
+    const t = (i - 1 + frac) / sampleSteps;
+    const x = t * width;
+    positions.push(edge === 'in' ? x : width - x);
   }
 
   const sorted = positions
