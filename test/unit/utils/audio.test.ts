@@ -23,6 +23,7 @@ describe('utils/audio', () => {
           mode: 'transition',
           curve: 'bezier',
         },
+        audioFadeInCurve: 'logarithmic',
       },
     });
 
@@ -35,7 +36,7 @@ describe('utils/audio', () => {
       clipDurationS: 4,
       clip: {
         audioFadeOutUs: 500_000,
-        audioFadeOutCurve: 'linear',
+        audioFadeOutCurve: 'logarithmic',
         transitionOut: {
           durationUs: 2_000_000,
           mode: 'transition',
@@ -46,6 +47,66 @@ describe('utils/audio', () => {
 
     expect(effective.fadeOutS).toBe(0.5);
     expect(effective.fadeOutCurve).toBe('logarithmic');
+  });
+
+  it('uses outgoing transition owner fade out mode for both clips in transition', () => {
+    const fromClip = {
+      audioFadeOutCurve: 'logarithmic' as const,
+      transitionOut: {
+        durationUs: 800_000,
+        mode: 'transition',
+        curve: 'linear',
+      },
+    };
+
+    const toClipEffective = resolveEffectiveFadeDurationsSeconds({
+      clipDurationS: 3,
+      clip: {
+        audioFadeInCurve: 'linear',
+      },
+      previousClip: fromClip,
+    });
+
+    const fromClipEffective = resolveEffectiveFadeDurationsSeconds({
+      clipDurationS: 3,
+      clip: fromClip,
+      nextClip: {
+        audioFadeInCurve: 'linear',
+      },
+    });
+
+    expect(fromClipEffective.fadeOutCurve).toBe('logarithmic');
+    expect(toClipEffective.fadeInCurve).toBe('logarithmic');
+  });
+
+  it('uses incoming transition owner fade in mode for both clips in transition', () => {
+    const toClip = {
+      audioFadeInCurve: 'logarithmic' as const,
+      transitionIn: {
+        durationUs: 900_000,
+        mode: 'transition',
+        curve: 'linear',
+      },
+    };
+
+    const fromClipEffective = resolveEffectiveFadeDurationsSeconds({
+      clipDurationS: 3,
+      clip: {
+        audioFadeOutCurve: 'linear',
+      },
+      nextClip: toClip,
+    });
+
+    const toClipEffective = resolveEffectiveFadeDurationsSeconds({
+      clipDurationS: 3,
+      clip: toClip,
+      previousClip: {
+        audioFadeOutCurve: 'linear',
+      },
+    });
+
+    expect(fromClipEffective.fadeOutCurve).toBe('logarithmic');
+    expect(toClipEffective.fadeInCurve).toBe('logarithmic');
   });
 
   it('applies logarithmic curve differently from linear gain ramp', () => {

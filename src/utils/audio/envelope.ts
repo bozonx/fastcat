@@ -65,10 +65,6 @@ export function normalizeAudioFadeCurve(value: unknown): AudioFadeCurve {
   return value === 'logarithmic' ? 'logarithmic' : 'linear';
 }
 
-function normalizeTransitionCurveAsAudio(value: unknown): AudioFadeCurve {
-  return value === 'bezier' || value === 'logarithmic' ? 'logarithmic' : 'linear';
-}
-
 function normalizeTransitionMode(value: unknown): 'transition' | 'fade' {
   return value === 'fade' ? 'fade' : 'transition';
 }
@@ -77,6 +73,7 @@ function resolveEdgeFade(input: {
   manualDurationUs: unknown;
   manualCurve: unknown;
   transition?: AudioTransitionEnvelope | null;
+  transitionOwnerCurve?: unknown;
 }): { durationUs: number; curve: AudioFadeCurve } {
   const manualDurationUs = clampNumber(input.manualDurationUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
   const manualCurve = normalizeAudioFadeCurve(input.manualCurve);
@@ -89,7 +86,7 @@ function resolveEdgeFade(input: {
   ) {
     return {
       durationUs: manualDurationUs > 0 ? manualDurationUs : transitionDurationUs,
-      curve: normalizeTransitionCurveAsAudio(input.transition?.curve),
+      curve: normalizeAudioFadeCurve(input.transitionOwnerCurve),
     };
   }
 
@@ -108,6 +105,8 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
   const clipDurationS = Number.isFinite(params.clipDurationS)
     ? Math.max(0, params.clipDurationS)
     : 0;
+  const hasOwnIncomingTransition = Boolean(params.clip.transitionIn);
+  const hasOwnOutgoingTransition = Boolean(params.clip.transitionOut);
   const incomingTransition = params.clip.transitionIn ?? params.previousClip?.transitionOut ?? null;
   const outgoingTransition = params.clip.transitionOut ?? params.nextClip?.transitionIn ?? null;
 
@@ -115,11 +114,17 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
     manualDurationUs: params.clip.audioFadeInUs,
     manualCurve: params.clip.audioFadeInCurve,
     transition: incomingTransition,
+    transitionOwnerCurve: hasOwnIncomingTransition
+      ? params.clip.audioFadeInCurve
+      : params.previousClip?.audioFadeOutCurve,
   });
   const fadeOut = resolveEdgeFade({
     manualDurationUs: params.clip.audioFadeOutUs,
     manualCurve: params.clip.audioFadeOutCurve,
     transition: outgoingTransition,
+    transitionOwnerCurve: hasOwnOutgoingTransition
+      ? params.clip.audioFadeOutCurve
+      : params.nextClip?.audioFadeInCurve,
   });
 
   return {
