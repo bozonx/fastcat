@@ -181,7 +181,14 @@ export interface TimelineTextClipItem extends TimelineClipBase {
   style?: TextClipStyle;
 }
 
-export type ShapeType = 'square' | 'circle' | 'triangle' | 'star' | 'cloud' | 'speech_bubble';
+export type ShapeType =
+  | 'square'
+  | 'circle'
+  | 'triangle'
+  | 'star'
+  | 'cloud'
+  | 'speech_bubble'
+  | 'bang';
 
 export interface TimelineShapeClipItem extends TimelineClipBase {
   clipType: 'shape';

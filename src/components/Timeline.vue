@@ -893,7 +893,12 @@ async function onDrop(e: DragEvent, trackId: string) {
       const kind = item.kind;
       const name = typeof item.name === 'string' ? item.name : undefined;
       const path = typeof item.path === 'string' ? item.path : undefined;
-      const isVirtual = kind === 'adjustment' || kind === 'background' || kind === 'text';
+      const isVirtual =
+        kind === 'adjustment' ||
+        kind === 'background' ||
+        kind === 'text' ||
+        kind === 'shape' ||
+        kind === 'hud';
 
       if (!name || (!isVirtual && !path)) continue;
 

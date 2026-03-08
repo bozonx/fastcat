@@ -19,6 +19,13 @@ export interface WorkerTimelineClip {
   backgroundColor?: string;
   text?: string;
   style?: import('~/timeline/types').TextClipStyle;
+  shapeType?: import('~/timeline/types').ShapeType;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  hudType?: import('~/timeline/types').HudType;
+  background?: import('~/timeline/types').HudMediaParams;
+  content?: import('~/timeline/types').HudMediaParams;
   freezeFrameSourceUs?: number;
   opacity?: number;
   blendMode?: import('~/timeline/types').TimelineBlendMode;
