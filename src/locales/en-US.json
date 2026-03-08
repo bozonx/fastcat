@@ -750,6 +750,7 @@
         "paramScaleX": "Scale X (%)",
         "paramScaleY": "Scale Y (%)",
         "paramScale": "Scale",
+        "paramBlur": "Zoom Blur",
         "paramFromRotation": "Rotation (from clip, deg)",
         "paramToRotation": "Rotation (to clip, deg)",
         "paramContentMode": "Content mode",

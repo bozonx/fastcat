@@ -6,6 +6,7 @@ export interface ZoomParams {
   scale: number;
   fromRotation: number;
   toRotation: number;
+  blur: number;
 }
 
 const vertex = `
@@ -49,6 +50,7 @@ uniform float uScale;
 uniform float uFromRotation;
 uniform float uToRotation;
 uniform float uAspect;
+uniform float uBlur;
 
 vec2 rotate(vec2 pt, float angle) {
   float c = cos(angle);
@@ -59,6 +61,34 @@ vec2 rotate(vec2 pt, float angle) {
   return rotated;
 }
 
+vec4 sampleFrom(vec2 uv, float blurAmount) {
+  if (blurAmount < 0.001) return texture(uFromTexture, uv);
+  vec2 center = vec2(0.5, 0.5);
+  vec2 dir = center - uv;
+  vec4 color = vec4(0.0);
+  float samples = 16.0;
+  for (float i = 0.0; i < 16.0; i += 1.0) {
+     float t = i / samples;
+     color += texture(uFromTexture, uv + dir * (t * blurAmount));
+  }
+  return color / samples;
+}
+
+vec4 sampleTo(vec2 uv, float blurAmount) {
+  vec2 baseTexCoord = vTextureCoord + (uv - vNormalizedCoord) * vTexScale;
+  if (blurAmount < 0.001) return texture(uTexture, baseTexCoord);
+  vec2 center = vec2(0.5, 0.5);
+  vec2 dir = center - uv;
+  vec4 color = vec4(0.0);
+  float samples = 16.0;
+  for (float i = 0.0; i < 16.0; i += 1.0) {
+     float t = i / samples;
+     vec2 offsetNorm = dir * (t * blurAmount);
+     color += texture(uTexture, baseTexCoord + offsetNorm * vTexScale);
+  }
+  return color / samples;
+}
+
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   
@@ -66,14 +96,15 @@ void main(void) {
   float fromScale = mix(1.0, uScale, progress);
   float fromAlpha = mix(1.0, 0.0, progress);
   float fromAngle = mix(0.0, uFromRotation, progress);
+  float fromBlur = mix(0.0, uBlur * 0.005, progress);
   
   vec2 fromCentered = vNormalizedCoord - 0.5;
   fromCentered = rotate(fromCentered, fromAngle);
   vec2 fromUv = fromCentered / fromScale + 0.5;
   
-  vec4 fromColor = texture(uFromTexture, fromUv);
+  vec4 fromColor = sampleFrom(fromUv, fromBlur);
   
-  // Mask out bounds just in case (though for uScale > 1 it stays inside)
+  // Mask out bounds
   float fromInside = step(0.0, fromUv.x) * step(fromUv.x, 1.0) * step(0.0, fromUv.y) * step(fromUv.y, 1.0);
   fromColor *= fromAlpha * fromInside;
 
@@ -81,17 +112,17 @@ void main(void) {
   float toScale = mix(uScale, 1.0, progress);
   float toAlpha = mix(0.0, 1.0, progress);
   float toAngle = mix(uToRotation, 0.0, progress);
+  float toBlur = mix(uBlur * 0.005, 0.0, progress);
   
   vec2 toCentered = vNormalizedCoord - 0.5;
   toCentered = rotate(toCentered, toAngle);
   vec2 toUv = toCentered / toScale + 0.5;
   
-  vec4 toColor = texture(uTexture, vTextureCoord + (toUv - vNormalizedCoord) * vTexScale);
+  vec4 toColor = sampleTo(toUv, toBlur);
   
   float toInside = step(0.0, toUv.x) * step(toUv.x, 1.0) * step(0.0, toUv.y) * step(toUv.y, 1.0);
   toColor *= toAlpha * toInside;
 
-  // Use simple additive blending since alpha is pre-multiplied
   gl_FragColor = fromColor + toColor;
 }
 `;
@@ -101,6 +132,7 @@ function normalizeZoomParams(params?: Record<string, unknown>): ZoomParams {
     scale: clampNumber(params?.scale, 1.1, 10.0, 3.0),
     fromRotation: clampNumber(params?.fromRotation, -360, 360, 0),
     toRotation: clampNumber(params?.toRotation, -360, 360, 0),
+    blur: clampNumber(params?.blur, 0, 100, 20),
   };
 }
 
@@ -136,6 +168,14 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
       max: 360,
       step: 1,
     },
+    {
+      key: 'blur',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlur',
+      min: 0,
+      max: 100,
+      step: 1,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -149,6 +189,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
           uFromRotation: { value: 0, type: 'f32' },
           uToRotation: { value: 0, type: 'f32' },
           uAspect: { value: 16.0 / 9.0, type: 'f32' },
+          uBlur: { value: 20.0, type: 'f32' },
         },
       },
     }),
@@ -167,6 +208,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     uniforms.uScale = params.scale;
     uniforms.uFromRotation = (params.fromRotation * Math.PI) / 180;
     uniforms.uToRotation = (params.toRotation * Math.PI) / 180;
+    uniforms.uBlur = params.blur;
 
     // Attempt to deduce aspect ratio from texture dimensions if available
     if (context.fromTexture) {

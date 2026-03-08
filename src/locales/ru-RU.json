@@ -739,6 +739,7 @@
         "directionFromCenter": "Из центра",
         "directionToCenter": "В центр",
         "paramScale": "Масштаб",
+        "paramBlur": "Размытие при масштабировании",
         "paramFromRotation": "Вращение (уходящий, градусы)",
         "paramToRotation": "Вращение (входящий, градусы)",
         "errorNoPreviousClip": "Нет предыдущего клипа для перехода",
