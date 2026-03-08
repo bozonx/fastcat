@@ -8,6 +8,8 @@ export interface CircleParams {
   anchor: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   offsetX: number;
   offsetY: number;
+  scaleX: number;
+  scaleY: number;
 }
 
 const vertex = `
@@ -50,17 +52,22 @@ uniform float uProgress;
 uniform float uBlur;
 uniform float uDirection;
 uniform vec2 uCenter;
+uniform vec2 uScale;
 
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec2 centered = uv - uCenter;
   centered.x *= vAspectRatio;
+  
+  vec2 scale = max(vec2(0.001), uScale);
+  centered /= scale;
+  
   float distanceFromCenter = length(centered);
   
-  vec2 corner0 = vec2(0.0, 0.0) - uCenter; corner0.x *= vAspectRatio;
-  vec2 corner1 = vec2(1.0, 0.0) - uCenter; corner1.x *= vAspectRatio;
-  vec2 corner2 = vec2(0.0, 1.0) - uCenter; corner2.x *= vAspectRatio;
-  vec2 corner3 = vec2(1.0, 1.0) - uCenter; corner3.x *= vAspectRatio;
+  vec2 corner0 = vec2(0.0, 0.0) - uCenter; corner0.x *= vAspectRatio; corner0 /= scale;
+  vec2 corner1 = vec2(1.0, 0.0) - uCenter; corner1.x *= vAspectRatio; corner1 /= scale;
+  vec2 corner2 = vec2(0.0, 1.0) - uCenter; corner2.x *= vAspectRatio; corner2 /= scale;
+  vec2 corner3 = vec2(1.0, 1.0) - uCenter; corner3.x *= vAspectRatio; corner3 /= scale;
   
   float maxRadius = max(
     max(length(corner0), length(corner1)),
@@ -96,6 +103,8 @@ function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
     anchor,
     offsetX: clampNumber(params?.offsetX, -100, 100, 0),
     offsetY: clampNumber(params?.offsetY, -100, 100, 0),
+    scaleX: clampNumber(params?.scaleX, 1, 1000, 100),
+    scaleY: clampNumber(params?.scaleY, 1, 1000, 100),
   };
 }
 
@@ -158,6 +167,22 @@ export const circleManifest: TransitionManifest<CircleParams> = {
       max: 100,
       step: 1,
     },
+    {
+      key: 'scaleX',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramScaleX',
+      min: 1,
+      max: 1000,
+      step: 1,
+    },
+    {
+      key: 'scaleY',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramScaleY',
+      min: 1,
+      max: 1000,
+      step: 1,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -170,6 +195,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
           uBlur: { value: 0.015, type: 'f32' },
           uDirection: { value: 1, type: 'f32' },
           uCenter: { value: [0.5, 0.5], type: 'vec2<f32>' },
+          uScale: { value: [1.0, 1.0], type: 'vec2<f32>' },
         },
       },
     }),
@@ -212,6 +238,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     cy += (params.offsetY / 100) * signY;
 
     uniforms.uCenter = [cx, cy];
+    uniforms.uScale = [params.scaleX / 100, params.scaleY / 100];
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

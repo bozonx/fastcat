@@ -319,6 +319,11 @@
         "paramAnchor": "Точка привязки",
         "paramOffsetX": "Смещение X (%)",
         "paramOffsetY": "Смещение Y (%)",
+        "paramScaleX": "Масштаб X (%)",
+        "paramScaleY": "Масштаб Y (%)",
+        "paramContentMode": "Режим контента",
+        "contentModeReveal": "Раскрытие",
+        "contentModeZoom": "Приближение",
         "errorPrevClipTooShort": "Предыдущий клип слишком короткий для этого перехода (нужно {need}с, есть {have}с)",
         "errorNoPreviousClip": "Нет предыдущего клипа для перехода"
       },
