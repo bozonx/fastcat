@@ -8,6 +8,7 @@ export interface RectangleParams {
   anchor: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   offsetX: number;
   offsetY: number;
+  contentMode: 'reveal' | 'zoom';
 }
 
 const vertex = `
@@ -15,6 +16,7 @@ in vec2 aPosition;
 out vec2 vTextureCoord;
 out vec2 vNormalizedCoord;
 out float vAspectRatio;
+out vec2 vTexScale;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -36,6 +38,7 @@ void main(void) {
   vTextureCoord = filterTextureCoord();
   vNormalizedCoord = aPosition;
   vAspectRatio = uOutputTexture.x / uOutputTexture.y;
+  vTexScale = uOutputFrame.zw * uInputSize.zw;
 }
 `;
 
@@ -43,12 +46,14 @@ const fragment = `
 in vec2 vTextureCoord;
 in vec2 vNormalizedCoord;
 in float vAspectRatio;
+in vec2 vTexScale;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uBlur;
 uniform float uDirection;
+uniform float uContentMode;
 uniform vec2 uCenter;
 
 // Function to calculate distance from a point to the edge of a rectangle
@@ -84,8 +89,21 @@ void main(void) {
     reveal = 1.0 - reveal;
   }
 
-  vec4 fromColor = texture(uFromTexture, uv);
-  vec4 toColor = texture(uTexture, vTextureCoord);
+  vec2 uvFrom = uv;
+  vec2 coordTo = vTextureCoord;
+
+  if (uContentMode > 0.5) {
+    float scale = max(0.001, t);
+    vec2 uvScaled = uCenter + (uv - uCenter) / scale;
+    if (uDirection > 0.0) {
+      coordTo = vTextureCoord + (uvScaled - uv) * vTexScale;
+    } else {
+      uvFrom = uvScaled;
+    }
+  }
+
+  vec4 fromColor = texture(uFromTexture, uvFrom);
+  vec4 toColor = texture(uTexture, coordTo);
 
   gl_FragColor = mix(fromColor, toColor, reveal);
 }
@@ -104,6 +122,7 @@ function normalizeRectangleParams(params?: Record<string, unknown>): RectanglePa
     anchor,
     offsetX: clampNumber(params?.offsetX, -100, 100, 0),
     offsetY: clampNumber(params?.offsetY, -100, 100, 0),
+    contentMode: params?.contentMode === 'zoom' ? 'zoom' : 'reveal',
   };
 }
 
@@ -166,6 +185,15 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
       max: 100,
       step: 1,
     },
+    {
+      key: 'contentMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramContentMode',
+      options: [
+        { value: 'reveal', labelKey: 'granVideoEditor.timeline.transition.contentModeReveal' },
+        { value: 'zoom', labelKey: 'granVideoEditor.timeline.transition.contentModeZoom' },
+      ],
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -177,6 +205,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
           uProgress: { value: 0, type: 'f32' },
           uBlur: { value: 0.015, type: 'f32' },
           uDirection: { value: 1, type: 'f32' },
+          uContentMode: { value: 0, type: 'f32' },
           uCenter: { value: [0.5, 0.5], type: 'vec2<f32>' },
         },
       },
@@ -192,6 +221,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uBlur = params.blur;
     uniforms.uDirection = params.direction === 'to-center' ? -1 : 1;
+    uniforms.uContentMode = params.contentMode === 'zoom' ? 1 : 0;
 
     let cx = 0.5;
     let cy = 0.5;
