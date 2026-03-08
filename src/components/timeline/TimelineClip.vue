@@ -546,6 +546,43 @@ function getClipTailHandleUs(clip: TimelineClipItem): number {
   return Math.max(0, sourceDurationUs - sourceEndUs);
 }
 
+function getOverlayGuideOffsetPx(edge: 'in' | 'out'): number | null {
+  if (!clipItem.value) return null;
+
+  const transition = edge === 'in' ? clipItem.value.transitionIn : clipItem.value.transitionOut;
+  if (!transition) return null;
+  if ((transition.mode ?? DEFAULT_TRANSITION_MODE) !== 'transition') return null;
+
+  const adjacent =
+    edge === 'in'
+      ? getPrevClipForItem(props.track, clipItem.value)
+      : getNextClipForItem(props.track, clipItem.value);
+  if (!adjacent) return null;
+
+  const handleUs = edge === 'in' ? getClipTailHandleUs(adjacent) : getClipHeadHandleUs(adjacent);
+  if (!Number.isFinite(handleUs) || handleUs <= 0) return null;
+
+  return Math.max(0, Math.min(clipWidthPx.value, transitionUsToPx(handleUs)));
+}
+
+const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const offsetPx = getOverlayGuideOffsetPx('in');
+  if (offsetPx === null) return null;
+
+  return {
+    left: `${offsetPx}px`,
+  };
+});
+
+const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const offsetPx = getOverlayGuideOffsetPx('out');
+  if (offsetPx === null) return null;
+
+  return {
+    left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
+  };
+});
+
 function hasTransitionInProblem(track: TimelineTrack, item: TimelineTrackItem): string | null {
   if (item.kind !== 'clip') return null;
   const clip = item as TimelineClipItem;
@@ -1005,6 +1042,18 @@ const isFreePosition = computed(() => {
             {{ clipItem.name }}
           </span>
         </div>
+
+        <div
+          v-if="transitionInOverlayGuideStyle"
+          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none z-25"
+          :style="transitionInOverlayGuideStyle"
+        />
+
+        <div
+          v-if="transitionOutOverlayGuideStyle"
+          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none z-25"
+          :style="transitionOutOverlayGuideStyle"
+        />
 
         <!-- Transition In -->
         <div

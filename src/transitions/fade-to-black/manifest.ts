@@ -66,19 +66,19 @@ void main(void) {
     float invP = 1.0 - progress;
     
     // Fade the outgoing frame from full opacity and brightness to zero.
-    vec4 fromLayer = fromColor * invP;
+    vec4 fromLayer = vec4(fromColor.rgb * invP, fromColor.a * invP);
     
     // Fade the incoming frame from zero opacity and brightness to full.
-    vec4 toLayer = toColor * progress;
+    vec4 toLayer = vec4(toColor.rgb * progress, toColor.a * progress);
     
     // Keep the fade color behind both layers instead of exposing transparency.
     vec4 bg = fadeColor;
     
     // Composite the outgoing layer over the fade color.
-    vec4 fromMixed = fromLayer + bg * (1.0 - fromLayer.a);
+    vec4 fromMixed = vec4(fromLayer.rgb + bg.rgb * (1.0 - fromLayer.a), 1.0);
     
     // Composite the incoming layer over the intermediate result.
-    finalColor = toLayer + fromMixed * (1.0 - toLayer.a);
+    finalColor = vec4(toLayer.rgb + fromMixed.rgb * (1.0 - toLayer.a), 1.0);
   }
 }
 `;
