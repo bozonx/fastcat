@@ -123,7 +123,8 @@ type FileAction =
   | 'refresh'
   | 'createMarkdown'
   | 'createTimeline'
-  | 'openAsPanel'
+  | 'openAsPanelCut'
+  | 'openAsPanelSound'
   | 'openAsProjectTab'
   | 'transcribe';
 
@@ -242,20 +243,25 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       }
       onFileActionBase('createMarkdown', entry);
     }
-  } else if (action === 'openAsPanel') {
+  } else if (action === 'openAsPanelCut' || action === 'openAsPanelSound') {
     if (entry.kind !== 'file' || !isOpenableProjectFileName(entry.name)) return;
-    projectStore.goToCut();
+    const view = action === 'openAsPanelCut' ? 'cut' : 'sound';
+    if (view === 'cut') {
+      projectStore.goToCut();
+    } else {
+      projectStore.goToSound();
+    }
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
       try {
         const file = await (entry.handle as FileSystemFileHandle).getFile();
         const content = await file.text();
-        projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name);
+        projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name, undefined, undefined, view);
       } catch {
-        projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name);
+        projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name, undefined, undefined, view);
       }
     } else if (['video', 'audio', 'image'].includes(mediaType)) {
-      projectStore.addMediaPanel(entry, mediaType as any, entry.name);
+      projectStore.addMediaPanel(entry, mediaType as any, entry.name, undefined, undefined, view);
     }
   } else if (action === 'openAsProjectTab') {
     if (entry.kind !== 'file' || !entry.path || !isOpenableProjectFileName(entry.name)) return;

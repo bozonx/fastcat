@@ -64,7 +64,8 @@ const emit = defineEmits<{
       | 'createOtioVersion'
       | 'createMarkdown'
       | 'convertFile'
-      | 'openAsPanel'
+      | 'openAsPanelCut'
+      | 'openAsPanelSound'
       | 'openAsProjectTab'
       | 'transcribe',
     entry: FsEntry,
