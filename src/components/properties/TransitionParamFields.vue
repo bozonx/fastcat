@@ -27,6 +27,16 @@ function getSelectValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+function normalizeSelectEmittedValue(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return undefined;
+  if ('value' in value) {
+    const v = (value as { value?: unknown }).value;
+    return typeof v === 'string' ? v : v != null ? String(v) : undefined;
+  }
+  return undefined;
+}
+
 function getNumberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
@@ -61,7 +71,7 @@ function updateParam(key: string, value: any) {
         value-key="value"
         label-key="label"
         size="xs"
-        @update:model-value="(value: any) => updateParam(field.key, value?.value ?? value)"
+        @update:model-value="(value: unknown) => updateParam(field.key, normalizeSelectEmittedValue(value))"
       />
 
       <UInput
