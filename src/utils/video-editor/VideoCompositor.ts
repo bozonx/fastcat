@@ -901,6 +901,67 @@ export class VideoCompositor {
         continue;
       }
 
+      if (clipType === 'hud') {
+        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
+        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+
+        if (reusable) {
+          this.destroyClip(reusable);
+          this.replacedClipIds.add(itemId);
+        }
+
+        const sprite = new Sprite(Texture.EMPTY);
+        sprite.width = this.width;
+        sprite.height = this.height;
+        sprite.visible = false;
+        (sprite as any).__clipId = itemId;
+
+        const compositorClip: CompositorClip = {
+          itemId,
+          trackId,
+          layer,
+          startUs,
+          endUs,
+          durationUs: Math.max(0, requestedTimelineDurationUs),
+          sourceStartUs: 0,
+          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
+          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+          speed,
+          sprite,
+          clipKind: 'hud',
+          sourceKind: 'bitmap',
+          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+          lastVideoFrame: null,
+          canvas: null,
+          ctx: null,
+          bitmap: null,
+          hudType: (clipData as any).hudType ?? 'media_frame',
+          background: (clipData as any).background,
+          content: (clipData as any).content,
+          opacity: clipData.opacity,
+          blendMode: resolveBlendMode((clipData as any).blendMode),
+          effects: clipData.effects,
+          transform: (clipData as any).transform,
+          transitionIn: clipData.transitionIn,
+          transitionOut: clipData.transitionOut,
+          transitionFilter: null,
+          transitionFilterType: null,
+        };
+
+        (compositorClip as any).clipType = 'hud';
+
+        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
+        if (trackRuntime) {
+          trackRuntime.container.addChild(sprite);
+        } else {
+          this.app.stage.addChild(sprite);
+        }
+
+        nextClips.push(compositorClip);
+        nextClipById.set(itemId, compositorClip);
+        continue;
+      }
+
       if (!sourcePath) {
         sequentialTimeUs = Math.max(sequentialTimeUs, endUsFallback);
         continue;

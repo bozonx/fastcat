@@ -59,6 +59,7 @@ uniform float uMotionBlurMode;
 uniform float uBrightnessMode;
 uniform float uBrightness;
 uniform float uBloomThreshold;
+uniform float uAspect;
 
 vec4 getColor(vec2 uv) {
   float stripCoord = dot(uv - 0.5, uPerp) + 0.5;
@@ -100,41 +101,70 @@ void main(void) {
     return;
   }
 
-  const int SAMPLES = 16;
-  vec4 accumColor = vec4(0.0);
-  
-  float stepSize = uMotionBlur / float(SAMPLES - 1);
-  float startOffset = -uMotionBlur * 0.5;
-
-  float stripCoord = dot(vNormalizedCoord - 0.5, uPerp) + 0.5;
-  float stripIndex = floor(stripCoord * uStripCount);
-  float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
-  
-  // Use either the strip movement axis (motion blur) or simply spread around center (post blur)
-  vec2 center = vec2(0.5, 0.5);
-  vec2 blurAxis = uBlurType > 0.5 ? normalize(center - vNormalizedCoord) : (uAxis * dir);
-
-  float totalWeight = 0.0;
-
-  for (int i = 0; i < SAMPLES; i++) {
-    float offset = startOffset + float(i) * stepSize;
-    vec2 sampleUv = vNormalizedCoord + blurAxis * offset;
-    vec4 color = processSample(getColor(sampleUv));
-
-    float weight = 1.0;
-    if (uMotionBlurMode > 0.5) {
-      float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
-      weight = smoothstep(uBloomThreshold, 1.0, lum);
+  if (uBlurType > 0.5) {
+    // Post blur: 2D uniform blur (5x5 kernel)
+    vec4 accumColor = vec4(0.0);
+    float totalWeight = 0.0;
+    
+    // adjust for aspect ratio so blur is circular
+    vec2 blurRadius = vec2(uMotionBlur, uMotionBlur * uAspect);
+    
+    for (int x = -2; x <= 2; x++) {
+      for (int y = -2; y <= 2; y++) {
+        vec2 offset = vec2(float(x), float(y)) / 2.0;
+        vec2 sampleUv = vNormalizedCoord + offset * blurRadius;
+        vec4 color = processSample(getColor(sampleUv));
+        
+        float weight = 1.0;
+        if (uMotionBlurMode > 0.5) {
+          float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+          weight = smoothstep(uBloomThreshold, 1.0, lum);
+        }
+        accumColor += color * weight;
+        totalWeight += weight;
+      }
     }
     
-    accumColor += color * weight;
-    totalWeight += weight;
-  }
-
-  if (totalWeight > 0.0) {
-    finalColor = accumColor / totalWeight;
+    if (totalWeight > 0.0) {
+      finalColor = accumColor / totalWeight;
+    } else {
+      finalColor = processSample(getColor(vNormalizedCoord));
+    }
   } else {
-    finalColor = processSample(getColor(vNormalizedCoord));
+    // Motion blur: directional along the strip movement
+    const int SAMPLES = 16;
+    vec4 accumColor = vec4(0.0);
+    
+    float stepSize = uMotionBlur / float(SAMPLES - 1);
+    float startOffset = -uMotionBlur * 0.5;
+
+    float stripCoord = dot(vNormalizedCoord - 0.5, uPerp) + 0.5;
+    float stripIndex = floor(stripCoord * uStripCount);
+    float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
+    vec2 blurAxis = uAxis * dir;
+
+    float totalWeight = 0.0;
+
+    for (int i = 0; i < SAMPLES; i++) {
+      float offset = startOffset + float(i) * stepSize;
+      vec2 sampleUv = vNormalizedCoord + blurAxis * offset;
+      vec4 color = processSample(getColor(sampleUv));
+
+      float weight = 1.0;
+      if (uMotionBlurMode > 0.5) {
+        float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+        weight = smoothstep(uBloomThreshold, 1.0, lum);
+      }
+      
+      accumColor += color * weight;
+      totalWeight += weight;
+    }
+
+    if (totalWeight > 0.0) {
+      finalColor = accumColor / totalWeight;
+    } else {
+      finalColor = processSample(getColor(vNormalizedCoord));
+    }
   }
 }
 `;
@@ -245,6 +275,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
           uBrightnessMode: { value: 0, type: 'f32' },
           uBrightness: { value: 0, type: 'f32' },
           uBloomThreshold: { value: 0.7, type: 'f32' },
+          uAspect: { value: 16.0 / 9.0, type: 'f32' },
         },
       },
     }),
@@ -277,8 +308,9 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
         blurAmount = Math.max(0, targetBlur);
       }
     } else {
-      // For post blur, we scale directly to make it noticeable similar to zoom transition
-      blurAmount = params.motionBlur * 0.005;
+      // For post blur, it scales from 0 to max at the middle of the transition, then back to 0
+      const blurEnvelope = Math.sin(progress * Math.PI);
+      blurAmount = params.motionBlur * 0.005 * blurEnvelope;
     }
 
     const envelope = Math.sin(progress * Math.PI);
@@ -295,6 +327,13 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightness = currentBrightness;
     uniforms.uBloomThreshold = params.bloomThreshold;
+
+    // Attempt to deduce aspect ratio from texture dimensions if available
+    if (context.fromTexture) {
+      uniforms.uAspect = context.fromTexture.width / context.fromTexture.height;
+    } else if (context.toTexture) {
+      uniforms.uAspect = context.toTexture.width / context.toTexture.height;
+    }
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
