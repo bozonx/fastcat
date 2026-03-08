@@ -2,6 +2,7 @@
 import { computed, toRef } from 'vue';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition } from '~/timeline/types';
+import type { TransitionParamField } from '~/transitions/core/registry';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
@@ -81,6 +82,28 @@ function getNumberValue(value: unknown): number | undefined {
 function getColorValue(value: unknown): string {
   return typeof value === 'string' && value.trim().length > 0 ? value : '#000000';
 }
+
+const visibleParamFields = computed<TransitionParamField[]>(() => {
+  const fields = selectedManifest.value?.paramFields ?? [];
+
+  if (selectedType.value !== 'wipe') {
+    return fields;
+  }
+
+  const edgeMode = selectedParams.value.edgeMode === 'blur' ? 'blur' : 'gap';
+
+  return fields.filter((field) => {
+    if (field.key === 'gap' || field.key === 'gapColor') {
+      return edgeMode === 'gap';
+    }
+
+    if (field.key === 'blur') {
+      return edgeMode === 'blur';
+    }
+
+    return true;
+  });
+});
 </script>
 
 <template>
@@ -157,11 +180,11 @@ function getColorValue(value: unknown): string {
       <AppButtonGroup v-model="selectedCurve" :options="curveOptions" />
     </div>
 
-    <div v-if="selectedManifest?.paramFields?.length" class="flex flex-col gap-2">
+    <div v-if="visibleParamFields.length" class="flex flex-col gap-2">
       <div class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.parameters') }}</div>
 
       <div
-        v-for="field in selectedManifest.paramFields"
+        v-for="field in visibleParamFields"
         :key="`${selectedType}-${field.key}`"
         class="flex flex-col gap-1"
       >

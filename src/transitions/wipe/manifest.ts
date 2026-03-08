@@ -9,8 +9,10 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface WipeParams {
   direction: 'left' | 'right' | 'up' | 'down';
+  edgeMode: 'gap' | 'blur';
   gap: number;
   gapColor: string;
+  blur: number;
 }
 
 const vertex = `
@@ -48,6 +50,9 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform float uGap;
+uniform float uBlur;
+uniform float uUseGap;
+uniform float uApplyToEdgeBlur;
 uniform vec2 uAxis;
 uniform vec3 uGapColor;
 
@@ -63,6 +68,18 @@ void main(void) {
   float edge = mix(-0.5 - gapHalf, 0.5 + gapHalf, progress);
   float cutStart = edge - gapHalf;
   float cutEnd = edge + gapHalf;
+  float blur = max(uBlur, 0.00001);
+  float blurMix = smoothstep(edge - blur, edge + blur, axisValue);
+
+  if (uUseGap < 0.5) {
+    vec4 mixedColor = mix(toColor, fromColor, blurMix);
+    if (uApplyToEdgeBlur > 0.5) {
+      gl_FragColor = mixedColor;
+    } else {
+      gl_FragColor = axisValue < edge ? toColor : fromColor;
+    }
+    return;
+  }
 
   if (axisValue < cutStart) {
     gl_FragColor = toColor;
@@ -86,11 +103,14 @@ function normalizeWipeParams(params?: Record<string, unknown>): WipeParams {
     params?.direction === 'left'
       ? params.direction
       : 'left';
+  const edgeMode = params?.edgeMode === 'blur' ? 'blur' : 'gap';
 
   return {
     direction,
+    edgeMode,
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
+    blur: clampNumber(params?.blur, 0.0001, 0.2, 0.02),
   };
 }
 
@@ -128,6 +148,15 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
       ],
     },
     {
+      key: 'edgeMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeMode',
+      options: [
+        { value: 'gap', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeGap' },
+        { value: 'blur', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeBlur' },
+      ],
+    },
+    {
       key: 'gap',
       kind: 'number',
       labelKey: 'granVideoEditor.timeline.transition.paramGapSize',
@@ -140,6 +169,14 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
       kind: 'color',
       labelKey: 'granVideoEditor.timeline.transition.paramGapColor',
     },
+    {
+      key: 'blur',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeBlur',
+      min: 0.0001,
+      max: 0.2,
+      step: 0.005,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -150,6 +187,9 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
         wipeUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uGap: { value: 0.02, type: 'f32' },
+          uBlur: { value: 0.02, type: 'f32' },
+          uUseGap: { value: 1, type: 'f32' },
+          uApplyToEdgeBlur: { value: 0, type: 'f32' },
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
         },
@@ -164,9 +204,13 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     const params = normalizeWipeParams(context.params);
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);
+    const useGap = params.edgeMode === 'gap';
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uGap = params.gap;
+    uniforms.uGap = useGap ? params.gap : 0;
+    uniforms.uBlur = params.blur;
+    uniforms.uUseGap = useGap ? 1 : 0;
+    uniforms.uApplyToEdgeBlur = !useGap && context.edge === 'in' ? 1 : 0;
     uniforms.uAxis = [axis.x, axis.y];
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
   },

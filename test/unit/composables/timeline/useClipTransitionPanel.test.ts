@@ -72,6 +72,7 @@ describe('useClipTransitionPanel', () => {
         curve: 'linear',
         params: {
           direction: 'up',
+          edgeMode: 'gap',
           gap: 0.03,
           gapColor: '#ff00ff',
         },
@@ -90,8 +91,10 @@ describe('useClipTransitionPanel', () => {
         mode: 'transition',
         params: {
           direction: 'up',
+          edgeMode: 'gap',
           gap: 0.05,
           gapColor: '#ff00ff',
+          blur: 0.02,
         },
       },
     });
