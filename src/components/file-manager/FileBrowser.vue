@@ -487,23 +487,29 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
         }
       }
     }
-  } else if (action === 'openAsPanel') {
+  } else if (action === 'openAsPanelCut' || action === 'openAsPanelSound') {
     if (entry.kind !== 'file') return;
     if (!isOpenableProjectFileName(entry.name)) return;
-    projectStore.goToCut();
+    
+    if (action === 'openAsPanelCut') {
+      projectStore.goToCut();
+    } else {
+      projectStore.goToSound();
+    }
+    
     const type = getMediaTypeFromFilename(entry.name);
     if (type === 'text') {
       void (async () => {
         try {
           const file = await (entry.handle as FileSystemFileHandle).getFile();
           const content = await file.text();
-          projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name);
+          projectStore.addTextPanel(entry.path ?? entry.name, content, entry.name, undefined, undefined, action === 'openAsPanelCut' ? 'cut' : 'sound');
         } catch {
-          projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name);
+          projectStore.addTextPanel(entry.path ?? entry.name, '', entry.name, undefined, undefined, action === 'openAsPanelCut' ? 'cut' : 'sound');
         }
       })();
     } else if (type === 'video' || type === 'audio' || type === 'image') {
-      projectStore.addMediaPanel(entry, type, entry.name);
+      projectStore.addMediaPanel(entry, type, entry.name, undefined, undefined, action === 'openAsPanelCut' ? 'cut' : 'sound');
     }
   } else if (action === 'openAsProjectTab') {
     if (entry.kind !== 'file' || !entry.path) return;
