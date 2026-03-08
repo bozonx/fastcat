@@ -1,9 +1,11 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import {
-  computeFadeDurationsSeconds,
   getGainAtClipTime,
   normalizeBalance,
   normalizeGain,
+  resolveEffectiveFadeDurationsSeconds,
+  type AudioFadeCurve,
+  type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
 
 const logger = createDevLogger('AudioEngine');
@@ -22,6 +24,10 @@ export interface AudioEngineClip {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
+  audioFadeInCurve?: AudioFadeCurve;
+  audioFadeOutCurve?: AudioFadeCurve;
+  transitionIn?: AudioTransitionEnvelope | null;
+  transitionOut?: AudioTransitionEnvelope | null;
 }
 
 interface DecodeRequest {
@@ -457,6 +463,20 @@ export class AudioEngine {
     return Math.round(s * 1_000_000);
   }
 
+  private getAdjacentClips(clip: AudioEngineClip): {
+    previousClip: AudioEngineClip | null;
+    nextClip: AudioEngineClip | null;
+  } {
+    const sameTrack = this.currentClips
+      .filter((candidate) => candidate.trackId === clip.trackId)
+      .sort((a, b) => a.startUs - b.startUs);
+    const idx = sameTrack.findIndex((candidate) => candidate.id === clip.id);
+    return {
+      previousClip: idx > 0 ? (sameTrack[idx - 1] ?? null) : null,
+      nextClip: idx >= 0 ? (sameTrack[idx + 1] ?? null) : null,
+    };
+  }
+
   private async scheduleClip(clip: AudioEngineClip, currentTimeS: number) {
     if (!this.ctx || !this.masterGain) return;
 
@@ -514,10 +534,12 @@ export class AudioEngine {
       ? Math.max(0, Math.min(clipEndS, currentTimeS) - clipStartS)
       : Math.max(0, currentTimeS - clipStartS);
 
-    const { fadeInS, fadeOutS } = computeFadeDurationsSeconds({
+    const { previousClip, nextClip } = this.getAdjacentClips(clip);
+    const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
       clipDurationS,
-      fadeInUs: clip.audioFadeInUs,
-      fadeOutUs: clip.audioFadeOutUs,
+      clip,
+      previousClip,
+      nextClip,
     });
 
     const audioGain = normalizeGain(clip.audioGain, 1);
@@ -637,6 +659,8 @@ export class AudioEngine {
         clipDurationS,
         fadeInS,
         fadeOutS,
+        fadeInCurve,
+        fadeOutCurve,
         baseGain: audioGain,
         tClipS,
       });

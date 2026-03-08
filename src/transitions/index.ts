@@ -16,18 +16,18 @@ import { rectangleManifest } from './rectangle/manifest';
 
 export function initTransitions(): void {
   registerTransition(dissolveManifest);
+  registerTransition(bloomManifest);
+  registerTransition(zoomManifest);
   registerTransition(fadeToBlackManifest);
+  registerTransition(wipeManifest);
   registerTransition(slideManifest);
+  registerTransition(barnDoorManifest);
   registerTransition(clockManifest);
   registerTransition(circleManifest);
   registerTransition(rectangleManifest);
-  registerTransition(wipeManifest);
-  registerTransition(barnDoorManifest);
   registerTransition(cubeTransitionManifest);
   registerTransition(cardSwapTransitionManifest);
   registerTransition(fallingCardTransitionManifest);
-  registerTransition(zoomManifest);
-  registerTransition(bloomManifest);
 }
 
 export * from './core/registry';

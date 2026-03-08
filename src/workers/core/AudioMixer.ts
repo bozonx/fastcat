@@ -1,7 +1,14 @@
 import { MAX_AUDIO_FILE_BYTES } from '../../utils/constants';
 import { safeDispose } from '../../utils/video-editor/utils';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
-import { getGainAtClipTime, normalizeBalance, normalizeGain } from '../../utils/audio/envelope';
+import {
+  getGainAtClipTime,
+  normalizeBalance,
+  normalizeGain,
+  resolveEffectiveFadeDurationsSeconds,
+  type AudioFadeCurve,
+  type AudioTransitionEnvelope,
+} from '../../utils/audio/envelope';
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
 
@@ -31,6 +38,8 @@ export interface PreparedClip {
   audioBalance: number;
   audioFadeInS: number;
   audioFadeOutS: number;
+  audioFadeInCurve: AudioFadeCurve;
+  audioFadeOutCurve: AudioFadeCurve;
 }
 
 interface MediabunnyInput {
@@ -69,11 +78,19 @@ interface AudioClipData {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
+  audioFadeInCurve?: AudioFadeCurve;
+  audioFadeOutCurve?: AudioFadeCurve;
+  transitionIn?: AudioTransitionEnvelope | null;
+  transitionOut?: AudioTransitionEnvelope | null;
   gran?: {
     audioGain?: number;
     audioBalance?: number;
     audioFadeInUs?: number;
     audioFadeOutUs?: number;
+    audioFadeInCurve?: AudioFadeCurve;
+    audioFadeOutCurve?: AudioFadeCurve;
+    transitionIn?: AudioTransitionEnvelope | null;
+    transitionOut?: AudioTransitionEnvelope | null;
   };
 }
 
@@ -109,13 +126,41 @@ export interface AudioMixerWriteParams {
 }
 
 export class AudioMixer {
+  private static getAdjacentClips(audioClips: AudioClipData[], currentIndex: number) {
+    const current = audioClips[currentIndex];
+    if (!current) {
+      return { previousClip: null, nextClip: null };
+    }
+
+    const currentTrackId = (current as any).trackId;
+    const currentStartUs = Number(current.startUs ?? current.timelineRange?.startUs ?? 0);
+    const sameTrack = audioClips
+      .filter((candidate) => (candidate as any).trackId === currentTrackId)
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(a.startUs ?? a.timelineRange?.startUs ?? 0) -
+          Number(b.startUs ?? b.timelineRange?.startUs ?? 0),
+      );
+
+    const idx = sameTrack.findIndex(
+      (candidate) =>
+        Number(candidate.startUs ?? candidate.timelineRange?.startUs ?? 0) === currentStartUs,
+    );
+
+    return {
+      previousClip: idx > 0 ? (sameTrack[idx - 1] ?? null) : null,
+      nextClip: idx >= 0 ? (sameTrack[idx + 1] ?? null) : null,
+    };
+  }
+
   static async prepareClips(params: AudioMixerPrepareParams): Promise<PreparedClip[]> {
     const { audioClips, hostClient, reportExportWarning, checkCancel } = params;
     const { AudioSampleSink, Input, BlobSource, ALL_FORMATS } = params.mediabunny;
 
     const prepared: PreparedClip[] = [];
 
-    for (const clipData of audioClips) {
+    for (const [clipIndex, clipData] of audioClips.entries()) {
       if (checkCancel?.()) {
         const abortErr = new Error('Export was cancelled');
         (abortErr as any).name = 'AbortError';
@@ -151,24 +196,42 @@ export class AudioMixer {
       const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
       const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
 
-      const audioFadeInUs = clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs ?? 0;
-      const audioFadeOutUs = clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs ?? 0;
+      const { previousClip, nextClip } = AudioMixer.getAdjacentClips(audioClips, clipIndex);
+      const {
+        fadeInS: audioFadeInS,
+        fadeOutS: audioFadeOutS,
+        fadeInCurve,
+        fadeOutCurve,
+      } = resolveEffectiveFadeDurationsSeconds({
+        clipDurationS: Math.max(
+          0,
+          Math.min(
+            usToS(Number(sourceDurationUs)),
+            usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)),
+          ),
+        ),
+        clip: {
+          audioFadeInUs: clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs,
+          audioFadeOutUs: clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs,
+          audioFadeInCurve: clipData.audioFadeInCurve ?? clipData.gran?.audioFadeInCurve,
+          audioFadeOutCurve: clipData.audioFadeOutCurve ?? clipData.gran?.audioFadeOutCurve,
+          transitionIn: clipData.transitionIn ?? clipData.gran?.transitionIn,
+          transitionOut: clipData.transitionOut ?? clipData.gran?.transitionOut,
+        },
+        previousClip,
+        nextClip,
+      });
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
-      const sourceDurationS = Math.max(0, usToS(Number(sourceDurationUs)));
-      const timelineDurationS = Math.max(0, usToS(Number(durationUs)));
       const clipDurationS = Math.max(
         0,
-        Math.min(sourceDurationS || Number.POSITIVE_INFINITY, timelineDurationS || sourceDurationS),
+        Math.min(
+          usToS(Number(sourceDurationUs)),
+          usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)),
+        ),
       );
       if (clipDurationS <= 0) continue;
-
-      const audioFadeInS = Math.min(clipDurationS, Math.max(0, usToS(Number(audioFadeInUs) || 0)));
-      const audioFadeOutS = Math.min(
-        clipDurationS,
-        Math.max(0, usToS(Number(audioFadeOutUs) || 0)),
-      );
 
       const audioGain = normalizeGain(clipData.audioGain ?? clipData.gran?.audioGain, 1);
       const audioBalance = normalizeBalance(
@@ -215,6 +278,8 @@ export class AudioMixer {
           audioBalance,
           audioFadeInS,
           audioFadeOutS,
+          audioFadeInCurve: fadeInCurve,
+          audioFadeOutCurve: fadeOutCurve,
         });
       } catch (err) {
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
@@ -260,6 +325,8 @@ export class AudioMixer {
 
       const fadeInS = clip.audioFadeInS;
       const fadeOutS = clip.audioFadeOutS;
+      const fadeInCurve = clip.audioFadeInCurve;
+      const fadeOutCurve = clip.audioFadeOutCurve;
 
       const audioGain = clip.audioGain;
       const audioBalance = clip.audioBalance;
@@ -273,6 +340,8 @@ export class AudioMixer {
           clipDurationS: clip.playDurationS,
           fadeInS,
           fadeOutS,
+          fadeInCurve,
+          fadeOutCurve,
           baseGain: audioGain,
           tClipS,
         });

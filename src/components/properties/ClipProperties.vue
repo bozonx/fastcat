@@ -362,8 +362,10 @@ const {
 
 const {
   audioBalance,
+  audioFadeInCurve,
   audioFadeInMaxSec,
   audioFadeInSec,
+  audioFadeOutCurve,
   audioFadeOutMaxSec,
   audioFadeOutSec,
   audioGain,
@@ -372,7 +374,9 @@ const {
   canEditAudioGain,
   selectedClipTrack,
   updateAudioBalance,
+  updateAudioFadeInCurve,
   updateAudioFadeInSec,
+  updateAudioFadeOutCurve,
   updateAudioFadeOutSec,
   updateAudioGain,
 } = useClipAudio({
@@ -891,9 +895,13 @@ defineExpose({
       :audio-fade-out-sec="audioFadeOutSec"
       :audio-fade-in-max-sec="audioFadeInMaxSec"
       :audio-fade-out-max-sec="audioFadeOutMaxSec"
+      :audio-fade-in-curve="audioFadeInCurve"
+      :audio-fade-out-curve="audioFadeOutCurve"
       @update-audio-gain="updateAudioGain"
       @update-audio-balance="updateAudioBalance"
+      @update-audio-fade-in-curve="updateAudioFadeInCurve"
       @update-audio-fade-in-sec="updateAudioFadeInSec"
+      @update-audio-fade-out-curve="updateAudioFadeOutCurve"
       @update-audio-fade-out-sec="updateAudioFadeOutSec"
     />
 

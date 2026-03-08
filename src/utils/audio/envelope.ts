@@ -61,6 +61,75 @@ export interface FadeDurationsSeconds {
   fadeOutS: number;
 }
 
+export function normalizeAudioFadeCurve(value: unknown): AudioFadeCurve {
+  return value === 'logarithmic' ? 'logarithmic' : 'linear';
+}
+
+function normalizeTransitionCurveAsAudio(value: unknown): AudioFadeCurve {
+  return value === 'bezier' || value === 'logarithmic' ? 'logarithmic' : 'linear';
+}
+
+function normalizeTransitionMode(value: unknown): 'transition' | 'fade' {
+  return value === 'fade' ? 'fade' : 'transition';
+}
+
+function resolveEdgeFade(input: {
+  manualDurationUs: unknown;
+  manualCurve: unknown;
+  transition?: AudioTransitionEnvelope | null;
+}): { durationUs: number; curve: AudioFadeCurve } {
+  const manualDurationUs = clampNumber(input.manualDurationUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
+  const manualCurve = normalizeAudioFadeCurve(input.manualCurve);
+  const transitionDurationUs =
+    clampNumber(input.transition?.durationUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
+
+  if (
+    transitionDurationUs > 0 &&
+    normalizeTransitionMode(input.transition?.mode) === 'transition'
+  ) {
+    return {
+      durationUs: manualDurationUs > 0 ? manualDurationUs : transitionDurationUs,
+      curve: normalizeTransitionCurveAsAudio(input.transition?.curve),
+    };
+  }
+
+  return {
+    durationUs: manualDurationUs,
+    curve: manualCurve,
+  };
+}
+
+export function resolveEffectiveFadeDurationsSeconds(params: {
+  clipDurationS: number;
+  clip: AudioEnvelopeClipLike;
+  previousClip?: AudioEnvelopeClipLike | null;
+  nextClip?: AudioEnvelopeClipLike | null;
+}): EffectiveFadeDurationsSeconds {
+  const clipDurationS = Number.isFinite(params.clipDurationS)
+    ? Math.max(0, params.clipDurationS)
+    : 0;
+  const incomingTransition = params.clip.transitionIn ?? params.previousClip?.transitionOut ?? null;
+  const outgoingTransition = params.clip.transitionOut ?? params.nextClip?.transitionIn ?? null;
+
+  const fadeIn = resolveEdgeFade({
+    manualDurationUs: params.clip.audioFadeInUs,
+    manualCurve: params.clip.audioFadeInCurve,
+    transition: incomingTransition,
+  });
+  const fadeOut = resolveEdgeFade({
+    manualDurationUs: params.clip.audioFadeOutUs,
+    manualCurve: params.clip.audioFadeOutCurve,
+    transition: outgoingTransition,
+  });
+
+  return {
+    fadeInS: Math.min(clipDurationS, Math.max(0, fadeIn.durationUs / 1_000_000)),
+    fadeOutS: Math.min(clipDurationS, Math.max(0, fadeOut.durationUs / 1_000_000)),
+    fadeInCurve: fadeIn.curve,
+    fadeOutCurve: fadeOut.curve,
+  };
+}
+
 export function computeFadeDurationsSeconds(params: {
   clipDurationS: number;
   fadeInUs?: unknown;
@@ -88,11 +157,6 @@ function applyFadeCurve(progress: number, curve: AudioFadeCurve): number {
     return Math.sin((p * Math.PI) / 2);
   }
   return p;
-}
-
-function normalizeAudioFadeCurve(curve?: unknown): AudioFadeCurve {
-  if (curve === 'linear' || curve === 'logarithmic') return curve;
-  return 'linear';
 }
 
 export function getGainAtClipTime(params: {

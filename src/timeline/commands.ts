@@ -167,6 +167,8 @@ export interface UpdateClipPropertiesCommand {
       | 'audioBalance'
       | 'audioFadeInUs'
       | 'audioFadeOutUs'
+      | 'audioFadeInCurve'
+      | 'audioFadeOutCurve'
       | 'audioMuted'
       | 'audioWaveformMode'
       | 'showWaveform'

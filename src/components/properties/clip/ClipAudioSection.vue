@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import type { AudioFadeCurve } from '~/utils/audio/envelope';
 
 const props = defineProps<{
   canEditAudioFades: boolean;
@@ -13,6 +14,8 @@ const props = defineProps<{
   audioFadeOutSec: number;
   audioFadeInMaxSec: number;
   audioFadeOutMaxSec: number;
+  audioFadeInCurve: AudioFadeCurve;
+  audioFadeOutCurve: AudioFadeCurve;
 }>();
 
 const emit = defineEmits<{
@@ -20,9 +23,22 @@ const emit = defineEmits<{
   updateAudioBalance: [val: number];
   updateAudioFadeInSec: [val: number];
   updateAudioFadeOutSec: [val: number];
+  updateAudioFadeInCurve: [val: AudioFadeCurve];
+  updateAudioFadeOutCurve: [val: AudioFadeCurve];
 }>();
 
 const { t } = useI18n();
+
+const fadeCurveOptions = [
+  {
+    label: t('granVideoEditor.clip.audioFade.curve.linear', 'Linear'),
+    value: 'linear',
+  },
+  {
+    label: t('granVideoEditor.clip.audioFade.curve.logarithmic', 'Logarithmic'),
+    value: 'logarithmic',
+  },
+];
 </script>
 
 <template>
@@ -88,6 +104,14 @@ const { t } = useI18n();
           :min="0"
           :max="props.audioFadeInMaxSec"
           @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
+        />
+        <USelectMenu
+          :model-value="props.audioFadeInCurve"
+          :items="fadeCurveOptions"
+          value-key="value"
+          label-key="label"
+          size="xs"
+          @update:model-value="(v: any) => emit('updateAudioFadeInCurve', v?.value ?? v)"
         />
       </div>
       <div class="flex flex-col gap-0.5">

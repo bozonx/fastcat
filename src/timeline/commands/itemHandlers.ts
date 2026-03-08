@@ -993,6 +993,14 @@ export function updateClipProperties(
       (nextProps as any).audioFadeOutUs = safe;
     }
   }
+  if ('audioFadeInCurve' in nextProps) {
+    const raw = (nextProps as any).audioFadeInCurve;
+    (nextProps as any).audioFadeInCurve = raw === 'logarithmic' ? 'logarithmic' : 'linear';
+  }
+  if ('audioFadeOutCurve' in nextProps) {
+    const raw = (nextProps as any).audioFadeOutCurve;
+    (nextProps as any).audioFadeOutCurve = raw === 'logarithmic' ? 'logarithmic' : 'linear';
+  }
 
   const nextTracks = doc.tracks.map((t) => {
     if (t.id === track.id) {
@@ -1020,6 +1028,14 @@ export function updateClipProperties(
                   0,
                   Math.max(0, durationUs - (Number(updated.audioFadeInUs) || 0)),
                 );
+              }
+              if (updated.audioFadeInCurve !== undefined) {
+                updated.audioFadeInCurve =
+                  updated.audioFadeInCurve === 'logarithmic' ? 'logarithmic' : 'linear';
+              }
+              if (updated.audioFadeOutCurve !== undefined) {
+                updated.audioFadeOutCurve =
+                  updated.audioFadeOutCurve === 'logarithmic' ? 'logarithmic' : 'linear';
               }
               return updated;
             })()
@@ -1061,6 +1077,8 @@ export function updateClipProperties(
       'audioBalance' in nextProps ||
       'audioFadeInUs' in nextProps ||
       'audioFadeOutUs' in nextProps ||
+      'audioFadeInCurve' in nextProps ||
+      'audioFadeOutCurve' in nextProps ||
       'audioMuted' in nextProps ||
       'audioWaveformMode' in nextProps ||
       'showWaveform' in nextProps
@@ -1074,6 +1092,8 @@ export function updateClipProperties(
           audioBalance: (updated.item as any).audioBalance,
           audioFadeInUs: (updated.item as any).audioFadeInUs,
           audioFadeOutUs: (updated.item as any).audioFadeOutUs,
+          audioFadeInCurve: (updated.item as any).audioFadeInCurve,
+          audioFadeOutCurve: (updated.item as any).audioFadeOutCurve,
           audioMuted: (updated.item as any).audioMuted,
           audioWaveformMode: (updated.item as any).audioWaveformMode,
           showWaveform: (updated.item as any).showWaveform,
