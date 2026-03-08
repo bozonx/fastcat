@@ -19,6 +19,7 @@ in vec2 aPosition;
 out vec2 vTextureCoord;
 out vec2 vNormalizedCoord;
 out float vAspectRatio;
+out vec2 vTexScale;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -40,6 +41,7 @@ void main(void) {
   vTextureCoord = filterTextureCoord();
   vNormalizedCoord = aPosition;
   vAspectRatio = uOutputTexture.x / uOutputTexture.y;
+  vTexScale = uOutputFrame.zw * uInputSize.zw;
 }
 `;
 
@@ -47,6 +49,7 @@ const fragment = `
 in vec2 vTextureCoord;
 in vec2 vNormalizedCoord;
 in float vAspectRatio;
+in vec2 vTexScale;
 
 uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
@@ -90,16 +93,19 @@ void main(void) {
   }
 
   vec2 uvFrom = uv;
-  vec2 uvTo = vTextureCoord;
+  vec2 normTo = uv;
 
   if (uFollowScale > 0.5) {
     float s = min(1.0, radius * 2.0);
+    
     if (uDirection > 0.0) {
-      uvTo = (uvTo - uCenter) / max(0.0001, s) + uCenter;
+      normTo = (normTo - uCenter) / max(0.0001, s) + uCenter;
     } else {
       uvFrom = (uvFrom - uCenter) / max(0.0001, s) + uCenter;
     }
   }
+
+  vec2 uvTo = vTextureCoord + (normTo - vNormalizedCoord) * vTexScale;
 
   vec4 fromColor = texture(uFromTexture, uvFrom);
   vec4 toColor = texture(uTexture, uvTo);

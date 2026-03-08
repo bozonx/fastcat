@@ -5,6 +5,7 @@ import type { TransitionManifest } from '../core/registry';
 export interface BlindsParams {
   angle: number;
   stripCount: number;
+  blurType: 'motion' | 'post';
   motionBlur: number;
   motionBlurMode: 'normal' | 'bloom';
   brightnessMode: 'normal' | 'bloom';
@@ -52,6 +53,7 @@ uniform float uProgress;
 uniform vec2 uAxis;
 uniform vec2 uPerp;
 uniform float uStripCount;
+uniform float uBlurType;
 uniform float uMotionBlur;
 uniform float uMotionBlurMode;
 uniform float uBrightnessMode;
@@ -107,7 +109,10 @@ void main(void) {
   float stripCoord = dot(vNormalizedCoord - 0.5, uPerp) + 0.5;
   float stripIndex = floor(stripCoord * uStripCount);
   float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
-  vec2 blurAxis = uAxis * dir;
+  
+  // Use either the strip movement axis (motion blur) or simply spread around center (post blur)
+  vec2 center = vec2(0.5, 0.5);
+  vec2 blurAxis = uBlurType > 0.5 ? normalize(center - vNormalizedCoord) : (uAxis * dir);
 
   float totalWeight = 0.0;
 
@@ -138,7 +143,8 @@ function normalizeBlindsParams(params?: Record<string, unknown>): BlindsParams {
   return {
     angle: clampNumber(params?.angle, -360, 360, 0),
     stripCount: Math.round(clampNumber(params?.stripCount, 2, 100, 10)),
-    motionBlur: clampNumber(params?.motionBlur, 0, 10, 0),
+    blurType: params?.blurType === 'post' ? 'post' : 'motion',
+    motionBlur: clampNumber(params?.motionBlur, 0, 100, 0),
     motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
     brightness: clampNumber(params?.brightness, -10, 10, 0),
@@ -171,12 +177,21 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       step: 1,
     },
     {
+      key: 'blurType',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurType',
+      options: [
+        { value: 'motion', labelKey: 'granVideoEditor.timeline.transition.blurTypeMotion' },
+        { value: 'post', labelKey: 'granVideoEditor.timeline.transition.blurTypePost' },
+      ],
+    },
+    {
       key: 'motionBlur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlur',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlur',
       min: 0,
-      max: 10,
-      step: 0.01,
+      max: 100,
+      step: 1,
     },
     {
       key: 'motionBlurMode',
@@ -224,6 +239,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
           uPerp: { value: [0, 1], type: 'vec2<f32>' },
           uStripCount: { value: 10, type: 'f32' },
+          uBlurType: { value: 0, type: 'f32' },
           uMotionBlur: { value: 0, type: 'f32' },
           uMotionBlurMode: { value: 0, type: 'f32' },
           uBrightnessMode: { value: 0, type: 'f32' },
@@ -253,11 +269,16 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     const speedMultiplier = (p2 - p1) / (2 * deltaProgress);
 
     let blurAmount = 0;
-    if (params.motionBlur > 0 && context.durationUs && context.durationUs > 0) {
-      const durationSeconds = context.durationUs / 1_000_000;
-      const baseSpeed = 1.0 / durationSeconds;
-      let targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
-      blurAmount = Math.max(0, targetBlur);
+    if (params.blurType === 'motion') {
+      if (params.motionBlur > 0 && context.durationUs && context.durationUs > 0) {
+        const durationSeconds = context.durationUs / 1_000_000;
+        const baseSpeed = 1.0 / durationSeconds;
+        let targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
+        blurAmount = Math.max(0, targetBlur);
+      }
+    } else {
+      // For post blur, we scale directly to make it noticeable similar to zoom transition
+      blurAmount = params.motionBlur * 0.005;
     }
 
     const envelope = Math.sin(progress * Math.PI);
@@ -268,6 +289,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     uniforms.uAxis = [axis.x, axis.y];
     uniforms.uPerp = [perp.x, perp.y];
     uniforms.uStripCount = params.stripCount;
+    uniforms.uBlurType = params.blurType === 'post' ? 1.0 : 0.0;
     uniforms.uMotionBlur = blurAmount;
     uniforms.uMotionBlurMode = params.motionBlurMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
