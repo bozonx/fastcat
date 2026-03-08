@@ -715,6 +715,7 @@
         "slideOrderNormal": "Normal",
         "slideOrderReverse": "Reverse",
         "paramMaxDarkness": "Max darkness",
+        "paramShadowSize": "Shadow size",
         "paramDepthDirection": "Depth Direction",
         "paramWipeEdgeMode": "Edge mode",
         "paramWipeEdgeBlur": "Edge blur",

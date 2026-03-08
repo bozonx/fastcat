@@ -104,6 +104,7 @@ describe('project-settings.repository', () => {
       monitor: {
         previewResolution: 480,
         useProxy: true,
+        previewEffectsEnabled: true,
         panX: 0,
         panY: 0,
       },

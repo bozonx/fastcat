@@ -85,6 +85,7 @@ const viewportEl = computed(() => (viewportRef.value?.viewportEl as HTMLDivEleme
 const {
   isLoading,
   loadError,
+  previewEffectsEnabled,
   scheduleRender,
   scheduleBuild,
   clampToTimeline,
@@ -184,6 +185,14 @@ function centerMonitor() {
 
 function resetZoom() {
   viewportRef.value?.resetZoom();
+}
+
+function togglePreviewEffects() {
+  if (!projectStore.projectSettings.monitor) {
+    return;
+  }
+
+  projectStore.projectSettings.monitor.previewEffectsEnabled = !previewEffectsEnabled.value;
 }
 
 function togglePlayback() {
@@ -508,6 +517,27 @@ const emit = defineEmits<{
               :variant="useProxyInMonitor ? 'soft' : 'ghost'"
               icon="i-heroicons-bolt"
               @click="projectStore.projectSettings.monitor.useProxy = !useProxyInMonitor"
+            />
+          </UTooltip>
+
+          <UTooltip
+            :text="
+              previewEffectsEnabled
+                ? t('granVideoEditor.monitor.previewWithEffects', 'Preview with effects')
+                : t('granVideoEditor.monitor.previewWithoutEffects', 'Preview without effects')
+            "
+          >
+            <UButton
+              v-if="projectStore.projectSettings.monitor"
+              size="xs"
+              :color="previewEffectsEnabled ? 'primary' : 'neutral'"
+              :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
+              :label="
+                previewEffectsEnabled
+                  ? t('granVideoEditor.monitor.withEffects', 'With effects')
+                  : t('granVideoEditor.monitor.withoutEffects', 'Without effects')
+              "
+              @click="togglePreviewEffects"
             />
           </UTooltip>
 

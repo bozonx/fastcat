@@ -21,7 +21,8 @@ import {
   DEFAULT_TRANSITION_MODE,
   getTransitionManifest,
   normalizeTransitionParams,
-} from '../../transitions';
+} from '~/transitions';
+import type { PreviewRenderOptions } from './worker-rpc';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from './clip-layout';
 import { computeTextLayoutMetrics } from './text-layout';
 import type {
@@ -214,6 +215,7 @@ export class VideoCompositor {
   private filterQuadSprite: Sprite | null = null;
   private transitionCombineSprite: Sprite | null = null;
   private sampleRequestsInFlight = 0;
+  private previewEffectsEnabled = true;
   private readonly sampleRequestQueue: Array<() => void> = [];
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
@@ -1170,8 +1172,13 @@ export class VideoCompositor {
     return this.maxDurationUs;
   }
 
-  async renderFrame(timeUs: number): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
+  async renderFrame(
+    timeUs: number,
+    options?: PreviewRenderOptions,
+  ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas || !this.app.renderer) return null;
+
+    this.previewEffectsEnabled = options?.previewEffectsEnabled !== false;
 
     if (this.contextLost) {
       return null;
@@ -2091,6 +2098,27 @@ export class VideoCompositor {
     const localTimeUs = timeUs - clip.startUs;
     let opacity = baseOpacity;
 
+    if (!this.previewEffectsEnabled) {
+      if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
+        const dur = clip.transitionIn.durationUs;
+        if (localTimeUs < dur) {
+          const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
+          opacity = Math.min(opacity, baseOpacity * rawProgress);
+        }
+      }
+
+      if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
+        const dur = clip.transitionOut.durationUs;
+        const outStartUs = clip.durationUs - dur;
+        if (localTimeUs >= outStartUs) {
+          const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
+          opacity = Math.min(opacity, baseOpacity * (1 - rawProgress));
+        }
+      }
+
+      return Math.max(0, Math.min(1, opacity));
+    }
+
     if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
       const dur = clip.transitionIn.durationUs;
       const curve = clip.transitionIn.curve ?? DEFAULT_TRANSITION_CURVE;
@@ -2143,7 +2171,7 @@ export class VideoCompositor {
     if (localTimeUs < 0 || localTimeUs >= transition.durationUs) return null;
 
     const progress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
-    const manifest = getTransitionManifest(transition.type);
+    const manifest = this.previewEffectsEnabled ? getTransitionManifest(transition.type) : null;
 
     return {
       transition,
@@ -2154,6 +2182,24 @@ export class VideoCompositor {
   }
 
   private syncTransitionFilter(clip: CompositorClip, timeUs: number) {
+    if (!this.previewEffectsEnabled) {
+      if (clip.transitionFilter) {
+        try {
+          clip.transitionFilter.destroy();
+        } catch {
+          // ignore
+        }
+        this.transitionFilters.delete(clip.itemId);
+        clip.transitionFilter = null;
+        clip.transitionFilterType = null;
+      }
+      if (clip.transitionSprite) {
+        clip.transitionSprite.visible = false;
+        clip.transitionSprite.filters = null;
+      }
+      return;
+    }
+
     const state = this.getActiveTransitionState(clip, timeUs);
     if (!state || state.manifest?.renderMode !== 'shader' || !state.manifest.createFilter) {
       if (clip.transitionFilter) {
@@ -2198,6 +2244,11 @@ export class VideoCompositor {
   private applyClipEffects(clip: CompositorClip) {
     if (!clip.effectFilters) {
       clip.effectFilters = new Map();
+    }
+
+    if (!this.previewEffectsEnabled) {
+      clip.sprite.filters = null;
+      return;
     }
 
     const filters: Filter[] = [];
@@ -2249,6 +2300,11 @@ export class VideoCompositor {
       track.effectFilters = new Map();
     }
 
+    if (!this.previewEffectsEnabled) {
+      track.container.filters = null;
+      return;
+    }
+
     const filters: Filter[] = [];
     const seenIds = new Set<string>();
 
@@ -2297,6 +2353,11 @@ export class VideoCompositor {
 
     if (!this.masterEffectFilters) {
       this.masterEffectFilters = new Map();
+    }
+
+    if (!this.previewEffectsEnabled) {
+      this.app.stage.filters = null;
+      return;
     }
 
     const filters: Filter[] = [];

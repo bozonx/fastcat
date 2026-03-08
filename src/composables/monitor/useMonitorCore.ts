@@ -9,6 +9,7 @@ import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import type { PreviewRenderOptions } from '~/utils/video-editor/worker-rpc';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
@@ -119,6 +120,16 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const useProxyInMonitor = computed(() => {
     return projectStore.projectSettings.monitor?.useProxy !== false;
   });
+
+  const previewEffectsEnabled = computed(() => {
+    return projectStore.projectSettings.monitor?.previewEffectsEnabled !== false;
+  });
+
+  function getPreviewRenderOptions(): PreviewRenderOptions {
+    return {
+      previewEffectsEnabled: previewEffectsEnabled.value,
+    };
+  }
 
   function cloneWorkerPayload<T>(value: T): T {
     try {
@@ -325,7 +336,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           }
           const nextTimeUs = latestRenderTimeUs;
           latestRenderTimeUs = null;
-          await client.renderFrame(nextTimeUs);
+          await client.renderFrame(nextTimeUs, getPreviewRenderOptions());
         }
       } catch (err) {
         console.error('[Monitor] Render failed', err);
@@ -577,6 +588,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     },
   );
 
+  watch(
+    () => previewEffectsEnabled.value,
+    () => {
+      if (isUnmounted) return;
+      scheduleRender(getRenderTimeForLayoutUpdate());
+    },
+  );
+
   watch(clipLayoutSignature, () => {
     if (isLoading.value || !compositorReady) {
       return;
@@ -685,6 +704,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     clampToTimeline,
     isLoading,
     loadError,
+    previewEffectsEnabled,
     scheduleBuild,
     scheduleRender,
     setCurrentTimeProvider,

@@ -216,6 +216,17 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
           @update:model-value="(value: string | number) => updateParam(field.key, Number(value))"
         />
 
+        <DurationSliderInput
+          v-else-if="field.kind === 'slider'"
+          :model-value="getNumberValue(selectedParams[field.key]) ?? field.min ?? 0"
+          :min="field.min ?? 0"
+          :max="field.max ?? 1"
+          :step="field.step ?? 0.01"
+          :decimals="2"
+          unit=""
+          @update:model-value="(value: number) => updateParam(field.key, value)"
+        />
+
         <input
           v-else-if="field.kind === 'color'"
           :value="getColorValue(selectedParams[field.key])"

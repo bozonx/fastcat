@@ -3,6 +3,7 @@ import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 
 import type { VideoCoreHostAPI } from '../utils/video-editor/worker-client';
 import { VideoCompositor } from '../utils/video-editor/VideoCompositor';
+import type { PreviewRenderOptions } from '../utils/video-editor/worker-rpc';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
@@ -66,7 +67,7 @@ const api: any = {
     return compositor.updateTimelineLayout(clips);
   },
 
-  async renderFrame(timeUs: number) {
+  async renderFrame(timeUs: number, options?: PreviewRenderOptions) {
     if (!compositor) return;
     latestRenderTimeUs = Math.round(Number(timeUs) || 0);
     if (renderInFlight) return;
@@ -76,7 +77,7 @@ const api: any = {
       while (latestRenderTimeUs !== null) {
         const next = latestRenderTimeUs;
         latestRenderTimeUs = null;
-        await compositor.renderFrame(next);
+        await compositor.renderFrame(next, options);
       }
     } finally {
       renderInFlight = false;

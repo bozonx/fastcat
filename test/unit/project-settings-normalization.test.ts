@@ -41,6 +41,7 @@ describe('project settings normalization', () => {
         monitor: {
           previewResolution: 99999,
           useProxy: true,
+          previewEffectsEnabled: false,
           panX: 0,
           panY: 0,
         },
@@ -58,5 +59,6 @@ describe('project settings normalization', () => {
     expect(normalized.project.sampleRate).toBe(192000);
     expect(normalized.exportDefaults.encoding.keyframeIntervalSec).toBe(60);
     expect(normalized.monitor.previewResolution).toBe(4320);
+    expect(normalized.monitor.previewEffectsEnabled).toBe(false);
   });
 });

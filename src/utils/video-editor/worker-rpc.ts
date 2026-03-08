@@ -1,5 +1,9 @@
 import { createChannel } from 'bidc';
 
+export interface PreviewRenderOptions {
+  previewEffectsEnabled?: boolean;
+}
+
 export interface VideoCoreWorkerAPI {
   // Metadata
   extractMetadata(fileHandle: FileSystemFileHandle): Promise<any>;
@@ -13,7 +17,7 @@ export interface VideoCoreWorkerAPI {
   ): Promise<void>;
   loadTimeline(clips: any[]): Promise<number>;
   updateTimelineLayout(clips: any[]): Promise<number>;
-  renderFrame(timeUs: number): Promise<void>;
+  renderFrame(timeUs: number, options?: PreviewRenderOptions): Promise<void>;
   clearClips(): Promise<void>;
   destroyCompositor(): Promise<void>;
 
