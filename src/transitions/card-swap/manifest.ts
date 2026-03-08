@@ -62,6 +62,7 @@ bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
 }
 
+out vec4 finalColor;
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 p = vNormalizedCoord;
@@ -152,25 +153,25 @@ void main(void) {
     // From is on top
     if (pfrIn) {
       vec4 c = texture(uFromTexture, pfr);
-      gl_FragColor = vec4(c.rgb * (1.0 - darkFr), c.a);
+      finalColor = vec4(c.rgb * (1.0 - darkFr), c.a);
     } else if (ptoIn) {
       vec4 c = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord) * vTexScale);
       float totalDark = min(1.0, darkTo + shadowFr);
-      gl_FragColor = vec4(c.rgb * (1.0 - totalDark), c.a);
+      finalColor = vec4(c.rgb * (1.0 - totalDark), c.a);
     } else {
-      gl_FragColor = vec4(0.0);
+      finalColor = vec4(0.0);
     }
   } else {
     // To is on top
     if (ptoIn) {
       vec4 c = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord) * vTexScale);
-      gl_FragColor = vec4(c.rgb * (1.0 - darkTo), c.a);
+      finalColor = vec4(c.rgb * (1.0 - darkTo), c.a);
     } else if (pfrIn) {
       vec4 c = texture(uFromTexture, pfr);
       float totalDark = min(1.0, darkFr + shadowTo);
-      gl_FragColor = vec4(c.rgb * (1.0 - totalDark), c.a);
+      finalColor = vec4(c.rgb * (1.0 - totalDark), c.a);
     } else {
-      gl_FragColor = vec4(0.0);
+      finalColor = vec4(0.0);
     }
   }
 }

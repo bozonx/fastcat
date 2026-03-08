@@ -57,6 +57,7 @@ vec4 extractBright(vec4 color) {
   return color * intensity;
 }
 
+out vec4 finalColor;
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   
@@ -97,7 +98,7 @@ void main(void) {
     vec4 outColor = baseColor + mixedBloom * uBrightness * peak;
     outColor.rgb = min(outColor.rgb, vec3(1.0));
     outColor.a = baseColor.a;
-    gl_FragColor = outColor;
+    finalColor = outColor;
   } else {
     // Normal mode: blur whole image and apply brightness uniformly
     blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, -1.0) * blurAmount) * 0.0625;
@@ -127,7 +128,7 @@ void main(void) {
     vec4 outColor = mixedBlur * brightnessMult;
     outColor.rgb = min(outColor.rgb, vec3(1.0));
     outColor.a = baseColor.a;
-    gl_FragColor = outColor;
+    finalColor = outColor;
   }
 }
 `;

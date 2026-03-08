@@ -56,6 +56,7 @@ bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
 }
 
+out vec4 finalColor;
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
@@ -140,11 +141,11 @@ void main(void) {
   }
   
   if (inBounds(fromP)) {
-    gl_FragColor = texture(uFromTexture, fromP);
+    finalColor = texture(uFromTexture, fromP);
   } else if (inBounds(toP)) {
-    gl_FragColor = texture(uTexture, vTextureCoord + (toP - uv) * vTexScale);
+    finalColor = texture(uTexture, vTextureCoord + (toP - uv) * vTexScale);
   } else {
-    gl_FragColor = vec4(0.0);
+    finalColor = vec4(0.0);
   }
 }
 `;

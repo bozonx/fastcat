@@ -17,7 +17,7 @@ import {
   clampHandlePx,
   getClipClass,
   getFadeLinePattern as getTransitionFadeLinePattern,
-  getTransitionCurvePreviewPaths,
+  getTransitionSolidPath,
 } from '~/utils/timeline/clip';
 import { getEffectManifest } from '~/effects';
 import { sanitizeFps } from '~/timeline/commands/utils';
@@ -360,8 +360,8 @@ function getTransitionFadeLines(edge: 'in' | 'out') {
   return getTransitionFadeLinePattern(edge, getTransitionCurve(edge), 100);
 }
 
-function getTransitionCurvePaths(edge: 'in' | 'out') {
-  return getTransitionCurvePreviewPaths(100, 100, getTransitionCurve(edge), edge);
+function getTransitionCurvePath(edge: 'in' | 'out'): string {
+  return getTransitionSolidPath(100, 100, getTransitionCurve(edge), edge);
 }
 
 function getTransitionProblem(
@@ -980,18 +980,8 @@ const isFreePosition = computed(() => {
               viewBox="0 0 100 100"
             >
               <path
-                :d="getTransitionCurvePaths('in').top"
-                fill="none"
-                :stroke="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
-                stroke-width="8"
-                stroke-linecap="round"
-              />
-              <path
-                :d="getTransitionCurvePaths('in').bottom"
-                fill="none"
-                :stroke="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
-                stroke-width="8"
-                stroke-linecap="round"
+                :d="getTransitionCurvePath('in')"
+                :fill="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
               />
             </svg>
             <span
@@ -1075,18 +1065,8 @@ const isFreePosition = computed(() => {
               viewBox="0 0 100 100"
             >
               <path
-                :d="getTransitionCurvePaths('out').top"
-                fill="none"
-                :stroke="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
-                stroke-width="8"
-                stroke-linecap="round"
-              />
-              <path
-                :d="getTransitionCurvePaths('out').bottom"
-                fill="none"
-                :stroke="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
-                stroke-width="8"
-                stroke-linecap="round"
+                :d="getTransitionCurvePath('out')"
+                :fill="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
               />
             </svg>
             <span

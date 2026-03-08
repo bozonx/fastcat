@@ -6,14 +6,12 @@ import type { TransitionCurve, TransitionParamField } from '~/transitions/core/r
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
-import { getFadeLinePattern, getTransitionCurvePreviewPaths } from '~/utils/timeline/clip';
+import { getTransitionCurveSinglePath } from '~/utils/timeline/clip';
 
 interface CurveOption {
   value: TransitionCurve;
   label: string;
-  fadeLines: Array<{ x: number; width: number }>;
-  transitionPaths: { top: string; bottom: string };
-  previewMode: 'transition' | 'fade';
+  curvePath: string;
   [key: string]: unknown;
 }
 
@@ -88,15 +86,10 @@ const curveOptions = computed<CurveOption[]>(() => {
   ];
 
   return curves.map((curve) => {
-    const previewEdge = props.edge;
-    const previewMode = selectedMode.value;
-
     return {
       value: curve,
       label: t(`granVideoEditor.timeline.transition.curve${toCurveLabelKey(curve)}`),
-      fadeLines: getFadeLinePattern(previewEdge, curve, 100),
-      transitionPaths: getTransitionCurvePreviewPaths(100, 100, curve, previewEdge),
-      previewMode,
+      curvePath: getTransitionCurveSinglePath(100, 100, curve),
     };
   });
 });
@@ -242,35 +235,13 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
           <div class="flex items-center gap-2 w-full min-w-0">
             <svg class="w-14 h-8 shrink-0" viewBox="0 0 100 100" preserveAspectRatio="none">
               <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
-              <template v-if="toCurveOption(option).previewMode === 'fade'">
-                <rect
-                  v-for="line in toCurveOption(option).fadeLines"
-                  :key="`${toCurveOption(option).value}-${line.x}`"
-                  :x="line.x"
-                  y="0"
-                  :width="line.width"
-                  height="100"
-                  fill="currentColor"
-                  opacity="0.85"
-                />
-              </template>
-              <template v-else>
-                <path
-                  :d="toCurveOption(option).transitionPaths.top"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="7"
-                  stroke-linecap="round"
-                />
-                <path
-                  :d="toCurveOption(option).transitionPaths.bottom"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="7"
-                  stroke-linecap="round"
-                  opacity="0.9"
-                />
-              </template>
+              <path
+                :d="toCurveOption(option).curvePath"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
             </svg>
             <span class="min-w-0 text-left leading-tight whitespace-normal">{{ toCurveOption(option).label }}</span>
           </div>

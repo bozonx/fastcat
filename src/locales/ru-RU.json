@@ -638,7 +638,11 @@
       "toolbarBottom": "Панель снизу",
       "toolbarLeft": "Панель слева",
       "resetZoom": "Сбросить зум (100%)",
-      "fullscreen": "Полноэкранный режим"
+      "fullscreen": "Полноэкранный режим",
+      "previewWithEffects": "Предпросмотр с эффектами",
+      "previewWithoutEffects": "Предпросмотр без эффектов",
+      "withEffects": "С эффектами",
+      "withoutEffects": "Без эффектов"
     },
     "timeline": {
       "addMarkerAtPlayhead": "Добавить маркер на курсор",
@@ -750,8 +754,6 @@
         "paramMode": "Режим масштаба",
         "modeBloom": "Свечение (Bloom)",
         "modeNormal": "Обычный",
-        "paramBrightness": "Яркость",
-        "paramBlur": "Уровень размытия",
         "modeUnzoom": "Отдаление",
         "modeFixed": "Фиксированный",
         "paramPerspective": "Высота по центру",

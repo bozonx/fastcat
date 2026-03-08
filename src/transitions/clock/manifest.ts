@@ -44,6 +44,7 @@ uniform float uDirection;
 
 const float PI = 3.1415926535897932384626433832795;
 
+out vec4 finalColor;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec2 centered = uv - vec2(0.5, 0.5);
@@ -75,7 +76,7 @@ void main(void) {
   vec4 fromColor = texture(uFromTexture, uv);
   vec4 toColor = texture(uTexture, vTextureCoord);
 
-  gl_FragColor = mix(fromColor, toColor, 1.0 - reveal);
+  finalColor = mix(fromColor, toColor, 1.0 - reveal);
 }
 `;
 

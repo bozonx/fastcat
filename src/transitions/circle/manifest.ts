@@ -56,6 +56,7 @@ uniform float uDirection;
 uniform vec2 uCenter;
 uniform vec2 uScale;
 
+out vec4 finalColor;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec2 centered = uv - uCenter;
@@ -89,7 +90,7 @@ void main(void) {
   vec4 fromColor = texture(uFromTexture, uv);
   vec4 toColor = texture(uTexture, vTextureCoord);
 
-  gl_FragColor = mix(fromColor, toColor, reveal);
+  finalColor = mix(fromColor, toColor, reveal);
 }
 `;
 

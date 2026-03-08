@@ -242,7 +242,7 @@ function onPanelFocusOut() {
       </div>
       <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">
         <div v-if="displayMode === 'file' && hasProxy" class="flex gap-1">
-          <UFieldGroup size="xs">
+          <UButtonGroup size="xs">
             <UButton
               :color="previewMode === 'original' ? 'primary' : 'neutral'"
               :variant="previewMode === 'original' ? 'soft' : 'ghost'"
@@ -255,7 +255,7 @@ function onPanelFocusOut() {
               :label="t('videoEditor.fileManager.preview.proxy', 'Proxy')"
               @click="previewMode = 'proxy'"
             />
-          </UFieldGroup>
+          </UButtonGroup>
         </div>
         <UButton
           size="xs"
@@ -329,6 +329,14 @@ function onPanelFocusOut() {
           />
           <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
           <TimelineProperties v-else-if="displayMode === 'timeline'" />
+          <ProjectEffectProperties
+            v-else-if="displayMode === 'project-effect' && selectedProjectEffectType"
+            :effect-type="selectedProjectEffectType"
+          />
+          <ProjectTransitionProperties
+            v-else-if="displayMode === 'project-transition' && selectedProjectTransitionType"
+            :transition-type="selectedProjectTransitionType"
+          />
           <div
             v-else
             class="flex flex-col items-center justify-center h-full text-ui-text-muted"
