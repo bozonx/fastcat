@@ -9,6 +9,7 @@ export interface CardSwapParams {
   maxDarkness: number;
   shadowSize: number;
   shadowOpacity: number;
+  blurStrength: number;
 }
 
 const vertex = `
@@ -54,6 +55,7 @@ uniform float uSlideOrder;
 uniform float uMaxDarkness;
 uniform float uShadowSize;
 uniform float uShadowOpacity;
+uniform float uBlurStrength;
 
 const float depth = 3.0;
 const float perspective = 0.2;
@@ -149,27 +151,85 @@ void main(void) {
   }
 
   // Draw front-to-back
+  vec4 finalCFr = vec4(0.0);
+  vec4 finalCTo = vec4(0.0);
+  
+  // Blur passes
+  const int SAMPLES = 8;
+  float fSamples = float(SAMPLES);
+  
+  if (uMode > 0.5) {
+    // Slide mode - motion blur
+    vec2 blurDir = uDirection > 0.5 ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    // Speed is proportional to uBlurStrength. Multiply by something appropriate.
+    float blurAmount = uBlurStrength * 0.1;
+    
+    if (pfrIn) {
+      vec4 c = vec4(0.0);
+      for(int i = 0; i < SAMPLES; i++) {
+        float offset = (float(i) / (fSamples - 1.0) - 0.5) * blurAmount;
+        c += texture(uFromTexture, pfr + blurDir * offset);
+      }
+      c /= fSamples;
+      finalCFr = vec4(c.rgb * (1.0 - darkFr), c.a);
+    }
+    if (ptoIn) {
+      vec4 c = vec4(0.0);
+      for(int i = 0; i < SAMPLES; i++) {
+        float offset = (float(i) / (fSamples - 1.0) - 0.5) * blurAmount;
+        c += texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + blurDir * offset) * vTexScale);
+      }
+      c /= fSamples;
+      finalCTo = vec4(c.rgb * (1.0 - darkTo), c.a);
+    }
+  } else {
+    // Zoom mode - distance blur
+    float blurAmountFr = uBlurStrength * (sizeFr - 1.0) * 0.02;
+    float blurAmountTo = uBlurStrength * (sizeTo - 1.0) * 0.02;
+    
+    if (pfrIn) {
+      vec4 c = vec4(0.0);
+      for(int i = 0; i < SAMPLES; i++) {
+        vec2 offset = vec2(
+          cos(float(i) * 2.39996) * blurAmountFr,
+          sin(float(i) * 2.39996) * blurAmountFr
+        ) * (float(i) / fSamples);
+        c += texture(uFromTexture, pfr + offset);
+      }
+      c /= fSamples;
+      finalCFr = vec4(c.rgb * (1.0 - darkFr), c.a);
+    }
+    if (ptoIn) {
+      vec4 c = vec4(0.0);
+      for(int i = 0; i < SAMPLES; i++) {
+        vec2 offset = vec2(
+          cos(float(i) * 2.39996) * blurAmountTo,
+          sin(float(i) * 2.39996) * blurAmountTo
+        ) * (float(i) / fSamples);
+        c += texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + offset) * vTexScale);
+      }
+      c /= fSamples;
+      finalCTo = vec4(c.rgb * (1.0 - darkTo), c.a);
+    }
+  }
+
   if (progress < 0.5) {
     // From is on top
     if (pfrIn) {
-      vec4 c = texture(uFromTexture, pfr);
-      finalColor = vec4(c.rgb * (1.0 - darkFr), c.a);
+      finalColor = finalCFr;
     } else if (ptoIn) {
-      vec4 c = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord) * vTexScale);
       float totalDark = min(1.0, darkTo + shadowFr);
-      finalColor = vec4(c.rgb * (1.0 - totalDark), c.a);
+      finalColor = vec4(finalCTo.rgb * (1.0 - totalDark) / max(1.0 - darkTo, 0.001), finalCTo.a);
     } else {
       finalColor = vec4(0.0);
     }
   } else {
     // To is on top
     if (ptoIn) {
-      vec4 c = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord) * vTexScale);
-      finalColor = vec4(c.rgb * (1.0 - darkTo), c.a);
+      finalColor = finalCTo;
     } else if (pfrIn) {
-      vec4 c = texture(uFromTexture, pfr);
       float totalDark = min(1.0, darkFr + shadowTo);
-      finalColor = vec4(c.rgb * (1.0 - totalDark), c.a);
+      finalColor = vec4(finalCFr.rgb * (1.0 - totalDark) / max(1.0 - darkFr, 0.001), finalCFr.a);
     } else {
       finalColor = vec4(0.0);
     }
@@ -190,6 +250,10 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
       typeof params?.shadowOpacity === 'number'
         ? Math.max(0, Math.min(1, params.shadowOpacity))
         : 0.6,
+    blurStrength:
+      typeof params?.blurStrength === 'number'
+        ? Math.max(0, Math.min(1, params.blurStrength))
+        : 0.5,
   };
 }
 
@@ -255,6 +319,14 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       max: 1,
       step: 0.05,
     },
+    {
+      key: 'blurStrength',
+      kind: 'slider',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurStrength',
+      min: 0,
+      max: 1,
+      step: 0.05,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -270,6 +342,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
           uMaxDarkness: { value: 0.5, type: 'f32' },
           uShadowSize: { value: 0.2, type: 'f32' },
           uShadowOpacity: { value: 0.6, type: 'f32' },
+          uBlurStrength: { value: 0.5, type: 'f32' },
         },
       },
     }),
@@ -287,6 +360,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
     uniforms.uMaxDarkness = params.maxDarkness;
     uniforms.uShadowSize = params.shadowSize;
     uniforms.uShadowOpacity = params.shadowOpacity;
+    uniforms.uBlurStrength = params.blurStrength;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
