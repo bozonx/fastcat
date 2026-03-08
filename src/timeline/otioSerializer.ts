@@ -336,6 +336,10 @@ function parseClipItem(input: {
       typeof granMeta?.audioGain === 'number' && Number.isFinite(granMeta.audioGain)
         ? Math.max(0, Math.min(10, Number(granMeta.audioGain)))
         : undefined,
+    audioBalance:
+      typeof granMeta?.audioBalance === 'number' && Number.isFinite(granMeta.audioBalance)
+        ? Math.max(-1, Math.min(1, Number(granMeta.audioBalance)))
+        : undefined,
     audioFadeInUs:
       typeof granMeta?.audioFadeInUs === 'number' && Number.isFinite(granMeta.audioFadeInUs)
         ? Math.max(0, Math.round(granMeta.audioFadeInUs))

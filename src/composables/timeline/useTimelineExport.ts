@@ -588,11 +588,8 @@ export async function toWorkerTimelineClips(
                       id: `${item.id}_nested_${resolvedNClip.id}`,
                       trackId: undefined,
                       layer: nestedLayer,
-                      audioGain: mergeGain((item as any).audioGain, resolvedNClip.audioGain),
-                      audioBalance: mergeBalance(
-                        (item as any).audioBalance,
-                        resolvedNClip.audioBalance,
-                      ),
+                      audioGain: resolvedNClip.audioGain,
+                      audioBalance: resolvedNClip.audioBalance,
                       audioFadeInUs: mergeFadeInUs({
                         childFadeInUs: resolvedNClip.audioFadeInUs,
                         parentFadeInUs: (item as any).audioFadeInUs,
@@ -680,11 +677,8 @@ export async function toWorkerTimelineClips(
                     id: `${item.id}_nested_${resolvedNClip.id}`,
                     trackId: resolvedNClip.trackId,
                     layer: 0,
-                    audioGain: mergeGain((item as any).audioGain, resolvedNClip.audioGain),
-                    audioBalance: mergeBalance(
-                      (item as any).audioBalance,
-                      resolvedNClip.audioBalance,
-                    ),
+                    audioGain: resolvedNClip.audioGain,
+                    audioBalance: resolvedNClip.audioBalance,
                     audioFadeInUs: mergeFadeInUs({
                       childFadeInUs: resolvedNClip.audioFadeInUs,
                       parentFadeInUs: (item as any).audioFadeInUs,

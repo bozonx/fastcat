@@ -62,11 +62,23 @@ void main(void) {
     float local = (progress - 0.5) * 2.0;
     finalColor = mix(fadeColor, toColor, local);
   } else {
-    // Crossfade mode: smooth dissolve across the entire duration without a midpoint stop,
-    // but simultaneously darken towards zero brightness
-    vec4 mixedColor = mix(fromColor, toColor, progress);
-    float brightness = 1.0 - progress; // Linear decrease to 0
-    finalColor = vec4(mixedColor.rgb * brightness, mixedColor.a);
+    // Crossfade mode
+    float invP = 1.0 - progress;
+    
+    // Fade the outgoing frame from full opacity and brightness to zero.
+    vec4 fromLayer = fromColor * invP;
+    
+    // Fade the incoming frame from zero opacity and brightness to full.
+    vec4 toLayer = toColor * progress;
+    
+    // Keep the fade color behind both layers instead of exposing transparency.
+    vec4 bg = fadeColor;
+    
+    // Composite the outgoing layer over the fade color.
+    vec4 fromMixed = fromLayer + bg * (1.0 - fromLayer.a);
+    
+    // Composite the incoming layer over the intermediate result.
+    finalColor = toLayer + fromMixed * (1.0 - toLayer.a);
   }
 }
 `;
