@@ -12,7 +12,6 @@ export interface SlideParams {
   gap: number;
   gapColor: string;
   motionBlur: number;
-  blurRampDurationMs: number;
   brightnessMode: 'normal' | 'bloom';
   brightness: number;
   bloomThreshold: number;
@@ -139,7 +138,6 @@ function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
     motionBlur: clampNumber(params?.motionBlur, 0, 10, 0),
-    blurRampDurationMs: clampNumber(params?.blurRampDurationMs, 0, 5000, 100),
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
     brightness: clampNumber(params?.brightness, 0, 10, 0),
     bloomThreshold: clampNumber(params?.bloomThreshold, 0, 1, 0.7),
@@ -225,14 +223,6 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       max: 1,
       step: 0.01,
     },
-    {
-      key: 'blurRampDurationMs',
-      kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlurRampDuration',
-      min: 0,
-      max: 5000,
-      step: 10,
-    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -261,38 +251,33 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);
 
+    // Motion blur relies on transition speed (derivative of progress).
+    // We approximate the derivative by taking a small step.
+    const deltaProgress = 0.01;
+    const p1 = applyTransitionCurve(Math.max(0, context.progress - deltaProgress), context.curve);
+    const p2 = applyTransitionCurve(Math.min(1, context.progress + deltaProgress), context.curve);
+
+    // The "speed" is the change in progress over the small step.
+    // If curve is linear, p2 - p1 = 2 * deltaProgress.
+    // So we normalize by dividing by (2 * deltaProgress).
+    const speedMultiplier = (p2 - p1) / (2 * deltaProgress);
+
     // Calculate motion blur
     let blurAmount = 0;
     if (params.motionBlur > 0 && context.durationUs && context.durationUs > 0) {
-      // Base speed of transition in normalized screen coordinates per second
-      // Distance traveled is roughly 1.0 (screen width/height) over the duration
       const durationSeconds = context.durationUs / 1_000_000;
       const baseSpeed = 1.0 / durationSeconds;
 
-      // Target blur amount depends on speed and motionBlur parameter
-      // We scale it down a bit so 1.0 isn't crazy blurry
-      let targetBlur = baseSpeed * params.motionBlur * 0.05;
-
-      // Apply acceleration / deceleration ramp
-      if (params.blurRampDurationMs > 0 && context.elapsedUs !== undefined) {
-        const rampUs = params.blurRampDurationMs * 1000;
-        const elapsedUs = context.elapsedUs;
-        const remainingUs = context.durationUs - elapsedUs;
-
-        let rampFactor = 1.0;
-        if (elapsedUs < rampUs) {
-          // Accelerating
-          rampFactor = Math.max(0, elapsedUs / rampUs);
-        } else if (remainingUs < rampUs) {
-          // Decelerating
-          rampFactor = Math.max(0, remainingUs / rampUs);
-        }
-
-        targetBlur *= rampFactor;
-      }
-
-      blurAmount = targetBlur;
+      // Blur scales with base speed and the curve's instantaneous speed multiplier
+      let targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
+      blurAmount = Math.max(0, targetBlur);
     }
+
+    // Brightness envelope (parabola peaking at middle of transition)
+    // progress goes from 0 to 1. 1.0 - 2.0*abs(progress - 0.5) gives a triangle peak
+    // We can use a smoother curve like sin(progress * PI)
+    const envelope = Math.sin(progress * Math.PI);
+    const currentBrightness = params.brightness * envelope;
 
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
@@ -301,7 +286,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
     uniforms.uMotionBlur = blurAmount;
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
-    uniforms.uBrightness = params.brightness;
+    uniforms.uBrightness = currentBrightness;
     uniforms.uBloomThreshold = params.bloomThreshold;
   },
   computeOutOpacity: () => 1,
