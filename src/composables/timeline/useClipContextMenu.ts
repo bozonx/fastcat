@@ -244,7 +244,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
               const tr = doc.tracks.find((t) => t.id === trackId);
               const clip = tr?.items.find((it) => it.id === itemId);
               if (!clip || clip.kind !== 'clip') continue;
-              if (Boolean((clip as any).locked)) continue;
+              if ((clip as any).locked) continue;
               if (!isClipFreePosition(clip as TimelineClipItem)) continue;
               cmds.push({
                 type: 'trim_item',

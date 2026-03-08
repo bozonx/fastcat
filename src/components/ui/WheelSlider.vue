@@ -82,7 +82,10 @@ const value = computed({
   set: (nextValue: number) => {
     const rawValue = Number(nextValue);
     if (!Number.isFinite(rawValue)) return;
-    emit('update:modelValue', props.steps?.length ? findNearestStep(rawValue) : clampValue(rawValue));
+    emit(
+      'update:modelValue',
+      props.steps?.length ? findNearestStep(rawValue) : clampValue(rawValue),
+    );
   },
 });
 

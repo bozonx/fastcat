@@ -304,7 +304,10 @@ watch(
       }}</span>
     </label>
 
-    <div v-if="!excludeAudio && outputFormat === 'mp4' && !props.hideAudioBitrate" class="flex flex-col gap-2">
+    <div
+      v-if="!excludeAudio && outputFormat === 'mp4' && !props.hideAudioBitrate"
+      class="flex flex-col gap-2"
+    >
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
       </label>

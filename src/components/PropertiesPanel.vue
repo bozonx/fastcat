@@ -274,7 +274,9 @@ function onPanelFocusOut() {
           />
 
           <FileProperties
-            v-else-if="displayMode === 'file' && selectedFsEntry && selectedFsEntry.source !== 'remote'"
+            v-else-if="
+              displayMode === 'file' && selectedFsEntry && selectedFsEntry.source !== 'remote'
+            "
             :selected-fs-entry="selectedFsEntry"
             :has-proxy="hasProxy"
             :preview-mode="previewMode"
@@ -282,7 +284,9 @@ function onPanelFocusOut() {
             @convert="(entry) => fileConversion.openConversionModal(entry)"
           />
           <RemoteFileProperties
-            v-else-if="displayMode === 'file' && selectedFsEntry && selectedFsEntry.source === 'remote'"
+            v-else-if="
+              displayMode === 'file' && selectedFsEntry && selectedFsEntry.source === 'remote'
+            "
             :selected-fs-entry="selectedFsEntry"
           />
           <MultiFileProperties

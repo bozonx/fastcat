@@ -14,8 +14,10 @@ resetProjectState();
 
 onMounted(() => {
   // Детекция мобильного устройства
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-  
+  const isMobile =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    window.innerWidth < 768;
+
   // Если мобильное устройство и не выбран принудительный десктопный режим
   if (isMobile && route.query.mode !== 'desktop') {
     router.push('/m');

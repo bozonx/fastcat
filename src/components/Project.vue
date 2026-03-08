@@ -199,11 +199,7 @@ function onTabBarDrop(e: DragEvent) {
         filePath?: string;
         fileName?: string;
       };
-      if (
-        payload.filePath &&
-        payload.fileName &&
-        isOpenableProjectFileName(payload.fileName)
-      ) {
+      if (payload.filePath && payload.fileName && isOpenableProjectFileName(payload.fileName)) {
         const tabId = addFileTab({
           filePath: payload.filePath,
           fileName: payload.fileName,
@@ -249,7 +245,8 @@ onMounted(() => {
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('project'),
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+        focusStore.isPanelFocused('project'),
     }"
     @pointerdown.capture="activateProjectFocus"
   >
@@ -337,7 +334,10 @@ onMounted(() => {
     </div>
 
     <!-- Content area -->
-    <div class="flex flex-col flex-1 min-h-0 overflow-hidden" @pointerdown.capture="activateProjectFocus">
+    <div
+      class="flex flex-col flex-1 min-h-0 overflow-hidden"
+      @pointerdown.capture="activateProjectFocus"
+    >
       <!-- File viewer for file tabs -->
       <ProjectTabFileViewer
         v-if="activeFileTab"

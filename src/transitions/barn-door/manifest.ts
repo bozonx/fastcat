@@ -9,11 +9,11 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface BarnDoorParams {
   mode: 'open' | 'close';
-  direction: 'horizontal' | 'vertical';
   edgeMode: 'gap' | 'blur';
   gap: number;
   gapColor: string;
   blur: number;
+  blurMode: 'fixed' | 'scaled';
   angle: number;
 }
 
@@ -59,6 +59,7 @@ uniform vec2 uAxis;
 uniform vec3 uGapColor;
 uniform float uAspect;
 uniform float uMode; // 1.0 for open, 0.0 for close
+uniform float uBlurMode; // 1.0 for scaled, 0.0 for fixed
 
 void main(void) {
   vec2 uv = vNormalizedCoord;
@@ -84,14 +85,14 @@ void main(void) {
   if (uMode > 0.5) {
     // Open: reveals from center. At prog 0: threshold 0 (closed). At prog 1: threshold maxDist (fully open).
     threshold = maxDist * progress;
-    // Further from closed state (prog 0) means more blur
-    currentBlur = uBlur * progress;
+    // If scaled, further from closed state (prog 0) means more blur
+    currentBlur = uBlurMode > 0.5 ? uBlur * progress : uBlur;
     isToColorInside = true; // distance < threshold means revealed toColor
   } else {
     // Close: closes from edges. At prog 0: threshold maxDist (fully open). At prog 1: threshold 0 (closed).
     threshold = maxDist * (1.0 - progress);
-    // Further from closed state (prog 1) means more blur
-    currentBlur = uBlur * (1.0 - progress);
+    // If scaled, further from closed state (prog 1) means more blur
+    currentBlur = uBlurMode > 0.5 ? uBlur * (1.0 - progress) : uBlur;
     isToColorInside = false; // distance > threshold means incoming toColor from edges
   }
   
@@ -138,25 +139,18 @@ void main(void) {
 
 function normalizeBarnDoorParams(params?: Record<string, unknown>): BarnDoorParams {
   const mode = params?.mode === 'close' ? 'close' : 'open';
-  const direction = params?.direction === 'vertical' ? 'vertical' : 'horizontal';
   const edgeMode = params?.edgeMode === 'blur' ? 'blur' : 'gap';
+  const blurMode = params?.blurMode === 'fixed' ? 'fixed' : 'scaled';
 
   return {
     mode,
-    direction,
     edgeMode,
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
     blur: clampNumber(params?.blur, 0.0001, 0.2, 0.02),
+    blurMode,
     angle: clampNumber(params?.angle, -180, 180, 0),
   };
-}
-
-function getDirectionVector(direction: BarnDoorParams['direction']): { x: number; y: number } {
-  if (direction === 'vertical') {
-    return { x: 0, y: 1 };
-  }
-  return { x: 1, y: 0 };
 }
 
 export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
@@ -177,24 +171,21 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
       ],
     },
     {
-      key: 'direction',
-      kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
-      options: [
-        {
-          value: 'horizontal',
-          labelKey: 'granVideoEditor.timeline.transition.directionHorizontal',
-        },
-        { value: 'vertical', labelKey: 'granVideoEditor.timeline.transition.directionVertical' },
-      ],
-    },
-    {
       key: 'edgeMode',
       kind: 'select',
       labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeMode',
       options: [
         { value: 'gap', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeGap' },
         { value: 'blur', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeBlur' },
+      ],
+    },
+    {
+      key: 'blurMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
+      options: [
+        { value: 'scaled', labelKey: 'granVideoEditor.timeline.transition.blurModeScaled' },
+        { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },
       ],
     },
     {
@@ -243,6 +234,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
           uAspect: { value: 1.0, type: 'f32' },
           uMode: { value: 1.0, type: 'f32' },
+          uBlurMode: { value: 1.0, type: 'f32' },
         },
       },
     }),
@@ -253,20 +245,18 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     let progress = context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const params = normalizeBarnDoorParams(context.params);
 
-    let fromTex = context.fromTexture;
-    let toTex = context.toTexture;
-    let applyToEdgeBlur = context.edge === 'in' ? 1 : 0;
+    const fromTex = context.fromTexture;
+    const toTex = context.toTexture;
+    const applyToEdgeBlur = context.edge === 'in' ? 1 : 0;
 
     if (params.mode === 'close') {
       progress = 1.0 - progress;
     }
 
-    const baseAxis = getDirectionVector(params.direction);
     const angleRad = params.angle * (Math.PI / 180);
-    const cosA = Math.cos(angleRad);
-    const sinA = Math.sin(angleRad);
-    const axisX = baseAxis.x * cosA - baseAxis.y * sinA;
-    const axisY = baseAxis.x * sinA + baseAxis.y * cosA;
+    // angle 0 = vertical (axis x=1, y=0), angle 90 = horizontal (axis x=0, y=1)
+    const axisX = Math.cos(angleRad);
+    const axisY = Math.sin(angleRad);
     const rgb = hexColorToRgb01(params.gapColor);
     const useGap = params.edgeMode === 'gap';
     const aspect = context.toTexture ? context.toTexture.width / context.toTexture.height : 16 / 9;
@@ -281,6 +271,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
     uniforms.uAspect = aspect;
     uniforms.uMode = params.mode === 'open' ? 1.0 : 0.0;
+    uniforms.uBlurMode = params.blurMode === 'scaled' ? 1.0 : 0.0;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

@@ -85,14 +85,8 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
         :disable-sort="disableSort"
         @select="handleFileManagerFilesSelect"
       />
-      <ProjectEffects
-        v-else-if="activeTab === 'effects' && !foldersOnly"
-        class="flex-1 min-h-0"
-      />
-      <ProjectHistory
-        v-else-if="activeTab === 'history' && !foldersOnly"
-        class="flex-1 min-h-0"
-      />
+      <ProjectEffects v-else-if="activeTab === 'effects' && !foldersOnly" class="flex-1 min-h-0" />
+      <ProjectHistory v-else-if="activeTab === 'history' && !foldersOnly" class="flex-1 min-h-0" />
     </div>
   </div>
 </template>

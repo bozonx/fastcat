@@ -25,11 +25,7 @@ const isOpen = computed({
 </script>
 
 <template>
-  <AppModal
-    v-model:open="isOpen"
-    :title="title"
-    :ui="{ content: 'sm:max-w-xl max-h-[80vh]' }"
-  >
+  <AppModal v-model:open="isOpen" :title="title" :ui="{ content: 'sm:max-w-xl max-h-[80vh]' }">
     <div class="flex flex-col gap-4 min-h-0">
       <div class="text-xs text-ui-text-muted break-all">
         {{ currentPath || '/' }}
@@ -42,10 +38,16 @@ const isOpen = computed({
       </div>
 
       <div class="min-h-0 max-h-[50vh] overflow-auto rounded-lg border border-ui-border">
-        <div v-if="loading" class="flex items-center justify-center py-8 text-ui-text-muted text-sm">
+        <div
+          v-if="loading"
+          class="flex items-center justify-center py-8 text-ui-text-muted text-sm"
+        >
           {{ t('common.loading', 'Loading...') }}
         </div>
-        <div v-else-if="folders.length === 0" class="flex items-center justify-center py-8 text-ui-text-muted text-sm">
+        <div
+          v-else-if="folders.length === 0"
+          class="flex items-center justify-center py-8 text-ui-text-muted text-sm"
+        >
           {{ t('common.empty', 'Folder is empty') }}
         </div>
         <button

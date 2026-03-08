@@ -171,7 +171,6 @@ class FileThumbnailGenerator {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
-
       if (!ctx) {
         reject(new Error('Failed to get 2d context'));
         return;
@@ -343,11 +342,7 @@ class FileThumbnailGenerator {
     });
   }
 
-  async saveManualThumbnail(input: {
-    projectId: string;
-    projectRelativePath: string;
-    blob: Blob;
-  }) {
+  async saveManualThumbnail(input: { projectId: string; projectRelativePath: string; blob: Blob }) {
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;
 

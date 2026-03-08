@@ -128,7 +128,11 @@ function getActiveDetachedPanel() {
   const focusId = focusStore.effectiveFocus;
   if (!String(focusId).startsWith('dynamic:')) return null;
   const panelId = String(focusId).slice('dynamic:'.length);
-  return projectStore.cutPanels.flatMap((column) => column.panels).find((panel) => panel.id === panelId) ?? null;
+  return (
+    projectStore.cutPanels
+      .flatMap((column) => column.panels)
+      .find((panel) => panel.id === panelId) ?? null
+  );
 }
 
 function onGlobalKeyDown(e: KeyboardEvent) {
@@ -265,7 +269,7 @@ function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' =
         { id: `static-${payload.tabId}-${Date.now()}`, type: panelType, title: payload.label },
         targetPanelId,
         dropPosition.value,
-        view
+        view,
       );
       // Hide from Project tab bar
       hideStaticTab(payload.tabId);
@@ -297,7 +301,7 @@ function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' =
         },
         targetPanelId,
         dropPosition.value,
-        view
+        view,
       );
     } catch {
       // ignore
@@ -349,7 +353,7 @@ function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' =
               payload.name,
               targetPanelId,
               panelPosition,
-              view
+              view,
             );
           })();
         } else {
@@ -365,7 +369,7 @@ function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' =
             payload.name,
             targetPanelId,
             panelPosition,
-            view
+            view,
           );
         }
         resetDragState();
@@ -407,7 +411,10 @@ const panelTypeToTabId: Record<string, string> = {
 /**
  * Close a panel and restore the corresponding Project tab if it's a detached static tab.
  */
-function closePanelAndRestoreTab(panel: DynamicPanel, options?: { restoreFocus?: boolean; view?: 'cut' | 'sound' }) {
+function closePanelAndRestoreTab(
+  panel: DynamicPanel,
+  options?: { restoreFocus?: boolean; view?: 'cut' | 'sound' },
+) {
   const tabId = panelTypeToTabId[panel.type];
   if (tabId) {
     showStaticTab(tabId);
@@ -428,18 +435,21 @@ watch(
     ),
   () => {
     cutPanelsLayoutKey.value++;
-  }
+  },
 );
 
 const soundPanelsLayoutKey = ref(0);
 watch(
   () =>
     JSON.stringify(
-      projectStore.soundPanels.map((c: any) => ({ id: c.id, rows: c.panels.map((p: any) => p.id) })),
+      projectStore.soundPanels.map((c: any) => ({
+        id: c.id,
+        rows: c.panels.map((p: any) => p.id),
+      })),
     ),
   () => {
     soundPanelsLayoutKey.value++;
-  }
+  },
 );
 
 const verticalSplitSizesKey = computed(
@@ -484,8 +494,14 @@ function onVerticalSplitResize(event: any, colId: string, view: 'cut' | 'sound' 
   }
 }
 
-function getVerticalSize(colId: string, rowIndex: number, totalRows: number, view: 'cut' | 'sound' = 'cut'): number | undefined {
-  const saved = view === 'cut' ? verticalSplitSizes.value[colId] : soundVerticalSplitSizes.value[colId];
+function getVerticalSize(
+  colId: string,
+  rowIndex: number,
+  totalRows: number,
+  view: 'cut' | 'sound' = 'cut',
+): number | undefined {
+  const saved =
+    view === 'cut' ? verticalSplitSizes.value[colId] : soundVerticalSplitSizes.value[colId];
   if (!saved || saved.length !== totalRows) return undefined;
   return saved[rowIndex];
 }
@@ -662,7 +678,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
                         <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                          <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                          <UIcon
+                            name="i-heroicons-bars-2"
+                            class="w-4 h-4 text-ui-text-muted shrink-0"
+                          />
                           <h3 class="font-bold truncate min-w-0" :title="panel.title">
                             {{ panel.title }}
                           </h3>
@@ -702,7 +721,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
                         <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                          <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                          <UIcon
+                            name="i-heroicons-clock"
+                            class="w-4 h-4 text-ui-text-muted shrink-0"
+                          />
                           <h3 class="font-bold truncate min-w-0" :title="panel.title || 'History'">
                             {{ panel.title || 'History' }}
                           </h3>
@@ -733,7 +755,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
                         <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                          <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                          <UIcon
+                            name="i-heroicons-sparkles"
+                            class="w-4 h-4 text-ui-text-muted shrink-0"
+                          />
                           <h3 class="font-bold truncate min-w-0" :title="panel.title || 'Effects'">
                             {{ panel.title || 'Effects' }}
                           </h3>
@@ -788,7 +813,8 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                       v-for="(panel, rowIndex) in col.panels"
                       :key="panel.id"
                       :size="
-                        getVerticalSize(col.id, rowIndex, col.panels.length, 'sound') ?? 100 / col.panels.length
+                        getVerticalSize(col.id, rowIndex, col.panels.length, 'sound') ??
+                        100 / col.panels.length
                       "
                       min-size="5"
                     >
@@ -890,7 +916,10 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
                             <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                              <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                              <UIcon
+                                name="i-heroicons-bars-2"
+                                class="w-4 h-4 text-ui-text-muted shrink-0"
+                              />
                               <h3 class="font-bold truncate min-w-0" :title="panel.title">
                                 {{ panel.title }}
                               </h3>
@@ -930,8 +959,14 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
                             <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                              <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted shrink-0" />
-                              <h3 class="font-bold truncate min-w-0" :title="panel.title || 'History'">
+                              <UIcon
+                                name="i-heroicons-clock"
+                                class="w-4 h-4 text-ui-text-muted shrink-0"
+                              />
+                              <h3
+                                class="font-bold truncate min-w-0"
+                                :title="panel.title || 'History'"
+                              >
                                 {{ panel.title || 'History' }}
                               </h3>
                             </div>
@@ -961,8 +996,14 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
                             <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted shrink-0" />
-                              <h3 class="font-bold truncate min-w-0" :title="panel.title || 'Effects'">
+                              <UIcon
+                                name="i-heroicons-sparkles"
+                                class="w-4 h-4 text-ui-text-muted shrink-0"
+                              />
+                              <h3
+                                class="font-bold truncate min-w-0"
+                                :title="panel.title || 'Effects'"
+                              >
                                 {{ panel.title || 'Effects' }}
                               </h3>
                             </div>

@@ -154,11 +154,7 @@ watch(
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton
-          color="primary"
-          :loading="isGenerating"
-          @click="generateCaptions"
-        >
+        <UButton color="primary" :loading="isGenerating" @click="generateCaptions">
           {{ t('granVideoEditor.captions.generate', 'Generate captions') }}
         </UButton>
       </div>

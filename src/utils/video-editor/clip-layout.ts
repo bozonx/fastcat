@@ -64,7 +64,10 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const safeCanvasWidth = Math.max(1, input.canvasWidth);
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
 
-  const viewportScale = Math.min(safeCanvasWidth / safeFrameWidth, safeCanvasHeight / safeFrameHeight);
+  const viewportScale = Math.min(
+    safeCanvasWidth / safeFrameWidth,
+    safeCanvasHeight / safeFrameHeight,
+  );
   const targetWidth = safeFrameWidth * viewportScale;
   const targetHeight = safeFrameHeight * viewportScale;
   const baseX = (safeCanvasWidth - targetWidth) / 2;

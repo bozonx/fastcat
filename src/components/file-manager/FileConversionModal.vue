@@ -179,23 +179,50 @@ const modalTitle = computed(() => {
           <div class="text-xs text-ui-text-muted font-medium mb-1">
             {{ t('videoEditor.fileManager.convert.parameters', 'Conversion Parameters') }}
           </div>
-          
+
           <template v-if="mediaType === 'video'">
-            <div class="text-sm"><span class="text-ui-text-muted">Resolution:</span> {{ videoWidth }}x{{ videoHeight }}</div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Resolution:</span> {{ videoWidth }}x{{ videoHeight }}
+            </div>
             <div class="text-sm"><span class="text-ui-text-muted">FPS:</span> {{ videoFps }}</div>
-            <div class="text-sm"><span class="text-ui-text-muted">Video:</span> {{ videoFormat.toUpperCase() }} / {{ videoCodec }} ({{ videoBitrateMbps }} Mbps)</div>
-            <div class="text-sm"><span class="text-ui-text-muted">Audio:</span> {{ excludeAudio ? 'None' : `${audioCodec.toUpperCase()} (${audioBitrateKbps} Kbps, ${audioChannels}, ${audioSampleRate === 0 && props.originalAudioSampleRate ? props.originalAudioSampleRate : audioSampleRate || 'Original'} Hz)` }}</div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Video:</span> {{ videoFormat.toUpperCase() }} /
+              {{ videoCodec }} ({{ videoBitrateMbps }} Mbps)
+            </div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Audio:</span>
+              {{
+                excludeAudio
+                  ? 'None'
+                  : `${audioCodec.toUpperCase()} (${audioBitrateKbps} Kbps, ${audioChannels}, ${audioSampleRate === 0 && props.originalAudioSampleRate ? props.originalAudioSampleRate : audioSampleRate || 'Original'} Hz)`
+              }}
+            </div>
           </template>
 
           <template v-else-if="mediaType === 'audio'">
-            <div class="text-sm"><span class="text-ui-text-muted">Format:</span> {{ audioOnlyFormat.toUpperCase() }}</div>
-            <div class="text-sm"><span class="text-ui-text-muted">Audio:</span> {{ audioOnlyBitrateKbps }} Kbps, {{ audioChannels }}, {{ audioSampleRate === 0 && props.originalAudioSampleRate ? props.originalAudioSampleRate : audioSampleRate || 'Original' }} Hz</div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Format:</span> {{ audioOnlyFormat.toUpperCase() }}
+            </div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Audio:</span> {{ audioOnlyBitrateKbps }} Kbps,
+              {{ audioChannels }},
+              {{
+                audioSampleRate === 0 && props.originalAudioSampleRate
+                  ? props.originalAudioSampleRate
+                  : audioSampleRate || 'Original'
+              }}
+              Hz
+            </div>
           </template>
 
           <template v-else-if="mediaType === 'image'">
             <div class="text-sm"><span class="text-ui-text-muted">Format:</span> WebP</div>
-            <div class="text-sm"><span class="text-ui-text-muted">Resolution:</span> {{ imageWidth }}x{{ imageHeight }}</div>
-            <div class="text-sm"><span class="text-ui-text-muted">Quality:</span> {{ imageQuality }}</div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Resolution:</span> {{ imageWidth }}x{{ imageHeight }}
+            </div>
+            <div class="text-sm">
+              <span class="text-ui-text-muted">Quality:</span> {{ imageQuality }}
+            </div>
           </template>
         </div>
 
@@ -210,110 +237,110 @@ const modalTitle = computed(() => {
 
       <template v-else>
         <div v-if="mediaType === 'video'" class="space-y-4">
-        <MediaResolutionSettings
-          v-model:is-custom-resolution="isCustomResolution"
-          v-model:width="videoWidth"
-          v-model:height="videoHeight"
-          v-model:fps="videoFps"
-          v-model:resolution-format="resolutionFormat"
-          v-model:orientation="orientation"
-          v-model:aspect-ratio="aspectRatio"
-          :show-audio-settings="false"
-          :disable-aspect-ratio="true"
-          :disabled="isConverting"
-        />
+          <MediaResolutionSettings
+            v-model:is-custom-resolution="isCustomResolution"
+            v-model:width="videoWidth"
+            v-model:height="videoHeight"
+            v-model:fps="videoFps"
+            v-model:resolution-format="resolutionFormat"
+            v-model:orientation="orientation"
+            v-model:aspect-ratio="aspectRatio"
+            :show-audio-settings="false"
+            :disable-aspect-ratio="true"
+            :disabled="isConverting"
+          />
 
-        <MediaEncodingSettings
-          v-model:output-format="videoFormat"
-          v-model:video-codec="videoCodec"
-          v-model:bitrate-mbps="videoBitrateMbps"
-          v-model:exclude-audio="excludeAudio"
-          v-model:audio-codec="audioCodec"
-          v-model:audio-bitrate-kbps="audioBitrateKbps"
-          v-model:audio-channels="audioChannels"
-          v-model:audio-sample-rate="audioSampleRate"
-          v-model:bitrate-mode="bitrateMode"
-          v-model:keyframe-interval-sec="keyframeIntervalSec"
-          :disabled="isConverting"
-          :show-metadata="false"
-          :has-audio="true"
-          :hide-audio-bitrate="true"
-          :show-audio-advanced="true"
-          :original-audio-sample-rate="props.originalAudioSampleRate"
-          :allow-original-audio-sample-rate="true"
-          :is-loading-codec-support="isLoadingCodecSupport"
-          :format-options="formatOptions"
-          :video-codec-options="videoCodecOptions"
-        />
-      </div>
+          <MediaEncodingSettings
+            v-model:output-format="videoFormat"
+            v-model:video-codec="videoCodec"
+            v-model:bitrate-mbps="videoBitrateMbps"
+            v-model:exclude-audio="excludeAudio"
+            v-model:audio-codec="audioCodec"
+            v-model:audio-bitrate-kbps="audioBitrateKbps"
+            v-model:audio-channels="audioChannels"
+            v-model:audio-sample-rate="audioSampleRate"
+            v-model:bitrate-mode="bitrateMode"
+            v-model:keyframe-interval-sec="keyframeIntervalSec"
+            :disabled="isConverting"
+            :show-metadata="false"
+            :has-audio="true"
+            :hide-audio-bitrate="true"
+            :show-audio-advanced="true"
+            :original-audio-sample-rate="props.originalAudioSampleRate"
+            :allow-original-audio-sample-rate="true"
+            :is-loading-codec-support="isLoadingCodecSupport"
+            :format-options="formatOptions"
+            :video-codec-options="videoCodecOptions"
+          />
+        </div>
 
-      <div v-if="mediaType === 'audio'" class="space-y-4">
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.export.outputFormat', 'Output format') }}
-          </label>
-          <UiAppButtonGroup
-            v-model="audioOnlyFormat"
-            :options="audioFormatOptions as any"
+        <div v-if="mediaType === 'audio'" class="space-y-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs text-ui-text-muted font-medium">
+              {{ t('videoEditor.export.outputFormat', 'Output format') }}
+            </label>
+            <UiAppButtonGroup
+              v-model="audioOnlyFormat"
+              :options="audioFormatOptions as any"
+              :disabled="isConverting"
+            />
+          </div>
+
+          <FileConversionAudioSettings
+            v-model:audio-bitrate-kbps="audioOnlyBitrateKbps"
+            v-model:audio-channels="audioChannels"
+            v-model:audio-sample-rate="audioSampleRate"
+            :original-sample-rate="props.originalAudioSampleRate"
+            :allow-original-sample-rate="true"
             :disabled="isConverting"
           />
         </div>
 
-        <FileConversionAudioSettings
-          v-model:audio-bitrate-kbps="audioOnlyBitrateKbps"
-          v-model:audio-channels="audioChannels"
-          v-model:audio-sample-rate="audioSampleRate"
-          :original-sample-rate="props.originalAudioSampleRate"
-          :allow-original-sample-rate="true"
-          :disabled="isConverting"
-        />
-      </div>
-
-      <div v-if="mediaType === 'image'" class="space-y-4">
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.fileManager.convert.imageFormat', 'Format') }}
-          </label>
-          <div class="text-sm font-medium text-ui-text">WebP</div>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
-          </label>
-          <WheelNumberInput
-            v-model="imageQuality"
-            :min="1"
-            :max="100"
-            :step="1"
-            :disabled="isConverting"
-          />
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
+        <div v-if="mediaType === 'image'" class="space-y-4">
           <div class="flex flex-col gap-2">
-            <label class="text-xs text-ui-text-muted font-medium">W</label>
-            <WheelNumberInput 
-              :model-value="imageWidth" 
-              @update:model-value="onImageWidthChange" 
-              :min="1" 
-              :step="2" 
-              :disabled="isConverting" 
-            />
+            <label class="text-xs text-ui-text-muted font-medium">
+              {{ t('videoEditor.fileManager.convert.imageFormat', 'Format') }}
+            </label>
+            <div class="text-sm font-medium text-ui-text">WebP</div>
           </div>
 
           <div class="flex flex-col gap-2">
-            <label class="text-xs text-ui-text-muted font-medium">H</label>
-            <WheelNumberInput 
-              :model-value="imageHeight" 
-              @update:model-value="onImageHeightChange" 
-              :min="1" 
-              :step="2" 
-              :disabled="isConverting" 
+            <label class="text-xs text-ui-text-muted font-medium">
+              {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
+            </label>
+            <WheelNumberInput
+              v-model="imageQuality"
+              :min="1"
+              :max="100"
+              :step="1"
+              :disabled="isConverting"
             />
           </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-2">
+              <label class="text-xs text-ui-text-muted font-medium">W</label>
+              <WheelNumberInput
+                :model-value="imageWidth"
+                :min="1"
+                :step="2"
+                :disabled="isConverting"
+                @update:model-value="onImageWidthChange"
+              />
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-xs text-ui-text-muted font-medium">H</label>
+              <WheelNumberInput
+                :model-value="imageHeight"
+                :min="1"
+                :step="2"
+                :disabled="isConverting"
+                @update:model-value="onImageHeightChange"
+              />
+            </div>
+          </div>
         </div>
-      </div>
       </template>
 
       <div

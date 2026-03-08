@@ -26,7 +26,11 @@ import 'splitpanes/dist/splitpanes.css';
 import { useLocalStorage, useResizeObserver } from '@vueuse/core';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
-import { formatZoomMultiplier, stepTimelineZoomPosition, timelineZoomPositionToScale } from '~/utils/zoom';
+import {
+  formatZoomMultiplier,
+  stepTimelineZoomPosition,
+  timelineZoomPositionToScale,
+} from '~/utils/zoom';
 import { frameToUs, sanitizeFps } from '~/timeline/commands/utils';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
@@ -64,9 +68,7 @@ function updateTrackHeight(trackId: string, height: number) {
 
 const canEditClipContent = computed(
   () =>
-    currentView.value === 'cut' ||
-    currentView.value === 'files' ||
-    currentView.value === 'sound',
+    currentView.value === 'cut' || currentView.value === 'files' || currentView.value === 'sound',
 );
 const canDropTimelineContent = computed(
   () => currentView.value === 'files' || currentView.value === 'cut',
@@ -290,7 +292,8 @@ function seekByWheelDelta(delta: number) {
   const frameStepUs = frameToUs(1, fps);
 
   return {
-    frame: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * frameStepUs),
+    frame: () =>
+      timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * frameStepUs),
     second: () => timelineStore.setCurrentTimeUs(timelineStore.currentTime + direction * 1_000_000),
   };
 }
@@ -860,11 +863,7 @@ async function onDrop(e: DragEvent, trackId: string) {
   const validItems = itemsToDrop.filter((item) => {
     const k = typeof item?.kind === 'string' ? item.kind : undefined;
     return (
-      k === 'file' ||
-      k === 'timeline' ||
-      k === 'adjustment' ||
-      k === 'background' ||
-      k === 'text'
+      k === 'file' || k === 'timeline' || k === 'adjustment' || k === 'background' || k === 'text'
     );
   });
 
@@ -883,32 +882,41 @@ async function onDrop(e: DragEvent, trackId: string) {
       const name = typeof item.name === 'string' ? item.name : undefined;
       const path = typeof item.path === 'string' ? item.path : undefined;
       const isVirtual = kind === 'adjustment' || kind === 'background' || kind === 'text';
-      
+
       if (!name || (!isVirtual && !path)) continue;
 
       try {
         const isFirst = addedCount === 0;
-        const options = isFirst 
-          ? { historyMode: 'immediate' as const, label: validItems.length > 1 ? `Add ${validItems.length} clips` : `Add ${name}` }
+        const options = isFirst
+          ? {
+              historyMode: 'immediate' as const,
+              label: validItems.length > 1 ? `Add ${validItems.length} clips` : `Add ${name}`,
+            }
           : { skipHistory: true, saveMode: 'none' as const };
 
         if (kind === 'adjustment' || kind === 'background' || kind === 'text') {
-          const res = timelineStore.addVirtualClipToTrack({
-            trackId,
-            startUs: currentStartUs,
-            clipType: kind,
-            name,
-            text: kind === 'text' ? name : undefined,
-          }, options);
+          const res = timelineStore.addVirtualClipToTrack(
+            {
+              trackId,
+              startUs: currentStartUs,
+              clipType: kind,
+              name,
+              text: kind === 'text' ? name : undefined,
+            },
+            options,
+          );
           currentStartUs += 5_000_000;
           addedCount++;
         } else if (kind === 'timeline') {
-          const res = await timelineStore.addTimelineClipToTimelineFromPath({
-            trackId,
-            name,
-            path: path!,
-            startUs: currentStartUs,
-          }, options);
+          const res = await timelineStore.addTimelineClipToTimelineFromPath(
+            {
+              trackId,
+              name,
+              path: path!,
+              startUs: currentStartUs,
+            },
+            options,
+          );
           currentStartUs += res.durationUs;
           addedCount++;
         } else {
@@ -918,23 +926,29 @@ async function onDrop(e: DragEvent, trackId: string) {
             if (handle && handle.kind === 'file') {
               const file = await (handle as FileSystemFileHandle).getFile();
               const text = await file.text();
-              timelineStore.addVirtualClipToTrack({
-                trackId,
-                startUs: currentStartUs,
-                clipType: 'text',
-                name,
-                text,
-              }, options);
+              timelineStore.addVirtualClipToTrack(
+                {
+                  trackId,
+                  startUs: currentStartUs,
+                  clipType: 'text',
+                  name,
+                  text,
+                },
+                options,
+              );
               currentStartUs += 5_000_000;
               addedCount++;
             }
           } else {
-            const res = await timelineStore.addClipToTimelineFromPath({
-              trackId,
-              name,
-              path: path!,
-              startUs: currentStartUs,
-            }, options);
+            const res = await timelineStore.addClipToTimelineFromPath(
+              {
+                trackId,
+                name,
+                path: path!,
+                startUs: currentStartUs,
+              },
+              options,
+            );
             currentStartUs += res.durationUs;
             addedCount++;
           }
@@ -954,9 +968,10 @@ async function onDrop(e: DragEvent, trackId: string) {
 
       toast.add({
         title: 'Clip Added',
-        description: addedCount === 1 
-          ? `${validItems.find(i => typeof i.name === 'string')?.name ?? 'Clip'} added to track`
-          : `${addedCount} clips added to track`,
+        description:
+          addedCount === 1
+            ? `${validItems.find((i) => typeof i.name === 'string')?.name ?? 'Clip'} added to track`
+            : `${addedCount} clips added to track`,
         icon: 'i-heroicons-check-circle',
         color: 'success',
       });
@@ -1047,7 +1062,7 @@ async function onDrop(e: DragEvent, trackId: string) {
               />
             </div>
 
-          <!-- Grid lines overlaid on tracks area, below ruler -->
+            <!-- Grid lines overlaid on tracks area, below ruler -->
             <TimelineGrid
               class="absolute left-0 right-0 pointer-events-none"
               :style="{ top: '28px', bottom: `${scrollbarHeight}px` }"

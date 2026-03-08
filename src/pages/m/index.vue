@@ -1,48 +1,48 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useWorkspaceStore } from '~/stores/workspace.store'
-import { useProjectStore } from '~/stores/project.store'
-import { useProjectActions } from '~/composables/editor/useProjectActions'
-import WelcomeScreen from '~/components/startup/WelcomeScreen.vue'
+import { ref, onMounted } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
+import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 
 definePageMeta({
-  layout: 'mobile'
-})
+  layout: 'mobile',
+});
 
-const { t } = useI18n()
-const workspaceStore = useWorkspaceStore()
-const projectStore = useProjectStore()
-const { openProject, resetProjectState } = useProjectActions()
-const router = useRouter()
+const { t } = useI18n();
+const workspaceStore = useWorkspaceStore();
+const projectStore = useProjectStore();
+const { openProject, resetProjectState } = useProjectActions();
+const router = useRouter();
 
 // Локальная копия последнего проекта для отображения предложения
-const suggestedProject = ref<string | null>(workspaceStore.lastProjectName)
+const suggestedProject = ref<string | null>(workspaceStore.lastProjectName);
 
 // Сбрасываем состояние открытого проекта
-resetProjectState()
+resetProjectState();
 
 onMounted(() => {
   // Удаляем из local storage id открытого проекта
-  workspaceStore.lastProjectName = null
-})
+  workspaceStore.lastProjectName = null;
+});
 
-const newProjectName = ref('')
+const newProjectName = ref('');
 
 async function createNewProject() {
-  if (!newProjectName.value.trim()) return
-  await projectStore.createProject(newProjectName.value.trim())
+  if (!newProjectName.value.trim()) return;
+  await projectStore.createProject(newProjectName.value.trim());
   if (workspaceStore.userSettings.openLastProjectOnStart) {
-    await openProject(newProjectName.value.trim())
-    projectStore.goToCut()
-    router.push('/m/editor')
+    await openProject(newProjectName.value.trim());
+    projectStore.goToCut();
+    router.push('/m/editor');
   }
-  newProjectName.value = ''
+  newProjectName.value = '';
 }
 
 async function handleOpenProject(project: string) {
-  await openProject(project)
-  projectStore.goToCut()
-  router.push('/m/editor')
+  await openProject(project);
+  projectStore.goToCut();
+  router.push('/m/editor');
 }
 </script>
 
@@ -73,14 +73,12 @@ async function handleOpenProject(project: string) {
     </div>
 
     <!-- Workspace Info -->
-    <div v-if="workspaceStore.workspaceHandle" class="text-sm text-slate-400 -mt-4 flex items-center justify-between px-1">
+    <div
+      v-if="workspaceStore.workspaceHandle"
+      class="text-sm text-slate-400 -mt-4 flex items-center justify-between px-1"
+    >
       <span class="truncate">Workspace: {{ workspaceStore.workspaceHandle.name }}</span>
-      <UButton
-        size="xs"
-        variant="link"
-        color="primary"
-        @click="workspaceStore.resetWorkspace"
-      >
+      <UButton size="xs" variant="link" color="primary" @click="workspaceStore.resetWorkspace">
         Change
       </UButton>
     </div>
@@ -91,7 +89,9 @@ async function handleOpenProject(project: string) {
       class="bg-blue-600/20 border border-blue-500/30 rounded-xl p-5 flex flex-col gap-3 shadow-lg shadow-blue-500/5 animate-in fade-in slide-in-from-top-2 duration-500"
     >
       <div class="flex flex-col">
-        <span class="text-blue-400 text-[10px] font-bold uppercase tracking-widest">Continue Working</span>
+        <span class="text-blue-400 text-[10px] font-bold uppercase tracking-widest"
+          >Continue Working</span
+        >
         <h2 class="text-xl font-bold text-white truncate">{{ suggestedProject }}</h2>
       </div>
       <UButton
@@ -133,9 +133,11 @@ async function handleOpenProject(project: string) {
     <div class="space-y-4 flex-1">
       <h3 class="font-medium text-slate-400 flex items-center justify-between px-1">
         Recent Projects
-        <span class="text-xs font-normal tabular-nums bg-slate-800 px-2 py-0.5 rounded-full">{{ workspaceStore.projects.length }}</span>
+        <span class="text-xs font-normal tabular-nums bg-slate-800 px-2 py-0.5 rounded-full">{{
+          workspaceStore.projects.length
+        }}</span>
       </h3>
-      
+
       <div v-if="workspaceStore.projects.length > 0" class="grid grid-cols-1 gap-3">
         <div
           v-for="project in workspaceStore.projects"
@@ -144,7 +146,9 @@ async function handleOpenProject(project: string) {
           @click="handleOpenProject(project)"
         >
           <div class="flex items-center gap-3 overflow-hidden">
-            <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+            <div
+              class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0"
+            >
               <Icon name="lucide:film" class="w-5 h-5 text-blue-400" />
             </div>
             <span class="font-medium text-slate-200 truncate">{{ project }}</span>

@@ -53,7 +53,9 @@ function clampFinite(value: unknown, fallback: number, min?: number, max?: numbe
 
 export function normalizeTextPadding(padding: TextClipStyle['padding']): NormalizedTextPadding {
   const clampPadding = (value: unknown) =>
-    typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(10_000, value)) : undefined;
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.max(0, Math.min(10_000, value))
+      : undefined;
 
   if (typeof padding === 'number') {
     const value = clampPadding(padding) ?? 0;
@@ -98,16 +100,23 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         ? style.width
         : undefined,
     fontFamily:
-      typeof style?.fontFamily === 'string' && style.fontFamily.length > 0 ? style.fontFamily : 'sans-serif',
+      typeof style?.fontFamily === 'string' && style.fontFamily.length > 0
+        ? style.fontFamily
+        : 'sans-serif',
     fontSize: clampFinite(style?.fontSize, 64, 1, 1000),
     fontWeight:
       typeof style?.fontWeight === 'string' || typeof style?.fontWeight === 'number'
         ? String(style.fontWeight)
         : '700',
     color: typeof style?.color === 'string' && style.color.length > 0 ? style.color : '#ffffff',
-    align: style?.align === 'left' || style?.align === 'center' || style?.align === 'right' ? style.align : 'center',
+    align:
+      style?.align === 'left' || style?.align === 'center' || style?.align === 'right'
+        ? style.align
+        : 'center',
     verticalAlign:
-      style?.verticalAlign === 'top' || style?.verticalAlign === 'middle' || style?.verticalAlign === 'bottom'
+      style?.verticalAlign === 'top' ||
+      style?.verticalAlign === 'middle' ||
+      style?.verticalAlign === 'bottom'
         ? style.verticalAlign
         : 'middle',
     lineHeight: clampFinite(style?.lineHeight, 1.2, 0.1, 10),
@@ -141,9 +150,13 @@ export function computeTextLayoutMetrics(input: {
     left: Math.round(normalizedStyle.padding.left * renderScale),
   };
   const explicitWidthPx =
-    normalizedStyle.width !== undefined ? Math.max(1, Math.round(normalizedStyle.width * renderScale)) : undefined;
+    normalizedStyle.width !== undefined
+      ? Math.max(1, Math.round(normalizedStyle.width * renderScale))
+      : undefined;
   const contentWidthPx =
-    explicitWidthPx !== undefined ? Math.max(1, explicitWidthPx - paddingPx.left - paddingPx.right) : undefined;
+    explicitWidthPx !== undefined
+      ? Math.max(1, explicitWidthPx - paddingPx.left - paddingPx.right)
+      : undefined;
   const font = `${normalizedStyle.fontWeight} ${fontSizePx}px ${normalizedStyle.fontFamily}`;
   const measureLine = (text: string) =>
     input.measureText(text, font) + Math.max(0, text.length - 1) * Math.max(0, letterSpacingPx);
@@ -206,7 +219,9 @@ export function computeTextLayoutMetrics(input: {
   const backgroundX = textBlockLeftPx - paddingPx.left;
   const backgroundY = textBlockTopPx - paddingPx.top;
   const backgroundWidth =
-    explicitWidthPx !== undefined ? explicitWidthPx : textBlockWidthPx + paddingPx.left + paddingPx.right;
+    explicitWidthPx !== undefined
+      ? explicitWidthPx
+      : textBlockWidthPx + paddingPx.left + paddingPx.right;
   const backgroundHeight = textBlockHeightPx + paddingPx.top + paddingPx.bottom;
   const textStartX =
     normalizedStyle.align === 'left'

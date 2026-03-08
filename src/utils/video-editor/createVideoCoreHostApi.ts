@@ -10,9 +10,7 @@ export interface CreateVideoCoreHostApiParams {
   onExportWarning?: (message: string) => void;
 }
 
-export function createVideoCoreHostApi(
-  params: CreateVideoCoreHostApiParams,
-): VideoCoreHostAPI {
+export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): VideoCoreHostAPI {
   return {
     getCurrentProjectId: async () => params.getCurrentProjectId(),
     getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),

@@ -78,9 +78,7 @@ watch(
   (trigger) => {
     if (!trigger.timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
 
-    onCustomZoom(
-      new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
-    );
+    onCustomZoom(new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }));
   },
   { deep: true },
 );

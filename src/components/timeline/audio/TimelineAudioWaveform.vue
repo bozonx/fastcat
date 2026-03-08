@@ -106,7 +106,10 @@ async function buildTimelinePeaks(params: {
     if (!path) continue;
 
     let sourcePeaks: number[][] | null = null;
-    let sourceDurationUs = Math.max(1, Math.round(clip.sourceDurationUs || clip.sourceRange.durationUs || 0));
+    const sourceDurationUs = Math.max(
+      1,
+      Math.round(clip.sourceDurationUs || clip.sourceRange.durationUs || 0),
+    );
 
     if (clip.clipType === 'timeline') {
       if (visiting.has(path)) continue;
@@ -152,7 +155,10 @@ async function buildTimelinePeaks(params: {
     const gain = Math.max(0, Math.min(10, Number(clip.audioGain ?? 1)));
 
     const startIndex = Math.max(0, Math.floor((itemStartUs / durationUs) * maxLength));
-    const endIndex = Math.min(maxLength, Math.ceil(((itemStartUs + itemDurationUs) / durationUs) * maxLength));
+    const endIndex = Math.min(
+      maxLength,
+      Math.ceil(((itemStartUs + itemDurationUs) / durationUs) * maxLength),
+    );
 
     for (let sampleIndex = startIndex; sampleIndex < endIndex; sampleIndex++) {
       const parentRatio = sampleIndex / maxLength;
@@ -160,7 +166,8 @@ async function buildTimelinePeaks(params: {
       const localUs = absoluteUs - itemStartUs;
       if (localUs < 0 || localUs > itemDurationUs) continue;
 
-      const sourceUs = itemSourceStartUs + (localUs / Math.max(1, itemDurationUs)) * itemSourceDurationUs;
+      const sourceUs =
+        itemSourceStartUs + (localUs / Math.max(1, itemDurationUs)) * itemSourceDurationUs;
 
       for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
         const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0] ?? [];
@@ -212,7 +219,10 @@ const extractPeaks = async () => {
 
       const peaks = await buildTimelinePeaks({
         doc: nestedDoc,
-        durationUs: Math.max(1, Math.round(props.item.sourceDurationUs || props.item.sourceRange.durationUs)),
+        durationUs: Math.max(
+          1,
+          Math.round(props.item.sourceDurationUs || props.item.sourceRange.durationUs),
+        ),
         maxLength,
         visiting: new Set<string>([fileUrl.value]),
       });

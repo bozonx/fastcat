@@ -7,7 +7,12 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFilesPageStore } from '~/stores/filesPage.store';
-import type { TimelineBlendMode, TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/types';
+import type {
+  TimelineBlendMode,
+  TimelineClipItem,
+  TimelineTrack,
+  TrackKind,
+} from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
@@ -92,7 +97,9 @@ const hasLockedLinkedAudio = computed(() => {
 
 const isLockedLinkedAudioClip = computed(() => {
   if (clipTrackKind.value !== 'audio') return false;
-  return Boolean((props.clip as any).linkedVideoClipId) && Boolean((props.clip as any).lockToLinkedVideo);
+  return (
+    Boolean((props.clip as any).linkedVideoClipId) && Boolean((props.clip as any).lockToLinkedVideo)
+  );
 });
 
 const isInLinkedGroup = computed(
@@ -290,11 +297,7 @@ function handleUpdateOpacity(val: number | undefined) {
 
 function handleUpdateBlendMode(val: TimelineBlendMode | string | undefined) {
   const safe =
-    val === 'add' ||
-    val === 'multiply' ||
-    val === 'screen' ||
-    val === 'darken' ||
-    val === 'lighten'
+    val === 'add' || val === 'multiply' || val === 'screen' || val === 'darken' || val === 'lighten'
       ? val
       : 'normal';
 
@@ -464,9 +467,9 @@ function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
 
 function updateTransitionType(edge: 'in' | 'out', type: string) {
   const clip = props.clip;
-  const current = (
-    edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut
-  ) as import('~/timeline/types').ClipTransition | undefined;
+  const current = (edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut) as
+    | import('~/timeline/types').ClipTransition
+    | undefined;
   if (!current || !type) return;
 
   handleTransitionUpdate({
@@ -484,7 +487,6 @@ defineExpose({
   isRenameModalOpen,
   handleDeleteClip,
 });
-
 </script>
 
 <template>
@@ -577,7 +579,7 @@ defineExpose({
               : t('granVideoEditor.clip.hideWaveform', 'Hide Waveform')
           }}
         </UButton>
- 
+
         <UButton
           v-if="clipTrackKind === 'video'"
           size="xs"

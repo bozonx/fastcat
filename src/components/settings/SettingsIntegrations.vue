@@ -227,9 +227,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
     <div class="rounded-lg border border-ui-border p-4 flex flex-col gap-4">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <div class="text-sm font-medium text-ui-text">
-            Gran Publicador
-          </div>
+          <div class="text-sm font-medium text-ui-text">Gran Publicador</div>
           <div class="text-xs text-ui-text-muted mt-1">
             {{
               t(
@@ -252,11 +250,13 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </div>
 
       <div class="text-xs text-ui-text-muted">
-        {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}: {{ granConnectScopesLabel }}
+        {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}:
+        {{ granConnectScopesLabel }}
       </div>
 
       <div class="text-xs text-ui-text-muted">
-        {{ t('videoEditor.settings.integrationConnectName', 'Connect app name') }}: {{ GRAN_PUBLICADOR_APP_NAME }}
+        {{ t('videoEditor.settings.integrationConnectName', 'Connect app name') }}:
+        {{ GRAN_PUBLICADOR_APP_NAME }}
       </div>
 
       <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
@@ -292,7 +292,10 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </div>
 
       <div class="text-xs" :class="getHealthTone(healthStates.gran.status)">
-        {{ healthStates.gran.message || t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check') }}
+        {{
+          healthStates.gran.message ||
+          t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check')
+        }}
       </div>
     </div>
 
@@ -312,7 +315,8 @@ async function runServiceHealth(kind: 'files' | 'stt') {
           </div>
         </div>
         <div class="text-xs text-ui-text-muted shrink-0">
-          {{ t('videoEditor.settings.integrationActiveSource', 'Active source') }}: {{ filesSourceLabel }}
+          {{ t('videoEditor.settings.integrationActiveSource', 'Active source') }}:
+          {{ filesSourceLabel }}
         </div>
       </div>
 
@@ -324,7 +328,12 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       <label class="flex items-center gap-3 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.integrations.manualFilesApi.overrideGran" />
         <span class="text-sm text-ui-text">
-          {{ t('videoEditor.settings.integrationOverrideGran', 'Override Gran Publicador for this service') }}
+          {{
+            t(
+              'videoEditor.settings.integrationOverrideGran',
+              'Override Gran Publicador for this service',
+            )
+          }}
         </span>
       </label>
 
@@ -358,7 +367,10 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </div>
 
       <div class="text-xs" :class="getHealthTone(healthStates.files.status)">
-        {{ healthStates.files.message || t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check') }}
+        {{
+          healthStates.files.message ||
+          t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check')
+        }}
       </div>
     </div>
 
@@ -378,7 +390,8 @@ async function runServiceHealth(kind: 'files' | 'stt') {
           </div>
         </div>
         <div class="text-xs text-ui-text-muted shrink-0">
-          {{ t('videoEditor.settings.integrationActiveSource', 'Active source') }}: {{ sttSourceLabel }}
+          {{ t('videoEditor.settings.integrationActiveSource', 'Active source') }}:
+          {{ sttSourceLabel }}
         </div>
       </div>
 
@@ -390,7 +403,12 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       <label class="flex items-center gap-3 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideGran" />
         <span class="text-sm text-ui-text">
-          {{ t('videoEditor.settings.integrationOverrideGran', 'Override Gran Publicador for this service') }}
+          {{
+            t(
+              'videoEditor.settings.integrationOverrideGran',
+              'Override Gran Publicador for this service',
+            )
+          }}
         </span>
       </label>
 
@@ -421,11 +439,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
-        <UInput
-          v-model="sttModelsText"
-          class="w-full"
-          placeholder="universal-3-pro, universal-2"
-        />
+        <UInput v-model="sttModelsText" class="w-full" placeholder="universal-3-pro, universal-2" />
       </UFormField>
 
       <label class="flex items-center gap-3 cursor-pointer">
@@ -461,7 +475,10 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </div>
 
       <div class="text-xs" :class="getHealthTone(healthStates.stt.status)">
-        {{ healthStates.stt.message || t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check') }}
+        {{
+          healthStates.stt.message ||
+          t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check')
+        }}
       </div>
     </div>
 

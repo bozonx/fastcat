@@ -1,135 +1,134 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
-import { useFilesPageStore } from '~/stores/filesPage.store'
-import { useFileManager } from '~/composables/fileManager/useFileManager'
-import { useProjectStore } from '~/stores/project.store'
-import { useSelectionStore } from '~/stores/selection.store'
-import { useProxyStore } from '~/stores/proxy.store'
-import { formatBytes } from '~/utils/format'
-import { getMediaTypeFromFilename } from '~/utils/media-types'
-import type { FsEntry } from '~/types/fs'
+import { ref, onMounted, computed, watch } from 'vue';
+import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useProjectStore } from '~/stores/project.store';
+import { useSelectionStore } from '~/stores/selection.store';
+import { useProxyStore } from '~/stores/proxy.store';
+import { formatBytes } from '~/utils/format';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
+import type { FsEntry } from '~/types/fs';
 
-const filesPageStore = useFilesPageStore()
-const projectStore = useProjectStore()
-const selectionStore = useSelectionStore()
-const proxyStore = useProxyStore()
-const { 
-  readDirectory, 
-  getFileIcon, 
-  getProjectRootDirHandle, 
-  findEntryByPath,
-  mediaCache
-} = useFileManager()
+const filesPageStore = useFilesPageStore();
+const projectStore = useProjectStore();
+const selectionStore = useSelectionStore();
+const proxyStore = useProxyStore();
+const { readDirectory, getFileIcon, getProjectRootDirHandle, findEntryByPath, mediaCache } =
+  useFileManager();
 
-const entries = ref<FsEntry[]>([])
-const isLoading = ref(false)
+const entries = ref<FsEntry[]>([]);
+const isLoading = ref(false);
 
 // Генерируем "хлебные крошки" для навигации назад
 const breadcrumbs = computed(() => {
-  const folder = filesPageStore.selectedFolder
-  if (!folder || !folder.path) return []
-  
-  const parts = folder.path.split('/').filter(Boolean)
-  const result = []
-  let currentPath = ''
-  
+  const folder = filesPageStore.selectedFolder;
+  if (!folder || !folder.path) return [];
+
+  const parts = folder.path.split('/').filter(Boolean);
+  const result = [];
+  let currentPath = '';
+
   for (const part of parts) {
-    currentPath = currentPath ? `${currentPath}/${part}` : part
-    result.push({ name: part, path: currentPath })
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    result.push({ name: part, path: currentPath });
   }
-  
-  return result
-})
+
+  return result;
+});
 
 async function loadFolderContent() {
-  const folder = filesPageStore.selectedFolder
+  const folder = filesPageStore.selectedFolder;
   if (!folder || !folder.handle) {
     // Если папка не выбрана, пытаемся открыть корень проекта
-    await navigateToRoot()
-    return
+    await navigateToRoot();
+    return;
   }
 
-  isLoading.value = true
+  isLoading.value = true;
   try {
-    const content = await readDirectory(folder.handle as FileSystemDirectoryHandle, folder.path)
+    const content = await readDirectory(folder.handle as FileSystemDirectoryHandle, folder.path);
     // Фильтруем скрытые файлы
-    entries.value = content.filter(e => !e.name.startsWith('.'))
+    entries.value = content.filter((e) => !e.name.startsWith('.'));
   } catch (error) {
-    console.error('Failed to load mobile folder content:', error)
+    console.error('Failed to load mobile folder content:', error);
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 async function navigateToRoot() {
-  const rootHandle = await getProjectRootDirHandle()
-  if (!rootHandle) return
-  
+  const rootHandle = await getProjectRootDirHandle();
+  if (!rootHandle) return;
+
   filesPageStore.selectFolder({
     kind: 'directory',
     name: projectStore.currentProjectName || 'Root',
     path: '',
     handle: rootHandle,
-  })
+  });
 }
 
 function handleEntryClick(entry: FsEntry) {
   if (entry.kind === 'directory') {
-    filesPageStore.openFolder(entry)
+    filesPageStore.openFolder(entry);
   } else {
     // На мобильном сингл-клик выбирает файл
-    filesPageStore.selectFile(entry)
+    filesPageStore.selectFile(entry);
   }
 }
 
 async function goBack() {
-  const folder = filesPageStore.selectedFolder
-  if (!folder || !folder.path) return
+  const folder = filesPageStore.selectedFolder;
+  if (!folder || !folder.path) return;
 
-  const parts = folder.path.split('/').filter(Boolean)
-  if (parts.length === 0) return
+  const parts = folder.path.split('/').filter(Boolean);
+  if (parts.length === 0) return;
 
-  const parentPath = parts.slice(0, -1).join('/')
-  const rootHandle = await getProjectRootDirHandle()
-  if (!rootHandle) return
+  const parentPath = parts.slice(0, -1).join('/');
+  const rootHandle = await getProjectRootDirHandle();
+  if (!rootHandle) return;
 
   if (!parentPath) {
-    await navigateToRoot()
+    await navigateToRoot();
   } else {
-    const parentEntry = findEntryByPath(parentPath)
+    const parentEntry = findEntryByPath(parentPath);
     if (parentEntry) {
-      filesPageStore.selectFolder(parentEntry)
+      filesPageStore.selectFolder(parentEntry);
     }
   }
 }
 
 function isSelected(entry: FsEntry) {
-  const selected = selectionStore.selectedEntity
-  if (!selected || selected.source !== 'fileManager') return false
+  const selected = selectionStore.selectedEntity;
+  if (!selected || selected.source !== 'fileManager') return false;
   if ('path' in selected) {
-    return selected.path === entry.path
+    return selected.path === entry.path;
   }
-  return false
+  return false;
 }
 
 function getStatusColor(entry: FsEntry) {
-  if (entry.path && proxyStore.generatingProxies.has(entry.path)) return 'text-amber-400'
-  if (entry.path && mediaCache.hasProxy(entry.path)) return 'text-green-500'
-  return ''
+  if (entry.path && proxyStore.generatingProxies.has(entry.path)) return 'text-amber-400';
+  if (entry.path && mediaCache.hasProxy(entry.path)) return 'text-green-500';
+  return '';
 }
 
 // Следим за изменением выбранной папки
-watch(() => filesPageStore.selectedFolder?.path, () => {
-  void loadFolderContent()
-}, { immediate: true })
+watch(
+  () => filesPageStore.selectedFolder?.path,
+  () => {
+    void loadFolderContent();
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   if (!filesPageStore.selectedFolder) {
-    void navigateToRoot()
+    void navigateToRoot();
   } else {
-    void loadFolderContent()
+    void loadFolderContent();
   }
-})
+});
 </script>
 
 <template>
@@ -161,7 +160,10 @@ onMounted(() => {
         <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-blue-500" />
       </div>
 
-      <div v-else-if="entries.length === 0" class="flex flex-col items-center justify-center h-64 opacity-30">
+      <div
+        v-else-if="entries.length === 0"
+        class="flex flex-col items-center justify-center h-64 opacity-30"
+      >
         <Icon name="lucide:folder-open" class="w-12 h-12 mb-2" />
         <p class="text-sm">Empty folder</p>
       </div>
@@ -175,19 +177,26 @@ onMounted(() => {
           @click="handleEntryClick(entry)"
         >
           <!-- Иконка / Превью -->
-          <div class="w-10 h-10 rounded bg-slate-900 flex items-center justify-center shrink-0 overflow-hidden relative">
-             <Icon 
-              :name="getFileIcon(entry)" 
-              class="w-6 h-6" 
-              :class="[entry.kind === 'directory' ? 'text-blue-400' : 'text-slate-400', getStatusColor(entry)]" 
+          <div
+            class="w-10 h-10 rounded bg-slate-900 flex items-center justify-center shrink-0 overflow-hidden relative"
+          >
+            <Icon
+              :name="getFileIcon(entry)"
+              class="w-6 h-6"
+              :class="[
+                entry.kind === 'directory' ? 'text-blue-400' : 'text-slate-400',
+                getStatusColor(entry),
+              ]"
             />
-            
+
             <!-- Индикатор процесса прокси -->
-            <div 
+            <div
               v-if="entry.path && proxyStore.generatingProxies.has(entry.path)"
               class="absolute inset-0 bg-black/40 flex items-center justify-center"
             >
-              <div class="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+              <div
+                class="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"
+              ></div>
             </div>
           </div>
 
@@ -202,23 +211,30 @@ onMounted(() => {
               </span>
             </div>
             <div class="text-[10px] text-slate-500 flex items-center gap-2">
-              <span>{{ entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name) }}</span>
-              <span v-if="entry.lastModified">• {{ new Date(entry.lastModified).toLocaleDateString() }}</span>
+              <span>{{
+                entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name)
+              }}</span>
+              <span v-if="entry.lastModified"
+                >• {{ new Date(entry.lastModified).toLocaleDateString() }}</span
+              >
             </div>
           </div>
 
-          <Icon 
-            v-if="entry.kind === 'directory'" 
-            name="lucide:chevron-right" 
-            class="w-4 h-4 text-slate-700" 
+          <Icon
+            v-if="entry.kind === 'directory'"
+            name="lucide:chevron-right"
+            class="w-4 h-4 text-slate-700"
           />
         </button>
       </div>
     </div>
 
     <!-- Инфо-панель (только если что-то выбрано) -->
-    <div 
-      v-if="selectionStore.selectedEntity?.source === 'fileManager' && selectionStore.selectedEntity.kind === 'file'"
+    <div
+      v-if="
+        selectionStore.selectedEntity?.source === 'fileManager' &&
+        selectionStore.selectedEntity.kind === 'file'
+      "
       class="bg-slate-900 p-3 border-t border-slate-800 animate-in slide-in-from-bottom-5"
     >
       <div class="flex items-center justify-between gap-4">

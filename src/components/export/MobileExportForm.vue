@@ -2,7 +2,12 @@
 import { computed, watch, ref, onMounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useTimelineExport, sanitizeBaseName, resolveExportCodecs, getExt } from '~/composables/timeline/useTimelineExport';
+import {
+  useTimelineExport,
+  sanitizeBaseName,
+  resolveExportCodecs,
+  getExt,
+} from '~/composables/timeline/useTimelineExport';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -67,20 +72,20 @@ const qualityOptions = [
 
 onMounted(async () => {
   await loadCodecSupport();
-  
+
   // Инициализируем настройки из проекта
   outputFormat.value = projectStore.projectSettings.exportDefaults.encoding.format;
   videoCodec.value = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
   bitrateMbps.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
   excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
-  
+
   exportWidth.value = projectStore.projectSettings.project.width;
   exportHeight.value = projectStore.projectSettings.project.height;
   exportFps.value = projectStore.projectSettings.project.fps;
 
   await ensureExportDir();
   await preloadExportIndex();
-  
+
   const timelineBase = sanitizeBaseName(
     projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
   );
@@ -97,7 +102,7 @@ async function handleStartExport() {
     if (!ok) return;
 
     const fileHandle = await exportDir.getFileHandle(outputFilename.value, { create: true });
-    
+
     const resolvedCodecs = resolveExportCodecs(
       outputFormat.value,
       videoCodec.value,
@@ -177,7 +182,7 @@ function getPhaseLabel() {
             :options="qualityOptions"
             class="w-full"
             :disabled="isExporting"
-            @update:model-value="(v) => bitrateMbps = Number(v)"
+            @update:model-value="(v) => (bitrateMbps = Number(v))"
           />
         </UFormField>
       </div>
@@ -185,7 +190,9 @@ function getPhaseLabel() {
       <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800 space-y-3">
         <div class="flex items-center justify-between text-xs">
           <span class="text-slate-400">Resolution</span>
-          <span class="text-slate-200 font-medium">{{ exportWidth }}x{{ exportHeight }} @ {{ exportFps }}fps</span>
+          <span class="text-slate-200 font-medium"
+            >{{ exportWidth }}x{{ exportHeight }} @ {{ exportFps }}fps</span
+          >
         </div>
         <div class="flex items-center justify-between text-xs">
           <span class="text-slate-400">Audio</span>
@@ -199,42 +206,56 @@ function getPhaseLabel() {
 
     <!-- Продвинутые настройки (скрыты по дефолту) -->
     <div class="border-t border-slate-800 pt-2">
-      <button 
+      <button
         class="flex items-center gap-2 text-xs text-slate-500 py-2"
         @click="showAdvanced = !showAdvanced"
       >
         <Icon :name="showAdvanced ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="w-4 h-4" />
         {{ showAdvanced ? 'Hide advanced settings' : 'Show advanced settings' }}
       </button>
-      
+
       <div v-if="showAdvanced" class="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
         <div class="grid grid-cols-2 gap-4">
           <UFormField label="Audio Codec">
-             <USelect
+            <USelect
               v-model="audioCodec"
-              :options="[{value: 'aac', label: 'AAC'}, {value: 'opus', label: 'Opus'}]"
+              :options="[
+                { value: 'aac', label: 'AAC' },
+                { value: 'opus', label: 'Opus' },
+              ]"
               class="w-full"
               :disabled="isExporting"
             />
           </UFormField>
           <UFormField label="Sample Rate">
-             <USelect
+            <USelect
               :model-value="audioSampleRate"
-              :options="[{value: 44100, label: '44.1 kHz'}, {value: 48000, label: '48 kHz'}]"
+              :options="[
+                { value: 44100, label: '44.1 kHz' },
+                { value: 48000, label: '48 kHz' },
+              ]"
               class="w-full"
               :disabled="isExporting"
-              @update:model-value="(v) => audioSampleRate = Number(v)"
+              @update:model-value="(v) => (audioSampleRate = Number(v))"
             />
           </UFormField>
         </div>
         <UFormField label="Metadata Description">
-          <UTextarea v-model="metadataTags" placeholder="Tags..." :rows="2" :disabled="isExporting" />
+          <UTextarea
+            v-model="metadataTags"
+            placeholder="Tags..."
+            :rows="2"
+            :disabled="isExporting"
+          />
         </UFormField>
       </div>
     </div>
 
     <!-- Прогресс экспорта -->
-    <div v-if="isExporting" class="bg-slate-900 p-4 rounded-xl border border-blue-500/30 shadow-lg shadow-blue-500/5">
+    <div
+      v-if="isExporting"
+      class="bg-slate-900 p-4 rounded-xl border border-blue-500/30 shadow-lg shadow-blue-500/5"
+    >
       <div class="flex items-center justify-between mb-3">
         <span class="text-sm font-bold text-blue-400">{{ getPhaseLabel() }}</span>
         <span class="text-sm font-mono text-white">{{ Math.round(exportProgress * 100) }}%</span>
@@ -248,14 +269,17 @@ function getPhaseLabel() {
           class="flex-1"
           icon="lucide:x"
           label="Cancel"
-          @click="cancelExport"
           :loading="cancelRequested"
+          @click="cancelExport"
         />
       </div>
     </div>
 
     <!-- Ошибки -->
-    <div v-if="exportError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">
+    <div
+      v-if="exportError"
+      class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs"
+    >
       {{ exportError }}
     </div>
 

@@ -28,7 +28,8 @@ const selectedTrackId = computed(() => {
 
 const clipData = computed(() => {
   if (!selectedClipId.value) return null;
-  const clip = rawWorkerTimelineClips.value.find((item) => item.id === selectedClipId.value) ?? null;
+  const clip =
+    rawWorkerTimelineClips.value.find((item) => item.id === selectedClipId.value) ?? null;
   return clip?.clipType === 'text' ? clip : null;
 });
 
@@ -39,9 +40,13 @@ const safeTransform = computed(() => {
   const transform: Partial<ClipTransform> = (clipData.value as any)?.transform ?? {};
   return {
     scaleX:
-      typeof transform.scale?.x === 'number' && Number.isFinite(transform.scale.x) ? transform.scale.x : 1,
+      typeof transform.scale?.x === 'number' && Number.isFinite(transform.scale.x)
+        ? transform.scale.x
+        : 1,
     scaleY:
-      typeof transform.scale?.y === 'number' && Number.isFinite(transform.scale.y) ? transform.scale.y : 1,
+      typeof transform.scale?.y === 'number' && Number.isFinite(transform.scale.y)
+        ? transform.scale.y
+        : 1,
     rotationDeg:
       typeof transform.rotationDeg === 'number' && Number.isFinite(transform.rotationDeg)
         ? transform.rotationDeg
@@ -95,8 +100,10 @@ const layout = computed(() => {
     targetH: clipLayout.value.targetHeight,
     ax: clipLayout.value.anchorX,
     ay: clipLayout.value.anchorY,
-    anchorAbsX: clipLayout.value.baseX + clipLayout.value.anchorOffsetX + clipLayout.value.stagePositionX,
-    anchorAbsY: clipLayout.value.baseY + clipLayout.value.anchorOffsetY + clipLayout.value.stagePositionY,
+    anchorAbsX:
+      clipLayout.value.baseX + clipLayout.value.anchorOffsetX + clipLayout.value.stagePositionX,
+    anchorAbsY:
+      clipLayout.value.baseY + clipLayout.value.anchorOffsetY + clipLayout.value.stagePositionY,
     scaleX: clipLayout.value.scaleX,
     scaleY: clipLayout.value.scaleY,
     rotationDeg: clipLayout.value.rotationDeg,
@@ -145,12 +152,17 @@ function buildNextStyle(current: any, patch: Partial<TextClipStyle>): TextClipSt
   };
 }
 
-function updateClip(params: { transform?: Partial<ClipTransform>; style?: Partial<TextClipStyle> }) {
+function updateClip(params: {
+  transform?: Partial<ClipTransform>;
+  style?: Partial<TextClipStyle>;
+}) {
   if (!selectedClipId.value || !selectedTrackId.value || !clipData.value) return;
 
   const currentTransform = (clipData.value as any).transform ?? {};
   const currentStyle = (clipData.value as any).style ?? {};
-  const nextTransform = params.transform ? buildNextTransform(currentTransform, params.transform) : currentTransform;
+  const nextTransform = params.transform
+    ? buildNextTransform(currentTransform, params.transform)
+    : currentTransform;
   const nextStyle = params.style ? buildNextStyle(currentStyle, params.style) : currentStyle;
 
   timelineStore.updateClipProperties(selectedTrackId.value, selectedClipId.value, {
@@ -178,7 +190,10 @@ function flushPendingPatch() {
   });
 }
 
-function scheduleClipUpdate(params: { transform?: Partial<ClipTransform>; style?: Partial<TextClipStyle> }) {
+function scheduleClipUpdate(params: {
+  transform?: Partial<ClipTransform>;
+  style?: Partial<TextClipStyle>;
+}) {
   if (params.transform) {
     pendingTransformPatch = {
       ...(pendingTransformPatch ?? {}),
@@ -236,8 +251,7 @@ function endDrag(event?: PointerEvent) {
   if (dragSourceEl && activePointerId !== null) {
     try {
       dragSourceEl.releasePointerCapture(activePointerId);
-    } catch {
-    }
+    } catch {}
   }
 
   if (pendingFrame !== 0) {
@@ -318,8 +332,10 @@ function onPointerMove(event: PointerEvent) {
     dragMoved = true;
   }
 
-  const designDx = layout.value.designToRenderScaleX !== 0 ? dx / layout.value.designToRenderScaleX : dx;
-  const designDy = layout.value.designToRenderScaleY !== 0 ? dy / layout.value.designToRenderScaleY : dy;
+  const designDx =
+    layout.value.designToRenderScaleX !== 0 ? dx / layout.value.designToRenderScaleX : dx;
+  const designDy =
+    layout.value.designToRenderScaleY !== 0 ? dy / layout.value.designToRenderScaleY : dy;
   const rad = (-dragStartState.rotationDeg * Math.PI) / 180;
   const localDx = dx * Math.cos(rad) - dy * Math.sin(rad);
   const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
@@ -356,7 +372,10 @@ function onPointerMove(event: PointerEvent) {
 
   if (dragType === 'width-left' || dragType === 'width-right') {
     const widthDeltaRender = dragType === 'width-left' ? -unscaledLocalDx : unscaledLocalDx;
-    const widthDeltaDesign = layout.value.renderScale !== 0 ? widthDeltaRender / layout.value.renderScale : widthDeltaRender;
+    const widthDeltaDesign =
+      layout.value.renderScale !== 0
+        ? widthDeltaRender / layout.value.renderScale
+        : widthDeltaRender;
     const nextWidth = Math.max(1, Math.round(dragStartState.width + widthDeltaDesign));
     scheduleClipUpdate({
       style: {
@@ -367,8 +386,12 @@ function onPointerMove(event: PointerEvent) {
   }
 
   if (dragType === 'font-size') {
-    const fontSizeDelta = layout.value.renderScale !== 0 ? unscaledLocalDy / layout.value.renderScale : unscaledLocalDy;
-    const nextFontSize = Math.max(1, Math.min(1000, Math.round(dragStartState.fontSize + fontSizeDelta)));
+    const fontSizeDelta =
+      layout.value.renderScale !== 0 ? unscaledLocalDy / layout.value.renderScale : unscaledLocalDy;
+    const nextFontSize = Math.max(
+      1,
+      Math.min(1000, Math.round(dragStartState.fontSize + fontSizeDelta)),
+    );
     scheduleClipUpdate({
       style: {
         fontSize: nextFontSize,
@@ -463,7 +486,10 @@ onBeforeUnmount(() => {
       </template>
     </g>
 
-    <g v-if="mode === 'rotate'" :transform="`translate(${layout.anchorAbsX}, ${layout.anchorAbsY})`">
+    <g
+      v-if="mode === 'rotate'"
+      :transform="`translate(${layout.anchorAbsX}, ${layout.anchorAbsY})`"
+    >
       <path d="M 0 0 L 0 -30" stroke="var(--ui-primary)" stroke-width="2" stroke-linecap="round" />
       <circle
         cx="0"

@@ -31,7 +31,10 @@ const blendModeOptions: Array<{ value: TimelineBlendMode; label: string }> = [
 
 const trackOpacity = computed({
   get: () => {
-    const v = typeof props.track?.opacity === 'number' && Number.isFinite(props.track.opacity) ? props.track.opacity : 1;
+    const v =
+      typeof props.track?.opacity === 'number' && Number.isFinite(props.track.opacity)
+        ? props.track.opacity
+        : 1;
     return Math.max(0, Math.min(1, v));
   },
   set: (val: number) => {

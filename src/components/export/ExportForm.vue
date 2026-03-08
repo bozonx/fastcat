@@ -242,7 +242,8 @@ async function handleConfirm() {
         projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
         projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
           audioBitrateKbps.value;
-        projectStore.projectSettings.exportDefaults.encoding.audioSampleRate = audioSampleRate.value;
+        projectStore.projectSettings.exportDefaults.encoding.audioSampleRate =
+          audioSampleRate.value;
         projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
         projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
           keyframeIntervalSec.value;
@@ -275,7 +276,9 @@ async function handleConfirm() {
             tags: metadataTags.value,
           },
           exportRangeUs:
-            hasSelectionRange.value && exportOnlySelectionRange.value ? selectionRange.value ?? undefined : undefined,
+            hasSelectionRange.value && exportOnlySelectionRange.value
+              ? (selectionRange.value ?? undefined)
+              : undefined,
         },
         fileHandle,
         (progress) => {
@@ -340,7 +343,8 @@ async function handleConfirm() {
   <div
     class="flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('exportForm'),
+      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+        focusStore.isPanelFocused('exportForm'),
     }"
     @pointerdown.capture="focusExportForm"
   >

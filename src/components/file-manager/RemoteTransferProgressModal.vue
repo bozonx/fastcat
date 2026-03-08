@@ -22,7 +22,9 @@ const isOpen = computed({
   set: (value) => emit('update:open', value),
 });
 
-const progressPercent = computed(() => Math.max(0, Math.min(100, Math.round(props.progress * 100))));
+const progressPercent = computed(() =>
+  Math.max(0, Math.min(100, Math.round(props.progress * 100))),
+);
 </script>
 
 <template>
@@ -47,9 +49,7 @@ const progressPercent = computed(() => Math.max(0, Math.min(100, Math.round(prop
           :style="{ width: `${progressPercent}%` }"
         />
       </div>
-      <div class="text-xs text-ui-text-muted">
-        {{ progressPercent }}%
-      </div>
+      <div class="text-xs text-ui-text-muted">{{ progressPercent }}%</div>
     </div>
 
     <template #footer>

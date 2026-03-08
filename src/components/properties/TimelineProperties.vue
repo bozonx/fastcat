@@ -62,7 +62,7 @@ const timelineZoomMultiplierInput = computed({
     const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/^x/, '');
     const parsed = Number(normalized);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
-    timelineStore.setTimelineZoomExact((DEFAULT_TIMELINE_ZOOM_POSITION + 7 * Math.log2(parsed)));
+    timelineStore.setTimelineZoomExact(DEFAULT_TIMELINE_ZOOM_POSITION + 7 * Math.log2(parsed));
   },
 });
 
