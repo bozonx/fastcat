@@ -126,6 +126,14 @@ const fadeCurveOptions = [
           :max="props.audioFadeOutMaxSec"
           @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
         />
+        <USelectMenu
+          :model-value="props.audioFadeOutCurve"
+          :items="fadeCurveOptions"
+          value-key="value"
+          label-key="label"
+          size="xs"
+          @update:model-value="(v: any) => emit('updateAudioFadeOutCurve', v?.value ?? v)"
+        />
       </div>
     </div>
   </div>

@@ -61,10 +61,10 @@ void main(void) {
     float local = (progress - 0.5) * 2.0;
     gl_FragColor = mix(fadeColor, toColor, local);
   } else {
-    // Crossfade mode: blend between from and to across the entire duration
-    // while dipping brightness
+    // Crossfade mode: smooth dissolve across the entire duration without a midpoint stop,
+    // but simultaneously darken towards zero brightness
     vec4 mixedColor = mix(fromColor, toColor, progress);
-    float brightness = abs(progress * 2.0 - 1.0);
+    float brightness = 1.0 - progress; // Linear decrease to 0
     gl_FragColor = vec4(mixedColor.rgb * brightness, mixedColor.a);
   }
 }
@@ -127,17 +127,13 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
     uniforms.uFadeColor = [rgb.r, rgb.g, rgb.b];
     uniforms.uMode = params.mode === 'crossfade' ? 1 : 0;
   },
-  computeOutOpacity: (progress, _params, curve) => {
-    // In both modes, the underlying clips shouldn't rely on background alpha compositing
-    // The shader handles the transition to black/color internally over the full duration.
-    // However, for the shadow clip compositing system, we just let the shader mix them.
-    // If not previewing (opacity mode), we crossfade across the whole duration in both modes
-    // to match the visual length of the transition.
-    const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
-    return 1 - p;
+  computeOutOpacity: () => {
+    // In both modes, the background under the fade should never be transparent.
+    // We let the shader handle the full transition logic
+    // so we return 1 (fully opaque) for the outgoing clip mask/shadow.
+    return 1;
   },
-  computeInOpacity: (progress, _params, curve) => {
-    const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
-    return p;
+  computeInOpacity: () => {
+    return 1;
   },
 };
