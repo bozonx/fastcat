@@ -6,6 +6,7 @@ export interface BlindsParams {
   angle: number;
   stripCount: number;
   blur: number;
+  blurQuality: 'low' | 'medium' | 'high' | 'ultra';
   motionBlur: number;
   motionBlurMode: 'normal' | 'bloom';
   brightnessMode: 'normal' | 'bloom';
@@ -56,6 +57,7 @@ uniform float uStripCount;
 uniform float uBlur;
 uniform float uMotionBlur;
 uniform float uMotionBlurMode;
+uniform float uBlurSamples;
 uniform float uBrightnessMode;
 uniform float uBrightness;
 uniform float uBloomThreshold;
@@ -99,7 +101,7 @@ vec4 getMotionBlurredColor(vec2 uv) {
     return processSample(getColor(uv));
   }
 
-  const int SAMPLES = 16;
+  int SAMPLES = int(uBlurSamples);
   vec4 accumColor = vec4(0.0);
   float stepSize = uMotionBlur / float(SAMPLES - 1);
   float startOffset = -uMotionBlur * 0.5;
@@ -110,7 +112,8 @@ vec4 getMotionBlurredColor(vec2 uv) {
   vec2 blurAxis = uAxis * dir;
 
   float totalWeight = 0.0;
-  for (int i = 0; i < SAMPLES; i++) {
+  for (int i = 0; i < 64; i++) {
+    if (i >= SAMPLES) break;
     float offset = startOffset + float(i) * stepSize;
     vec2 sampleUv = uv + blurAxis * offset;
     vec4 color = processSample(getColor(sampleUv));
@@ -142,9 +145,19 @@ void main(void) {
   float totalWeight = 0.0;
   vec2 blurRadius = vec2(uBlur, uBlur * uAspect);
   
-  for (int x = -2; x <= 2; x++) {
-    for (int y = -2; y <= 2; y++) {
-      vec2 offset = vec2(float(x), float(y)) / 2.0;
+  // Basic post blur, adapt grid size roughly to samples
+  int halfGrid = 2;
+  if (uBlurSamples > 30.0) halfGrid = 4;
+  else if (uBlurSamples > 15.0) halfGrid = 3;
+  else if (uBlurSamples < 10.0) halfGrid = 1;
+  
+  for (int x = -4; x <= 4; x++) {
+    if (x > halfGrid) break;
+    if (x < -halfGrid) continue;
+    for (int y = -4; y <= 4; y++) {
+      if (y > halfGrid) break;
+      if (y < -halfGrid) continue;
+      vec2 offset = vec2(float(x), float(y)) / float(halfGrid);
       vec2 sampleUv = vNormalizedCoord + offset * blurRadius;
       accumColor += getMotionBlurredColor(sampleUv);
       totalWeight += 1.0;
@@ -160,6 +173,13 @@ function normalizeBlindsParams(params?: Record<string, unknown>): BlindsParams {
     angle: clampNumber(params?.angle, -360, 360, 0),
     stripCount: Math.round(clampNumber(params?.stripCount, 2, 100, 10)),
     blur: clampNumber(params?.blur, 0, 100, 0),
+    blurQuality:
+      params?.blurQuality === 'low' ||
+      params?.blurQuality === 'medium' ||
+      params?.blurQuality === 'high' ||
+      params?.blurQuality === 'ultra'
+        ? params.blurQuality
+        : 'medium',
     motionBlur: clampNumber(params?.motionBlur, 0, 100, 0),
     motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
@@ -199,6 +219,17 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       min: 0,
       max: 100,
       step: 1,
+    },
+    {
+      key: 'blurQuality',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurQuality',
+      options: [
+        { value: 'low', labelKey: 'granVideoEditor.timeline.transition.blurQualityLow' },
+        { value: 'medium', labelKey: 'granVideoEditor.timeline.transition.blurQualityMedium' },
+        { value: 'high', labelKey: 'granVideoEditor.timeline.transition.blurQualityHigh' },
+        { value: 'ultra', labelKey: 'granVideoEditor.timeline.transition.blurQualityUltra' },
+      ],
     },
     {
       key: 'motionBlur',
@@ -255,6 +286,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
           uPerp: { value: [0, 1], type: 'vec2<f32>' },
           uStripCount: { value: 10, type: 'f32' },
           uBlur: { value: 0, type: 'f32' },
+          uBlurSamples: { value: 16.0, type: 'f32' },
           uMotionBlur: { value: 0, type: 'f32' },
           uMotionBlurMode: { value: 0, type: 'f32' },
           uBrightnessMode: { value: 0, type: 'f32' },
@@ -302,6 +334,14 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     uniforms.uPerp = [perp.x, perp.y];
     uniforms.uStripCount = params.stripCount;
     uniforms.uBlur = postBlurAmount;
+
+    let samples = 16.0;
+    if (params.blurQuality === 'low') samples = 8.0;
+    else if (params.blurQuality === 'medium') samples = 16.0;
+    else if (params.blurQuality === 'high') samples = 32.0;
+    else if (params.blurQuality === 'ultra') samples = 64.0;
+    uniforms.uBlurSamples = samples;
+
     uniforms.uMotionBlur = motionBlurAmount;
     uniforms.uMotionBlurMode = params.motionBlurMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;

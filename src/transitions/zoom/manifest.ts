@@ -7,6 +7,7 @@ export interface ZoomParams {
   fromRotation: number;
   toRotation: number;
   blur: number;
+  blurQuality: 'low' | 'medium' | 'high' | 'ultra';
   brightnessMode: 'normal' | 'bloom';
   brightness: number;
 }
@@ -53,6 +54,7 @@ uniform float uFromRotation;
 uniform float uToRotation;
 uniform float uAspect;
 uniform float uBlur;
+uniform float uBlurSamples;
 uniform float uBrightnessMode;
 uniform float uBrightness;
 
@@ -76,8 +78,9 @@ vec4 sampleFrom(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       vec2 center = vec2(0.5, 0.5);
       vec2 dir = center - uv;
       vec4 colorSum = vec4(0.0);
-      float samples = 16.0;
-      for (float i = 0.0; i < 16.0; i += 1.0) {
+      float samples = uBlurSamples;
+      for (float i = 0.0; i < 64.0; i += 1.0) {
+         if (i >= samples) break;
          float t = i / samples;
          colorSum += texture(uFromTexture, uv + dir * (t * blurAmount));
       }
@@ -92,8 +95,9 @@ vec4 sampleFrom(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       vec2 center = vec2(0.5, 0.5);
       vec2 dir = center - uv;
       vec4 bloomSum = vec4(0.0);
-      float samples = 16.0;
-      for (float i = 0.0; i < 16.0; i += 1.0) {
+      float samples = uBlurSamples;
+      for (float i = 0.0; i < 64.0; i += 1.0) {
+         if (i >= samples) break;
          float t = i / samples;
          vec4 sColor = texture(uFromTexture, uv + dir * (t * blurAmount));
          float lum = getLuminance(sColor.rgb);
@@ -118,8 +122,9 @@ vec4 sampleTo(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       vec2 center = vec2(0.5, 0.5);
       vec2 dir = center - uv;
       vec4 colorSum = vec4(0.0);
-      float samples = 16.0;
-      for (float i = 0.0; i < 16.0; i += 1.0) {
+      float samples = uBlurSamples;
+      for (float i = 0.0; i < 64.0; i += 1.0) {
+         if (i >= samples) break;
          float t = i / samples;
          vec2 offsetNorm = dir * (t * blurAmount);
          colorSum += texture(uTexture, baseTexCoord + offsetNorm * vTexScale);
@@ -135,8 +140,9 @@ vec4 sampleTo(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       vec2 center = vec2(0.5, 0.5);
       vec2 dir = center - uv;
       vec4 bloomSum = vec4(0.0);
-      float samples = 16.0;
-      for (float i = 0.0; i < 16.0; i += 1.0) {
+      float samples = uBlurSamples;
+      for (float i = 0.0; i < 64.0; i += 1.0) {
+         if (i >= samples) break;
          float t = i / samples;
          vec2 offsetNorm = dir * (t * blurAmount);
          vec4 sColor = texture(uTexture, baseTexCoord + offsetNorm * vTexScale);
@@ -201,6 +207,13 @@ function normalizeZoomParams(params?: Record<string, unknown>): ZoomParams {
     fromRotation: clampNumber(params?.fromRotation, -360, 360, 0),
     toRotation: clampNumber(params?.toRotation, -360, 360, 0),
     blur: clampNumber(params?.blur, 0, 100, 20),
+    blurQuality:
+      params?.blurQuality === 'low' ||
+      params?.blurQuality === 'medium' ||
+      params?.blurQuality === 'high' ||
+      params?.blurQuality === 'ultra'
+        ? params.blurQuality
+        : 'medium',
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
     brightness: clampNumber(params?.brightness, 0, 5, 0),
   };
@@ -229,6 +242,17 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
       min: 0,
       max: 100,
       step: 1,
+    },
+    {
+      key: 'blurQuality',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurQuality',
+      options: [
+        { value: 'low', labelKey: 'granVideoEditor.timeline.transition.blurQualityLow' },
+        { value: 'medium', labelKey: 'granVideoEditor.timeline.transition.blurQualityMedium' },
+        { value: 'high', labelKey: 'granVideoEditor.timeline.transition.blurQualityHigh' },
+        { value: 'ultra', labelKey: 'granVideoEditor.timeline.transition.blurQualityUltra' },
+      ],
     },
     {
       key: 'brightnessMode',
@@ -277,6 +301,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
           uToRotation: { value: 0, type: 'f32' },
           uAspect: { value: 16.0 / 9.0, type: 'f32' },
           uBlur: { value: 20.0, type: 'f32' },
+          uBlurSamples: { value: 16.0, type: 'f32' },
           uBrightnessMode: { value: 0, type: 'f32' },
           uBrightness: { value: 0, type: 'f32' },
         },
@@ -297,6 +322,14 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     uniforms.uFromRotation = (params.fromRotation * Math.PI) / 180;
     uniforms.uToRotation = (params.toRotation * Math.PI) / 180;
     uniforms.uBlur = params.blur;
+
+    let samples = 16.0;
+    if (params.blurQuality === 'low') samples = 8.0;
+    else if (params.blurQuality === 'medium') samples = 16.0;
+    else if (params.blurQuality === 'high') samples = 32.0;
+    else if (params.blurQuality === 'ultra') samples = 64.0;
+    uniforms.uBlurSamples = samples;
+
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightness = params.brightness;
 

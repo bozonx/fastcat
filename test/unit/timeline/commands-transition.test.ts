@@ -286,13 +286,17 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionOut).toEqual({
       type: 'wipe',
       durationUs: 500_000,
-      mode: 'transition',
+      mode: 'fade',
       curve: 'linear',
       params: {
         direction: 'up',
         gap: 0.025,
         gapColor: '#ff00ff',
+        edgeMode: 'gap',
+        blur: 0.02,
+        angle: 0,
       },
+      isOverridden: undefined,
     });
   });
 
@@ -317,12 +321,20 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionIn).toEqual({
       type: 'circle',
       durationUs: 300_000,
-      mode: 'transition',
+      mode: 'fade',
       curve: 'linear',
       params: {
-        blur: 0.2,
         direction: 'from-center',
+        blur: 0.2,
+        anchor: 'center',
+        blurMode: 'fixed',
+        followScale: false,
+        offsetX: 0,
+        offsetY: 0,
+        scaleX: 100,
+        scaleY: 100,
       },
+      isOverridden: undefined,
     });
   });
 });

@@ -13,6 +13,7 @@ export interface SlideParams {
   gapColor: string;
   motionBlur: number;
   motionBlurMode: 'normal' | 'bloom';
+  blurQuality: 'low' | 'medium' | 'high' | 'ultra';
   brightnessMode: 'normal' | 'bloom';
   brightness: number;
   bloomThreshold: number;
@@ -60,6 +61,7 @@ uniform vec2 uAxis;
 uniform vec3 uGapColor;
 uniform float uMotionBlur;
 uniform float uMotionBlurMode;
+uniform float uBlurSamples;
 uniform float uBrightnessMode;
 uniform float uBrightness;
 uniform float uBloomThreshold;
@@ -108,7 +110,7 @@ void main(void) {
   }
 
   // Number of samples for motion blur
-  const int SAMPLES = 16;
+  int SAMPLES = int(uBlurSamples);
   vec4 accumColor = vec4(0.0);
   
   // uMotionBlur represents the amount of offset in normalized coordinates
@@ -118,7 +120,8 @@ void main(void) {
 
   float totalWeight = 0.0;
 
-  for (int i = 0; i < SAMPLES; i++) {
+  for (int i = 0; i < 64; i++) {
+    if (i >= SAMPLES) break;
     float offset = startOffset + float(i) * stepSize;
     vec2 sampleUv = vNormalizedCoord + uAxis * offset;
     vec4 color = processSample(getColor(sampleUv));
@@ -156,6 +159,13 @@ function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
     motionBlur: clampNumber(params?.motionBlur, 0, 10, 0),
     motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
+    blurQuality:
+      params?.blurQuality === 'low' ||
+      params?.blurQuality === 'medium' ||
+      params?.blurQuality === 'high' ||
+      params?.blurQuality === 'ultra'
+        ? params.blurQuality
+        : 'medium',
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
     brightness: clampNumber(params?.brightness, -10, 10, 0),
     bloomThreshold: clampNumber(params?.bloomThreshold, 0, 1, 0.7),
@@ -226,6 +236,17 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       ],
     },
     {
+      key: 'blurQuality',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurQuality',
+      options: [
+        { value: 'low', labelKey: 'granVideoEditor.timeline.transition.blurQualityLow' },
+        { value: 'medium', labelKey: 'granVideoEditor.timeline.transition.blurQualityMedium' },
+        { value: 'high', labelKey: 'granVideoEditor.timeline.transition.blurQualityHigh' },
+        { value: 'ultra', labelKey: 'granVideoEditor.timeline.transition.blurQualityUltra' },
+      ],
+    },
+    {
       key: 'brightnessMode',
       kind: 'select',
       labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
@@ -264,6 +285,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
           uMotionBlur: { value: 0, type: 'f32' },
           uMotionBlurMode: { value: 0, type: 'f32' },
+          uBlurSamples: { value: 16.0, type: 'f32' },
           uBrightnessMode: { value: 0, type: 'f32' },
           uBrightness: { value: 0, type: 'f32' },
           uBloomThreshold: { value: 0.7, type: 'f32' },
@@ -314,6 +336,14 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
     uniforms.uMotionBlur = blurAmount;
     uniforms.uMotionBlurMode = params.motionBlurMode === 'bloom' ? 1.0 : 0.0;
+
+    let samples = 16.0;
+    if (params.blurQuality === 'low') samples = 8.0;
+    else if (params.blurQuality === 'medium') samples = 16.0;
+    else if (params.blurQuality === 'high') samples = 32.0;
+    else if (params.blurQuality === 'ultra') samples = 64.0;
+    uniforms.uBlurSamples = samples;
+
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightness = currentBrightness;
     uniforms.uBloomThreshold = params.bloomThreshold;
