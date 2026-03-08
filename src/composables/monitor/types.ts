@@ -9,6 +9,8 @@ export interface WorkerTimelineClip {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
+  audioFadeInCurve?: 'linear' | 'logarithmic';
+  audioFadeOutCurve?: 'linear' | 'logarithmic';
   transitionIn?: {
     type: string;
     durationUs: number;

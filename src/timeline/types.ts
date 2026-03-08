@@ -127,6 +127,8 @@ interface TimelineClipBase {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
+  audioFadeInCurve?: 'linear' | 'logarithmic';
+  audioFadeOutCurve?: 'linear' | 'logarithmic';
   audioMuted?: boolean;
   audioWaveformMode?: 'half' | 'full';
   showWaveform?: boolean;

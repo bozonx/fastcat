@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import { normalizeAudioFadeCurve, type AudioFadeCurve } from '~/utils/audio/envelope';
 
 interface UseClipAudioOptions {
   clip: Ref<TimelineClipItem>;
@@ -10,6 +11,8 @@ interface UseClipAudioOptions {
     audioBalance?: number;
     audioFadeInUs?: number;
     audioFadeOutUs?: number;
+    audioFadeInCurve?: AudioFadeCurve;
+    audioFadeOutCurve?: AudioFadeCurve;
   }) => void;
 }
 
@@ -106,6 +109,14 @@ export function useClipAudio(options: UseClipAudioOptions) {
     );
   });
 
+  const audioFadeInCurve = computed<AudioFadeCurve>(() => {
+    return normalizeAudioFadeCurve((options.clip.value as any)?.audioFadeInCurve);
+  });
+
+  const audioFadeOutCurve = computed<AudioFadeCurve>(() => {
+    return normalizeAudioFadeCurve((options.clip.value as any)?.audioFadeOutCurve);
+  });
+
   function updateAudioFadeInSec(val: number) {
     const safeSec = clampNumber(val, 0, audioFadeInMaxSec.value);
     options.updateAudio({ audioFadeInUs: Math.round(safeSec * 1_000_000) });
@@ -116,10 +127,20 @@ export function useClipAudio(options: UseClipAudioOptions) {
     options.updateAudio({ audioFadeOutUs: Math.round(safeSec * 1_000_000) });
   }
 
+  function updateAudioFadeInCurve(val: unknown) {
+    options.updateAudio({ audioFadeInCurve: normalizeAudioFadeCurve(val) });
+  }
+
+  function updateAudioFadeOutCurve(val: unknown) {
+    options.updateAudio({ audioFadeOutCurve: normalizeAudioFadeCurve(val) });
+  }
+
   return {
     audioBalance,
+    audioFadeInCurve,
     audioFadeInMaxSec,
     audioFadeInSec,
+    audioFadeOutCurve,
     audioFadeOutMaxSec,
     audioFadeOutSec,
     audioGain,
@@ -128,7 +149,9 @@ export function useClipAudio(options: UseClipAudioOptions) {
     canEditAudioGain,
     selectedClipTrack,
     updateAudioBalance,
+    updateAudioFadeInCurve,
     updateAudioFadeInSec,
+    updateAudioFadeOutCurve,
     updateAudioFadeOutSec,
     updateAudioGain,
   };

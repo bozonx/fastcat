@@ -55,6 +55,8 @@ export interface TimelineClipsApi {
         | 'audioBalance'
         | 'audioFadeInUs'
         | 'audioFadeOutUs'
+        | 'audioFadeInCurve'
+        | 'audioFadeOutCurve'
         | 'audioMuted'
         | 'audioWaveformMode'
         | 'showWaveform'

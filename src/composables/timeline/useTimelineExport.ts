@@ -77,6 +77,8 @@ export interface WorkerTimelineClip {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
+  audioFadeInCurve?: 'linear' | 'logarithmic';
+  audioFadeOutCurve?: 'linear' | 'logarithmic';
   source?: { path: string };
   backgroundColor?: string;
   text?: string;
