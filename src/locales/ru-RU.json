@@ -750,7 +750,6 @@
         "paramGapColor": "Цвет зазора",
         "paramMotionBlur": "Размытие в движении",
         "paramBlurRampDuration": "Длительность разгона/торможения (мс)",
-        "paramBloomIntensity": "Интенсивность bloom",
         "paramBloomThreshold": "Порог яркости bloom",
         "paramFadeColor": "Цвет перехода",
         "paramFadeMode": "Режим",

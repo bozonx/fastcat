@@ -737,7 +737,6 @@
         "paramGapColor": "Gap color",
         "paramMotionBlur": "Motion blur",
         "paramBlurRampDuration": "Blur ramp duration (ms)",
-        "paramBloomIntensity": "Bloom intensity",
         "paramBloomThreshold": "Bloom brightness threshold",
         "paramMode": "Mode",
         "modeBloom": "Bloom",

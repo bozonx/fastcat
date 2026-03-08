@@ -23,7 +23,7 @@ const customEffects = computed(() => {
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((preset) => getEffectManifest(preset.id))
-    .filter(Boolean);
+    .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> => Boolean(manifest));
 
   return presetManifests;
 });
@@ -35,7 +35,9 @@ const customTransitions = computed(() => {
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((preset) => getTransitionManifest(preset.id))
-    .filter(Boolean);
+    .filter(
+      (manifest): manifest is NonNullable<ReturnType<typeof getTransitionManifest>> => Boolean(manifest),
+    );
 
   return presetManifests;
 });
@@ -171,6 +173,8 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               :animation="150"
               ghost-class="opacity-50"
               handle=".drag-handle"
+              filter=".external-drag"
+              :prevent-on-filter="false"
               @update:model-value="updateCustomEffectsOrder"
             >
               <div
@@ -182,29 +186,33 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                     ? 'border-primary bg-primary/10'
                     : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
                 "
-                draggable="true"
-                @dragstart="handleDragStart($event, effect.type, 'effect')"
                 @click="selectEffect(effect.type)"
               >
                 <div class="cursor-grab hover:text-ui-text text-ui-text-muted mt-1 drag-handle">
                   <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
                 </div>
-                <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between">
-                    <h4 class="text-sm font-medium text-ui-text truncate">{{ effect.name }}</h4>
-                    <UButton
-                      icon="i-heroicons-trash"
-                      color="red"
-                      variant="ghost"
-                      size="xs"
-                      class="opacity-0 group-hover:opacity-100"
-                      @click.stop="presetsStore.removePreset(effect.type)"
-                    />
+                <div
+                  class="external-drag flex items-start gap-3 flex-1 min-w-0"
+                  draggable="true"
+                  @dragstart="handleDragStart($event, effect.type, 'effect')"
+                >
+                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-sm font-medium text-ui-text truncate">{{ effect.name }}</h4>
+                      <UButton
+                        icon="i-heroicons-trash"
+                        color="red"
+                        variant="ghost"
+                        size="xs"
+                        class="opacity-0 group-hover:opacity-100"
+                        @click.stop="presetsStore.removePreset(effect.type)"
+                      />
+                    </div>
+                    <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
+                      {{ effect.description }}
+                    </p>
                   </div>
-                  <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
-                    {{ effect.description }}
-                  </p>
                 </div>
               </div>
             </VueDraggable>
@@ -275,6 +283,8 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               :animation="150"
               ghost-class="opacity-50"
               handle=".drag-handle"
+              filter=".external-drag"
+              :prevent-on-filter="false"
               @update:model-value="updateCustomTransitionsOrder"
             >
               <div
@@ -286,24 +296,28 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                     ? 'border-primary bg-primary/10'
                     : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
                 "
-                draggable="true"
-                @dragstart="handleDragStart($event, transition.type, 'transition')"
                 @click="selectTransition(transition.type)"
               >
                 <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
                   <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
                 </div>
-                <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
-                <div class="flex-1 min-w-0 flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-ui-text truncate">{{ transition.name }}</h4>
-                  <UButton
-                    icon="i-heroicons-trash"
-                    color="red"
-                    variant="ghost"
-                    size="xs"
-                    class="opacity-0 group-hover:opacity-100"
-                    @click.stop="presetsStore.removePreset(transition.type)"
-                  />
+                <div
+                  class="external-drag flex items-center gap-3 flex-1 min-w-0"
+                  draggable="true"
+                  @dragstart="handleDragStart($event, transition.type, 'transition')"
+                >
+                  <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
+                  <div class="flex-1 min-w-0 flex items-center justify-between">
+                    <h4 class="text-sm font-medium text-ui-text truncate">{{ transition.name }}</h4>
+                    <UButton
+                      icon="i-heroicons-trash"
+                      color="red"
+                      variant="ghost"
+                      size="xs"
+                      class="opacity-0 group-hover:opacity-100"
+                      @click.stop="presetsStore.removePreset(transition.type)"
+                    />
+                  </div>
                 </div>
               </div>
             </VueDraggable>
