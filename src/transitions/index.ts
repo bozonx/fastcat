@@ -8,6 +8,7 @@ import { wipeManifest } from './wipe/manifest';
 import { cubeTransitionManifest } from './cube/manifest';
 import { cardSwapTransitionManifest } from './card-swap/manifest';
 import { fallingCardTransitionManifest } from './falling-card/manifest';
+import { zoomManifest } from './zoom/manifest';
 
 import { rectangleManifest } from './rectangle/manifest';
 
@@ -22,6 +23,7 @@ export function initTransitions(): void {
   registerTransition(cubeTransitionManifest);
   registerTransition(cardSwapTransitionManifest);
   registerTransition(fallingCardTransitionManifest);
+  registerTransition(zoomManifest);
 }
 
 export * from './core/registry';

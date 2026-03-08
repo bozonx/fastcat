@@ -13,6 +13,7 @@ export interface WipeParams {
   gap: number;
   gapColor: string;
   blur: number;
+  angle: number;
 }
 
 const vertex = `
@@ -55,17 +56,22 @@ uniform float uUseGap;
 uniform float uApplyToEdgeBlur;
 uniform vec2 uAxis;
 uniform vec3 uGapColor;
+uniform vec4 uOutputFrame;
 
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
   vec4 toColor = texture(uTexture, vTextureCoord);
 
+  float aspect = uOutputFrame.w > 0.0 ? uOutputFrame.z / uOutputFrame.w : 1.0;
+  vec2 p = (uv - vec2(0.5, 0.5)) * vec2(aspect, 1.0);
+
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 axis = normalize(uAxis);
   float gapHalf = uGap * 0.5;
-  float axisValue = dot(uv - vec2(0.5, 0.5), axis);
-  float edge = mix(-0.5 - gapHalf, 0.5 + gapHalf, progress);
+  float maxDist = 0.5 * (aspect * abs(axis.x) + abs(axis.y));
+  float axisValue = dot(p, axis);
+  float edge = mix(-maxDist - gapHalf, maxDist + gapHalf, progress);
   float cutStart = edge - gapHalf;
   float cutEnd = edge + gapHalf;
   float blur = max(uBlur, 0.00001);
@@ -111,6 +117,7 @@ function normalizeWipeParams(params?: Record<string, unknown>): WipeParams {
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
     blur: clampNumber(params?.blur, 0.0001, 0.2, 0.02),
+    angle: clampNumber(params?.angle, -180, 180, 0),
   };
 }
 
@@ -177,6 +184,14 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
       max: 0.2,
       step: 0.005,
     },
+    {
+      key: 'angle',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramAngle',
+      min: -180,
+      max: 180,
+      step: 1,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -202,7 +217,12 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     const progress =
       context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const params = normalizeWipeParams(context.params);
-    const axis = getDirectionVector(params.direction);
+    const baseAxis = getDirectionVector(params.direction);
+    const angleRad = params.angle * (Math.PI / 180);
+    const cosA = Math.cos(angleRad);
+    const sinA = Math.sin(angleRad);
+    const axisX = baseAxis.x * cosA - baseAxis.y * sinA;
+    const axisY = baseAxis.x * sinA + baseAxis.y * cosA;
     const rgb = hexColorToRgb01(params.gapColor);
     const useGap = params.edgeMode === 'gap';
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
@@ -211,7 +231,7 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     uniforms.uBlur = params.blur;
     uniforms.uUseGap = useGap ? 1 : 0;
     uniforms.uApplyToEdgeBlur = !useGap && context.edge === 'in' ? 1 : 0;
-    uniforms.uAxis = [axis.x, axis.y];
+    uniforms.uAxis = [axisX, axisY];
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
   },
   computeOutOpacity: () => 1,
