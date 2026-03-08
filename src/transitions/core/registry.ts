@@ -28,12 +28,13 @@ export interface TransitionParamOption {
 
 export interface TransitionParamField {
   key: string;
-  kind: 'number' | 'color' | 'select';
+  kind: 'number' | 'color' | 'select' | 'slider';
   labelKey: string;
   min?: number;
   max?: number;
   step?: number;
   options?: TransitionParamOption[];
+  showIf?: (params: Record<string, any>) => boolean;
 }
 
 export interface TransitionManifest<T = Record<string, any>> {
