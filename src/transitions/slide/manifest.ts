@@ -120,7 +120,7 @@ function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
     direction,
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
-    motionBlur: clampNumber(params?.motionBlur, 0, 1, 0),
+    motionBlur: clampNumber(params?.motionBlur, 0, 10, 0),
     blurRampDurationMs: clampNumber(params?.blurRampDurationMs, 0, 5000, 100),
   };
 }
@@ -176,7 +176,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       kind: 'number',
       labelKey: 'granVideoEditor.timeline.transition.paramMotionBlur',
       min: 0,
-      max: 1,
+      max: 10,
       step: 0.01,
     },
     {
