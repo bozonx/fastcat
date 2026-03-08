@@ -870,6 +870,7 @@ defineExpose({
               { value: 'circle', label: 'Circle' },
               { value: 'triangle', label: 'Triangle' },
               { value: 'star', label: 'Star' },
+              { value: 'bang', label: 'Bang' },
               { value: 'cloud', label: 'Cloud' },
               { value: 'speech_bubble', label: 'Speech Bubble' },
             ]"

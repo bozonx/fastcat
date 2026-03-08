@@ -13,6 +13,7 @@ const shapes = [
   { type: 'circle' as ShapeType, name: 'Circle', icon: 'i-ph-circle' },
   { type: 'triangle' as ShapeType, name: 'Triangle', icon: 'i-ph-triangle' },
   { type: 'star' as ShapeType, name: 'Star', icon: 'i-heroicons-star' },
+  { type: 'bang' as ShapeType, name: 'Bang', icon: 'i-heroicons-sparkles' },
   { type: 'cloud' as ShapeType, name: 'Cloud', icon: 'i-heroicons-cloud' },
   {
     type: 'speech_bubble' as ShapeType,

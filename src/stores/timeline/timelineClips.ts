@@ -66,6 +66,13 @@ export interface TimelineClipsApi {
       backgroundColor?: string;
       text?: string;
       style?: TextClipStyle;
+      shapeType?: import('~/timeline/types').ShapeType;
+      fillColor?: string;
+      strokeColor?: string;
+      strokeWidth?: number;
+      hudType?: import('~/timeline/types').HudType;
+      background?: import('~/timeline/types').HudMediaParams;
+      content?: import('~/timeline/types').HudMediaParams;
     },
   ) => void;
   updateClipTransition: (

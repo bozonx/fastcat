@@ -68,7 +68,7 @@ export interface ExportOptions {
 
 export interface WorkerTimelineClip {
   kind: 'clip';
-  clipType: 'media' | 'adjustment' | 'background' | 'text';
+  clipType: 'media' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
   id: string;
   trackId?: string;
   layer: number;
@@ -83,6 +83,13 @@ export interface WorkerTimelineClip {
   backgroundColor?: string;
   text?: string;
   style?: import('~/timeline/types').TextClipStyle;
+  shapeType?: import('~/timeline/types').ShapeType;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  hudType?: import('~/timeline/types').HudType;
+  background?: import('~/timeline/types').HudMediaParams;
+  content?: import('~/timeline/types').HudMediaParams;
   freezeFrameSourceUs?: number;
   opacity?: number;
   blendMode?: TimelineBlendMode;
@@ -374,6 +381,30 @@ async function buildVideoTrackTree(
         continue;
       }
 
+      if (clipType === 'shape') {
+        result.clips.push({
+          ...baseClip,
+          shapeType: (item as any).shapeType ?? 'square',
+          fillColor:
+            typeof (item as any).fillColor === 'string' ? (item as any).fillColor : undefined,
+          strokeColor:
+            typeof (item as any).strokeColor === 'string' ? (item as any).strokeColor : undefined,
+          strokeWidth:
+            typeof (item as any).strokeWidth === 'number' ? (item as any).strokeWidth : undefined,
+        });
+        continue;
+      }
+
+      if (clipType === 'hud') {
+        result.clips.push({
+          ...baseClip,
+          hudType: (item as any).hudType ?? 'media_frame',
+          background: clonePlain((item as any).background),
+          content: clonePlain((item as any).content),
+        });
+        continue;
+      }
+
       result.clips.push(baseClip);
     }
   }
@@ -492,6 +523,13 @@ export async function toWorkerTimelineClips(
         typeof (item as any).sourceDurationUs === 'number'
           ? (item as any).sourceDurationUs
           : undefined,
+      shapeType: (item as any).shapeType,
+      fillColor: (item as any).fillColor,
+      strokeColor: (item as any).strokeColor,
+      strokeWidth: (item as any).strokeWidth,
+      hudType: (item as any).hudType,
+      background: clonePlain((item as any).background),
+      content: clonePlain((item as any).content),
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
@@ -728,6 +766,24 @@ export async function toWorkerTimelineClips(
         ...base,
         text: String((item as any).text ?? ''),
         style: clonePlain((item as any).style),
+      });
+    } else if (clipType === 'shape') {
+      clips.push({
+        ...base,
+        shapeType: (item as any).shapeType ?? 'square',
+        fillColor:
+          typeof (item as any).fillColor === 'string' ? (item as any).fillColor : undefined,
+        strokeColor:
+          typeof (item as any).strokeColor === 'string' ? (item as any).strokeColor : undefined,
+        strokeWidth:
+          typeof (item as any).strokeWidth === 'number' ? (item as any).strokeWidth : undefined,
+      });
+    } else if (clipType === 'hud') {
+      clips.push({
+        ...base,
+        hudType: (item as any).hudType ?? 'media_frame',
+        background: clonePlain((item as any).background),
+        content: clonePlain((item as any).content),
       });
     } else {
       clips.push(base);

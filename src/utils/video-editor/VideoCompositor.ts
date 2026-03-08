@@ -2723,27 +2723,35 @@ export class VideoCompositor {
 
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
-    // We draw shapes large enough to be scaled down safely.
-    // They will be positioned and scaled by applySpriteLayout.
     const size = Math.min(canvas.width, canvas.height) * 0.8;
+    const half = size / 2;
+
+    const drawPolygon = (points: Array<{ x: number; y: number }>) => {
+      const [first, ...rest] = points;
+      if (!first) return;
+      ctx.moveTo(first.x, first.y);
+      for (const point of rest) {
+        ctx.lineTo(point.x, point.y);
+      }
+      ctx.closePath();
+    };
 
     ctx.beginPath();
     if (type === 'square') {
-      const half = size / 2;
       ctx.rect(cx - half, cy - half, size, size);
     } else if (type === 'circle') {
       ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
     } else if (type === 'triangle') {
-      const half = size / 2;
-      const h = (Math.sqrt(3) / 2) * size;
-      ctx.moveTo(cx, cy - h / 2);
-      ctx.lineTo(cx + half, cy + h / 2);
-      ctx.lineTo(cx - half, cy + h / 2);
-      ctx.closePath();
+      const h = size * 0.92;
+      drawPolygon([
+        { x: cx, y: cy - h / 2 },
+        { x: cx + half, y: cy + h / 2 },
+        { x: cx - half, y: cy + h / 2 },
+      ]);
     } else if (type === 'star') {
       const spikes = 5;
       const outerRadius = size / 2;
-      const innerRadius = outerRadius / 2;
+      const innerRadius = outerRadius * 0.45;
       let rot = (Math.PI / 2) * 3;
       const step = Math.PI / spikes;
       ctx.moveTo(cx, cy - outerRadius);
@@ -2759,14 +2767,77 @@ export class VideoCompositor {
       }
       ctx.lineTo(cx, cy - outerRadius);
       ctx.closePath();
+    } else if (type === 'bang') {
+      const rays = 12;
+      const outerRadiusX = size * 0.56;
+      const outerRadiusY = size * 0.5;
+      const innerRadiusX = size * 0.28;
+      const innerRadiusY = size * 0.18;
+      const points: Array<{ x: number; y: number }> = [];
+
+      for (let i = 0; i < rays * 2; i++) {
+        const angle = -Math.PI / 2 + (Math.PI * i) / rays;
+        const isOuter = i % 2 === 0;
+        const radiusX = isOuter ? outerRadiusX : innerRadiusX;
+        const radiusY = isOuter ? outerRadiusY : innerRadiusY;
+        const wobble = isOuter
+          ? 1 + (i % 4 === 0 ? 0.16 : -0.08)
+          : 1 + (i % 3 === 0 ? 0.08 : -0.04);
+        points.push({
+          x: cx + Math.cos(angle) * radiusX * wobble,
+          y: cy + Math.sin(angle) * radiusY * wobble,
+        });
+      }
+
+      drawPolygon(points);
     } else if (type === 'cloud') {
-      // Simple cloud approximation
-      const r = size * 0.15;
-      ctx.arc(cx - r * 1.5, cy, r, 0, Math.PI * 2);
-      ctx.arc(cx + r * 1.5, cy, r, 0, Math.PI * 2);
-      ctx.arc(cx, cy - r, r * 1.2, 0, Math.PI * 2);
-      ctx.arc(cx - r * 0.8, cy + r * 0.5, r, 0, Math.PI * 2);
-      ctx.arc(cx + r * 0.8, cy + r * 0.5, r, 0, Math.PI * 2);
+      const left = cx - size * 0.34;
+      const right = cx + size * 0.34;
+      const top = cy - size * 0.12;
+      const bottom = cy + size * 0.2;
+
+      ctx.moveTo(left, bottom - size * 0.04);
+      ctx.bezierCurveTo(
+        cx - size * 0.42,
+        cy + size * 0.04,
+        cx - size * 0.42,
+        top,
+        cx - size * 0.24,
+        top,
+      );
+      ctx.bezierCurveTo(
+        cx - size * 0.24,
+        cy - size * 0.28,
+        cx + size * 0.02,
+        cy - size * 0.28,
+        cx + size * 0.06,
+        top - size * 0.04,
+      );
+      ctx.bezierCurveTo(
+        cx + size * 0.14,
+        cy - size * 0.22,
+        cx + size * 0.34,
+        cy - size * 0.18,
+        cx + size * 0.3,
+        top + size * 0.04,
+      );
+      ctx.bezierCurveTo(
+        cx + size * 0.44,
+        top + size * 0.06,
+        cx + size * 0.46,
+        cy + size * 0.18,
+        right,
+        bottom - size * 0.02,
+      );
+      ctx.bezierCurveTo(
+        cx + size * 0.24,
+        cy + size * 0.28,
+        cx - size * 0.08,
+        cy + size * 0.3,
+        left,
+        bottom - size * 0.04,
+      );
+      ctx.closePath();
     } else if (type === 'speech_bubble') {
       const w = size;
       const h = size * 0.7;
@@ -2791,8 +2862,6 @@ export class VideoCompositor {
       ctx.quadraticCurveTo(px, py, px + r, py);
       ctx.closePath();
     } else {
-      // Default fallback
-      const half = size / 2;
       ctx.rect(cx - half, cy - half, size, size);
     }
 
