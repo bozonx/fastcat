@@ -56,6 +56,15 @@ function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTim
   };
 }
 
+function createMonitorSettings(overrides?: Record<string, unknown>) {
+  return {
+    previewResolution: 720,
+    useProxy: false,
+    previewEffectsEnabled: true,
+    ...overrides,
+  };
+}
+
 describe('useMonitorCore', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -87,12 +96,14 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
     });
 
     const projectStore = reactive({
       projectSettings: {
         export: { width: 1920, height: 1080 },
-        monitor: { previewResolution: 720, useProxy: false },
+        monitor: createMonitorSettings(),
       },
       getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
     });
@@ -152,12 +163,14 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
     });
 
     const projectStore = reactive({
       projectSettings: {
         export: { width: 1920, height: 1080 },
-        monitor: { previewResolution: 720, useProxy: false },
+        monitor: createMonitorSettings(),
       },
       getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
     });
@@ -211,6 +224,77 @@ describe('useMonitorCore', () => {
     timelineStore.audioMuted = true;
     await nextTick();
     expect(audioEngine?.setMasterVolume).toHaveBeenLastCalledWith(0);
+
+    wrapper.unmount();
+  });
+
+  it('passes preview effects flag to renderFrame and re-renders when it changes', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 1250,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: {
+        export: { width: 1920, height: 1080 },
+        monitor: createMonitorSettings(),
+      },
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const proxyStore = {
+      getProxyFileHandle: vi.fn(async () => null),
+    };
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore,
+          monitorTimeline: {
+            videoItems: ref([{ id: 'clip-1' }]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            safeDurationUs: ref(2_000_000),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: ref(1),
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    mockClient.renderFrame.mockClear();
+
+    projectStore.projectSettings.monitor.previewEffectsEnabled = false;
+    await nextTick();
+
+    expect(mockClient.renderFrame).toHaveBeenCalledWith(1250, { previewEffectsEnabled: false });
+
+    projectStore.projectSettings.monitor.previewEffectsEnabled = true;
+    await nextTick();
+
+    expect(mockClient.renderFrame).toHaveBeenLastCalledWith(1250, { previewEffectsEnabled: true });
 
     wrapper.unmount();
   });

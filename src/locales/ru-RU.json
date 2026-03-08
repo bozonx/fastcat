@@ -715,6 +715,7 @@
         "slideOrderNormal": "Сверху вниз",
         "slideOrderReverse": "Снизу вверх",
         "paramMaxDarkness": "Макс. затемнение",
+        "paramShadowSize": "Размер тени",
         "paramDepthDirection": "Падение",
         "paramWipeEdgeMode": "Режим края",
         "paramWipeEdgeBlur": "Размытие края",

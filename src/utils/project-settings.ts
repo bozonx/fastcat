@@ -34,6 +34,7 @@ export interface GranVideoEditorProjectSettings {
   monitor: {
     previewResolution: number;
     useProxy: boolean;
+    previewEffectsEnabled: boolean;
     panX: number;
     panY: number;
     zoom: number;
@@ -83,6 +84,7 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
   monitor: {
     previewResolution: 480,
     useProxy: true,
+    previewEffectsEnabled: true,
     panX: 0,
     panY: 0,
     zoom: 1,
@@ -189,6 +191,7 @@ export function normalizeProjectSettings(
 
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
+  const previewEffectsEnabled = monitorInput.previewEffectsEnabled;
   const panX = Number(monitorInput.panX);
   const panY = Number(monitorInput.panY);
   const zoom = Number(monitorInput.zoom);
@@ -292,6 +295,10 @@ export function normalizeProjectSettings(
           : DEFAULT_PROJECT_SETTINGS.monitor.previewResolution,
       useProxy:
         useProxy === undefined ? DEFAULT_PROJECT_SETTINGS.monitor.useProxy : Boolean(useProxy),
+      previewEffectsEnabled:
+        previewEffectsEnabled === undefined
+          ? DEFAULT_PROJECT_SETTINGS.monitor.previewEffectsEnabled
+          : Boolean(previewEffectsEnabled),
       panX: Number.isFinite(panX) ? panX : DEFAULT_PROJECT_SETTINGS.monitor.panX,
       panY: Number.isFinite(panY) ? panY : DEFAULT_PROJECT_SETTINGS.monitor.panY,
       zoom:

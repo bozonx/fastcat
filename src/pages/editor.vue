@@ -609,33 +609,35 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
                         draggable="true"
                         @dragstart="(e) => onDragStart(e, panel.id)"
+                        @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
                           <UIcon
                             v-if="panel.mediaType === 'image'"
                             name="i-heroicons-photo"
-                            class="w-4 h-4 text-ui-text-muted"
+                            class="w-4 h-4 text-ui-text-muted shrink-0"
                           />
                           <UIcon
                             v-else-if="panel.mediaType === 'video'"
                             name="i-heroicons-film"
-                            class="w-4 h-4 text-ui-text-muted"
+                            class="w-4 h-4 text-ui-text-muted shrink-0"
                           />
                           <UIcon
                             v-else-if="panel.mediaType === 'audio'"
                             name="i-heroicons-musical-note"
-                            class="w-4 h-4 text-ui-text-muted"
+                            class="w-4 h-4 text-ui-text-muted shrink-0"
                           />
-                          <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                          <h3 class="font-bold truncate min-w-0" :title="panel.title">
                             {{ panel.title }}
                           </h3>
                         </div>
                         <UButton
+                          class="shrink-0"
                           size="xs"
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="closePanelAndRestoreTab(panel)"
+                          @click="closePanelAndRestoreTab(panel, { view: 'cut' })"
                         />
                       </div>
                       <div
@@ -657,19 +659,21 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
                         draggable="true"
                         @dragstart="(e) => onDragStart(e, panel.id)"
+                        @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
-                        <div class="flex items-center gap-2">
-                          <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
-                          <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                        <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                          <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                          <h3 class="font-bold truncate min-w-0" :title="panel.title">
                             {{ panel.title }}
                           </h3>
                         </div>
                         <UButton
+                          class="shrink-0"
                           size="xs"
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="closePanelAndRestoreTab(panel)"
+                          @click="closePanelAndRestoreTab(panel, { view: 'cut' })"
                         />
                       </div>
                       <div
@@ -695,19 +699,21 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
                         draggable="true"
                         @dragstart="(e) => onDragStart(e, panel.id)"
+                        @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
-                        <div class="flex items-center gap-2">
-                          <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted" />
-                          <h3 class="font-bold truncate max-w-50">
+                        <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                          <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                          <h3 class="font-bold truncate min-w-0" :title="panel.title || 'History'">
                             {{ panel.title || 'History' }}
                           </h3>
                         </div>
                         <UButton
+                          class="shrink-0"
                           size="xs"
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="closePanelAndRestoreTab(panel)"
+                          @click="closePanelAndRestoreTab(panel, { view: 'cut' })"
                         />
                       </div>
                       <div class="flex-1 overflow-hidden min-h-0">
@@ -724,19 +730,21 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                         class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
                         draggable="true"
                         @dragstart="(e) => onDragStart(e, panel.id)"
+                        @dblclick="closePanelAndRestoreTab(panel, { view: 'cut' })"
                       >
-                        <div class="flex items-center gap-2">
-                          <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted" />
-                          <h3 class="font-bold truncate max-w-50">
+                        <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                          <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                          <h3 class="font-bold truncate min-w-0" :title="panel.title || 'Effects'">
                             {{ panel.title || 'Effects' }}
                           </h3>
                         </div>
                         <UButton
+                          class="shrink-0"
                           size="xs"
                           variant="ghost"
                           color="neutral"
                           icon="i-heroicons-x-mark"
-                          @click="closePanelAndRestoreTab(panel)"
+                          @click="closePanelAndRestoreTab(panel, { view: 'cut' })"
                         />
                       </div>
                       <div class="flex-1 overflow-hidden min-h-0">
@@ -829,28 +837,30 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
                             draggable="true"
                             @dragstart="(e) => onDragStart(e, panel.id)"
+                            @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
                               <UIcon
                                 v-if="panel.mediaType === 'image'"
                                 name="i-heroicons-photo"
-                                class="w-4 h-4 text-ui-text-muted"
+                                class="w-4 h-4 text-ui-text-muted shrink-0"
                               />
                               <UIcon
                                 v-else-if="panel.mediaType === 'video'"
                                 name="i-heroicons-film"
-                                class="w-4 h-4 text-ui-text-muted"
+                                class="w-4 h-4 text-ui-text-muted shrink-0"
                               />
                               <UIcon
                                 v-else-if="panel.mediaType === 'audio'"
                                 name="i-heroicons-musical-note"
-                                class="w-4 h-4 text-ui-text-muted"
+                                class="w-4 h-4 text-ui-text-muted shrink-0"
                               />
-                              <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                              <h3 class="font-bold truncate min-w-0" :title="panel.title">
                                 {{ panel.title }}
                               </h3>
                             </div>
                             <UButton
+                              class="shrink-0"
                               size="xs"
                               variant="ghost"
                               color="neutral"
@@ -877,14 +887,16 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
                             draggable="true"
                             @dragstart="(e) => onDragStart(e, panel.id)"
+                            @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
-                            <div class="flex items-center gap-2">
-                              <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
-                              <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                            <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                              <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                              <h3 class="font-bold truncate min-w-0" :title="panel.title">
                                 {{ panel.title }}
                               </h3>
                             </div>
                             <UButton
+                              class="shrink-0"
                               size="xs"
                               variant="ghost"
                               color="neutral"
@@ -915,14 +927,16 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
                             draggable="true"
                             @dragstart="(e) => onDragStart(e, panel.id)"
+                            @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
-                            <div class="flex items-center gap-2">
-                              <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted" />
-                              <h3 class="font-bold truncate max-w-50">
+                            <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                              <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                              <h3 class="font-bold truncate min-w-0" :title="panel.title || 'History'">
                                 {{ panel.title || 'History' }}
                               </h3>
                             </div>
                             <UButton
+                              class="shrink-0"
                               size="xs"
                               variant="ghost"
                               color="neutral"
@@ -944,14 +958,16 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number, vie
                             class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
                             draggable="true"
                             @dragstart="(e) => onDragStart(e, panel.id)"
+                            @dblclick="closePanelAndRestoreTab(panel, { view: 'sound' })"
                           >
-                            <div class="flex items-center gap-2">
-                              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted" />
-                              <h3 class="font-bold truncate max-w-50">
+                            <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted shrink-0" />
+                              <h3 class="font-bold truncate min-w-0" :title="panel.title || 'Effects'">
                                 {{ panel.title || 'Effects' }}
                               </h3>
                             </div>
                             <UButton
+                              class="shrink-0"
                               size="xs"
                               variant="ghost"
                               color="neutral"
