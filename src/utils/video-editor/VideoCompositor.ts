@@ -1836,8 +1836,11 @@ export class VideoCompositor {
       if (typeof (sample as any).close === 'function') {
         try {
           (sample as any).close();
-        } catch {
-          /**/
+        } catch (err) {
+          console.error(
+            '[VideoCompositor] Failed to close VideoSample in renderClipToTextureForTransition',
+            err,
+          );
         }
       }
     }
@@ -2348,7 +2351,14 @@ export class VideoCompositor {
 
       // Prefer WebCodecs VideoFrame path (GPU-friendly upload).
       if (typeof sample?.toVideoFrame === 'function') {
+        if (clip.lastVideoFrame) {
+          safeDispose(clip.lastVideoFrame);
+          clip.lastVideoFrame = null;
+        }
+
         const frame = sample.toVideoFrame() as VideoFrame;
+        clip.lastVideoFrame = frame;
+
         const frameW = Math.max(
           1,
           Math.round((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1),
@@ -2375,7 +2385,6 @@ export class VideoCompositor {
         // Layout on stage
         this.applySpriteLayout(frameW, frameH, clip);
 
-        clip.lastVideoFrame = frame;
         return;
       }
     } catch (err) {
