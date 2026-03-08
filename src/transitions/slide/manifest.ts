@@ -297,7 +297,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       const baseSpeed = 1.0 / durationSeconds;
 
       // Blur scales with base speed and the curve's instantaneous speed multiplier
-      let targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
+      const targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
       blurAmount = Math.max(0, targetBlur);
     }
 

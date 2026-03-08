@@ -2,8 +2,7 @@
 import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { getAllEffectManifests, getEffectManifest } from '~/effects';
-import { getAllTransitionManifests } from '~/transitions';
-import { getTransitionManifest } from '~/transitions';
+import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 
@@ -16,27 +15,29 @@ const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 const effects = computed(() => getAllEffectManifests());
 const transitions = computed(() => getAllTransitionManifests());
 
-const standardEffects = computed(() => effects.value.filter(e => !e.isCustom));
+const standardEffects = computed(() => effects.value.filter((e) => !e.isCustom));
 const customEffects = computed(() => {
   const presetManifests = presetsStore.customPresets
     .filter((preset) => preset.category === 'effect')
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((preset) => getEffectManifest(preset.id))
-    .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> => Boolean(manifest));
+    .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> =>
+      Boolean(manifest),
+    );
 
   return presetManifests;
 });
 
-const standardTransitions = computed(() => transitions.value.filter(t => !t.isCustom));
+const standardTransitions = computed(() => transitions.value.filter((t) => !t.isCustom));
 const customTransitions = computed(() => {
   const presetManifests = presetsStore.customPresets
     .filter((preset) => preset.category === 'transition')
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((preset) => getTransitionManifest(preset.id))
-    .filter(
-      (manifest): manifest is NonNullable<ReturnType<typeof getTransitionManifest>> => Boolean(manifest),
+    .filter((manifest): manifest is NonNullable<ReturnType<typeof getTransitionManifest>> =>
+      Boolean(manifest),
     );
 
   return presetManifests;
@@ -57,12 +58,12 @@ function selectTransition(type: string) {
 }
 
 function updateCustomEffectsOrder(newCustomEffects: any[]) {
-  const orderIds = newCustomEffects.map(e => e.type);
+  const orderIds = newCustomEffects.map((e) => e.type);
   presetsStore.updatePresetsOrder('effect', orderIds);
 }
 
 function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
-  const orderIds = newCustomTransitions.map(t => t.type);
+  const orderIds = newCustomTransitions.map((t) => t.type);
   presetsStore.updatePresetsOrder('transition', orderIds);
 }
 </script>
@@ -114,24 +115,30 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
       <div v-show="activeTab === 'video'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Effects -->
         <div>
-          <button 
+          <button
             class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
             @click="presetsStore.effectsStandardCollapsed = !presetsStore.effectsStandardCollapsed"
           >
-            <UIcon 
-              :name="presetsStore.effectsStandardCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'" 
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors" 
+            <UIcon
+              :name="
+                presetsStore.effectsStandardCollapsed
+                  ? 'i-heroicons-chevron-right'
+                  : 'i-heroicons-chevron-down'
+              "
+              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
             />
             {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
           </button>
-          
+
           <div v-show="!presetsStore.effectsStandardCollapsed" class="grid grid-cols-1 gap-2 pl-6">
             <div
               v-for="effect in standardEffects"
               :key="effect.type"
               class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
               :class="
-                selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type
+                selectionStore.selectedEntity?.source === 'project' &&
+                selectionStore.selectedEntity.kind === 'effect' &&
+                selectionStore.selectedEntity.effectType === effect.type
                   ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
@@ -147,7 +154,10 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 </p>
               </div>
             </div>
-            <div v-if="standardEffects.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+            <div
+              v-if="standardEffects.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
               {{ t('common.noData') }}
             </div>
           </div>
@@ -155,17 +165,21 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
 
         <!-- Custom Effects -->
         <div>
-          <button 
+          <button
             class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
             @click="presetsStore.effectsCustomCollapsed = !presetsStore.effectsCustomCollapsed"
           >
-            <UIcon 
-              :name="presetsStore.effectsCustomCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'" 
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors" 
+            <UIcon
+              :name="
+                presetsStore.effectsCustomCollapsed
+                  ? 'i-heroicons-chevron-right'
+                  : 'i-heroicons-chevron-down'
+              "
+              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
             />
             {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
           </button>
-          
+
           <div v-show="!presetsStore.effectsCustomCollapsed" class="pl-6">
             <VueDraggable
               :model-value="customEffects"
@@ -182,7 +196,9 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 :key="effect.type"
                 class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
                 :class="
-                  selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type
+                  selectionStore.selectedEntity?.source === 'project' &&
+                  selectionStore.selectedEntity.kind === 'effect' &&
+                  selectionStore.selectedEntity.effectType === effect.type
                     ? 'border-primary bg-primary/10'
                     : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
                 "
@@ -209,14 +225,20 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                         @click.stop="presetsStore.removePreset(effect.type)"
                       />
                     </div>
-                    <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
+                    <p
+                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
+                      :title="effect.description"
+                    >
                       {{ effect.description }}
                     </p>
                   </div>
                 </div>
               </div>
             </VueDraggable>
-            <div v-if="customEffects.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+            <div
+              v-if="customEffects.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
               {{ t('common.noData') }}
             </div>
           </div>
@@ -227,24 +249,35 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
       <div v-show="activeTab === 'transitions'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Transitions -->
         <div>
-          <button 
+          <button
             class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="presetsStore.transitionsStandardCollapsed = !presetsStore.transitionsStandardCollapsed"
+            @click="
+              presetsStore.transitionsStandardCollapsed = !presetsStore.transitionsStandardCollapsed
+            "
           >
-            <UIcon 
-              :name="presetsStore.transitionsStandardCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'" 
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors" 
+            <UIcon
+              :name="
+                presetsStore.transitionsStandardCollapsed
+                  ? 'i-heroicons-chevron-right'
+                  : 'i-heroicons-chevron-down'
+              "
+              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
             />
             {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
           </button>
-          
-          <div v-show="!presetsStore.transitionsStandardCollapsed" class="grid grid-cols-1 gap-2 pl-6">
+
+          <div
+            v-show="!presetsStore.transitionsStandardCollapsed"
+            class="grid grid-cols-1 gap-2 pl-6"
+          >
             <div
               v-for="transition in standardTransitions"
               :key="transition.type"
               class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
               :class="
-                selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'transition' && selectionStore.selectedEntity.transitionType === transition.type
+                selectionStore.selectedEntity?.source === 'project' &&
+                selectionStore.selectedEntity.kind === 'transition' &&
+                selectionStore.selectedEntity.transitionType === transition.type
                   ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
@@ -257,7 +290,10 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 <h4 class="text-sm font-medium text-ui-text">{{ transition.name }}</h4>
               </div>
             </div>
-            <div v-if="standardTransitions.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+            <div
+              v-if="standardTransitions.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
               {{ t('common.noData') }}
             </div>
           </div>
@@ -265,17 +301,23 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
 
         <!-- Custom Transitions -->
         <div>
-          <button 
+          <button
             class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="presetsStore.transitionsCustomCollapsed = !presetsStore.transitionsCustomCollapsed"
+            @click="
+              presetsStore.transitionsCustomCollapsed = !presetsStore.transitionsCustomCollapsed
+            "
           >
-            <UIcon 
-              :name="presetsStore.transitionsCustomCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'" 
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors" 
+            <UIcon
+              :name="
+                presetsStore.transitionsCustomCollapsed
+                  ? 'i-heroicons-chevron-right'
+                  : 'i-heroicons-chevron-down'
+              "
+              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
             />
             {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
           </button>
-          
+
           <div v-show="!presetsStore.transitionsCustomCollapsed" class="pl-6">
             <VueDraggable
               :model-value="customTransitions"
@@ -292,7 +334,9 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 :key="transition.type"
                 class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group"
                 :class="
-                  selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'transition' && selectionStore.selectedEntity.transitionType === transition.type
+                  selectionStore.selectedEntity?.source === 'project' &&
+                  selectionStore.selectedEntity.kind === 'transition' &&
+                  selectionStore.selectedEntity.transitionType === transition.type
                     ? 'border-primary bg-primary/10'
                     : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
                 "
@@ -321,7 +365,10 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 </div>
               </div>
             </VueDraggable>
-            <div v-if="customTransitions.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+            <div
+              v-if="customTransitions.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
               {{ t('common.noData') }}
             </div>
           </div>

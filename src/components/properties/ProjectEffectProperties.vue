@@ -36,10 +36,10 @@ function handleUpdateParam(key: string, value: any) {
 
 function handleSavePreset() {
   if (!manifest.value || !newPresetName.value.trim()) return;
-  
+
   const baseType = manifest.value.baseType || manifest.value.type;
   presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), params.value);
-  
+
   isSaveModalOpen.value = false;
   newPresetName.value = '';
 }
@@ -63,7 +63,11 @@ function handleUpdatePreset() {
           <div class="flex justify-between text-xs text-ui-text-muted">
             <span>{{ control.label }}</span>
             <span>
-              {{ control.format ? control.format(params[control.key as string]) : params[control.key as string] }}
+              {{
+                control.format
+                  ? control.format(params[control.key as string])
+                  : params[control.key as string]
+              }}
             </span>
           </div>
           <WheelSlider
@@ -95,7 +99,10 @@ function handleUpdatePreset() {
           />
         </div>
       </template>
-      <div v-if="!manifest.controls || manifest.controls.length === 0" class="text-xs text-ui-text-muted text-center py-2">
+      <div
+        v-if="!manifest.controls || manifest.controls.length === 0"
+        class="text-xs text-ui-text-muted text-center py-2"
+      >
         {{ t('granVideoEditor.effects.noSettings', 'No settings available') }}
       </div>
     </div>
@@ -118,15 +125,27 @@ function handleUpdatePreset() {
         class="flex-1 justify-center"
         @click="isSaveModalOpen = true"
       >
-        {{ manifest.isCustom ? t('granVideoEditor.effects.saveAsNew', 'Save as new') : t('granVideoEditor.effects.saveAsPreset', 'Save as preset') }}
+        {{
+          manifest.isCustom
+            ? t('granVideoEditor.effects.saveAsNew', 'Save as new')
+            : t('granVideoEditor.effects.saveAsPreset', 'Save as preset')
+        }}
       </UButton>
     </div>
 
-    <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
+    <UModal
+      v-model:open="isSaveModalOpen"
+      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+    >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
-            <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
+            <UInput
+              v-model="newPresetName"
+              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              autofocus
+              @keyup.enter="handleSavePreset"
+            />
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">

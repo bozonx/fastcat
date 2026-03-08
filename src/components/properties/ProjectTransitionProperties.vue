@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { getTransitionManifest } from '~/transitions';
+import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
 import { usePresetsStore } from '~/stores/presets.store';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
-import { normalizeTransitionParams } from '~/transitions';
 
 const props = defineProps<{
   transitionType: string;
@@ -34,16 +33,16 @@ watch(
 function handleUpdateParam(key: string, value: any) {
   params.value = {
     ...params.value,
-    [key]: value
+    [key]: value,
   };
 }
 
 function handleSavePreset() {
   if (!manifest.value || !newPresetName.value.trim()) return;
-  
+
   const baseType = manifest.value.baseType || manifest.value.type;
   presetsStore.saveAsPreset('transition', baseType, newPresetName.value.trim(), params.value);
-  
+
   isSaveModalOpen.value = false;
   newPresetName.value = '';
 }
@@ -91,15 +90,27 @@ function handleUpdatePreset() {
         class="flex-1 justify-center"
         @click="isSaveModalOpen = true"
       >
-        {{ manifest.isCustom ? t('granVideoEditor.effects.saveAsNew', 'Save as new') : t('granVideoEditor.effects.saveAsPreset', 'Save as preset') }}
+        {{
+          manifest.isCustom
+            ? t('granVideoEditor.effects.saveAsNew', 'Save as new')
+            : t('granVideoEditor.effects.saveAsPreset', 'Save as preset')
+        }}
       </UButton>
     </div>
 
-    <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
+    <UModal
+      v-model:open="isSaveModalOpen"
+      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+    >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
-            <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
+            <UInput
+              v-model="newPresetName"
+              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              autofocus
+              @keyup.enter="handleSavePreset"
+            />
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">

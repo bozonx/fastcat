@@ -693,7 +693,13 @@ function onTrackDragOver(e: DragEvent, trackId: string) {
   }
 
   let durationUs = 2_000_000;
-  if (file.kind === 'adjustment' || file.kind === 'background' || file.kind === 'text' || file.kind === 'shape' || file.kind === 'hud') {
+  if (
+    file.kind === 'adjustment' ||
+    file.kind === 'background' ||
+    file.kind === 'text' ||
+    file.kind === 'shape' ||
+    file.kind === 'hud'
+  ) {
     durationUs = 5_000_000;
   } else if (file.kind !== 'timeline') {
     const metadata = mediaStore.mediaMetadata[file.path];
@@ -863,7 +869,13 @@ async function onDrop(e: DragEvent, trackId: string) {
   const validItems = itemsToDrop.filter((item) => {
     const k = typeof item?.kind === 'string' ? item.kind : undefined;
     return (
-      k === 'file' || k === 'timeline' || k === 'adjustment' || k === 'background' || k === 'text' || k === 'shape' || k === 'hud'
+      k === 'file' ||
+      k === 'timeline' ||
+      k === 'adjustment' ||
+      k === 'background' ||
+      k === 'text' ||
+      k === 'shape' ||
+      k === 'hud'
     );
   });
 
@@ -894,7 +906,13 @@ async function onDrop(e: DragEvent, trackId: string) {
             }
           : { skipHistory: true, saveMode: 'none' as const };
 
-        if (kind === 'adjustment' || kind === 'background' || kind === 'text' || kind === 'shape' || kind === 'hud') {
+        if (
+          kind === 'adjustment' ||
+          kind === 'background' ||
+          kind === 'text' ||
+          kind === 'shape' ||
+          kind === 'hud'
+        ) {
           const res = timelineStore.addVirtualClipToTrack(
             {
               trackId,
@@ -902,8 +920,8 @@ async function onDrop(e: DragEvent, trackId: string) {
               clipType: kind,
               name,
               text: kind === 'text' ? name : undefined,
-              shapeType: kind === 'shape' ? ((item as any).type || 'square') : undefined,
-              hudType: kind === 'hud' ? ((item as any).type || 'media_frame') : undefined,
+              shapeType: kind === 'shape' ? (item as any).type || 'square' : undefined,
+              hudType: kind === 'hud' ? (item as any).type || 'media_frame' : undefined,
             },
             options,
           );

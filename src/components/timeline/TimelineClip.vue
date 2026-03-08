@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
-import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
+import {
+  DEFAULT_TRANSITION_CURVE,
+  DEFAULT_TRANSITION_MODE,
+  getTransitionManifest,
+  normalizeTransitionParams,
+} from '~/transitions';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -39,7 +43,7 @@ let didStartClipDrag = false;
 function hasSupportedClipDrop(event: DragEvent): boolean {
   return Boolean(
     event.dataTransfer?.types.includes('gran-effect') ||
-      event.dataTransfer?.types.includes('gran-transition'),
+    event.dataTransfer?.types.includes('gran-transition'),
   );
 }
 
@@ -85,7 +89,10 @@ function handleTransitionDrop(transitionType: string, edge: 'in' | 'out') {
   const manifest = getTransitionManifest(transitionType);
   if (!manifest) return;
 
-  const clipDurationUs = Math.max(0, Math.round(Number(clipItem.value.timelineRange.durationUs ?? 0)));
+  const clipDurationUs = Math.max(
+    0,
+    Math.round(Number(clipItem.value.timelineRange.durationUs ?? 0)),
+  );
   const defaultDurationUs = Math.max(0, Math.round(Number(manifest.defaultDurationUs ?? 0)));
   const durationUs =
     clipDurationUs > 0 && clipDurationUs < defaultDurationUs
@@ -772,7 +779,10 @@ const isFreePosition = computed(() => {
             )}px`,
           }"
         >
-          <path :d="getAudioFadePath('in', clipItem.audioFadeInCurve)" fill="var(--clip-lower-tri)" />
+          <path
+            :d="getAudioFadePath('in', clipItem.audioFadeInCurve)"
+            fill="var(--clip-lower-tri)"
+          />
         </svg>
 
         <svg
@@ -796,7 +806,10 @@ const isFreePosition = computed(() => {
             )}px`,
           }"
         >
-          <path :d="getAudioFadePath('out', clipItem.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
+          <path
+            :d="getAudioFadePath('out', clipItem.audioFadeOutCurve)"
+            fill="var(--clip-lower-tri)"
+          />
         </svg>
       </div>
 

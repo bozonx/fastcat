@@ -73,14 +73,14 @@ describe('timeline/otioSerializer: transitions', () => {
       type: 'dissolve',
       durationUs: 300_000,
       mode: 'transition',
-      curve: undefined,
+      curve: 'linear',
       params: undefined,
     });
     expect(clip.transitionOut).toEqual({
       type: 'dissolve',
       durationUs: 500_000,
       mode: 'transition',
-      curve: undefined,
+      curve: 'linear',
       params: undefined,
     });
     expect(clip.audioGain).toBe(1.25);

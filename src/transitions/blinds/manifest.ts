@@ -5,7 +5,7 @@ import type { TransitionManifest } from '../core/registry';
 export interface BlindsParams {
   angle: number;
   stripCount: number;
-  blurType: 'motion' | 'post';
+  blur: number;
   motionBlur: number;
   motionBlurMode: 'normal' | 'bloom';
   brightnessMode: 'normal' | 'bloom';
@@ -53,7 +53,7 @@ uniform float uProgress;
 uniform vec2 uAxis;
 uniform vec2 uPerp;
 uniform float uStripCount;
-uniform float uBlurType;
+uniform float uBlur;
 uniform float uMotionBlur;
 uniform float uMotionBlurMode;
 uniform float uBrightnessMode;
@@ -94,78 +94,64 @@ vec4 processSample(vec4 color) {
   return vec4(max(vec3(0.0), color.rgb * (1.0 + extra)), color.a);
 }
 
+vec4 getMotionBlurredColor(vec2 uv) {
+  if (uMotionBlur <= 0.0) {
+    return processSample(getColor(uv));
+  }
+
+  const int SAMPLES = 16;
+  vec4 accumColor = vec4(0.0);
+  float stepSize = uMotionBlur / float(SAMPLES - 1);
+  float startOffset = -uMotionBlur * 0.5;
+
+  float stripCoord = dot(uv - 0.5, uPerp) + 0.5;
+  float stripIndex = floor(stripCoord * uStripCount);
+  float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
+  vec2 blurAxis = uAxis * dir;
+
+  float totalWeight = 0.0;
+  for (int i = 0; i < SAMPLES; i++) {
+    float offset = startOffset + float(i) * stepSize;
+    vec2 sampleUv = uv + blurAxis * offset;
+    vec4 color = processSample(getColor(sampleUv));
+
+    float weight = 1.0;
+    if (uMotionBlurMode > 0.5) {
+      float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+      weight = smoothstep(uBloomThreshold, 1.0, lum);
+    }
+    
+    accumColor += color * weight;
+    totalWeight += weight;
+  }
+
+  if (totalWeight > 0.0) {
+    return accumColor / totalWeight;
+  }
+  return processSample(getColor(uv));
+}
+
 out vec4 finalColor;
 void main(void) {
-  if (uMotionBlur <= 0.0) {
-    finalColor = processSample(getColor(vNormalizedCoord));
+  if (uBlur <= 0.0) {
+    finalColor = getMotionBlurredColor(vNormalizedCoord);
     return;
   }
 
-  if (uBlurType > 0.5) {
-    // Post blur: 2D uniform blur (5x5 kernel)
-    vec4 accumColor = vec4(0.0);
-    float totalWeight = 0.0;
-    
-    // adjust for aspect ratio so blur is circular
-    vec2 blurRadius = vec2(uMotionBlur, uMotionBlur * uAspect);
-    
-    for (int x = -2; x <= 2; x++) {
-      for (int y = -2; y <= 2; y++) {
-        vec2 offset = vec2(float(x), float(y)) / 2.0;
-        vec2 sampleUv = vNormalizedCoord + offset * blurRadius;
-        vec4 color = processSample(getColor(sampleUv));
-        
-        float weight = 1.0;
-        if (uMotionBlurMode > 0.5) {
-          float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
-          weight = smoothstep(uBloomThreshold, 1.0, lum);
-        }
-        accumColor += color * weight;
-        totalWeight += weight;
-      }
-    }
-    
-    if (totalWeight > 0.0) {
-      finalColor = accumColor / totalWeight;
-    } else {
-      finalColor = processSample(getColor(vNormalizedCoord));
-    }
-  } else {
-    // Motion blur: directional along the strip movement
-    const int SAMPLES = 16;
-    vec4 accumColor = vec4(0.0);
-    
-    float stepSize = uMotionBlur / float(SAMPLES - 1);
-    float startOffset = -uMotionBlur * 0.5;
-
-    float stripCoord = dot(vNormalizedCoord - 0.5, uPerp) + 0.5;
-    float stripIndex = floor(stripCoord * uStripCount);
-    float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
-    vec2 blurAxis = uAxis * dir;
-
-    float totalWeight = 0.0;
-
-    for (int i = 0; i < SAMPLES; i++) {
-      float offset = startOffset + float(i) * stepSize;
-      vec2 sampleUv = vNormalizedCoord + blurAxis * offset;
-      vec4 color = processSample(getColor(sampleUv));
-
-      float weight = 1.0;
-      if (uMotionBlurMode > 0.5) {
-        float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
-        weight = smoothstep(uBloomThreshold, 1.0, lum);
-      }
-      
-      accumColor += color * weight;
-      totalWeight += weight;
-    }
-
-    if (totalWeight > 0.0) {
-      finalColor = accumColor / totalWeight;
-    } else {
-      finalColor = processSample(getColor(vNormalizedCoord));
+  vec4 accumColor = vec4(0.0);
+  float totalWeight = 0.0;
+  vec2 blurRadius = vec2(uBlur, uBlur * uAspect);
+  
+  for (int x = -2; x <= 2; x++) {
+    for (int y = -2; y <= 2; y++) {
+      vec2 offset = vec2(float(x), float(y)) / 2.0;
+      vec2 sampleUv = vNormalizedCoord + offset * blurRadius;
+      accumColor += getMotionBlurredColor(sampleUv);
+      totalWeight += 1.0;
     }
   }
+  
+  finalColor = accumColor / totalWeight;
 }
 `;
 
@@ -173,7 +159,7 @@ function normalizeBlindsParams(params?: Record<string, unknown>): BlindsParams {
   return {
     angle: clampNumber(params?.angle, -360, 360, 0),
     stripCount: Math.round(clampNumber(params?.stripCount, 2, 100, 10)),
-    blurType: params?.blurType === 'post' ? 'post' : 'motion',
+    blur: clampNumber(params?.blur, 0, 100, 0),
     motionBlur: clampNumber(params?.motionBlur, 0, 100, 0),
     motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
@@ -207,18 +193,17 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       step: 1,
     },
     {
-      key: 'blurType',
-      kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlurType',
-      options: [
-        { value: 'motion', labelKey: 'granVideoEditor.timeline.transition.blurTypeMotion' },
-        { value: 'post', labelKey: 'granVideoEditor.timeline.transition.blurTypePost' },
-      ],
+      key: 'blur',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramPostBlur',
+      min: 0,
+      max: 100,
+      step: 1,
     },
     {
       key: 'motionBlur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlur',
+      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlur',
       min: 0,
       max: 100,
       step: 1,
@@ -269,7 +254,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
           uPerp: { value: [0, 1], type: 'vec2<f32>' },
           uStripCount: { value: 10, type: 'f32' },
-          uBlurType: { value: 0, type: 'f32' },
+          uBlur: { value: 0, type: 'f32' },
           uMotionBlur: { value: 0, type: 'f32' },
           uMotionBlurMode: { value: 0, type: 'f32' },
           uBrightnessMode: { value: 0, type: 'f32' },
@@ -288,8 +273,6 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     const params = normalizeBlindsParams(context.params);
 
     // Convert angle to radians
-    // 0 degrees -> horizontal motion (axis = [1, 0])
-    // 90 degrees -> vertical motion (axis = [0, 1])
     const rad = (params.angle * Math.PI) / 180;
     const axis = { x: Math.cos(rad), y: Math.sin(rad) };
     const perp = { x: -Math.sin(rad), y: Math.cos(rad) };
@@ -299,21 +282,18 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     const p2 = applyTransitionCurve(Math.min(1, context.progress + deltaProgress), context.curve);
     const speedMultiplier = (p2 - p1) / (2 * deltaProgress);
 
-    let blurAmount = 0;
-    if (params.blurType === 'motion') {
-      if (params.motionBlur > 0 && context.durationUs && context.durationUs > 0) {
-        const durationSeconds = context.durationUs / 1_000_000;
-        const baseSpeed = 1.0 / durationSeconds;
-        let targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
-        blurAmount = Math.max(0, targetBlur);
-      }
-    } else {
-      // For post blur, it scales from 0 to max at the middle of the transition, then back to 0
-      const blurEnvelope = Math.sin(progress * Math.PI);
-      blurAmount = params.motionBlur * 0.005 * blurEnvelope;
+    let motionBlurAmount = 0;
+    if (params.motionBlur > 0 && context.durationUs && context.durationUs > 0) {
+      const durationSeconds = context.durationUs / 1_000_000;
+      const baseSpeed = 1.0 / durationSeconds;
+      const targetBlur = baseSpeed * params.motionBlur * 0.05 * speedMultiplier;
+      motionBlurAmount = Math.max(0, targetBlur);
     }
 
+    // For post blur, it scales from 0 to max at the middle of the transition, then back to 0
     const envelope = Math.sin(progress * Math.PI);
+    const postBlurAmount = params.blur * 0.005 * envelope;
+
     const currentBrightness = params.brightness * envelope;
 
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
@@ -321,8 +301,8 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     uniforms.uAxis = [axis.x, axis.y];
     uniforms.uPerp = [perp.x, perp.y];
     uniforms.uStripCount = params.stripCount;
-    uniforms.uBlurType = params.blurType === 'post' ? 1.0 : 0.0;
-    uniforms.uMotionBlur = blurAmount;
+    uniforms.uBlur = postBlurAmount;
+    uniforms.uMotionBlur = motionBlurAmount;
     uniforms.uMotionBlurMode = params.motionBlurMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightness = currentBrightness;

@@ -779,6 +779,7 @@
         "paramFollowScale": "Следовать за масштабом",
         "paramScale": "Масштаб",
         "paramBlur": "Размытие при масштабировании",
+        "paramPostBlur": "Post-размытие",
         "paramBrightnessMode": "Режим яркости",
         "brightnessModeNormal": "Обычная",
         "brightnessModeBloom": "Bloom",

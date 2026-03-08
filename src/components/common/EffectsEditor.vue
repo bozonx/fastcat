@@ -80,21 +80,21 @@ function handleRemoveEffect(effectId: string) {
 
 function handleSavePreset() {
   if (!savingEffectId.value || !newPresetName.value.trim()) return;
-  
+
   const effect = safeEffects.value.find((e) => e.id === savingEffectId.value);
   if (!effect) return;
-  
+
   const manifest = getEffectManifest(effect.type);
   if (!manifest) return;
-  
+
   const baseType = manifest.baseType || manifest.type;
   const paramsToSave = { ...effect };
   delete (paramsToSave as any).id;
   delete (paramsToSave as any).type;
   delete (paramsToSave as any).enabled;
-  
+
   presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), paramsToSave);
-  
+
   isSaveModalOpen.value = false;
   newPresetName.value = '';
   savingEffectId.value = null;
@@ -215,12 +215,20 @@ function openSaveModal(effectId: string) {
     </div>
 
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
-    
-    <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
+
+    <UModal
+      v-model:open="isSaveModalOpen"
+      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+    >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
-            <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
+            <UInput
+              v-model="newPresetName"
+              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              autofocus
+              @keyup.enter="handleSavePreset"
+            />
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
