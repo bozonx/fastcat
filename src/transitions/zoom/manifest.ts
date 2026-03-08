@@ -48,11 +48,15 @@ uniform float uProgress;
 uniform float uScale;
 uniform float uFromRotation;
 uniform float uToRotation;
+uniform float uAspect;
 
 vec2 rotate(vec2 pt, float angle) {
   float c = cos(angle);
   float s = sin(angle);
-  return vec2(pt.x * c - pt.y * s, pt.x * s + pt.y * c);
+  pt.x *= uAspect;
+  vec2 rotated = vec2(pt.x * c - pt.y * s, pt.x * s + pt.y * c);
+  rotated.x /= uAspect;
+  return rotated;
 }
 
 void main(void) {
@@ -144,6 +148,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
           uScale: { value: 3.0, type: 'f32' },
           uFromRotation: { value: 0, type: 'f32' },
           uToRotation: { value: 0, type: 'f32' },
+          uAspect: { value: 16.0 / 9.0, type: 'f32' },
         },
       },
     }),
@@ -162,6 +167,13 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     uniforms.uScale = params.scale;
     uniforms.uFromRotation = (params.fromRotation * Math.PI) / 180;
     uniforms.uToRotation = (params.toRotation * Math.PI) / 180;
+
+    // Attempt to deduce aspect ratio from texture dimensions if available
+    if (context.fromTexture) {
+      uniforms.uAspect = context.fromTexture.width / context.fromTexture.height;
+    } else if (context.toTexture) {
+      uniforms.uAspect = context.toTexture.width / context.toTexture.height;
+    }
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
