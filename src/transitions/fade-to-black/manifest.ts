@@ -4,7 +4,6 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface FadeToBlackParams {
   color: string;
-  mode: 'dip' | 'crossfade';
 }
 
 const vertex = `
@@ -42,7 +41,6 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform vec3 uFadeColor;
-uniform int uMode;
 
 out vec4 finalColor;
 void main(void) {
@@ -52,41 +50,20 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec4 fadeColor = vec4(uFadeColor, 1.0);
 
-  if (uMode == 0) {
-    if (progress < 0.5) {
-      float local = progress * 2.0;
-      finalColor = mix(fromColor, fadeColor, local);
-      return;
-    }
-
-    float local = (progress - 0.5) * 2.0;
-    finalColor = mix(fadeColor, toColor, local);
-  } else {
-    // Crossfade mode
-    float invP = 1.0 - progress;
-    
-    // Fade the outgoing frame from full opacity and brightness to zero.
-    vec4 fromLayer = vec4(fromColor.rgb * invP, fromColor.a * invP);
-    
-    // Fade the incoming frame from zero opacity and brightness to full.
-    vec4 toLayer = vec4(toColor.rgb * progress, toColor.a * progress);
-    
-    // Keep the fade color behind both layers instead of exposing transparency.
-    vec4 bg = fadeColor;
-    
-    // Composite the outgoing layer over the fade color.
-    vec4 fromMixed = vec4(fromLayer.rgb + bg.rgb * (1.0 - fromLayer.a), 1.0);
-    
-    // Composite the incoming layer over the intermediate result.
-    finalColor = vec4(toLayer.rgb + fromMixed.rgb * (1.0 - toLayer.a), 1.0);
+  if (progress < 0.5) {
+    float local = progress * 2.0;
+    finalColor = mix(fromColor, fadeColor, local);
+    return;
   }
+
+  float local = (progress - 0.5) * 2.0;
+  finalColor = mix(fadeColor, toColor, local);
 }
 `;
 
 function normalizeFadeToBlackParams(params?: Record<string, unknown>): FadeToBlackParams {
   return {
     color: sanitizeTransitionColor(params?.color, '#000000'),
-    mode: params?.mode === 'crossfade' ? 'crossfade' : 'dip',
   };
 }
 
@@ -99,19 +76,9 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
   normalizeParams: normalizeFadeToBlackParams,
   paramFields: [
     {
-      key: 'mode',
-      kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramFadeMode',
-      options: [
-        { value: 'dip', labelKey: 'granVideoEditor.timeline.transition.fadeModeDip' },
-        { value: 'crossfade', labelKey: 'granVideoEditor.timeline.transition.fadeModeCrossfade' },
-      ],
-    },
-    {
       key: 'color',
       kind: 'color',
       labelKey: 'granVideoEditor.timeline.transition.paramFadeColor',
-      showIf: (params) => params.mode !== 'crossfade',
     },
   ],
   renderMode: 'shader',
@@ -123,7 +90,6 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
         fadeToBlackUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uFadeColor: { value: [0, 0, 0], type: 'vec3<f32>' },
-          uMode: { value: 0, type: 'i32' },
         },
       },
     }),
@@ -137,10 +103,9 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uFadeColor = [rgb.r, rgb.g, rgb.b];
-    uniforms.uMode = params.mode === 'crossfade' ? 1 : 0;
   },
   computeOutOpacity: () => {
-    // In both modes, the background under the fade should never be transparent.
+    // The background under the fade should never be transparent.
     // We let the shader handle the full transition logic
     // so we return 1 (fully opaque) for the outgoing clip mask/shadow.
     return 1;
