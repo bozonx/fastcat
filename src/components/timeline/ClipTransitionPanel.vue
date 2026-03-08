@@ -86,7 +86,7 @@ function getColorValue(value: unknown): string {
 const visibleParamFields = computed<TransitionParamField[]>(() => {
   const fields = selectedManifest.value?.paramFields ?? [];
 
-  if (selectedType.value !== 'wipe') {
+  if (selectedType.value !== 'wipe' && selectedType.value !== 'barn-door') {
     return fields;
   }
 

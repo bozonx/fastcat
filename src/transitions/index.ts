@@ -5,6 +5,7 @@ import { circleManifest } from './circle/manifest';
 import { clockManifest } from './clock/manifest';
 import { slideManifest } from './slide/manifest';
 import { wipeManifest } from './wipe/manifest';
+import { barnDoorManifest } from './barn-door/manifest';
 import { cubeTransitionManifest } from './cube/manifest';
 import { cardSwapTransitionManifest } from './card-swap/manifest';
 import { fallingCardTransitionManifest } from './falling-card/manifest';
@@ -20,6 +21,7 @@ export function initTransitions(): void {
   registerTransition(circleManifest);
   registerTransition(rectangleManifest);
   registerTransition(wipeManifest);
+  registerTransition(barnDoorManifest);
   registerTransition(cubeTransitionManifest);
   registerTransition(cardSwapTransitionManifest);
   registerTransition(fallingCardTransitionManifest);
