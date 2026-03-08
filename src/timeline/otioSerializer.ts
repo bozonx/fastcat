@@ -336,10 +336,6 @@ function parseClipItem(input: {
       typeof granMeta?.audioGain === 'number' && Number.isFinite(granMeta.audioGain)
         ? Math.max(0, Math.min(10, Number(granMeta.audioGain)))
         : undefined,
-    audioBalance:
-      typeof granMeta?.audioBalance === 'number' && Number.isFinite(granMeta.audioBalance)
-        ? Math.max(-1, Math.min(1, Number(granMeta.audioBalance)))
-        : undefined,
     audioFadeInUs:
       typeof granMeta?.audioFadeInUs === 'number' && Number.isFinite(granMeta.audioFadeInUs)
         ? Math.max(0, Math.round(granMeta.audioFadeInUs))
@@ -347,6 +343,14 @@ function parseClipItem(input: {
     audioFadeOutUs:
       typeof granMeta?.audioFadeOutUs === 'number' && Number.isFinite(granMeta.audioFadeOutUs)
         ? Math.max(0, Math.round(granMeta.audioFadeOutUs))
+        : undefined,
+    audioFadeInCurve:
+      granMeta?.audioFadeInCurve === 'linear' || granMeta?.audioFadeInCurve === 'logarithmic'
+        ? granMeta.audioFadeInCurve
+        : undefined,
+    audioFadeOutCurve:
+      granMeta?.audioFadeOutCurve === 'linear' || granMeta?.audioFadeOutCurve === 'logarithmic'
+        ? granMeta.audioFadeOutCurve
         : undefined,
     audioMuted: granMeta?.audioMuted !== undefined ? Boolean(granMeta.audioMuted) : undefined,
     audioWaveformMode:
@@ -629,6 +633,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             audioGain: item.audioGain,
             audioFadeInUs: item.audioFadeInUs,
             audioFadeOutUs: item.audioFadeOutUs,
+            audioFadeInCurve: item.audioFadeInCurve,
+            audioFadeOutCurve: item.audioFadeOutCurve,
             audioMuted: item.audioMuted,
             audioWaveformMode: item.audioWaveformMode,
             showWaveform: item.showWaveform,

@@ -203,6 +203,10 @@ export function useMonitorTimeline() {
         audioBalance: item.audioBalance,
         audioFadeInUs: item.audioFadeInUs,
         audioFadeOutUs: item.audioFadeOutUs,
+        audioFadeInCurve: item.audioFadeInCurve,
+        audioFadeOutCurve: item.audioFadeOutCurve,
+        transitionIn: item.transitionIn,
+        transitionOut: item.transitionOut,
         source: {
           path: item.source.path,
         },

@@ -227,6 +227,8 @@ async function buildVideoTrackTree(
         audioBalance: (item as any).audioBalance,
         audioFadeInUs: (item as any).audioFadeInUs,
         audioFadeOutUs: (item as any).audioFadeOutUs,
+        audioFadeInCurve: (item as any).audioFadeInCurve,
+        audioFadeOutCurve: (item as any).audioFadeOutCurve,
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
@@ -326,6 +328,8 @@ async function buildVideoTrackTree(
                 parentLocalEndUs: overlapEndUs - windowStartUs,
                 parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
               }),
+              audioFadeInCurve: nestedClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
+              audioFadeOutCurve: nestedClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
             });
           }
         } catch (error) {
@@ -473,6 +477,8 @@ export async function toWorkerTimelineClips(
       audioBalance: (item as any).audioBalance,
       audioFadeInUs: (item as any).audioFadeInUs,
       audioFadeOutUs: (item as any).audioFadeOutUs,
+      audioFadeInCurve: (item as any).audioFadeInCurve,
+      audioFadeOutCurve: (item as any).audioFadeOutCurve,
       opacity: combinedOpacity,
       blendMode: combinedBlendMode,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
@@ -595,6 +601,10 @@ export async function toWorkerTimelineClips(
                         parentLocalEndUs: overlapEndUs - windowStartUs,
                         parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
                       }),
+                      audioFadeInCurve:
+                        resolvedNClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
+                      audioFadeOutCurve:
+                        resolvedNClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
                       timelineRange: {
                         startUs: parentStartUs,
                         durationUs: visibleDurationUs,
@@ -681,6 +691,10 @@ export async function toWorkerTimelineClips(
                       parentLocalEndUs,
                       parentDurationUs,
                     }),
+                    audioFadeInCurve:
+                      resolvedNClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
+                    audioFadeOutCurve:
+                      resolvedNClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
                     timelineRange: {
                       startUs: parentStartUs,
                       durationUs: visibleDurationUs,

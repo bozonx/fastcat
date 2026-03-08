@@ -4,6 +4,7 @@ import type { TransitionManifest } from '../core/registry';
 
 export interface FadeToBlackParams {
   color: string;
+  mode: 'dip' | 'crossfade';
 }
 
 const vertex = `
@@ -41,6 +42,7 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform vec3 uFadeColor;
+uniform int uMode;
 
 void main(void) {
   vec2 uv = vNormalizedCoord;
@@ -49,20 +51,27 @@ void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec4 fadeColor = vec4(uFadeColor, 1.0);
 
-  if (progress < 0.5) {
-    float local = progress * 2.0;
-    gl_FragColor = mix(fromColor, fadeColor, local);
-    return;
-  }
+  if (uMode == 0) {
+    if (progress < 0.5) {
+      float local = progress * 2.0;
+      gl_FragColor = mix(fromColor, fadeColor, local);
+      return;
+    }
 
-  float local = (progress - 0.5) * 2.0;
-  gl_FragColor = mix(fadeColor, toColor, local);
+    float local = (progress - 0.5) * 2.0;
+    gl_FragColor = mix(fadeColor, toColor, local);
+  } else {
+    vec4 mixedColor = mix(fromColor, toColor, progress);
+    float brightness = abs(progress * 2.0 - 1.0);
+    gl_FragColor = vec4(mixedColor.rgb * brightness, mixedColor.a);
+  }
 }
 `;
 
 function normalizeFadeToBlackParams(params?: Record<string, unknown>): FadeToBlackParams {
   return {
     color: sanitizeTransitionColor(params?.color, '#000000'),
+    mode: params?.mode === 'crossfade' ? 'crossfade' : 'dip',
   };
 }
 
@@ -75,9 +84,19 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
   normalizeParams: normalizeFadeToBlackParams,
   paramFields: [
     {
+      key: 'mode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramFadeMode',
+      options: [
+        { value: 'dip', labelKey: 'granVideoEditor.timeline.transition.fadeModeDip' },
+        { value: 'crossfade', labelKey: 'granVideoEditor.timeline.transition.fadeModeCrossfade' },
+      ],
+    },
+    {
       key: 'color',
       kind: 'color',
       labelKey: 'granVideoEditor.timeline.transition.paramFadeColor',
+      showIf: (params) => params.mode !== 'crossfade',
     },
   ],
   renderMode: 'shader',
@@ -89,6 +108,7 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
         fadeToBlackUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uFadeColor: { value: [0, 0, 0], type: 'vec3<f32>' },
+          uMode: { value: 0, type: 'i32' },
         },
       },
     }),
@@ -103,16 +123,23 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uFadeColor = [rgb.r, rgb.g, rgb.b];
+    uniforms.uMode = params.mode === 'crossfade' ? 1 : 0;
   },
-  computeOutOpacity: (progress, _params, curve) => {
+  computeOutOpacity: (progress, params, curve) => {
     const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
+    if (params.mode === 'crossfade') {
+      return 1 - p;
+    }
     if (p < 0.5) {
       return 1 - p * 2;
     }
     return 0;
   },
-  computeInOpacity: (progress, _params, curve) => {
+  computeInOpacity: (progress, params, curve) => {
     const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
+    if (params.mode === 'crossfade') {
+      return p;
+    }
     if (p < 0.5) {
       return 0;
     }
