@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
-import { getAllEffectManifests } from '~/effects';
+import { getAllEffectManifests, getEffectManifest } from '~/effects';
 import { getAllTransitionManifests } from '~/transitions';
+import { getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 
@@ -17,24 +18,26 @@ const transitions = computed(() => getAllTransitionManifests());
 
 const standardEffects = computed(() => effects.value.filter(e => !e.isCustom));
 const customEffects = computed(() => {
-  const custom = effects.value.filter(e => e.isCustom);
-  // Sort according to presets store order
-  return custom.sort((a, b) => {
-    const presetA = presetsStore.customPresets.find(p => p.id === a.type);
-    const presetB = presetsStore.customPresets.find(p => p.id === b.type);
-    return (presetA?.order ?? 0) - (presetB?.order ?? 0);
-  });
+  const presetManifests = presetsStore.customPresets
+    .filter((preset) => preset.category === 'effect')
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((preset) => getEffectManifest(preset.id))
+    .filter(Boolean);
+
+  return presetManifests;
 });
 
 const standardTransitions = computed(() => transitions.value.filter(t => !t.isCustom));
 const customTransitions = computed(() => {
-  const custom = transitions.value.filter(t => t.isCustom);
-  // Sort according to presets store order
-  return custom.sort((a, b) => {
-    const presetA = presetsStore.customPresets.find(p => p.id === a.type);
-    const presetB = presetsStore.customPresets.find(p => p.id === b.type);
-    return (presetA?.order ?? 0) - (presetB?.order ?? 0);
-  });
+  const presetManifests = presetsStore.customPresets
+    .filter((preset) => preset.category === 'transition')
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((preset) => getTransitionManifest(preset.id))
+    .filter(Boolean);
+
+  return presetManifests;
 });
 
 function handleDragStart(event: DragEvent, type: string, category: 'effect' | 'transition') {
@@ -167,6 +170,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               class="flex flex-col gap-2"
               :animation="150"
               ghost-class="opacity-50"
+              handle=".drag-handle"
               @update:model-value="updateCustomEffectsOrder"
             >
               <div
@@ -270,6 +274,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               class="flex flex-col gap-2"
               :animation="150"
               ghost-class="opacity-50"
+              handle=".drag-handle"
               @update:model-value="updateCustomTransitionsOrder"
             >
               <div
