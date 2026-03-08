@@ -10,6 +10,7 @@ import { cubeTransitionManifest } from './cube/manifest';
 import { cardSwapTransitionManifest } from './card-swap/manifest';
 import { fallingCardTransitionManifest } from './falling-card/manifest';
 import { zoomManifest } from './zoom/manifest';
+import { bloomManifest } from './bloom/manifest';
 
 import { rectangleManifest } from './rectangle/manifest';
 
@@ -26,6 +27,7 @@ export function initTransitions(): void {
   registerTransition(cardSwapTransitionManifest);
   registerTransition(fallingCardTransitionManifest);
   registerTransition(zoomManifest);
+  registerTransition(bloomManifest);
 }
 
 export * from './core/registry';
@@ -39,3 +41,4 @@ export * from './wipe/manifest';
 export * from './cube/manifest';
 export * from './card-swap/manifest';
 export * from './falling-card/manifest';
+export * from './bloom/manifest';

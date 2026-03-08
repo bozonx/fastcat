@@ -5,6 +5,29 @@ export function clampNumber(value: unknown, min: number, max: number): number | 
   return Math.max(min, Math.min(max, value));
 }
 
+export type AudioFadeCurve = 'linear' | 'logarithmic';
+
+export interface AudioTransitionEnvelope {
+  durationUs?: unknown;
+  mode?: unknown;
+  curve?: unknown;
+}
+
+export interface AudioEnvelopeClipLike {
+  timelineRange?: { durationUs?: number };
+  audioFadeInUs?: unknown;
+  audioFadeOutUs?: unknown;
+  audioFadeInCurve?: unknown;
+  audioFadeOutCurve?: unknown;
+  transitionIn?: AudioTransitionEnvelope | null;
+  transitionOut?: AudioTransitionEnvelope | null;
+}
+
+export interface EffectiveFadeDurationsSeconds extends FadeDurationsSeconds {
+  fadeInCurve: AudioFadeCurve;
+  fadeOutCurve: AudioFadeCurve;
+}
+
 export function normalizeGain(raw: unknown, fallback = 1): number {
   const n = clampNumber(raw, 0, 10);
   const base = typeof fallback === 'number' && Number.isFinite(fallback) ? fallback : 1;
@@ -59,16 +82,33 @@ export function computeFadeDurationsSeconds(params: {
   return { fadeInS, fadeOutS };
 }
 
+function applyFadeCurve(progress: number, curve: AudioFadeCurve): number {
+  const p = Math.max(0, Math.min(1, progress));
+  if (curve === 'logarithmic') {
+    return Math.sin((p * Math.PI) / 2);
+  }
+  return p;
+}
+
+function normalizeAudioFadeCurve(curve?: unknown): AudioFadeCurve {
+  if (curve === 'linear' || curve === 'logarithmic') return curve;
+  return 'linear';
+}
+
 export function getGainAtClipTime(params: {
   clipDurationS: number;
   fadeInS: number;
   fadeOutS: number;
+  fadeInCurve?: AudioFadeCurve;
+  fadeOutCurve?: AudioFadeCurve;
   baseGain: number;
   tClipS: number;
 }): number {
   const clipDurationS = Math.max(0, params.clipDurationS);
   const fadeInS = Math.max(0, Math.min(params.fadeInS, clipDurationS));
   const fadeOutS = Math.max(0, Math.min(params.fadeOutS, clipDurationS));
+  const fadeInCurve = normalizeAudioFadeCurve(params.fadeInCurve);
+  const fadeOutCurve = normalizeAudioFadeCurve(params.fadeOutCurve);
   const baseGain = Math.max(0, Math.min(10, params.baseGain));
 
   const t = Math.max(0, Math.min(clipDurationS, params.tClipS));
@@ -76,13 +116,13 @@ export function getGainAtClipTime(params: {
   let g = baseGain;
 
   if (fadeInS > 0 && t < fadeInS) {
-    g *= t / fadeInS;
+    g *= applyFadeCurve(t / fadeInS, fadeInCurve);
   }
 
   if (fadeOutS > 0 && t > clipDurationS - fadeOutS) {
     const remaining = clipDurationS - t;
     if (remaining <= 0) g = 0;
-    else g *= remaining / fadeOutS;
+    else g *= applyFadeCurve(remaining / fadeOutS, fadeOutCurve);
   }
 
   return Math.max(0, Math.min(10, g));
