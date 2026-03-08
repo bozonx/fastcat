@@ -195,6 +195,29 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     return { clip, adjacent };
   }
 
+  function getTransitionAdjacentHandleLimitUs(input: {
+    edge: 'in' | 'out';
+    adjacent: TimelineClipItem | null;
+  }): number {
+    if (!input.adjacent) return Number.POSITIVE_INFINITY;
+
+    if (input.edge === 'in') {
+      const prev = input.adjacent;
+      const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
+      const prevMaxEnd =
+        (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
+          ? ((prev as any).sourceDurationUs ?? prevSourceEnd)
+          : Number.POSITIVE_INFINITY;
+      return Number.isFinite(prevMaxEnd)
+        ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
+        : Number.POSITIVE_INFINITY;
+    }
+
+    return input.adjacent.clipType === 'media' || input.adjacent.clipType === 'timeline'
+      ? Math.max(0, Math.round(Number(input.adjacent.sourceRange?.startUs ?? 0)))
+      : Number.POSITIVE_INFINITY;
+  }
+
   function computeMaxResizableTransitionDurationUs(input: {
     trackId: string;
     itemId: string;
@@ -221,26 +244,10 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
     const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
     if (mode === 'transition' && adjacent) {
-      if (input.edge === 'in') {
-        const prev = adjacent;
-        const prevSourceEnd =
-          (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
-        const prevMaxEnd =
-          (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
-            ? ((prev as any).sourceDurationUs ?? prevSourceEnd)
-            : Number.POSITIVE_INFINITY;
-        const prevTailHandleUs = Number.isFinite(prevMaxEnd)
-          ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
-          : Number.POSITIVE_INFINITY;
-        limitByHandle = Math.max(0, prevTailHandleUs);
-      } else {
-        const next = adjacent;
-        const nextHeadHandleUs = Math.max(0, Math.round(Number(next.sourceRange?.startUs ?? 0)));
-        limitByHandle =
-          next.clipType === 'media' || next.clipType === 'timeline'
-            ? nextHeadHandleUs
-            : Number.POSITIVE_INFINITY;
-      }
+      limitByHandle = getTransitionAdjacentHandleLimitUs({
+        edge: input.edge,
+        adjacent,
+      });
     }
 
     if (mode === 'fade') {
@@ -294,23 +301,10 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     const gapUs = Math.abs(clipEdgeUs - adjacentEdgeUs);
     if (gapUs > 1_000) return null;
 
-    let handleLimitUs = Number.POSITIVE_INFINITY;
-    if (input.edge === 'in') {
-      const adjacentSourceEnd =
-        (adjacent.sourceRange?.startUs ?? 0) + (adjacent.sourceRange?.durationUs ?? 0);
-      const adjacentMaxEnd =
-        (adjacent.clipType === 'media' || adjacent.clipType === 'timeline') && !adjacent.isImage
-          ? ((adjacent as any).sourceDurationUs ?? adjacentSourceEnd)
-          : Number.POSITIVE_INFINITY;
-      handleLimitUs = Number.isFinite(adjacentMaxEnd)
-        ? Math.max(0, Math.round(Number(adjacentMaxEnd)) - Math.round(adjacentSourceEnd))
-        : Number.POSITIVE_INFINITY;
-    } else {
-      handleLimitUs =
-        adjacent.clipType === 'media' || adjacent.clipType === 'timeline'
-          ? Math.max(0, Math.round(Number(adjacent.sourceRange?.startUs ?? 0)))
-          : Number.POSITIVE_INFINITY;
-    }
+    const handleLimitUs = getTransitionAdjacentHandleLimitUs({
+      edge: input.edge,
+      adjacent,
+    });
 
     if (!Number.isFinite(handleLimitUs)) return null;
     return Math.max(0, Math.round(handleLimitUs));
