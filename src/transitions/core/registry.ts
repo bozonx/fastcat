@@ -47,7 +47,7 @@ export interface TransitionParamOption {
 
 export interface TransitionParamField {
   key: string;
-  kind: 'number' | 'color' | 'select' | 'slider';
+  kind: 'number' | 'color' | 'select' | 'slider' | 'boolean';
   labelKey: string;
   min?: number;
   max?: number;
