@@ -296,7 +296,8 @@ function parseClipItem(input: {
     clipTypeRaw === 'adjustment' ||
     clipTypeRaw === 'media' ||
     clipTypeRaw === 'timeline' ||
-    clipTypeRaw === 'text'
+    clipTypeRaw === 'text' ||
+    clipTypeRaw === 'shape'
       ? clipTypeRaw
       : isOtioPath(path)
         ? 'timeline'
@@ -448,6 +449,40 @@ function parseClipItem(input: {
       sourceRange,
       text,
       style,
+    };
+  }
+
+  if (clipType === 'shape') {
+    const shapeType =
+      granMeta?.shapeType === 'square' ||
+      granMeta?.shapeType === 'circle' ||
+      granMeta?.shapeType === 'triangle' ||
+      granMeta?.shapeType === 'star' ||
+      granMeta?.shapeType === 'cloud' ||
+      granMeta?.shapeType === 'speech_bubble' ||
+      granMeta?.shapeType === 'bang'
+        ? granMeta.shapeType
+        : 'square';
+
+    return {
+      ...base,
+      clipType: 'shape',
+      sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
+      timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
+      sourceRange,
+      shapeType,
+      fillColor:
+        typeof granMeta?.fillColor === 'string' && granMeta.fillColor.trim().length > 0
+          ? granMeta.fillColor
+          : '#ffffff',
+      strokeColor:
+        typeof granMeta?.strokeColor === 'string' && granMeta.strokeColor.trim().length > 0
+          ? granMeta.strokeColor
+          : '#000000',
+      strokeWidth:
+        typeof granMeta?.strokeWidth === 'number' && Number.isFinite(granMeta.strokeWidth)
+          ? Math.max(0, Number(granMeta.strokeWidth))
+          : 0,
     };
   }
 
@@ -651,6 +686,10 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
               item.clipType === 'background' ? (item as any).backgroundColor : undefined,
             text: item.clipType === 'text' ? (item as any).text : undefined,
             style: item.clipType === 'text' ? (item as any).style : undefined,
+            shapeType: item.clipType === 'shape' ? (item as any).shapeType : undefined,
+            fillColor: item.clipType === 'shape' ? (item as any).fillColor : undefined,
+            strokeColor: item.clipType === 'shape' ? (item as any).strokeColor : undefined,
+            strokeWidth: item.clipType === 'shape' ? (item as any).strokeWidth : undefined,
             isImage: item.isImage,
             transform: item.transform,
           },

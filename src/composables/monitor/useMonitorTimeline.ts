@@ -134,6 +134,14 @@ export function useMonitorTimeline() {
             text: String((item as any).text ?? ''),
             style: (item as any).style,
           });
+        } else if (clipType === 'shape') {
+          clips.push({
+            ...base,
+            shapeType: (item as any).shapeType ?? 'square',
+            fillColor: String((item as any).fillColor ?? '#ffffff'),
+            strokeColor: String((item as any).strokeColor ?? '#000000'),
+            strokeWidth: Number((item as any).strokeWidth ?? 0),
+          });
         } else {
           clips.push(base);
         }
