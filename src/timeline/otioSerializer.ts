@@ -10,7 +10,7 @@ import type {
   TimelineTrackItem,
   TrackKind,
 } from './types';
-import { normalizeTransitionMode } from '~/transitions';
+import { normalizeTransitionCurve, normalizeTransitionMode } from '~/transitions';
 
 interface OtioRationalTime {
   OTIO_SCHEMA: 'RationalTime.1';
@@ -379,10 +379,7 @@ function parseClipItem(input: {
             type: granMeta.transitionIn.type,
             durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)),
             mode: normalizeTransitionMode(granMeta.transitionIn.mode),
-            curve:
-              granMeta.transitionIn.curve === 'bezier' || granMeta.transitionIn.curve === 'linear'
-                ? granMeta.transitionIn.curve
-                : undefined,
+            curve: normalizeTransitionCurve(granMeta.transitionIn.curve),
             params:
               granMeta.transitionIn.params && typeof granMeta.transitionIn.params === 'object'
                 ? (granMeta.transitionIn.params as Record<string, unknown>)
@@ -397,10 +394,7 @@ function parseClipItem(input: {
             type: granMeta.transitionOut.type,
             durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)),
             mode: normalizeTransitionMode(granMeta.transitionOut.mode),
-            curve:
-              granMeta.transitionOut.curve === 'bezier' || granMeta.transitionOut.curve === 'linear'
-                ? granMeta.transitionOut.curve
-                : undefined,
+            curve: normalizeTransitionCurve(granMeta.transitionOut.curve),
             params:
               granMeta.transitionOut.params && typeof granMeta.transitionOut.params === 'object'
                 ? (granMeta.transitionOut.params as Record<string, unknown>)

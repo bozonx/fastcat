@@ -5,6 +5,7 @@ interface Option {
   icon?: string;
   disabled?: boolean;
   title?: string;
+  [key: string]: unknown;
 }
 
 const props = withDefaults(

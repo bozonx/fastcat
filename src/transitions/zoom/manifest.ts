@@ -1,5 +1,5 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
-import { clampNumber, easeInOutCubic } from '../core/registry';
+import { applyTransitionCurve, clampNumber } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface ZoomParams {
@@ -286,8 +286,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     const uniforms = resources?.zoomUniforms?.uniforms;
     if (!uniforms) return;
 
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
 
     const params = normalizeZoomParams(context.params);
 

@@ -1,7 +1,7 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
 import {
+  applyTransitionCurve,
   clampNumber,
-  easeInOutCubic,
   hexColorToRgb01,
   sanitizeTransitionColor,
 } from '../core/registry';
@@ -242,8 +242,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.barnDoorUniforms?.uniforms;
     if (!uniforms) return;
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeBarnDoorParams(context.params);
 
     const fromTex = context.fromTexture;

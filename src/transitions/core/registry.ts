@@ -4,11 +4,28 @@ export type TransitionType = string;
 
 export type TransitionMode = 'transition' | 'fade';
 
-export type TransitionCurve = 'linear' | 'bezier';
+export type TransitionCurve =
+  | 'linear'
+  | 'bezier'
+  | 'linear-slow-end'
+  | 'fast-slow-end'
+  | 'fast-linear-end'
+  | 'slow-linear-end'
+  | 'linear-fast-end';
 
 export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transition';
 
 export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
+
+export const TRANSITION_CURVE_VALUES: TransitionCurve[] = [
+  'linear',
+  'bezier',
+  'linear-slow-end',
+  'fast-slow-end',
+  'fast-linear-end',
+  'slow-linear-end',
+  'linear-fast-end',
+];
 
 export interface TransitionShaderContext {
   progress: number;
@@ -57,6 +74,57 @@ export interface TransitionManifest<T = Record<string, any>> {
 /** Cubic ease-in-out approximation for bezier transition curve */
 export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function clampProgress(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(1, value));
+}
+
+function remapSegment(
+  t: number,
+  split: number,
+  mapper: (segmentT: number) => number,
+  startValue: number,
+  endValue: number,
+): number {
+  if (split <= 0 || split >= 1) {
+    return mapper(t);
+  }
+
+  if (t <= split) {
+    const localT = t / split;
+    return startValue + (endValue - startValue) * mapper(localT);
+  }
+
+  const localT = (t - split) / (1 - split);
+  return endValue + (1 - endValue) * mapper(localT);
+}
+
+export function applyTransitionCurve(progress: number, curve: TransitionCurve): number {
+  const t = clampProgress(progress);
+
+  switch (curve) {
+    case 'linear':
+      return t;
+    case 'bezier':
+      return easeInOutCubic(t);
+    case 'linear-slow-end':
+      return remapSegment(t, 0.5, (segmentT) => 1 - Math.pow(1 - segmentT, 2), 0, 0.5);
+    case 'fast-slow-end':
+      return Math.sin((t * Math.PI) / 2);
+    case 'fast-linear-end':
+      return remapSegment(t, 0.5, (segmentT) => 1 - Math.pow(1 - segmentT, 2), 0, 0.65);
+    case 'slow-linear-end':
+      return remapSegment(t, 0.5, (segmentT) => segmentT * segmentT, 0, 0.35);
+    case 'linear-fast-end':
+      return remapSegment(t, 0.5, (segmentT) => segmentT * segmentT, 0, 0.5);
+    default:
+      return t;
+  }
 }
 
 export function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
@@ -113,7 +181,9 @@ export function normalizeTransitionMode(value: unknown): TransitionMode {
 }
 
 export function normalizeTransitionCurve(value: unknown): TransitionCurve {
-  return value === 'bezier' || value === 'linear' ? value : DEFAULT_TRANSITION_CURVE;
+  return typeof value === 'string' && TRANSITION_CURVE_VALUES.includes(value as TransitionCurve)
+    ? (value as TransitionCurve)
+    : DEFAULT_TRANSITION_CURVE;
 }
 
 const registry = new Map<TransitionType, TransitionManifest<any>>();

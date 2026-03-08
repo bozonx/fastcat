@@ -1,7 +1,7 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
 import {
+  applyTransitionCurve,
   clampNumber,
-  easeInOutCubic,
   hexColorToRgb01,
   sanitizeTransitionColor,
 } from '../core/registry';
@@ -165,8 +165,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.slideUniforms?.uniforms;
     if (!uniforms) return;
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeSlideParams(context.params);
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);

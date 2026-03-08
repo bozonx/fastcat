@@ -1,5 +1,5 @@
 import { Filter, GlProgram, Texture } from 'pixi.js';
-import { clampNumber, easeInOutCubic } from '../core/registry';
+import { applyTransitionCurve, clampNumber } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface RectangleParams {
@@ -248,8 +248,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.rectangleUniforms?.uniforms;
     if (!uniforms) return;
-    const progress =
-      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeRectangleParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));

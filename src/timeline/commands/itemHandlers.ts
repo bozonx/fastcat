@@ -39,6 +39,7 @@ import {
   normalizeTransitionMode,
   normalizeTransitionParams,
 } from '~/transitions';
+import type { TransitionCurve } from '~/transitions';
 
 function assertClipNotLocked(item: TimelineTrackItem, action: string) {
   if (item.kind !== 'clip') return;
@@ -1553,7 +1554,7 @@ export function updateClipTransition(
     type: string;
     durationUs: number;
     mode: 'transition' | 'fade';
-    curve: 'linear' | 'bezier';
+    curve: TransitionCurve;
     params?: Record<string, unknown>;
     isOverridden?: boolean;
   } | null {
@@ -1591,7 +1592,7 @@ export function updateClipTransition(
       type: string;
       durationUs: number;
       mode: 'transition' | 'fade';
-      curve: 'linear' | 'bezier';
+      curve: TransitionCurve;
       params?: Record<string, unknown>;
       isOverridden?: boolean;
     };
@@ -1599,7 +1600,7 @@ export function updateClipTransition(
     type: string;
     durationUs: number;
     mode: 'transition' | 'fade';
-    curve: 'linear' | 'bezier';
+    curve: TransitionCurve;
     params?: Record<string, unknown>;
     isOverridden?: boolean;
   } {

@@ -1,4 +1,4 @@
-import { easeInOutCubic } from '../core/registry';
+import { applyTransitionCurve } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -11,10 +11,10 @@ export const dissolveManifest: TransitionManifest<DissolveParams> = {
   defaultDurationUs: 500_000,
   defaultParams: {},
   computeOutOpacity: (progress, _params, curve) => {
-    const p = curve === 'bezier' ? easeInOutCubic(progress) : progress;
+    const p = applyTransitionCurve(progress, curve);
     return 1 - p;
   },
   computeInOpacity: (progress, _params, curve) => {
-    return curve === 'bezier' ? easeInOutCubic(progress) : progress;
+    return applyTransitionCurve(progress, curve);
   },
 };

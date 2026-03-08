@@ -1,4 +1,5 @@
 import type { ClipEffect as BaseClipEffect } from '../effects/core/registry';
+import type { TransitionCurve } from '../transitions';
 import type { ColorAdjustmentParams } from '../effects/video/color-adjustment/manifest';
 import type { BlurParams } from '../effects/video/blur/manifest';
 import type { ColorMatrixParams } from '../effects/video/color-matrix/manifest';
@@ -90,7 +91,7 @@ export interface ClipTransition {
   /** True if the user manually changed the transition mode */
   isOverridden?: boolean;
   /** Opacity interpolation curve */
-  curve?: 'linear' | 'bezier';
+  curve?: TransitionCurve;
   params?: Record<string, unknown>;
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -13,7 +13,12 @@ import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
-import { clampHandlePx, getClipClass, transitionSvgParts } from '~/utils/timeline/clip';
+import {
+  clampHandlePx,
+  getClipClass,
+  getFadeLinePattern as getTransitionFadeLinePattern,
+  getTransitionCurvePreviewPaths,
+} from '~/utils/timeline/clip';
 import { getEffectManifest } from '~/effects';
 import { sanitizeFps } from '~/timeline/commands/utils';
 
@@ -346,31 +351,17 @@ function getFadeLineColor(hasProblem: boolean): string {
   return 'rgba(0, 0, 0, 0.82)';
 }
 
-function buildFadeLinePattern(edge: 'in' | 'out'): Array<{ x: number; width: number }> {
-  const positions: number[] = [];
-  let offset = 1;
-  let gap = 1.25;
-
-  while (offset < 100) {
-    positions.push(Math.min(99.25, offset));
-    offset += gap;
-    gap *= 1.18;
-  }
-
-  const normalized =
-    edge === 'in' ? positions : positions.map((position) => 100 - position).reverse();
-
-  return normalized.map((x) => ({
-    x: Math.max(0, Math.min(99.5, x)),
-    width: 0.8,
-  }));
+function getTransitionCurve(edge: 'in' | 'out') {
+  const transition = edge === 'in' ? clipItem.value?.transitionIn : clipItem.value?.transitionOut;
+  return transition?.curve ?? DEFAULT_TRANSITION_CURVE;
 }
 
-const fadeLinePatternIn = buildFadeLinePattern('in');
-const fadeLinePatternOut = buildFadeLinePattern('out');
+function getTransitionFadeLines(edge: 'in' | 'out') {
+  return getTransitionFadeLinePattern(edge, getTransitionCurve(edge), 100);
+}
 
-function getFadeLinePattern(edge: 'in' | 'out') {
-  return edge === 'in' ? fadeLinePatternIn : fadeLinePatternOut;
+function getTransitionCurvePaths(edge: 'in' | 'out') {
+  return getTransitionCurvePreviewPaths(100, 100, getTransitionCurve(edge), edge);
 }
 
 function getTransitionProblem(
@@ -953,7 +944,7 @@ const isFreePosition = computed(() => {
               >
                 <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
                 <rect
-                  v-for="line in getFadeLinePattern('in')"
+                  v-for="line in getTransitionFadeLines('in')"
                   :key="`fade-in-${line.x}`"
                   :x="line.x"
                   y="0"
@@ -970,8 +961,18 @@ const isFreePosition = computed(() => {
               viewBox="0 0 100 100"
             >
               <path
-                :d="transitionSvgParts(100, 100, 'in')"
-                :fill="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
+                :d="getTransitionCurvePaths('in').top"
+                fill="none"
+                :stroke="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
+                stroke-width="8"
+                stroke-linecap="round"
+              />
+              <path
+                :d="getTransitionCurvePaths('in').bottom"
+                fill="none"
+                :stroke="getTransitionSvgFill('in', Boolean(hasTransitionInProblem(track, item)))"
+                stroke-width="8"
+                stroke-linecap="round"
               />
             </svg>
             <span
@@ -1038,7 +1039,7 @@ const isFreePosition = computed(() => {
               >
                 <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
                 <rect
-                  v-for="line in getFadeLinePattern('out')"
+                  v-for="line in getTransitionFadeLines('out')"
                   :key="`fade-out-${line.x}`"
                   :x="line.x"
                   y="0"
@@ -1055,8 +1056,18 @@ const isFreePosition = computed(() => {
               viewBox="0 0 100 100"
             >
               <path
-                :d="transitionSvgParts(100, 100, 'out')"
-                :fill="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
+                :d="getTransitionCurvePaths('out').top"
+                fill="none"
+                :stroke="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
+                stroke-width="8"
+                stroke-linecap="round"
+              />
+              <path
+                :d="getTransitionCurvePaths('out').bottom"
+                fill="none"
+                :stroke="getTransitionSvgFill('out', Boolean(hasTransitionOutProblem(track, item)))"
+                stroke-width="8"
+                stroke-linecap="round"
               />
             </svg>
             <span
