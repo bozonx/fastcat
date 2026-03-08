@@ -183,6 +183,7 @@ export interface CompositorClip {
   transitionOutputTexture?: RenderTexture | null;
   transitionCombinedTexture?: RenderTexture | null;
   textDirty?: boolean;
+  shapeDirty?: boolean;
 }
 
 export interface CompositorTrack {
@@ -827,7 +828,7 @@ export class VideoCompositor {
           transitionOut: clipData.transitionOut,
           transitionFilter: null,
           transitionFilterType: null,
-          textDirty: true, // Reuse textDirty for shape updates for now
+          shapeDirty: true,
         };
 
         (compositorClip as any).clipType = 'shape';
@@ -1295,6 +1296,27 @@ export class VideoCompositor {
         clip.text = nextText;
         clip.style = nextStyle;
       }
+      if (clip.clipKind === 'shape') {
+        const nextType = (next as any).shapeType ?? 'square';
+        const nextFill = String((next as any).fillColor ?? '#ffffff');
+        const nextStroke = String((next as any).strokeColor ?? '#000000');
+        const nextStrokeWidth = Number((next as any).strokeWidth ?? 0);
+
+        if (
+          clip.shapeType !== nextType ||
+          clip.fillColor !== nextFill ||
+          clip.strokeColor !== nextStroke ||
+          clip.strokeWidth !== nextStrokeWidth ||
+          clip.shapeDirty === true
+        ) {
+          clip.shapeDirty = true;
+        }
+
+        clip.shapeType = nextType;
+        clip.fillColor = nextFill;
+        clip.strokeColor = nextStroke;
+        clip.strokeWidth = nextStrokeWidth;
+      }
       const trackRuntime = this.getTrackRuntimeForClip(clip);
       if (trackRuntime && clip.sprite.parent !== trackRuntime.container) {
         trackRuntime.container.addChild(clip.sprite);
@@ -1392,6 +1414,10 @@ export class VideoCompositor {
         }
 
         if (clip.clipKind === 'shape') {
+          if (clip.shapeDirty) {
+            this.drawShapeClip(clip);
+            clip.shapeDirty = false;
+          }
           clip.sprite.visible = true;
           continue;
         }

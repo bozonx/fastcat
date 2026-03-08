@@ -866,13 +866,13 @@ defineExpose({
           <USelectMenu
             :model-value="String((clip as any).shapeType ?? 'square')"
             :items="[
-              { value: 'square', label: 'Square' },
-              { value: 'circle', label: 'Circle' },
-              { value: 'triangle', label: 'Triangle' },
-              { value: 'star', label: 'Star' },
-              { value: 'bang', label: 'Bang' },
-              { value: 'cloud', label: 'Cloud' },
-              { value: 'speech_bubble', label: 'Speech Bubble' },
+              { value: 'square', label: t('granVideoEditor.shapeClip.types.square', 'Square') },
+              { value: 'circle', label: t('granVideoEditor.shapeClip.types.circle', 'Circle') },
+              { value: 'triangle', label: t('granVideoEditor.shapeClip.types.triangle', 'Triangle') },
+              { value: 'star', label: t('granVideoEditor.shapeClip.types.star', 'Star') },
+              { value: 'bang', label: t('granVideoEditor.shapeClip.types.bang', 'Bang') },
+              { value: 'cloud', label: t('granVideoEditor.shapeClip.types.cloud', 'Cloud') },
+              { value: 'speech_bubble', label: t('granVideoEditor.shapeClip.types.speechBubble', 'Speech Bubble') },
             ]"
             value-key="value"
             label-key="label"
