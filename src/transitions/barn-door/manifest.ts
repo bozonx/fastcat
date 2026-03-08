@@ -242,12 +242,13 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.barnDoorUniforms?.uniforms;
     if (!uniforms) return;
-    let progress = context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
+    const progress =
+      context.curve === 'bezier' ? easeInOutCubic(context.progress) : context.progress;
     const params = normalizeBarnDoorParams(context.params);
 
     const fromTex = context.fromTexture;
     const toTex = context.toTexture;
-    let applyToEdgeBlur = context.edge === 'in' ? 1 : 0;
+    const applyToEdgeBlur = context.edge === 'in' ? 1 : 0;
 
     const angleRad = params.angle * (Math.PI / 180);
     // angle 0 = vertical (axis x=1, y=0), angle 90 = horizontal (axis x=0, y=1)
