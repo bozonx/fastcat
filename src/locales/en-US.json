@@ -735,6 +735,8 @@
         "paramWipeEdgeBlur": "Edge blur",
         "paramGapSize": "Gap size",
         "paramGapColor": "Gap color",
+        "paramMotionBlur": "Motion blur",
+        "paramBlurRampDuration": "Blur ramp duration (ms)",
         "paramMode": "Mode",
         "modeBloom": "Bloom",
         "modeNormal": "Normal",
