@@ -462,9 +462,12 @@ export async function toWorkerTimelineClips(
     const combinedEffects =
       parentEffects.length > 0 ? [...itemEffects, ...parentEffects] : itemEffects;
 
+    const parentAudioBalance = (options as any)?.parentAudioBalance ?? 0;
+    const parentAudioGain = (options as any)?.parentAudioGain ?? 1;
+
     const base: WorkerTimelineClip = {
       kind: 'clip',
-      clipType: clipType === 'timeline' ? 'media' : clipType,
+      clipType: clipType === 'timeline' ? 'media' : (clipType as any),
       id: item.id,
       trackId: item.trackId,
       layer:
@@ -473,8 +476,8 @@ export async function toWorkerTimelineClips(
           ? Math.round((item as any).layer)
           : 0),
       speed: (item as any).speed,
-      audioGain: (item as any).audioGain,
-      audioBalance: (item as any).audioBalance,
+      audioGain: mergeGain(parentAudioGain, (item as any).audioGain),
+      audioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
       audioFadeInUs: (item as any).audioFadeInUs,
       audioFadeOutUs: (item as any).audioFadeOutUs,
       audioFadeInCurve: (item as any).audioFadeInCurve,
@@ -634,7 +637,9 @@ export async function toWorkerTimelineClips(
                   parentOpacity: combinedOpacity,
                   parentBlendMode: combinedBlendMode,
                   parentEffects: combinedEffects,
-                },
+                  parentAudioGain: mergeGain(parentAudioGain, (item as any).audioGain),
+                  parentAudioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
+                } as any,
               );
 
               for (const nClip of nestedWorkerClips) {

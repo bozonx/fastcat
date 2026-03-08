@@ -10,6 +10,7 @@ export interface CardSwapParams {
   shadowSize: number;
   shadowOpacity: number;
   blurStrength: number;
+  blurQuality: 'low' | 'medium' | 'high' | 'ultra';
   bloom: number;
 }
 
@@ -57,6 +58,7 @@ uniform float uMaxDarkness;
 uniform float uShadowSize;
 uniform float uShadowOpacity;
 uniform float uBlurStrength;
+uniform float uBlurSamples;
 uniform float uBloom;
 
 const float depth = 3.0;
@@ -161,7 +163,7 @@ void main(void) {
   vec4 finalCTo = vec4(0.0);
   
   // Blur passes
-  const int SAMPLES = 8;
+  int SAMPLES = int(uBlurSamples);
   float fSamples = float(SAMPLES);
   
   if (uMode > 0.5) {
@@ -173,7 +175,8 @@ void main(void) {
     if (pfrIn) {
       vec4 c = vec4(0.0);
       float tw = 0.0;
-      for(int i = 0; i < SAMPLES; i++) {
+      for(int i = 0; i < 64; i++) {
+        if (i >= SAMPLES) break;
         float offset = (float(i) / (fSamples - 1.0) - 0.5) * blurAmount;
         vec4 sc = texture(uFromTexture, pfr + blurDir * offset);
         float w = 1.0 + pow(getLuma(sc.rgb), 2.0) * uBloom * 5.0;
@@ -187,7 +190,8 @@ void main(void) {
     if (ptoIn) {
       vec4 c = vec4(0.0);
       float tw = 0.0;
-      for(int i = 0; i < SAMPLES; i++) {
+      for(int i = 0; i < 64; i++) {
+        if (i >= SAMPLES) break;
         float offset = (float(i) / (fSamples - 1.0) - 0.5) * blurAmount;
         vec4 sc = texture(uTexture, vTextureCoord + (pto - vNormalizedCoord + blurDir * offset) * vTexScale);
         float w = 1.0 + pow(getLuma(sc.rgb), 2.0) * uBloom * 5.0;
@@ -206,7 +210,8 @@ void main(void) {
     if (pfrIn) {
       vec4 c = vec4(0.0);
       float tw = 0.0;
-      for(int i = 0; i < SAMPLES; i++) {
+      for(int i = 0; i < 64; i++) {
+        if (i >= SAMPLES) break;
         vec2 offset = vec2(
           cos(float(i) * 2.39996) * blurAmountFr,
           sin(float(i) * 2.39996) * blurAmountFr
@@ -223,7 +228,8 @@ void main(void) {
     if (ptoIn) {
       vec4 c = vec4(0.0);
       float tw = 0.0;
-      for(int i = 0; i < SAMPLES; i++) {
+      for(int i = 0; i < 64; i++) {
+        if (i >= SAMPLES) break;
         vec2 offset = vec2(
           cos(float(i) * 2.39996) * blurAmountTo,
           sin(float(i) * 2.39996) * blurAmountTo
@@ -280,6 +286,13 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
       typeof params?.blurStrength === 'number'
         ? Math.max(0, Math.min(1, params.blurStrength))
         : 0.5,
+    blurQuality:
+      params?.blurQuality === 'low' ||
+      params?.blurQuality === 'medium' ||
+      params?.blurQuality === 'high' ||
+      params?.blurQuality === 'ultra'
+        ? params.blurQuality
+        : 'medium',
     bloom: typeof params?.bloom === 'number' ? Math.max(0, Math.min(1, params.bloom)) : 0.0,
   };
 }
@@ -355,6 +368,17 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       step: 0.05,
     },
     {
+      key: 'blurQuality',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurQuality',
+      options: [
+        { value: 'low', labelKey: 'granVideoEditor.timeline.transition.blurQualityLow' },
+        { value: 'medium', labelKey: 'granVideoEditor.timeline.transition.blurQualityMedium' },
+        { value: 'high', labelKey: 'granVideoEditor.timeline.transition.blurQualityHigh' },
+        { value: 'ultra', labelKey: 'granVideoEditor.timeline.transition.blurQualityUltra' },
+      ],
+    },
+    {
       key: 'bloom',
       kind: 'slider',
       labelKey: 'granVideoEditor.timeline.transition.paramBloom',
@@ -378,6 +402,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
           uShadowSize: { value: 0.2, type: 'f32' },
           uShadowOpacity: { value: 0.6, type: 'f32' },
           uBlurStrength: { value: 0.5, type: 'f32' },
+          uBlurSamples: { value: 8.0, type: 'f32' },
           uBloom: { value: 0.0, type: 'f32' },
         },
       },
@@ -397,6 +422,14 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
     uniforms.uShadowSize = params.shadowSize;
     uniforms.uShadowOpacity = params.shadowOpacity;
     uniforms.uBlurStrength = params.blurStrength;
+
+    let samples = 8.0;
+    if (params.blurQuality === 'low') samples = 4.0;
+    else if (params.blurQuality === 'medium') samples = 8.0;
+    else if (params.blurQuality === 'high') samples = 16.0;
+    else if (params.blurQuality === 'ultra') samples = 32.0;
+    uniforms.uBlurSamples = samples;
+
     uniforms.uBloom = params.bloom;
   },
   computeOutOpacity: () => 1,
