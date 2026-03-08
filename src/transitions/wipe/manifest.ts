@@ -56,20 +56,19 @@ uniform float uUseGap;
 uniform float uApplyToEdgeBlur;
 uniform vec2 uAxis;
 uniform vec3 uGapColor;
-uniform vec4 uOutputFrame;
+uniform float uAspect;
 
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
   vec4 toColor = texture(uTexture, vTextureCoord);
 
-  float aspect = uOutputFrame.w > 0.0 ? uOutputFrame.z / uOutputFrame.w : 1.0;
-  vec2 p = (uv - vec2(0.5, 0.5)) * vec2(aspect, 1.0);
+  vec2 p = (uv - vec2(0.5, 0.5)) * vec2(uAspect, 1.0);
 
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 axis = normalize(uAxis);
   float gapHalf = uGap * 0.5;
-  float maxDist = 0.5 * (aspect * abs(axis.x) + abs(axis.y));
+  float maxDist = 0.5 * (uAspect * abs(axis.x) + abs(axis.y));
   float axisValue = dot(p, axis);
   float edge = mix(-maxDist - gapHalf, maxDist + gapHalf, progress);
   float cutStart = edge - gapHalf;
@@ -207,6 +206,7 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
           uApplyToEdgeBlur: { value: 0, type: 'f32' },
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
+          uAspect: { value: 1.0, type: 'f32' },
         },
       },
     }),
@@ -225,6 +225,8 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     const axisY = baseAxis.x * sinA + baseAxis.y * cosA;
     const rgb = hexColorToRgb01(params.gapColor);
     const useGap = params.edgeMode === 'gap';
+    const aspect = context.toTexture ? context.toTexture.width / context.toTexture.height : 16 / 9;
+
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uGap = useGap ? params.gap : 0;
@@ -233,6 +235,7 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     uniforms.uApplyToEdgeBlur = !useGap && context.edge === 'in' ? 1 : 0;
     uniforms.uAxis = [axisX, axisY];
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
+    uniforms.uAspect = aspect;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
