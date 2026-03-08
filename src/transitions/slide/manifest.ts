@@ -12,6 +12,7 @@ export interface SlideParams {
   gap: number;
   gapColor: string;
   motionBlur: number;
+  motionBlurMode: 'normal' | 'bloom';
   brightnessMode: 'normal' | 'bloom';
   brightness: number;
   bloomThreshold: number;
@@ -58,6 +59,7 @@ uniform float uGap;
 uniform vec2 uAxis;
 uniform vec3 uGapColor;
 uniform float uMotionBlur;
+uniform float uMotionBlurMode;
 uniform float uBrightnessMode;
 uniform float uBrightness;
 uniform float uBloomThreshold;
@@ -95,7 +97,7 @@ vec4 processSample(vec4 color) {
   } else {
     extra = uBrightness;
   }
-  return vec4(color.rgb * (1.0 + extra), color.a);
+  return vec4(max(vec3(0.0), color.rgb * (1.0 + extra)), color.a);
 }
 
 out vec4 finalColor;
@@ -114,13 +116,28 @@ void main(void) {
   float stepSize = uMotionBlur / float(SAMPLES - 1);
   float startOffset = -uMotionBlur * 0.5;
 
+  float totalWeight = 0.0;
+
   for (int i = 0; i < SAMPLES; i++) {
     float offset = startOffset + float(i) * stepSize;
     vec2 sampleUv = vNormalizedCoord + uAxis * offset;
-    accumColor += processSample(getColor(sampleUv));
+    vec4 color = processSample(getColor(sampleUv));
+    
+    float weight = 1.0;
+    if (uMotionBlurMode > 0.5) {
+      float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+      weight = smoothstep(uBloomThreshold, 1.0, lum);
+    }
+    
+    accumColor += color * weight;
+    totalWeight += weight;
   }
 
-  finalColor = accumColor / float(SAMPLES);
+  if (totalWeight > 0.0) {
+    finalColor = accumColor / totalWeight;
+  } else {
+    finalColor = processSample(getColor(vNormalizedCoord));
+  }
 }
 `;
 
@@ -138,8 +155,9 @@ function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
     motionBlur: clampNumber(params?.motionBlur, 0, 10, 0),
+    motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
     brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
-    brightness: clampNumber(params?.brightness, 0, 10, 0),
+    brightness: clampNumber(params?.brightness, -10, 10, 0),
     bloomThreshold: clampNumber(params?.bloomThreshold, 0, 1, 0.7),
   };
 }
@@ -199,6 +217,15 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       step: 0.01,
     },
     {
+      key: 'motionBlurMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlurMode',
+      options: [
+        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeNormal' },
+        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeBloom' },
+      ],
+    },
+    {
       key: 'brightnessMode',
       kind: 'select',
       labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
@@ -211,7 +238,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       key: 'brightness',
       kind: 'number',
       labelKey: 'granVideoEditor.timeline.transition.paramBrightness',
-      min: 0,
+      min: -10,
       max: 10,
       step: 0.1,
     },
@@ -236,6 +263,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
           uMotionBlur: { value: 0, type: 'f32' },
+          uMotionBlurMode: { value: 0, type: 'f32' },
           uBrightnessMode: { value: 0, type: 'f32' },
           uBrightness: { value: 0, type: 'f32' },
           uBloomThreshold: { value: 0.7, type: 'f32' },
@@ -285,6 +313,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     uniforms.uAxis = [axis.x, axis.y];
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
     uniforms.uMotionBlur = blurAmount;
+    uniforms.uMotionBlurMode = params.motionBlurMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
     uniforms.uBrightness = currentBrightness;
     uniforms.uBloomThreshold = params.bloomThreshold;
