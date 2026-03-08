@@ -17,6 +17,8 @@ import MultiClipProperties from '~/components/properties/MultiClipProperties.vue
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
+import ProjectEffectProperties from '~/components/properties/ProjectEffectProperties.vue';
+import ProjectTransitionProperties from '~/components/properties/ProjectTransitionProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
@@ -73,6 +75,18 @@ const selectedTrack = computed<TimelineTrack | null>(() => {
   return tracks.find((t) => t.id === entity.trackId) ?? null;
 });
 
+const selectedProjectEffectType = computed<string | null>(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'project' && entity.kind === 'effect') return entity.effectType;
+  return null;
+});
+
+const selectedProjectTransitionType = computed<string | null>(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'project' && entity.kind === 'transition') return entity.transitionType;
+  return null;
+});
+
 const selectedMarkerId = computed<string | null>(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'timeline' && entity.kind === 'marker') return entity.markerId;
@@ -103,6 +117,8 @@ const displayMode = computed<
   | 'marker'
   | 'selection-range'
   | 'timeline'
+  | 'project-effect'
+  | 'project-transition'
   | 'empty'
 >(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
@@ -112,6 +128,8 @@ const displayMode = computed<
   if (hasSelectionRange.value) return 'selection-range';
 
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'project' && entity.kind === 'effect') return 'project-effect';
+  if (entity?.source === 'project' && entity.kind === 'transition') return 'project-transition';
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
@@ -204,6 +222,18 @@ function onPanelFocusOut() {
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
             {{ t('granVideoEditor.timeline.properties.title', 'Timeline Properties') }}
+          </span>
+          <span
+            v-else-if="displayMode === 'project-effect'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ t('granVideoEditor.effects.title', 'Effect') }}
+          </span>
+          <span
+            v-else-if="displayMode === 'project-transition'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ t('granVideoEditor.transitions.title', 'Transition') }}
           </span>
         </template>
         <span v-else class="ml-2 text-xs text-ui-text-muted font-mono truncate">

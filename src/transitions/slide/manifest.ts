@@ -89,7 +89,7 @@ void main(void) {
 
   // Number of samples for motion blur
   const int SAMPLES = 16;
-  vec4 finalColor = vec4(0.0);
+  vec4 accumColor = vec4(0.0);
   
   // uMotionBlur represents the amount of offset in normalized coordinates
   // We sample along the axis of movement
@@ -99,10 +99,10 @@ void main(void) {
   for (int i = 0; i < SAMPLES; i++) {
     float offset = startOffset + float(i) * stepSize;
     vec2 sampleUv = vNormalizedCoord + uAxis * offset;
-    finalColor += getColor(sampleUv);
+    accumColor += getColor(sampleUv);
   }
 
-  gl_FragColor = finalColor / float(SAMPLES);
+  gl_FragColor = accumColor / float(SAMPLES);
 }
 `;
 
