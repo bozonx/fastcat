@@ -11,6 +11,7 @@ export interface CircleParams {
   offsetY: number;
   scaleX: number;
   scaleY: number;
+  followScale: boolean;
 }
 
 const vertex = `
@@ -55,6 +56,7 @@ uniform float uBlurMode;
 uniform float uDirection;
 uniform vec2 uCenter;
 uniform vec2 uScale;
+uniform float uFollowScale;
 
 out vec4 finalColor;
 void main(void) {
@@ -87,8 +89,20 @@ void main(void) {
     reveal = 1.0 - reveal;
   }
 
-  vec4 fromColor = texture(uFromTexture, uv);
-  vec4 toColor = texture(uTexture, vTextureCoord);
+  vec2 uvFrom = uv;
+  vec2 uvTo = vTextureCoord;
+
+  if (uFollowScale > 0.5) {
+    float s = min(1.0, radius * 2.0);
+    if (uDirection > 0.0) {
+      uvTo = (uvTo - uCenter) / max(0.0001, s) + uCenter;
+    } else {
+      uvFrom = (uvFrom - uCenter) / max(0.0001, s) + uCenter;
+    }
+  }
+
+  vec4 fromColor = texture(uFromTexture, uvFrom);
+  vec4 toColor = texture(uTexture, uvTo);
 
   finalColor = mix(fromColor, toColor, reveal);
 }
@@ -110,6 +124,7 @@ function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
     offsetY: clampNumber(params?.offsetY, -100, 100, 0),
     scaleX: clampNumber(params?.scaleX, 1, 1000, 100),
     scaleY: clampNumber(params?.scaleY, 1, 1000, 100),
+    followScale: params?.followScale === true,
   };
 }
 
@@ -197,6 +212,11 @@ export const circleManifest: TransitionManifest<CircleParams> = {
       max: 1000,
       step: 1,
     },
+    {
+      key: 'followScale',
+      kind: 'boolean',
+      labelKey: 'granVideoEditor.timeline.transition.paramFollowScale',
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -211,6 +231,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
           uDirection: { value: 1, type: 'f32' },
           uCenter: { value: [0.5, 0.5], type: 'vec2<f32>' },
           uScale: { value: [1.0, 1.0], type: 'vec2<f32>' },
+          uFollowScale: { value: 0, type: 'f32' },
         },
       },
     }),
@@ -254,6 +275,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
 
     uniforms.uCenter = [cx, cy];
     uniforms.uScale = [params.scaleX / 100, params.scaleY / 100];
+    uniforms.uFollowScale = params.followScale ? 1 : 0;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

@@ -134,6 +134,10 @@ function getColorValue(value: unknown): string {
   return typeof value === 'string' && value.trim().length > 0 ? value : '#000000';
 }
 
+function getBooleanValue(value: unknown): boolean {
+  return value === true || value === 'true';
+}
+
 const visibleParamFields = computed<TransitionParamField[]>(() => {
   const fields = selectedManifest.value?.paramFields ?? [];
 
@@ -332,6 +336,13 @@ function handleSavePreset() {
           type="color"
           class="h-8 w-full rounded border border-ui-border bg-ui-bg px-1"
           @input="(event) => updateParam(field.key, (event.target as HTMLInputElement).value)"
+        />
+
+        <UToggle
+          v-else-if="field.kind === 'boolean'"
+          :model-value="getBooleanValue(selectedParams[field.key])"
+          size="sm"
+          @update:model-value="(value: boolean) => updateParam(field.key, value)"
         />
       </div>
     </div>

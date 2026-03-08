@@ -13,6 +13,7 @@ import { zoomManifest } from './zoom/manifest';
 import { bloomManifest } from './bloom/manifest';
 
 import { rectangleManifest } from './rectangle/manifest';
+import { blindsManifest } from './blinds/manifest';
 
 export function initTransitions(): void {
   registerTransition(dissolveManifest);
@@ -25,6 +26,7 @@ export function initTransitions(): void {
   registerTransition(clockManifest);
   registerTransition(circleManifest);
   registerTransition(rectangleManifest);
+  registerTransition(blindsManifest);
   registerTransition(cubeTransitionManifest);
   registerTransition(cardSwapTransitionManifest);
   registerTransition(fallingCardTransitionManifest);
@@ -41,4 +43,5 @@ export * from './wipe/manifest';
 export * from './cube/manifest';
 export * from './card-swap/manifest';
 export * from './falling-card/manifest';
+export * from './blinds/manifest';
 export * from './bloom/manifest';
