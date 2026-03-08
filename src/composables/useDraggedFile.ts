@@ -3,7 +3,7 @@ import { ref } from 'vue';
 export interface DraggedFileData {
   name: string;
   path: string;
-  kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text';
+  kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
   count?: number;
   items?: Array<{ name: string; path?: string; kind: string }>;
 }

@@ -39,13 +39,18 @@ export interface AddClipToTrackCommand {
 export interface AddVirtualClipToTrackCommand {
   type: 'add_virtual_clip_to_track';
   trackId: string;
-  clipType: Extract<import('./types').TimelineClipType, 'adjustment' | 'background' | 'text'>;
+  clipType: Extract<
+    import('./types').TimelineClipType,
+    'adjustment' | 'background' | 'text' | 'shape' | 'hud'
+  >;
   name: string;
   durationUs?: number;
   startUs?: number;
   backgroundColor?: string;
   text?: string;
   style?: import('./types').TextClipStyle;
+  shapeType?: import('./types').ShapeType;
+  hudType?: import('./types').HudType;
 }
 
 export interface RemoveItemCommand {
@@ -179,6 +184,13 @@ export interface UpdateClipPropertiesCommand {
     backgroundColor?: string;
     text?: string;
     style?: import('./types').TextClipStyle;
+    shapeType?: import('./types').ShapeType;
+    fillColor?: string;
+    strokeColor?: string;
+    strokeWidth?: number;
+    hudType?: import('./types').HudType;
+    background?: import('./types').HudMediaParams;
+    content?: import('./types').HudMediaParams;
   };
 }
 
