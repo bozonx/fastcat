@@ -81,9 +81,10 @@ vec4 getColor(vec2 uv) {
   }
 }
 
+out vec4 finalColor;
 void main(void) {
   if (uMotionBlur <= 0.0) {
-    gl_FragColor = getColor(vNormalizedCoord);
+    finalColor = getColor(vNormalizedCoord);
     return;
   }
 
@@ -102,7 +103,7 @@ void main(void) {
     accumColor += getColor(sampleUv);
   }
 
-  gl_FragColor = accumColor / float(SAMPLES);
+  finalColor = accumColor / float(SAMPLES);
 }
 `;
 

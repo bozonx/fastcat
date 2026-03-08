@@ -44,6 +44,7 @@ uniform float uProgress;
 uniform vec3 uFadeColor;
 uniform int uMode;
 
+out vec4 finalColor;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
@@ -54,18 +55,18 @@ void main(void) {
   if (uMode == 0) {
     if (progress < 0.5) {
       float local = progress * 2.0;
-      gl_FragColor = mix(fromColor, fadeColor, local);
+      finalColor = mix(fromColor, fadeColor, local);
       return;
     }
 
     float local = (progress - 0.5) * 2.0;
-    gl_FragColor = mix(fadeColor, toColor, local);
+    finalColor = mix(fadeColor, toColor, local);
   } else {
     // Crossfade mode: smooth dissolve across the entire duration without a midpoint stop,
     // but simultaneously darken towards zero brightness
     vec4 mixedColor = mix(fromColor, toColor, progress);
     float brightness = 1.0 - progress; // Linear decrease to 0
-    gl_FragColor = vec4(mixedColor.rgb * brightness, mixedColor.a);
+    finalColor = vec4(mixedColor.rgb * brightness, mixedColor.a);
   }
 }
 `;

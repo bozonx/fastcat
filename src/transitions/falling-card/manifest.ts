@@ -55,6 +55,7 @@ bool inBounds(vec2 p) {
   return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
 }
 
+out vec4 finalColor;
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   vec2 uv = vNormalizedCoord;
@@ -64,12 +65,12 @@ void main(void) {
   vec4 fromColor = texture(uFromTexture, uv);
   
   if (progress >= 1.0) {
-      gl_FragColor = toColor;
+      finalColor = toColor;
       return;
   }
   
   if (progress <= 0.0) {
-      gl_FragColor = fromColor;
+      finalColor = fromColor;
       return;
   }
   
@@ -132,7 +133,7 @@ void main(void) {
   }
   
   if (denom <= 0.0) {
-      gl_FragColor = isRise ? fromColor : toColor;
+      finalColor = isRise ? fromColor : toColor;
       return;
   }
   
@@ -143,9 +144,9 @@ void main(void) {
           float outAlpha = movingColor.a + fromColor.a * (1.0 - movingColor.a);
           if (outAlpha > 0.0) {
               vec3 outColor = (movingColor.rgb * movingColor.a + fromColor.rgb * fromColor.a * (1.0 - movingColor.a)) / outAlpha;
-              gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+              finalColor = vec4(outColor * outAlpha, outAlpha);
           } else {
-              gl_FragColor = vec4(0.0);
+              finalColor = vec4(0.0);
           }
       } else {
           // В режиме fall FROM-клип падает, TO-клип проступает фоном
@@ -153,13 +154,13 @@ void main(void) {
           float outAlpha = movingColor.a + toColor.a * (1.0 - movingColor.a);
           if (outAlpha > 0.0) {
               vec3 outColor = (movingColor.rgb * movingColor.a + toColor.rgb * toColor.a * (1.0 - movingColor.a)) / outAlpha;
-              gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+              finalColor = vec4(outColor * outAlpha, outAlpha);
           } else {
-              gl_FragColor = vec4(0.0);
+              finalColor = vec4(0.0);
           }
       }
   } else {
-      gl_FragColor = isRise ? fromColor : toColor;
+      finalColor = isRise ? fromColor : toColor;
   }
 }
 `;

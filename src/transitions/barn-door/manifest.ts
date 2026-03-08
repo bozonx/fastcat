@@ -61,6 +61,7 @@ uniform float uAspect;
 uniform float uMode; // 1.0 for open, 0.0 for close
 uniform float uBlurMode; // 1.0 for scaled, 0.0 for fixed
 
+out vec4 finalColor;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
@@ -112,28 +113,28 @@ void main(void) {
     }
     
     if (uApplyToEdgeBlur > 0.5) {
-      gl_FragColor = mixedColor;
+      finalColor = mixedColor;
     } else {
       if (isToColorInside) {
-        gl_FragColor = dist < edge ? toColor : fromColor;
+        finalColor = dist < edge ? toColor : fromColor;
       } else {
-        gl_FragColor = dist > edge ? toColor : fromColor;
+        finalColor = dist > edge ? toColor : fromColor;
       }
     }
     return;
   }
 
   if (dist < cutStart) {
-    gl_FragColor = isToColorInside ? toColor : fromColor;
+    finalColor = isToColorInside ? toColor : fromColor;
     return;
   }
 
   if (dist > cutEnd) {
-    gl_FragColor = isToColorInside ? fromColor : toColor;
+    finalColor = isToColorInside ? fromColor : toColor;
     return;
   }
 
-  gl_FragColor = vec4(uGapColor, 1.0);
+  finalColor = vec4(uGapColor, 1.0);
 }
 `;
 

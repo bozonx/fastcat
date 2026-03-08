@@ -637,7 +637,11 @@
       "toolbarBottom": "Toolbar Bottom",
       "toolbarLeft": "Toolbar Left",
       "resetZoom": "Reset zoom (100%)",
-      "fullscreen": "Fullscreen"
+      "fullscreen": "Fullscreen",
+      "previewWithEffects": "Preview with effects",
+      "previewWithoutEffects": "Preview without effects",
+      "withEffects": "With effects",
+      "withoutEffects": "Without effects"
     },
     "timeline": {
       "addAdjustmentClip": "Add adjustment clip",
@@ -734,8 +738,6 @@
         "paramMode": "Mode",
         "modeBloom": "Bloom",
         "modeNormal": "Normal",
-        "paramBrightness": "Brightness",
-        "paramBlur": "Blur Level",
         "modeUnzoom": "Unzoom",
         "modeFixed": "Fixed",
         "paramPerspective": "Center height",

@@ -65,6 +65,7 @@ float rectDistance(vec2 p, vec2 center, vec2 size) {
   return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
+out vec4 finalColor;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   
@@ -128,7 +129,7 @@ void main(void) {
   vec4 fromColor = texture(uFromTexture, uvFrom);
   vec4 toColor = texture(uTexture, coordTo);
 
-  gl_FragColor = mix(fromColor, toColor, reveal);
+  finalColor = mix(fromColor, toColor, reveal);
 }
 `;
 

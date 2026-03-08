@@ -154,6 +154,7 @@ vec4 sampleTo(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
   }
 }
 
+out vec4 finalColor;
 void main(void) {
   float progress = clamp(uProgress, 0.0, 1.0);
   
@@ -190,7 +191,7 @@ void main(void) {
   float toInside = step(0.0, toUv.x) * step(toUv.x, 1.0) * step(0.0, toUv.y) * step(toUv.y, 1.0);
   toColor *= toAlpha * toInside;
 
-  gl_FragColor = fromColor + toColor;
+  finalColor = fromColor + toColor;
 }
 `;
 

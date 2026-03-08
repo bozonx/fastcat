@@ -11,20 +11,8 @@ export interface WorkerTimelineClip {
   audioFadeOutUs?: number;
   audioFadeInCurve?: 'linear' | 'logarithmic';
   audioFadeOutCurve?: 'linear' | 'logarithmic';
-  transitionIn?: {
-    type: string;
-    durationUs: number;
-    mode?: 'transition' | 'fade';
-    curve?: 'linear' | 'bezier';
-    params?: Record<string, unknown>;
-  };
-  transitionOut?: {
-    type: string;
-    durationUs: number;
-    mode?: 'transition' | 'fade';
-    curve?: 'linear' | 'bezier';
-    params?: Record<string, unknown>;
-  };
+  transitionIn?: import('~/timeline/types').ClipTransition;
+  transitionOut?: import('~/timeline/types').ClipTransition;
   source?: {
     path: string;
   };

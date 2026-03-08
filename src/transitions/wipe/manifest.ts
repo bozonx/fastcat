@@ -58,6 +58,7 @@ uniform vec2 uAxis;
 uniform vec3 uGapColor;
 uniform float uAspect;
 
+out vec4 finalColor;
 void main(void) {
   vec2 uv = vNormalizedCoord;
   vec4 fromColor = texture(uFromTexture, uv);
@@ -79,24 +80,24 @@ void main(void) {
   if (uUseGap < 0.5) {
     vec4 mixedColor = mix(toColor, fromColor, blurMix);
     if (uApplyToEdgeBlur > 0.5) {
-      gl_FragColor = mixedColor;
+      finalColor = mixedColor;
     } else {
-      gl_FragColor = axisValue < edge ? toColor : fromColor;
+      finalColor = axisValue < edge ? toColor : fromColor;
     }
     return;
   }
 
   if (axisValue < cutStart) {
-    gl_FragColor = toColor;
+    finalColor = toColor;
     return;
   }
 
   if (axisValue > cutEnd) {
-    gl_FragColor = fromColor;
+    finalColor = fromColor;
     return;
   }
 
-  gl_FragColor = vec4(uGapColor, 1.0);
+  finalColor = vec4(uGapColor, 1.0);
 }
 `;
 

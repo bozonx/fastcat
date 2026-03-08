@@ -81,9 +81,9 @@ function handleSavePreset() {
     <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
       <template #body>
         <div class="flex flex-col gap-4">
-          <UFormGroup :label="t('common.name', 'Name')">
+          <UFormField :label="t('common.name', 'Name')">
             <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
-          </UFormGroup>
+          </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
               {{ t('common.cancel', 'Cancel') }}
