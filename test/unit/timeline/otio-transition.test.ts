@@ -327,4 +327,45 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.sourceDurationUs).toBe(9_000_000);
     expect(clip.sourceRange).toEqual({ startUs: 1_000_000, durationUs: 4_000_000 });
   });
+
+  it('preserves shape clips through OTIO round-trip', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              id: 'shape1',
+              trackId: 'v1',
+              name: 'Shape clip',
+              clipType: 'shape',
+              sourceDurationUs: 4_000_000,
+              timelineRange: { startUs: 500_000, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              shapeType: 'cloud',
+              fillColor: '#ff00aa',
+              strokeColor: '#112233',
+              strokeWidth: 6,
+              opacity: 0.75,
+            },
+          ],
+        },
+      ],
+    };
+
+    const serialized = serializeTimelineToOtio(doc);
+    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
+
+    const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
+    expect(clip.clipType).toBe('shape');
+    expect(clip.shapeType).toBe('cloud');
+    expect(clip.fillColor).toBe('#ff00aa');
+    expect(clip.strokeColor).toBe('#112233');
+    expect(clip.strokeWidth).toBe(6);
+    expect(clip.opacity).toBe(0.75);
+  });
 });
