@@ -97,7 +97,17 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     ...defaultCutPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
   ]);
 
-  // Load panels from local storage
+  // Dynamic panels for sound view
+  const defaultSoundPanels: PanelColumn[] = [
+    { id: 'col-1', panels: [{ id: 'monitor', type: 'monitor' }] },
+  ];
+
+  const soundPanelsKey = computed(() => `gran-sound-panels-${projectIdRef.value ?? 'no-project'}`);
+  const soundPanels = ref<PanelColumn[]>([
+    ...defaultSoundPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
+  ]);
+
+  // Load cut panels from local storage
   watch(
     () => cutPanelsKey.value,
     (key) => {
@@ -105,19 +115,16 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       if (stored && Array.isArray(stored) && stored.length > 0) {
         // Migration from 1D to 2D columns
         if (!Array.isArray(stored[0]) && !stored[0].panels) {
-          // 1D array of panels
           cutPanels.value = sanitizePanelColumns(
             stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] })),
             defaultCutPanels,
           );
         } else if (Array.isArray(stored[0])) {
-          // 2D array without column IDs
           cutPanels.value = sanitizePanelColumns(
             stored.map((col) => ({ id: `col-${generateId()}`, panels: col })),
             defaultCutPanels,
           );
         } else {
-          // Already PanelColumn format
           cutPanels.value = sanitizePanelColumns(stored, defaultCutPanels);
         }
       } else {
@@ -127,7 +134,21 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     { immediate: true },
   );
 
-  // Save panels to local storage
+  // Load sound panels from local storage
+  watch(
+    () => soundPanelsKey.value,
+    (key) => {
+      const stored = readLocalStorageJson<any[] | null>(key, null);
+      if (stored && Array.isArray(stored) && stored.length > 0) {
+        soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
+      } else {
+        soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
+      }
+    },
+    { immediate: true },
+  );
+
+  // Save cut panels to local storage
   watch(
     cutPanels,
     (panels) => {
@@ -136,15 +157,42 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     { deep: true },
   );
 
-  function insertPanelAt(newPanel: DynamicPanel, targetPanelId?: string, position?: PanelPosition) {
+  // Save sound panels to local storage
+  watch(
+    soundPanels,
+    (panels) => {
+      writeLocalStorageJson(soundPanelsKey.value, sanitizePanelColumns(panels, defaultSoundPanels));
+    },
+    { deep: true },
+  );
+
+  function getActivePanelsState(view?: 'cut' | 'sound') {
+    const targetView = view ?? (currentView.value === 'sound' ? 'sound' : 'cut');
+    return targetView === 'sound' ? soundPanels : cutPanels;
+  }
+
+  function getActiveDefaultPanels(view?: 'cut' | 'sound') {
+    const targetView = view ?? (currentView.value === 'sound' ? 'sound' : 'cut');
+    return targetView === 'sound' ? defaultSoundPanels : defaultCutPanels;
+  }
+
+  function insertPanelAt(
+    newPanel: DynamicPanel,
+    targetPanelId?: string,
+    position?: PanelPosition,
+    view?: 'cut' | 'sound',
+  ) {
+    const panelsRef = getActivePanelsState(view);
+    const defaults = getActiveDefaultPanels(view);
+
     if (!targetPanelId || !position) {
-      const middleIndex = Math.floor(cutPanels.value.length / 2);
-      cutPanels.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
-      cutPanels.value = sanitizePanelColumns(cutPanels.value, defaultCutPanels);
+      const middleIndex = Math.floor(panelsRef.value.length / 2);
+      panelsRef.value.splice(middleIndex, 0, { id: `col-${generateId()}`, panels: [newPanel] });
+      panelsRef.value = sanitizePanelColumns(panelsRef.value, defaults);
       return;
     }
 
-    const cols = cutPanels.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
+    const cols = panelsRef.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
 
     let toColIdx = -1;
     let toRowIdx = -1;
@@ -171,7 +219,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       }
     }
 
-    cutPanels.value = sanitizePanelColumns(cols, defaultCutPanels);
+    panelsRef.value = sanitizePanelColumns(cols, defaults);
   }
 
   function addTextPanel(
@@ -180,6 +228,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     title: string,
     targetPanelId?: string,
     position?: PanelPosition,
+    view?: 'cut' | 'sound',
   ) {
     const newPanel: DynamicPanel = {
       id: `text-${Date.now()}`,
@@ -188,7 +237,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       fileContent,
       title,
     };
-    insertPanelAt(newPanel, targetPanelId, position);
+    insertPanelAt(newPanel, targetPanelId, position, view);
   }
 
   function addMediaPanel(
@@ -197,6 +246,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     title: string,
     targetPanelId?: string,
     position?: PanelPosition,
+    view?: 'cut' | 'sound',
   ) {
     const newPanel: DynamicPanel = {
       id: `media-${Date.now()}`,
@@ -205,24 +255,35 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       mediaType,
       title,
     };
-    insertPanelAt(newPanel, targetPanelId, position);
+    insertPanelAt(newPanel, targetPanelId, position, view);
   }
 
-  function removePanel(id: string) {
+  function removePanel(id: string, view?: 'cut' | 'sound') {
+    const panelsRef = getActivePanelsState(view);
+    const defaults = getActiveDefaultPanels(view);
+
     const newPanels: PanelColumn[] = [];
-    for (const col of cutPanels.value) {
+    for (const col of panelsRef.value) {
       const newColPanels = col.panels.filter((p) => p.id !== id);
       if (newColPanels.length > 0) {
         newPanels.push({ id: col.id, panels: newColPanels });
       }
     }
-    cutPanels.value = sanitizePanelColumns(newPanels, defaultCutPanels);
+    panelsRef.value = sanitizePanelColumns(newPanels, defaults);
   }
 
-  function movePanel(panelId: string, targetPanelId: string, position: PanelPosition) {
+  function movePanel(
+    panelId: string,
+    targetPanelId: string,
+    position: PanelPosition,
+    view?: 'cut' | 'sound',
+  ) {
     if (panelId === targetPanelId) return;
 
-    const cols = cutPanels.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
+    const panelsRef = getActivePanelsState(view);
+    const defaults = getActiveDefaultPanels(view);
+
+    const cols = panelsRef.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
 
     // Find source
     let fromColIdx = -1;
@@ -280,9 +341,9 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
       cols[adjustedToColIdx]!.panels.splice(adjustedToRowIdx + 1, 0, movedPanel);
     }
 
-    cutPanels.value = sanitizePanelColumns(
+    panelsRef.value = sanitizePanelColumns(
       cols.filter((col) => col.panels.length > 0),
-      defaultCutPanels,
+      defaults,
     );
   }
 
@@ -333,6 +394,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     currentView,
     timelineHeight,
     cutPanels,
+    soundPanels,
     insertPanelAt,
     addTextPanel,
     addMediaPanel,

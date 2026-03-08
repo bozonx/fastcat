@@ -288,20 +288,24 @@ function onDelete() {
   uiStore.pendingFsEntryDelete = entry;
 }
 
-function openAsTextPanel() {
+function openAsTextPanel(view: 'cut' | 'sound' = 'cut') {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'file') return;
 
-  projectStore.goToCut();
+  if (view === 'cut') {
+    projectStore.goToCut();
+  } else {
+    projectStore.goToSound();
+  }
 
   if (mediaType.value === 'text') {
-    projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name);
+    projectStore.addTextPanel(entry.path ?? entry.name, textContent.value, entry.name, undefined, undefined, view);
   } else if (
     mediaType.value === 'video' ||
     mediaType.value === 'audio' ||
     mediaType.value === 'image'
   ) {
-    projectStore.addMediaPanel(entry, mediaType.value, entry.name);
+    projectStore.addMediaPanel(entry, mediaType.value, entry.name, undefined, undefined, view);
   }
 }
 
@@ -509,20 +513,6 @@ watch(
             onClick: onDelete,
           },
           {
-            id: 'openAsPanel',
-            title: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-            icon: 'i-heroicons-window',
-            hidden: !canOpenAsPanel || props.isFilesPage,
-            onClick: openAsTextPanel,
-          },
-          {
-            id: 'openAsProjectTab',
-            title: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-            icon: 'i-heroicons-squares-plus',
-            hidden: !canOpenAsProjectTab || props.isFilesPage,
-            onClick: openAsProjectTab,
-          },
-          {
             id: 'convertFile',
             title: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
             icon: 'i-heroicons-arrow-path',
@@ -545,6 +535,27 @@ watch(
           },
         ]"
         :secondary-actions="[
+          {
+            id: 'openAsPanelCut',
+            label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
+            icon: 'i-heroicons-window',
+            hidden: !canOpenAsPanel,
+            onClick: () => openAsTextPanel('cut'),
+          },
+          {
+            id: 'openAsPanelSound',
+            label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
+            icon: 'i-heroicons-window',
+            hidden: !canOpenAsPanel,
+            onClick: () => openAsTextPanel('sound'),
+          },
+          {
+            id: 'openAsProjectTab',
+            label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+            icon: 'i-heroicons-squares-plus',
+            hidden: !canOpenAsProjectTab || props.isFilesPage,
+            onClick: openAsProjectTab,
+          },
           {
             id: 'createProxy',
             label: hasExistingProxyForFile

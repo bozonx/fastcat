@@ -40,10 +40,23 @@ const defaultCutPanelSizes = computed(() => {
   return Array(len).fill(size);
 });
 
+const defaultSoundPanelSizes = computed(() => {
+  const len = projectStore.soundPanels?.length || 0;
+  if (len === 0) return [];
+  const size = 100 / len;
+  return Array(len).fill(size);
+});
+
 const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitpanes(
   'editor-cut-top-dynamic',
   currentProjectId,
   defaultCutPanelSizes,
+);
+
+const { sizes: soundTopSplitSizes, onResized: onSoundTopSplitResize } = usePersistedSplitpanes(
+  'editor-sound-dynamic',
+  currentProjectId,
+  defaultSoundPanelSizes,
 );
 
 const { sizes: filesSizes, onResized: onFilesResize } = usePersistedSplitpanes(
@@ -182,7 +195,7 @@ function onDragStart(event: DragEvent, panelId: string) {
   draggingPanelId.value = panelId;
 }
 
-function onDragOver(event: DragEvent, panelId: string) {
+function onDragOver(event: DragEvent, panelId: string, view: 'cut' | 'sound' = 'cut') {
   event.preventDefault();
 
   const isDraggingFile =
@@ -234,7 +247,7 @@ function onDragLeave(event: DragEvent, panelId: string) {
   }
 }
 
-function onDrop(event: DragEvent, targetPanelId: string) {
+function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' = 'cut') {
   event.preventDefault();
 
   // static-tab-drag: detach Files/Effects/History tab into a separate panel
@@ -252,6 +265,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
         { id: `static-${payload.tabId}-${Date.now()}`, type: panelType, title: payload.label },
         targetPanelId,
         dropPosition.value,
+        view
       );
       // Hide from Project tab bar
       hideStaticTab(payload.tabId);
@@ -283,6 +297,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
         },
         targetPanelId,
         dropPosition.value,
+        view
       );
     } catch {
       // ignore
@@ -334,6 +349,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
               payload.name,
               targetPanelId,
               panelPosition,
+              view
             );
           })();
         } else {
@@ -349,6 +365,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
             payload.name,
             targetPanelId,
             panelPosition,
+            view
           );
         }
         resetDragState();
@@ -365,7 +382,7 @@ function onDrop(event: DragEvent, targetPanelId: string) {
     return;
   }
 
-  projectStore.movePanel(draggingPanelId.value, targetPanelId, dropPosition.value);
+  projectStore.movePanel(draggingPanelId.value, targetPanelId, dropPosition.value, view);
 
   resetDragState();
 }
@@ -390,12 +407,12 @@ const panelTypeToTabId: Record<string, string> = {
 /**
  * Close a panel and restore the corresponding Project tab if it's a detached static tab.
  */
-function closePanelAndRestoreTab(panel: DynamicPanel, options?: { restoreFocus?: boolean }) {
+function closePanelAndRestoreTab(panel: DynamicPanel, options?: { restoreFocus?: boolean; view?: 'cut' | 'sound' }) {
   const tabId = panelTypeToTabId[panel.type];
   if (tabId) {
     showStaticTab(tabId);
   }
-  projectStore.removePanel(panel.id);
+  projectStore.removePanel(panel.id, options?.view);
 
   if (options?.restoreFocus) {
     focusStore.restoreLastCutMainPanel();
@@ -414,6 +431,17 @@ watch(
   }
 );
 
+const soundPanelsLayoutKey = ref(0);
+watch(
+  () =>
+    JSON.stringify(
+      projectStore.soundPanels.map((c: any) => ({ id: c.id, rows: c.panels.map((p: any) => p.id) })),
+    ),
+  () => {
+    soundPanelsLayoutKey.value++;
+  }
+);
+
 const verticalSplitSizesKey = computed(
   () => `gran-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
 );
@@ -428,17 +456,36 @@ watch(
   },
 );
 
-function onVerticalSplitResize(event: any, colId: string) {
+const soundVerticalSplitSizesKey = computed(
+  () => `gran-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
+);
+const soundVerticalSplitSizes = ref<Record<string, number[]>>(
+  readLocalStorageJson<Record<string, number[]>>(soundVerticalSplitSizesKey.value, {}),
+);
+
+watch(
+  () => soundVerticalSplitSizesKey.value,
+  (key) => {
+    soundVerticalSplitSizes.value = readLocalStorageJson<Record<string, number[]>>(key, {});
+  },
+);
+
+function onVerticalSplitResize(event: any, colId: string, view: 'cut' | 'sound' = 'cut') {
   const panes = event?.panes ?? event;
   if (Array.isArray(panes)) {
     const newSizes = panes.map((p: any) => p.size);
-    verticalSplitSizes.value[colId] = newSizes;
-    writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
+    if (view === 'cut') {
+      verticalSplitSizes.value[colId] = newSizes;
+      writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
+    } else {
+      soundVerticalSplitSizes.value[colId] = newSizes;
+      writeLocalStorageJson(soundVerticalSplitSizesKey.value, soundVerticalSplitSizes.value);
+    }
   }
 }
 
-function getVerticalSize(colId: string, rowIndex: number, totalRows: number): number | undefined {
-  const saved = verticalSplitSizes.value[colId];
+function getVerticalSize(colId: string, rowIndex: number, totalRows: number, view: 'cut' | 'sound' = 'cut'): number | undefined {
+  const saved = view === 'cut' ? verticalSplitSizes.value[colId] : soundVerticalSplitSizes.value[colId];
   if (!saved || saved.length !== totalRows) return undefined;
   return saved[rowIndex];
 }
@@ -712,7 +759,215 @@ function getVerticalSize(colId: string, rowIndex: number, totalRows: number): nu
               <AudioMixer />
             </Pane>
             <Pane :size="soundSizes[1]" min-size="10">
-              <MonitorContainer class="h-full" />
+              <Splitpanes
+                :key="soundPanelsLayoutKey"
+                class="editor-splitpanes"
+                @resized="onSoundTopSplitResize"
+              >
+                <Pane
+                  v-for="(col, colIndex) in projectStore.soundPanels"
+                  :key="col.id"
+                  :size="soundTopSplitSizes[colIndex] ?? 100 / projectStore.soundPanels.length"
+                  min-size="5"
+                >
+                  <Splitpanes
+                    :key="col.id + '-' + col.panels.length"
+                    horizontal
+                    class="editor-splitpanes"
+                    @resized="(e: any) => onVerticalSplitResize(e, col.id, 'sound')"
+                  >
+                    <Pane
+                      v-for="(panel, rowIndex) in col.panels"
+                      :key="panel.id"
+                      :size="
+                        getVerticalSize(col.id, rowIndex, col.panels.length, 'sound') ?? 100 / col.panels.length
+                      "
+                      min-size="5"
+                    >
+                      <div
+                        class="h-full w-full relative transition-all duration-200"
+                        :class="{
+                          'opacity-50': draggingPanelId === panel.id,
+                          'border-l-2 border-l-primary-500':
+                            dragOverPanelId === panel.id && dropPosition === 'left',
+                          'border-r-2 border-r-primary-500':
+                            dragOverPanelId === panel.id && dropPosition === 'right',
+                          'border-t-2 border-t-primary-500':
+                            dragOverPanelId === panel.id && dropPosition === 'top',
+                          'border-b-2 border-b-primary-500':
+                            dragOverPanelId === panel.id && dropPosition === 'bottom',
+                          'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
+                            focusStore.isPanelFocused(getDynamicPanelFocusId(panel.id)),
+                        }"
+                        @pointerdown.capture="focusDynamicPanel(panel.id)"
+                        @dragenter.prevent
+                        @dragover.prevent="(e) => onDragOver(e, panel.id, 'sound')"
+                        @dragleave="(e) => onDragLeave(e, panel.id)"
+                        @drop.prevent="(e) => onDrop(e, panel.id, 'sound')"
+                        @dragend="onDragEnd"
+                      >
+                        <div
+                          v-if="focusStore.isPanelFocused(getDynamicPanelFocusId(panel.id))"
+                          class="pointer-events-none absolute inset-0 z-30 ring-2 ring-primary-500/60 ring-inset"
+                        />
+                        <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
+                        <MonitorContainer
+                          v-else-if="panel.type === 'monitor'"
+                          class="h-full"
+                          @panel-drag-start="(e) => onDragStart(e, panel.id)"
+                        />
+                        <PropertiesPanel
+                          v-else-if="panel.type === 'properties'"
+                          class="h-full"
+                          @panel-drag-start="(e) => onDragStart(e, panel.id)"
+                        />
+                        <div
+                          v-else-if="panel.type === 'media'"
+                          class="h-full w-full bg-ui-bg-elevated flex flex-col relative pt-8 border border-ui-border"
+                        >
+                          <div
+                            class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
+                            draggable="true"
+                            @dragstart="(e) => onDragStart(e, panel.id)"
+                          >
+                            <div class="flex items-center gap-2">
+                              <UIcon
+                                v-if="panel.mediaType === 'image'"
+                                name="i-heroicons-photo"
+                                class="w-4 h-4 text-ui-text-muted"
+                              />
+                              <UIcon
+                                v-else-if="panel.mediaType === 'video'"
+                                name="i-heroicons-film"
+                                class="w-4 h-4 text-ui-text-muted"
+                              />
+                              <UIcon
+                                v-else-if="panel.mediaType === 'audio'"
+                                name="i-heroicons-musical-note"
+                                class="w-4 h-4 text-ui-text-muted"
+                              />
+                              <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                                {{ panel.title }}
+                              </h3>
+                            </div>
+                            <UButton
+                              size="xs"
+                              variant="ghost"
+                              color="neutral"
+                              icon="i-heroicons-x-mark"
+                              @click="closePanelAndRestoreTab(panel, { view: 'sound' })"
+                            />
+                          </div>
+                          <div
+                            class="flex-1 overflow-hidden min-h-0 relative"
+                            @pointerdown.capture="focusDynamicPanel(panel.id)"
+                          >
+                            <MediaPanelWrapper
+                              :file-path="panel.filePath || ''"
+                              :media-type="panel.mediaType || 'unknown'"
+                              :focus-panel-id="getDynamicPanelFocusId(panel.id)"
+                            />
+                          </div>
+                        </div>
+                        <div
+                          v-else-if="panel.type === 'text'"
+                          class="h-full w-full bg-ui-bg-elevated flex flex-col pt-8 relative border border-ui-border"
+                        >
+                          <div
+                            class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
+                            draggable="true"
+                            @dragstart="(e) => onDragStart(e, panel.id)"
+                          >
+                            <div class="flex items-center gap-2">
+                              <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted" />
+                              <h3 class="font-bold truncate max-w-50" :title="panel.title">
+                                {{ panel.title }}
+                              </h3>
+                            </div>
+                            <UButton
+                              size="xs"
+                              variant="ghost"
+                              color="neutral"
+                              icon="i-heroicons-x-mark"
+                              @click="closePanelAndRestoreTab(panel, { view: 'sound' })"
+                            />
+                          </div>
+                          <div
+                            class="flex-1 overflow-hidden min-h-0 relative"
+                            @pointerdown.capture="focusDynamicPanel(panel.id)"
+                          >
+                            <TextEditor
+                              class="absolute inset-0 h-full w-full border-none"
+                              :file-path="panel.filePath || ''"
+                              :file-name="panel.title || ''"
+                              :initial-content="panel.fileContent || ''"
+                              :focus-panel-id="getDynamicPanelFocusId(panel.id)"
+                            />
+                          </div>
+                        </div>
+
+                        <!-- History panel (detached from Project tabs) -->
+                        <div
+                          v-else-if="panel.type === 'history'"
+                          class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+                        >
+                          <div
+                            class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
+                            draggable="true"
+                            @dragstart="(e) => onDragStart(e, panel.id)"
+                          >
+                            <div class="flex items-center gap-2">
+                              <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted" />
+                              <h3 class="font-bold truncate max-w-50">
+                                {{ panel.title || 'History' }}
+                              </h3>
+                            </div>
+                            <UButton
+                              size="xs"
+                              variant="ghost"
+                              color="neutral"
+                              icon="i-heroicons-x-mark"
+                              @click="closePanelAndRestoreTab(panel, { view: 'sound' })"
+                            />
+                          </div>
+                          <div class="flex-1 overflow-hidden min-h-0">
+                            <ProjectHistory class="h-full" />
+                          </div>
+                        </div>
+
+                        <!-- Effects panel (detached from Project tabs) -->
+                        <div
+                          v-else-if="panel.type === 'effects'"
+                          class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+                        >
+                          <div
+                            class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
+                            draggable="true"
+                            @dragstart="(e) => onDragStart(e, panel.id)"
+                          >
+                            <div class="flex items-center gap-2">
+                              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted" />
+                              <h3 class="font-bold truncate max-w-50">
+                                {{ panel.title || 'Effects' }}
+                              </h3>
+                            </div>
+                            <UButton
+                              size="xs"
+                              variant="ghost"
+                              color="neutral"
+                              icon="i-heroicons-x-mark"
+                              @click="closePanelAndRestoreTab(panel, { view: 'sound' })"
+                            />
+                          </div>
+                          <div class="flex-1 overflow-hidden min-h-0">
+                            <ProjectEffects class="h-full" />
+                          </div>
+                        </div>
+                      </div>
+                    </Pane>
+                  </Splitpanes>
+                </Pane>
+              </Splitpanes>
             </Pane>
           </Splitpanes>
 

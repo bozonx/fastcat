@@ -13,7 +13,8 @@ export type FileAction =
   | 'createOtioVersion'
   | 'createMarkdown'
   | 'createTimeline'
-  | 'openAsPanel'
+  | 'openAsPanelCut'
+  | 'openAsPanelSound'
   | 'openAsProjectTab'
   | 'convertFile'
   | 'uploadRemote'
@@ -168,19 +169,39 @@ export function useFileContextMenu(
       }
     }
 
-    if (deps.isOpenableMediaFile(entry) && !deps.isFilesPage) {
-      items.push([
-        {
-          label: t('videoEditor.fileManager.actions.openAsPanel', 'Open as panel'),
-          icon: 'i-heroicons-window',
-          onSelect: () => onAction('openAsPanel', entry),
-        },
-        {
-          label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-          icon: 'i-heroicons-squares-plus',
-          onSelect: () => onAction('openAsProjectTab', entry),
-        },
-      ]);
+    if (deps.isOpenableMediaFile(entry)) {
+      if (!deps.isFilesPage) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
+            icon: 'i-heroicons-window',
+            onSelect: () => onAction('openAsPanelCut', entry),
+          },
+          {
+            label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
+            icon: 'i-heroicons-window',
+            onSelect: () => onAction('openAsPanelSound', entry),
+          },
+          {
+            label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+            icon: 'i-heroicons-squares-plus',
+            onSelect: () => onAction('openAsProjectTab', entry),
+          },
+        ]);
+      } else {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
+            icon: 'i-heroicons-window',
+            onSelect: () => onAction('openAsPanelCut', entry),
+          },
+          {
+            label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
+            icon: 'i-heroicons-window',
+            onSelect: () => onAction('openAsPanelSound', entry),
+          },
+        ]);
+      }
     }
 
     if (deps.isConvertibleMediaFile(entry)) {
