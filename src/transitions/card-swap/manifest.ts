@@ -8,6 +8,7 @@ export interface CardSwapParams {
   slideOrder: 'normal' | 'reverse';
   maxDarkness: number;
   shadowSize: number;
+  shadowOpacity: number;
 }
 
 const vertex = `
@@ -52,6 +53,7 @@ uniform float uMode;
 uniform float uSlideOrder;
 uniform float uMaxDarkness;
 uniform float uShadowSize;
+uniform float uShadowOpacity;
 
 const float depth = 3.0;
 const float perspective = 0.2;
@@ -126,22 +128,22 @@ void main(void) {
   
   // Compute shadows
   float shadowFr = 0.0;
-  if (!pfrIn && uShadowSize > 0.0) {
+  if (!pfrIn && uShadowSize > 0.0 && uShadowOpacity > 0.0) {
     vec2 d2 = max(vec2(0.0) - pfr, pfr - vec2(1.0));
     float dist = length(max(d2, 0.0)) / sizeFr;
     float maxDist = uShadowSize * 0.2;
     if (dist < maxDist && maxDist > 0.0) {
-      shadowFr = (1.0 - dist / maxDist) * 0.6; // Max 60% opacity shadow
+      shadowFr = (1.0 - dist / maxDist) * uShadowOpacity;
     }
   }
   
   float shadowTo = 0.0;
-  if (!ptoIn && uShadowSize > 0.0) {
+  if (!ptoIn && uShadowSize > 0.0 && uShadowOpacity > 0.0) {
     vec2 d2 = max(vec2(0.0) - pto, pto - vec2(1.0));
     float dist = length(max(d2, 0.0)) / sizeTo;
     float maxDist = uShadowSize * 0.2;
     if (dist < maxDist && maxDist > 0.0) {
-      shadowTo = (1.0 - dist / maxDist) * 0.6;
+      shadowTo = (1.0 - dist / maxDist) * uShadowOpacity;
     }
   }
 
@@ -183,6 +185,10 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
       typeof params?.maxDarkness === 'number' ? Math.max(0, Math.min(1, params.maxDarkness)) : 0.5,
     shadowSize:
       typeof params?.shadowSize === 'number' ? Math.max(0, Math.min(1, params.shadowSize)) : 0.2,
+    shadowOpacity:
+      typeof params?.shadowOpacity === 'number'
+        ? Math.max(0, Math.min(1, params.shadowOpacity))
+        : 0.6,
   };
 }
 
@@ -240,6 +246,14 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       max: 1,
       step: 0.05,
     },
+    {
+      key: 'shadowOpacity',
+      kind: 'slider',
+      labelKey: 'granVideoEditor.timeline.transition.paramShadowOpacity',
+      min: 0,
+      max: 1,
+      step: 0.05,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -254,6 +268,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
           uSlideOrder: { value: 0, type: 'f32' },
           uMaxDarkness: { value: 0.5, type: 'f32' },
           uShadowSize: { value: 0.2, type: 'f32' },
+          uShadowOpacity: { value: 0.6, type: 'f32' },
         },
       },
     }),
@@ -271,6 +286,7 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
     uniforms.uSlideOrder = params.slideOrder === 'reverse' ? 1 : 0;
     uniforms.uMaxDarkness = params.maxDarkness;
     uniforms.uShadowSize = params.shadowSize;
+    uniforms.uShadowOpacity = params.shadowOpacity;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,
