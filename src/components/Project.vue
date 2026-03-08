@@ -13,6 +13,7 @@ import { isOpenableProjectFileName } from '~/utils/media-types';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
+import ProjectLibrary from '~/components/project/ProjectLibrary.vue';
 import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
 import { useFocusStore } from '~/stores/focus.store';
 
@@ -235,6 +236,13 @@ onMounted(() => {
     label: t('videoEditor.fileManager.tabs.effects', 'Effects'),
     icon: 'i-heroicons-sparkles',
     component: markRaw(ProjectEffects),
+  });
+
+  registerProjectTab({
+    id: 'library',
+    label: t('videoEditor.fileManager.tabs.library', 'Library'),
+    icon: 'i-heroicons-rectangle-group',
+    component: markRaw(ProjectLibrary),
   });
 
   initDefaultTab();

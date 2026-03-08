@@ -338,6 +338,34 @@ function handleUpdateTextStyle(patch: Partial<import('~/timeline/types').TextCli
   });
 }
 
+function handleUpdateShapeType(val: import('~/timeline/types').ShapeType) {
+  if (props.clip.clipType !== 'shape') return;
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    shapeType: val,
+  });
+}
+
+function handleUpdateFillColor(val: string) {
+  if (props.clip.clipType !== 'shape') return;
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    fillColor: val,
+  });
+}
+
+function handleUpdateStrokeColor(val: string) {
+  if (props.clip.clipType !== 'shape') return;
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    strokeColor: val,
+  });
+}
+
+function handleUpdateStrokeWidth(val: number) {
+  if (props.clip.clipType !== 'shape') return;
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    strokeWidth: val,
+  });
+}
+
 const {
   anchorPresetOptions,
   canEditTransform,
@@ -821,6 +849,71 @@ defineExpose({
             :step="1"
             :min="0"
             @update:model-value="(v: any) => handleUpdateTextStyle({ padding: Number(v) })"
+          />
+        </div>
+      </div>
+    </PropertySection>
+
+    <PropertySection
+      v-else-if="clip.clipType === 'shape'"
+      :title="t('granVideoEditor.shapeClip.shape', 'Shape')"
+    >
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.shapeClip.type', 'Type')
+          }}</span>
+          <USelectMenu
+            :model-value="String((clip as any).shapeType ?? 'square')"
+            :items="[
+              { value: 'square', label: 'Square' },
+              { value: 'circle', label: 'Circle' },
+              { value: 'triangle', label: 'Triangle' },
+              { value: 'star', label: 'Star' },
+              { value: 'cloud', label: 'Cloud' },
+              { value: 'speech_bubble', label: 'Speech Bubble' },
+            ]"
+            value-key="value"
+            label-key="label"
+            size="sm"
+            @update:model-value="(v: any) => handleUpdateShapeType(v?.value ?? v)"
+          />
+        </div>
+
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.shapeClip.fillColor', 'Fill Color')
+          }}</span>
+          <UColorPicker
+            :model-value="String((clip as any).fillColor ?? '#ffffff')"
+            format="hex"
+            size="sm"
+            @update:model-value="(v: any) => handleUpdateFillColor(String(v))"
+          />
+        </div>
+
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.shapeClip.strokeColor', 'Stroke Color')
+          }}</span>
+          <UColorPicker
+            :model-value="String((clip as any).strokeColor ?? '#000000')"
+            format="hex"
+            size="sm"
+            @update:model-value="(v: any) => handleUpdateStrokeColor(String(v))"
+          />
+        </div>
+
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.shapeClip.strokeWidth', 'Stroke Width')
+          }}</span>
+          <WheelNumberInput
+            :model-value="Number((clip as any).strokeWidth ?? 0)"
+            size="sm"
+            :step="1"
+            :min="0"
+            @update:model-value="(v: any) => handleUpdateStrokeWidth(Number(v))"
           />
         </div>
       </div>

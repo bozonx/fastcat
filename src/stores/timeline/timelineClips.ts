@@ -80,23 +80,27 @@ export interface TimelineClipsApi {
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
   addVirtualClipAtPlayhead: (input: {
-    clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
+    clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
     name: string;
     durationUs?: number;
     backgroundColor?: string;
     text?: string;
     style?: TextClipStyle;
+    shapeType?: import('~/timeline/types').ShapeType;
+    hudType?: import('~/timeline/types').HudType;
   }) => void;
   addVirtualClipToTrack: (
     input: {
       trackId: string;
       startUs: number;
-      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
+      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
       name: string;
       durationUs?: number;
       backgroundColor?: string;
       text?: string;
       style?: TextClipStyle;
+      shapeType?: import('~/timeline/types').ShapeType;
+      hudType?: import('~/timeline/types').HudType;
     },
     options?: {
       skipHistory?: boolean;
@@ -163,6 +167,13 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       backgroundColor?: string;
       text?: string;
       style?: TextClipStyle;
+      shapeType?: import('~/timeline/types').ShapeType;
+      fillColor?: string;
+      strokeColor?: string;
+      strokeWidth?: number;
+      hudType?: import('~/timeline/types').HudType;
+      background?: import('~/timeline/types').HudMediaParams;
+      content?: import('~/timeline/types').HudMediaParams;
     },
   ) {
     deps.applyTimeline(
@@ -277,12 +288,14 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
   }
 
   function addVirtualClipAtPlayhead(input: {
-    clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
+    clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
     name: string;
     durationUs?: number;
     backgroundColor?: string;
     text?: string;
     style?: TextClipStyle;
+    shapeType?: import('~/timeline/types').ShapeType;
+    hudType?: import('~/timeline/types').HudType;
   }) {
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
@@ -298,6 +311,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       backgroundColor: input.backgroundColor,
       text: input.text,
       style: input.style,
+      shapeType: input.shapeType,
+      hudType: input.hudType,
       startUs: deps.currentTime.value,
     });
   }
@@ -306,12 +321,14 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     input: {
       trackId: string;
       startUs: number;
-      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text'>;
+      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
       name: string;
       durationUs?: number;
       backgroundColor?: string;
       text?: string;
       style?: TextClipStyle;
+      shapeType?: import('~/timeline/types').ShapeType;
+      hudType?: import('~/timeline/types').HudType;
     },
     options?: {
       skipHistory?: boolean;
@@ -335,6 +352,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         backgroundColor: input.backgroundColor,
         text: input.text,
         style: input.style,
+        shapeType: input.shapeType,
+        hudType: input.hudType,
         startUs: input.startUs,
       },
       options,

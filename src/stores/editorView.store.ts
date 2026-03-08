@@ -13,7 +13,15 @@ export interface ViewConfig {
 
 export interface DynamicPanel {
   id: string;
-  type: 'fileManager' | 'monitor' | 'properties' | 'text' | 'media' | 'history' | 'effects';
+  type:
+    | 'fileManager'
+    | 'monitor'
+    | 'properties'
+    | 'text'
+    | 'media'
+    | 'history'
+    | 'effects'
+    | 'library';
   title?: string;
   // If type is text or media, store file details
   filePath?: string;

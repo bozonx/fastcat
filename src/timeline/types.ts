@@ -21,7 +21,14 @@ export interface TimelineSourceRef {
   path: string;
 }
 
-export type TimelineClipType = 'media' | 'timeline' | 'adjustment' | 'background' | 'text';
+export type TimelineClipType =
+  | 'media'
+  | 'timeline'
+  | 'adjustment'
+  | 'background'
+  | 'text'
+  | 'shape'
+  | 'hud';
 
 export type TimelineBlendMode = 'normal' | 'add' | 'multiply' | 'screen' | 'darken' | 'lighten';
 
@@ -174,12 +181,40 @@ export interface TimelineTextClipItem extends TimelineClipBase {
   style?: TextClipStyle;
 }
 
+export type ShapeType = 'square' | 'circle' | 'triangle' | 'star' | 'cloud' | 'speech_bubble';
+
+export interface TimelineShapeClipItem extends TimelineClipBase {
+  clipType: 'shape';
+  shapeType: ShapeType;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+}
+
+export type HudType = 'media_frame';
+
+export interface HudMediaParams {
+  source?: TimelineSourceRef;
+  transitionIn?: ClipTransition;
+  transitionOut?: ClipTransition;
+  effects?: ClipEffect[];
+}
+
+export interface TimelineHudClipItem extends TimelineClipBase {
+  clipType: 'hud';
+  hudType: HudType;
+  background?: HudMediaParams;
+  content?: HudMediaParams;
+}
+
 export type TimelineClipItem =
   | TimelineMediaClipItem
   | TimelineTimelineClipItem
   | TimelineAdjustmentClipItem
   | TimelineBackgroundClipItem
-  | TimelineTextClipItem;
+  | TimelineTextClipItem
+  | TimelineShapeClipItem
+  | TimelineHudClipItem;
 
 export interface TimelineGapItem {
   kind: 'gap';

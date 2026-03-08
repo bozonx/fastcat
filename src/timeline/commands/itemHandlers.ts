@@ -137,10 +137,23 @@ export function addVirtualClipToTrack(
             text: typeof cmd.text === 'string' ? cmd.text : 'Text',
             style: cmd.style,
           }
-        : {
-            ...base,
-            clipType: 'adjustment',
-          };
+        : cmd.clipType === 'shape'
+          ? {
+              ...base,
+              clipType: 'shape',
+              shapeType: cmd.shapeType ?? 'square',
+              fillColor: '#ffffff',
+            }
+          : cmd.clipType === 'hud'
+            ? {
+                ...base,
+                clipType: 'hud',
+                hudType: cmd.hudType ?? 'media_frame',
+              }
+            : {
+                ...base,
+                clipType: 'adjustment',
+              };
 
   const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
@@ -774,6 +787,36 @@ export function updateClipProperties(
       const raw = nextProps.backgroundColor;
       const value = typeof raw === 'string' ? raw.trim() : '';
       nextProps.backgroundColor = value.length > 0 ? value : '#000000';
+    }
+  }
+
+  if (item.clipType === 'shape') {
+    if ('shapeType' in nextProps) {
+      (nextProps as any).shapeType = nextProps.shapeType;
+    }
+    if ('fillColor' in nextProps) {
+      (nextProps as any).fillColor =
+        typeof nextProps.fillColor === 'string' ? nextProps.fillColor : undefined;
+    }
+    if ('strokeColor' in nextProps) {
+      (nextProps as any).strokeColor =
+        typeof nextProps.strokeColor === 'string' ? nextProps.strokeColor : undefined;
+    }
+    if ('strokeWidth' in nextProps) {
+      (nextProps as any).strokeWidth =
+        typeof nextProps.strokeWidth === 'number' ? nextProps.strokeWidth : undefined;
+    }
+  }
+
+  if (item.clipType === 'hud') {
+    if ('hudType' in nextProps) {
+      (nextProps as any).hudType = nextProps.hudType;
+    }
+    if ('background' in nextProps) {
+      (nextProps as any).background = nextProps.background;
+    }
+    if ('content' in nextProps) {
+      (nextProps as any).content = nextProps.content;
     }
   }
 
