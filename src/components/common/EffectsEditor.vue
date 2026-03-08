@@ -4,6 +4,7 @@ import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import { getEffectManifest } from '~/effects';
 import type { ClipEffect } from '~/timeline/types';
+import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
   effects?: ClipEffect[];
@@ -17,8 +18,12 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const presetsStore = usePresetsStore();
 
 const isEffectModalOpen = ref(false);
+const isSaveModalOpen = ref(false);
+const newPresetName = ref('');
+const savingEffectId = ref<string | null>(null);
 
 const safeTitle = computed(() => props.title ?? t('granVideoEditor.effects.title', 'Effects'));
 const safeAddLabel = computed(() => props.addLabel ?? t('granVideoEditor.effects.add', 'Add'));
@@ -72,6 +77,33 @@ function handleUpdateEffect(effectId: string, updates: Partial<ClipEffect>) {
 function handleRemoveEffect(effectId: string) {
   setEffects(safeEffects.value.filter((e) => e.id !== effectId));
 }
+
+function handleSavePreset() {
+  if (!savingEffectId.value || !newPresetName.value.trim()) return;
+  
+  const effect = safeEffects.value.find((e) => e.id === savingEffectId.value);
+  if (!effect) return;
+  
+  const manifest = getEffectManifest(effect.type);
+  if (!manifest) return;
+  
+  const baseType = manifest.baseType || manifest.type;
+  const paramsToSave = { ...effect };
+  delete (paramsToSave as any).id;
+  delete (paramsToSave as any).type;
+  delete (paramsToSave as any).enabled;
+  
+  presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), paramsToSave);
+  
+  isSaveModalOpen.value = false;
+  newPresetName.value = '';
+  savingEffectId.value = null;
+}
+
+function openSaveModal(effectId: string) {
+  savingEffectId.value = effectId;
+  isSaveModalOpen.value = true;
+}
 </script>
 
 <template>
@@ -114,13 +146,23 @@ function handleRemoveEffect(effectId: string) {
               getEffectManifest(effect.type)?.name || effect.type
             }}</span>
           </div>
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="red"
-            icon="i-heroicons-trash"
-            @click="handleRemoveEffect(effect.id)"
-          />
+          <div class="flex items-center gap-1">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="primary"
+              icon="i-heroicons-bookmark"
+              :title="t('granVideoEditor.effects.saveAsPreset', 'Save as preset')"
+              @click="openSaveModal(effect.id)"
+            />
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="red"
+              icon="i-heroicons-trash"
+              @click="handleRemoveEffect(effect.id)"
+            />
+          </div>
         </div>
 
         <div class="space-y-3">
@@ -173,5 +215,23 @@ function handleRemoveEffect(effectId: string) {
     </div>
 
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
+    
+    <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <UFormField :label="t('common.name', 'Name')">
+            <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
+          </UFormField>
+          <div class="flex justify-end gap-2">
+            <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+              {{ t('common.cancel', 'Cancel') }}
+            </UButton>
+            <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
+              {{ t('common.save', 'Save') }}
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

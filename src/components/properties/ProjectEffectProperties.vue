@@ -43,6 +43,11 @@ function handleSavePreset() {
   isSaveModalOpen.value = false;
   newPresetName.value = '';
 }
+
+function handleUpdatePreset() {
+  if (!manifest.value || !manifest.value.isCustom) return;
+  presetsStore.updatePreset(manifest.value.type, params.value);
+}
 </script>
 
 <template>
@@ -95,15 +100,27 @@ function handleSavePreset() {
       </div>
     </div>
 
-    <UButton
-      variant="soft"
-      color="primary"
-      icon="i-heroicons-bookmark"
-      block
-      @click="isSaveModalOpen = true"
-    >
-      {{ t('granVideoEditor.effects.saveAsPreset', 'Save as preset') }}
-    </UButton>
+    <div class="flex gap-2">
+      <UButton
+        v-if="manifest.isCustom"
+        variant="soft"
+        color="primary"
+        icon="i-heroicons-check"
+        class="flex-1 justify-center"
+        @click="handleUpdatePreset"
+      >
+        {{ t('common.save', 'Save') }}
+      </UButton>
+      <UButton
+        variant="soft"
+        color="primary"
+        icon="i-heroicons-bookmark"
+        class="flex-1 justify-center"
+        @click="isSaveModalOpen = true"
+      >
+        {{ manifest.isCustom ? t('granVideoEditor.effects.saveAsNew', 'Save as new') : t('granVideoEditor.effects.saveAsPreset', 'Save as preset') }}
+      </UButton>
+    </div>
 
     <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
       <template #body>
