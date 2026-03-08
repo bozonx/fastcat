@@ -65,50 +65,70 @@ void main(void) {
   
   vec4 baseColor = mix(fromColor, toColor, progress);
   
-  if (uIsBloom < 0.5) {
-    gl_FragColor = baseColor;
-    return;
-  }
-  
-  // Simple blur for bloom
-  // We apply more bloom at the peak of the transition (progress = 0.5)
   float peak = 1.0 - abs(progress - 0.5) * 2.0; // 0 at edges, 1 at middle
-  
   float blurAmount = uBlurLevel * peak * 0.05;
-  vec4 bloomColor = vec4(0.0);
   
-  // 9-tap blur
-  vec2 texelSize = vTexScale;
+  vec4 blurColorFrom = vec4(0.0);
+  vec4 blurColorTo = vec4(0.0);
   
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, -1.0) * blurAmount)) * 0.0625;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(0.0, -1.0) * blurAmount)) * 0.125;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, -1.0) * blurAmount)) * 0.0625;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 0.0) * blurAmount)) * 0.125;
-  bloomColor += extractBright(fromColor) * 0.25;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, 0.0) * blurAmount)) * 0.125;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 1.0) * blurAmount)) * 0.0625;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(0.0, 1.0) * blurAmount)) * 0.125;
-  bloomColor += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, 1.0) * blurAmount)) * 0.0625;
-  
-  vec4 bloomColorTo = vec4(0.0);
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, -1.0) * blurAmount)) * 0.0625;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(0.0, -1.0) * blurAmount)) * 0.125;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, -1.0) * blurAmount)) * 0.0625;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, 0.0) * blurAmount)) * 0.125;
-  bloomColorTo += extractBright(toColor) * 0.25;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, 0.0) * blurAmount)) * 0.125;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, 1.0) * blurAmount)) * 0.0625;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(0.0, 1.0) * blurAmount)) * 0.125;
-  bloomColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, 1.0) * blurAmount)) * 0.0625;
-  
-  vec4 mixedBloom = mix(bloomColor, bloomColorTo, progress);
-  
-  vec4 outColor = baseColor + mixedBloom * uBrightness * peak;
-  // Ensure we don't exceed 1.0 and keep alpha correct
-  outColor.rgb = min(outColor.rgb, vec3(1.0));
-  outColor.a = baseColor.a;
-  
-  gl_FragColor = outColor;
+  if (uIsBloom > 0.5) {
+    // Bloom mode: blur only bright parts
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, -1.0) * blurAmount)) * 0.0625;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(0.0, -1.0) * blurAmount)) * 0.125;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, -1.0) * blurAmount)) * 0.0625;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 0.0) * blurAmount)) * 0.125;
+    blurColorFrom += extractBright(fromColor) * 0.25;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, 0.0) * blurAmount)) * 0.125;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 1.0) * blurAmount)) * 0.0625;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(0.0, 1.0) * blurAmount)) * 0.125;
+    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, 1.0) * blurAmount)) * 0.0625;
+    
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, -1.0) * blurAmount)) * 0.0625;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(0.0, -1.0) * blurAmount)) * 0.125;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, -1.0) * blurAmount)) * 0.0625;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, 0.0) * blurAmount)) * 0.125;
+    blurColorTo += extractBright(toColor) * 0.25;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, 0.0) * blurAmount)) * 0.125;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, 1.0) * blurAmount)) * 0.0625;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(0.0, 1.0) * blurAmount)) * 0.125;
+    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, 1.0) * blurAmount)) * 0.0625;
+    
+    vec4 mixedBloom = mix(blurColorFrom, blurColorTo, progress);
+    vec4 outColor = baseColor + mixedBloom * uBrightness * peak;
+    outColor.rgb = min(outColor.rgb, vec3(1.0));
+    outColor.a = baseColor.a;
+    gl_FragColor = outColor;
+  } else {
+    // Normal mode: blur whole image and apply brightness uniformly
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, -1.0) * blurAmount) * 0.0625;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(0.0, -1.0) * blurAmount) * 0.125;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(1.0, -1.0) * blurAmount) * 0.0625;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 0.0) * blurAmount) * 0.125;
+    blurColorFrom += fromColor * 0.25;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(1.0, 0.0) * blurAmount) * 0.125;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 1.0) * blurAmount) * 0.0625;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(0.0, 1.0) * blurAmount) * 0.125;
+    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(1.0, 1.0) * blurAmount) * 0.0625;
+    
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(-1.0, -1.0) * blurAmount) * 0.0625;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(0.0, -1.0) * blurAmount) * 0.125;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(1.0, -1.0) * blurAmount) * 0.0625;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(-1.0, 0.0) * blurAmount) * 0.125;
+    blurColorTo += toColor * 0.25;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(1.0, 0.0) * blurAmount) * 0.125;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(-1.0, 1.0) * blurAmount) * 0.0625;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(0.0, 1.0) * blurAmount) * 0.125;
+    blurColorTo += texture(uTexture, vTextureCoord + vec2(1.0, 1.0) * blurAmount) * 0.0625;
+    
+    vec4 mixedBlur = mix(blurColorFrom, blurColorTo, progress);
+    
+    // Apply brightness multiplier smoothly towards middle
+    float brightnessMult = mix(1.0, uBrightness, peak);
+    vec4 outColor = mixedBlur * brightnessMult;
+    outColor.rgb = min(outColor.rgb, vec3(1.0));
+    outColor.a = baseColor.a;
+    gl_FragColor = outColor;
+  }
 }
 `;
 
@@ -144,7 +164,6 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
       min: 0.1,
       max: 5.0,
       step: 0.1,
-      showIf: (params) => params.mode !== 'normal',
     },
     {
       key: 'blurLevel',
@@ -153,7 +172,6 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
       min: 0.0,
       max: 3.0,
       step: 0.1,
-      showIf: (params) => params.mode !== 'normal',
     },
   ],
   renderMode: 'shader',
