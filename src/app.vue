@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
+import { usePresetsStore } from '~/stores/presets.store';
 
 const colorMode = useColorMode();
+const presetsStore = usePresetsStore();
+
+// Load presets on startup
+onMounted(() => {
+  presetsStore.load();
+});
 
 /**
  * Handle initial color mode preference.

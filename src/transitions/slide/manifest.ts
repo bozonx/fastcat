@@ -11,6 +11,8 @@ export interface SlideParams {
   direction: 'left' | 'right' | 'up' | 'down';
   gap: number;
   gapColor: string;
+  motionBlur: number;
+  blurRampDurationMs: number;
 }
 
 const vertex = `
@@ -53,34 +55,54 @@ uniform float uProgress;
 uniform float uGap;
 uniform vec2 uAxis;
 uniform vec3 uGapColor;
+uniform float uMotionBlur;
 
-void main(void) {
-  float progress = clamp(uProgress, 0.0, 1.0);
-  vec2 axis = normalize(uAxis);
-  vec2 gapVector = axis * uGap;
-  vec2 fromOffset = axis * progress + gapVector * 0.5;
-  vec2 toOffset = axis * (progress - 1.0) - gapVector * 0.5;
+vec4 getColor(vec2 uv) {
+  vec2 gapVector = uAxis * uGap;
+  vec2 fromOffset = uAxis * uProgress + gapVector * 0.5;
+  vec2 toOffset = uAxis * (uProgress - 1.0) - gapVector * 0.5;
 
-  vec2 uv = vNormalizedCoord;
   vec2 fromUv = uv - fromOffset;
   vec2 toUv = uv - toOffset;
-
-  vec4 fromColor = texture(uFromTexture, fromUv);
-  vec4 toColor = texture(uTexture, vTextureCoord - toOffset * vTexScale);
 
   float fromInside = step(0.0, fromUv.x) * step(fromUv.x, 1.0) * step(0.0, fromUv.y) * step(fromUv.y, 1.0);
   float toInside = step(0.0, toUv.x) * step(toUv.x, 1.0) * step(0.0, toUv.y) * step(toUv.y, 1.0);
 
-  vec4 color = vec4(0.0);
   if (fromInside > 0.5) {
-    color = fromColor;
+    return texture(uFromTexture, fromUv);
   } else if (toInside > 0.5) {
-    color = toColor;
+    // We need to map toUv back to texture coordinates.
+    // toUv is in [0, 1] normalized space. 
+    // vTextureCoord is vNormalizedCoord * vTexScale.
+    // So toUv's texture coordinate is toUv * vTexScale.
+    return texture(uTexture, toUv * vTexScale);
   } else {
-    color = vec4(uGapColor, 1.0);
+    return vec4(uGapColor, 1.0);
+  }
+}
+
+void main(void) {
+  if (uMotionBlur <= 0.0) {
+    gl_FragColor = getColor(vNormalizedCoord);
+    return;
   }
 
-  gl_FragColor = color;
+  // Number of samples for motion blur
+  const int SAMPLES = 16;
+  vec4 finalColor = vec4(0.0);
+  
+  // uMotionBlur represents the amount of offset in normalized coordinates
+  // We sample along the axis of movement
+  float stepSize = uMotionBlur / float(SAMPLES - 1);
+  float startOffset = -uMotionBlur * 0.5;
+
+  for (int i = 0; i < SAMPLES; i++) {
+    float offset = startOffset + float(i) * stepSize;
+    vec2 sampleUv = vNormalizedCoord + uAxis * offset;
+    finalColor += getColor(sampleUv);
+  }
+
+  gl_FragColor = finalColor / float(SAMPLES);
 }
 `;
 
@@ -97,6 +119,8 @@ function normalizeSlideParams(params?: Record<string, unknown>): SlideParams {
     direction,
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
+    motionBlur: clampNumber(params?.motionBlur, 0, 1, 0),
+    blurRampDurationMs: clampNumber(params?.blurRampDurationMs, 0, 5000, 100),
   };
 }
 
@@ -146,6 +170,22 @@ export const slideManifest: TransitionManifest<SlideParams> = {
       kind: 'color',
       labelKey: 'granVideoEditor.timeline.transition.paramGapColor',
     },
+    {
+      key: 'motionBlur',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlur',
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      key: 'blurRampDurationMs',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramBlurRampDuration',
+      min: 0,
+      max: 5000,
+      step: 10,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -158,6 +198,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
           uGap: { value: 0.02, type: 'f32' },
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
           uGapColor: { value: [0, 0, 0], type: 'vec3<f32>' },
+          uMotionBlur: { value: 0, type: 'f32' },
         },
       },
     }),
@@ -169,11 +210,46 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     const params = normalizeSlideParams(context.params);
     const axis = getDirectionVector(params.direction);
     const rgb = hexColorToRgb01(params.gapColor);
+
+    // Calculate motion blur
+    let blurAmount = 0;
+    if (params.motionBlur > 0 && context.durationUs && context.durationUs > 0) {
+      // Base speed of transition in normalized screen coordinates per second
+      // Distance traveled is roughly 1.0 (screen width/height) over the duration
+      const durationSeconds = context.durationUs / 1_000_000;
+      const baseSpeed = 1.0 / durationSeconds;
+
+      // Target blur amount depends on speed and motionBlur parameter
+      // We scale it down a bit so 1.0 isn't crazy blurry
+      let targetBlur = baseSpeed * params.motionBlur * 0.05;
+
+      // Apply acceleration / deceleration ramp
+      if (params.blurRampDurationMs > 0 && context.elapsedUs !== undefined) {
+        const rampUs = params.blurRampDurationMs * 1000;
+        const elapsedUs = context.elapsedUs;
+        const remainingUs = context.durationUs - elapsedUs;
+
+        let rampFactor = 1.0;
+        if (elapsedUs < rampUs) {
+          // Accelerating
+          rampFactor = Math.max(0, elapsedUs / rampUs);
+        } else if (remainingUs < rampUs) {
+          // Decelerating
+          rampFactor = Math.max(0, remainingUs / rampUs);
+        }
+
+        targetBlur *= rampFactor;
+      }
+
+      blurAmount = targetBlur;
+    }
+
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uGap = params.gap;
     uniforms.uAxis = [axis.x, axis.y];
     uniforms.uGapColor = [rgb.r, rgb.g, rgb.b];
+    uniforms.uMotionBlur = blurAmount;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

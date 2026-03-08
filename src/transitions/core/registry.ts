@@ -30,6 +30,8 @@ export const TRANSITION_CURVE_VALUES: TransitionCurve[] = [
 export interface TransitionShaderContext {
   progress: number;
   curve: TransitionCurve;
+  elapsedUs?: number;
+  durationUs?: number;
   edge?: 'in' | 'out';
   params?: Record<string, unknown>;
   fromTexture?: Texture;
@@ -69,6 +71,8 @@ export interface TransitionManifest<T = Record<string, any>> {
   computeOutOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
   /** Returns opacity [0..1] of the incoming clip at `progress` [0..1] */
   computeInOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
+  isCustom?: boolean;
+  baseType?: string;
 }
 
 /** Cubic ease-in-out approximation for bezier transition curve */
@@ -84,24 +88,28 @@ function clampProgress(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function remapSegment(
-  t: number,
-  split: number,
-  mapper: (segmentT: number) => number,
-  startValue: number,
-  endValue: number,
-): number {
-  if (split <= 0 || split >= 1) {
-    return mapper(t);
+function solveCubicBezier(t: number, x1: number, y1: number, x2: number, y2: number): number {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  if (x1 === y1 && x2 === y2) return t;
+
+  let guess = t;
+  for (let i = 0; i < 5; i++) {
+    const cx = 3.0 * x1;
+    const bx = 3.0 * (x2 - x1) - cx;
+    const ax = 1.0 - cx - bx;
+    const currentX = ((ax * guess + bx) * guess + cx) * guess;
+    const currentSlope = (3.0 * ax * guess + 2.0 * bx) * guess + cx;
+    if (currentSlope === 0.0) break;
+    guess -= (currentX - t) / currentSlope;
   }
 
-  if (t <= split) {
-    const localT = t / split;
-    return startValue + (endValue - startValue) * mapper(localT);
-  }
+  guess = Math.max(0, Math.min(1, guess));
 
-  const localT = (t - split) / (1 - split);
-  return endValue + (1 - endValue) * mapper(localT);
+  const cy = 3.0 * y1;
+  const by = 3.0 * (y2 - y1) - cy;
+  const ay = 1.0 - cy - by;
+  return ((ay * guess + by) * guess + cy) * guess;
 }
 
 export function applyTransitionCurve(progress: number, curve: TransitionCurve): number {
@@ -111,17 +119,17 @@ export function applyTransitionCurve(progress: number, curve: TransitionCurve): 
     case 'linear':
       return t;
     case 'bezier':
-      return easeInOutCubic(t);
+      return solveCubicBezier(t, 0.42, 0.0, 0.58, 1.0);
     case 'linear-slow-end':
-      return remapSegment(t, 0.5, (segmentT) => 1 - Math.pow(1 - segmentT, 2), 0, 0.5);
+      return solveCubicBezier(t, 0.333, 0.333, 0.333, 1.0);
     case 'fast-slow-end':
-      return Math.sin((t * Math.PI) / 2);
+      return solveCubicBezier(t, 0.0, 0.5, 0.5, 1.0);
     case 'fast-linear-end':
-      return remapSegment(t, 0.5, (segmentT) => 1 - Math.pow(1 - segmentT, 2), 0, 0.65);
+      return solveCubicBezier(t, 0.0, 0.333, 0.667, 0.667);
     case 'slow-linear-end':
-      return remapSegment(t, 0.5, (segmentT) => segmentT * segmentT, 0, 0.35);
+      return solveCubicBezier(t, 0.333, 0.0, 0.667, 0.667);
     case 'linear-fast-end':
-      return remapSegment(t, 0.5, (segmentT) => segmentT * segmentT, 0, 0.5);
+      return solveCubicBezier(t, 0.333, 0.333, 1.0, 0.667);
     default:
       return t;
   }

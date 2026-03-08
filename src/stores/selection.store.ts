@@ -2,10 +2,22 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 
-export type SelectionSource = 'timeline' | 'fileManager';
+export type SelectionSource = 'timeline' | 'fileManager' | 'project';
 
 export interface SelectedEntityBase {
   source: SelectionSource;
+}
+
+export interface SelectedProjectEffect extends SelectedEntityBase {
+  source: 'project';
+  kind: 'effect';
+  effectType: string;
+}
+
+export interface SelectedProjectTransition extends SelectedEntityBase {
+  source: 'project';
+  kind: 'transition';
+  transitionType: string;
 }
 
 export interface SelectedTimelineClip extends SelectedEntityBase {
@@ -82,7 +94,9 @@ export type SelectedEntity =
   | SelectedTimelineSelectionRange
   | SelectedTimelineProperties
   | SelectedFsEntry
-  | SelectedFsEntries;
+  | SelectedFsEntries
+  | SelectedProjectEffect
+  | SelectedProjectTransition;
 
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
@@ -181,6 +195,22 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
+  function selectProjectEffect(effectType: string) {
+    selectedEntity.value = {
+      source: 'project',
+      kind: 'effect',
+      effectType,
+    };
+  }
+
+  function selectProjectTransition(transitionType: string) {
+    selectedEntity.value = {
+      source: 'project',
+      kind: 'transition',
+      transitionType,
+    };
+  }
+
   function clearSelection() {
     selectedEntity.value = null;
   }
@@ -196,6 +226,8 @@ export const useSelectionStore = defineStore('selection', () => {
     selectFsEntry,
     selectFsEntries,
     selectTimelineProperties,
+    selectProjectEffect,
+    selectProjectTransition,
     clearSelection,
   };
 });

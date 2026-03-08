@@ -11,6 +11,8 @@ export interface EffectManifest<T = Record<string, any>> {
   controls: EffectControl<T>[];
   createFilter: () => Filter;
   updateFilter: (filter: Filter, values: T) => void;
+  isCustom?: boolean;
+  baseType?: string;
 }
 
 export type EffectControl<T> =
