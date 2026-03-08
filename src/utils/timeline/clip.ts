@@ -137,7 +137,7 @@ export function getFadeLinePattern(
   curve: TransitionCurve,
   width = 100,
 ): FadePatternLine[] {
-  const count = 16;
+  const count = 28;
   const positions: number[] = [];
 
   for (let index = 1; index <= count; index += 1) {
@@ -154,7 +154,7 @@ export function getFadeLinePattern(
     const previous = index > 0 ? (sorted[index - 1] ?? 0) : 0;
     const next = index < sorted.length - 1 ? (sorted[index + 1] ?? width) : width;
     const gap = Math.min(position - previous, next - position);
-    const lineWidth = Math.max(0.9, Math.min(2.4, gap * 0.35));
+    const lineWidth = Math.max(0.4, Math.min(1.2, gap * 0.2));
 
     return {
       x: roundSvg(position - lineWidth / 2),

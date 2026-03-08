@@ -410,6 +410,25 @@ function shouldCollapseFades(item: TimelineTrackItem): boolean {
   return false;
 }
 
+function getAudioFadePath(edge: 'in' | 'out', curve: 'linear' | 'logarithmic' | undefined): string {
+  const isLog = curve === 'logarithmic';
+  if (edge === 'in') {
+    if (isLog) {
+      // Starts from Top-Right (100,0) and curves down to Bottom-Left (0,100)
+      // bowing towards Top-Left (0,0)
+      return 'M 0,0 L 100,0 C 40,0 0,40 0,100 Z';
+    }
+    return 'M 0,0 L 100,0 L 0,100 Z';
+  } else {
+    if (isLog) {
+      // Starts from Bottom-Right (100,100) and curves up to Top-Left (0,0)
+      // bowing towards Top-Right (100,0)
+      return 'M 0,0 L 100,0 L 100,100 C 100,40 60,0 0,0 Z';
+    }
+    return 'M 0,0 L 100,0 L 100,100 Z';
+  }
+}
+
 function getPrevClipForItem(
   track: TimelineTrack,
   item: TimelineTrackItem,
@@ -688,7 +707,7 @@ const isFreePosition = computed(() => {
             )}px`,
           }"
         >
-          <polygon points="0,0 100,0 0,100" fill="var(--clip-lower-tri)" />
+          <path :d="getAudioFadePath('in', clipItem.audioFadeInCurve)" fill="var(--clip-lower-tri)" />
         </svg>
 
         <svg
@@ -712,7 +731,7 @@ const isFreePosition = computed(() => {
             )}px`,
           }"
         >
-          <polygon points="0,0 100,0 100,100" fill="var(--clip-lower-tri)" />
+          <path :d="getAudioFadePath('out', clipItem.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
         </svg>
       </div>
 

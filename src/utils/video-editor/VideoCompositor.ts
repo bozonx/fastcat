@@ -1910,6 +1910,8 @@ export class VideoCompositor {
       const transitionContext = {
         progress: state.progress,
         curve: state.curve,
+        elapsedUs: timeUs - clip.startUs,
+        durationUs: state.transition.durationUs,
         edge: 'in' as const,
         params: state.transition.params,
         fromTexture,
