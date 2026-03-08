@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition } from '~/timeline/types';
 import type { TransitionCurve, TransitionParamField } from '~/transitions/core/registry';
@@ -7,6 +7,7 @@ import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import { getTransitionCurveSinglePath } from '~/utils/timeline/clip';
+import { usePresetsStore } from '~/stores/presets.store';
 
 interface CurveOption {
   value: TransitionCurve;
@@ -36,6 +37,10 @@ const emit = defineEmits<{
     },
   ): void;
 }>();
+
+const presetsStore = usePresetsStore();
+const isSaveModalOpen = ref(false);
+const newPresetName = ref('');
 
 const manifests = computed(() => getAllTransitionManifests());
 
@@ -157,6 +162,18 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
     return true;
   });
 });
+
+function handleSavePreset() {
+  if (!selectedManifest.value || !newPresetName.value.trim() || !props.transition) return;
+  
+  const baseType = selectedManifest.value.baseType || selectedManifest.value.type;
+  const paramsToSave = { ...selectedParams.value };
+  
+  presetsStore.saveAsPreset('transition', baseType, newPresetName.value.trim(), paramsToSave);
+  
+  isSaveModalOpen.value = false;
+  newPresetName.value = '';
+}
 </script>
 
 <template>
@@ -172,19 +189,30 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
           {{ t('granVideoEditor.timeline.transition.title') }}</span
         >
       </div>
-      <UButton
-        v-if="transition"
-        color="red"
-        variant="ghost"
-        size="xs"
-        icon="i-heroicons-trash"
-        :title="
-          edge === 'in'
-            ? t('granVideoEditor.timeline.removeTransitionIn')
-            : t('granVideoEditor.timeline.removeTransitionOut')
-        "
-        @click="remove"
-      />
+      <div class="flex items-center gap-1">
+        <UButton
+          v-if="transition"
+          color="primary"
+          variant="ghost"
+          size="xs"
+          icon="i-heroicons-bookmark"
+          :title="t('granVideoEditor.effects.saveAsPreset', 'Save as preset')"
+          @click="isSaveModalOpen = true"
+        />
+        <UButton
+          v-if="transition"
+          color="red"
+          variant="ghost"
+          size="xs"
+          icon="i-heroicons-trash"
+          :title="
+            edge === 'in'
+              ? t('granVideoEditor.timeline.removeTransitionIn')
+              : t('granVideoEditor.timeline.removeTransitionOut')
+          "
+          @click="remove"
+        />
+      </div>
     </div>
 
     <!-- Transition type picker -->
@@ -307,5 +335,23 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
         />
       </div>
     </div>
+    
+    <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <UFormField :label="t('common.name', 'Name')">
+            <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
+          </UFormField>
+          <div class="flex justify-end gap-2">
+            <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+              {{ t('common.cancel', 'Cancel') }}
+            </UButton>
+            <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
+              {{ t('common.save', 'Save') }}
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
