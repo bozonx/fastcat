@@ -3,9 +3,13 @@ import { applyTransitionCurve, clampNumber } from '../core/registry';
 import type { TransitionManifest } from '../core/registry';
 
 export interface BlindsParams {
-  direction: 'horizontal' | 'vertical';
+  angle: number;
   stripCount: number;
   motionBlur: number;
+  motionBlurMode: 'normal' | 'bloom';
+  brightnessMode: 'normal' | 'bloom';
+  brightness: number;
+  bloomThreshold: number;
 }
 
 const vertex = `
@@ -46,13 +50,16 @@ uniform sampler2D uTexture;
 uniform sampler2D uFromTexture;
 uniform float uProgress;
 uniform vec2 uAxis;
+uniform vec2 uPerp;
 uniform float uStripCount;
 uniform float uMotionBlur;
+uniform float uMotionBlurMode;
+uniform float uBrightnessMode;
+uniform float uBrightness;
+uniform float uBloomThreshold;
 
 vec4 getColor(vec2 uv) {
-  // If uAxis is (1,0), movement is horizontal, strips are separated by Y.
-  // If uAxis is (0,1), movement is vertical, strips are separated by X.
-  float stripCoord = (uAxis.x > 0.5) ? uv.y : uv.x;
+  float stripCoord = dot(uv - 0.5, uPerp) + 0.5;
   float stripIndex = floor(stripCoord * uStripCount);
   float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
   vec2 moveVec = uAxis * dir;
@@ -72,10 +79,22 @@ vec4 getColor(vec2 uv) {
   }
 }
 
+vec4 processSample(vec4 color) {
+  float extra = 0.0;
+  if (uBrightnessMode > 0.5) {
+    float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float mask = smoothstep(uBloomThreshold, 1.0, lum);
+    extra = uBrightness * mask;
+  } else {
+    extra = uBrightness;
+  }
+  return vec4(max(vec3(0.0), color.rgb * (1.0 + extra)), color.a);
+}
+
 out vec4 finalColor;
 void main(void) {
   if (uMotionBlur <= 0.0) {
-    finalColor = getColor(vNormalizedCoord);
+    finalColor = processSample(getColor(vNormalizedCoord));
     return;
   }
 
@@ -85,27 +104,45 @@ void main(void) {
   float stepSize = uMotionBlur / float(SAMPLES - 1);
   float startOffset = -uMotionBlur * 0.5;
 
-  float stripCoord = (uAxis.x > 0.5) ? vNormalizedCoord.y : vNormalizedCoord.x;
+  float stripCoord = dot(vNormalizedCoord - 0.5, uPerp) + 0.5;
   float stripIndex = floor(stripCoord * uStripCount);
   float dir = mod(stripIndex, 2.0) == 0.0 ? 1.0 : -1.0;
   vec2 blurAxis = uAxis * dir;
 
+  float totalWeight = 0.0;
+
   for (int i = 0; i < SAMPLES; i++) {
     float offset = startOffset + float(i) * stepSize;
     vec2 sampleUv = vNormalizedCoord + blurAxis * offset;
-    accumColor += getColor(sampleUv);
+    vec4 color = processSample(getColor(sampleUv));
+
+    float weight = 1.0;
+    if (uMotionBlurMode > 0.5) {
+      float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+      weight = smoothstep(uBloomThreshold, 1.0, lum);
+    }
+    
+    accumColor += color * weight;
+    totalWeight += weight;
   }
 
-  finalColor = accumColor / float(SAMPLES);
+  if (totalWeight > 0.0) {
+    finalColor = accumColor / totalWeight;
+  } else {
+    finalColor = processSample(getColor(vNormalizedCoord));
+  }
 }
 `;
 
 function normalizeBlindsParams(params?: Record<string, unknown>): BlindsParams {
-  const direction = params?.direction === 'vertical' ? 'vertical' : 'horizontal';
   return {
-    direction,
+    angle: clampNumber(params?.angle, -360, 360, 0),
     stripCount: Math.round(clampNumber(params?.stripCount, 2, 100, 10)),
     motionBlur: clampNumber(params?.motionBlur, 0, 10, 0),
+    motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
+    brightnessMode: params?.brightnessMode === 'bloom' ? 'bloom' : 'normal',
+    brightness: clampNumber(params?.brightness, -10, 10, 0),
+    bloomThreshold: clampNumber(params?.bloomThreshold, 0, 1, 0.7),
   };
 }
 
@@ -118,13 +155,12 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
   normalizeParams: normalizeBlindsParams,
   paramFields: [
     {
-      key: 'direction',
-      kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
-      options: [
-        { value: 'horizontal', labelKey: 'granVideoEditor.timeline.transition.directionHorizontal' },
-        { value: 'vertical', labelKey: 'granVideoEditor.timeline.transition.directionVertical' },
-      ],
+      key: 'angle',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramAngle',
+      min: -360,
+      max: 360,
+      step: 1,
     },
     {
       key: 'stripCount',
@@ -142,6 +178,40 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       max: 10,
       step: 0.01,
     },
+    {
+      key: 'motionBlurMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlurMode',
+      options: [
+        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeNormal' },
+        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeBloom' },
+      ],
+    },
+    {
+      key: 'brightnessMode',
+      kind: 'select',
+      labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
+      options: [
+        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.brightnessModeNormal' },
+        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.brightnessModeBloom' },
+      ],
+    },
+    {
+      key: 'brightness',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramBrightness',
+      min: -10,
+      max: 10,
+      step: 0.1,
+    },
+    {
+      key: 'bloomThreshold',
+      kind: 'number',
+      labelKey: 'granVideoEditor.timeline.transition.paramBloomThreshold',
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
   ],
   renderMode: 'shader',
   createFilter: () =>
@@ -152,8 +222,13 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
         blindsUniforms: {
           uProgress: { value: 0, type: 'f32' },
           uAxis: { value: [1, 0], type: 'vec2<f32>' },
+          uPerp: { value: [0, 1], type: 'vec2<f32>' },
           uStripCount: { value: 10, type: 'f32' },
           uMotionBlur: { value: 0, type: 'f32' },
+          uMotionBlurMode: { value: 0, type: 'f32' },
+          uBrightnessMode: { value: 0, type: 'f32' },
+          uBrightness: { value: 0, type: 'f32' },
+          uBloomThreshold: { value: 0.7, type: 'f32' },
         },
       },
     }),
@@ -161,10 +236,16 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     const resources = (filter as any).resources;
     const uniforms = resources?.blindsUniforms?.uniforms;
     if (!uniforms) return;
-    
+
     const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeBlindsParams(context.params);
-    const axis = params.direction === 'vertical' ? { x: 0, y: 1 } : { x: 1, y: 0 };
+
+    // Convert angle to radians
+    // 0 degrees -> horizontal motion (axis = [1, 0])
+    // 90 degrees -> vertical motion (axis = [0, 1])
+    const rad = (params.angle * Math.PI) / 180;
+    const axis = { x: Math.cos(rad), y: Math.sin(rad) };
+    const perp = { x: -Math.sin(rad), y: Math.cos(rad) };
 
     const deltaProgress = 0.01;
     const p1 = applyTransitionCurve(Math.max(0, context.progress - deltaProgress), context.curve);
@@ -179,11 +260,19 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       blurAmount = Math.max(0, targetBlur);
     }
 
+    const envelope = Math.sin(progress * Math.PI);
+    const currentBrightness = params.brightness * envelope;
+
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uAxis = [axis.x, axis.y];
+    uniforms.uPerp = [perp.x, perp.y];
     uniforms.uStripCount = params.stripCount;
     uniforms.uMotionBlur = blurAmount;
+    uniforms.uMotionBlurMode = params.motionBlurMode === 'bloom' ? 1.0 : 0.0;
+    uniforms.uBrightnessMode = params.brightnessMode === 'bloom' ? 1.0 : 0.0;
+    uniforms.uBrightness = currentBrightness;
+    uniforms.uBloomThreshold = params.bloomThreshold;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

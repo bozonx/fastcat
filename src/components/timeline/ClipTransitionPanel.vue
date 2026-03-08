@@ -338,7 +338,7 @@ function handleSavePreset() {
           @input="(event) => updateParam(field.key, (event.target as HTMLInputElement).value)"
         />
 
-        <UToggle
+        <USwitch
           v-else-if="field.kind === 'boolean'"
           :model-value="getBooleanValue(selectedParams[field.key])"
           size="sm"
