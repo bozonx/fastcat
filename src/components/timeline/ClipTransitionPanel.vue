@@ -169,12 +169,12 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
 
 function handleSavePreset() {
   if (!selectedManifest.value || !newPresetName.value.trim() || !props.transition) return;
-  
+
   const baseType = selectedManifest.value.baseType || selectedManifest.value.type;
   const paramsToSave = { ...selectedParams.value };
-  
+
   presetsStore.saveAsPreset('transition', baseType, newPresetName.value.trim(), paramsToSave);
-  
+
   isSaveModalOpen.value = false;
   newPresetName.value = '';
 }
@@ -275,7 +275,9 @@ function handleSavePreset() {
                 stroke-linecap="round"
               />
             </svg>
-            <span class="min-w-0 text-left leading-tight whitespace-normal">{{ toCurveOption(option).label }}</span>
+            <span class="min-w-0 text-left leading-tight whitespace-normal">{{
+              toCurveOption(option).label
+            }}</span>
           </div>
         </template>
       </AppButtonGroup>
@@ -346,12 +348,20 @@ function handleSavePreset() {
         />
       </div>
     </div>
-    
-    <UModal v-model:open="isSaveModalOpen" :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')">
+
+    <UModal
+      v-model:open="isSaveModalOpen"
+      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+    >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
-            <UInput v-model="newPresetName" :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')" autofocus @keyup.enter="handleSavePreset" />
+            <UInput
+              v-model="newPresetName"
+              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              autofocus
+              @keyup.enter="handleSavePreset"
+            />
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">

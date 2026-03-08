@@ -14,16 +14,18 @@ const shapes = [
   { type: 'triangle' as ShapeType, name: 'Triangle', icon: 'i-ph-triangle' },
   { type: 'star' as ShapeType, name: 'Star', icon: 'i-heroicons-star' },
   { type: 'cloud' as ShapeType, name: 'Cloud', icon: 'i-heroicons-cloud' },
-  { type: 'speech_bubble' as ShapeType, name: 'Speech Bubble', icon: 'i-heroicons-chat-bubble-oval-left' },
+  {
+    type: 'speech_bubble' as ShapeType,
+    name: 'Speech Bubble',
+    icon: 'i-heroicons-chat-bubble-oval-left',
+  },
 ];
 
-const huds = [
-  { type: 'media_frame' as HudType, name: 'Media Frame', icon: 'i-heroicons-photo' },
-];
+const huds = [{ type: 'media_frame' as HudType, name: 'Media Frame', icon: 'i-heroicons-photo' }];
 
 function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hud') {
   if (!event.dataTransfer) return;
-  
+
   // Set JSON data for dragging directly onto timeline tracks
   event.dataTransfer.setData(
     'application/json',
@@ -34,7 +36,7 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
       type: type, // 'square', 'media_frame', etc
     }),
   );
-  
+
   event.dataTransfer.effectAllowed = 'copy';
 }
 </script>
@@ -82,7 +84,9 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
         >
           <UIcon :name="shape.icon" class="w-8 h-8 text-primary shrink-0" />
           <div class="flex-1 min-w-0">
-            <h4 class="text-sm font-medium text-ui-text">{{ t(`granVideoEditor.library.shapes.${shape.type}`, shape.name) }}</h4>
+            <h4 class="text-sm font-medium text-ui-text">
+              {{ t(`granVideoEditor.library.shapes.${shape.type}`, shape.name) }}
+            </h4>
           </div>
         </div>
       </div>
@@ -98,7 +102,9 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
         >
           <UIcon :name="hud.icon" class="w-8 h-8 text-primary shrink-0" />
           <div class="flex-1 min-w-0">
-            <h4 class="text-sm font-medium text-ui-text">{{ t(`granVideoEditor.library.huds.${hud.type}`, hud.name) }}</h4>
+            <h4 class="text-sm font-medium text-ui-text">
+              {{ t(`granVideoEditor.library.huds.${hud.type}`, hud.name) }}
+            </h4>
           </div>
         </div>
       </div>

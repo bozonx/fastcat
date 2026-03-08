@@ -1386,6 +1386,16 @@ export class VideoCompositor {
           continue;
         }
 
+        if (clip.clipKind === 'hud') {
+          clip.sprite.visible = true;
+          continue;
+        }
+
+        if (clip.clipKind === 'shape') {
+          clip.sprite.visible = true;
+          continue;
+        }
+
         if (clip.clipKind === 'text') {
           if (clip.textDirty) {
             this.drawTextClip(clip);
@@ -1478,7 +1488,12 @@ export class VideoCompositor {
         prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
 
         // Images and solid clips: keep visible indefinitely
-        if (prevClip.clipKind === 'image' || prevClip.clipKind === 'solid') {
+        if (
+          prevClip.clipKind === 'image' ||
+          prevClip.clipKind === 'solid' ||
+          prevClip.clipKind === 'shape' ||
+          prevClip.clipKind === 'hud'
+        ) {
           prevClip.sprite.visible = true;
           continue;
         }
@@ -2233,7 +2248,13 @@ export class VideoCompositor {
   }
 
   private applyClipLayoutForCurrentSource(clip: CompositorClip) {
-    if (clip.clipKind === 'solid' || clip.clipKind === 'text' || clip.clipKind === 'adjustment') {
+    if (
+      clip.clipKind === 'solid' ||
+      clip.clipKind === 'text' ||
+      clip.clipKind === 'adjustment' ||
+      clip.clipKind === 'shape' ||
+      clip.clipKind === 'hud'
+    ) {
       this.applySolidLayout(clip);
       return;
     }

@@ -52,11 +52,7 @@ function updateParam(key: string, value: any) {
 
 <template>
   <div class="flex flex-col gap-2">
-    <div
-      v-for="field in visibleFields"
-      :key="field.key"
-      class="flex flex-col gap-1"
-    >
+    <div v-for="field in visibleFields" :key="field.key" class="flex flex-col gap-1">
       <span class="text-xs text-ui-text-muted">{{ t(field.labelKey) }}</span>
 
       <USelectMenu
@@ -71,7 +67,9 @@ function updateParam(key: string, value: any) {
         value-key="value"
         label-key="label"
         size="xs"
-        @update:model-value="(value: unknown) => updateParam(field.key, normalizeSelectEmittedValue(value))"
+        @update:model-value="
+          (value: unknown) => updateParam(field.key, normalizeSelectEmittedValue(value))
+        "
       />
 
       <UInput

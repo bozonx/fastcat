@@ -39,9 +39,10 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionOut).toEqual({
       type: 'dissolve',
       durationUs: 500_000,
-      mode: 'transition',
+      mode: 'fade',
       curve: 'linear',
       params: {},
+      isOverridden: undefined,
     });
     expect(clip.transitionIn).toBeUndefined();
   });
@@ -60,9 +61,10 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionIn).toEqual({
       type: 'dissolve',
       durationUs: 300_000,
-      mode: 'transition',
+      mode: 'fade',
       curve: 'linear',
       params: {},
+      isOverridden: undefined,
     });
   });
 
