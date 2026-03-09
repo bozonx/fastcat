@@ -26,6 +26,7 @@ export interface TimelineCommandServiceDeps {
     },
   ) => void;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  getFileByPath: (path: string) => Promise<File | null>;
   getOrFetchMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getMediaMetadataByPath: (path: string) => TimelineMediaMetadata | null;
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
@@ -116,15 +117,12 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   }
 
   async function resolveNestedTimeline(path: string, name: string) {
-    const handle = await deps.getFileHandleByPath(path);
-    if (!handle) throw new Error('Failed to access file handle');
-
-    const file = await handle.getFile();
+    const file = await deps.getFileByPath(path);
+    if (!file) throw new Error('Failed to access file');
     const text = await file.text();
     const doc = deps.parseTimelineFromOtio(text, { id: 'nested', name, fps: 25 });
 
     return {
-      handle,
       doc,
       summary: summarizeNestedTimeline(doc),
     };

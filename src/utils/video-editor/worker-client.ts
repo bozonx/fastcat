@@ -4,6 +4,7 @@ import { VIDEO_CORE_LIMITS } from '../constants';
 export interface VideoCoreHostAPI {
   getCurrentProjectId(): Promise<string | null>;
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
+  getFileByPath?(path: string): Promise<File | null>;
   ensureVectorImageRaster(params: {
     projectId: string;
     projectRelativePath: string;

@@ -4,6 +4,7 @@ import { ensureVectorImageRaster } from '~/media-cache/application/vectorImageCa
 export interface CreateVideoCoreHostApiParams {
   getCurrentProjectId: () => string | null;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  getFileByPath?: (path: string) => Promise<File | null>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   onExportProgress: (progress: number) => void;
   onExportPhase?: (phase: 'encoding' | 'saving') => void;
@@ -14,6 +15,11 @@ export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): Vi
   return {
     getCurrentProjectId: async () => params.getCurrentProjectId(),
     getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
+    ...(params.getFileByPath
+      ? {
+          getFileByPath: async (path: string) => await params.getFileByPath(path),
+        }
+      : {}),
     ensureVectorImageRaster: async ({
       projectId,
       projectRelativePath,

@@ -46,6 +46,7 @@ export type WorkerCallbacks = {
   onExportPhase?: (phase: 'encoding' | 'saving') => void;
   getCurrentProjectId: () => Promise<string | null>;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  getFileByPath?: (path: string) => Promise<File | null>;
   ensureVectorImageRaster: (params: {
     projectId: string;
     projectRelativePath: string;
