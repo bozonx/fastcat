@@ -75,7 +75,6 @@ const emit = defineEmits<{
     e: 'requestMove',
     params: {
       sourcePath: string;
-      targetDirHandle: FileSystemDirectoryHandle;
       targetDirPath: string;
     },
   ): void;
@@ -83,7 +82,6 @@ const emit = defineEmits<{
     e: 'requestUpload',
     params: {
       files: File[];
-      targetDirHandle: FileSystemDirectoryHandle;
       targetDirPath: string;
     },
   ): void;
@@ -91,7 +89,6 @@ const emit = defineEmits<{
     e: 'requestDownload',
     params: {
       entry: RemoteFsEntry;
-      targetDirHandle: FileSystemDirectoryHandle;
       targetDirPath: string;
     },
   ): void;
@@ -302,8 +299,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
     emit('requestMove', {
       sourcePath,
-      targetDirHandle: entry.handle as FileSystemDirectoryHandle,
-      targetDirPath: entry.path ?? '',
+      targetDirPath: entry.path,
     });
     return;
   }
@@ -324,8 +320,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
     emit('requestDownload', {
       entry: remoteEntry,
-      targetDirHandle: entry.handle as FileSystemDirectoryHandle,
-      targetDirPath: entry.path ?? '',
+      targetDirPath: entry.path,
     });
     return;
   }
@@ -342,8 +337,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
   emit('requestUpload', {
     files,
-    targetDirHandle: entry.handle as FileSystemDirectoryHandle,
-    targetDirPath: entry.path ?? '',
+    targetDirPath: entry.path,
   });
 }
 

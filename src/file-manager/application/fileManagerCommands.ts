@@ -1,81 +1,53 @@
 import { AUDIO_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import PQueue from 'p-queue';
-import {
-  assertEntryDoesNotExist,
-  copyDirectoryRecursive,
-  copyFileToDirectory,
-  renameDirectoryFallback,
-} from '~/file-manager/fs/ops';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 
 export interface HandleFilesDeps {
-  getProjectDirHandle: () => Promise<FileSystemDirectoryHandle>;
-  getTargetDirHandle: (params: {
-    projectDir: FileSystemDirectoryHandle;
-    file: File;
-  }) => Promise<{ dir: FileSystemDirectoryHandle; relativePathBase: string } | null>;
+  vfs: IFileSystemAdapter;
+  getTargetDirPath: (params: { file: File }) => Promise<string | null>;
   onSkipProjectFile: (params: { file: File }) => void;
-  onMediaImported: (params: {
-    fileHandle: FileSystemFileHandle;
-    projectRelativePath: string;
-    file: File;
-  }) => void;
+  onMediaImported: (params: { projectRelativePath: string; file: File }) => void;
 }
 
 export async function handleFilesCommand(
   files: FileList | File[],
   params: {
-    targetDirHandle?: FileSystemDirectoryHandle;
     targetDirPath?: string;
   },
   deps: HandleFilesDeps,
 ): Promise<void> {
-  const projectDir = await deps.getProjectDirHandle();
-  const targetDirHandleRaw = params.targetDirHandle;
-
   const queue = new PQueue({ concurrency: 3 });
 
   const tasks = Array.from(files).map((inputFile) =>
     queue.add(async () => {
       const file = inputFile;
 
-      let targetDir = targetDirHandleRaw;
       let finalRelativePathBase = params.targetDirPath || '';
 
-      if (!targetDir) {
-        const resolved = await deps.getTargetDirHandle({ projectDir, file });
+      if (!finalRelativePathBase) {
+        const resolved = await deps.getTargetDirPath({ file });
         if (!resolved) {
           deps.onSkipProjectFile({ file });
           return;
         }
 
-        targetDir = resolved.dir;
-        finalRelativePathBase = resolved.relativePathBase;
+        finalRelativePathBase = resolved;
       }
 
-      try {
-        await targetDir.getFileHandle(file.name);
+      const targetPath = finalRelativePathBase
+        ? `${finalRelativePathBase}/${file.name}`
+        : file.name;
+
+      if (await deps.vfs.exists(targetPath)) {
         throw new Error(`File already exists: ${file.name}`);
-      } catch (e: unknown) {
-        const err = e as { name?: string };
-        if (err?.name !== 'NotFoundError') throw e;
       }
 
-      const fileHandle = await targetDir.getFileHandle(file.name, { create: true });
-      if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
-        throw new Error('Failed to write file: createWritable is not available');
-      }
-
-      const writable = await (fileHandle as FileSystemFileHandle).createWritable();
-      await writable.write(file);
-      await writable.close();
+      await deps.vfs.writeFile(targetPath, file);
 
       if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-        const projectRelativePath = finalRelativePathBase
-          ? `${finalRelativePathBase}/${file.name}`
-          : file.name;
-        deps.onMediaImported({ fileHandle, projectRelativePath, file });
+        deps.onMediaImported({ projectRelativePath: targetPath, file });
       }
     }),
   );
@@ -83,10 +55,7 @@ export async function handleFilesCommand(
   await Promise.all(tasks);
 }
 
-export async function resolveDefaultTargetDir(params: {
-  projectDir: FileSystemDirectoryHandle;
-  file: File;
-}): Promise<{ dir: FileSystemDirectoryHandle; relativePathBase: string } | null> {
+export async function resolveDefaultTargetDir(params: { file: File }): Promise<string | null> {
   if (params.file.name.endsWith('.otio')) return null;
 
   let targetDirName = FILES_DIR_NAME;
@@ -94,55 +63,33 @@ export async function resolveDefaultTargetDir(params: {
   else if (params.file.type.startsWith('image/')) targetDirName = IMAGES_DIR_NAME;
   else if (params.file.type.startsWith('video/')) targetDirName = VIDEO_DIR_NAME;
 
-  const dir = await params.projectDir.getDirectoryHandle(targetDirName, { create: true });
-  return { dir, relativePathBase: targetDirName };
+  return targetDirName;
 }
 
 export async function createFolderCommand(params: {
   name: string;
-  baseDir: FileSystemDirectoryHandle;
+  parentPath?: string;
+  vfs: IFileSystemAdapter;
 }): Promise<void> {
-  await params.baseDir.getDirectoryHandle(params.name, { create: true });
+  const nextPath = params.parentPath ? `${params.parentPath}/${params.name}` : params.name;
+  await params.vfs.createDirectory(nextPath);
 }
 
 export interface DeleteEntryDeps {
-  removeEntry: (params: {
-    parentHandle: FileSystemDirectoryHandle;
-    name: string;
-    recursive: boolean;
-  }) => Promise<void>;
+  vfs: IFileSystemAdapter;
   onFileDeleted?: (params: { path: string }) => Promise<void> | void;
 }
 
 export async function deleteEntryCommand(target: FsEntry, deps: DeleteEntryDeps): Promise<void> {
-  if (!target.parentHandle) return;
+  await deps.vfs.deleteEntry(target.path, true);
 
-  await deps.removeEntry({
-    parentHandle: target.parentHandle as FileSystemDirectoryHandle,
-    name: target.name,
-    recursive: true,
-  });
-
-  if (target.kind === 'file' && typeof target.path === 'string' && target.path.length > 0) {
+  if (target.kind === 'file' && target.path.length > 0) {
     await deps.onFileDeleted?.({ path: target.path });
   }
 }
 
-type FsFileHandleWithMove = FileSystemFileHandle & {
-  move?: (name: string) => Promise<void>;
-};
-
 export interface RenameEntryDeps {
-  ensureTargetNameDoesNotExist: (params: {
-    parentHandle: FileSystemDirectoryHandle;
-    kind: 'file' | 'directory';
-    newName: string;
-  }) => Promise<void>;
-  removeEntry: (params: {
-    parentHandle: FileSystemDirectoryHandle;
-    name: string;
-    recursive: boolean;
-  }) => Promise<void>;
+  vfs: IFileSystemAdapter;
 }
 
 export async function renameEntryCommand(
@@ -153,55 +100,18 @@ export async function renameEntryCommand(
   deps: RenameEntryDeps,
 ): Promise<void> {
   const target = params.target;
-  if (!target.parentHandle) return;
+  const parentPath = target.parentPath ?? target.path.split('/').slice(0, -1).join('/');
+  const nextPath = parentPath ? `${parentPath}/${params.newName}` : params.newName;
 
-  const parent = target.parentHandle as FileSystemDirectoryHandle;
-  await deps.ensureTargetNameDoesNotExist({
-    parentHandle: parent,
-    kind: target.kind,
-    newName: params.newName,
-  });
-
-  if (target.kind === 'file') {
-    const handle = target.handle as FsFileHandleWithMove;
-    if (typeof handle.move === 'function') {
-      await handle.move(params.newName);
-      return;
-    }
-
-    const file = await (handle as FileSystemFileHandle).getFile();
-    const newHandle = await parent.getFileHandle(params.newName, { create: true });
-    if (typeof (newHandle as FileSystemFileHandle).createWritable !== 'function') {
-      throw new Error('Failed to rename file: createWritable is not available');
-    }
-
-    const writable = await (newHandle as FileSystemFileHandle).createWritable();
-    await writable.write(file);
-    await writable.close();
-    await deps.removeEntry({ parentHandle: parent, name: target.name, recursive: false });
-    return;
+  if (await deps.vfs.exists(nextPath)) {
+    throw new Error(`Target name already exists: ${params.newName}`);
   }
 
-  const dirHandle = target.handle as unknown as { move?: (name: string) => Promise<void> };
-  if (typeof dirHandle.move === 'function') {
-    await dirHandle.move(params.newName);
-    return;
-  }
-
-  await renameDirectoryFallback({
-    sourceDirHandle: target.handle as FileSystemDirectoryHandle,
-    sourceName: target.name,
-    parentDirHandle: parent,
-    newName: params.newName,
-  });
+  await deps.vfs.moveEntry(target.path, nextPath);
 }
 
 export interface MoveEntryDeps {
-  removeEntry: (params: {
-    parentHandle: FileSystemDirectoryHandle;
-    name: string;
-    recursive: boolean;
-  }) => Promise<void>;
+  vfs: IFileSystemAdapter;
   onFileMoved?: (params: { oldPath: string; newPath: string }) => Promise<void> | void;
   onDirectoryMoved?: () => Promise<void> | void;
 }
@@ -209,107 +119,48 @@ export interface MoveEntryDeps {
 export async function moveEntryCommand(
   params: {
     source: FsEntry;
-    targetDirHandle: FileSystemDirectoryHandle;
     targetDirPath: string;
   },
   deps: MoveEntryDeps,
 ): Promise<void> {
-  if (!params.source.parentHandle) return;
-
-  const sourcePath = params.source.path ?? '';
+  const sourcePath = params.source.path;
   const targetDirPath = params.targetDirPath ?? '';
   if (!sourcePath) return;
+  const newPath = targetDirPath ? `${targetDirPath}/${params.source.name}` : params.source.name;
 
-  const targetDirHandle = params.targetDirHandle;
-  const sourceParentHandle = params.source.parentHandle as FileSystemDirectoryHandle;
-
-  await assertEntryDoesNotExist({
-    targetDirHandle,
-    entryName: params.source.name,
-    kind: params.source.kind,
-  });
-
-  const handle = params.source.handle as unknown as {
-    move?: (target: FileSystemDirectoryHandle, name: string) => Promise<void>;
-  };
-  if (typeof handle.move === 'function') {
-    try {
-      await handle.move(targetDirHandle, params.source.name);
-
-      if (params.source.kind === 'file') {
-        const oldPath = sourcePath;
-        const newPath = targetDirPath
-          ? `${targetDirPath}/${params.source.name}`
-          : params.source.name;
-        await deps.onFileMoved?.({ oldPath, newPath });
-      } else {
-        await deps.onDirectoryMoved?.();
-      }
-      return;
-    } catch (e: unknown) {
-      console.warn(
-        '[FileManager] Native move failed (likely cross-root OPFS move). Falling back to copy+delete...',
-        e,
-      );
-      // Fall through to manual copy and delete below
-    }
+  if (await deps.vfs.exists(newPath)) {
+    throw new Error(`Target already exists: ${params.source.name}`);
   }
 
-  if (params.source.kind === 'file') {
-    await copyFileToDirectory({
-      sourceHandle: params.source.handle as FileSystemFileHandle,
-      fileName: params.source.name,
-      targetDirHandle,
-    });
-    await deps.removeEntry({
-      parentHandle: sourceParentHandle,
-      name: params.source.name,
-      recursive: false,
-    });
+  await deps.vfs.moveEntry(sourcePath, newPath);
 
-    const oldPath = sourcePath;
-    const newPath = targetDirPath ? `${targetDirPath}/${params.source.name}` : params.source.name;
-    await deps.onFileMoved?.({ oldPath, newPath });
+  if (params.source.kind === 'file') {
+    await deps.onFileMoved?.({ oldPath: sourcePath, newPath });
     return;
   }
 
-  const targetDir = await targetDirHandle.getDirectoryHandle(params.source.name, { create: true });
-  await copyDirectoryRecursive({
-    sourceDirHandle: params.source.handle as FileSystemDirectoryHandle,
-    targetDirHandle: targetDir,
-  });
-  await deps.removeEntry({
-    parentHandle: sourceParentHandle,
-    name: params.source.name,
-    recursive: true,
-  });
   await deps.onDirectoryMoved?.();
 }
 
 export async function createTimelineCommand(params: {
-  projectDir: FileSystemDirectoryHandle;
+  vfs: IFileSystemAdapter;
   timelinesDirName?: string;
   initialIndex?: number;
   existingNames?: string[];
 }): Promise<string> {
-  const timelinesDir = params.timelinesDirName
-    ? await params.projectDir.getDirectoryHandle(params.timelinesDirName, { create: true })
-    : params.projectDir;
+  const basePath = params.timelinesDirName ?? '';
+  if (basePath) {
+    await params.vfs.createDirectory(basePath);
+  }
 
   const fileName = await generateUniqueFsEntryName({
-    dirHandle: timelinesDir,
+    vfs: params.vfs,
+    dirPath: basePath,
     baseName: 'timeline_',
     extension: '.otio',
     existingNames: params.existingNames,
     startIndex: params.initialIndex,
   });
-
-  const fileHandle = await timelinesDir.getFileHandle(fileName, { create: true });
-  if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
-    throw new Error('Failed to create timeline: createWritable is not available');
-  }
-
-  const writable = await (fileHandle as FileSystemFileHandle).createWritable();
   const payload = {
     OTIO_SCHEMA: 'Timeline.1',
     name: fileName.replace('.otio', ''),
@@ -319,31 +170,28 @@ export async function createTimelineCommand(params: {
       name: 'tracks',
     },
   };
-  await writable.write(JSON.stringify(payload, null, 2));
-  await writable.close();
 
-  return params.timelinesDirName ? `${params.timelinesDirName}/${fileName}` : fileName;
+  const fullPath = basePath ? `${basePath}/${fileName}` : fileName;
+  await params.vfs.writeJson(fullPath, payload);
+
+  return fullPath;
 }
 
 export async function createMarkdownCommand(params: {
-  dirHandle: FileSystemDirectoryHandle;
+  vfs: IFileSystemAdapter;
+  dirPath: string;
   existingNames?: string[];
 }): Promise<string> {
   const fileName = await generateUniqueFsEntryName({
-    dirHandle: params.dirHandle,
+    vfs: params.vfs,
+    dirPath: params.dirPath,
     baseName: 'Документ_',
     extension: '.md',
     existingNames: params.existingNames,
   });
 
-  const fileHandle = await params.dirHandle.getFileHandle(fileName, { create: true });
-  if (typeof (fileHandle as FileSystemFileHandle).createWritable !== 'function') {
-    throw new Error('Failed to create markdown: createWritable is not available');
-  }
-
-  const writable = await (fileHandle as FileSystemFileHandle).createWritable();
-  await writable.write('');
-  await writable.close();
+  const fullPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+  await params.vfs.writeFile(fullPath, '');
 
   return fileName;
 }

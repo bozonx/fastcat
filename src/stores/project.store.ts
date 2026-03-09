@@ -59,6 +59,7 @@ export const useProjectStore = defineStore('project', () => {
     toProjectRelativePath,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,
+    getDirectoryHandleByPath,
     getProjectDirHandle,
   } = fsModule;
 
@@ -260,6 +261,7 @@ export const useProjectStore = defineStore('project', () => {
     closeProject,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,
+    getDirectoryHandleByPath,
     createFallbackTimelineDoc,
     loadProjectSettings,
     saveProjectSettings,

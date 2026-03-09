@@ -82,7 +82,7 @@ const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes
   [40, 60],
 );
 
-const { getProjectRootDirHandle, getWorkspaceCommonDirHandle, findEntryByPath } = useFileManager();
+const { findEntryByPath, vfs } = useFileManager();
 
 async function navigateToParentFolder() {
   const folder = filesPageStore.selectedFolder;
@@ -93,27 +93,19 @@ async function navigateToParentFolder() {
 
   const parentPath = getWorkspacePathParent(currentPath);
   if (!parentPath) {
-    const rootHandle = await getProjectRootDirHandle();
-    if (!rootHandle) return;
-
     filesPageStore.selectFolder({
       kind: 'directory',
       name: projectStore.currentProjectName || '',
       path: '',
-      handle: rootHandle,
     });
     return;
   }
 
   if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
-    const commonHandle = await getWorkspaceCommonDirHandle();
-    if (!commonHandle) return;
-
     filesPageStore.selectFolder({
       kind: 'directory',
       name: WORKSPACE_COMMON_DIR_NAME,
       path: WORKSPACE_COMMON_PATH_PREFIX,
-      handle: commonHandle,
     });
     return;
   }
@@ -347,11 +339,8 @@ function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' =
           void (async () => {
             let content = `File: ${payload.name}`;
             try {
-              const handle = (entry?.handle || payload.handle) as FileSystemFileHandle | undefined;
-              if (handle && typeof handle.getFile === 'function') {
-                const file = await handle.getFile();
-                content = await file.text();
-              }
+              const blob = await vfs.readFile(payload.path);
+              content = await blob.text();
             } catch {
               // ignore
             }
@@ -371,7 +360,7 @@ function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' =
               kind: 'file',
               path: payload.path,
               name: payload.name,
-              handle: (entry?.handle || payload.handle) as any,
+              parentPath: payload.path.split('/').slice(0, -1).join('/') || undefined,
             },
             mediaType,
             payload.name,

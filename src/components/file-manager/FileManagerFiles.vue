@@ -101,15 +101,9 @@ const props = defineProps<{
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
   moveEntry: (params: {
     source: FsEntry;
-    targetDirHandle: FileSystemDirectoryHandle;
     targetDirPath: string;
   }) => Promise<void>;
-  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
-  handleFiles: (
-    files: FileList | File[],
-    targetDirHandle?: FileSystemDirectoryHandle,
-    targetDirPath?: string,
-  ) => Promise<void>;
+  handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
 }>();
 
 const filesPageStore = useFilesPageStore();
@@ -147,14 +141,12 @@ function getEntryMeta(entry: FsEntry): {
 
 async function onRequestMove(params: {
   sourcePath: string;
-  targetDirHandle: FileSystemDirectoryHandle;
   targetDirPath: string;
 }) {
   const source = props.findEntryByPath(params.sourcePath);
   if (!source) return;
   await props.moveEntry({
     source,
-    targetDirHandle: params.targetDirHandle,
     targetDirPath: params.targetDirPath,
   });
   uiStore.notifyFileManagerUpdate();
@@ -162,16 +154,14 @@ async function onRequestMove(params: {
 
 async function onRequestUpload(params: {
   files: File[];
-  targetDirHandle: FileSystemDirectoryHandle;
   targetDirPath: string;
 }) {
-  await props.handleFiles(params.files, params.targetDirHandle, params.targetDirPath);
+  await props.handleFiles(params.files, params.targetDirPath);
   uiStore.notifyFileManagerUpdate();
 }
 
 function onRequestDownload(params: {
   entry: RemoteFsEntry;
-  targetDirHandle: FileSystemDirectoryHandle;
   targetDirPath: string;
 }) {
   uiStore.pendingRemoteDownloadRequest = params;
@@ -179,7 +169,6 @@ function onRequestDownload(params: {
 
 const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
   {
-    getProjectRootDirHandle: props.getProjectRootDirHandle,
     resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
     handleFiles: props.handleFiles,
     moveEntry: props.moveEntry,
@@ -218,63 +207,33 @@ const emit = defineEmits<{
 
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName) return [];
+  const rootEntry: FsEntry = {
+    kind: 'directory',
+    name: projectStore.currentProjectName,
+    path: '',
+  };
+
   return [
     [
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
         icon: 'i-heroicons-arrow-up-tray',
-        onSelect: async () => {
-          const handle = await props.getProjectRootDirHandle();
-          if (!handle) return;
-          emit('action', 'upload', {
-            kind: 'directory',
-            name: projectStore.currentProjectName!,
-            path: undefined,
-            handle,
-          });
-        },
+        onSelect: async () => emit('action', 'upload', rootEntry),
       },
       {
         label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
         icon: 'i-heroicons-folder-plus',
-        onSelect: async () => {
-          const handle = await props.getProjectRootDirHandle();
-          if (!handle) return;
-          emit('action', 'createFolder', {
-            kind: 'directory',
-            name: projectStore.currentProjectName!,
-            path: '',
-            handle,
-          });
-        },
+        onSelect: async () => emit('action', 'createFolder', rootEntry),
       },
       {
         label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
         icon: 'i-heroicons-document-plus',
-        onSelect: async () => {
-          const handle = await props.getProjectRootDirHandle();
-          if (!handle) return;
-          emit('action', 'createTimeline' as any, {
-            kind: 'directory',
-            name: projectStore.currentProjectName!,
-            path: '',
-            handle,
-          });
-        },
+        onSelect: async () => emit('action', 'createTimeline', rootEntry),
       },
       {
         label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
         icon: 'i-heroicons-document-text',
-        onSelect: async () => {
-          const handle = await props.getProjectRootDirHandle();
-          if (!handle) return;
-          emit('action', 'createMarkdown', {
-            kind: 'directory',
-            name: projectStore.currentProjectName!,
-            path: '',
-            handle,
-          });
-        },
+        onSelect: async () => emit('action', 'createMarkdown', rootEntry),
       },
     ],
     [
@@ -282,36 +241,26 @@ const rootContextMenuItems = computed(() => {
         label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
         icon: 'i-heroicons-arrow-path',
         disabled: props.isLoading,
-        onSelect: () =>
-          emit('action', 'refresh', {
-            kind: 'directory',
-            name: '',
-            path: '',
-            handle: null as any,
-          }),
+        onSelect: () => emit('action', 'refresh', rootEntry),
       },
     ],
   ];
 });
 
-async function selectProjectRoot() {
+function selectProjectRoot() {
   const name = projectStore.currentProjectName;
   if (!name) return;
-  const handle = await props.getProjectRootDirHandle();
-  if (!handle) return;
 
   const rootEntry: FsEntry = {
     kind: 'directory',
     name,
     path: '',
-    handle,
   };
 
   uiStore.selectedFsEntry = {
     kind: 'directory',
     name,
     path: '',
-    handle,
   };
 
   selectionStore.selectFsEntry(rootEntry);
@@ -363,7 +312,9 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
                 kind: entry.kind,
                 name: entry.name,
                 path: entry.path,
-                handle: entry.handle,
+                parentPath: entry.parentPath,
+                lastModified: entry.lastModified,
+                size: entry.size,
               };
             }
           } else {
@@ -376,7 +327,9 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           kind: entry.kind,
           name: entry.name,
           path: entry.path,
-          handle: entry.handle,
+          parentPath: entry.parentPath,
+          lastModified: entry.lastModified,
+          size: entry.size,
         };
       }
       return;
@@ -413,7 +366,9 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
             kind: entry.kind,
             name: entry.name,
             path: entry.path,
-            handle: entry.handle,
+            parentPath: entry.parentPath,
+            lastModified: entry.lastModified,
+            size: entry.size,
           };
         }
       } else {
@@ -422,7 +377,9 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           kind: entry.kind,
           name: entry.name,
           path: entry.path,
-          handle: entry.handle,
+          parentPath: entry.parentPath,
+          lastModified: entry.lastModified,
+          size: entry.size,
         };
       }
       return;
@@ -433,7 +390,9 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
     kind: entry.kind,
     name: entry.name,
     path: entry.path,
-    handle: entry.handle,
+    parentPath: entry.parentPath,
+    lastModified: entry.lastModified,
+    size: entry.size,
   };
 
   selectionStore.selectFsEntry(entry);

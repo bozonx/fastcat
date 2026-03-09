@@ -1,12 +1,13 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 
+interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
+  values?: () => AsyncIterable<FileSystemHandle>;
+  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
+}
+
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
   private rootHandle: FileSystemDirectoryHandle | null = null;
-  // A mapping from path to FileSystemHandle to avoid repeatedly traversing the tree if possible.
-  // Although in OPFS it's safer to traverse or just use it when needed.
-  // For simplicity, we might just traverse from the root or expect the caller to provide it.
-  // Wait, IFileSystemAdapter uses pure string paths. We need to parse them and get handles.
 
   constructor(private getWorkspaceRoot: () => Promise<FileSystemDirectoryHandle | null>) {}
 
@@ -69,11 +70,13 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!handle) return [];
 
     const entries: VfsEntry[] = [];
-    for await (const [name, entryHandle] of (handle as any).entries()) {
+    for await (const [name, entryHandle] of (handle as DirectoryHandleWithIteration).entries?.() ??
+      []) {
       entries.push({
         name,
         kind: entryHandle.kind === 'file' ? 'file' : 'directory',
         path: path && path !== '/' ? `${path}/${name}` : name,
+        parentPath: path || undefined,
       });
     }
     return entries;
@@ -81,6 +84,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
   async createDirectory(path: string): Promise<void> {
     await this.getHandleByPath(path, { create: true, isFile: false });
+  }
+
+  async listEntryNames(path: string): Promise<string[]> {
+    const entries = await this.readDirectory(path);
+    return entries.map((entry) => entry.name);
   }
 
   async readFile(path: string): Promise<Blob> {
@@ -117,6 +125,29 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       await (parentHandle as any).removeEntry(name, { recursive });
     } catch (e: unknown) {
       if ((e as Error).name !== 'NotFoundError') throw e;
+    }
+  }
+
+  async copyFile(sourcePath: string, targetPath: string): Promise<void> {
+    const sourceFile = await this.getFile(sourcePath);
+    if (!sourceFile) {
+      throw new Error(`Source file not found: ${sourcePath}`);
+    }
+
+    await this.writeFile(targetPath, sourceFile);
+  }
+
+  async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
+    await this.createDirectory(targetPath);
+
+    const entries = await this.readDirectory(sourcePath);
+    for (const entry of entries) {
+      const nextTargetPath = `${targetPath}/${entry.name}`;
+      if (entry.kind === 'directory') {
+        await this.copyDirectory(entry.path, nextTargetPath);
+      } else {
+        await this.copyFile(entry.path, nextTargetPath);
+      }
     }
   }
 
@@ -176,5 +207,9 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     })) as FileSystemFileHandle | null;
     if (!handle) return null;
     return await handle.getFile();
+  }
+
+  async writeJson(path: string, data: unknown): Promise<void> {
+    await this.writeFile(path, `${JSON.stringify(data, null, 2)}\n`);
   }
 }

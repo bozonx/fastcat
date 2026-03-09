@@ -27,6 +27,7 @@ import {
 } from '~/media-cache/application/proxyThumbnailCommands';
 import { clearVectorImageRaster } from '~/media-cache/application/vectorImageCache';
 import type { FsEntry } from '~/types/fs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
@@ -39,6 +40,7 @@ import {
   renameEntryCommand,
   resolveDefaultTargetDir,
 } from '~/file-manager/application/fileManagerCommands';
+import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
 
 type FileTreeSortMode = 'name' | 'type';
@@ -50,6 +52,7 @@ export function isMoveAllowed(params: { sourcePath: string; targetDirPath: strin
 export interface FileManagerCreateDeps {
   t: ReturnType<typeof useI18n>['t'];
   toast: ReturnType<typeof useToast>;
+  vfs: IFileSystemAdapter;
   isApiSupported: Ref<boolean>;
   rootEntries: Ref<FsEntry[]>;
   sortMode: Ref<FileTreeSortMode>;
@@ -58,16 +61,10 @@ export interface FileManagerCreateDeps {
   setFileTreePathExpanded: (path: string, expanded: boolean) => void;
   getExpandedPaths: () => string[];
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
-  getWorkspaceCommonDirHandle: (create?: boolean) => Promise<FileSystemDirectoryHandle | null>;
-  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
-  getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   getProjectName: () => string | null;
   getProjectId: () => string | null;
   getProjectSize: () => { width: number; height: number };
-  onMediaImported: (params: {
-    fileHandle: FileSystemFileHandle;
-    projectRelativePath: string;
-  }) => void;
+  onMediaImported: (params: { projectRelativePath: string }) => void;
   mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryMoved?: () => void | Promise<void>;
@@ -85,6 +82,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     rootEntries: deps.rootEntries,
     sortMode: deps.sortMode,
     showHiddenFiles: () => deps.showHiddenFiles.value,
+    vfs: deps.vfs,
     hasPersistedFileTreeState: () => {
       const projectName = deps.getProjectName();
       if (!projectName) return false;
@@ -94,8 +92,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     isPathExpanded: (path) => deps.isFileTreePathExpanded(path),
     setPathExpanded: (path, expanded) => deps.setFileTreePathExpanded(path, expanded),
     getExpandedPaths: () => deps.getExpandedPaths(),
-    sanitizeHandle: <T extends object>(handle: T) => markRaw(toRaw(handle)) as unknown as T,
-    sanitizeParentHandle: (handle) => markRaw(toRaw(handle)),
     checkExistingProxies: (videoPaths) => deps.mediaCache.checkExistingProxies(videoPaths),
     onDirectoryLoaded: () => {
       deps.onDirectoryLoaded?.();
@@ -132,69 +128,25 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const normalizedPath = path.trim();
     if (!normalizedPath) return null;
 
-    const isCommonPath = isWorkspaceCommonPath(normalizedPath);
-    const rootHandle = isCommonPath
-      ? await deps.getWorkspaceCommonDirHandle(false)
-      : await deps.getProjectRootDirHandle();
-    if (!rootHandle) return null;
-
     if (normalizedPath === WORKSPACE_COMMON_PATH_PREFIX) {
       return {
         name: WORKSPACE_COMMON_DIR_NAME,
         kind: 'directory',
-        handle: rootHandle,
         path: WORKSPACE_COMMON_PATH_PREFIX,
       };
     }
 
-    const relativePath = isCommonPath
-      ? stripWorkspaceCommonPathPrefix(normalizedPath)
-      : normalizedPath;
-    const parts = relativePath.split('/').filter(Boolean);
-    if (parts.length === 0) return null;
+    const metadata = await deps.vfs.getMetadata(normalizedPath);
+    if (!metadata) return null;
 
-    let currentDir = rootHandle;
-    let parentHandle: FileSystemDirectoryHandle | undefined;
-
-    for (let index = 0; index < parts.length; index++) {
-      const part = parts[index];
-      const currentPath = isCommonPath
-        ? [WORKSPACE_COMMON_PATH_PREFIX, ...parts.slice(0, index + 1)].join('/')
-        : parts.slice(0, index + 1).join('/');
-      const isLast = index === parts.length - 1;
-
-      if (!isLast) {
-        parentHandle = currentDir;
-        currentDir = await currentDir.getDirectoryHandle(part!);
-        continue;
-      }
-
-      try {
-        const dirHandle = await currentDir.getDirectoryHandle(part!);
-        return {
-          name: part!,
-          kind: 'directory',
-          handle: dirHandle,
-          parentHandle: currentDir,
-          path: currentPath,
-        };
-      } catch (error: unknown) {
-        if ((error as { name?: unknown }).name !== 'NotFoundError') {
-          throw error;
-        }
-      }
-
-      const fileHandle = await currentDir.getFileHandle(part!);
-      return {
-        name: part!,
-        kind: 'file',
-        handle: fileHandle,
-        parentHandle: currentDir,
-        path: currentPath,
-      };
-    }
-
-    return null;
+    return {
+      name: getWorkspacePathFileName(normalizedPath) || normalizedPath,
+      kind: metadata.kind,
+      path: normalizedPath,
+      parentPath: getParentPath(normalizedPath) || undefined,
+      lastModified: metadata.lastModified,
+      size: metadata.size,
+    };
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
@@ -202,18 +154,20 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   async function withWorkspaceCommonRoot(entries: FsEntry[]): Promise<FsEntry[]> {
-    const commonDir = await deps.getWorkspaceCommonDirHandle(false);
-    if (!commonDir) return entries;
+    const commonMetadata = await deps.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
+    if (!commonMetadata || commonMetadata.kind !== 'directory') return entries;
 
-    const commonChildren = await service.readDirectory(commonDir, WORKSPACE_COMMON_PATH_PREFIX);
+    const commonChildren = await service.readDirectory(WORKSPACE_COMMON_PATH_PREFIX);
     const previousCommonEntry = entries.find(
       (entry) => entry.path === WORKSPACE_COMMON_PATH_PREFIX,
     );
     const commonEntry: FsEntry = {
       name: WORKSPACE_COMMON_DIR_NAME,
       kind: 'directory',
-      handle: commonDir,
       path: WORKSPACE_COMMON_PATH_PREFIX,
+      parentPath: undefined,
+      lastModified: commonMetadata.lastModified,
+      size: commonMetadata.size,
       expanded: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX),
       children: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX)
         ? mergeEntries(previousCommonEntry?.children, commonChildren)
@@ -238,8 +192,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   async function loadProjectDirectory(options?: { fullRefresh?: boolean }) {
-    const projectDir = await deps.getProjectDirHandle();
-    if (!projectDir) {
+    const projectName = deps.getProjectName();
+    if (!projectName) {
       deps.rootEntries.value = [];
       void timelineMediaUsageStore.refreshUsage();
       return;
@@ -249,7 +203,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     await runWithUiFeedback({
       action: async () => {
-        await service.loadProjectDirectory(projectDir, {
+        await service.loadProjectDirectory('', {
           refreshExpandedChildren: shouldFullRefresh,
           expandPersistedDirectories: true,
           autoExpandMediaDirs: true,
@@ -265,28 +219,20 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     void timelineMediaUsageStore.refreshUsage();
   }
 
-  async function handleFiles(
-    files: FileList | File[],
-    targetDirHandle?: FileSystemDirectoryHandle,
-    targetDirPath?: string,
-  ) {
+  async function handleFiles(files: FileList | File[], targetDirPath?: string) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
-    const projectDir = await deps.getProjectDirHandle();
-    if (!projectDir) return;
 
     await runWithUiFeedback({
       action: async () => {
         await handleFilesCommand(
           files,
           {
-            targetDirHandle: targetDirHandle ? toRaw(targetDirHandle) : undefined,
             targetDirPath,
           },
           {
-            getProjectDirHandle: async () => projectDir,
-            getTargetDirHandle: async ({ projectDir: pd, file }) =>
-              await resolveDefaultTargetDir({ projectDir: pd, file }),
+            vfs: deps.vfs,
+            getTargetDirPath: async ({ file }) => await resolveDefaultTargetDir({ file }),
             onSkipProjectFile: ({ file }) => {
               deps.toast.add({
                 color: 'neutral',
@@ -297,11 +243,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
                 ),
               });
             },
-            onMediaImported: ({ fileHandle, projectRelativePath }) => {
-              deps.onMediaImported({
-                fileHandle: fileHandle as FileSystemFileHandle,
-                projectRelativePath,
-              });
+            onMediaImported: ({ projectRelativePath }) => {
+              deps.onMediaImported({ projectRelativePath });
             },
           },
         );
@@ -318,24 +261,17 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function createFolder(
-    name: string,
-    targetEntry: FileSystemDirectoryHandle | null = null,
-    parentPath: string = '',
-  ) {
+  async function createFolder(name: string, parentPath: string = '') {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
     await runWithUiFeedback({
       action: async () => {
-        const baseDir = targetEntry || (await deps.getProjectDirHandle());
-        if (!baseDir) return;
-
         if (parentPath) {
           deps.setFileTreePathExpanded(parentPath, true);
         }
 
-        await createFolderCommand({ name, baseDir });
+        await createFolderCommand({ name, parentPath, vfs: deps.vfs });
         await reloadDirectory(parentPath);
       },
       defaultErrorMessage: 'Failed to create folder',
@@ -366,10 +302,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     await runWithUiFeedback({
       action: async () => {
         await deleteEntryCommand(target, {
-          removeEntry: async ({ parentHandle, name, recursive }) => {
-            const parent = toRaw(parentHandle);
-            await parent.removeEntry(name, { recursive });
-          },
+          vfs: deps.vfs,
           onFileDeleted: async ({ path }) => {
             await removeProxyCommand({
               service: deps.mediaCache,
@@ -412,8 +345,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   async function renameEntry(target: FsEntry, newName: string) {
-    if (!target.parentHandle) return;
-
     const oldPath = target.path;
     const parentPath = oldPath ? oldPath.split('/').slice(0, -1).join('/') : '';
     const newPath = oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '';
@@ -423,23 +354,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         await renameEntryCommand(
           { target, newName },
           {
-            ensureTargetNameDoesNotExist: async ({ parentHandle, kind, newName: nn }) => {
-              const parent = toRaw(parentHandle);
-              try {
-                if (kind === 'file') {
-                  await parent.getFileHandle(nn);
-                } else {
-                  await parent.getDirectoryHandle(nn);
-                }
-                throw new Error(`Target name already exists: ${nn}`);
-              } catch (e: unknown) {
-                if (e instanceof Error && e.name !== 'NotFoundError') throw e;
-              }
-            },
-            removeEntry: async ({ parentHandle, name, recursive }) => {
-              const parent = toRaw(parentHandle);
-              await parent.removeEntry(name, { recursive });
-            },
+            vfs: deps.vfs,
           },
         );
 
@@ -457,16 +372,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function moveEntry(params: {
-    source: FsEntry;
-    targetDirHandle: FileSystemDirectoryHandle;
-    targetDirPath: string;
-  }) {
+  async function moveEntry(params: { source: FsEntry; targetDirPath: string }) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
-    if (!params.source.parentHandle) return;
 
-    const sourcePath = params.source.path ?? '';
+    const sourcePath = params.source.path;
     const targetDirPath = params.targetDirPath ?? '';
     if (!sourcePath) return;
 
@@ -479,21 +389,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       action: async () => {
         await moveEntryCommand(
           {
-            source: {
-              ...params.source,
-              handle: toRaw(params.source.handle) as any,
-              parentHandle: params.source.parentHandle
-                ? toRaw(params.source.parentHandle)
-                : undefined,
-            },
-            targetDirHandle: toRaw(params.targetDirHandle),
+            source: params.source,
             targetDirPath,
           },
           {
-            removeEntry: async ({ parentHandle, name, recursive }) => {
-              const parent = toRaw(parentHandle);
-              await parent.removeEntry(name, { recursive });
-            },
+            vfs: deps.vfs,
             onFileMoved: async ({ oldPath, newPath }) => {
               await deps.onEntryPathChanged?.({ oldPath, newPath });
 
@@ -540,13 +440,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   async function createTimeline(): Promise<string | null> {
-    const projectDir = await deps.getProjectDirHandle();
-    if (!projectDir) return null;
-
     return await runWithUiFeedback({
       action: async () => {
         const createdPath = await createTimelineCommand({
-          projectDir,
+          vfs: deps.vfs,
           timelinesDirName: TIMELINES_DIR_NAME,
         });
         await reloadDirectory(TIMELINES_DIR_NAME);
@@ -570,14 +467,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   async function reloadDirectory(path: string) {
-    const projectDir = await deps.getProjectDirHandle();
-    if (projectDir) {
-      await service.reloadDirectory(path, projectDir);
-      if (!path) {
-        deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
-      }
-      deps.onDirectoryLoaded?.();
+    await service.reloadDirectory(path);
+    if (!path) {
+      deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
     }
+    deps.onDirectoryLoaded?.();
   }
 
   return {
@@ -586,8 +480,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     error,
     isApiSupported: deps.isApiSupported,
     mediaCache: deps.mediaCache,
-    getWorkspaceCommonDirHandle: deps.getWorkspaceCommonDirHandle,
-    getProjectRootDirHandle: deps.getProjectRootDirHandle,
     sortMode: deps.sortMode,
     setSortMode: (v: FileTreeSortMode) => {
       deps.sortMode.value = v;
@@ -605,6 +497,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     createTimeline,
     getFileIcon,
     readDirectory: service.readDirectory,
+    vfs: deps.vfs,
     reloadDirectory,
   };
 }
@@ -615,6 +508,7 @@ const sharedSortMode = ref<FileTreeSortMode>('name');
 export function useFileManager() {
   const { t } = useI18n();
   const toast = useToast();
+  const vfs = useVfs();
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
@@ -664,6 +558,7 @@ export function useFileManager() {
   const api = createFileManager({
     t,
     toast,
+    vfs,
     isApiSupported,
     rootEntries: sharedRootEntries,
     sortMode: sharedSortMode,
@@ -677,32 +572,14 @@ export function useFileManager() {
     },
     getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
     getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-    getWorkspaceCommonDirHandle: async (create = false) => {
-      if (!workspaceStore.workspaceHandle) return null;
-      return await workspaceStore.workspaceHandle.getDirectoryHandle(WORKSPACE_COMMON_DIR_NAME, {
-        create,
-      });
-    },
-    getProjectRootDirHandle: async () => {
-      if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
-      return await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
-    },
-    getProjectDirHandle: async () => {
-      if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
-      return await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
-    },
     getProjectName: () => projectStore.currentProjectName,
     getProjectId: () => projectStore.currentProjectId,
     getProjectSize: () => ({
       width: projectStore.projectSettings.project.width,
       height: projectStore.projectSettings.project.height,
     }),
-    onMediaImported: ({ fileHandle, projectRelativePath }) => {
-      void mediaStore.getOrFetchMetadata(fileHandle, projectRelativePath);
+    onMediaImported: ({ projectRelativePath }) => {
+      void mediaStore.getOrFetchMetadataByPath(projectRelativePath);
     },
     mediaCache: createProxyThumbnailService({
       checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),

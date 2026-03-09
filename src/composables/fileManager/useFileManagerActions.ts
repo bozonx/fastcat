@@ -5,10 +5,10 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useProjectStore } from '~/stores/project.store';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
-import { generateUniqueFsEntryName, type FsDirectoryHandleWithIteration } from '~/utils/fs';
-import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
+import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export type FileAction =
   | 'createFolder'
@@ -28,24 +28,15 @@ export type FileAction =
   | 'openAsProjectTab';
 
 interface FileManagerActions {
-  createFolder: (
-    name: string,
-    target?: FileSystemDirectoryHandle | null,
-    parentPath?: string,
-  ) => Promise<void>;
+  createFolder: (name: string, parentPath?: string) => Promise<void>;
   renameEntry: (target: FsEntry, newName: string) => Promise<void>;
   deleteEntry: (target: FsEntry) => Promise<void>;
   loadProjectDirectory: () => Promise<void>;
-  handleFiles: (
-    files: File[],
-    targetDirHandle?: FileSystemDirectoryHandle,
-    targetDirPath?: string,
-  ) => Promise<void>;
+  handleFiles: (files: File[], targetDirPath?: string) => Promise<void>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
-  getWorkspaceCommonDirHandle: (create?: boolean) => Promise<FileSystemDirectoryHandle | null>;
-  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  vfs: IFileSystemAdapter;
   findEntryByPath: (path: string) => FsEntry | null;
-  readDirectory: (dirHandle: FileSystemDirectoryHandle, basePath?: string) => Promise<FsEntry[]>;
+  readDirectory: (path?: string) => Promise<FsEntry[]>;
   reloadDirectory: (path: string) => Promise<void>;
   notifyFileManagerUpdate?: () => void;
   setFileTreePathExpanded?: (path: string, expanded: boolean) => void;
@@ -97,26 +88,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
     actions.onAfterRename?.();
   }
 
-  async function handleCreateAutoFolder(
-    targetDirHandle: FileSystemDirectoryHandle | null,
-    targetDirPath: string,
-    existingNames: string[],
-  ) {
+  async function handleCreateAutoFolder(targetDirPath: string, existingNames: string[]) {
     const usedNames = new Set(existingNames);
-    if (targetDirHandle) {
-      try {
-        const handleWithIter = targetDirHandle as FsDirectoryHandleWithIteration;
-        const iterator = handleWithIter.values?.() ?? handleWithIter.entries?.();
-        if (iterator) {
-          for await (const value of iterator) {
-            const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-            usedNames.add(handle.name);
-          }
-        }
-      } catch {
-        // ignore and fallback to existing names snapshot
-      }
-    }
 
     const baseName = t('common.folderBaseName', 'Папка');
     let index = 1;
@@ -126,7 +99,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       index++;
     } while (usedNames.has(newName));
 
-    await actions.createFolder(newName, targetDirHandle, targetDirPath);
+    await actions.createFolder(newName, targetDirPath);
 
     const createdPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
 
@@ -136,7 +109,6 @@ export function useFileManagerActions(actions: FileManagerActions) {
         kind: createdEntry.kind,
         name: createdEntry.name,
         path: createdEntry.path,
-        handle: createdEntry.handle,
       };
       selectionStore.selectFsEntry(createdEntry);
       actions.onFileSelect?.(createdEntry);
@@ -146,99 +118,54 @@ export function useFileManagerActions(actions: FileManagerActions) {
     editingEntryPath.value = createdPath;
   }
 
-  async function resolveParentDirHandleForEntry(
-    entry: FsEntry,
-  ): Promise<FileSystemDirectoryHandle | null> {
-    if (entry.parentHandle) return entry.parentHandle;
-    if (!entry.path) return null;
-
-    const root = isWorkspaceCommonPath(entry.path)
-      ? await actions.getWorkspaceCommonDirHandle(false)
-      : await actions.getProjectRootDirHandle();
-    if (!root) return null;
-
-    const normalizedPath = isWorkspaceCommonPath(entry.path)
-      ? stripWorkspaceCommonPathPrefix(entry.path)
-      : entry.path;
-    const parts = normalizedPath.split('/').slice(0, -1);
-    let dir: FileSystemDirectoryHandle = root;
-    for (const p of parts) {
-      if (!p) continue;
-      dir = await dir.getDirectoryHandle(p);
-    }
-    return dir;
-  }
-
   async function createOtioVersion(entry: FsEntry) {
     if (entry.kind !== 'file') return;
     if (!entry.name.toLowerCase().endsWith('.otio')) return;
 
-    const parentDir = await resolveParentDirHandleForEntry(entry);
-    if (!parentDir) return;
+    const parentPath = entry.parentPath ?? entry.path.split('/').slice(0, -1).join('/');
 
-    const existing = new Set<string>();
-    try {
-      const handleWithIter = parentDir as FsDirectoryHandleWithIteration;
-      const iterator = handleWithIter.values?.() ?? handleWithIter.entries?.();
-      if (iterator) {
-        for await (const value of iterator) {
-          const h = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-          existing.add(h.name);
-        }
-      }
-    } catch {
-      // ignore
-    }
+    const existingNames = await actions.vfs.listEntryNames(parentPath);
 
     const match = entry.name.slice(0, -'.otio'.length).match(/^(.*)_([0-9]{3})$/);
     const prefix = match ? match[1] : entry.name.slice(0, -'.otio'.length);
     const start = match ? Number(match[2]) + 1 : 1;
 
     const nextName = await generateUniqueFsEntryName({
-      dirHandle: parentDir,
+      vfs: actions.vfs,
+      dirPath: parentPath,
       baseName: prefix + '_',
       extension: '.otio',
-      existingNames: Array.from(existing),
+      existingNames,
       startIndex: start,
     });
 
-    const file = await (entry.handle as FileSystemFileHandle).getFile();
-    const nextHandle = await parentDir.getFileHandle(nextName, { create: true });
-    const createWritable = (nextHandle as FileSystemFileHandle).createWritable;
-    if (typeof createWritable !== 'function') return;
-
-    const writable = await (nextHandle as FileSystemFileHandle).createWritable();
-    await writable.write(file);
-    await writable.close();
+    const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
+    await actions.vfs.copyFile(entry.path, nextPath);
 
     await actions.loadProjectDirectory();
 
-    const parentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
-    const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
     const newEntry = actions.findEntryByPath(nextPath);
     if (newEntry) {
       uiStore.selectedFsEntry = {
         kind: newEntry.kind,
         name: newEntry.name,
         path: newEntry.path,
-        handle: newEntry.handle,
       };
       selectionStore.selectFsEntry(newEntry);
     }
   }
 
   async function createMarkdownInDirectory(entry: FsEntry) {
-    const dirHandle = entry.handle as FileSystemDirectoryHandle;
-
     if (entry.path) {
       actions.setFileTreePathExpanded?.(entry.path, true);
     }
 
-    const existingInFolder = await actions.readDirectory(dirHandle, entry.path);
+    const existingInFolder = await actions.readDirectory(entry.path);
     const existingNames = existingInFolder.map((e) => e.name);
 
     const createdFileName = await createMarkdownCommand({
-      dirHandle,
+      vfs: actions.vfs,
+      dirPath: entry.path,
       existingNames,
     });
 
@@ -252,7 +179,6 @@ export function useFileManagerActions(actions: FileManagerActions) {
         kind: newEntry.kind,
         name: newEntry.name,
         path: newEntry.path,
-        handle: newEntry.handle,
       };
       selectionStore.selectFsEntry(newEntry);
       if (newEntry.kind === 'directory') {
@@ -324,11 +250,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       const existingNames = getExistingNames
         ? getExistingNames()
         : e.children?.map((c) => c.name) || [];
-      await handleCreateAutoFolder(
-        e.kind === 'directory' ? (e.handle as FileSystemDirectoryHandle) : null,
-        e.path ?? '',
-        existingNames,
-      );
+      await handleCreateAutoFolder(e.path, existingNames);
     },
     upload: (entry) => {
       const e = Array.isArray(entry) ? entry[0] : entry;
@@ -348,9 +270,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
       const entries = Array.isArray(entry) ? entry : [entry];
       for (const e of entries) {
         if (e.kind !== 'file' || !e.path) continue;
+        const file = await actions.vfs.getFile(e.path);
+        if (!file) continue;
+        const fileHandle = await projectStore.getFileHandleByPath(e.path);
+        if (!fileHandle) continue;
         await actions.mediaCache.ensureProxy({
-          fileHandle: e.handle as FileSystemFileHandle,
-          projectRelativePath: e.path!,
+          fileHandle,
+          projectRelativePath: e.path,
         });
       }
     },
