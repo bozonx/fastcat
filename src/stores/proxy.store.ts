@@ -39,6 +39,7 @@ export const useProxyStore = defineStore('proxy', () => {
     ensureProjectProxiesDir: fsModule.ensureProjectProxiesDir,
     getProxyFileName: fsModule.getProxyFileName,
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
+    getFileByPath: async (path) => await projectStore.getFileByPath(path),
     getOptimizationSettings: () => workspaceStore.userSettings.optimization,
   });
 

@@ -52,10 +52,12 @@ interface MonitorStoreState {
   projectStore: {
     projectSettings: GranVideoEditorProjectSettings;
     getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+    getFileByPath: (path: string) => Promise<File | null>;
   };
   timelineStore: TimelineStoreState;
   proxyStore: {
     getProxyFileHandle: (path: string) => Promise<FileSystemFileHandle | null>;
+    getProxyFile: (path: string) => Promise<File | null>;
   };
 }
 
@@ -480,6 +482,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               if (proxyHandle) return proxyHandle;
             }
             return await projectStore.getFileHandleByPath(path);
+          },
+          getFileByPath: async (path) => {
+            if (useProxyInMonitor.value) {
+              const proxyFile = await proxyStore.getProxyFile(path);
+              if (proxyFile) return proxyFile;
+            }
+            return await projectStore.getFileByPath(path);
           },
           onExportProgress: () => {},
         }),

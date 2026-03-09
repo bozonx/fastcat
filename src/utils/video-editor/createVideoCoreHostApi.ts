@@ -12,12 +12,14 @@ export interface CreateVideoCoreHostApiParams {
 }
 
 export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): VideoCoreHostAPI {
+  const getFileByPath = params.getFileByPath;
+
   return {
     getCurrentProjectId: async () => params.getCurrentProjectId(),
     getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
-    ...(params.getFileByPath
+    ...(getFileByPath
       ? {
-          getFileByPath: async (path: string) => await params.getFileByPath(path),
+          getFileByPath: async (path: string) => await getFileByPath(path),
         }
       : {}),
     ensureVectorImageRaster: async ({

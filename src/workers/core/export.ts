@@ -105,7 +105,7 @@ async function buildPassthroughAudioTrack(params: {
   const fileHandle = clip.fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
   if (!fileHandle) return null;
 
-  const file = await fileHandle.getFile();
+  const file = (await hostClient.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);

@@ -1151,6 +1151,7 @@ export function useTimelineExport() {
         getCurrentProjectId: () => projectStore.currentProjectId,
         getWorkspaceHandle: () => workspaceStore.workspaceHandle,
         getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        getFileByPath: async (path) => projectStore.getFileByPath(path),
         onExportProgress: (progress) => onProgress(progress / 100),
         onExportPhase: (phase) => {
           exportPhase.value = phase;
