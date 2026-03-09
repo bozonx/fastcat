@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName, type FsDirectoryHandleWithIteration } from '~/utils/fs';
+import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 
@@ -41,6 +42,7 @@ interface FileManagerActions {
     targetDirPath?: string,
   ) => Promise<void>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
+  getWorkspaceCommonDirHandle: (create?: boolean) => Promise<FileSystemDirectoryHandle | null>;
   getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   findEntryByPath: (path: string) => FsEntry | null;
   readDirectory: (dirHandle: FileSystemDirectoryHandle, basePath?: string) => Promise<FsEntry[]>;
@@ -150,10 +152,15 @@ export function useFileManagerActions(actions: FileManagerActions) {
     if (entry.parentHandle) return entry.parentHandle;
     if (!entry.path) return null;
 
-    const root = await actions.getProjectRootDirHandle();
+    const root = isWorkspaceCommonPath(entry.path)
+      ? await actions.getWorkspaceCommonDirHandle(false)
+      : await actions.getProjectRootDirHandle();
     if (!root) return null;
 
-    const parts = entry.path.split('/').slice(0, -1);
+    const normalizedPath = isWorkspaceCommonPath(entry.path)
+      ? stripWorkspaceCommonPathPrefix(entry.path)
+      : entry.path;
+    const parts = normalizedPath.split('/').slice(0, -1);
     let dir: FileSystemDirectoryHandle = root;
     for (const p of parts) {
       if (!p) continue;

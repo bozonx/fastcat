@@ -6,6 +6,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
+import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
@@ -67,6 +68,10 @@ function isSelected(entry: FsEntry): boolean {
     return selected.entries.some((e) => e.path === entry.path);
   }
   return selected.path === entry.path;
+}
+
+function isWorkspaceCommonRoot(entry: FsEntry): boolean {
+  return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
 }
 </script>
 
@@ -256,7 +261,11 @@ function isSelected(entry: FsEntry): boolean {
                     :name="fileManager.getFileIcon(entry)"
                     class="w-4 h-4 transition-colors"
                     :class="[
-                      entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
+                      isWorkspaceCommonRoot(entry)
+                        ? 'text-violet-400'
+                        : entry.kind === 'directory'
+                          ? 'text-ui-text-muted/80'
+                          : 'text-ui-text-muted',
                       entry.name.startsWith('.') ? 'opacity-30' : '',
                       fileManager.mediaCache.hasProxy(entry.path || '') &&
                       !proxyStore.generatingProxies.has(entry.path || '')
@@ -281,6 +290,7 @@ function isSelected(entry: FsEntry): boolean {
                   v-else
                   class="truncate max-w-50 transition-colors"
                   :class="[
+                    isWorkspaceCommonRoot(entry) ? 'text-violet-300' : '',
                     entry.name.startsWith('.') ? 'opacity-30' : '',
                     fileManager.mediaCache.hasProxy(entry.path || '') &&
                     !proxyStore.generatingProxies.has(entry.path || '')

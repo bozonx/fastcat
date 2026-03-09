@@ -54,16 +54,25 @@ pnpm build
 ## Workspace data
 
 The editor stores temporary/generated files inside the selected workspace folder under `vardata/`.
+It also keeps a shared workspace-level content library in `common/`.
 
 Each project has a stable `projectId` stored in `projects/<projectName>/.gran/project.meta.json`.
 This ID is used as the folder key for project-scoped temporary data.
 
 Layout:
 
+- `common/` — shared workspace library available in every project
 - `vardata/projects/<projectId>/proxies` — generated proxy media for the project
 - `vardata/projects/<projectId>/thumbnails` — generated thumbnails for the project
 - `vardata/projects/<projectId>/cache` — cached metadata and other project-scoped data
 - `vardata/projects/<projectId>/cache/transcriptions` — cached STT responses for audio files
+
+Shared library behavior:
+
+- the file manager exposes `common` as a virtual top-level folder in browsers and trees
+- files from `common/` use the internal path prefix `@common/...`
+- media and documents from `common/` can be opened and reused from any project
+- OTIO files from `common/` can be opened for editing and inserted as nested timelines
 
 You can clear temporary files from the UI:
 

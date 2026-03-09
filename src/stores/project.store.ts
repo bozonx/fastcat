@@ -50,6 +50,7 @@ export const useProjectStore = defineStore('project', () => {
   const editorViewModule = createEditorViewModule(currentProjectId);
 
   const fsModule = createProjectFsModule({
+    workspaceHandle: computed(() => workspaceStore.workspaceHandle),
     projectsHandle: computed(() => workspaceStore.projectsHandle),
     currentProjectName,
   });

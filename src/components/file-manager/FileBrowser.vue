@@ -11,6 +11,7 @@ import {
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
@@ -60,12 +61,18 @@ import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransfe
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 import AppModal from '~/components/ui/AppModal.vue';
+import {
+  stripWorkspaceCommonPathPrefix,
+  WORKSPACE_COMMON_DIR_NAME,
+  WORKSPACE_COMMON_PATH_PREFIX,
+} from '~/utils/workspace-common';
 
 import PQueue from 'p-queue';
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
+const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
@@ -112,6 +119,7 @@ const props = defineProps<{
 const {
   readDirectory,
   getFileIcon,
+  getWorkspaceCommonDirHandle,
   getProjectRootDirHandle,
   loadProjectDirectory,
   createFolder,
@@ -430,6 +438,7 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
+  getWorkspaceCommonDirHandle: fileManager.getWorkspaceCommonDirHandle,
   getProjectRootDirHandle: fileManager.getProjectRootDirHandle,
   findEntryByPath: fileManager.findEntryByPath,
   readDirectory: fileManager.readDirectory,
@@ -1101,7 +1110,22 @@ async function loadFolderContent() {
     const handle = (
       freshEntry ? toRaw(freshEntry.handle) : toRaw(filesPageStore.selectedFolder.handle)
     ) as FileSystemDirectoryHandle;
-    const entries = await readDirectory(handle, path);
+    let entries = await readDirectory(handle, path);
+    if (!path) {
+      const commonHandle = await getWorkspaceCommonDirHandle(false);
+      if (commonHandle) {
+        const commonEntry: FsEntry = {
+          kind: 'directory',
+          name: WORKSPACE_COMMON_DIR_NAME,
+          path: WORKSPACE_COMMON_PATH_PREFIX,
+          handle: commonHandle,
+        };
+        entries = [
+          commonEntry,
+          ...entries.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
+        ];
+      }
+    }
     // readDirectory already filters hidden files based on deps.showHiddenFiles(),
     // but just to be sure we also filter it here if needed.
     const filteredEntries = entries.filter(
@@ -1145,28 +1169,64 @@ async function loadParentFolders() {
     return;
   }
 
-  if (!filesPageStore.selectedFolder?.path) return;
+  const selectedFolderPath = filesPageStore.selectedFolder?.path;
+  if (!selectedFolderPath) return;
+
+  if (selectedFolderPath === WORKSPACE_COMMON_PATH_PREFIX) {
+    const commonHandle = await getWorkspaceCommonDirHandle(false);
+    if (!commonHandle) return;
+    parentFolders.value.push({
+      kind: 'directory',
+      name: WORKSPACE_COMMON_DIR_NAME,
+      path: WORKSPACE_COMMON_PATH_PREFIX,
+      handle: commonHandle,
+    });
+    return;
+  }
+
+  if (selectedFolderPath.startsWith(`${WORKSPACE_COMMON_PATH_PREFIX}/`)) {
+    const commonHandle = await getWorkspaceCommonDirHandle(false);
+    if (!commonHandle) return;
+
+    let currentHandle: FileSystemDirectoryHandle = commonHandle;
+    let currentPath = WORKSPACE_COMMON_PATH_PREFIX;
+    parentFolders.value.push({
+      kind: 'directory',
+      name: WORKSPACE_COMMON_DIR_NAME,
+      path: WORKSPACE_COMMON_PATH_PREFIX,
+      handle: commonHandle,
+    });
+
+    const pathParts = stripWorkspaceCommonPathPrefix(selectedFolderPath).split('/').filter(Boolean);
+    for (const part of pathParts) {
+      currentHandle = await currentHandle.getDirectoryHandle(part);
+      currentPath = `${currentPath}/${part}`;
+      parentFolders.value.push({
+        kind: 'directory',
+        name: part,
+        path: currentPath,
+        handle: currentHandle,
+      });
+    }
+    return;
+  }
 
   const rootHandle = await getProjectRootDirHandle();
   if (!rootHandle) return;
 
-  const pathParts = filesPageStore.selectedFolder.path.split('/').filter(Boolean);
+  const pathParts = selectedFolderPath.split('/').filter(Boolean);
   let currentHandle: FileSystemDirectoryHandle = rootHandle;
+  let currentPath = '';
 
-  for (let i = 0; i < pathParts.length; i++) {
-    const part = pathParts[i];
-    if (!part) continue;
-    try {
-      currentHandle = await currentHandle.getDirectoryHandle(part);
-      parentFolders.value.push({
-        kind: 'directory',
-        name: part,
-        path: pathParts.slice(0, i + 1).join('/'),
-        handle: currentHandle,
-      });
-    } catch {
-      break;
-    }
+  for (const part of pathParts) {
+    currentHandle = await currentHandle.getDirectoryHandle(part);
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    parentFolders.value.push({
+      kind: 'directory',
+      name: part,
+      path: currentPath,
+      handle: currentHandle,
+    });
   }
 }
 
@@ -1450,9 +1510,13 @@ function handleEntryDoubleClick(entry: FsEntry) {
     filesPageStore.openFolder(entry);
   } else {
     if (entry.name.toLowerCase().endsWith('.otio')) {
-      if (entry.path) {
-        // Find a way to open timeline, for now just call onFileAction('openAsProjectTab') or emit select
-      }
+      const entryPath = entry.path;
+      if (!entryPath) return;
+      void (async () => {
+        await projectStore.openTimelineFile(entryPath);
+        await timelineStore.loadTimeline();
+        void timelineStore.loadTimelineMetadata();
+      })();
     } else {
       if (!isOpenableProjectFileName(entry.name)) return;
       onFileAction('openAsProjectTab', entry);

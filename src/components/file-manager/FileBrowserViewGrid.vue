@@ -5,6 +5,7 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
+import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
@@ -59,6 +60,10 @@ function isSelected(entry: FsEntry): boolean {
     return selected.entries.some((e) => e.path === entry.path);
   }
   return selected.path === entry.path;
+}
+
+function isWorkspaceCommonRoot(entry: FsEntry): boolean {
+  return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
 }
 </script>
 
@@ -118,7 +123,11 @@ function isSelected(entry: FsEntry): boolean {
             v-else
             :name="fileManager.getFileIcon(entry)"
             :class="[
-              entry.kind === 'directory' ? 'text-blue-400' : 'text-ui-text-muted',
+              isWorkspaceCommonRoot(entry)
+                ? 'text-violet-400'
+                : entry.kind === 'directory'
+                  ? 'text-ui-text-muted/80'
+                  : 'text-ui-text-muted',
               fileManager.mediaCache.hasProxy(entry.path || '') &&
               !proxyStore.generatingProxies.has(entry.path || '')
                 ? 'text-(--color-success)!'
@@ -150,7 +159,9 @@ function isSelected(entry: FsEntry): boolean {
           class="text-center break-all line-clamp-2 px-1 transition-colors"
           :class="[
             entry.kind === 'directory'
-              ? 'font-medium text-ui-text group-hover:text-primary-400'
+              ? isWorkspaceCommonRoot(entry)
+                ? 'font-medium text-violet-300 group-hover:text-violet-200'
+                : 'font-medium text-ui-text group-hover:text-primary-400'
               : 'text-ui-text',
             entry.name.startsWith('.') ? 'opacity-50' : '',
             {

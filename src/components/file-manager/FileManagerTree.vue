@@ -16,6 +16,7 @@ import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
+import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -138,9 +139,14 @@ function isSelected(entry: FsEntry): boolean {
   }
 }
 
+function isWorkspaceCommonRoot(entry: FsEntry): boolean {
+  return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
+}
+
 function getEntryIconClass(entry: FsEntry): string {
   if (isDotEntry(entry)) return 'opacity-30';
   if (isGeneratingProxyInDirectory(entry)) return 'text-amber-400/90';
+  if (isWorkspaceCommonRoot(entry)) return 'text-violet-400';
   if (entry.kind === 'directory') return 'text-ui-text-muted/80';
 
   const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
@@ -471,6 +477,7 @@ const { getContextMenuItems } = useFileContextMenu(
                 isSelected(entry)
                   ? 'font-medium text-ui-text group-hover:text-ui-text'
                   : 'text-ui-text group-hover:text-ui-text',
+                isWorkspaceCommonRoot(entry) ? 'text-violet-300 group-hover:text-violet-200' : '',
                 isDotEntry(entry) ? 'opacity-30' : '',
                 ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy
                   ? 'text-(--color-success)!'

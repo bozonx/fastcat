@@ -6,6 +6,11 @@ import { useProjectStore } from '~/stores/project.store';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import {
+  getWorkspacePathParent,
+  WORKSPACE_COMMON_DIR_NAME,
+  WORKSPACE_COMMON_PATH_PREFIX,
+} from '~/utils/workspace-common';
 
 import Project from '~/components/Project.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
@@ -77,7 +82,7 @@ const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes
   [40, 60],
 );
 
-const { getProjectRootDirHandle, findEntryByPath } = useFileManager();
+const { getProjectRootDirHandle, getWorkspaceCommonDirHandle, findEntryByPath } = useFileManager();
 
 async function navigateToParentFolder() {
   const folder = filesPageStore.selectedFolder;
@@ -86,33 +91,36 @@ async function navigateToParentFolder() {
   const currentPath = folder.path ?? '';
   if (!currentPath) return;
 
-  const rootHandle = await getProjectRootDirHandle();
-  if (!rootHandle) return;
+  const parentPath = getWorkspacePathParent(currentPath);
+  if (!parentPath) {
+    const rootHandle = await getProjectRootDirHandle();
+    if (!rootHandle) return;
 
-  const parts = currentPath.split('/').filter(Boolean);
-  if (parts.length <= 1) {
     filesPageStore.selectFolder({
       kind: 'directory',
       name: projectStore.currentProjectName || '',
       path: '',
       handle: rootHandle,
     });
-  } else {
-    const parentParts = parts.slice(0, -1);
-    let currentHandle: FileSystemDirectoryHandle = rootHandle;
-    for (const part of parentParts) {
-      try {
-        currentHandle = await currentHandle.getDirectoryHandle(part);
-      } catch {
-        return;
-      }
-    }
+    return;
+  }
+
+  if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
+    const commonHandle = await getWorkspaceCommonDirHandle();
+    if (!commonHandle) return;
+
     filesPageStore.selectFolder({
       kind: 'directory',
-      name: parentParts[parentParts.length - 1] || '',
-      path: parentParts.join('/'),
-      handle: currentHandle,
+      name: WORKSPACE_COMMON_DIR_NAME,
+      path: WORKSPACE_COMMON_PATH_PREFIX,
+      handle: commonHandle,
     });
+    return;
+  }
+
+  const parentEntry = findEntryByPath(parentPath);
+  if (parentEntry && parentEntry.kind === 'directory') {
+    filesPageStore.selectFolder(parentEntry);
   }
 }
 
@@ -430,13 +438,13 @@ function closePanelAndRestoreTab(
 const cutPanelsLayoutKey = computed(() =>
   JSON.stringify(
     projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
-  )
+  ),
 );
 
 const soundPanelsLayoutKey = computed(() =>
   JSON.stringify(
     projectStore.soundPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
-  )
+  ),
 );
 
 const verticalSplitSizesKey = computed(
