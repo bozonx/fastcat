@@ -14,10 +14,15 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
-    "test:unit:coverage": "vitest run --coverage"
+    "test:unit:coverage": "vitest run --coverage",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@nuxt/ui": "^4.4.0",
+    "@nuxtjs/i18n": "^10.2.3",
+    "@pinia/nuxt": "^0.11.3",
     "@vueuse/core": "^14.2.1",
     "@webav/av-canvas": "^1.2.8",
     "@webav/av-cliper": "^1.2.8",
@@ -46,6 +51,8 @@
     "@nuxt/test-utils": "^4.0.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.0",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.3.0",
     "@types/splitpanes": "^2.2.6",
