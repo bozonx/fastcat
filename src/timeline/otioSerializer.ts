@@ -297,7 +297,8 @@ function parseClipItem(input: {
     clipTypeRaw === 'media' ||
     clipTypeRaw === 'timeline' ||
     clipTypeRaw === 'text' ||
-    clipTypeRaw === 'shape'
+    clipTypeRaw === 'shape' ||
+    clipTypeRaw === 'hud'
       ? clipTypeRaw
       : isOtioPath(path)
         ? 'timeline'
@@ -487,6 +488,20 @@ function parseClipItem(input: {
         granMeta?.shapeConfig && typeof granMeta.shapeConfig === 'object'
           ? granMeta.shapeConfig
           : undefined,
+    };
+  }
+
+  if (clipType === 'hud') {
+    return {
+      ...base,
+      clipType: 'hud',
+      hudType: granMeta?.hudType === 'media_frame' ? granMeta.hudType : 'media_frame',
+      background:
+        granMeta?.background && typeof granMeta.background === 'object'
+          ? granMeta.background
+          : undefined,
+      content:
+        granMeta?.content && typeof granMeta.content === 'object' ? granMeta.content : undefined,
     };
   }
 
@@ -695,6 +710,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             strokeColor: item.clipType === 'shape' ? (item as any).strokeColor : undefined,
             strokeWidth: item.clipType === 'shape' ? (item as any).strokeWidth : undefined,
             shapeConfig: item.clipType === 'shape' ? (item as any).shapeConfig : undefined,
+            hudType: item.clipType === 'hud' ? (item as any).hudType : undefined,
+            background: item.clipType === 'hud' ? (item as any).background : undefined,
+            content: item.clipType === 'hud' ? (item as any).content : undefined,
             isImage: item.isImage,
             transform: item.transform,
           },

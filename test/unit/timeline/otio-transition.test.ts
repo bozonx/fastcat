@@ -368,4 +368,50 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.strokeWidth).toBe(6);
     expect(clip.opacity).toBe(0.75);
   });
+
+  it('preserves hud media frame clips through OTIO round-trip', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              kind: 'clip',
+              id: 'hud1',
+              trackId: 'v1',
+              name: 'HUD frame',
+              clipType: 'hud',
+              hudType: 'media_frame',
+              timelineRange: { startUs: 250_000, durationUs: 3_000_000 },
+              sourceRange: { startUs: 0, durationUs: 3_000_000 },
+              background: {
+                source: { path: 'assets/background.png' },
+              },
+              content: {
+                source: { path: 'assets/content.png' },
+              },
+              opacity: 0.8,
+            },
+          ],
+        },
+      ],
+    };
+
+    const serialized = serializeTimelineToOtio(doc);
+    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
+
+    const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
+    expect(clip.clipType).toBe('hud');
+    expect(clip.hudType).toBe('media_frame');
+    expect(clip.background).toEqual({
+      source: { path: 'assets/background.png' },
+    });
+    expect(clip.content).toEqual({
+      source: { path: 'assets/content.png' },
+    });
+    expect(clip.opacity).toBe(0.8);
+  });
 });
