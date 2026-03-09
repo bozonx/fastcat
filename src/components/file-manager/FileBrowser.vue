@@ -1661,10 +1661,10 @@ async function submitTranscription() {
   try {
     const mediaType = getMediaTypeFromFilename(entry.name);
     const entryMimeType = (entry as ExtendedFsEntry).mimeType;
-    const fileHandle = await projectStore.getFileHandleByPath(entry.path);
-    if (!fileHandle) throw new Error('Failed to access file');
+    const file = await projectStore.getFileByPath(entry.path);
+    if (!file) throw new Error('Failed to access file');
     const result = await transcribeProjectAudioFile({
-      fileHandle,
+      file,
       filePath: entry.path,
       fileName: entry.name,
       fileType: typeof entryMimeType === 'string' ? entryMimeType : '',

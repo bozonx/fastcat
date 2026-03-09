@@ -169,7 +169,7 @@ async function submitTranscription() {
     const file = await vfs.getFile(entry.path);
     if (!file) throw new Error('Failed to access file');
     const result = await transcribeProjectAudioFile({
-      fileHandle: await projectStore.getFileHandleByPath(entry.path),
+      file,
       filePath: entry.path,
       fileName: entry.name,
       fileType: typeof file.type === 'string' ? file.type : '',

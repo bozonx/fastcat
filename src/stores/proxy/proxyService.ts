@@ -8,7 +8,7 @@ import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHost
 export interface ProxyService {
   checkExistingProxies: (paths: string[]) => Promise<void>;
   generateProxy: (
-    fileHandle: FileSystemFileHandle,
+    file: File | FileSystemFileHandle,
     projectRelativePath: string,
     options?: { signal?: AbortSignal },
   ) => Promise<void>;
@@ -102,7 +102,7 @@ export function createProxyService(params: {
   }
 
   async function generateProxy(
-    fileHandle: FileSystemFileHandle,
+    file: File | FileSystemFileHandle,
     projectRelativePath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
@@ -180,7 +180,7 @@ export function createProxyService(params: {
             }),
           );
 
-          const meta = await client.extractMetadata(fileHandle);
+          const meta = await client.extractMetadata(file);
           const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
           if (!durationUs) throw new Error('Invalid video duration');

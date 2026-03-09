@@ -272,10 +272,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
         if (e.kind !== 'file' || !e.path) continue;
         const file = await actions.vfs.getFile(e.path);
         if (!file) continue;
-        const fileHandle = await projectStore.getFileHandleByPath(e.path);
-        if (!fileHandle) continue;
         await actions.mediaCache.ensureProxy({
-          fileHandle,
+          file,
           projectRelativePath: e.path,
         });
       }

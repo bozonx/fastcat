@@ -1,13 +1,13 @@
 import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
 
 export interface MediaWorkerModule {
-  extractMetadata: (fileHandle: FileSystemFileHandle) => Promise<unknown>;
+  extractMetadata: (file: File | FileSystemFileHandle) => Promise<unknown>;
 }
 
 export function createMediaWorkerModule() {
-  async function extractMetadata(fileHandle: FileSystemFileHandle) {
+  async function extractMetadata(file: File | FileSystemFileHandle) {
     const { client } = getExportWorkerClient();
-    return await client.extractMetadata(fileHandle);
+    return await client.extractMetadata(file);
   }
 
   return {

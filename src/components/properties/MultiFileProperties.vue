@@ -38,9 +38,9 @@ function onDelete() {
 async function onCreateProxy() {
   for (const e of props.entries) {
     if (e.kind === 'file' && e.path && getMediaTypeFromFilename(e.name) === 'video') {
-      const handle = await projectStore.getFileHandleByPath(e.path);
-      if (!handle) continue;
-      void proxyStore.generateProxy(handle, e.path);
+      const file = await projectStore.getFileByPath(e.path);
+      if (!file) continue;
+      void proxyStore.generateProxy(file, e.path);
     }
   }
 }

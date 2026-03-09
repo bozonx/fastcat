@@ -2,11 +2,11 @@ import type { ProxyThumbnailService } from './proxyThumbnailService';
 
 export async function ensureProxyCommand(params: {
   service: Pick<ProxyThumbnailService, 'ensureProxy'>;
-  fileHandle: FileSystemFileHandle;
+  file: File | FileSystemFileHandle;
   projectRelativePath: string;
 }): Promise<void> {
   await params.service.ensureProxy({
-    fileHandle: params.fileHandle,
+    file: params.file,
     projectRelativePath: params.projectRelativePath,
   });
 }

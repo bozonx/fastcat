@@ -6,7 +6,7 @@ import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/exter
 import type { GranVideoEditorUserSettings } from '~/utils/settings';
 
 export interface SttTranscriptionRequest {
-  fileHandle: FileSystemFileHandle;
+  file: File | FileSystemFileHandle;
   filePath: string;
   fileName: string;
   fileType: string;
@@ -137,7 +137,7 @@ export async function transcribeProjectAudioFile(
     throw new Error('STT integration is not configured');
   }
 
-  const file = await input.fileHandle.getFile();
+  const file = input.file instanceof File ? input.file : await input.file.getFile();
   const language = normalizeLanguage(input.language);
   const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
   const models = normalizeModels(input.userSettings.integrations.stt.models);

@@ -64,21 +64,20 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
-    const handle = await projectStore.getFileHandleByPath(path);
-    if (!handle) {
+    const file = await projectStore.getFileByPath(path);
+    if (!file) {
       missingPaths.value[path] = true;
       return null;
     }
     missingPaths.value[path] = false;
-    return await getOrFetchMetadata(handle, path, options);
+    return await getOrFetchMetadata(file, path, options);
   }
 
   async function getOrFetchMetadata(
-    fileHandle: FileSystemFileHandle,
+    file: File,
     projectRelativePath: string,
     options?: { forceRefresh?: boolean },
   ): Promise<MediaMetadata | null> {
-    const file = await fileHandle.getFile();
     const cacheKey = projectRelativePath;
 
     // Clear missing status if we are here (we have a file handle)
@@ -167,7 +166,7 @@ export const useMediaStore = defineStore('media', () => {
     }
 
     try {
-      const meta = (await workerModule.extractMetadata(fileHandle)) as MediaMetadata | null;
+      const meta = (await workerModule.extractMetadata(file)) as MediaMetadata | null;
 
       if (meta) {
         mediaMetadata.value[cacheKey] = meta;
@@ -221,8 +220,8 @@ export const useMediaStore = defineStore('media', () => {
   async function revalidateMissingMedia(usedPaths: string[]) {
     const results = await Promise.all(
       usedPaths.map(async (path) => {
-        const handle = await projectStore.getFileHandleByPath(path);
-        return { path, exists: Boolean(handle) };
+        const file = await projectStore.getFileByPath(path);
+        return { path, exists: Boolean(file) };
       }),
     );
 

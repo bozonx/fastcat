@@ -376,9 +376,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     mediaCache: {
       hasProxy: (path: string) => proxyStore.existingProxies.has(path),
       ensureProxy: async (params: {
-        fileHandle: FileSystemFileHandle;
+        file: File | FileSystemFileHandle;
         projectRelativePath: string;
-      }) => await proxyStore.generateProxy(params.fileHandle, params.projectRelativePath),
+      }) => await proxyStore.generateProxy(params.file, params.projectRelativePath),
     } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
     defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
     defaultImageSourceDurationUs: DEFAULT_IMAGE_DURATION_US,
