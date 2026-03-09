@@ -567,7 +567,7 @@ function getVerticalSize(
               min-size="5"
             >
               <Splitpanes
-                :key="col.id + '-' + col.panels.length"
+                :key="`${col.id}-${col.panels.map((panel) => panel.id).join('|')}`"
                 horizontal
                 class="editor-splitpanes"
                 @resized="(e: any) => onVerticalSplitResize(e, col.id)"
@@ -804,7 +804,7 @@ function getVerticalSize(
                   min-size="5"
                 >
                   <Splitpanes
-                    :key="col.id + '-' + col.panels.length"
+                    :key="`${col.id}-${col.panels.map((panel) => panel.id).join('|')}`"
                     horizontal
                     class="editor-splitpanes"
                     @resized="(e: any) => onVerticalSplitResize(e, col.id, 'sound')"
