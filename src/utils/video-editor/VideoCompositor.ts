@@ -479,6 +479,7 @@ export class VideoCompositor {
     timelineClips: any[],
     deps: {
       getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+      getFileByPath?: (path: string) => Promise<File | null>;
       getCurrentProjectId?: () => Promise<string | null>;
       ensureVectorImageRaster?: (params: {
         projectId: string;
@@ -992,7 +993,7 @@ export class VideoCompositor {
           try {
             const handle = await deps.getFileHandleByPath(bgPath);
             if (handle) {
-              const file = await handle.getFile();
+              const file = (await deps.getFileByPath?.(bgPath)) ?? (await handle.getFile());
               const isImage =
                 (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
                 getMediaTypeFromFilename(bgPath) === 'image';
@@ -1045,7 +1046,7 @@ export class VideoCompositor {
           try {
             const handle = await deps.getFileHandleByPath(contentPath);
             if (handle) {
-              const file = await handle.getFile();
+              const file = (await deps.getFileByPath?.(contentPath)) ?? (await handle.getFile());
               const isImage =
                 (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
                 getMediaTypeFromFilename(contentPath) === 'image';
@@ -1114,11 +1115,11 @@ export class VideoCompositor {
         continue;
       }
 
-      const file = await fileHandle.getFile();
+      const file = (await deps.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
 
       const isImage =
         (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-        getMediaTypeFromFilename(sourcePath || '') === 'image';
+        getMediaTypeFromFilename(sourcePath) === 'image';
       if (isImage) {
         const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
         sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
