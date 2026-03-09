@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import type {
+  ButtonGroupParamControl,
   FileParamControl,
   ParamControl,
   ParamOption,
@@ -69,7 +71,7 @@ function normalizeSelectValue(value: unknown): string | number | boolean | undef
   return undefined;
 }
 
-function getSelectItems(control: SelectParamControl) {
+function getSelectItems(control: SelectParamControl | ButtonGroupParamControl) {
   return control.options.map((option: ParamOption) => ({
     value: option.value,
     label:
@@ -188,6 +190,18 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
           label-key="label"
           :size="size"
           :disabled="control.disabled"
+          @update:model-value="(value: unknown) => updateValue(control.key, normalizeSelectValue(value))"
+        />
+      </div>
+
+      <div v-else-if="control.kind === 'button-group'" class="flex flex-col gap-1">
+        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+        <AppButtonGroup
+          :model-value="getValue(control.key)"
+          :options="getSelectItems(control)"
+          size="xs"
+          :disabled="control.disabled"
+          fluid
           @update:model-value="(value: unknown) => updateValue(control.key, normalizeSelectValue(value))"
         />
       </div>

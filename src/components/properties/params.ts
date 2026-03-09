@@ -42,6 +42,12 @@ export interface SelectParamControl extends BaseParamControl {
   options: ParamOption[];
 }
 
+export interface ButtonGroupParamControl extends BaseParamControl {
+  kind: 'button-group';
+  key: string;
+  options: ParamOption[];
+}
+
 export interface ColorParamControl extends BaseParamControl {
   kind: 'color';
   key: string;
@@ -74,6 +80,7 @@ export type ParamControl =
   | NumberParamControl
   | ToggleParamControl
   | SelectParamControl
+  | ButtonGroupParamControl
   | ColorParamControl
   | FileParamControl
   | RowParamControl

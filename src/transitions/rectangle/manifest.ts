@@ -169,7 +169,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
     },
     {
       key: 'blurMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
       options: [
         { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },
@@ -178,7 +178,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
     },
     {
       key: 'direction',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramDirection',
       options: [
         {
@@ -221,7 +221,7 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
     },
     {
       key: 'contentMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramContentMode',
       options: [
         { value: 'reveal', labelKey: 'granVideoEditor.timeline.transition.contentModeReveal' },

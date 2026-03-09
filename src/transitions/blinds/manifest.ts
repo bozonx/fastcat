@@ -241,7 +241,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     },
     {
       key: 'motionBlurMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramMotionBlurMode',
       options: [
         { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeNormal' },
@@ -250,7 +250,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     },
     {
       key: 'brightnessMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
       options: [
         { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.brightnessModeNormal' },
