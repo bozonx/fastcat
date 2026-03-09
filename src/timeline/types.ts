@@ -190,12 +190,36 @@ export type ShapeType =
   | 'speech_bubble'
   | 'bang';
 
+export interface ShapeConfig {
+  // Circle
+  squashX?: number; // %
+  squashY?: number; // %
+  // Square
+  width?: number;
+  height?: number;
+  cornerRadius?: number;
+  // Triangle
+  baseLength?: number;
+  vertexOffset?: number;
+  // Star & Bang
+  rays?: number;
+  innerRadius?: number;
+  // Cloud
+  cloudType?: 1 | 2;
+  // Speech Bubble
+  pointerSharpness?: number;
+  pointerAngle?: number;
+  pointerX?: number;
+  pointerDirection?: 'left' | 'right';
+}
+
 export interface TimelineShapeClipItem extends TimelineClipBase {
   clipType: 'shape';
   shapeType: ShapeType;
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
+  shapeConfig?: ShapeConfig;
 }
 
 export type HudType = 'media_frame';

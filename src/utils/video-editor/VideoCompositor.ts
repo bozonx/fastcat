@@ -131,6 +131,21 @@ export async function getVideoSampleWithZeroFallback(
   });
 }
 
+export interface HudMediaState {
+  sourcePath?: string;
+  fileHandle?: FileSystemFileHandle;
+  input?: any;
+  sink?: any;
+  firstTimestampS?: number;
+  sourceDurationUs: number;
+  clipKind: 'video' | 'image' | 'solid';
+  sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
+  imageSource: ImageSource;
+  sprite: Sprite;
+  lastVideoFrame: VideoFrame | null;
+  bitmap: ImageBitmap | null;
+}
+
 export interface CompositorClip {
   itemId: string;
   trackId?: string;
@@ -165,6 +180,7 @@ export interface CompositorClip {
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
+  shapeConfig?: import('~/timeline/types').ShapeConfig;
   hudType?: import('~/timeline/types').HudType;
   background?: import('~/timeline/types').HudMediaParams;
   content?: import('~/timeline/types').HudMediaParams;
@@ -184,6 +200,10 @@ export interface CompositorClip {
   transitionCombinedTexture?: RenderTexture | null;
   textDirty?: boolean;
   shapeDirty?: boolean;
+  hudMediaStates?: {
+    background?: HudMediaState;
+    content?: HudMediaState;
+  };
 }
 
 export interface CompositorTrack {
@@ -933,7 +953,7 @@ export class VideoCompositor {
           sourceKind: 'bitmap',
           imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
           lastVideoFrame: null,
-          canvas: null,
+          canvas: new OffscreenCanvas(this.width, this.height),
           ctx: null,
           bitmap: null,
           hudType: (clipData as any).hudType ?? 'media_frame',
@@ -947,7 +967,15 @@ export class VideoCompositor {
           transitionOut: clipData.transitionOut,
           transitionFilter: null,
           transitionFilterType: null,
+          hudMediaStates: {},
         };
+
+        const ctx = compositorClip.canvas?.getContext('2d');
+        if (ctx) {
+          compositorClip.ctx = ctx as OffscreenCanvasRenderingContext2D;
+          const canvasSource = new CanvasSource({ resource: compositorClip.canvas as any });
+          sprite.texture.source = canvasSource as any;
+        }
 
         (compositorClip as any).clipType = 'hud';
 
@@ -956,6 +984,113 @@ export class VideoCompositor {
           trackRuntime.container.addChild(sprite);
         } else {
           this.app.stage.addChild(sprite);
+        }
+
+        // Initialize HUD media states
+        const bgPath = compositorClip.background?.source?.path;
+        if (bgPath) {
+          try {
+            const handle = await deps.getFileHandleByPath(bgPath);
+            if (handle) {
+              const file = await handle.getFile();
+              const isImage =
+                (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+                getMediaTypeFromFilename(bgPath) === 'image';
+
+              if (isImage) {
+                let bmp: ImageBitmap | null = null;
+                let imageFile = file;
+                if (
+                  isSvgFile({ file, path: bgPath }) &&
+                  deps.getCurrentProjectId &&
+                  deps.ensureVectorImageRaster
+                ) {
+                  const projectId = await deps.getCurrentProjectId();
+                  if (projectId) {
+                    const cached = await deps.ensureVectorImageRaster({
+                      projectId,
+                      projectRelativePath: bgPath,
+                      width: this.width,
+                      height: this.height,
+                      sourceFileHandle: handle,
+                    });
+                    if (cached) imageFile = await cached.getFile();
+                  }
+                }
+                bmp = await createImageBitmap(imageFile);
+                if (compositorClip.hudMediaStates) {
+                  compositorClip.hudMediaStates.background = {
+                    sourcePath: bgPath,
+                    fileHandle: handle,
+                    sourceDurationUs: 0,
+                    clipKind: 'image',
+                    sourceKind: 'bitmap',
+                    imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+                    sprite: new Sprite(Texture.EMPTY),
+                    lastVideoFrame: null,
+                    bitmap: bmp,
+                  };
+                }
+              } else {
+                // Video support for HUD backgrounds can be added here
+              }
+            }
+          } catch (e) {
+            console.error('[VideoCompositor] Failed to load HUD background', e);
+          }
+        }
+
+        const contentPath = compositorClip.content?.source?.path;
+        if (contentPath) {
+          try {
+            const handle = await deps.getFileHandleByPath(contentPath);
+            if (handle) {
+              const file = await handle.getFile();
+              const isImage =
+                (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+                getMediaTypeFromFilename(contentPath) === 'image';
+
+              if (isImage) {
+                let bmp: ImageBitmap | null = null;
+                let imageFile = file;
+                if (
+                  isSvgFile({ file, path: contentPath }) &&
+                  deps.getCurrentProjectId &&
+                  deps.ensureVectorImageRaster
+                ) {
+                  const projectId = await deps.getCurrentProjectId();
+                  if (projectId) {
+                    const cached = await deps.ensureVectorImageRaster({
+                      projectId,
+                      projectRelativePath: contentPath,
+                      width: this.width,
+                      height: this.height,
+                      sourceFileHandle: handle,
+                    });
+                    if (cached) imageFile = await cached.getFile();
+                  }
+                }
+                bmp = await createImageBitmap(imageFile);
+                if (compositorClip.hudMediaStates) {
+                  compositorClip.hudMediaStates.content = {
+                    sourcePath: contentPath,
+                    fileHandle: handle,
+                    sourceDurationUs: 0,
+                    clipKind: 'image',
+                    sourceKind: 'bitmap',
+                    imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+                    sprite: new Sprite(Texture.EMPTY),
+                    lastVideoFrame: null,
+                    bitmap: bmp,
+                  };
+                }
+              } else {
+                // Video support for HUD content can be added here
+              }
+            }
+          } catch (e) {
+            console.error('[VideoCompositor] Failed to load HUD content', e);
+          }
         }
 
         nextClips.push(compositorClip);
@@ -1301,12 +1436,14 @@ export class VideoCompositor {
         const nextFill = String((next as any).fillColor ?? '#ffffff');
         const nextStroke = String((next as any).strokeColor ?? '#000000');
         const nextStrokeWidth = Number((next as any).strokeWidth ?? 0);
+        const nextConfig = (next as any).shapeConfig;
 
         if (
           clip.shapeType !== nextType ||
           clip.fillColor !== nextFill ||
           clip.strokeColor !== nextStroke ||
           clip.strokeWidth !== nextStrokeWidth ||
+          JSON.stringify(clip.shapeConfig) !== JSON.stringify(nextConfig) ||
           clip.shapeDirty === true
         ) {
           clip.shapeDirty = true;
@@ -1316,6 +1453,22 @@ export class VideoCompositor {
         clip.fillColor = nextFill;
         clip.strokeColor = nextStroke;
         clip.strokeWidth = nextStrokeWidth;
+        clip.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
+      }
+      if (clip.clipKind === 'hud') {
+        const nextBg = (next as any).background?.source?.path;
+        const nextContent = (next as any).content?.source?.path;
+
+        // Basic dirty check for HUD media
+        if (
+          clip.hudMediaStates?.background?.sourcePath !== nextBg ||
+          clip.hudMediaStates?.content?.sourcePath !== nextContent
+        ) {
+          // We will recreate media states in loadTimeline on next pass if paths changed
+          // For immediate layout updates we just copy the params
+          clip.background = (next as any).background;
+          clip.content = (next as any).content;
+        }
       }
       const trackRuntime = this.getTrackRuntimeForClip(clip);
       if (trackRuntime && clip.sprite.parent !== trackRuntime.container) {
@@ -2739,6 +2892,7 @@ export class VideoCompositor {
     const fill = clip.fillColor ?? '#ffffff';
     const stroke = clip.strokeColor ?? '#000000';
     const strokeWidth = clip.strokeWidth ?? 0;
+    const config = clip.shapeConfig ?? {};
 
     ctx.save();
     ctx.fillStyle = fill;
@@ -2764,129 +2918,111 @@ export class VideoCompositor {
 
     ctx.beginPath();
     if (type === 'square') {
-      ctx.rect(cx - half, cy - half, size, size);
+      const w = ((config.width ?? 100) / 100) * size;
+      const h = ((config.height ?? 100) / 100) * size;
+      const r = ((config.cornerRadius ?? 0) / 100) * (Math.min(w, h) / 2);
+      const x = cx - w / 2;
+      const y = cy - h / 2;
+      if (r > 0) {
+        ctx.roundRect(x, y, w, h, r);
+      } else {
+        ctx.rect(x, y, w, h);
+      }
     } else if (type === 'circle') {
-      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      const sqX = (config.squashX ?? 0) / 100;
+      const sqY = (config.squashY ?? 0) / 100;
+      const rx = half * (1 - sqX);
+      const ry = half * (1 - sqY);
+      ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
     } else if (type === 'triangle') {
-      const h = size * 0.92;
+      const baseLen = ((config.baseLength ?? 100) / 100) * size;
+      const vOffsetRaw = (config.vertexOffset ?? 50) / 100;
+      const vOffset = vOffsetRaw * baseLen;
+      const topY = cy - half;
+      const bottomY = cy + half;
+      const leftX = cx - baseLen / 2;
       drawPolygon([
-        { x: cx, y: cy - h / 2 },
-        { x: cx + half, y: cy + h / 2 },
-        { x: cx - half, y: cy + h / 2 },
+        { x: leftX + vOffset, y: topY },
+        { x: leftX + baseLen, y: bottomY },
+        { x: leftX, y: bottomY },
       ]);
     } else if (type === 'star') {
-      const spikes = 5;
-      const outerRadius = size / 2;
-      const innerRadius = outerRadius * 0.45;
-      let rot = (Math.PI / 2) * 3;
-      const step = Math.PI / spikes;
-      ctx.moveTo(cx, cy - outerRadius);
-      for (let i = 0; i < spikes; i++) {
-        let x = cx + Math.cos(rot) * outerRadius;
-        let y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-      }
-      ctx.lineTo(cx, cy - outerRadius);
-      ctx.closePath();
-    } else if (type === 'bang') {
-      const rays = 12;
-      const outerRadiusX = size * 0.56;
-      const outerRadiusY = size * 0.5;
-      const innerRadiusX = size * 0.28;
-      const innerRadiusY = size * 0.18;
-      const points: Array<{ x: number; y: number }> = [];
-
-      for (let i = 0; i < rays * 2; i++) {
-        const angle = -Math.PI / 2 + (Math.PI * i) / rays;
-        const isOuter = i % 2 === 0;
-        const radiusX = isOuter ? outerRadiusX : innerRadiusX;
-        const radiusY = isOuter ? outerRadiusY : innerRadiusY;
-        const wobble = isOuter
-          ? 1 + (i % 4 === 0 ? 0.16 : -0.08)
-          : 1 + (i % 3 === 0 ? 0.08 : -0.04);
-        points.push({
-          x: cx + Math.cos(angle) * radiusX * wobble,
-          y: cy + Math.sin(angle) * radiusY * wobble,
+      const points = config.rays ?? 5;
+      const innerRadius = half * ((config.innerRadius ?? 40) / 100);
+      const step = Math.PI / points;
+      const res = [];
+      for (let i = 0; i < points * 2; i++) {
+        const radius = i % 2 === 0 ? half : innerRadius;
+        const angle = i * step - Math.PI / 2;
+        res.push({
+          x: cx + Math.cos(angle) * radius,
+          y: cy + Math.sin(angle) * radius,
         });
       }
-
-      drawPolygon(points);
+      drawPolygon(res);
+    } else if (type === 'bang') {
+      const points = config.rays ?? 12;
+      const innerRadius = half * ((config.innerRadius ?? 70) / 100);
+      const step = Math.PI / points;
+      const res = [];
+      for (let i = 0; i < points * 2; i++) {
+        const radius = i % 2 === 0 ? half : innerRadius;
+        const angle = i * step - Math.PI / 2;
+        res.push({
+          x: cx + Math.cos(angle) * radius,
+          y: cy + Math.sin(angle) * radius,
+        });
+      }
+      drawPolygon(res);
     } else if (type === 'cloud') {
-      const left = cx - size * 0.34;
-      const right = cx + size * 0.34;
-      const top = cy - size * 0.12;
-      const bottom = cy + size * 0.2;
-
-      ctx.moveTo(left, bottom - size * 0.04);
-      ctx.bezierCurveTo(
-        cx - size * 0.42,
-        cy + size * 0.04,
-        cx - size * 0.42,
-        top,
-        cx - size * 0.24,
-        top,
-      );
-      ctx.bezierCurveTo(
-        cx - size * 0.24,
-        cy - size * 0.28,
-        cx + size * 0.02,
-        cy - size * 0.28,
-        cx + size * 0.06,
-        top - size * 0.04,
-      );
-      ctx.bezierCurveTo(
-        cx + size * 0.14,
-        cy - size * 0.22,
-        cx + size * 0.34,
-        cy - size * 0.18,
-        cx + size * 0.3,
-        top + size * 0.04,
-      );
-      ctx.bezierCurveTo(
-        cx + size * 0.44,
-        top + size * 0.06,
-        cx + size * 0.46,
-        cy + size * 0.18,
-        right,
-        bottom - size * 0.02,
-      );
-      ctx.bezierCurveTo(
-        cx + size * 0.24,
-        cy + size * 0.28,
-        cx - size * 0.08,
-        cy + size * 0.3,
-        left,
-        bottom - size * 0.04,
-      );
-      ctx.closePath();
+      const cloudType = config.cloudType ?? 1;
+      if (cloudType === 1) {
+        ctx.arc(cx - half * 0.4, cy, half * 0.5, 0, Math.PI * 2);
+        ctx.arc(cx + half * 0.4, cy, half * 0.5, 0, Math.PI * 2);
+        ctx.arc(cx, cy - half * 0.3, half * 0.6, 0, Math.PI * 2);
+        ctx.arc(cx, cy + half * 0.2, half * 0.4, 0, Math.PI * 2);
+      } else {
+        ctx.arc(cx - half * 0.5, cy + half * 0.1, half * 0.4, 0, Math.PI * 2);
+        ctx.arc(cx + half * 0.5, cy + half * 0.1, half * 0.4, 0, Math.PI * 2);
+        ctx.arc(cx - half * 0.2, cy - half * 0.3, half * 0.5, 0, Math.PI * 2);
+        ctx.arc(cx + half * 0.2, cy - half * 0.2, half * 0.45, 0, Math.PI * 2);
+        ctx.arc(cx, cy + half * 0.3, half * 0.3, 0, Math.PI * 2);
+      }
     } else if (type === 'speech_bubble') {
-      const w = size;
-      const h = size * 0.7;
-      const r = size * 0.1;
-      const px = cx - w / 2;
-      const py = cy - h / 2;
+      const w = ((config.width ?? 100) / 100) * size;
+      const h = ((config.height ?? 70) / 100) * size;
+      const x = cx - w / 2;
+      const y = cy - h / 2 - half * 0.15;
+      const r = Math.min(
+        ((config.cornerRadius ?? 20) / 100) * (Math.min(w, h) / 2),
+        Math.min(w, h) / 2,
+      );
 
-      ctx.moveTo(px + r, py);
-      ctx.lineTo(px + w - r, py);
-      ctx.quadraticCurveTo(px + w, py, px + w, py + r);
-      ctx.lineTo(px + w, py + h - r);
-      ctx.quadraticCurveTo(px + w, py + h, px + w - r, py + h);
+      const pointerDir = config.pointerDirection ?? 'left';
+      const pointerXBase = w * ((config.pointerX ?? 30) / 100);
+      const pointerWidth = w * ((config.pointerAngle ?? 20) / 100);
+      const pointerHeight = h * ((config.pointerSharpness ?? 40) / 100);
 
-      // The pointer
-      ctx.lineTo(px + w * 0.3 + r, py + h);
-      ctx.lineTo(px + w * 0.2, py + h + size * 0.15);
-      ctx.lineTo(px + w * 0.2 + r, py + h);
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
 
-      ctx.lineTo(px + r, py + h);
-      ctx.quadraticCurveTo(px, py + h, px, py + h - r);
-      ctx.lineTo(px, py + r);
-      ctx.quadraticCurveTo(px, py, px + r, py);
-      ctx.closePath();
+      if (pointerDir === 'right') {
+        ctx.lineTo(x + pointerXBase + pointerWidth, y + h);
+        ctx.lineTo(x + pointerXBase + pointerWidth, y + h + pointerHeight);
+        ctx.lineTo(x + pointerXBase, y + h);
+      } else {
+        ctx.lineTo(x + pointerXBase + pointerWidth, y + h);
+        ctx.lineTo(x + pointerXBase, y + h + pointerHeight);
+        ctx.lineTo(x + pointerXBase, y + h);
+      }
+
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
     } else {
       ctx.rect(cx - half, cy - half, size, size);
     }
@@ -2989,6 +3125,80 @@ export class VideoCompositor {
       const line = layout.lines[i] ?? '';
       const y = layout.textBlockTopPx + i * layout.lineHeightPx + layout.yOffsetPx;
       drawWithLetterSpacing(line, layout.textStartX, y);
+    }
+
+    try {
+      (clip.sprite.texture.source as any)?.update?.();
+    } catch {
+      // ignore
+    }
+  }
+
+  private drawHudClip(clip: CompositorClip) {
+    if (clip.clipKind !== 'hud') return;
+    if (!clip.canvas || !clip.ctx) return;
+
+    const ctx = clip.ctx;
+    const canvas = clip.canvas;
+
+    const targetW = Math.max(1, Math.round(this.width));
+    const targetH = Math.max(1, Math.round(this.height));
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+      try {
+        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
+          (clip.sprite.texture.source as any).resize(targetW, targetH);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Default fallback simple rendering for "media_frame"
+    const type = clip.hudType ?? 'media_frame';
+
+    if (type === 'media_frame') {
+      const padding = Math.min(canvas.width, canvas.height) * 0.05;
+
+      // Draw background if available
+      const bgState = clip.hudMediaStates?.background;
+      if (bgState && bgState.bitmap) {
+        // Draw background filling the whole canvas (or fitting it)
+        ctx.drawImage(bgState.bitmap, 0, 0, canvas.width, canvas.height);
+      } else {
+        // Fallback default background
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Draw content if available inside the frame
+      const contentState = clip.hudMediaStates?.content;
+      if (contentState && contentState.bitmap) {
+        // Example: scale content to fit inside padding
+        const cw = canvas.width - padding * 2;
+        const ch = canvas.height - padding * 2;
+
+        ctx.drawImage(contentState.bitmap, padding, padding, cw, ch);
+
+        // Draw a neat frame around it
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(padding, padding, cw, ch);
+      } else {
+        // Fallback placeholder content
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(padding, padding, canvas.width - padding * 2, canvas.height - padding * 2);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 48px sans-serif';
+        ctx.fillText('NO CONTENT', canvas.width / 2, canvas.height / 2);
+      }
     }
 
     try {

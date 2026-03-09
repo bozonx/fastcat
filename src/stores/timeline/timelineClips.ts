@@ -178,6 +178,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       fillColor?: string;
       strokeColor?: string;
       strokeWidth?: number;
+      shapeConfig?: import('~/timeline/types').ShapeConfig;
       hudType?: import('~/timeline/types').HudType;
       background?: import('~/timeline/types').HudMediaParams;
       content?: import('~/timeline/types').HudMediaParams;

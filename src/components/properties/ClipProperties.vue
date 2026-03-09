@@ -366,6 +366,67 @@ function handleUpdateStrokeWidth(val: number) {
   });
 }
 
+function handleUpdateShapeConfig(configUpdate: Partial<import('~/timeline/types').ShapeConfig>) {
+  if (props.clip.clipType !== 'shape') return;
+  const currentConfig = (props.clip as import('~/timeline/types').TimelineShapeClipItem).shapeConfig || {};
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    shapeConfig: { ...currentConfig, ...configUpdate },
+  } as any);
+}
+
+function handleUpdateHudBackgroundPath(path: string | undefined) {
+  if (props.clip.clipType !== 'hud') return;
+  const current = (props.clip as import('~/timeline/types').TimelineHudClipItem).background || {};
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    background: {
+      ...current,
+      source: path ? { path } : undefined,
+    },
+  });
+}
+
+function handleUpdateHudContentPath(path: string | undefined) {
+  if (props.clip.clipType !== 'hud') return;
+  const current = (props.clip as import('~/timeline/types').TimelineHudClipItem).content || {};
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    content: {
+      ...current,
+      source: path ? { path } : undefined,
+    },
+  });
+}
+
+const isBackgroundDragOver = ref(false);
+const isContentDragOver = ref(false);
+
+function handleHudBackgroundDrop(e: DragEvent) {
+  isBackgroundDragOver.value = false;
+  const raw = e.dataTransfer?.getData('application/json');
+  if (!raw) return;
+  try {
+    const item = JSON.parse(raw);
+    if (item.kind === 'file' && item.path) {
+      handleUpdateHudBackgroundPath(item.path);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function handleHudContentDrop(e: DragEvent) {
+  isContentDragOver.value = false;
+  const raw = e.dataTransfer?.getData('application/json');
+  if (!raw) return;
+  try {
+    const item = JSON.parse(raw);
+    if (item.kind === 'file' && item.path) {
+      handleUpdateHudContentPath(item.path);
+    }
+  } catch {
+    // ignore
+  }
+}
+
 const {
   anchorPresetOptions,
   canEditTransform,
@@ -868,11 +929,17 @@ defineExpose({
             :items="[
               { value: 'square', label: t('granVideoEditor.shapeClip.types.square', 'Square') },
               { value: 'circle', label: t('granVideoEditor.shapeClip.types.circle', 'Circle') },
-              { value: 'triangle', label: t('granVideoEditor.shapeClip.types.triangle', 'Triangle') },
+              {
+                value: 'triangle',
+                label: t('granVideoEditor.shapeClip.types.triangle', 'Triangle'),
+              },
               { value: 'star', label: t('granVideoEditor.shapeClip.types.star', 'Star') },
               { value: 'bang', label: t('granVideoEditor.shapeClip.types.bang', 'Bang') },
               { value: 'cloud', label: t('granVideoEditor.shapeClip.types.cloud', 'Cloud') },
-              { value: 'speech_bubble', label: t('granVideoEditor.shapeClip.types.speechBubble', 'Speech Bubble') },
+              {
+                value: 'speech_bubble',
+                label: t('granVideoEditor.shapeClip.types.speechBubble', 'Speech Bubble'),
+              },
             ]"
             value-key="value"
             label-key="label"
@@ -916,6 +983,308 @@ defineExpose({
             :min="0"
             @update:model-value="(v: any) => handleUpdateStrokeWidth(Number(v))"
           />
+        </div>
+
+        <!-- Shape specific config -->
+        <template v-if="(clip as any).shapeType === 'circle'">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Squash X (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.squashX ?? 0)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ squashX: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Squash Y (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.squashY ?? 0)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ squashY: Number(v) })"
+            />
+          </div>
+        </template>
+
+        <template v-else-if="(clip as any).shapeType === 'square'">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Width (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.width ?? 100)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ width: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Height (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.height ?? 100)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ height: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Corner Radius (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.cornerRadius ?? 0)"
+              size="sm"
+              :step="1"
+              :min="0"
+              :max="100"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ cornerRadius: Number(v) })"
+            />
+          </div>
+        </template>
+
+        <template v-else-if="(clip as any).shapeType === 'triangle'">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Base Length (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.baseLength ?? 100)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ baseLength: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Vertex Offset (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.vertexOffset ?? 50)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ vertexOffset: Number(v) })"
+            />
+          </div>
+        </template>
+
+        <template
+          v-else-if="(clip as any).shapeType === 'star' || (clip as any).shapeType === 'bang'"
+        >
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Rays</span>
+            <WheelNumberInput
+              :model-value="
+                Number(
+                  (clip as any).shapeConfig?.rays ?? ((clip as any).shapeType === 'star' ? 5 : 12),
+                )
+              "
+              size="sm"
+              :step="1"
+              :min="3"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ rays: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Inner Radius (%)</span>
+            <WheelNumberInput
+              :model-value="
+                Number(
+                  (clip as any).shapeConfig?.innerRadius ??
+                    ((clip as any).shapeType === 'star' ? 40 : 70),
+                )
+              "
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ innerRadius: Number(v) })"
+            />
+          </div>
+        </template>
+
+        <template v-else-if="(clip as any).shapeType === 'cloud'">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Cloud Type</span>
+            <USelectMenu
+              :model-value="String((clip as any).shapeConfig?.cloudType ?? '1')"
+              :items="[
+                { value: '1', label: 'Type 1' },
+                { value: '2', label: 'Type 2' },
+              ]"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              @update:model-value="
+                (v: any) => handleUpdateShapeConfig({ cloudType: Number(v?.value ?? v) as 1 | 2 })
+              "
+            />
+          </div>
+        </template>
+
+        <template v-else-if="(clip as any).shapeType === 'speech_bubble'">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Width (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.width ?? 100)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ width: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Height (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.height ?? 70)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ height: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Corner Radius (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.cornerRadius ?? 20)"
+              size="sm"
+              :step="1"
+              :min="0"
+              :max="100"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ cornerRadius: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Pointer Sharpness (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.pointerSharpness ?? 40)"
+              size="sm"
+              :step="1"
+              @update:model-value="
+                (v: any) => handleUpdateShapeConfig({ pointerSharpness: Number(v) })
+              "
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Pointer Angle (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.pointerAngle ?? 20)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ pointerAngle: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Pointer Position X (%)</span>
+            <WheelNumberInput
+              :model-value="Number((clip as any).shapeConfig?.pointerX ?? 30)"
+              size="sm"
+              :step="1"
+              @update:model-value="(v: any) => handleUpdateShapeConfig({ pointerX: Number(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">Pointer Direction</span>
+            <USelectMenu
+              :model-value="String((clip as any).shapeConfig?.pointerDirection ?? 'left')"
+              :items="[
+                { value: 'left', label: 'Left' },
+                { value: 'right', label: 'Right' },
+              ]"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              @update:model-value="
+                (v: any) => handleUpdateShapeConfig({ pointerDirection: v?.value ?? v })
+              "
+            />
+          </div>
+        </template>
+      </div>
+    </PropertySection>
+
+    <PropertySection
+      v-else-if="clip.clipType === 'hud'"
+      :title="t('granVideoEditor.hudClip.hud', 'HUD')"
+    >
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.hudClip.type', 'Type')
+          }}</span>
+          <USelectMenu
+            :model-value="String((clip as any).hudType ?? 'media_frame')"
+            :items="[
+              {
+                value: 'media_frame',
+                label: t('granVideoEditor.hudClip.types.mediaFrame', 'Media Frame'),
+              },
+            ]"
+            value-key="value"
+            label-key="label"
+            size="sm"
+            disabled
+          />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.hudClip.background', 'Background Layer')
+          }}</span>
+          <div
+            class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
+            :class="
+              isBackgroundDragOver
+                ? 'border-primary-500 bg-primary-500/10'
+                : 'border-ui-border bg-ui-bg-muted'
+            "
+            @dragover.prevent="isBackgroundDragOver = true"
+            @dragleave.prevent="isBackgroundDragOver = false"
+            @drop.prevent="handleHudBackgroundDrop"
+          >
+            <div class="flex-1 min-w-0 flex items-center gap-2">
+              <UIcon name="i-heroicons-photo" class="w-4 h-4 text-ui-text-muted shrink-0" />
+              <span class="text-xs text-ui-text truncate">
+                {{
+                  (clip as import('~/timeline/types').TimelineHudClipItem).background?.source
+                    ?.path || t('granVideoEditor.hudClip.emptyLayer', 'Drop media here')
+                }}
+              </span>
+            </div>
+            <UButton
+              v-if="
+                (clip as import('~/timeline/types').TimelineHudClipItem).background?.source?.path
+              "
+              icon="i-heroicons-x-mark"
+              size="2xs"
+              color="gray"
+              variant="ghost"
+              @click="handleUpdateHudBackgroundPath(undefined)"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1 mt-1">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.hudClip.content', 'Content Layer')
+          }}</span>
+          <div
+            class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
+            :class="
+              isContentDragOver
+                ? 'border-primary-500 bg-primary-500/10'
+                : 'border-ui-border bg-ui-bg-muted'
+            "
+            @dragover.prevent="isContentDragOver = true"
+            @dragleave.prevent="isContentDragOver = false"
+            @drop.prevent="handleHudContentDrop"
+          >
+            <div class="flex-1 min-w-0 flex items-center gap-2">
+              <UIcon name="i-heroicons-video-camera" class="w-4 h-4 text-ui-text-muted shrink-0" />
+              <span class="text-xs text-ui-text truncate">
+                {{
+                  (clip as import('~/timeline/types').TimelineHudClipItem).content?.source?.path ||
+                  t('granVideoEditor.hudClip.emptyLayer', 'Drop media here')
+                }}
+              </span>
+            </div>
+            <UButton
+              v-if="(clip as import('~/timeline/types').TimelineHudClipItem).content?.source?.path"
+              icon="i-heroicons-x-mark"
+              size="2xs"
+              color="gray"
+              variant="ghost"
+              @click="handleUpdateHudContentPath(undefined)"
+            />
+          </div>
         </div>
       </div>
     </PropertySection>
