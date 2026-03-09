@@ -9,6 +9,7 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useProjectStore } from '~/stores/project.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { isTimelineTextDropFileName } from '~/utils/timeline/textDrop';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
@@ -50,6 +51,7 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const timelineSettingsStore = useTimelineSettingsStore();
 const { draggedFile, clearDraggedFile } = useDraggedFile();
 const projectStore = useProjectStore();
+const fileManager = useFileManager();
 const { currentProjectId, currentView } = storeToRefs(projectStore);
 
 const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
@@ -947,9 +949,8 @@ async function onDrop(e: DragEvent, trackId: string) {
         } else {
           const mediaType = getMediaTypeFromFilename(name || path || '');
           if (mediaType === 'text' && path) {
-            const handle = await projectStore.getFileHandleByPath(path);
-            if (handle && handle.kind === 'file') {
-              const file = await (handle as FileSystemFileHandle).getFile();
+            const file = await fileManager.vfs.getFile(path);
+            if (file) {
               const text = await file.text();
               timelineStore.addVirtualClipToTrack(
                 {

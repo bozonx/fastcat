@@ -21,7 +21,7 @@ const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const { currentProjectId } = storeToRefs(projectStore);
-const { getProjectRootDirHandle, getWorkspaceCommonDirHandle, findEntryByPath } = useFileManager();
+const { findEntryByPath } = useFileManager();
 
 const { sizes, onResized } = usePersistedSplitpanes('files', currentProjectId, [20, 60, 20]);
 
@@ -38,19 +38,15 @@ async function navigateToParentFolder() {
       kind: 'directory',
       name: projectStore.currentProjectName || '',
       path: '',
-      handle: (await getProjectRootDirHandle()) as FileSystemDirectoryHandle,
     });
     return;
   }
 
   if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
-    const commonHandle = await getWorkspaceCommonDirHandle();
-    if (!commonHandle) return;
     filesPageStore.selectFolder({
       kind: 'directory',
       name: WORKSPACE_COMMON_DIR_NAME,
       path: WORKSPACE_COMMON_PATH_PREFIX,
-      handle: commonHandle,
     });
     return;
   }

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useProjectStore } from './project.store';
 import { useWorkspaceStore } from './workspace.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import { createTimelineDocId } from '~/timeline/id';
@@ -30,6 +31,7 @@ export class TimelineScanError extends Error {
 export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', () => {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
+  const fileManager = useFileManager();
 
   const mediaPathToTimelines = ref<MediaPathToTimelinesMap>({});
   const isLoading = ref(false);
@@ -95,10 +97,8 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
   }
 
   async function readTimelineDocByPath(params: { timelinePath: string }) {
-    const handle = await projectStore.getFileHandleByPath(params.timelinePath);
-    if (!handle) return null;
-
-    const file = await handle.getFile();
+    const file = await fileManager.vfs.getFile(params.timelinePath);
+    if (!file) return null;
     const text = await file.text();
 
     const nameFromPath = params.timelinePath.split('/').pop() ?? params.timelinePath;

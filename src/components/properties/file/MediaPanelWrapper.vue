@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch, ref, computed, onUnmounted } from 'vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
-import { useProjectStore } from '~/stores/project.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { PanelFocusId } from '~/stores/focus.store';
 
 const props = defineProps<{
@@ -11,7 +11,7 @@ const props = defineProps<{
 }>();
 
 const currentUrl = ref<string | null>(null);
-const projectStore = useProjectStore();
+const fileManager = useFileManager();
 
 const fileName = computed(() => {
   if (!props.filePath) return undefined;
@@ -28,10 +28,8 @@ async function loadPreviewMedia() {
   if (!props.filePath) return;
 
   try {
-    const handle = await projectStore.getFileHandleByPath(props.filePath);
-    if (!handle) return;
-
-    const fileToPlay = await handle.getFile();
+    const fileToPlay = await fileManager.vfs.getFile(props.filePath);
+    if (!fileToPlay) return;
     if (props.mediaType === 'image' || props.mediaType === 'video' || props.mediaType === 'audio') {
       currentUrl.value = URL.createObjectURL(fileToPlay);
     }

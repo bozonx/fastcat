@@ -368,7 +368,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getTrackById: (trackId) => timelineDoc.value?.tracks.find((t) => t.id === trackId) ?? null,
     applyTimeline,
     getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
-    getOrFetchMetadata: (handle, path) => mediaStore.getOrFetchMetadata(handle, path),
+    getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getMediaMetadataByPath: (path) => mediaMetadata.value[path] ?? null,
     fetchMediaMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,

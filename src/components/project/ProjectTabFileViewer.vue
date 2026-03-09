@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import FilePreview from '~/components/preview/FilePreview.vue';
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const proxyStore = useProxyStore();
+const fileManager = useFileManager();
 
 const currentUrl = ref<string | null>(null);
 const textContent = ref<string>('');
@@ -37,13 +39,11 @@ async function loadFile() {
 
   isLoading.value = true;
   try {
-    const handle = await projectStore.getFileHandleByPath(props.filePath);
-    if (!handle) {
+    const file = await fileManager.vfs.getFile(props.filePath);
+    if (!file) {
       loadError.value = 'File not found';
       return;
     }
-
-    const file = await handle.getFile();
 
     if (isText.value) {
       const slice = file.slice(0, 1024 * 1024);

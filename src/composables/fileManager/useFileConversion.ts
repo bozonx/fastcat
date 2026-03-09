@@ -107,7 +107,8 @@ export function useFileConversion() {
         projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ?? 128;
 
       try {
-        const fileHandle = entry.handle as FileSystemFileHandle;
+        const fileHandle = await projectStore.getFileHandleByPath(entry.path);
+        if (!fileHandle) throw new Error('Failed to access source file');
         const { client } = getExportWorkerClient();
         const meta = await client.extractMetadata(fileHandle);
 
@@ -144,7 +145,8 @@ export function useFileConversion() {
       audioSampleRate.value = 0;
 
       try {
-        const fileHandle = entry.handle as FileSystemFileHandle;
+        const fileHandle = await projectStore.getFileHandleByPath(entry.path);
+        if (!fileHandle) throw new Error('Failed to access source file');
         const { client } = getExportWorkerClient();
         const meta = await client.extractMetadata(fileHandle);
         if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
@@ -167,8 +169,8 @@ export function useFileConversion() {
       imageQuality.value = 80;
 
       try {
-        const fileHandle = entry.handle as FileSystemFileHandle;
-        const file = await fileHandle.getFile();
+        const file = await fileManager.vfs.getFile(entry.path);
+        if (!file) throw new Error('Failed to access source file');
         const bitmap = await createImageBitmap(file);
         if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
           return;
@@ -344,7 +346,8 @@ export function useFileConversion() {
 
     try {
       const entry = targetEntry.value;
-      const fileHandle = entry.handle as FileSystemFileHandle;
+      const fileHandle = await projectStore.getFileHandleByPath(entry.path);
+      if (!fileHandle) throw new Error('Failed to access source file');
       const type = mediaType.value;
 
       const baseName = entry.name.replace(/\.[^.]+$/, '');
@@ -357,24 +360,9 @@ export function useFileConversion() {
 
       createdFileName = newFileName;
 
-      let dirHandle: FileSystemDirectoryHandle;
-
-      if (entry.parentHandle) {
-        dirHandle = entry.parentHandle;
-        dirPath = (entry.path || '').split('/').slice(0, -1).join('/');
-      } else {
-        const root = await fileManager.getProjectRootDirHandle();
-        if (!root) throw new Error('Root directory not found');
-
-        const parts = (entry.path || '').split('/').slice(0, -1);
-        dirPath = parts.join('/');
-        let current = root;
-        for (const p of parts) {
-          if (!p) continue;
-          current = await current.getDirectoryHandle(p);
-        }
-        dirHandle = current;
-      }
+      dirPath = entry.path.split('/').slice(0, -1).join('/');
+      const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
+      if (!dirHandle) throw new Error('Target directory not found');
 
       createdDirHandle = dirHandle;
 

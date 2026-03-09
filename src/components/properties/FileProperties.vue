@@ -118,7 +118,7 @@ async function onDirectoryFileSelect(e: Event) {
   if (isProjectRootDir.value) {
     await fileManager.handleFiles(files);
   } else {
-    await fileManager.handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+    await fileManager.handleFiles(files, entry.path);
   }
   await fileManager.loadProjectDirectory();
   uiStore.notifyFileManagerUpdate();
@@ -142,6 +142,7 @@ const {
   hasProxy: hasProxyRef,
   mediaStore,
   proxyStore,
+  getFileByPath: (path) => fileManager.vfs.getFile(path),
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
@@ -175,6 +176,7 @@ const {
   selectedFsEntry: selectedFsEntryRef,
   proxyStore,
   videoExtensions: VIDEO_EXTENSIONS,
+  resolveDirectoryHandle: (path) => projectStore.getDirectoryHandleByPath(path),
 });
 
 async function copyToClipboard(text: string) {
@@ -267,7 +269,7 @@ const canTranscribeMedia = computed(() => {
     Boolean(sttConfig.value) &&
     Boolean(workspaceStore.workspaceHandle) &&
     Boolean(projectStore.currentProjectId) &&
-    Boolean(entry.handle)
+    Boolean(entry.path)
   );
 });
 
@@ -345,9 +347,11 @@ async function submitAudioTranscription() {
   transcriptionError.value = '';
 
   try {
+    const fileHandle = await projectStore.getFileHandleByPath(selectedEntry.path);
+    if (!fileHandle) throw new Error('Failed to access file');
     const result = await transcribeProjectAudioFile({
-      fileHandle: selectedEntry.handle as FileSystemFileHandle,
-      filePath: selectedEntry.path ?? selectedEntry.name,
+      fileHandle,
+      filePath: selectedEntry.path,
       fileName: selectedEntry.name,
       fileType: selectedEntry.mimeType || (isVideoFile.value ? 'video/mp4' : 'audio/mpeg'),
       language: transcriptionLanguage.value,
@@ -570,11 +574,11 @@ watch(
               : t('videoEditor.fileManager.proxy.create', 'Create proxy'),
             icon: hasExistingProxyForFile ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
             hidden: !showVideoProxyActions || isGeneratingProxyForFile,
-            onClick: () =>
-              proxyStore.generateProxy(
-                props.selectedFsEntry.handle as FileSystemFileHandle,
-                selectedPath!,
-              ),
+            onClick: async () => {
+              const handle = await projectStore.getFileHandleByPath(selectedPath!);
+              if (!handle) return;
+              await proxyStore.generateProxy(handle, selectedPath!);
+            },
           },
           {
             id: 'cancelProxy',

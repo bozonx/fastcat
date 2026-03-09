@@ -271,10 +271,8 @@ async function buildVideoTrackTree(
         }
 
         try {
-          const handle = await params.projectStore.getFileHandleByPath(path);
-          if (!handle) continue;
-
-          const file = await handle.getFile();
+          const file = await params.projectStore.getFileByPath(path);
+          if (!file) continue;
           const text = await file.text();
           const nestedDoc = parseTimelineFromOtio(text, {
             id: 'nested',
@@ -555,9 +553,8 @@ export async function toWorkerTimelineClips(
         }
 
         try {
-          const handle = await projectStore.getFileHandleByPath(path);
-          if (handle) {
-            const file = await handle.getFile();
+          const file = await projectStore.getFileByPath(path);
+          if (file) {
             const text = await file.text();
             const nestedDoc = parseTimelineFromOtio(text, {
               id: 'nested',

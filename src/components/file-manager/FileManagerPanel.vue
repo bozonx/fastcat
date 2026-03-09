@@ -358,7 +358,18 @@ async function onCreateTimeline() {
     uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
 
   if (selectedDir) {
-    await createTimelineInDirectory(selectedDir);
+    await createTimelineInDirectory({
+      kind: 'directory',
+      name: selectedDir.name,
+      path: selectedDir.path ?? '',
+      parentPath: selectedDir.parentPath,
+      lastModified: selectedDir.lastModified,
+      size: selectedDir.size,
+      source: selectedDir.source,
+      remoteId: selectedDir.remoteId,
+      remotePath: selectedDir.remotePath,
+      remoteData: selectedDir.remoteData,
+    });
     return;
   }
 

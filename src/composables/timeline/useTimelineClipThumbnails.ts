@@ -4,6 +4,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { isSvgFilename } from '~/utils/svg';
 import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
@@ -60,6 +61,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const mediaStore = useMediaStore();
+  const fileManager = useFileManager();
 
   let isUnmounted = false;
 
@@ -109,12 +111,10 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
     async ([imageFlag, path]) => {
       if (imageFlag && path) {
         try {
-          const handle = await projectStore.getFileHandleByPath(path);
-          if (handle) {
-            const file = await handle.getFile();
-            if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
-            imageUrl.value = URL.createObjectURL(file);
-          }
+          const file = await fileManager.vfs.getFile(path);
+          if (!file) return;
+          if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
+          imageUrl.value = URL.createObjectURL(file);
         } catch (e) {
           console.error('Failed to load image for thumbnail:', e);
         }
@@ -337,10 +337,8 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
     }
 
     try {
-      const handle = await projectStore.getFileHandleByPath(fileUrl.value);
-      if (!handle) return;
-
-      const file = await handle.getFile();
+      const file = await fileManager.vfs.getFile(fileUrl.value);
+      if (!file) return;
       const text = await file.text();
       const nestedDoc = parseTimelineFromOtio(text, {
         id: 'nested-preview',

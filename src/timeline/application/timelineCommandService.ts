@@ -26,10 +26,7 @@ export interface TimelineCommandServiceDeps {
     },
   ) => void;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-  getOrFetchMetadata: (
-    handle: FileSystemFileHandle,
-    path: string,
-  ) => Promise<TimelineMediaMetadata | null>;
+  getOrFetchMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getMediaMetadataByPath: (path: string) => TimelineMediaMetadata | null;
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getUserSettings: () => { optimization: { autoCreateProxies: boolean } };
@@ -226,7 +223,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const targetTrack = deps.getTrackById(input.trackId);
     if (!targetTrack) throw new Error('Track not found');
 
-    const metadata = await deps.getOrFetchMetadata(handle, input.path);
+    const metadata = await deps.getOrFetchMetadataByPath(input.path);
     if (!metadata) throw new Error('Failed to resolve media metadata');
 
     ensureTrackKindCompatibility(targetTrack, metadata);

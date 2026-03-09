@@ -21,10 +21,9 @@ const proxyStore = useProxyStore();
 const {
   readDirectory,
   getFileIcon,
-  getWorkspaceCommonDirHandle,
-  getProjectRootDirHandle,
   findEntryByPath,
   mediaCache,
+  vfs,
 } = useFileManager();
 
 const entries = ref<FsEntry[]>([]);
@@ -52,7 +51,7 @@ const breadcrumbs = computed(() => {
 
 async function loadFolderContent() {
   const folder = filesPageStore.selectedFolder;
-  if (!folder || !folder.handle) {
+  if (!folder) {
     // Если папка не выбрана, пытаемся открыть корень проекта
     await navigateToRoot();
     return;
@@ -60,15 +59,14 @@ async function loadFolderContent() {
 
   isLoading.value = true;
   try {
-    let content = await readDirectory(folder.handle as FileSystemDirectoryHandle, folder.path);
+    let content = await readDirectory(folder.path);
     if (!folder.path) {
-      const commonHandle = await getWorkspaceCommonDirHandle(false);
-      if (commonHandle) {
+      const commonMetadata = await vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
+      if (commonMetadata?.kind === 'directory') {
         const commonEntry: FsEntry = {
           kind: 'directory',
           name: WORKSPACE_COMMON_DIR_NAME,
           path: WORKSPACE_COMMON_PATH_PREFIX,
-          handle: commonHandle,
         };
         content = [
           commonEntry,
@@ -86,26 +84,18 @@ async function loadFolderContent() {
 }
 
 async function navigateToRoot() {
-  const rootHandle = await getProjectRootDirHandle();
-  if (!rootHandle) return;
-
   filesPageStore.selectFolder({
     kind: 'directory',
     name: projectStore.currentProjectName || 'Root',
     path: '',
-    handle: rootHandle,
   });
 }
 
 async function navigateToWorkspaceCommonRoot() {
-  const commonHandle = await getWorkspaceCommonDirHandle();
-  if (!commonHandle) return;
-
   filesPageStore.selectFolder({
     kind: 'directory',
     name: WORKSPACE_COMMON_DIR_NAME,
     path: WORKSPACE_COMMON_PATH_PREFIX,
-    handle: commonHandle,
   });
 }
 

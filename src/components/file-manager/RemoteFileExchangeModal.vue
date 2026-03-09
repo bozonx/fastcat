@@ -211,6 +211,7 @@ function getLocalFileFromDragPayload(payload: unknown): FsEntry | null {
 async function uploadLocalEntry(entry: FsEntry) {
   const config = remoteFilesConfig.value;
   if (!config || entry.kind !== 'file' || entry.source === 'remote') return;
+  if (!entry.path) return;
 
   const remoteParentPath = remoteCurrentPath.value || '/';
   const remoteDirectory = remoteEntries.value.find(
@@ -230,7 +231,15 @@ async function uploadLocalEntry(entry: FsEntry) {
     return;
   }
 
-  const file = await (entry.handle as FileSystemFileHandle).getFile();
+  const file = await fileManager.vfs.getFile(entry.path);
+  if (!file) {
+    toast.add({
+      color: 'error',
+      title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
+      description: 'Failed to access local file',
+    });
+    return;
+  }
   const controller = new AbortController();
   uploadAbortController.value = controller;
   uploadProgress.value = 0;
@@ -349,7 +358,9 @@ async function loadPreview(entry: FsEntry | null) {
       return;
     }
 
-    const file = await (entry.handle as FileSystemFileHandle).getFile();
+    if (!entry.path) return;
+    const file = await fileManager.vfs.getFile(entry.path);
+    if (!file) return;
     const localKind = getMediaTypeFromFilename(file.name);
     if (localKind === 'text') {
       previewKind.value = 'text';

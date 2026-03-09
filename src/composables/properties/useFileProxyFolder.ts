@@ -19,6 +19,7 @@ interface UseFileProxyFolderOptions {
   selectedFsEntry: Ref<FsEntry | null>;
   proxyStore: ProxyStoreLike;
   videoExtensions: readonly string[];
+  resolveDirectoryHandle: (path: string) => Promise<FileSystemDirectoryHandle | null>;
 }
 
 export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
@@ -52,8 +53,10 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
   async function generateProxiesForSelectedFolder() {
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'directory' || !entry.path) return;
+    const dirHandle = await options.resolveDirectoryHandle(entry.path);
+    if (!dirHandle) return;
     await options.proxyStore.generateProxiesForFolder({
-      dirHandle: entry.handle as FileSystemDirectoryHandle,
+      dirHandle,
       dirPath: entry.path,
     });
   }

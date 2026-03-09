@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useProjectStore } from '~/stores/project.store';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -14,6 +15,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const uiStore = useUiStore();
 const proxyStore = useProxyStore();
+const projectStore = useProjectStore();
 
 const hasVideo = computed(() => {
   return props.entries.some(
@@ -33,10 +35,12 @@ function onDelete() {
   uiStore.pendingFsEntryDelete = props.entries;
 }
 
-function onCreateProxy() {
+async function onCreateProxy() {
   for (const e of props.entries) {
     if (e.kind === 'file' && e.path && getMediaTypeFromFilename(e.name) === 'video') {
-      void proxyStore.generateProxy(e.handle as FileSystemFileHandle, e.path);
+      const handle = await projectStore.getFileHandleByPath(e.path);
+      if (!handle) continue;
+      void proxyStore.generateProxy(handle, e.path);
     }
   }
 }

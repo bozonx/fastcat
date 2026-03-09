@@ -13,6 +13,7 @@ export interface ProjectFsModule {
     create?: boolean;
   }) => Promise<FileSystemFileHandle | null>;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  getFileByPath: (path: string) => Promise<File | null>;
   getDirectoryHandleByPath: (
     path: string,
     options?: { create?: boolean },
@@ -112,6 +113,20 @@ export function createProjectFsModule(params: {
     return await getProjectFileHandleByRelativePath({ relativePath: path, create: false });
   }
 
+  async function getFileByPath(path: string): Promise<File | null> {
+    const fileHandle = await getFileHandleByPath(path);
+    if (!fileHandle) return null;
+
+    try {
+      return await fileHandle.getFile();
+    } catch (e: unknown) {
+      if ((e as { name?: unknown }).name !== 'NotFoundError') {
+        console.error('Failed to read file by path:', path, e);
+      }
+      return null;
+    }
+  }
+
   async function getDirectoryHandleByPath(
     path: string,
     options?: { create?: boolean },
@@ -179,6 +194,7 @@ export function createProjectFsModule(params: {
     toProjectRelativePath,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,
+    getFileByPath,
     getDirectoryHandleByPath,
     getProjectDirHandle,
   };

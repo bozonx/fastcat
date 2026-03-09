@@ -239,7 +239,13 @@ async function handleSelectInFileManager() {
     kind: entry.kind,
     name: entry.name,
     path: entry.path,
-    handle: entry.handle,
+    parentPath: entry.parentPath,
+    lastModified: entry.lastModified,
+    size: entry.size,
+    source: entry.source,
+    remoteId: entry.remoteId,
+    remotePath: entry.remotePath,
+    remoteData: entry.remoteData,
   };
   selectionStore.selectFsEntry(entry);
   focusStore.setTempFocus('left');
