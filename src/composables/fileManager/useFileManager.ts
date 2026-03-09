@@ -7,13 +7,13 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, TIMELINES_DIR_NAME } from '~/utils/constants';
 import {
-  VIDEO_DIR_NAME,
-  AUDIO_DIR_NAME,
-  IMAGES_DIR_NAME,
-  FILES_DIR_NAME,
-  TIMELINES_DIR_NAME,
-} from '~/utils/constants';
+  getWorkspacePathFileName,
+  getWorkspacePathParent,
+  WORKSPACE_COMMON_DIR_NAME,
+  WORKSPACE_COMMON_PATH_PREFIX,
+} from '~/utils/workspace-common';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
@@ -56,6 +56,7 @@ export interface FileManagerCreateDeps {
   setFileTreePathExpanded: (path: string, expanded: boolean) => void;
   getExpandedPaths: () => string[];
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
+  getWorkspaceCommonDirHandle: (create?: boolean) => Promise<FileSystemDirectoryHandle | null>;
   getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   getProjectName: () => string | null;
@@ -126,6 +127,29 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     return service.mergeEntries(prev, next);
   }
 
+  async function withWorkspaceCommonRoot(entries: FsEntry[]): Promise<FsEntry[]> {
+    const commonDir = await deps.getWorkspaceCommonDirHandle(false);
+    if (!commonDir) return entries;
+
+    const commonChildren = await service.readDirectory(commonDir, WORKSPACE_COMMON_PATH_PREFIX);
+    const previousCommonEntry = entries.find(
+      (entry) => entry.path === WORKSPACE_COMMON_PATH_PREFIX,
+    );
+    const commonEntry: FsEntry = {
+      name: WORKSPACE_COMMON_DIR_NAME,
+      kind: 'directory',
+      handle: commonDir,
+      path: WORKSPACE_COMMON_PATH_PREFIX,
+      expanded: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX),
+      children: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX)
+        ? mergeEntries(previousCommonEntry?.children, commonChildren)
+        : undefined,
+    };
+
+    const withoutCommon = entries.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX);
+    return [commonEntry, ...withoutCommon];
+  }
+
   async function toggleDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
     await runWithUiFeedback({
@@ -156,6 +180,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           expandPersistedDirectories: true,
           autoExpandMediaDirs: true,
         });
+        deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
       },
       defaultErrorMessage: 'Failed to open project folder',
       toastTitle: 'Project error',
@@ -467,16 +492,16 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   function getParentPath(path?: string): string {
-    if (!path) return '';
-    const parts = path.split('/');
-    if (parts.length <= 1) return '';
-    return parts.slice(0, -1).join('/');
+    return getWorkspacePathParent(path);
   }
 
   async function reloadDirectory(path: string) {
     const projectDir = await deps.getProjectDirHandle();
     if (projectDir) {
       await service.reloadDirectory(path, projectDir);
+      if (!path) {
+        deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
+      }
       deps.onDirectoryLoaded?.();
     }
   }
@@ -487,6 +512,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     error,
     isApiSupported: deps.isApiSupported,
     mediaCache: deps.mediaCache,
+    getWorkspaceCommonDirHandle: deps.getWorkspaceCommonDirHandle,
     getProjectRootDirHandle: deps.getProjectRootDirHandle,
     sortMode: deps.sortMode,
     setSortMode: (v: FileTreeSortMode) => {
@@ -530,7 +556,7 @@ export function useFileManager() {
       uiStore.selectedFsEntry = {
         ...uiStore.selectedFsEntry,
         path: params.newPath,
-        name: params.newPath.split('/').pop() ?? uiStore.selectedFsEntry.name,
+        name: getWorkspacePathFileName(params.newPath) || uiStore.selectedFsEntry.name,
       };
       focusStore.setTempFocus('left');
     }
@@ -576,6 +602,12 @@ export function useFileManager() {
     },
     getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
     getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+    getWorkspaceCommonDirHandle: async (create = false) => {
+      if (!workspaceStore.workspaceHandle) return null;
+      return await workspaceStore.workspaceHandle.getDirectoryHandle(WORKSPACE_COMMON_DIR_NAME, {
+        create,
+      });
+    },
     getProjectRootDirHandle: async () => {
       if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
       return await workspaceStore.projectsHandle.getDirectoryHandle(

@@ -8,13 +8,24 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
+import {
+  getWorkspacePathParent,
+  WORKSPACE_COMMON_DIR_NAME,
+  WORKSPACE_COMMON_PATH_PREFIX,
+} from '~/utils/workspace-common';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
-const { readDirectory, getFileIcon, getProjectRootDirHandle, findEntryByPath, mediaCache } =
-  useFileManager();
+const {
+  readDirectory,
+  getFileIcon,
+  getWorkspaceCommonDirHandle,
+  getProjectRootDirHandle,
+  findEntryByPath,
+  mediaCache,
+} = useFileManager();
 
 const entries = ref<FsEntry[]>([]);
 const isLoading = ref(false);
@@ -25,12 +36,15 @@ const breadcrumbs = computed(() => {
   if (!folder || !folder.path) return [];
 
   const parts = folder.path.split('/').filter(Boolean);
-  const result = [];
+  const result: Array<{ name: string; path: string }> = [];
   let currentPath = '';
 
   for (const part of parts) {
     currentPath = currentPath ? `${currentPath}/${part}` : part;
-    result.push({ name: part, path: currentPath });
+    result.push({
+      name: part === WORKSPACE_COMMON_PATH_PREFIX ? WORKSPACE_COMMON_DIR_NAME : part,
+      path: currentPath,
+    });
   }
 
   return result;
@@ -46,7 +60,22 @@ async function loadFolderContent() {
 
   isLoading.value = true;
   try {
-    const content = await readDirectory(folder.handle as FileSystemDirectoryHandle, folder.path);
+    let content = await readDirectory(folder.handle as FileSystemDirectoryHandle, folder.path);
+    if (!folder.path) {
+      const commonHandle = await getWorkspaceCommonDirHandle(false);
+      if (commonHandle) {
+        const commonEntry: FsEntry = {
+          kind: 'directory',
+          name: WORKSPACE_COMMON_DIR_NAME,
+          path: WORKSPACE_COMMON_PATH_PREFIX,
+          handle: commonHandle,
+        };
+        content = [
+          commonEntry,
+          ...content.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
+        ];
+      }
+    }
     // Фильтруем скрытые файлы
     entries.value = content.filter((e) => !e.name.startsWith('.'));
   } catch (error) {
@@ -68,6 +97,18 @@ async function navigateToRoot() {
   });
 }
 
+async function navigateToWorkspaceCommonRoot() {
+  const commonHandle = await getWorkspaceCommonDirHandle();
+  if (!commonHandle) return;
+
+  filesPageStore.selectFolder({
+    kind: 'directory',
+    name: WORKSPACE_COMMON_DIR_NAME,
+    path: WORKSPACE_COMMON_PATH_PREFIX,
+    handle: commonHandle,
+  });
+}
+
 function handleEntryClick(entry: FsEntry) {
   if (entry.kind === 'directory') {
     filesPageStore.openFolder(entry);
@@ -81,15 +122,12 @@ async function goBack() {
   const folder = filesPageStore.selectedFolder;
   if (!folder || !folder.path) return;
 
-  const parts = folder.path.split('/').filter(Boolean);
-  if (parts.length === 0) return;
-
-  const parentPath = parts.slice(0, -1).join('/');
-  const rootHandle = await getProjectRootDirHandle();
-  if (!rootHandle) return;
+  const parentPath = getWorkspacePathParent(folder.path);
 
   if (!parentPath) {
     await navigateToRoot();
+  } else if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
+    await navigateToWorkspaceCommonRoot();
   } else {
     const parentEntry = findEntryByPath(parentPath);
     if (parentEntry) {
@@ -105,6 +143,10 @@ function isSelected(entry: FsEntry) {
     return selected.path === entry.path;
   }
   return false;
+}
+
+function isWorkspaceCommonRoot(entry: FsEntry) {
+  return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
 }
 
 function getStatusColor(entry: FsEntry) {
@@ -184,7 +226,11 @@ onMounted(() => {
               :name="getFileIcon(entry)"
               class="w-6 h-6"
               :class="[
-                entry.kind === 'directory' ? 'text-blue-400' : 'text-slate-400',
+                isWorkspaceCommonRoot(entry)
+                  ? 'text-violet-400'
+                  : entry.kind === 'directory'
+                    ? 'text-slate-400'
+                    : 'text-slate-400',
                 getStatusColor(entry),
               ]"
             />

@@ -10,10 +10,11 @@ export function findEntryByPath(entries: FsEntry[], path: string): FsEntry | nul
 
   let currentList = entries;
   let currentEntry: FsEntry | null = null;
+  let currentPath = '';
 
   for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
-    const found = currentList.find((e) => e.name === part);
+    currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]!;
+    const found = currentList.find((e) => e.path === currentPath);
     if (!found) return null;
 
     currentEntry = found;
@@ -77,12 +78,16 @@ export function updateEntryByPath(
   const parts = normalized.split('/').filter(Boolean);
   if (parts.length === 0) return entries;
 
-  function walk(list: FsEntry[], depth: number): { next: FsEntry[]; changed: boolean } {
+  function walk(
+    list: FsEntry[],
+    depth: number,
+    currentPath: string,
+  ): { next: FsEntry[]; changed: boolean } {
     let changed = false;
-    const targetName = parts[depth];
+    const targetPath = currentPath ? `${currentPath}/${parts[depth]}` : (parts[depth] ?? '');
 
     const next = list.map((entry) => {
-      if (entry.name !== targetName) return entry;
+      if (entry.path !== targetPath) return entry;
 
       if (depth === parts.length - 1) {
         if (entry.path === normalized) {
@@ -93,7 +98,7 @@ export function updateEntryByPath(
       }
 
       if (entry.kind === 'directory' && Array.isArray(entry.children)) {
-        const r = walk(entry.children, depth + 1);
+        const r = walk(entry.children, depth + 1, targetPath);
         if (r.changed) {
           changed = true;
           return { ...entry, children: r.next };
@@ -106,5 +111,5 @@ export function updateEntryByPath(
     return { next: changed ? next : list, changed };
   }
 
-  return walk(entries, 0).next;
+  return walk(entries, 0, '').next;
 }

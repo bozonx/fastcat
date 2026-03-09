@@ -1,6 +1,7 @@
 import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
+import { WORKSPACE_COMMON_DIR_NAME } from '~/utils/workspace-common';
 import {
   createWorkspaceSettingsRepository,
   type WorkspaceSettingsRepository,
@@ -104,7 +105,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     workspaceHandle.value = handle;
     settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
 
-    const folders = ['projects', VARDATA_DIR_NAME];
+    const folders = ['projects', WORKSPACE_COMMON_DIR_NAME, VARDATA_DIR_NAME];
     for (const folder of folders) {
       if (folder === 'projects') {
         projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });

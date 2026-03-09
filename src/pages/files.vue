@@ -11,13 +11,17 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import {
+  getWorkspacePathParent,
+  WORKSPACE_COMMON_DIR_NAME,
+  WORKSPACE_COMMON_PATH_PREFIX,
+} from '~/utils/workspace-common';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const { currentProjectId } = storeToRefs(projectStore);
-const { t } = useI18n();
-const { getProjectRootDirHandle } = useFileManager();
+const { getProjectRootDirHandle, getWorkspaceCommonDirHandle, findEntryByPath } = useFileManager();
 
 const { sizes, onResized } = usePersistedSplitpanes('files', currentProjectId, [20, 60, 20]);
 
@@ -25,39 +29,35 @@ async function navigateToParentFolder() {
   const folder = filesPageStore.selectedFolder;
   if (!folder) return;
 
-  // Already at root — nothing to do
   const currentPath = folder.path ?? '';
   if (!currentPath) return;
 
-  const rootHandle = await getProjectRootDirHandle();
-  if (!rootHandle) return;
-
-  const parts = currentPath.split('/').filter(Boolean);
-  if (parts.length <= 1) {
-    // Navigate to project root
+  const parentPath = getWorkspacePathParent(currentPath);
+  if (!parentPath) {
     filesPageStore.selectFolder({
       kind: 'directory',
       name: projectStore.currentProjectName || '',
       path: '',
-      handle: rootHandle,
+      handle: (await getProjectRootDirHandle()) as FileSystemDirectoryHandle,
     });
-  } else {
-    // Navigate to parent folder
-    const parentParts = parts.slice(0, -1);
-    let currentHandle: FileSystemDirectoryHandle = rootHandle;
-    for (const part of parentParts) {
-      try {
-        currentHandle = await currentHandle.getDirectoryHandle(part);
-      } catch {
-        return;
-      }
-    }
+    return;
+  }
+
+  if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
+    const commonHandle = await getWorkspaceCommonDirHandle();
+    if (!commonHandle) return;
     filesPageStore.selectFolder({
       kind: 'directory',
-      name: parentParts[parentParts.length - 1] || '',
-      path: parentParts.join('/'),
-      handle: currentHandle,
+      name: WORKSPACE_COMMON_DIR_NAME,
+      path: WORKSPACE_COMMON_PATH_PREFIX,
+      handle: commonHandle,
     });
+    return;
+  }
+
+  const parentEntry = findEntryByPath(parentPath);
+  if (parentEntry && parentEntry.kind === 'directory') {
+    filesPageStore.selectFolder(parentEntry);
   }
 }
 
