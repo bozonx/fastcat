@@ -5,6 +5,7 @@ import type { ClipTransition } from '~/timeline/types';
 import type { TransitionCurve, TransitionParamField } from '~/transitions/core/registry';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
+import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import { getTransitionCurveSinglePath } from '~/utils/timeline/clip';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -120,22 +121,6 @@ function toCurveLabelKey(curve: TransitionCurve): string {
     case 'linear-fast-end':
       return 'LinearFastEnd';
   }
-}
-
-function getSelectValue(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
-function getNumberValue(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
-function getColorValue(value: unknown): string {
-  return typeof value === 'string' && value.trim().length > 0 ? value : '#000000';
-}
-
-function getBooleanValue(value: unknown): boolean {
-  return value === true || value === 'true';
 }
 
 const visibleParamFields = computed<TransitionParamField[]>(() => {
@@ -287,66 +272,11 @@ function handleSavePreset() {
       <div class="text-ui-text-muted">
         {{ t('granVideoEditor.timeline.transition.parameters') }}
       </div>
-
-      <div
-        v-for="field in visibleParamFields"
-        :key="`${selectedType}-${field.key}`"
-        class="flex flex-col gap-1"
-      >
-        <span class="text-ui-text-muted">{{ t(field.labelKey) }}</span>
-
-        <USelectMenu
-          v-if="field.kind === 'select'"
-          :model-value="getSelectValue(selectedParams[field.key])"
-          :items="
-            (field.options ?? []).map((option) => ({
-              label: t(option.labelKey),
-              value: option.value,
-            }))
-          "
-          value-key="value"
-          label-key="label"
-          size="xs"
-          @update:model-value="(value: any) => updateParam(field.key, value?.value ?? value)"
-        />
-
-        <UInput
-          v-else-if="field.kind === 'number'"
-          :model-value="getNumberValue(selectedParams[field.key])"
-          type="number"
-          size="xs"
-          :min="field.min"
-          :max="field.max"
-          :step="field.step ?? 0.01"
-          @update:model-value="(value: string | number) => updateParam(field.key, Number(value))"
-        />
-
-        <DurationSliderInput
-          v-else-if="field.kind === 'slider'"
-          :model-value="getNumberValue(selectedParams[field.key]) ?? field.min ?? 0"
-          :min="field.min ?? 0"
-          :max="field.max ?? 1"
-          :step="field.step ?? 0.01"
-          :decimals="2"
-          unit=""
-          @update:model-value="(value: number) => updateParam(field.key, value)"
-        />
-
-        <input
-          v-else-if="field.kind === 'color'"
-          :value="getColorValue(selectedParams[field.key])"
-          type="color"
-          class="h-8 w-full rounded border border-ui-border bg-ui-bg px-1"
-          @input="(event) => updateParam(field.key, (event.target as HTMLInputElement).value)"
-        />
-
-        <USwitch
-          v-else-if="field.kind === 'boolean'"
-          :model-value="getBooleanValue(selectedParams[field.key])"
-          size="sm"
-          @update:model-value="(value: boolean) => updateParam(field.key, value)"
-        />
-      </div>
+      <TransitionParamFields
+        :fields="visibleParamFields"
+        :params="selectedParams"
+        @update:param="updateParam"
+      />
     </div>
 
     <UModal

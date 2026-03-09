@@ -11,9 +11,11 @@ interface WheelSliderProps {
   sliderClass?: string;
   wheelStepMultiplier?: number;
   defaultValue?: number;
+  disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<WheelSliderProps>(), {
+  disabled: false,
   step: 1,
   sliderClass: '',
   wheelStepMultiplier: 1,
@@ -97,6 +99,7 @@ function getStepPrecision(step: number): number {
 }
 
 function onWheel(event: Event) {
+  if (props.disabled) return;
   const e = event as WheelEvent;
   (e as any).preventDefault?.();
 
@@ -125,6 +128,7 @@ function onWheel(event: Event) {
 }
 
 function resetToDefault() {
+  if (props.disabled) return;
   if (props.defaultValue !== undefined) {
     value.value = props.defaultValue;
   }
@@ -136,6 +140,7 @@ const lastPointerDownTime = ref(0);
 const DOUBLE_CLICK_MS = 350;
 
 function onPointerDownCapture(event: PointerEvent) {
+  if (props.disabled) return;
   // Only primary button / primary touch
   if (event.button !== 0 && event.pointerType === 'mouse') return;
   const now = Date.now();
@@ -159,6 +164,13 @@ function onPointerDownCapture(event: PointerEvent) {
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >
-    <USlider v-model="value" :min="min" :max="max" :step="step" :class="sliderClass" />
+    <USlider
+      v-model="value"
+      :min="min"
+      :max="max"
+      :step="step"
+      :class="sliderClass"
+      :disabled="disabled"
+    />
   </div>
 </template>

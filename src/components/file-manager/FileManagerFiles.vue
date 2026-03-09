@@ -180,7 +180,7 @@ function onRequestDownload(params: {
 const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
   {
     getProjectRootDirHandle: props.getProjectRootDirHandle,
-    findEntryByPath: props.findEntryByPath,
+    resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
     handleFiles: props.handleFiles,
     moveEntry: props.moveEntry,
   },

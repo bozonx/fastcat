@@ -233,16 +233,26 @@ export async function moveEntryCommand(
     move?: (target: FileSystemDirectoryHandle, name: string) => Promise<void>;
   };
   if (typeof handle.move === 'function') {
-    await handle.move(targetDirHandle, params.source.name);
+    try {
+      await handle.move(targetDirHandle, params.source.name);
 
-    if (params.source.kind === 'file') {
-      const oldPath = sourcePath;
-      const newPath = targetDirPath ? `${targetDirPath}/${params.source.name}` : params.source.name;
-      await deps.onFileMoved?.({ oldPath, newPath });
-    } else {
-      await deps.onDirectoryMoved?.();
+      if (params.source.kind === 'file') {
+        const oldPath = sourcePath;
+        const newPath = targetDirPath
+          ? `${targetDirPath}/${params.source.name}`
+          : params.source.name;
+        await deps.onFileMoved?.({ oldPath, newPath });
+      } else {
+        await deps.onDirectoryMoved?.();
+      }
+      return;
+    } catch (e: unknown) {
+      console.warn(
+        '[FileManager] Native move failed (likely cross-root OPFS move). Falling back to copy+delete...',
+        e,
+      );
+      // Fall through to manual copy and delete below
     }
-    return;
   }
 
   if (params.source.kind === 'file') {

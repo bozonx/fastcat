@@ -1,4 +1,5 @@
 import type { Filter } from 'pixi.js';
+import type { ParamControl } from '~/components/properties/params';
 
 export type EffectType = string;
 
@@ -8,30 +9,12 @@ export interface EffectManifest<T = Record<string, any>> {
   description: string;
   icon: string;
   defaultValues: T;
-  controls: EffectControl<T>[];
+  controls: ParamControl[];
   createFilter: () => Filter;
   updateFilter: (filter: Filter, values: T) => void;
   isCustom?: boolean;
   baseType?: string;
 }
-
-export type EffectControl<T> =
-  | {
-      kind: 'slider';
-      key: keyof T;
-      label: string;
-      min: number;
-      max: number;
-      step: number;
-      format?: (v: number) => string;
-    }
-  | { kind: 'toggle'; key: keyof T; label: string }
-  | {
-      kind: 'select';
-      key: keyof T;
-      label: string;
-      options: { label: string; value: string | number }[];
-    };
 
 export interface BaseClipEffect {
   id: string;
