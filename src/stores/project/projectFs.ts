@@ -13,6 +13,10 @@ export interface ProjectFsModule {
     create?: boolean;
   }) => Promise<FileSystemFileHandle | null>;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  getDirectoryHandleByPath: (
+    path: string,
+    options?: { create?: boolean },
+  ) => Promise<FileSystemDirectoryHandle | null>;
   getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
 }
 
@@ -108,6 +112,60 @@ export function createProjectFsModule(params: {
     return await getProjectFileHandleByRelativePath({ relativePath: path, create: false });
   }
 
+  async function getDirectoryHandleByPath(
+    path: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemDirectoryHandle | null> {
+    const normalizedPath = toProjectRelativePath(path);
+
+    if (!normalizedPath) {
+      return await getProjectDirHandle();
+    }
+
+    if (isWorkspaceCommonPath(normalizedPath)) {
+      const commonDir = await getWorkspaceCommonDirHandle(options?.create ?? false);
+      if (!commonDir) return null;
+
+      const commonRelativePath = stripWorkspaceCommonPathPrefix(normalizedPath);
+      if (!commonRelativePath) return commonDir;
+
+      try {
+        let currentDir = commonDir;
+        for (const dirName of commonRelativePath.split('/').filter(Boolean)) {
+          currentDir = await currentDir.getDirectoryHandle(dirName, {
+            create: options?.create ?? false,
+          });
+        }
+
+        return currentDir;
+      } catch (e: unknown) {
+        if ((e as { name?: unknown }).name !== 'NotFoundError') {
+          console.error('Failed to get common directory handle by path:', path, e);
+        }
+        return null;
+      }
+    }
+
+    const projectDir = await getProjectDirHandle();
+    if (!projectDir) return null;
+
+    try {
+      let currentDir = projectDir;
+      for (const dirName of normalizedPath.split('/').filter(Boolean)) {
+        currentDir = await currentDir.getDirectoryHandle(dirName, {
+          create: options?.create ?? false,
+        });
+      }
+
+      return currentDir;
+    } catch (e: unknown) {
+      if ((e as { name?: unknown }).name !== 'NotFoundError') {
+        console.error('Failed to get project directory handle by path:', path, e);
+      }
+      return null;
+    }
+  }
+
   async function getProjectDirHandle(): Promise<FileSystemDirectoryHandle | null> {
     if (!params.projectsHandle.value || !params.currentProjectName.value) return null;
     try {
@@ -121,6 +179,7 @@ export function createProjectFsModule(params: {
     toProjectRelativePath,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,
+    getDirectoryHandleByPath,
     getProjectDirHandle,
   };
 

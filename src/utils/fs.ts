@@ -1,10 +1,13 @@
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+
 export interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
 export async function generateUniqueFsEntryName(params: {
-  dirHandle: FileSystemDirectoryHandle;
+  vfs: IFileSystemAdapter;
+  dirPath: string;
   baseName: string;
   extension: string;
   existingNames?: string[];
@@ -23,16 +26,11 @@ export async function generateUniqueFsEntryName(params: {
     let exists = true;
     while (exists) {
       fileName = `${params.baseName}${String(index).padStart(3, '0')}${params.extension}`;
-      try {
-        await params.dirHandle.getFileHandle(fileName);
+      const nextPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+      if (await params.vfs.exists(nextPath)) {
         index += 1;
-      } catch (e: unknown) {
-        const err = e as { name?: string };
-        if (err?.name === 'NotFoundError') {
-          exists = false;
-          continue;
-        }
-        throw e;
+      } else {
+        exists = false;
       }
     }
   }

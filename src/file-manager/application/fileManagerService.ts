@@ -1,20 +1,12 @@
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
   findEntryByPath as findEntryByPathCore,
   mergeEntries as mergeEntriesCore,
   updateEntryByPath,
 } from '~/file-manager/core/tree';
 import { AUDIO_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
-
-interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
-  values?: () => AsyncIterable<FileSystemHandle>;
-  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
-}
-
-type DirectoryIterator = (
-  dirHandle: FileSystemDirectoryHandle,
-) => AsyncIterable<FileSystemHandle> | null;
 
 export interface FileManagerServiceDeps {
   rootEntries: Ref<FsEntry[]>;
@@ -24,48 +16,31 @@ export interface FileManagerServiceDeps {
   isPathExpanded: (path: string) => boolean;
   setPathExpanded: (path: string, expanded: boolean) => void;
   getExpandedPaths: () => string[];
-  getDirectoryIterator?: DirectoryIterator;
-  sanitizeHandle: <T extends object>(handle: T) => T;
-  sanitizeParentHandle: (handle: FileSystemDirectoryHandle) => FileSystemDirectoryHandle;
+  vfs: IFileSystemAdapter;
   checkExistingProxies: (videoPaths: string[]) => Promise<void>;
   onError?: (params: { title?: string; message: string; error?: unknown }) => void;
   onDirectoryLoaded?: () => void;
 }
 
 export interface FileManagerService {
-  readDirectory: (dirHandle: FileSystemDirectoryHandle, basePath?: string) => Promise<FsEntry[]>;
+  readDirectory: (path?: string) => Promise<FsEntry[]>;
   findEntryByPath: (path: string) => FsEntry | null;
   mergeEntries: (prev: FsEntry[] | undefined, next: FsEntry[]) => FsEntry[];
   toggleDirectory: (entry: FsEntry) => Promise<void>;
   refreshExpandedChildren: (entries: FsEntry[]) => Promise<void>;
   expandPersistedDirectories: () => Promise<void>;
   loadProjectDirectory: (
-    projectDir: FileSystemDirectoryHandle,
+    rootPath?: string,
     options?: {
       refreshExpandedChildren?: boolean;
       expandPersistedDirectories?: boolean;
       autoExpandMediaDirs?: boolean;
     },
   ) => Promise<void>;
-  reloadDirectory: (path: string, projectDir: FileSystemDirectoryHandle) => Promise<void>;
+  reloadDirectory: (path: string) => Promise<void>;
 }
 
 export function createFileManagerService(deps: FileManagerServiceDeps): FileManagerService {
-  const getDirectoryIterator: DirectoryIterator =
-    deps.getDirectoryIterator ??
-    ((dirHandle) => {
-      const iterator =
-        (dirHandle as FsDirectoryHandleWithIteration).values?.() ??
-        (dirHandle as FsDirectoryHandleWithIteration).entries?.();
-      if (!iterator) return null;
-      return (async function* () {
-        for await (const value of iterator) {
-          const handle = (Array.isArray(value) ? value[1] : value) as FileSystemHandle;
-          yield handle;
-        }
-      })();
-    });
-
   function compareEntries(a: FsEntry, b: FsEntry): number {
     if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
 
@@ -89,56 +64,42 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
   }
 
-  async function readDirectory(
-    dirHandle: FileSystemDirectoryHandle,
-    basePath = '',
-  ): Promise<FsEntry[]> {
-    const entries: FsEntry[] = [];
-
-    const iterator = getDirectoryIterator(dirHandle);
-    if (!iterator) {
-      deps.onError?.({
-        title: 'File manager error',
-        message: 'Failed to read directory: iteration is not available',
-      });
-      return entries;
-    }
-
+  async function readDirectory(path = ''): Promise<FsEntry[]> {
     try {
-      for await (const rawHandle of iterator) {
-        if (!deps.showHiddenFiles() && rawHandle.name.startsWith('.')) continue;
+      const entries = await deps.vfs.readDirectory(path);
 
-        const handle = deps.sanitizeHandle(rawHandle as any);
-        const parentHandle = deps.sanitizeParentHandle(dirHandle);
+      const normalizedEntries = entries
+        .filter((entry) => deps.showHiddenFiles() || !entry.name.startsWith('.'))
+        .map(
+          (entry) =>
+            ({
+              name: entry.name,
+              kind: entry.kind,
+              children: undefined,
+              expanded: deps.isPathExpanded(entry.path),
+              path: entry.path,
+              parentPath: entry.parentPath,
+              lastModified: entry.lastModified,
+              size: entry.size,
+            }) satisfies FsEntry,
+        );
 
-        entries.push({
-          name: handle.name,
-          kind: handle.kind,
-          handle,
-          parentHandle,
-          children: undefined,
-          expanded: false,
-          path: basePath ? `${basePath}/${handle.name}` : handle.name,
-          lastModified: undefined,
-        });
+      const videoPaths = normalizedEntries
+        .filter((e) => e.kind === 'file' && e.path.startsWith(`${VIDEO_DIR_NAME}/`))
+        .map((e) => e.path);
+      if (videoPaths.length > 0) {
+        await deps.checkExistingProxies(videoPaths);
       }
+
+      return normalizedEntries.sort(compareEntries);
     } catch (e) {
       deps.onError?.({
         title: 'File manager error',
-        message: `Failed to read directory${basePath ? `: ${basePath}` : ''}`,
+        message: `Failed to read directory${path ? `: ${path}` : ''}`,
         error: e,
       });
-      return entries;
+      return [];
     }
-
-    const videoPaths = entries
-      .filter((e) => e.kind === 'file' && e.path?.startsWith(`${VIDEO_DIR_NAME}/`))
-      .map((e) => e.path!);
-    if (videoPaths.length > 0) {
-      await deps.checkExistingProxies(videoPaths);
-    }
-
-    return entries.sort(compareEntries);
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
@@ -182,7 +143,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     if (afterExpand.children !== undefined) return;
 
     try {
-      const children = await readDirectory(afterExpand.handle as FileSystemDirectoryHandle, path);
+      const children = await readDirectory(path);
       deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
         ...e,
         children,
@@ -204,10 +165,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       if (entry.children === undefined) continue;
 
       try {
-        const nextChildren = await readDirectory(
-          entry.handle as FileSystemDirectoryHandle,
-          entry.path,
-        );
+        const nextChildren = await readDirectory(entry.path);
         if (entry.path) {
           const merged = mergeEntries(entry.children, nextChildren);
           deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
@@ -250,10 +208,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         if (!entry.expanded) {
           await toggleDirectory(entry);
         } else if (entry.children === undefined) {
-          entry.children = await readDirectory(
-            entry.handle as FileSystemDirectoryHandle,
-            entry.path,
-          );
+          entry.children = await readDirectory(entry.path);
         }
 
         if (!deps.isPathExpanded(currentPath)) {
@@ -266,7 +221,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
   }
 
   async function loadProjectDirectory(
-    projectDir: FileSystemDirectoryHandle,
+    rootPath = '',
     options?: {
       refreshExpandedChildren?: boolean;
       expandPersistedDirectories?: boolean;
@@ -279,7 +234,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       autoExpandMediaDirs: shouldAutoExpandMediaDirs = true,
     } = options ?? {};
 
-    const nextRoot = await readDirectory(projectDir);
+    const nextRoot = await readDirectory(rootPath);
     deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
 
     if (shouldRefreshExpandedChildren) {
@@ -317,16 +272,16 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     deps.onDirectoryLoaded?.();
   }
 
-  async function reloadDirectory(path: string, projectDir: FileSystemDirectoryHandle) {
+  async function reloadDirectory(path: string) {
     if (!path) {
-      const nextRoot = await readDirectory(projectDir);
+      const nextRoot = await readDirectory('');
       deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
       return;
     }
     const entry = findEntryByPath(path);
     if (!entry || entry.kind !== 'directory') return;
     try {
-      const nextChildren = await readDirectory(entry.handle as FileSystemDirectoryHandle, path);
+      const nextChildren = await readDirectory(path);
       deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
         ...e,
         expanded: deps.isPathExpanded(path),

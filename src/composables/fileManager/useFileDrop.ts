@@ -3,18 +3,9 @@ import type { FsEntry } from '~/types/fs';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 
 export interface UseFileDropOptions {
-  getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
-  handleFiles: (
-    files: FileList | File[],
-    targetDirHandle?: FileSystemDirectoryHandle,
-    targetDirPath?: string,
-  ) => Promise<void>;
-  moveEntry: (params: {
-    source: FsEntry;
-    targetDirHandle: FileSystemDirectoryHandle;
-    targetDirPath: string;
-  }) => Promise<void>;
+  handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
+  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
 }
 
 export function useFileDrop(options: UseFileDropOptions) {
@@ -52,11 +43,8 @@ export function useFileDrop(options: UseFileDropOptions) {
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
 
-    const rootHandle = await options.getProjectRootDirHandle();
-    if (!rootHandle) return;
-
     if (hasFiles && droppedFiles.length > 0) {
-      await options.handleFiles(droppedFiles, rootHandle, '');
+      await options.handleFiles(droppedFiles, '');
       return;
     }
 
@@ -80,7 +68,6 @@ export function useFileDrop(options: UseFileDropOptions) {
 
       await options.moveEntry({
         source,
-        targetDirHandle: rootHandle,
         targetDirPath: '',
       });
     }

@@ -119,8 +119,6 @@ const props = defineProps<{
 const {
   readDirectory,
   getFileIcon,
-  getWorkspaceCommonDirHandle,
-  getProjectRootDirHandle,
   loadProjectDirectory,
   createFolder,
   renameEntry,
@@ -130,6 +128,7 @@ const {
   findEntryByPath,
   resolveEntryByPath,
   reloadDirectory,
+  vfs,
 } = fileManager;
 const { t } = useI18n();
 
@@ -440,8 +439,7 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
-  getWorkspaceCommonDirHandle: fileManager.getWorkspaceCommonDirHandle,
-  getProjectRootDirHandle: fileManager.getProjectRootDirHandle,
+  vfs,
   findEntryByPath: fileManager.findEntryByPath,
   readDirectory: fileManager.readDirectory,
   reloadDirectory: fileManager.reloadDirectory,
@@ -481,8 +479,10 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
 
   if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
+      const dirHandle = await projectStore.getDirectoryHandleByPath(entry.path);
+      if (!dirHandle) return;
       void proxyStore.generateProxiesForFolder({
-        dirHandle: entry.handle as FileSystemDirectoryHandle,
+        dirHandle,
         dirPath: entry.path,
       });
     }
@@ -512,10 +512,10 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     if (type === 'text') {
       void (async () => {
         try {
-          const file = await (entry.handle as FileSystemFileHandle).getFile();
+          const file = await vfs.readFile(entry.path);
           const content = await file.text();
           projectStore.addTextPanel(
-            entry.path ?? entry.name,
+            entry.path,
             content,
             entry.name,
             undefined,
@@ -524,7 +524,7 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
           );
         } catch {
           projectStore.addTextPanel(
-            entry.path ?? entry.name,
+            entry.path,
             '',
             entry.name,
             undefined,
@@ -611,7 +611,6 @@ function buildRemoteDirectoryEntry(path: string): RemoteFsEntry {
   return {
     name,
     kind: 'directory',
-    handle: {} as FileSystemDirectoryHandle,
     path: normalizedPath,
     source: 'remote',
     remoteId: normalizedPath,
@@ -634,7 +633,9 @@ function setSelectedFsEntry(entry: FsEntry | null) {
     kind: entry.kind,
     name: entry.name,
     path: entry.path,
-    handle: entry.handle,
+    parentPath: entry.parentPath,
+    lastModified: entry.lastModified,
+    size: entry.size,
     source: entry.source ?? 'local',
     remoteId: entry.remoteId,
     remotePath: entry.remotePath,
@@ -728,7 +729,6 @@ async function onBrowserRootDrop(e: DragEvent) {
 
 async function performRemoteDownload(params: {
   entry: RemoteFsEntry;
-  targetDirHandle: FileSystemDirectoryHandle;
   targetDirPath: string;
 }) {
   const config = remoteFilesConfig.value;
@@ -766,7 +766,7 @@ async function performRemoteDownload(params: {
     });
 
     remoteTransferPhase.value = t('videoEditor.fileManager.actions.uploadFiles', 'Upload files');
-    await handleFiles([file], params.targetDirHandle, params.targetDirPath);
+    await handleFiles([file], params.targetDirPath);
     uiStore.notifyFileManagerUpdate();
     await loadFolderContent();
   } finally {
@@ -785,15 +785,12 @@ function cancelRemoteTransfer() {
 async function createTimelineInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
-  const existingInFolder = await readDirectory(
-    entry.handle as FileSystemDirectoryHandle,
-    entry.path,
-  );
+  const existingInFolder = await readDirectory(entry.path);
   const existingNames = existingInFolder.map((e) => e.name);
 
-  const createdFileName = await createTimelineCommand({
-    projectDir: entry.handle as FileSystemDirectoryHandle,
-    timelinesDirName: undefined,
+  const createdPath = await createTimelineCommand({
+    vfs,
+    timelinesDirName: entry.path || undefined,
     existingNames,
   });
 
@@ -801,7 +798,6 @@ async function createTimelineInDirectory(entry: FsEntry) {
   uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 
-  const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
   const createdEntry = findEntryByPath(createdPath);
   if (createdEntry) {
     selectionStore.selectFsEntry(createdEntry);
@@ -818,14 +814,12 @@ async function createMarkdownInDirectory(entry: FsEntry) {
     }
   }
 
-  const existingInFolder = await readDirectory(
-    entry.handle as FileSystemDirectoryHandle,
-    entry.path,
-  );
+  const existingInFolder = await readDirectory(entry.path);
   const existingNames = existingInFolder.map((e) => e.name);
 
   const createdFileName = await createMarkdownCommand({
-    dirHandle: entry.handle as FileSystemDirectoryHandle,
+    vfs,
+    dirPath: entry.path,
     existingNames,
   });
 
@@ -920,7 +914,7 @@ function isTranscribableMediaFile(entry: FsEntry): boolean {
     Boolean(sttConfig.value) &&
     Boolean(workspaceStore.workspaceHandle) &&
     Boolean(projectStore.currentProjectId) &&
-    Boolean(entry.handle)
+    Boolean(entry.path)
   );
 }
 
@@ -996,12 +990,14 @@ const folderSizesLoading = ref<Record<string, boolean>>({});
 
 const sizeCalcQueue = new PQueue({ concurrency: 5 });
 
-async function calculateFolderSize(path: string, handle: FileSystemDirectoryHandle) {
+async function calculateFolderSize(path: string, handle?: FileSystemDirectoryHandle) {
   if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
 
   folderSizesLoading.value[path] = true;
   await sizeCalcQueue.add(async () => {
     try {
+      const resolvedHandle = handle ?? (await projectStore.getDirectoryHandleByPath(path));
+      if (!resolvedHandle) return;
       let totalSize = 0;
 
       async function calc(dirHandle: FileSystemDirectoryHandle) {
@@ -1020,7 +1016,7 @@ async function calculateFolderSize(path: string, handle: FileSystemDirectoryHand
         }
       }
 
-      await calc(handle);
+      await calc(resolvedHandle);
       folderSizes.value[path] = totalSize;
     } catch (error) {
       console.error('Failed to calculate folder size:', error);
@@ -1041,8 +1037,8 @@ watch(
       return;
     }
 
-    if (entry && entry.kind === 'directory' && entry.handle && entry.path) {
-      void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
+    if (entry && entry.kind === 'directory' && entry.path) {
+      void calculateFolderSize(entry.path);
     }
 
     if (entry?.kind === 'file' && entry.path) {
@@ -1066,7 +1062,7 @@ watch(
           folderSizes.value[entry.path] === undefined &&
           !folderSizesLoading.value[entry.path]
         ) {
-          void calculateFolderSize(entry.path, entry.handle as FileSystemDirectoryHandle);
+          void calculateFolderSize(entry.path);
         }
       }
     }
@@ -1100,7 +1096,7 @@ async function loadFolderContent() {
     return;
   }
 
-  if (!filesPageStore.selectedFolder || !filesPageStore.selectedFolder.handle) {
+  if (!filesPageStore.selectedFolder) {
     cleanupObjectUrls();
     folderEntries.value = [];
     return;
@@ -1108,19 +1104,14 @@ async function loadFolderContent() {
 
   try {
     const path = filesPageStore.selectedFolder.path || '';
-    const freshEntry = findEntryByPath(path);
-    const handle = (
-      freshEntry ? toRaw(freshEntry.handle) : toRaw(filesPageStore.selectedFolder.handle)
-    ) as FileSystemDirectoryHandle;
-    let entries = await readDirectory(handle, path);
+    let entries = await readDirectory(path);
     if (!path) {
-      const commonHandle = await getWorkspaceCommonDirHandle(false);
-      if (commonHandle) {
+      const commonMetadata = await vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
+      if (commonMetadata?.kind === 'directory') {
         const commonEntry: FsEntry = {
           kind: 'directory',
           name: WORKSPACE_COMMON_DIR_NAME,
           path: WORKSPACE_COMMON_PATH_PREFIX,
-          handle: commonHandle,
         };
         entries = [
           commonEntry,
@@ -1175,59 +1166,43 @@ async function loadParentFolders() {
   if (!selectedFolderPath) return;
 
   if (selectedFolderPath === WORKSPACE_COMMON_PATH_PREFIX) {
-    const commonHandle = await getWorkspaceCommonDirHandle(false);
-    if (!commonHandle) return;
     parentFolders.value.push({
       kind: 'directory',
       name: WORKSPACE_COMMON_DIR_NAME,
       path: WORKSPACE_COMMON_PATH_PREFIX,
-      handle: commonHandle,
     });
     return;
   }
 
   if (selectedFolderPath.startsWith(`${WORKSPACE_COMMON_PATH_PREFIX}/`)) {
-    const commonHandle = await getWorkspaceCommonDirHandle(false);
-    if (!commonHandle) return;
-
-    let currentHandle: FileSystemDirectoryHandle = commonHandle;
     let currentPath = WORKSPACE_COMMON_PATH_PREFIX;
     parentFolders.value.push({
       kind: 'directory',
       name: WORKSPACE_COMMON_DIR_NAME,
       path: WORKSPACE_COMMON_PATH_PREFIX,
-      handle: commonHandle,
     });
 
     const pathParts = stripWorkspaceCommonPathPrefix(selectedFolderPath).split('/').filter(Boolean);
     for (const part of pathParts) {
-      currentHandle = await currentHandle.getDirectoryHandle(part);
       currentPath = `${currentPath}/${part}`;
       parentFolders.value.push({
         kind: 'directory',
         name: part,
         path: currentPath,
-        handle: currentHandle,
       });
     }
     return;
   }
 
-  const rootHandle = await getProjectRootDirHandle();
-  if (!rootHandle) return;
-
   const pathParts = selectedFolderPath.split('/').filter(Boolean);
-  let currentHandle: FileSystemDirectoryHandle = rootHandle;
   let currentPath = '';
 
   for (const part of pathParts) {
-    currentHandle = await currentHandle.getDirectoryHandle(part);
     currentPath = currentPath ? `${currentPath}/${part}` : part;
     parentFolders.value.push({
       kind: 'directory',
       name: part,
       path: currentPath,
-      handle: currentHandle,
     });
   }
 }
@@ -1342,7 +1317,10 @@ async function supplementEntries(entries: FsEntry[]): Promise<ExtendedFsEntry[]>
     entries.map(async (entry) => {
       if (entry.kind === 'file') {
         try {
-          const file = await (entry.handle as FileSystemFileHandle).getFile();
+          const file = await vfs.getFile(entry.path);
+          if (!file) {
+            return { ...entry, size: 0, mimeType: 'unknown' };
+          }
           const objectUrl = await createPreviewUrl(entry.name, file);
           return {
             ...entry,
@@ -1606,13 +1584,10 @@ async function navigateToRoot() {
     return;
   }
 
-  const rootHandle = await getProjectRootDirHandle();
-  if (!rootHandle) return;
   const rootEntry: FsEntry = {
     kind: 'directory',
     name: projectStore.currentProjectName || '',
     path: '',
-    handle: rootHandle,
   };
   filesPageStore.selectFolder(rootEntry);
 }
@@ -1653,7 +1628,7 @@ async function onDirectoryUploadChange(e: Event) {
   if (!entry.path) {
     await handleFiles(files);
   } else {
-    await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+    await handleFiles(files, entry.path);
   }
   uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
@@ -1686,9 +1661,11 @@ async function submitTranscription() {
   try {
     const mediaType = getMediaTypeFromFilename(entry.name);
     const entryMimeType = (entry as ExtendedFsEntry).mimeType;
+    const fileHandle = await projectStore.getFileHandleByPath(entry.path);
+    if (!fileHandle) throw new Error('Failed to access file');
     const result = await transcribeProjectAudioFile({
-      fileHandle: entry.handle as FileSystemFileHandle,
-      filePath: entry.path ?? entry.name,
+      fileHandle,
+      filePath: entry.path,
       fileName: entry.name,
       fileType: typeof entryMimeType === 'string' ? entryMimeType : '',
       language: sttTranscriptionLanguage.value,

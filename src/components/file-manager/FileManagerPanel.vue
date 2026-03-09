@@ -50,8 +50,6 @@ const {
   rootEntries,
   isLoading,
   isApiSupported,
-  getWorkspaceCommonDirHandle,
-  getProjectRootDirHandle,
   loadProjectDirectory,
   toggleDirectory,
   handleFiles,
@@ -66,6 +64,7 @@ const {
   getFileIcon,
   sortMode,
   setSortMode,
+  vfs,
 } = fileManager;
 
 const isDragging = ref(false);
@@ -107,8 +106,7 @@ const {
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
-  getWorkspaceCommonDirHandle,
-  getProjectRootDirHandle,
+  vfs,
   findEntryByPath,
   readDirectory,
   reloadDirectory,
@@ -140,7 +138,7 @@ function isTranscribableMediaFile(entry: FsEntry): boolean {
     Boolean(sttConfig.value) &&
     Boolean(workspaceStore.workspaceHandle) &&
     Boolean(projectStore.currentProjectId) &&
-    Boolean(entry.handle)
+    Boolean(entry.path)
   );
 }
 
@@ -168,10 +166,11 @@ async function submitTranscription() {
 
   try {
     const mediaType = getMediaTypeFromFilename(entry.name);
-    const file = await (entry.handle as FileSystemFileHandle).getFile();
+    const file = await vfs.getFile(entry.path);
+    if (!file) throw new Error('Failed to access file');
     const result = await transcribeProjectAudioFile({
-      fileHandle: entry.handle as FileSystemFileHandle,
-      filePath: entry.path ?? entry.name,
+      fileHandle: await projectStore.getFileHandleByPath(entry.path),
+      filePath: entry.path,
       fileName: entry.name,
       fileType: typeof file.type === 'string' ? file.type : '',
       language: sttTranscriptionLanguage.value,
@@ -223,7 +222,6 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       kind: 'directory',
       name: projectStore.currentProjectName ?? '',
       path: '',
-      handle: null as any,
     };
     if (target.path) {
       uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, target.path, true);
@@ -256,10 +254,10 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     const mediaType = getMediaTypeFromFilename(entry.name);
     if (mediaType === 'text') {
       try {
-        const file = await (entry.handle as FileSystemFileHandle).getFile();
-        const content = await file.text();
+        const blob = await vfs.readFile(entry.path);
+        const content = await blob.text();
         projectStore.addTextPanel(
-          entry.path ?? entry.name,
+          entry.path,
           content,
           entry.name,
           undefined,
@@ -268,7 +266,7 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
         );
       } catch {
         projectStore.addTextPanel(
-          entry.path ?? entry.name,
+          entry.path,
           '',
           entry.name,
           undefined,
@@ -288,7 +286,6 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
   } else if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
       void proxyStore.generateProxiesForFolder({
-        dirHandle: entry.handle as FileSystemDirectoryHandle,
         dirPath: entry.path,
       });
     }
@@ -323,21 +320,19 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
 async function createTimelineInDirectory(entry: FsEntry) {
   if (entry.kind !== 'directory') return;
   try {
-    const createdFileName = await createTimelineCommand({
-      projectDir: entry.handle as FileSystemDirectoryHandle,
-      timelinesDirName: undefined,
+    const createdPath = await createTimelineCommand({
+      vfs,
+      timelinesDirName: entry.path || undefined,
     });
 
     await loadProjectDirectory();
 
-    const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
     const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
     if (createdEntry) {
       uiStore.selectedFsEntry = {
         kind: createdEntry.kind,
         name: createdEntry.name,
         path: createdEntry.path,
-        handle: createdEntry.handle,
       };
       selectionStore.selectFsEntry(createdEntry);
       emit('select', createdEntry);
@@ -402,7 +397,7 @@ function onFileSelect(e: Event) {
       return;
     }
 
-    handleFiles(files, selectedDir.handle as FileSystemDirectoryHandle, selectedDir.path);
+    handleFiles(files, selectedDir.path);
   }
 }
 
@@ -418,7 +413,7 @@ async function onDirectoryFileSelect(e: Event) {
   if (!entry.path) {
     await handleFiles(files);
   } else {
-    await handleFiles(files, entry.handle as FileSystemDirectoryHandle, entry.path);
+    await handleFiles(files, entry.path);
   }
   await loadProjectDirectory();
 }
@@ -481,23 +476,14 @@ watch(
     await loadProjectDirectory();
 
     if (name) {
-      const handle = await getProjectRootDirHandle();
-      if (handle) {
-        const rootEntry: FsEntry = {
-          kind: 'directory',
-          name,
-          path: '',
-          handle,
-        };
-        uiStore.selectedFsEntry = {
-          kind: 'directory',
-          name,
-          path: '',
-          handle,
-        };
-        selectionStore.selectFsEntry(rootEntry);
-        emit('select', rootEntry);
-      }
+      const rootEntry: FsEntry = {
+        kind: 'directory',
+        name,
+        path: '',
+      };
+      uiStore.selectedFsEntry = rootEntry;
+      selectionStore.selectFsEntry(rootEntry);
+      emit('select', rootEntry);
     }
   },
   { immediate: true },
@@ -662,7 +648,6 @@ function onDrop(e: DragEvent) {
         :find-entry-by-path="findEntryByPath"
         :media-cache="fileManager.mediaCache"
         :move-entry="moveEntry"
-        :get-project-root-dir-handle="getProjectRootDirHandle"
         :handle-files="handleFiles"
         @commit-rename="commitRename"
         @stop-rename="stopRename"

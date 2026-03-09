@@ -14,16 +14,8 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
-  handleFiles: (
-    files: File[] | FileList,
-    targetDirHandle?: FileSystemDirectoryHandle,
-    targetDirPath?: string,
-  ) => Promise<void>;
-  moveEntry: (params: {
-    source: FsEntry;
-    targetDirHandle: FileSystemDirectoryHandle;
-    targetDirPath: string;
-  }) => Promise<void>;
+  handleFiles: (files: File[] | FileList, targetDirPath?: string) => Promise<void>;
+  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   loadFolderContent: () => Promise<void>;
   notifyFileManagerUpdate: () => void;
 }
@@ -39,7 +31,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
   const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } =
     useFileDrop({
-      getProjectRootDirHandle: fileManager.getProjectRootDirHandle,
       resolveEntryByPath: options.resolveEntryByPath,
       handleFiles: options.handleFiles,
       moveEntry: options.moveEntry,
@@ -122,8 +113,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
 
-    const targetHandle = entry.handle as FileSystemDirectoryHandle;
-    const targetPath = entry.path ?? '';
+    const targetPath = entry.path;
 
     if (moveRaw) {
       let parsed: any = null;
@@ -144,7 +134,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
         await options.moveEntry({
           source,
-          targetDirHandle: targetHandle,
           targetDirPath: targetPath,
         });
       }
@@ -156,7 +145,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     if (!hasFiles || droppedFiles.length === 0) return;
 
-    await options.handleFiles(droppedFiles, targetHandle, targetPath);
+    await options.handleFiles(droppedFiles, targetPath);
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
   }
@@ -185,7 +174,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     uiStore.isGlobalDragging = false;
 
     const targetFolder = filesPageStore.selectedFolder;
-    const targetHandle = targetFolder?.handle as FileSystemDirectoryHandle | undefined;
     const targetPath = targetFolder?.path ?? '';
 
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
@@ -206,18 +194,10 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
-        if (targetHandle) {
-          await options.moveEntry({
-            source,
-            targetDirHandle: targetHandle,
-            targetDirPath: targetPath,
-          });
-        } else {
-          const rootHandle = await fileManager.getProjectRootDirHandle();
-          if (rootHandle) {
-            await options.moveEntry({ source, targetDirHandle: rootHandle, targetDirPath: '' });
-          }
-        }
+        await options.moveEntry({
+          source,
+          targetDirPath: targetPath,
+        });
       }
 
       options.notifyFileManagerUpdate();
@@ -228,11 +208,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     if (droppedFiles.length === 0) return;
 
-    if (targetHandle) {
-      await options.handleFiles(droppedFiles, targetHandle, targetPath);
-    } else {
-      await options.handleFiles(droppedFiles);
-    }
+    await options.handleFiles(droppedFiles, targetPath || undefined);
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
   }

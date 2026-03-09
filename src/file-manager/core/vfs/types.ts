@@ -2,6 +2,7 @@ export interface VfsEntry {
   name: string;
   kind: 'file' | 'directory';
   path: string;
+  parentPath?: string;
   lastModified?: number;
   size?: number;
   children?: VfsEntry[];
@@ -27,6 +28,11 @@ export interface IFileSystemAdapter {
   createDirectory(path: string): Promise<void>;
 
   /**
+   * Lists entry names in a directory.
+   */
+  listEntryNames(path: string): Promise<string[]>;
+
+  /**
    * Reads file contents as a Blob
    */
   readFile(path: string): Promise<Blob>;
@@ -48,6 +54,16 @@ export interface IFileSystemAdapter {
   moveEntry(sourcePath: string, targetPath: string): Promise<void>;
 
   /**
+   * Copies a file.
+   */
+  copyFile(sourcePath: string, targetPath: string): Promise<void>;
+
+  /**
+   * Copies a directory recursively.
+   */
+  copyDirectory(sourcePath: string, targetPath: string): Promise<void>;
+
+  /**
    * Checks if an entry exists
    */
   exists(path: string): Promise<boolean>;
@@ -55,7 +71,9 @@ export interface IFileSystemAdapter {
   /**
    * Get metadata for an entry
    */
-  getMetadata(path: string): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null>;
+  getMetadata(
+    path: string,
+  ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null>;
 
   /**
    * Get an object URL for a file (useful for media playback)
@@ -66,5 +84,10 @@ export interface IFileSystemAdapter {
    * Resolve a real file for a path (if supported)
    * This is needed because some parts of the app (like media conversion) might still need File objects.
    */
-  getFile?(path: string): Promise<File | null>;
+  getFile(path: string): Promise<File | null>;
+
+  /**
+   * Writes JSON to a file.
+   */
+  writeJson(path: string, data: unknown): Promise<void>;
 }

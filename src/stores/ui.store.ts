@@ -10,7 +10,9 @@ export interface FsEntrySelection {
   kind: 'file' | 'directory';
   name: string;
   path?: string;
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle;
+  parentPath?: string;
+  lastModified?: number;
+  size?: number;
   source?: 'local' | 'remote';
   remoteId?: string;
   remotePath?: string;
@@ -19,7 +21,6 @@ export interface FsEntrySelection {
 
 export interface PendingRemoteDownloadRequest {
   entry: RemoteFsEntry;
-  targetDirHandle: FileSystemDirectoryHandle;
   targetDirPath: string;
 }
 
