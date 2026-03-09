@@ -164,7 +164,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
   paramFields: [
     {
       key: 'mode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBarnDoorMode',
       options: [
         { value: 'open', labelKey: 'granVideoEditor.timeline.transition.barnDoorModeOpen' },
@@ -173,7 +173,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     },
     {
       key: 'edgeMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeMode',
       options: [
         { value: 'gap', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeGap' },
@@ -182,7 +182,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     },
     {
       key: 'blurMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
       options: [
         { value: 'scaled', labelKey: 'granVideoEditor.timeline.transition.blurModeScaled' },

@@ -156,7 +156,7 @@ export const wipeManifest: TransitionManifest<WipeParams> = {
     },
     {
       key: 'edgeMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeMode',
       options: [
         { value: 'gap', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeGap' },

@@ -152,7 +152,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     },
     {
       key: 'blurMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
       options: [
         { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },

@@ -256,7 +256,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     },
     {
       key: 'brightnessMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
       options: [
         { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.brightnessModeNormal' },

@@ -228,7 +228,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     },
     {
       key: 'motionBlurMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramMotionBlurMode',
       options: [
         { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeNormal' },
@@ -248,7 +248,7 @@ export const slideManifest: TransitionManifest<SlideParams> = {
     },
     {
       key: 'brightnessMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
       options: [
         { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.brightnessModeNormal' },

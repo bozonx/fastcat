@@ -187,7 +187,7 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
     },
     {
       key: 'zoomMode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramMode',
       options: [
         { value: 'unzoom', labelKey: 'granVideoEditor.timeline.transition.modeUnzoom' },

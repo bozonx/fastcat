@@ -151,7 +151,7 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
   paramFields: [
     {
       key: 'mode',
-      kind: 'select',
+      kind: 'button-group',
       labelKey: 'granVideoEditor.timeline.transition.paramMode',
       options: [
         { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.modeBloom' },
