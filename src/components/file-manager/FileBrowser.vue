@@ -128,6 +128,7 @@ const {
   handleFiles,
   moveEntry,
   findEntryByPath,
+  resolveEntryByPath,
   reloadDirectory,
 } = fileManager;
 const { t } = useI18n();
@@ -151,6 +152,7 @@ const {
   onPanelDrop,
 } = useFileBrowserDragAndDrop({
   findEntryByPath,
+  resolveEntryByPath,
   handleFiles,
   moveEntry,
   loadFolderContent,
