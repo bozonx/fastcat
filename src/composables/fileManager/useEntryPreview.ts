@@ -1,6 +1,5 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import yaml from 'js-yaml';
-import { computeDirectorySize } from '~/utils/fs';
 import { TEXT_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
@@ -42,13 +41,13 @@ export function useEntryPreview(params: {
   previewMode: Ref<PreviewMode>;
   hasProxy: Ref<boolean>;
   mediaStore: {
-    getOrFetchMetadata: (
-      fileHandle: FileSystemFileHandle,
+    getOrFetchMetadataByPath: (
       projectRelativePath: string,
       options?: { forceRefresh?: boolean },
     ) => Promise<MediaMetadata | null>;
   };
   proxyStore: { getProxyFile: (path: string) => Promise<File | null> };
+  getFileByPath: (path: string) => Promise<File | null>;
   onResetPreviewMode: (mode: PreviewMode) => void;
 }) {
   const currentUrl = ref<string | null>(null);
@@ -111,10 +110,14 @@ export function useEntryPreview(params: {
         if (proxyFile) {
           fileToPlay = proxyFile;
         } else {
-          fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
+          const file = await params.getFileByPath(entry.path);
+          if (!file) return;
+          fileToPlay = file;
         }
       } else {
-        fileToPlay = await (entry.handle as FileSystemFileHandle).getFile();
+        const file = await params.getFileByPath(entry.path);
+        if (!file) return;
+        fileToPlay = file;
       }
 
       if (
@@ -168,11 +171,12 @@ export function useEntryPreview(params: {
       if (!entry) return;
 
       if (entry.kind === 'directory') {
+        const size = entry.path ? undefined : 0;
         fileInfo.value = {
           name: entry.name,
           kind: 'directory',
           path: entry.path,
-          size: await computeDirectorySize(entry.handle as FileSystemDirectoryHandle),
+          size,
         };
         return;
       }
@@ -184,7 +188,8 @@ export function useEntryPreview(params: {
           mediaType.value = extBasedType === 'timeline' ? 'text' : extBasedType;
         }
 
-        const file = await (entry.handle as FileSystemFileHandle).getFile();
+        const file = await params.getFileByPath(entry.path);
+        if (!file) return;
 
         const textExtensions = TEXT_EXTENSIONS;
 
@@ -244,13 +249,9 @@ export function useEntryPreview(params: {
           ext: fileExt,
           metadata:
             entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
-              ? await params.mediaStore.getOrFetchMetadata(
-                  entry.handle as FileSystemFileHandle,
-                  entry.path,
-                  {
-                    forceRefresh: true,
-                  },
-                )
+              ? await params.mediaStore.getOrFetchMetadataByPath(entry.path, {
+                  forceRefresh: true,
+                })
               : undefined,
         };
 

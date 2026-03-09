@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import type { TimelineClipItem, TimelineDocument, TimelineTrackItem } from '~/timeline/types';
@@ -16,6 +17,7 @@ const props = defineProps<{
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
+const fileManager = useFileManager();
 
 const rootEl = ref<HTMLElement | null>(null);
 const chunkEls = ref<(HTMLElement | null)[]>([]);
@@ -114,10 +116,8 @@ async function buildTimelinePeaks(params: {
     if (clip.clipType === 'timeline') {
       if (visiting.has(path)) continue;
 
-      const handle = await projectStore.getFileHandleByPath(path);
-      if (!handle) continue;
-
-      const file = await handle.getFile();
+      const file = await fileManager.vfs.getFile(path);
+      if (!file) continue;
       const text = await file.text();
       const nestedDoc = parseTimelineFromOtio(text, {
         id: 'nested-waveform',
@@ -198,14 +198,13 @@ const extractPeaks = async () => {
     isExtracting.value = true;
 
     if (isNestedTimeline.value) {
-      const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
-      if (!fileHandle) return;
+      const file = await fileManager.vfs.getFile(fileUrl.value);
+      if (!file) return;
 
       if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
         return;
       }
 
-      const file = await fileHandle.getFile();
       const text = await file.text();
       const nestedDoc = parseTimelineFromOtio(text, {
         id: 'nested-waveform-root',

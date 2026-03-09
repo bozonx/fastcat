@@ -232,9 +232,8 @@ class FileThumbnailGenerator {
       };
 
       const ensureSourceUrl = async () => {
-        const sourceHandle = await projectStore.getFileHandleByPath(task.projectRelativePath);
-        if (!sourceHandle) throw new Error(`Source file not found: ${task.projectRelativePath}`);
-        const file = await sourceHandle.getFile();
+        const file = await projectStore.getFileByPath(task.projectRelativePath);
+        if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
         sourceObjectUrl = URL.createObjectURL(file);
         video.src = sourceObjectUrl;
       };
