@@ -225,6 +225,7 @@ export function useFileConversion() {
         getCurrentProjectId: () => projectStore.currentProjectId,
         getWorkspaceHandle: () => workspaceStore.workspaceHandle,
         getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        getFileByPath: async (path) => projectStore.getFileByPath(path),
         onExportProgress: (progress) => {
           conversionProgress.value = progress / 100;
         },

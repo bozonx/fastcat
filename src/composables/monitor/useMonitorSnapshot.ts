@@ -41,6 +41,7 @@ export function useMonitorSnapshot(input: {
           getCurrentProjectId: () => input.projectStore.currentProjectId,
           getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
           getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
           onExportProgress: () => {},
         }),
       );
@@ -126,6 +127,7 @@ export function useMonitorSnapshot(input: {
           getCurrentProjectId: () => input.projectStore.currentProjectId,
           getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
           getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
           onExportProgress: () => {},
         }),
       );

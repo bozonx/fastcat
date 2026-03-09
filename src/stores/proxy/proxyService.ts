@@ -37,6 +37,7 @@ export function createProxyService(params: {
   getProxyFileName: (projectRelativePath: string) => string;
 
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+  getFileByPath: (path: string) => Promise<File | null>;
 
   getOptimizationSettings: () => {
     proxyResolution: string;
@@ -172,6 +173,7 @@ export function createProxyService(params: {
               getCurrentProjectId: () => null,
               getWorkspaceHandle: () => null,
               getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
+              getFileByPath: async (path) => await params.getFileByPath(path),
               onExportProgress: (progress) => {
                 params.proxyProgress.value[projectRelativePath] = progress;
               },

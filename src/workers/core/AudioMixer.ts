@@ -178,7 +178,7 @@ export class AudioMixer {
 
       let file: File;
       try {
-        file = await fileHandle.getFile();
+        file = (await hostClient?.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
       } catch {
         await reportExportWarning('[Worker Export] Failed to read audio file handle');
         continue;

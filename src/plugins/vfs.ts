@@ -1,4 +1,4 @@
-import { defineNuxtPlugin } from '#app';
+import { defineNuxtPlugin } from 'nuxt/app';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -25,7 +25,7 @@ export default defineNuxtPlugin(async () => {
 
   return {
     provide: {
-      vfs: adapter
-    }
+      vfs: adapter,
+    },
   };
 });

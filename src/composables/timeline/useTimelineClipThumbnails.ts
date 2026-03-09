@@ -384,6 +384,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path: string) => projectStore.getFileByPath(path),
           onExportProgress: () => {},
         }),
       );

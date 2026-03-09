@@ -24,6 +24,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     throw new Error('Method not implemented.');
   }
 
+  async listEntryNames(path: string): Promise<string[]> {
+    throw new Error('Method not implemented.');
+  }
+
   async readFile(path: string): Promise<Blob> {
     throw new Error('Method not implemented.');
   }
@@ -40,6 +44,14 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     throw new Error('Method not implemented.');
   }
 
+  async copyFile(sourcePath: string, targetPath: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   async exists(path: string): Promise<boolean> {
     throw new Error('Method not implemented.');
   }
@@ -51,6 +63,14 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async getObjectUrl(path: string): Promise<string> {
+    throw new Error('Method not implemented.');
+  }
+
+  async getFile(path: string): Promise<File | null> {
+    throw new Error('Method not implemented.');
+  }
+
+  async writeJson(path: string, data: unknown): Promise<void> {
     throw new Error('Method not implemented.');
   }
 }

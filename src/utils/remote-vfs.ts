@@ -111,7 +111,6 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   return {
     name: displayName,
     kind: entry.type,
-    handle: {} as FileSystemFileHandle,
     path: entry.path,
     lastModified,
     source: 'remote',
@@ -140,7 +139,6 @@ export function createRemoteMediaFsEntry(params: {
   return {
     name: mediaName,
     kind: 'file',
-    handle: {} as FileSystemFileHandle,
     path: remotePath,
     source: 'remote',
     remoteId: `${params.item.id}:${params.media.id}`,
