@@ -107,10 +107,10 @@ export function useFileConversion() {
         projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ?? 128;
 
       try {
-        const fileHandle = await projectStore.getFileHandleByPath(entry.path);
-        if (!fileHandle) throw new Error('Failed to access source file');
+        const file = await projectStore.getFileByPath(entry.path);
+        if (!file) throw new Error('Failed to access source file');
         const { client } = getExportWorkerClient();
-        const meta = await client.extractMetadata(fileHandle);
+        const meta = await client.extractMetadata(file);
 
         if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
           return;
@@ -145,10 +145,10 @@ export function useFileConversion() {
       audioSampleRate.value = 0;
 
       try {
-        const fileHandle = await projectStore.getFileHandleByPath(entry.path);
-        if (!fileHandle) throw new Error('Failed to access source file');
+        const file = await projectStore.getFileByPath(entry.path);
+        if (!file) throw new Error('Failed to access source file');
         const { client } = getExportWorkerClient();
-        const meta = await client.extractMetadata(fileHandle);
+        const meta = await client.extractMetadata(file);
         if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path)
           return;
         if (meta?.audio) {
@@ -185,11 +185,7 @@ export function useFileConversion() {
     }
   }
 
-  async function convertImage(
-    fileHandle: FileSystemFileHandle,
-    targetHandle: FileSystemFileHandle,
-  ) {
-    const file = await fileHandle.getFile();
+  async function convertImage(file: File, targetHandle: FileSystemFileHandle) {
     const bitmap = await createImageBitmap(file);
     const canvas = document.createElement('canvas');
 
@@ -213,10 +209,7 @@ export function useFileConversion() {
     await writable.close();
   }
 
-  async function convertVideoAudio(
-    fileHandle: FileSystemFileHandle,
-    targetHandle: FileSystemFileHandle,
-  ) {
+  async function convertVideoAudio(targetHandle: FileSystemFileHandle) {
     if (!targetEntry.value || !targetEntry.value.path) return;
     const { client } = getExportWorkerClient();
 
@@ -238,7 +231,10 @@ export function useFileConversion() {
       }),
     );
 
-    const meta = await client.extractMetadata(fileHandle);
+    const sourceFile = await projectStore.getFileByPath(targetEntry.value.path);
+    if (!sourceFile) throw new Error('Failed to access source file');
+
+    const meta = await client.extractMetadata(sourceFile);
     const durationUs = Math.round((meta.duration || 0) * 1_000_000);
     if (!durationUs && mediaType.value === 'video') throw new Error('Invalid media duration');
 
@@ -347,8 +343,8 @@ export function useFileConversion() {
 
     try {
       const entry = targetEntry.value;
-      const fileHandle = await projectStore.getFileHandleByPath(entry.path);
-      if (!fileHandle) throw new Error('Failed to access source file');
+      const sourceFile = await projectStore.getFileByPath(entry.path);
+      if (!sourceFile) throw new Error('Failed to access source file');
       const type = mediaType.value;
 
       const baseName = entry.name.replace(/\.[^.]+$/, '');
@@ -370,9 +366,9 @@ export function useFileConversion() {
       const targetHandle = await dirHandle.getFileHandle(newFileName, { create: true });
 
       if (type === 'image') {
-        await convertImage(fileHandle, targetHandle);
+        await convertImage(sourceFile, targetHandle);
       } else {
-        await convertVideoAudio(fileHandle, targetHandle);
+        await convertVideoAudio(targetHandle);
       }
 
       if (isCancelRequested.value) {

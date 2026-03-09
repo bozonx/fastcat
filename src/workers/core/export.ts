@@ -8,8 +8,11 @@ import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 
-export async function extractMetadata(fileHandle: FileSystemFileHandle) {
-  const file = await fileHandle.getFile();
+export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle) {
+  const file =
+    fileOrHandle instanceof File
+      ? fileOrHandle
+      : await (fileOrHandle as FileSystemFileHandle).getFile();
 
   if (typeof file?.type === 'string' && file.type.startsWith('image/')) {
     return {

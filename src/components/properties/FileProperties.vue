@@ -347,10 +347,10 @@ async function submitAudioTranscription() {
   transcriptionError.value = '';
 
   try {
-    const fileHandle = await projectStore.getFileHandleByPath(selectedEntry.path);
-    if (!fileHandle) throw new Error('Failed to access file');
+    const file = await projectStore.getFileByPath(selectedEntry.path);
+    if (!file) throw new Error('Failed to access file');
     const result = await transcribeProjectAudioFile({
-      fileHandle,
+      file,
       filePath: selectedEntry.path,
       fileName: selectedEntry.name,
       fileType: selectedEntry.mimeType || (isVideoFile.value ? 'video/mp4' : 'audio/mpeg'),
@@ -575,9 +575,9 @@ watch(
             icon: hasExistingProxyForFile ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
             hidden: !showVideoProxyActions || isGeneratingProxyForFile,
             onClick: async () => {
-              const handle = await projectStore.getFileHandleByPath(selectedPath!);
-              if (!handle) return;
-              await proxyStore.generateProxy(handle, selectedPath!);
+              const file = await projectStore.getFileByPath(selectedPath!);
+              if (!file) return;
+              await proxyStore.generateProxy(file, selectedPath!);
             },
           },
           {

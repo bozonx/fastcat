@@ -6,7 +6,7 @@ export interface PreviewRenderOptions {
 
 export interface VideoCoreWorkerAPI {
   // Metadata
-  extractMetadata(fileHandle: FileSystemFileHandle): Promise<any>;
+  extractMetadata(file: File | FileSystemFileHandle): Promise<any>;
 
   // initCompositor is implemented manually in the client proxy
   initCompositor(

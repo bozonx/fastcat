@@ -215,8 +215,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       return await addTimelineClipFromPath(input, options);
     }
 
-    const handle = await deps.getFileHandleByPath(input.path);
-    if (!handle) throw new Error('Failed to access file handle');
+    const file = await deps.getFileByPath(input.path);
+    if (!file) throw new Error('Failed to access source file');
 
     const targetTrack = deps.getTrackById(input.trackId);
     if (!targetTrack) throw new Error('Track not found');
@@ -248,7 +248,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (shouldAutoCreateProxy) {
       void ensureProxyCommand({
         service: deps.mediaCache,
-        fileHandle: handle,
+        file,
         projectRelativePath: input.path,
       });
     }

@@ -584,8 +584,8 @@ export function useFileManager() {
     mediaCache: createProxyThumbnailService({
       checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),
       hasProxy: (path) => proxyStore.existingProxies.has(path),
-      ensureProxy: async ({ fileHandle, projectRelativePath }) =>
-        await proxyStore.generateProxy(fileHandle, projectRelativePath),
+      ensureProxy: async ({ file, projectRelativePath }) =>
+        await proxyStore.generateProxy(file, projectRelativePath),
       cancelProxy: async (projectRelativePath) =>
         await proxyStore.cancelProxyGeneration(projectRelativePath),
       removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),

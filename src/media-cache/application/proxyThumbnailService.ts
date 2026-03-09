@@ -2,7 +2,7 @@ export interface ProxyThumbnailServiceDeps {
   checkExistingProxies: (paths: string[]) => Promise<void>;
   hasProxy: (path: string) => boolean;
   ensureProxy: (params: {
-    fileHandle: FileSystemFileHandle;
+    file: File | FileSystemFileHandle;
     projectRelativePath: string;
   }) => Promise<void>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
@@ -19,7 +19,7 @@ export interface ProxyThumbnailService {
   checkExistingProxies: (paths: string[]) => Promise<void>;
   hasProxy: (path: string) => boolean;
   ensureProxy: (params: {
-    fileHandle: FileSystemFileHandle;
+    file: File | FileSystemFileHandle;
     projectRelativePath: string;
   }) => Promise<void>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
@@ -40,7 +40,7 @@ export function createProxyThumbnailService(
     hasProxy: (path) => deps.hasProxy(path),
     ensureProxy: (params) =>
       deps.ensureProxy({
-        fileHandle: params.fileHandle,
+        file: params.file,
         projectRelativePath: params.projectRelativePath,
       }),
     cancelProxy: (projectRelativePath) => deps.cancelProxy(projectRelativePath),
