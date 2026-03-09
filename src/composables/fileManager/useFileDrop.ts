@@ -4,7 +4,7 @@ import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 
 export interface UseFileDropOptions {
   getProjectRootDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
-  findEntryByPath: (path: string) => FsEntry | null;
+  resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
   handleFiles: (
     files: FileList | File[],
     targetDirHandle?: FileSystemDirectoryHandle,
@@ -75,7 +75,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       const sourcePath = typeof item?.path === 'string' ? item.path : '';
       if (!sourcePath) continue;
 
-      const source = options.findEntryByPath(sourcePath);
+      const source = await options.resolveEntryByPath(sourcePath);
       if (!source) continue;
 
       await options.moveEntry({

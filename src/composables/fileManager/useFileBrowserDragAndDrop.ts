@@ -13,6 +13,7 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
+  resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
   handleFiles: (
     files: File[] | FileList,
     targetDirHandle?: FileSystemDirectoryHandle,
@@ -39,7 +40,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } =
     useFileDrop({
       getProjectRootDirHandle: fileManager.getProjectRootDirHandle,
-      findEntryByPath: options.findEntryByPath,
+      resolveEntryByPath: options.resolveEntryByPath,
       handleFiles: options.handleFiles,
       moveEntry: options.moveEntry,
     });
@@ -138,7 +139,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
         if (!sourcePath || sourcePath === targetPath) continue;
 
-        const source = options.findEntryByPath(sourcePath);
+        const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
         await options.moveEntry({
@@ -202,7 +203,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
         if (!sourcePath) continue;
 
-        const source = options.findEntryByPath(sourcePath);
+        const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
         if (targetHandle) {

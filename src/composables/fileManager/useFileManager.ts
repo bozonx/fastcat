@@ -11,6 +11,8 @@ import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, TIMELINES_DIR_NAME } from '~/utils/cons
 import {
   getWorkspacePathFileName,
   getWorkspacePathParent,
+  isWorkspaceCommonPath,
+  stripWorkspaceCommonPathPrefix,
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
@@ -121,6 +123,78 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   function findEntryByPath(path: string): FsEntry | null {
     return service.findEntryByPath(path);
+  }
+
+  async function resolveEntryByPath(path: string): Promise<FsEntry | null> {
+    const existingEntry = findEntryByPath(path);
+    if (existingEntry) return existingEntry;
+
+    const normalizedPath = path.trim();
+    if (!normalizedPath) return null;
+
+    const isCommonPath = isWorkspaceCommonPath(normalizedPath);
+    const rootHandle = isCommonPath
+      ? await deps.getWorkspaceCommonDirHandle(false)
+      : await deps.getProjectRootDirHandle();
+    if (!rootHandle) return null;
+
+    if (normalizedPath === WORKSPACE_COMMON_PATH_PREFIX) {
+      return {
+        name: WORKSPACE_COMMON_DIR_NAME,
+        kind: 'directory',
+        handle: rootHandle,
+        path: WORKSPACE_COMMON_PATH_PREFIX,
+      };
+    }
+
+    const relativePath = isCommonPath
+      ? stripWorkspaceCommonPathPrefix(normalizedPath)
+      : normalizedPath;
+    const parts = relativePath.split('/').filter(Boolean);
+    if (parts.length === 0) return null;
+
+    let currentDir = rootHandle;
+    let parentHandle: FileSystemDirectoryHandle | undefined;
+
+    for (let index = 0; index < parts.length; index++) {
+      const part = parts[index];
+      const currentPath = isCommonPath
+        ? [WORKSPACE_COMMON_PATH_PREFIX, ...parts.slice(0, index + 1)].join('/')
+        : parts.slice(0, index + 1).join('/');
+      const isLast = index === parts.length - 1;
+
+      if (!isLast) {
+        parentHandle = currentDir;
+        currentDir = await currentDir.getDirectoryHandle(part!);
+        continue;
+      }
+
+      try {
+        const dirHandle = await currentDir.getDirectoryHandle(part!);
+        return {
+          name: part!,
+          kind: 'directory',
+          handle: dirHandle,
+          parentHandle: currentDir,
+          path: currentPath,
+        };
+      } catch (error: unknown) {
+        if ((error as { name?: unknown }).name !== 'NotFoundError') {
+          throw error;
+        }
+      }
+
+      const fileHandle = await currentDir.getFileHandle(part!);
+      return {
+        name: part!,
+        kind: 'file',
+        handle: fileHandle,
+        parentHandle: currentDir,
+        path: currentPath,
+      };
+    }
+
+    return null;
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
@@ -525,6 +599,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     deleteEntry,
     renameEntry,
     findEntryByPath,
+    resolveEntryByPath,
     mergeEntries,
     moveEntry,
     createTimeline,
