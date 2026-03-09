@@ -141,6 +141,7 @@ export function useMonitorTimeline() {
             fillColor: String((item as any).fillColor ?? '#ffffff'),
             strokeColor: String((item as any).strokeColor ?? '#000000'),
             strokeWidth: Number((item as any).strokeWidth ?? 0),
+            shapeConfig: (item as any).shapeConfig,
           });
         } else {
           clips.push(base);

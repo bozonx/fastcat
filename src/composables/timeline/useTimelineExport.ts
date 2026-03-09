@@ -83,11 +83,12 @@ export interface WorkerTimelineClip {
   backgroundColor?: string;
   text?: string;
   style?: import('~/timeline/types').TextClipStyle;
-  shapeType?: import('~/timeline/types').ShapeType;
+  shapeType?: 'square' | 'circle' | 'triangle' | 'star' | 'cloud' | 'speech_bubble' | 'bang';
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
-  hudType?: import('~/timeline/types').HudType;
+  shapeConfig?: import('~/timeline/types').ShapeConfig;
+  hudType?: 'media_frame';
   background?: import('~/timeline/types').HudMediaParams;
   content?: import('~/timeline/types').HudMediaParams;
   freezeFrameSourceUs?: number;
