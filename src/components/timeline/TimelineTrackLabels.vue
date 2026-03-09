@@ -604,8 +604,10 @@ function toggleClipSnapMode() {
                 variant="ghost"
                 color="neutral"
                 icon="i-heroicons-scissors"
-                :aria-label="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
-                :caret-aria-label="t('granVideoEditor.timeline.trimOptions', 'Trim options')"
+                v-bind="{
+                  ariaLabel: t('granVideoEditor.timeline.splitClips', 'Split clips at playhead'),
+                  caretAriaLabel: t('granVideoEditor.timeline.trimOptions', 'Trim options'),
+                }"
                 :items="trimMenuItems"
                 @click="splitClips"
               />

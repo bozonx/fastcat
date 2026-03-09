@@ -20,6 +20,7 @@ import RenameModal from '~/components/common/RenameModal.vue';
 import TimecodeInput from '~/components/common/TimecodeInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
+import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
@@ -27,6 +28,7 @@ import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { formatAudioChannels } from '~/utils/audio';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { getHudManifest } from '~/hud/registry';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -396,34 +398,30 @@ function handleUpdateHudContentPath(path: string | undefined) {
   });
 }
 
-const isBackgroundDragOver = ref(false);
-const isContentDragOver = ref(false);
+const hudManifest = computed(() =>
+  props.clip.clipType === 'hud' ? getHudManifest(props.clip.hudType) : undefined,
+);
 
-function handleHudBackgroundDrop(e: DragEvent) {
-  isBackgroundDragOver.value = false;
-  const raw = e.dataTransfer?.getData('application/json');
-  if (!raw) return;
-  try {
-    const item = JSON.parse(raw);
-    if (item.kind === 'file' && item.path) {
-      handleUpdateHudBackgroundPath(item.path);
-    }
-  } catch {
-    // ignore
+const hudControlValues = computed<Record<string, any>>(() => {
+  if (props.clip.clipType !== 'hud') return {};
+
+  return {
+    hudType: props.clip.hudType,
+    backgroundSourcePath: props.clip.background?.source?.path,
+    contentSourcePath: props.clip.content?.source?.path,
+  };
+});
+
+function handleUpdateHudControl(key: string, value: any) {
+  if (props.clip.clipType !== 'hud') return;
+
+  if (key === 'backgroundSourcePath') {
+    handleUpdateHudBackgroundPath(typeof value === 'string' && value.trim() ? value : undefined);
+    return;
   }
-}
 
-function handleHudContentDrop(e: DragEvent) {
-  isContentDragOver.value = false;
-  const raw = e.dataTransfer?.getData('application/json');
-  if (!raw) return;
-  try {
-    const item = JSON.parse(raw);
-    if (item.kind === 'file' && item.path) {
-      handleUpdateHudContentPath(item.path);
-    }
-  } catch {
-    // ignore
+  if (key === 'contentSourcePath') {
+    handleUpdateHudContentPath(typeof value === 'string' && value.trim() ? value : undefined);
   }
 }
 
@@ -1195,98 +1193,12 @@ defineExpose({
       v-else-if="clip.clipType === 'hud'"
       :title="t('granVideoEditor.hudClip.hud', 'HUD')"
     >
-      <div class="flex flex-col gap-2">
-        <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.hudClip.type', 'Type')
-          }}</span>
-          <USelectMenu
-            :model-value="String((clip as any).hudType ?? 'media_frame')"
-            :items="[
-              {
-                value: 'media_frame',
-                label: t('granVideoEditor.hudClip.types.mediaFrame', 'Media Frame'),
-              },
-            ]"
-            value-key="value"
-            label-key="label"
-            size="sm"
-            disabled
-          />
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.hudClip.background', 'Background Layer')
-          }}</span>
-          <div
-            class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
-            :class="
-              isBackgroundDragOver
-                ? 'border-primary-500 bg-primary-500/10'
-                : 'border-ui-border bg-ui-bg-muted'
-            "
-            @dragover.prevent="isBackgroundDragOver = true"
-            @dragleave.prevent="isBackgroundDragOver = false"
-            @drop.prevent="handleHudBackgroundDrop"
-          >
-            <div class="flex-1 min-w-0 flex items-center gap-2">
-              <UIcon name="i-heroicons-photo" class="w-4 h-4 text-ui-text-muted shrink-0" />
-              <span class="text-xs text-ui-text truncate">
-                {{
-                  (clip as import('~/timeline/types').TimelineHudClipItem).background?.source
-                    ?.path || t('granVideoEditor.hudClip.emptyLayer', 'Drop media here')
-                }}
-              </span>
-            </div>
-            <UButton
-              v-if="
-                (clip as import('~/timeline/types').TimelineHudClipItem).background?.source?.path
-              "
-              icon="i-heroicons-x-mark"
-              size="2xs"
-              color="gray"
-              variant="ghost"
-              @click="handleUpdateHudBackgroundPath(undefined)"
-            />
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-1 mt-1">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.hudClip.content', 'Content Layer')
-          }}</span>
-          <div
-            class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
-            :class="
-              isContentDragOver
-                ? 'border-primary-500 bg-primary-500/10'
-                : 'border-ui-border bg-ui-bg-muted'
-            "
-            @dragover.prevent="isContentDragOver = true"
-            @dragleave.prevent="isContentDragOver = false"
-            @drop.prevent="handleHudContentDrop"
-          >
-            <div class="flex-1 min-w-0 flex items-center gap-2">
-              <UIcon name="i-heroicons-video-camera" class="w-4 h-4 text-ui-text-muted shrink-0" />
-              <span class="text-xs text-ui-text truncate">
-                {{
-                  (clip as import('~/timeline/types').TimelineHudClipItem).content?.source?.path ||
-                  t('granVideoEditor.hudClip.emptyLayer', 'Drop media here')
-                }}
-              </span>
-            </div>
-            <UButton
-              v-if="(clip as import('~/timeline/types').TimelineHudClipItem).content?.source?.path"
-              icon="i-heroicons-x-mark"
-              size="2xs"
-              color="gray"
-              variant="ghost"
-              @click="handleUpdateHudContentPath(undefined)"
-            />
-          </div>
-        </div>
-      </div>
+      <ParamsRenderer
+        v-if="hudManifest"
+        :controls="hudManifest.controls"
+        :values="hudControlValues"
+        @update:value="handleUpdateHudControl"
+      />
     </PropertySection>
 
     <ClipTransitionsSection

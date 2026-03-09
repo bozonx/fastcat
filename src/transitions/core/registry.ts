@@ -1,4 +1,5 @@
 import type { Filter, Texture } from 'pixi.js';
+import type { ParamControl, ParamOption } from '~/components/properties/params';
 
 export type TransitionType = string;
 
@@ -40,21 +41,9 @@ export interface TransitionShaderContext {
   combinedTexture?: Texture;
 }
 
-export interface TransitionParamOption {
-  value: string;
-  labelKey: string;
-}
+export type TransitionParamOption = ParamOption;
 
-export interface TransitionParamField {
-  key: string;
-  kind: 'number' | 'color' | 'select' | 'slider' | 'boolean';
-  labelKey: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  options?: TransitionParamOption[];
-  showIf?: (params: Record<string, any>) => boolean;
-}
+export type TransitionParamField = ParamControl;
 
 export interface TransitionManifest<T = Record<string, any>> {
   type: TransitionType;

@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import { getEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 
 const props = defineProps<{
   effectType: string;
@@ -58,47 +58,12 @@ function handleUpdatePreset() {
     </div>
 
     <div class="space-y-3 bg-ui-bg border border-ui-border rounded p-3">
-      <template v-for="control in manifest.controls" :key="String(control.key)">
-        <div v-if="control.kind === 'slider'" class="flex flex-col gap-1">
-          <div class="flex justify-between text-xs text-ui-text-muted">
-            <span>{{ control.label }}</span>
-            <span>
-              {{
-                control.format
-                  ? control.format(params[control.key as string])
-                  : params[control.key as string]
-              }}
-            </span>
-          </div>
-          <WheelSlider
-            :model-value="params[control.key as string]"
-            :min="control.min"
-            :max="control.max"
-            :step="control.step"
-            :default-value="manifest.defaultValues?.[control.key as any]"
-            @update:model-value="handleUpdateParam(control.key as string, $event)"
-          />
-        </div>
-        <div v-else-if="control.kind === 'toggle'" class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{ control.label }}</span>
-          <USwitch
-            :model-value="params[control.key as string]"
-            size="sm"
-            @update:model-value="handleUpdateParam(control.key as string, $event)"
-          />
-        </div>
-        <div v-else-if="control.kind === 'select'" class="flex flex-col gap-1">
-          <span class="text-xs text-ui-text-muted">{{ control.label }}</span>
-          <USelectMenu
-            :model-value="params[control.key as string]"
-            :items="control.options"
-            size="sm"
-            value-key="value"
-            label-key="label"
-            @update:model-value="handleUpdateParam(control.key as string, $event)"
-          />
-        </div>
-      </template>
+      <ParamsRenderer
+        v-if="manifest.controls && manifest.controls.length > 0"
+        :controls="manifest.controls"
+        :values="params"
+        @update:value="handleUpdateParam"
+      />
       <div
         v-if="!manifest.controls || manifest.controls.length === 0"
         class="text-xs text-ui-text-muted text-center py-2"

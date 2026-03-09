@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import { getEffectManifest } from '~/effects';
 import type { ClipEffect } from '~/timeline/types';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -104,6 +104,10 @@ function openSaveModal(effectId: string) {
   savingEffectId.value = effectId;
   isSaveModalOpen.value = true;
 }
+
+function handleUpdateEffectValue(effectId: string, key: string, value: any) {
+  handleUpdateEffect(effectId, { [key]: value } as Partial<ClipEffect>);
+}
 </script>
 
 <template>
@@ -166,50 +170,12 @@ function openSaveModal(effectId: string) {
         </div>
 
         <div class="space-y-3">
-          <template
-            v-for="control in getEffectManifest(effect.type)?.controls"
-            :key="String(control.key)"
-          >
-            <div v-if="control.kind === 'slider'" class="flex flex-col gap-1">
-              <div class="flex justify-between text-xs text-ui-text-muted">
-                <span>{{ control.label }}</span>
-                <span>
-                  {{
-                    control.format
-                      ? control.format((effect as any)[control.key])
-                      : (effect as any)[control.key]
-                  }}
-                </span>
-              </div>
-              <WheelSlider
-                :model-value="(effect as any)[control.key]"
-                :min="control.min"
-                :max="control.max"
-                :step="control.step"
-                :default-value="getEffectManifest(effect.type)?.defaultValues?.[control.key as any]"
-                @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
-              />
-            </div>
-            <div v-else-if="control.kind === 'toggle'" class="flex items-center justify-between">
-              <span class="text-xs text-ui-text-muted">{{ control.label }}</span>
-              <USwitch
-                :model-value="(effect as any)[control.key]"
-                size="sm"
-                @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
-              />
-            </div>
-            <div v-else-if="control.kind === 'select'" class="flex flex-col gap-1">
-              <span class="text-xs text-ui-text-muted">{{ control.label }}</span>
-              <USelect
-                :model-value="(effect as any)[control.key]"
-                :items="control.options"
-                size="sm"
-                value-key="value"
-                label-key="label"
-                @update:model-value="handleUpdateEffect(effect.id, { [control.key]: $event })"
-              />
-            </div>
-          </template>
+          <ParamsRenderer
+            v-if="getEffectManifest(effect.type)?.controls"
+            :controls="getEffectManifest(effect.type)?.controls ?? []"
+            :values="effect as any"
+            @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"
+          />
         </div>
       </div>
     </div>
