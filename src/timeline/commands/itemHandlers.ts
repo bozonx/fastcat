@@ -806,6 +806,9 @@ export function updateClipProperties(
       (nextProps as any).strokeWidth =
         typeof nextProps.strokeWidth === 'number' ? nextProps.strokeWidth : undefined;
     }
+    if ('shapeConfig' in nextProps) {
+      (nextProps as any).shapeConfig = nextProps.shapeConfig;
+    }
   }
 
   if (item.clipType === 'hud') {

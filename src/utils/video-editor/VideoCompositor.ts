@@ -1562,6 +1562,7 @@ export class VideoCompositor {
         }
 
         if (clip.clipKind === 'hud') {
+          this.drawHudClip(clip);
           clip.sprite.visible = true;
           continue;
         }
