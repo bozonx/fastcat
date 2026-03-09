@@ -280,6 +280,15 @@ export function useMonitorTimeline() {
           if (style) {
             hash = mixHash(hash, hashString(JSON.stringify(style)));
           }
+        } else if ((item as any).clipType === 'shape') {
+          hash = mixHash(hash, hashString(String((item as any).shapeType ?? 'square')));
+          hash = mixHash(hash, hashString(String((item as any).fillColor ?? '#ffffff')));
+          hash = mixHash(hash, hashString(String((item as any).strokeColor ?? '#000000')));
+          hash = mixFloat(hash, (item as any).strokeWidth ?? 0, 1000);
+          const shapeConfig = (item as any).shapeConfig;
+          if (shapeConfig) {
+            hash = mixHash(hash, hashString(JSON.stringify(shapeConfig)));
+          }
         }
       }
     }
@@ -342,6 +351,17 @@ export function useMonitorTimeline() {
           const style = (item as any).style;
           if (style) {
             hash = mixHash(hash, hashString(JSON.stringify(style)));
+          }
+        }
+
+        if ((item as any).clipType === 'shape') {
+          hash = mixHash(hash, hashString(String((item as any).shapeType ?? 'square')));
+          hash = mixHash(hash, hashString(String((item as any).fillColor ?? '#ffffff')));
+          hash = mixHash(hash, hashString(String((item as any).strokeColor ?? '#000000')));
+          hash = mixFloat(hash, (item as any).strokeWidth ?? 0, 1000);
+          const shapeConfig = (item as any).shapeConfig;
+          if (shapeConfig) {
+            hash = mixHash(hash, hashString(JSON.stringify(shapeConfig)));
           }
         }
 

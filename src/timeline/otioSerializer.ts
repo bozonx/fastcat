@@ -483,6 +483,10 @@ function parseClipItem(input: {
         typeof granMeta?.strokeWidth === 'number' && Number.isFinite(granMeta.strokeWidth)
           ? Math.max(0, Number(granMeta.strokeWidth))
           : 0,
+      shapeConfig:
+        granMeta?.shapeConfig && typeof granMeta.shapeConfig === 'object'
+          ? granMeta.shapeConfig
+          : undefined,
     };
   }
 
@@ -690,6 +694,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             fillColor: item.clipType === 'shape' ? (item as any).fillColor : undefined,
             strokeColor: item.clipType === 'shape' ? (item as any).strokeColor : undefined,
             strokeWidth: item.clipType === 'shape' ? (item as any).strokeWidth : undefined,
+            shapeConfig: item.clipType === 'shape' ? (item as any).shapeConfig : undefined,
             isImage: item.isImage,
             transform: item.transform,
           },
