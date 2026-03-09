@@ -427,29 +427,16 @@ function closePanelAndRestoreTab(
 }
 
 // Changes on every structural change — forces Splitpanes to remount and pick up new sizes
-const cutPanelsLayoutKey = ref(0);
-watch(
-  () =>
-    JSON.stringify(
-      projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
-    ),
-  () => {
-    cutPanelsLayoutKey.value++;
-  },
+const cutPanelsLayoutKey = computed(() =>
+  JSON.stringify(
+    projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
+  )
 );
 
-const soundPanelsLayoutKey = ref(0);
-watch(
-  () =>
-    JSON.stringify(
-      projectStore.soundPanels.map((c: any) => ({
-        id: c.id,
-        rows: c.panels.map((p: any) => p.id),
-      })),
-    ),
-  () => {
-    soundPanelsLayoutKey.value++;
-  },
+const soundPanelsLayoutKey = computed(() =>
+  JSON.stringify(
+    projectStore.soundPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
+  )
 );
 
 const verticalSplitSizesKey = computed(
