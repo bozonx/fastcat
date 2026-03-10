@@ -279,6 +279,27 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const audioClips = workerAudioClips.value;
       const audioEngineClips = (
         await Promise.all(
+          audioClips.map(async (clip: WorkerTimelineClip) => {
+            try {
+              const path = clip.source?.path;
+              if (!path) return null;
+              const handle = await getFileHandleForAudio(path);
+              if (!handle) return null;
+              return {
+                id: clip.id,
+                trackId: clip.trackId,
+                sourcePath: getAudioSourceKey(path),
+                fileHandle: handle,
+                startUs: clip.timelineRange.startUs,
+                durationUs: clip.timelineRange.durationUs,
+                sourceStartUs: clip.sourceRange.startUs,
+                sourceRangeDurationUs: clip.sourceRange.durationUs,
+                sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
+                speed: (clip as any).speed,
+                reversed: (clip as any).reversed,
+                audioGain: (clip as any).audioGain,
+                audioBalance: (clip as any).audioBalance,
+                audioFadeInUs: (clip as any).audioFadeInUs,
                 audioFadeOutUs: (clip as any).audioFadeOutUs,
               };
             } catch {
@@ -495,6 +516,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         startUs: number;
         durationUs: number;
         sourceStartUs: number;
+        sourceRangeDurationUs: number;
         sourceDurationUs: number;
         speed?: number;
         audioGain?: number;
@@ -516,6 +538,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               startUs: clip.timelineRange.startUs,
               durationUs: clip.timelineRange.durationUs,
               sourceStartUs: clip.sourceRange.startUs,
+              sourceRangeDurationUs: clip.sourceRange.durationUs,
               sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
               speed: (clip as any).speed,
               reversed: (clip as any).reversed,

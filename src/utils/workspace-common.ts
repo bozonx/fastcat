@@ -35,6 +35,14 @@ export function toWorkspaceCommonPath(path?: string | null): string {
   return `${WORKSPACE_COMMON_PATH_PREFIX}/${normalized}`;
 }
 
+export function toWorkspaceCommonStoragePath(path?: string | null): string {
+  const normalized = toWorkspaceCommonPath(path);
+  if (normalized === WORKSPACE_COMMON_PATH_PREFIX) return WORKSPACE_COMMON_DIR_NAME;
+
+  const relative = stripWorkspaceCommonPathPrefix(normalized);
+  return relative ? `${WORKSPACE_COMMON_DIR_NAME}/${relative}` : WORKSPACE_COMMON_DIR_NAME;
+}
+
 export function normalizeWorkspaceFilePath(path: string): string {
   const trimmed = path.trim();
   if (!trimmed) return '';

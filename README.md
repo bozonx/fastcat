@@ -36,7 +36,20 @@ pnpm dev
 
 # Build for production
 pnpm build
+
+# Run desktop app with Tauri
+pnpm tauri:dev
+
+# Build desktop app bundle
+pnpm tauri:build
 ```
+
+## Desktop (Tauri)
+
+- Desktop mode uses Tauri 2 with `@tauri-apps/plugin-fs` for file system access.
+- File streaming in desktop mode uses `tauri-plugin-fs-stream` and `tauri-plugin-fs-stream-api`.
+- The desktop VFS adapter stores its local app-managed data in `BaseDirectory.AppData`.
+- Tauri capabilities are scoped to `$APPDATA/**/*` for the file manager and stream APIs.
 
 ## Architecture
 

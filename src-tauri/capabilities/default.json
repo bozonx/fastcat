@@ -6,6 +6,30 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "fs:allow-read",
+    "fs:allow-write",
+    "fs:allow-mkdir",
+    "fs:allow-remove",
+    "fs:allow-rename",
+    "fs:allow-copy-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$APPDATA/**/*"
+      ]
+    },
+    {
+      "identifier": "fs-stream:allow-open-read-file-stream",
+      "allow": [
+        "$APPDATA/**/*"
+      ]
+    },
+    {
+      "identifier": "fs-stream:allow-open-write-file-stream",
+      "allow": [
+        "$APPDATA/**/*"
+      ]
+    }
   ]
 }
