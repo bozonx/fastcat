@@ -12,17 +12,17 @@ export function useProjectActions() {
   const focusStore = useFocusStore();
   const toast = useToast();
 
-  function resetProjectState() {
+  async function resetProjectState() {
     timelineStore.resetTimelineState();
     mediaStore.resetMediaState();
-    projectStore.closeProject();
+    await projectStore.closeProject();
   }
 
   async function leaveProject(redirectPath: string = '/') {
     const router = useRouter();
     try {
       // Сначала сбрасываем состояние
-      resetProjectState();
+      await resetProjectState();
       // Затем переходим на указанный путь
       await router.push(redirectPath);
     } catch (e) {
@@ -49,7 +49,7 @@ export function useProjectActions() {
 
   async function openProject(name: string) {
     try {
-      resetProjectState();
+      await resetProjectState();
       await projectStore.openProject(name);
       uiStore.restoreFileTreeStateOnce(name);
 

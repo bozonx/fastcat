@@ -20,6 +20,7 @@ import LoadingScreen from '~/components/startup/LoadingScreen.vue';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
 import EditorHeader from '~/components/editor/EditorHeader.vue';
+import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
@@ -130,6 +131,7 @@ useHead({
       <!-- Modals -->
       <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
       <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
+      <ProjectLockedModal />
 
       <FileConversionModal
         v-model:open="conversionModalOpen"

@@ -300,16 +300,16 @@ function openSpeedModal(trackId: string, itemId: string, currentSpeed: unknown) 
     open: true,
     trackId,
     itemId,
-    speed: Math.max(0.1, Math.min(10, base)),
+    speed: Math.max(-10, Math.min(10, base)),
   };
 }
 
 async function saveSpeedModal() {
   if (!speedModal.value) return;
   const speed = Number(speedModal.value.speed);
-  if (!Number.isFinite(speed) || speed <= 0) return;
+  if (!Number.isFinite(speed) || speed === 0) return;
   timelineStore.updateClipProperties(speedModal.value.trackId, speedModal.value.itemId, {
-    speed: Math.max(0.1, Math.min(10, speed)),
+    speed: Math.max(-10, Math.min(10, speed)),
   });
   speedModal.value.open = false;
   await timelineStore.requestTimelineSave({ immediate: true });

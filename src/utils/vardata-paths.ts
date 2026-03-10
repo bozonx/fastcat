@@ -1,3 +1,5 @@
+import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
+
 export const VARDATA_DIR_NAME = 'vardata' as const;
 
 export const VARDATA_COMMON_DIR_NAME = 'common' as const;
@@ -12,9 +14,9 @@ export const VARDATA_PROJECT_WAVEFORMS_DIR_NAME = 'waveforms' as const;
 
 export const VARDATA_PROJECT_CACHE_DIR_NAME = 'cache' as const;
 
-export const VARDATA_PROJECT_TRANSCRIPTIONS_DIR_NAME = 'transcriptions' as const;
+export const VARDATA_PROJECT_TMP_DIR_NAME = 'tmp' as const;
 
-import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
+export const VARDATA_PROJECT_TRANSCRIPTIONS_DIR_NAME = 'transcriptions' as const;
 
 export interface VardataScopeSegmentsInput {
   path: string;
@@ -69,6 +71,10 @@ export function getProjectCacheSegments(projectId: string): string[] {
 
 export function getScopedCacheSegments(input: VardataScopeSegmentsInput): string[] {
   return [...getScopedVardataSegments(input), VARDATA_PROJECT_CACHE_DIR_NAME];
+}
+
+export function getProjectTmpSegments(projectId: string): string[] {
+  return [...getProjectVardataSegments(projectId), VARDATA_PROJECT_TMP_DIR_NAME];
 }
 
 export function getProjectTranscriptionsSegments(projectId: string): string[] {
