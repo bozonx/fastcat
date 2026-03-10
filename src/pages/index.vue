@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
 
 const { resetProjectState } = useProjectActions();
-const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
 

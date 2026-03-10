@@ -2,12 +2,10 @@
 import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
-const { openProject } = useProjectActions();
 
 // Локальная копия последнего проекта для отображения "Continue Working"
 // так как в родительском компоненте мы его удаляем из глобального стора
