@@ -9,10 +9,9 @@ definePageMeta({
   layout: 'mobile',
 });
 
-const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
-const { openProject, resetProjectState } = useProjectActions();
+const { resetProjectState } = useProjectActions();
 const router = useRouter();
 
 // Локальная копия последнего проекта для отображения предложения

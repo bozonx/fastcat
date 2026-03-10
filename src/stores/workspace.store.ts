@@ -33,7 +33,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
-  const lastProjectName = ref<string | null>(readLocalStorageString('gran-editor-last-opened-project'));
+  const lastProjectName = ref<string | null>(
+    readLocalStorageString('gran-editor-last-opened-project'),
+  );
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {

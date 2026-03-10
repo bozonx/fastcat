@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useProjectStore } from '~/stores/project.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -158,11 +159,12 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   void navigateToParentFolder();
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
   const projectId = route.params.id as string;
   if (projectId) {
-    projectStore.openProject(decodeURIComponent(projectId));
+    const { openProject } = useProjectActions();
+    await openProject(decodeURIComponent(projectId));
   } else {
     router.push('/');
   }
