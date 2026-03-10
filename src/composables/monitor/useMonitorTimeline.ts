@@ -51,7 +51,7 @@ export function useMonitorTimeline() {
       if (raw === undefined) return undefined;
       const v = Number(raw);
       if (!Number.isFinite(v)) return undefined;
-      return Math.max(0.1, Math.min(10, v));
+      return Math.max(-10, Math.min(10, v));
     }
 
     function sanitizeTransition(
@@ -90,7 +90,7 @@ export function useMonitorTimeline() {
           trackId: track.id,
           layer: trackCount - 1 - trackIndex,
           speed: sanitizeSpeed((item as any).speed) ?? 1,
-                    freezeFrameSourceUs: item.freezeFrameSourceUs,
+          freezeFrameSourceUs: item.freezeFrameSourceUs,
           opacity: item.opacity,
           blendMode: item.blendMode,
           effects,
@@ -188,7 +188,7 @@ export function useMonitorTimeline() {
     function sanitizeSpeed(raw: unknown): number {
       const v = Number(raw);
       if (!Number.isFinite(v)) return 1;
-      return Math.max(0.1, Math.min(10, v));
+      return Math.max(-10, Math.min(10, v));
     }
 
     const effectiveItems = buildEffectiveAudioClipItems({
@@ -208,7 +208,7 @@ export function useMonitorTimeline() {
         trackId: item.trackId,
         layer: 0,
         speed: sanitizeSpeed((item as any).speed),
-                audioGain: item.audioGain,
+        audioGain: item.audioGain,
         audioBalance: item.audioBalance,
         audioFadeInUs: item.audioFadeInUs,
         audioFadeOutUs: item.audioFadeOutUs,

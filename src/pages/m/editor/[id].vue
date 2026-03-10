@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { watch, onMounted } from 'vue';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -12,16 +14,35 @@ definePageMeta({
 });
 
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
 const { openProject } = useProjectActions();
 
 onMounted(() => {
   const projectId = route.params.id as string;
-  if (projectId) {
-    openProject(decodeURIComponent(projectId));
-  } else {
+  if (!projectId) {
     router.push('/m');
+    return;
+  }
+
+  const initProject = () => {
+    if (!workspaceStore.workspaceHandle) {
+      router.push('/m');
+      return;
+    }
+    openProject(decodeURIComponent(projectId));
+  };
+
+  if (workspaceStore.isInitializing) {
+    const unwatch = watch(() => workspaceStore.isInitializing, (isInit) => {
+      if (!isInit) {
+        unwatch();
+        initProject();
+      }
+    });
+  } else {
+    initProject();
   }
 });
 const { leaveProject } = useProjectActions();

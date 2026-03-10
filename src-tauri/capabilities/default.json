@@ -8,6 +8,11 @@
   "permissions": [
     "core:default",
     "dialog:allow-open",
+    "fs:allow-exists",
+    "fs:allow-stat",
+    "fs:allow-read-dir",
+    "fs:allow-read-file",
+    "fs:allow-write-file",
     "fs:allow-read",
     "fs:allow-write",
     "fs:allow-mkdir",
@@ -17,19 +22,22 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        "$APPDATA/**/*"
+        "$APPDATA/**/*",
+        "$HOME/**/*"
       ]
     },
     {
       "identifier": "fs-stream:allow-open-read-file-stream",
       "allow": [
-        "$APPDATA/**/*"
+        "$APPDATA/**/*",
+        "$HOME/**/*"
       ]
     },
     {
       "identifier": "fs-stream:allow-open-write-file-stream",
       "allow": [
-        "$APPDATA/**/*"
+        "$APPDATA/**/*",
+        "$HOME/**/*"
       ]
     }
   ]
