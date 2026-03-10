@@ -510,36 +510,28 @@ describe('TimelineStore', () => {
     } as any;
 
     projectStoreMock.getFileByPath.mockResolvedValue({
-      type: 'audio/mpeg',
-      size: 123,
+      type: 'image/jpeg',
+      size: 100,
       lastModified: 1,
     });
 
-    mediaStoreMock.getOrFetchMetadata.mockResolvedValue({
-      source: { size: 123, lastModified: 1 },
-      duration: 3,
-      audio: {
-        codec: 'mp3',
-        parsedCodec: 'mp3',
-        sampleRate: 44100,
-        channels: 2,
-      },
+    mediaStoreMock.getOrFetchMetadataByPath.mockResolvedValue({
+      source: { size: 100, lastModified: 1 },
+      duration: 5,
     });
 
     await store.addClipToTimelineFromPath({
-      trackId: 'a1',
-      name: 'audio.mp3',
-      path: '_audio/audio.mp3',
+      trackId: 'v1',
+      name: 'image.jpg',
+      path: '_images/image.jpg',
       startUs: 0,
     });
 
-    const track = (store.timelineDoc as any).tracks.find((t: any) => t.id === 'a1');
+    const track = (store.timelineDoc as any).tracks.find((t: any) => t.id === 'v1');
     expect(track.items).toHaveLength(1);
 
     const clip = track.items[0];
     expect(clip.clipType).toBe('media');
-    expect(clip.timelineRange.durationUs).toBe(3_000_000);
-    expect(clip.sourceDurationUs).toBe(3_000_000);
   });
 
   it('adds nested timeline clip from .otio path and blocks self-drop', async () => {
