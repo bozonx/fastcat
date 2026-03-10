@@ -1391,6 +1391,7 @@ export class VideoCompositor {
         typeof speedRaw === 'number' && Number.isFinite(speedRaw)
           ? Math.max(0.1, Math.min(10, speedRaw))
           : undefined;
+      const reversed = Boolean((next as any).reversed);
       const freezeFrameSourceUsRaw = (next as any).freezeFrameSourceUs;
       const freezeFrameSourceUs =
         typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
@@ -1404,6 +1405,7 @@ export class VideoCompositor {
       clip.sourceRangeDurationUs = sourceRangeDurationUs;
       clip.sourceDurationUs = sourceDurationUs;
       clip.speed = speed;
+      clip.reversed = reversed;
       clip.freezeFrameSourceUs = freezeFrameSourceUs;
       clip.layer = layer;
       clip.trackId =

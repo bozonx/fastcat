@@ -512,10 +512,12 @@ export class AudioEngine {
     const clipDurationS = clip.durationUs / 1_000_000;
     const clipEndS = clipStartS + clipDurationS;
 
-    const isBackward = this.globalSpeed < 0;
+    const isTimelineBackward = this.globalSpeed < 0;
+    const isClipReversed = clip.reversed === true;
+    const playReversedBuffer = isTimelineBackward !== isClipReversed;
 
     // If the clip is already completely in the past relative to current time, skip
-    if (isBackward) {
+    if (isTimelineBackward) {
       if (clipStartS >= currentTimeS) return;
     } else {
       if (clipEndS <= currentTimeS) return;
@@ -532,7 +534,7 @@ export class AudioEngine {
 
     const effectiveSpeed = speed * Math.abs(this.globalSpeed);
 
-    const currentClipLocalS = isBackward
+    const currentClipLocalS = isTimelineBackward
       ? Math.max(0, Math.min(clipEndS, currentTimeS) - clipStartS)
       : Math.max(0, currentTimeS - clipStartS);
 
@@ -548,7 +550,7 @@ export class AudioEngine {
     const audioBalance = normalizeBalance(clip.audioBalance, 0);
 
     // When to start playing in AudioContext time.
-    const playStartS = isBackward
+    const playStartS = isTimelineBackward
       ? currentTimeS > clipEndS
         ? this.ctx.currentTime + (currentTimeS - clipEndS) / Math.abs(this.globalSpeed)
         : this.ctx.currentTime
@@ -556,9 +558,11 @@ export class AudioEngine {
         ? this.ctx.currentTime + (clipStartS - currentTimeS) / Math.abs(this.globalSpeed)
         : this.ctx.currentTime;
 
-    const originalBufferOffsetS = sourceStartS + currentClipLocalS * speed;
+    const currentSourceTimeS = isClipReversed
+      ? sourceStartS + sourceDurationS - currentClipLocalS * speed
+      : sourceStartS + currentClipLocalS * speed;
 
-    if (isBackward) {
+    if (playReversedBuffer) {
       let reversedBuffer = this.reversedDecodedCache.get(sourceKey) ?? null;
       if (!reversedBuffer) {
         reversedBuffer = this.ctx.createBuffer(
@@ -576,14 +580,14 @@ export class AudioEngine {
       buffer = reversedBuffer;
     }
 
-    const remainingInClipS = isBackward
+    const remainingInClipS = isTimelineBackward
       ? currentClipLocalS
       : Math.max(0, clipDurationS - currentClipLocalS);
     const durationToPlayS = remainingInClipS * speed;
 
-    let safeBufferOffsetS = isBackward
-      ? buffer.duration - originalBufferOffsetS
-      : originalBufferOffsetS;
+    let safeBufferOffsetS = playReversedBuffer
+      ? buffer.duration - currentSourceTimeS
+      : currentSourceTimeS;
     let safeDurationToPlayS = durationToPlayS;
 
     if (!Number.isFinite(safeBufferOffsetS) || safeBufferOffsetS < 0) {
@@ -669,7 +673,7 @@ export class AudioEngine {
     }
 
     const t0 = currentClipLocalS;
-    const t1 = isBackward
+    const t1 = isTimelineBackward
       ? Math.max(0, currentClipLocalS - remainingInClipS)
       : currentClipLocalS + remainingInClipS;
     const g0 = gainAtClipTime(t0);
@@ -683,7 +687,7 @@ export class AudioEngine {
       gainParam.value = g0;
     }
 
-    if (!isBackward) {
+    if (!isTimelineBackward) {
       const inEndClipS = fadeInS;
       if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
         const rampEndClipS = Math.min(inEndClipS, t1);

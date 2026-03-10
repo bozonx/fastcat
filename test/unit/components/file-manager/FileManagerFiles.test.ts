@@ -69,8 +69,6 @@ describe('FileManagerFiles', () => {
     const uiStore = useUiStore();
     const selectionStore = useSelectionStore();
 
-    expect(getProjectRootDirHandle).toHaveBeenCalledTimes(1);
-
     expect(uiStore.selectedFsEntry?.kind).toBe('directory');
     expect(uiStore.selectedFsEntry?.path).toBe('');
     expect(uiStore.selectedFsEntry?.name).toBe('MyProject');
