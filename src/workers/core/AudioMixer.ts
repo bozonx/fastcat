@@ -130,6 +130,40 @@ export function resamplePlanarChannels(params: {
   });
 }
 
+export async function resampleChannelsOfflineAudioContext(params: {
+  planes: Float32Array[];
+  sourceSampleRate: number;
+  targetSampleRate: number;
+  sourceFrames: number;
+  targetFrames: number;
+  channels: number;
+}): Promise<Float32Array[]> {
+  const { planes, sourceSampleRate, targetSampleRate, sourceFrames, targetFrames, channels } =
+    params;
+  const OfflineCtx =
+    globalThis.OfflineAudioContext || (globalThis as any).webkitOfflineAudioContext;
+  if (!OfflineCtx) {
+    throw new Error('OfflineAudioContext not supported');
+  }
+  const offlineCtx = new OfflineCtx(channels, targetFrames, targetSampleRate);
+  const buffer = offlineCtx.createBuffer(channels, sourceFrames, sourceSampleRate);
+  for (let i = 0; i < channels; i += 1) {
+    if (planes[i]) {
+      buffer.copyToChannel(planes[i] as unknown as Float32Array<ArrayBuffer>, i, 0);
+    }
+  }
+  const source = offlineCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+  const renderedBuffer = await offlineCtx.startRendering();
+  const resampledPlanes: Float32Array[] = [];
+  for (let i = 0; i < channels; i += 1) {
+    resampledPlanes.push(renderedBuffer.getChannelData(i));
+  }
+  return resampledPlanes;
+}
+
 export interface PreparedClip {
   clipStartS: number;
   offsetS: number;
@@ -511,15 +545,26 @@ export class AudioMixer {
             let normalizedFrames = frames;
 
             if (sr !== sampleRate) {
-              await reportExportWarning(
-                '[Worker Export] Audio clip sample rate mismatch; applying linear resample.',
-              );
               normalizedFrames = Math.max(1, Math.round((frames * sampleRate) / sr));
-              normalizedPlanes = resamplePlanarChannels({
-                planes: normalizedPlanes,
-                sourceFrames: frames,
-                targetFrames: normalizedFrames,
-              });
+              try {
+                normalizedPlanes = await resampleChannelsOfflineAudioContext({
+                  planes: normalizedPlanes,
+                  sourceSampleRate: sr,
+                  targetSampleRate: sampleRate,
+                  sourceFrames: frames,
+                  targetFrames: normalizedFrames,
+                  channels: numberOfChannels,
+                });
+              } catch (err) {
+                await reportExportWarning(
+                  '[Worker Export] OfflineAudioContext resample failed; applying linear fallback.',
+                );
+                normalizedPlanes = resamplePlanarChannels({
+                  planes: normalizedPlanes,
+                  sourceFrames: frames,
+                  targetFrames: normalizedFrames,
+                });
+              }
             } else if (ch !== numberOfChannels) {
               await reportExportWarning(
                 '[Worker Export] Audio clip channel mismatch; normalizing channel layout.',
@@ -553,6 +598,9 @@ export class AudioMixer {
     }
 
     try {
+      const maxFramesInChunk = Math.ceil(sampleRate * chunkDurationS);
+      const mixedInterleavedPool = new Float32Array(maxFramesInChunk * numberOfChannels);
+
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
         ensureNotCancelled();
 
@@ -561,7 +609,8 @@ export class AudioMixer {
         const framesInChunk = Math.min(chunkFrames, totalFrames - chunkIndex * chunkFrames);
         if (framesInChunk <= 0) continue;
 
-        const mixedInterleaved = new Float32Array(framesInChunk * numberOfChannels);
+        const mixedInterleaved = mixedInterleavedPool.subarray(0, framesInChunk * numberOfChannels);
+        mixedInterleaved.fill(0);
 
         for (const clip of prepared) {
           ensureNotCancelled();

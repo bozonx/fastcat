@@ -60,9 +60,8 @@ interface DecodeResponse {
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private decodedCache = new Map<string, AudioBuffer | null>();
-  private reversedDecodedCache = new Map<string, AudioBuffer | null>();
   private decodeInFlight = new Map<string, Promise<AudioBuffer | null>>();
-  private activeNodes = new Map<string, AudioBufferSourceNode>();
+  private activeNodes = new Set<AudioBufferSourceNode>();
   private masterGain: GainNode | null = null;
   private monitorGain: GainNode | null = null;
   private isPlaying = false;
@@ -81,6 +80,9 @@ export class AudioEngine {
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
+
+  private scheduledClipIds = new Set<string>();
+  private scheduleTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {}
 
@@ -223,9 +225,9 @@ export class AudioEngine {
     }
   }
 
-  resumeContext() {
+  async resumeContext() {
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch((err) => {
+      await this.ctx.resume().catch((err) => {
         console.warn('[AudioEngine] resumeContext: Failed to resume', err);
       });
     }
@@ -244,6 +246,7 @@ export class AudioEngine {
       })),
     );
     this.currentClips = clips;
+    this.cleanupCache();
 
     // Best-effort prefetch: decode lazily and yield between tasks to avoid blocking UI.
     // Decoding is still async and browser-implemented; we just avoid a tight loop.
@@ -258,11 +261,22 @@ export class AudioEngine {
 
   updateTimelineLayout(clips: AudioEngineClip[]) {
     this.currentClips = clips;
+    this.cleanupCache();
     if (this.isPlaying) {
       // Re-evaluate playing nodes
       const currentTimeUs = this.getCurrentTimeUs();
       this.stopAllNodes();
-      this.play(currentTimeUs);
+      this.scheduledClipIds.clear();
+      void this.play(currentTimeUs, this.globalSpeed);
+    }
+  }
+
+  private cleanupCache() {
+    const activePaths = new Set(this.currentClips.map((c) => c.sourcePath).filter(Boolean));
+    for (const key of this.decodedCache.keys()) {
+      if (!activePaths.has(key)) {
+        this.decodedCache.delete(key);
+      }
     }
   }
 
@@ -366,34 +380,64 @@ export class AudioEngine {
 
   private globalSpeed = 1;
 
+  private startLookahead() {
+    this.stopLookahead();
+    this.scheduleLookahead();
+    this.scheduleTimer = setInterval(() => this.scheduleLookahead(), 50);
+  }
+
+  private stopLookahead() {
+    if (this.scheduleTimer) {
+      clearInterval(this.scheduleTimer);
+      this.scheduleTimer = null;
+    }
+  }
+
+  private scheduleLookahead() {
+    if (!this.isPlaying || this.globalSpeed <= 0) return;
+    const LOOKAHEAD_S = 0.5;
+    const currentS = this.getCurrentTimeS();
+    const endS = currentS + LOOKAHEAD_S;
+
+    for (const clip of this.currentClips) {
+      if (this.scheduledClipIds.has(clip.id)) continue;
+
+      const clipStartS = clip.startUs / 1_000_000;
+      const clipEndS = clipStartS + clip.durationUs / 1_000_000;
+
+      if (clipStartS <= endS && clipEndS >= currentS) {
+        this.scheduledClipIds.add(clip.id);
+        void this.scheduleClip(clip, currentS);
+      }
+    }
+  }
+
   async play(timeUs: number, speed = 1) {
     this.isPlaying = true;
     this.globalSpeed = speed;
     const timeS = timeUs / 1_000_000;
     this.baseTimeS = timeS;
+    this.scheduledClipIds.clear();
 
     if (!this.ctx) return;
-
-    this.playbackContextTimeS = this.ctx.currentTime;
 
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume().catch((err) => {
         console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
       });
-      // Update context time after resume since it might have been delayed
-      this.playbackContextTimeS = this.ctx.currentTime;
     }
+    // Update context time after resume since it might have been delayed
+    this.playbackContextTimeS = this.ctx.currentTime;
 
-    if (this.globalSpeed !== 0) {
-      for (const clip of this.currentClips) {
-        // Fire and forget
-        void this.scheduleClip(clip, timeS);
-      }
+    if (this.globalSpeed > 0) {
+      this.startLookahead();
     }
   }
 
   stop() {
     this.isPlaying = false;
+    this.stopLookahead();
+    this.scheduledClipIds.clear();
     this.stopAllNodes();
   }
 
@@ -413,18 +457,21 @@ export class AudioEngine {
     }
 
     this.stopAllNodes();
+    this.stopLookahead();
+    this.scheduledClipIds.clear();
 
     this.baseTimeS = currentTimeS;
     this.playbackContextTimeS = this.ctx.currentTime;
 
-    for (const clip of this.currentClips) {
-      void this.scheduleClip(clip, currentTimeS);
+    if (this.globalSpeed > 0) {
+      this.startLookahead();
     }
   }
 
   seek(timeUs: number) {
     if (this.isPlaying) {
       this.stopAllNodes();
+      this.scheduledClipIds.clear();
 
       const timeS = timeUs / 1_000_000;
       this.baseTimeS = timeS;
@@ -433,8 +480,8 @@ export class AudioEngine {
 
       this.playbackContextTimeS = this.ctx.currentTime;
 
-      for (const clip of this.currentClips) {
-        void this.scheduleClip(clip, timeS);
+      if (this.globalSpeed > 0) {
+        this.scheduleLookahead();
       }
     }
   }
@@ -481,8 +528,9 @@ export class AudioEngine {
     };
   }
 
-  private async scheduleClip(clip: AudioEngineClip, currentTimeS: number) {
+  private async scheduleClip(clip: AudioEngineClip, triggerTimeS: number) {
     if (!this.ctx || !this.masterGain) return;
+    if (this.globalSpeed <= 0) return; // No backward playback
 
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return;
@@ -491,49 +539,32 @@ export class AudioEngine {
     if (!buffer) {
       const inFlight = this.decodeInFlight.get(sourceKey);
       if (inFlight) {
-        logger.debug(`Buffer not in cache for ${clip.id}, awaiting decode...`);
         buffer = await inFlight;
       } else {
-        logger.debug(`Buffer not in cache for ${clip.id}, awaiting decode...`);
         buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
       }
-      // Re-evaluate current time since decoding takes time
-      currentTimeS = this.getCurrentTimeS();
     }
-    let scheduledBuffer = buffer!;
+    if (!buffer) return;
+
+    const currentTimeS = this.getCurrentTimeS();
 
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;
     const clipEndS = clipStartS + clipDurationS;
 
-    const isTimelineBackward = this.globalSpeed < 0;
-
-    // If the clip is already completely in the past relative to current time, skip
-    if (isTimelineBackward) {
-      if (clipStartS >= currentTimeS) return;
-    } else {
-      if (clipEndS <= currentTimeS) return;
-    }
+    if (clipEndS <= currentTimeS) return;
 
     const sourceStartS = clip.sourceStartUs / 1_000_000;
-    const sourceRangeDurationS = Math.max(0, clip.sourceRangeDurationUs / 1_000_000);
 
     const speedRaw = clip.speed;
-    if (typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw <= 0) return;
+    if (typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw <= 0) return; // No reverse clips
     const clipSpeed =
       typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
-        ? Math.max(-10, Math.min(10, speedRaw))
+        ? Math.min(10, speedRaw)
         : 1;
 
-    const isClipReversed = clipSpeed < 0;
-    if (isClipReversed) return;
-    const playReversedBuffer = isTimelineBackward !== isClipReversed;
-    const absSpeed = Math.abs(clipSpeed);
-    const effectiveSpeed = absSpeed * Math.abs(this.globalSpeed);
-
-    const currentClipLocalS = isTimelineBackward
-      ? Math.max(0, Math.min(clipEndS, currentTimeS) - clipStartS)
-      : Math.max(0, currentTimeS - clipStartS);
+    const effectiveSpeed = clipSpeed * this.globalSpeed;
+    const currentClipLocalS = Math.max(0, currentTimeS - clipStartS);
 
     const { previousClip, nextClip } = this.getAdjacentClips(clip);
     const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
@@ -546,60 +577,29 @@ export class AudioEngine {
     const audioGain = normalizeGain(clip.audioGain, 1);
     const audioBalance = normalizeBalance(clip.audioBalance, 0);
 
-    // When to start playing in AudioContext time.
-    const playStartS = isTimelineBackward
-      ? currentTimeS > clipEndS
-        ? this.ctx.currentTime + (currentTimeS - clipEndS) / Math.abs(this.globalSpeed)
-        : this.ctx.currentTime
-      : currentTimeS < clipStartS
-        ? this.ctx.currentTime + (clipStartS - currentTimeS) / Math.abs(this.globalSpeed)
+    const playStartS =
+      currentTimeS < clipStartS
+        ? this.ctx.currentTime + (clipStartS - currentTimeS) / this.globalSpeed
         : this.ctx.currentTime;
 
-    const currentSourceTimeS = isClipReversed
-      ? sourceStartS + Math.max(0, sourceRangeDurationS - currentClipLocalS * absSpeed)
-      : sourceStartS + currentClipLocalS * absSpeed;
+    const currentSourceTimeS = sourceStartS + currentClipLocalS * clipSpeed;
 
-    if (playReversedBuffer) {
-      let reversedBuffer = this.reversedDecodedCache.get(sourceKey) ?? null;
-      if (!reversedBuffer) {
-        reversedBuffer = this.ctx.createBuffer(
-          scheduledBuffer.numberOfChannels,
-          scheduledBuffer.length,
-          scheduledBuffer.sampleRate,
-        );
-        for (let i = 0; i < scheduledBuffer.numberOfChannels; i++) {
-          const dest = reversedBuffer.getChannelData(i);
-          dest.set(scheduledBuffer.getChannelData(i));
-          dest.reverse();
-        }
-        this.reversedDecodedCache.set(sourceKey, reversedBuffer);
-      }
-      scheduledBuffer = reversedBuffer;
-    }
+    const remainingInClipS = Math.max(0, clipDurationS - currentClipLocalS);
+    const durationToPlayS = remainingInClipS * clipSpeed;
 
-    const remainingInClipS = isTimelineBackward
-      ? currentClipLocalS
-      : Math.max(0, clipDurationS - currentClipLocalS);
-    const durationToPlayS = remainingInClipS * absSpeed;
-
-    let safeBufferOffsetS = playReversedBuffer
-      ? scheduledBuffer.duration - currentSourceTimeS
-      : currentSourceTimeS;
+    let safeBufferOffsetS = currentSourceTimeS;
     let safeDurationToPlayS = durationToPlayS;
 
     if (!Number.isFinite(safeBufferOffsetS) || safeBufferOffsetS < 0) {
       safeBufferOffsetS = 0;
     }
 
-    if (safeBufferOffsetS >= scheduledBuffer.duration) {
-      const epsilon =
-        1 / Math.max(1, Math.round(Number((scheduledBuffer as any).sampleRate) || 48000));
-      safeBufferOffsetS = Math.max(0, scheduledBuffer.duration - epsilon);
+    const epsilon = 1 / Math.max(1, Math.round(buffer.sampleRate || 48000));
+    if (safeBufferOffsetS >= buffer.duration) {
+      safeBufferOffsetS = Math.max(0, buffer.duration - epsilon);
     }
 
-    const epsilon =
-      1 / Math.max(1, Math.round(Number((scheduledBuffer as any).sampleRate) || 48000));
-    const remainingInBufferS = Math.max(0, scheduledBuffer.duration - safeBufferOffsetS);
+    const remainingInBufferS = Math.max(0, buffer.duration - safeBufferOffsetS);
     safeDurationToPlayS = Math.min(
       Math.max(safeDurationToPlayS, epsilon),
       Math.max(remainingInBufferS, epsilon),
@@ -609,19 +609,8 @@ export class AudioEngine {
       return;
     }
 
-    logger.debug(`scheduleClip ${clip.id}`, {
-      clipStartS,
-      clipDurationS,
-      currentTimeS,
-      bufferOffsetS: safeBufferOffsetS,
-      durationToPlayS,
-      playStartS,
-      ctxCurrentTime: this.ctx.currentTime,
-      bufferDuration: scheduledBuffer.duration,
-    });
-
     const sourceNode = this.ctx.createBufferSource();
-    sourceNode.buffer = scheduledBuffer;
+    sourceNode.buffer = buffer;
     if (sourceNode.playbackRate) {
       sourceNode.playbackRate.value = effectiveSpeed;
     }
@@ -630,8 +619,8 @@ export class AudioEngine {
 
     const anyCtx = this.ctx as any;
     const canPan = typeof anyCtx.createStereoPanner === 'function';
-    const panner: StereoPannerNode | null = canPan ? (anyCtx.createStereoPanner() as any) : null;
-    if (panner) {
+    if (canPan) {
+      const panner: StereoPannerNode = anyCtx.createStereoPanner();
       panner.pan.value = audioBalance;
       sourceNode.connect(panner);
       panner.connect(clipGain);
@@ -652,10 +641,6 @@ export class AudioEngine {
       clipGain.connect(this.masterGain);
     }
 
-    // Apply clip-local fade envelope (in timeline time, not buffer time).
-    // Since playbackRate is set, the node plays `durationToPlayS / speed` seconds in context time,
-    // which equals `remainingInClipS`.
-    const nowS = this.ctx.currentTime;
     const startAtS = playStartS;
     const endAtS = startAtS + remainingInClipS;
 
@@ -672,84 +657,38 @@ export class AudioEngine {
     }
 
     const t0 = currentClipLocalS;
-    const t1 = isTimelineBackward
-      ? Math.max(0, currentClipLocalS - remainingInClipS)
-      : currentClipLocalS + remainingInClipS;
-    const g0 = gainAtClipTime(t0);
-    const gainParam: any = clipGain.gain as any;
-    if (typeof gainParam.cancelScheduledValues === 'function') {
-      gainParam.cancelScheduledValues(nowS);
-    }
-    if (typeof gainParam.setValueAtTime === 'function') {
-      gainParam.setValueAtTime(g0, startAtS);
-    } else {
-      gainParam.value = g0;
+    const t1 = currentClipLocalS + remainingInClipS;
+    const gainParam: any = clipGain.gain;
+
+    gainParam.cancelScheduledValues?.(this.ctx.currentTime);
+    gainParam.setValueAtTime?.(gainAtClipTime(t0), startAtS);
+
+    const inEndClipS = fadeInS;
+    if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
+      const rampEndClipS = Math.min(inEndClipS, t1);
+      const rampEndAtS = startAtS + (rampEndClipS - t0);
+      gainParam.linearRampToValueAtTime?.(gainAtClipTime(rampEndClipS), rampEndAtS);
     }
 
-    if (!isTimelineBackward) {
-      const inEndClipS = fadeInS;
-      if (fadeInS > 0 && t0 < inEndClipS && t1 > 0) {
-        const rampEndClipS = Math.min(inEndClipS, t1);
-        const rampEndAtS = startAtS + (rampEndClipS - t0);
-        if (typeof gainParam.linearRampToValueAtTime === 'function') {
-          gainParam.linearRampToValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
-        } else if (typeof gainParam.setValueAtTime === 'function') {
-          gainParam.setValueAtTime(gainAtClipTime(rampEndClipS), rampEndAtS);
-        }
-      }
-
-      const outStartClipS = clipDurationS - fadeOutS;
-      if (fadeOutS > 0 && t1 > outStartClipS) {
-        const rampStartClipS = Math.max(outStartClipS, t0);
-        const rampStartAtS = startAtS + (rampStartClipS - t0);
-        // Ensure we are at the correct value at ramp start, then ramp down to end.
-        if (typeof gainParam.setValueAtTime === 'function') {
-          gainParam.setValueAtTime(gainAtClipTime(rampStartClipS), rampStartAtS);
-        }
-        if (typeof gainParam.linearRampToValueAtTime === 'function') {
-          gainParam.linearRampToValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
-        } else if (typeof gainParam.setValueAtTime === 'function') {
-          gainParam.setValueAtTime(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
-        }
-      }
-    } else {
-      // In backward playback, the time t decreases from t0 down to t1.
-      // E.g. fading out at the end, if we play backward, we are fading IN.
-      // It starts at t0 (which is e.g. end of clip) and goes down to t1 (e.g. start of clip).
-      const outStartClipS = clipDurationS - fadeOutS;
-      if (fadeOutS > 0 && t0 > outStartClipS) {
-        const rampEndClipS = Math.max(outStartClipS, t1); // the time we stop fading (during backward)
-        const rampEndAtS = startAtS + (t0 - rampEndClipS) / absSpeed;
-        if (typeof gainParam.setValueAtTime === 'function') {
-          // It's a bit complex with linearRampToValueAtTime since we ramp to a value over backward time.
-          // We can just use setValueAtTime for the endpoints.
-          gainParam.linearRampToValueAtTime?.(gainAtClipTime(rampEndClipS), rampEndAtS);
-        }
-      }
-      const inEndClipS = fadeInS;
-      if (fadeInS > 0 && t1 < inEndClipS) {
-        const rampStartClipS = Math.min(inEndClipS, t0);
-        const rampStartAtS = startAtS + (t0 - rampStartClipS) / absSpeed;
-        gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
-        gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), endAtS);
-      }
+    const outStartClipS = clipDurationS - fadeOutS;
+    if (fadeOutS > 0 && t1 > outStartClipS) {
+      const rampStartClipS = Math.max(outStartClipS, t0);
+      const rampStartAtS = startAtS + (rampStartClipS - t0);
+      gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
+      gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
     }
 
     sourceNode.start(playStartS, safeBufferOffsetS, safeDurationToPlayS);
 
-    // Keep track to stop if needed
-    // Using a composite key since a clip might be split or repeated (id should be unique though)
-    this.activeNodes.set(clip.id, sourceNode);
+    this.activeNodes.add(sourceNode);
 
     sourceNode.onended = () => {
-      if (this.activeNodes.get(clip.id) === sourceNode) {
-        this.activeNodes.delete(clip.id);
-      }
+      this.activeNodes.delete(sourceNode);
     };
   }
 
   private stopAllNodes() {
-    for (const [id, node] of this.activeNodes.entries()) {
+    for (const node of this.activeNodes) {
       try {
         node.stop();
         node.disconnect();
@@ -762,6 +701,7 @@ export class AudioEngine {
 
   destroy() {
     this.stopAllNodes();
+    this.stopLookahead();
     if (this.ctx) {
       this.ctx.close();
       this.ctx = null;
