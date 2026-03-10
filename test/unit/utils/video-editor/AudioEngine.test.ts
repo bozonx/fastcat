@@ -156,6 +156,7 @@ function createClip(overrides: Partial<Parameters<AudioEngine['loadClips']>[0][n
     startUs: 0,
     durationUs: 1_000_000,
     sourceStartUs: 0,
+    sourceRangeDurationUs: 1_000_000,
     sourceDurationUs: 1_000_000,
     ...overrides,
   };

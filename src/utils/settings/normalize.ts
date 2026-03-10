@@ -207,6 +207,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const manualFilesApiInput = (integrationsInput.manualFilesApi ?? {}) as Record<string, unknown>;
   const manualSttApiInput = (integrationsInput.manualSttApi ?? {}) as Record<string, unknown>;
   const sttInput = (integrationsInput.stt ?? {}) as Record<string, unknown>;
+  const videoInput = (input.video ?? {}) as Record<string, unknown>;
 
   const hotkeys = normalizeHotkeys(input.hotkeys);
 
@@ -467,6 +468,12 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
             ? sttInput.includeWords
             : DEFAULT_USER_SETTINGS.integrations.stt.includeWords,
       },
+    },
+    video: {
+      enableFfmpeg:
+        typeof videoInput.enableFfmpeg === 'boolean'
+          ? videoInput.enableFfmpeg
+          : DEFAULT_USER_SETTINGS.video.enableFfmpeg,
     },
     mouse: normalizedMouse,
   };

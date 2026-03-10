@@ -1602,7 +1602,7 @@ export class VideoCompositor {
         const localTimeUs = timeUs - clip.startUs;
         const speed = typeof clip.speed === 'number' ? clip.speed : 1;
         const reversed = clip.reversed === true;
-        const maxTimelineUs = speed > 0 ? Math.round(clip.sourceDurationUs / speed) : 0;
+        const maxTimelineUs = speed > 0 ? Math.round(clip.sourceRangeDurationUs / speed) : 0;
         if (localTimeUs < 0 || localTimeUs >= maxTimelineUs) {
           console.warn('[DBG] clip hidden by maxTimelineUs', {
             id: clip.itemId,
@@ -1620,7 +1620,7 @@ export class VideoCompositor {
 
         // Calculate effective local time based on playback direction
         const effectiveLocalUs = reversed
-          ? clip.sourceRangeDurationUs - Math.round(localTimeUs * speed)
+          ? Math.max(0, clip.sourceRangeDurationUs - Math.round(localTimeUs * speed))
           : Math.round(localTimeUs * speed);
 
         const sampleTimeS =

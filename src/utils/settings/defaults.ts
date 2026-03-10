@@ -21,6 +21,10 @@ export interface SttIntegrationSettings {
   includeWords: boolean;
 }
 
+export interface VideoSettings {
+  enableFfmpeg: boolean;
+}
+
 export interface ExternalIntegrationsSettings {
   granPublicador: GranPublicadorIntegrationSettings;
   manualFilesApi: ManualExternalApiSettings;
@@ -102,6 +106,7 @@ export interface GranVideoEditorUserSettings {
     };
   };
   integrations: ExternalIntegrationsSettings;
+  video: VideoSettings;
   mouse: {
     ruler: {
       wheel: 'zoom_horizontal' | 'scroll_horizontal' | 'seek_frame' | 'seek_second' | 'none';
@@ -274,6 +279,9 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       formatText: false,
       includeWords: true,
     },
+  },
+  video: {
+    enableFfmpeg: false,
   },
   mouse: {
     ruler: {

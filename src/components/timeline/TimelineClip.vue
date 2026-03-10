@@ -753,6 +753,11 @@ const isFreePosition = computed(() => {
       @drop="handleDrop"
     >
       <div
+        v-if="clipItem && clipItem.reversed && !isMediaMissing"
+        class="absolute inset-0 rounded border-2 border-violet-400 pointer-events-none z-15"
+      ></div>
+
+      <div
         v-if="isFreePosition"
         class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none z-35"
       ></div>
