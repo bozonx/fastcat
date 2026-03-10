@@ -11,6 +11,7 @@ export interface WorkerTimelineClip {
   audioFadeOutUs?: number;
   audioFadeInCurve?: 'linear' | 'logarithmic';
   audioFadeOutCurve?: 'linear' | 'logarithmic';
+  audioDeclickDurationUs?: number;
   transitionIn?: import('~/timeline/types').ClipTransition;
   transitionOut?: import('~/timeline/types').ClipTransition;
   source?: {

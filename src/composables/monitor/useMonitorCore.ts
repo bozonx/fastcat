@@ -238,6 +238,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 audioBalance: (c as any).audioBalance,
                 audioFadeInUs: (c as any).audioFadeInUs,
                 audioFadeOutUs: (c as any).audioFadeOutUs,
+                audioDeclickDurationUs: (c as any).audioDeclickDurationUs,
                 source: c.source,
                 timelineRange: c.timelineRange,
                 sourceRange: c.sourceRange,

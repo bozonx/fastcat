@@ -80,6 +80,7 @@ interface AudioClipData {
   audioFadeOutUs?: number;
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
+  audioDeclickDurationUs?: number;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
   gran?: {
@@ -89,6 +90,7 @@ interface AudioClipData {
     audioFadeOutUs?: number;
     audioFadeInCurve?: AudioFadeCurve;
     audioFadeOutCurve?: AudioFadeCurve;
+    audioDeclickDurationUs?: number;
     transitionIn?: AudioTransitionEnvelope | null;
     transitionOut?: AudioTransitionEnvelope | null;
   };
@@ -215,6 +217,8 @@ export class AudioMixer {
           audioFadeOutUs: clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs,
           audioFadeInCurve: clipData.audioFadeInCurve ?? clipData.gran?.audioFadeInCurve,
           audioFadeOutCurve: clipData.audioFadeOutCurve ?? clipData.gran?.audioFadeOutCurve,
+          audioDeclickDurationUs:
+            clipData.audioDeclickDurationUs ?? clipData.gran?.audioDeclickDurationUs,
           transitionIn: clipData.transitionIn ?? clipData.gran?.transitionIn,
           transitionOut: clipData.transitionOut ?? clipData.gran?.transitionOut,
         },
