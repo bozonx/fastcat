@@ -209,6 +209,7 @@ describe('VideoCompositor render optimization', () => {
         style: undefined,
         textDirty: false,
         effectFilters: new Map(),
+        ctx: { measureText: () => ({ width: 100 }) },
       },
     ];
 
