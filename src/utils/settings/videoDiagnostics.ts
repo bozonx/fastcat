@@ -350,7 +350,7 @@ export function createVideoDiagnosticsSnapshot(params: {
       items: [
         {
           label: 'Compositor path',
-          value: compositorReady ? 'Pixi renderer on WebGL' : 'Limited or fallback-only',
+          value: compositorReady ? 'Pixi renderer on WebGPU' : 'Limited or fallback-only',
         },
         {
           label: 'WebGL available',
@@ -434,7 +434,7 @@ export function createVideoDiagnosticsSnapshot(params: {
     },
     {
       description:
-        'WebGPU information is diagnostic only right now. The current compositor code uses WebGL, not WebGPU.',
+        'WebGPU information is diagnostic only right now. The current compositor code uses WebGPU (with WebGL fallback).',
       items: [
         {
           label: 'Adapter available',
