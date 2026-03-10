@@ -39,11 +39,11 @@ function resetDefaults() {
           v-slot="{ modelValue }"
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
           :items="[
-            { label: '2.5 MP (1080p)', value: 2_500_000 },
-            { label: '1.3 MP (720p)', value: 1_300_000 },
-            { label: '0.6 MP (480p)', value: 600_000 },
-            { label: '0.3 MP (360p)', value: 300_000 },
-            { label: '0.2 MP (240p)', value: 200_000 },
+            { label: '3.0 MP (1080p+)', value: 3_000_000 },
+            { label: '1.5 MP (720p+)', value: 1_500_000 },
+            { label: '0.7 MP (480p+)', value: 700_000 },
+            { label: '0.4 MP (360p+)', value: 400_000 },
+            { label: '0.2 MP (240p+)', value: 200_000 },
           ]"
           value-key="value"
           label-key="label"
@@ -58,11 +58,11 @@ function resetDefaults() {
             class="w-full justify-between"
             :label="
               [
-                { label: '2.5 MP (1080p)', value: 2_500_000 },
-                { label: '1.3 MP (720p)', value: 1_300_000 },
-                { label: '0.6 MP (480p)', value: 600_000 },
-                { label: '0.3 MP (360p)', value: 300_000 },
-                { label: '0.2 MP (240p)', value: 200_000 },
+                { label: '3.0 MP (1080p+)', value: 3_000_000 },
+                { label: '1.5 MP (720p+)', value: 1_500_000 },
+                { label: '0.7 MP (480p+)', value: 700_000 },
+                { label: '0.4 MP (360p+)', value: 400_000 },
+                { label: '0.2 MP (240p+)', value: 200_000 },
               ].find((i) => i.value === workspaceStore.userSettings.optimization.proxyMaxPixels)
                 ?.label || workspaceStore.userSettings.optimization.proxyMaxPixels + ' px'
             "

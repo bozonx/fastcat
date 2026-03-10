@@ -217,7 +217,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     bindings: {},
   },
   optimization: {
-    proxyMaxPixels: 1_300_000,
+    proxyMaxPixels: 1_500_000,
     proxyVideoBitrateMbps: 2,
     proxyAudioBitrateKbps: 128,
     proxyCopyOpusAudio: true,

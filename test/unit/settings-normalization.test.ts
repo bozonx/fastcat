@@ -16,11 +16,11 @@ describe('settings normalization', () => {
     expect(
       normalizeUserSettings({ optimization: { proxyResolution: '360p' } }).optimization
         .proxyMaxPixels,
-    ).toBe(230_000);
+    ).toBe(400_000);
     expect(
       normalizeUserSettings({ optimization: { proxyResolution: '1080p' } }).optimization
         .proxyMaxPixels,
-    ).toBe(2_073_600);
+    ).toBe(3_000_000);
   });
 
   it('normalizes proxyMaxPixels', () => {
