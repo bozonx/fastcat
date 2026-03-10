@@ -34,6 +34,8 @@ import { isOpenableProjectFileName } from '~/utils/media-types';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 
 const projectStore = useProjectStore();
+const route = useRoute();
+const router = useRouter();
 const { currentProjectId } = storeToRefs(projectStore);
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
