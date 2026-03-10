@@ -2,7 +2,7 @@ import { mkdir, readDir, readFile, writeFile, remove, stat, exists } from '@taur
 import { join } from '@tauri-apps/api/path';
 
 export class TauriFileHandle {
-  kind: 'file' = 'file';
+  kind = 'file' as const;
   name: string;
   path: string;
 
@@ -42,7 +42,7 @@ export class TauriFileHandle {
 }
 
 export class TauriDirectoryHandle {
-  kind: 'directory' = 'directory';
+  kind = 'directory' as const;
   name: string;
   path: string;
 

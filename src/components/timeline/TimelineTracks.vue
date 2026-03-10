@@ -378,7 +378,7 @@ function selectTransition(
           }}</span>
         </div>
 
-        <WheelNumberInput v-model="speedModalSpeed" :min="0.1" :max="10" :step="0.05" />
+        <WheelNumberInput v-model="speedModalSpeed" :min="-10" :max="10" :step="0.05" />
       </div>
 
       <template #footer>

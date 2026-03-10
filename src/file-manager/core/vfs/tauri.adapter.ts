@@ -15,6 +15,8 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
+import { TauriDirectoryHandle } from "~/stores/workspace/provider/tauri-handle";
+
 export class TauriFileSystemAdapter implements IFileSystemAdapter {
   id = 'tauri';
   private basePath: string;
@@ -34,7 +36,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     }).catch(() => undefined);
   }
 
-  private getBaseDirectory(): BaseDirectory {
+  private getBaseDirectory(): BaseDirectory | undefined {
+    if (this.basePath.startsWith('/')) {
+      return undefined;
+    }
     if (this.basePath === 'app-data') {
       return BaseDirectory.AppData;
     }
@@ -64,7 +69,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
   private async resolveStreamPath(path: string): Promise<string> {
     const normalizedPath = this.normalizePath(path);
-    const baseDirPath = await appDataDir();
+    const baseDirPath = this.basePath.startsWith('/') ? this.basePath : await appDataDir();
     return normalizedPath ? await join(baseDirPath, normalizedPath) : baseDirPath;
   }
 

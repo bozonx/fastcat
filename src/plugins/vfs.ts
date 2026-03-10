@@ -4,6 +4,7 @@ import { RouterFileSystemAdapter } from '~/file-manager/core/vfs/router.adapter'
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
+import { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
   WORKSPACE_COMMON_PATH_PREFIX,
@@ -17,7 +18,9 @@ export default defineNuxtPlugin(async () => {
 
   if (isTauri) {
     // В будущем здесь можно передавать базовый путь, например, директорию документов
-    adapter = new TauriFileSystemAdapter('app-data');
+    const workspaceStore = useWorkspaceStore();
+    const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle;
+    adapter = new TauriFileSystemAdapter(handle?.path || 'app-data');
   } else {
     // Дефолтный веб-подход на базе OPFS
     const projectStore = useProjectStore();
