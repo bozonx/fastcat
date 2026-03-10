@@ -36,6 +36,11 @@ export default defineNuxtPlugin(async () => {
         adapter: workspaceAdapter,
         stripPrefix: toWorkspaceCommonStoragePath,
       },
+      {
+        prefix: '/vardata',
+        adapter: workspaceAdapter,
+        stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
+      },
     ]);
   } else {
     // Дефолтный веб-подход на базе OPFS
@@ -52,6 +57,11 @@ export default defineNuxtPlugin(async () => {
         prefix: WORKSPACE_COMMON_PATH_PREFIX,
         adapter: workspaceAdapter,
         stripPrefix: toWorkspaceCommonStoragePath,
+      },
+      {
+        prefix: '/vardata',
+        adapter: workspaceAdapter,
+        stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
       },
     ]);
   }

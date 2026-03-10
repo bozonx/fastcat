@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -12,6 +12,7 @@ export function useGlobalDragAndDrop() {
   const projectStore = useProjectStore();
   const fm = useFileManager();
 
+  // Web Drop
   function onGlobalDragOver(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
@@ -49,6 +50,81 @@ export function useGlobalDragAndDrop() {
       isDropInProgress.value = false;
     }
   }
+
+  // Tauri Drop
+  let unlistenTauriDrop: (() => void) | undefined;
+
+  onMounted(async () => {
+    if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+      try {
+        const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+        unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
+          if (event.payload.type === 'over') {
+            uiStore.isGlobalDragging = true;
+          } else if (event.payload.type === 'leave') {
+            uiStore.isGlobalDragging = false;
+          } else if (event.payload.type === 'drop') {
+            uiStore.isGlobalDragging = false;
+
+            if (isDropInProgress.value) return;
+            if (uiStore.isFileManagerDragging) return;
+            if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+
+            isDropInProgress.value = true;
+            try {
+              // Extract the file paths from the event payload
+              const paths = event.payload.paths || [];
+              if (paths.length === 0) return;
+
+              // Map native paths to File objects that handleFiles expects
+              // In Tauri, we might need a different method to process native paths
+              // Let's use the vfs getFile or the Tauri core fs plugin
+              const files: File[] = [];
+
+              // We'll pass the paths to a handler. Wait, fm.handleFiles takes FileList | File[].
+              // We can convert paths to File objects using tauri plugin fs readFile or similar?
+              // Wait, in Tauri we can use our VFS `getFile` method with the absolute path
+              for (const path of paths) {
+                const file = await fm.vfs.getFile(path);
+                if (file) {
+                  files.push(file);
+                } else {
+                  // Fallback for getting file from native path
+                  const { readFile, stat } = await import('@tauri-apps/plugin-fs');
+                  const metadata = await stat(path);
+                  const bytes = await readFile(path);
+                  const filename = path.split(/[/\\]/).pop() || 'unknown';
+                  files.push(
+                    new File([bytes], filename, {
+                      lastModified: metadata.mtime
+                        ? new Date(metadata.mtime).getTime()
+                        : Date.now(),
+                    }),
+                  );
+                }
+              }
+
+              if (files.length > 0) {
+                await fm.handleFiles(files);
+              }
+            } catch (err) {
+              console.error('Failed to handle Tauri file drop:', err);
+            } finally {
+              isDropInProgress.value = false;
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Failed to setup Tauri drop listener:', err);
+      }
+    }
+  });
+
+  onUnmounted(() => {
+    if (unlistenTauriDrop) {
+      unlistenTauriDrop();
+    }
+  });
 
   return {
     onGlobalDragOver,
