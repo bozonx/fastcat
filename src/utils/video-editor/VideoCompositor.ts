@@ -16,6 +16,7 @@ import {
 } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import { getEffectManifest } from '../../effects';
+import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import {
   DEFAULT_TRANSITION_CURVE,
   DEFAULT_TRANSITION_MODE,
@@ -23,7 +24,7 @@ import {
   normalizeTransitionParams,
 } from '~/transitions';
 import type { PreviewRenderOptions } from './worker-rpc';
-import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from './clip-layout';
+import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE, resolveNormalizedAnchor } from './clip-layout';
 import { computeTextLayoutMetrics } from './text-layout';
 import type {
   TextClipStyle,
@@ -510,10 +511,18 @@ export class VideoCompositor {
     console.warn('[VideoCompositor] WebGL/WebGPU context restored!');
     this.contextLost = false;
     this.stageSortDirty = true;
+    for (const clip of this.clips) {
+      clip.textDirty = true;
+      clip.shapeDirty = true;
+      clip.hudDirty = true;
+      if (clip.clipKind === 'video') {
+        this.clipPreferCanvasFallback.set(clip.itemId, true);
+      }
+    }
   };
 
   async loadTimeline(
-    timelineClips: any[],
+    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
     deps: {
       getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
       getFileByPath?: (path: string) => Promise<File | null>;
@@ -2465,12 +2474,90 @@ export class VideoCompositor {
     });
   }
 
+  private applyScreenSpaceLayout(
+    clip: CompositorClip,
+    baseX: number,
+    baseY: number,
+    targetW: number,
+    targetH: number,
+  ) {
+    const transform = clip.transform;
+    const scaleX = typeof transform?.scale?.x === 'number' ? transform.scale.x : 1;
+    const scaleY = typeof transform?.scale?.y === 'number' ? transform.scale.y : 1;
+    const rotationDeg = typeof transform?.rotationDeg === 'number' ? transform.rotationDeg : 0;
+    const positionX = typeof transform?.position?.x === 'number' ? transform.position.x : 0;
+    const positionY = typeof transform?.position?.y === 'number' ? transform.position.y : 0;
+
+    const stageScaleX = this.width / TRANSFORM_DESIGN_BASE.width;
+    const stageScaleY = this.height / TRANSFORM_DESIGN_BASE.height;
+    const stagePosX = positionX * stageScaleX;
+    const stagePosY = positionY * stageScaleY;
+
+    const normalizedAnchor = resolveNormalizedAnchor(transform?.anchor);
+    const anchorOffsetX = normalizedAnchor.x * targetW;
+    const anchorOffsetY = normalizedAnchor.y * targetH;
+
+    this.applyTransformLayout({
+      clip,
+      baseX,
+      baseY,
+      targetW,
+      targetH,
+      anchorOffsetX,
+      anchorOffsetY,
+      normalizedAnchor,
+      scaleX,
+      scaleY,
+      rotationDeg,
+      stagePosX,
+      stagePosY,
+    });
+  }
+
+  private applyShapeLayout(clip: CompositorClip) {
+    const size = Math.min(this.width, this.height) * 0.8;
+    const strokeWidth = clip.strokeWidth ?? 0;
+    const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    const baseX = (this.width - targetW) / 2;
+    const baseY = (this.height - targetH) / 2;
+
+    this.applyScreenSpaceLayout(clip, baseX, baseY, targetW, targetH);
+  }
+
+  private applyTextLayout(clip: CompositorClip) {
+    if (!clip.ctx) return;
+    const layout = computeTextLayoutMetrics({
+      text: String(clip.text ?? ''),
+      style: clip.style,
+      canvasWidth: this.width,
+      canvasHeight: this.height,
+      measureText: (text, font) => {
+        clip.ctx!.font = font;
+        return clip.ctx!.measureText(text).width;
+      },
+    });
+
+    const w = Math.max(1, Math.ceil(layout.backgroundWidth));
+    const h = Math.max(1, Math.ceil(layout.backgroundHeight));
+    const baseX = layout.backgroundX;
+    const baseY = layout.backgroundY;
+
+    this.applyScreenSpaceLayout(clip, baseX, baseY, w, h);
+  }
+
   private applyClipLayoutForCurrentSource(clip: CompositorClip) {
+    if (clip.clipKind === 'text') {
+      this.applyTextLayout(clip);
+      return;
+    }
+    if (clip.clipKind === 'shape') {
+      this.applyShapeLayout(clip);
+      return;
+    }
     if (
       clip.clipKind === 'solid' ||
-      clip.clipKind === 'text' ||
       clip.clipKind === 'adjustment' ||
-      clip.clipKind === 'shape' ||
       clip.clipKind === 'hud'
     ) {
       this.applySolidLayout(clip);
@@ -2911,8 +2998,11 @@ export class VideoCompositor {
     const ctx = clip.ctx;
     const canvas = clip.canvas;
 
-    const targetW = Math.max(1, Math.round(this.width));
-    const targetH = Math.max(1, Math.round(this.height));
+    const size = Math.min(this.width, this.height) * 0.8;
+    const strokeWidth = clip.strokeWidth ?? 0;
+    const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
+
     if (canvas.width !== targetW || canvas.height !== targetH) {
       canvas.width = targetW;
       canvas.height = targetH;
@@ -2930,7 +3020,6 @@ export class VideoCompositor {
     const type = clip.shapeType ?? 'square';
     const fill = clip.fillColor ?? '#ffffff';
     const stroke = clip.strokeColor ?? '#000000';
-    const strokeWidth = clip.strokeWidth ?? 0;
     const config = clip.shapeConfig ?? {};
 
     ctx.save();
@@ -2940,9 +3029,8 @@ export class VideoCompositor {
       ctx.lineWidth = strokeWidth;
     }
 
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const size = Math.min(canvas.width, canvas.height) * 0.8;
+    const cx = targetW / 2;
+    const cy = targetH / 2;
     const half = size / 2;
 
     const drawPolygon = (points: Array<{ x: number; y: number }>) => {

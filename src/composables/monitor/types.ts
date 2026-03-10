@@ -5,7 +5,7 @@ export interface WorkerTimelineClip {
   trackId?: string;
   layer: number;
   speed?: number;
-  
+
   audioGain?: number;
   audioBalance?: number;
   audioFadeInUs?: number;
@@ -32,7 +32,7 @@ export interface WorkerTimelineClip {
   freezeFrameSourceUs?: number;
   opacity?: number;
   blendMode?: import('~/timeline/types').TimelineBlendMode;
-  effects?: unknown[];
+  effects?: import('~/timeline/types').ClipEffect[];
   transform?: import('~/timeline/types').ClipTransform;
   sourceDurationUs?: number;
   timelineRange: {

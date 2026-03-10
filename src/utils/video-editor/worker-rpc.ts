@@ -1,4 +1,5 @@
 import { createChannel } from 'bidc';
+import type { WorkerTimelineClip } from '../../composables/monitor/types';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
@@ -15,8 +16,12 @@ export interface VideoCoreWorkerAPI {
     height: number,
     bgColor: string,
   ): Promise<void>;
-  loadTimeline(clips: any[]): Promise<number>;
-  updateTimelineLayout(clips: any[]): Promise<number>;
+  loadTimeline(
+    clips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
+  ): Promise<number>;
+  updateTimelineLayout(
+    clips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
+  ): Promise<number>;
   renderFrame(
     timeUs: number,
     options?: PreviewRenderOptions,
@@ -28,7 +33,7 @@ export interface VideoCoreWorkerAPI {
   exportTimeline(
     targetHandle: FileSystemFileHandle,
     options: any,
-    timelineClips: any[],
+    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
     audioClips?: any[],
   ): Promise<void>;
 
@@ -38,7 +43,7 @@ export interface VideoCoreWorkerAPI {
     timeUs: number,
     width: number,
     height: number,
-    timelineClips: any[],
+    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
     quality: number,
   ): Promise<Blob | null>;
 }
