@@ -1,3 +1,4 @@
+vi.mock('#app-manifest', () => ({}));
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useMediaStore } from '../../../src/stores/media.store';
@@ -6,7 +7,18 @@ import { useProjectStore } from '../../../src/stores/project.store';
 
 vi.mock('../../../src/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
-    workspaceHandle: {},
+    workspaceHandle: (() => {
+      const mockDir: any = {
+        getFileHandle: vi.fn().mockResolvedValue({
+          createWritable: vi.fn().mockResolvedValue({
+            write: vi.fn(),
+            close: vi.fn(),
+          }),
+        }),
+      };
+      mockDir.getDirectoryHandle = vi.fn().mockResolvedValue(mockDir);
+      return mockDir;
+    })(),
     userSettings: { optimization: { proxyConcurrency: 2 } },
   })),
 }));

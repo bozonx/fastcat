@@ -233,6 +233,7 @@ async function buildVideoTrackTree(
         trackId: runtimeTrackId,
         layer,
         speed: (item as any).speed,
+        reversed: Boolean((item as any).reversed),
         audioGain: (item as any).audioGain,
         audioBalance: (item as any).audioBalance,
         audioFadeInUs: (item as any).audioFadeInUs,
@@ -324,6 +325,7 @@ async function buildVideoTrackTree(
                 startUs: nestedClip.sourceRange.startUs + sourceShiftUs,
                 durationUs: visibleDurationUs,
               },
+              reversed: nestedClip.reversed ?? (item as any).reversed,
               audioGain: mergeGain((item as any).audioGain, nestedClip.audioGain),
               audioBalance: mergeBalance((item as any).audioBalance, nestedClip.audioBalance),
               audioFadeInUs: mergeFadeInUs({
@@ -509,6 +511,7 @@ export async function toWorkerTimelineClips(
           ? Math.round((item as any).layer)
           : 0),
       speed: (item as any).speed,
+      reversed: Boolean((item as any).reversed),
       audioGain: mergeGain(parentAudioGain, (item as any).audioGain),
       audioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
       audioFadeInUs: (item as any).audioFadeInUs,
@@ -628,6 +631,7 @@ export async function toWorkerTimelineClips(
                       id: `${item.id}_nested_${resolvedNClip.id}`,
                       trackId: undefined,
                       layer: nestedLayer,
+                      reversed: resolvedNClip.reversed ?? (item as any).reversed,
                       audioGain: resolvedNClip.audioGain,
                       audioBalance: resolvedNClip.audioBalance,
                       audioFadeInUs: mergeFadeInUs({
@@ -717,6 +721,7 @@ export async function toWorkerTimelineClips(
                     id: `${item.id}_nested_${resolvedNClip.id}`,
                     trackId: resolvedNClip.trackId,
                     layer: 0,
+                    reversed: resolvedNClip.reversed ?? (item as any).reversed,
                     audioGain: resolvedNClip.audioGain,
                     audioBalance: resolvedNClip.audioBalance,
                     audioFadeInUs: mergeFadeInUs({

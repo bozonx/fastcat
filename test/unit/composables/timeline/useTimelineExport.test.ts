@@ -136,7 +136,7 @@ describe('useTimelineExport pure functions', () => {
       },
     ];
 
-    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+    const projectStoreMock = { getFileHandleByPath: async () => null, projectSettings: { project: { audioDeclickDurationUs: 5000 } } } as any;
 
     expect(await toWorkerTimelineClips(items, projectStoreMock)).toMatchObject([
       {
@@ -180,7 +180,7 @@ describe('useTimelineExport pure functions', () => {
       anchor: { preset: 'center' },
     };
 
-    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+    const projectStoreMock = { getFileHandleByPath: async () => null, projectSettings: { project: { audioDeclickDurationUs: 5000 } } } as any;
     const clips = await toWorkerTimelineClips(items, projectStoreMock);
 
     expect(clips[0]?.transform).toEqual((items[0] as any).transform);
@@ -204,7 +204,7 @@ describe('useTimelineExport pure functions', () => {
       } as any,
     ];
 
-    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+    const projectStoreMock = { getFileHandleByPath: async () => null, projectSettings: { project: { audioDeclickDurationUs: 5000 } } } as any;
     const clips = await toWorkerTimelineClips(items, projectStoreMock, {
       layer: 3,
       trackKind: 'video',
@@ -238,7 +238,7 @@ describe('useTimelineExport pure functions', () => {
 
     (items[0] as any).layer = 5;
 
-    const projectStoreMock = { getFileHandleByPath: async () => null } as any;
+    const projectStoreMock = { getFileHandleByPath: async () => null, projectSettings: { project: { audioDeclickDurationUs: 5000 } } } as any;
 
     const clips = await toWorkerTimelineClips(items, projectStoreMock);
     expect(clips[0]?.layer).toBe(5);
@@ -295,13 +295,14 @@ describe('useTimelineExport pure functions', () => {
     ];
 
     const projectStoreMock = {
-      getFileByPath: async (path: string) => {
-        if (path !== '_timelines/nested.otio') return null;
-        return {
-          text: async () => nestedOtio,
-        } as any;
-      },
-    } as any;
+        projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+        getFileByPath: async (path: string) => {
+          if (path !== '_timelines/nested.otio') return null;
+          return {
+            text: async () => nestedOtio,
+          } as any;
+        },
+      } as any;
 
     const clips = await toWorkerTimelineClips(items, projectStoreMock, {
       layer: 1,
@@ -350,13 +351,14 @@ describe('useTimelineExport pure functions', () => {
     });
 
     const projectStoreMock = {
-      getFileByPath: async (path: string) => {
-        if (path !== '_timelines/nested.otio') return null;
-        return {
-          text: async () => nestedOtio,
-        } as any;
-      },
-    } as any;
+        projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+        getFileByPath: async (path: string) => {
+          if (path !== '_timelines/nested.otio') return null;
+          return {
+            text: async () => nestedOtio,
+          } as any;
+        },
+      } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
       tracks: [
@@ -462,13 +464,14 @@ describe('useTimelineExport pure functions', () => {
     ];
 
     const projectStoreMock = {
-      getFileByPath: async (path: string) => {
-        if (path !== '_timelines/nested.otio') return null;
-        return {
-          text: async () => nestedOtio,
-        } as any;
-      },
-    } as any;
+        projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+        getFileByPath: async (path: string) => {
+          if (path !== '_timelines/nested.otio') return null;
+          return {
+            text: async () => nestedOtio,
+          } as any;
+        },
+      } as any;
 
     const clips = await toWorkerTimelineClips(items, projectStoreMock, {
       trackKind: 'audio',
