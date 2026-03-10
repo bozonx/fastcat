@@ -7,7 +7,7 @@ import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
   WORKSPACE_COMMON_PATH_PREFIX,
-  stripWorkspaceCommonPathPrefix,
+  toWorkspaceCommonStoragePath,
 } from '~/utils/workspace-common';
 
 export default defineNuxtPlugin(async () => {
@@ -35,7 +35,7 @@ export default defineNuxtPlugin(async () => {
       {
         prefix: WORKSPACE_COMMON_PATH_PREFIX,
         adapter: workspaceAdapter,
-        stripPrefix: stripWorkspaceCommonPathPrefix,
+        stripPrefix: toWorkspaceCommonStoragePath,
       },
     ]);
   }
