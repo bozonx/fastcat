@@ -332,7 +332,7 @@ function parseClipItem(input: {
     sourceRange,
     speed:
       typeof granMeta?.speed === 'number' && Number.isFinite(granMeta.speed)
-        ? Math.max(0.1, Math.min(10, Number(granMeta.speed)))
+        ? Math.max(-10, Math.min(10, Number(granMeta.speed)))
         : undefined,
     audioGain:
       typeof granMeta?.audioGain === 'number' && Number.isFinite(granMeta.audioGain)

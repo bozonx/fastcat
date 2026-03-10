@@ -70,6 +70,7 @@ function setForwardPlaybackSpeed(speed: number) {
   const nextSpeed = Number(speed);
   playbackSpeed.value = Number.isFinite(nextSpeed) ? nextSpeed : 1;
   mediaElement.value.playbackRate = Math.max(0.1, Math.abs(playbackSpeed.value));
+  mediaElement.value.muted = false;
   void mediaElement.value.play();
 }
 
@@ -81,6 +82,7 @@ function setBackwardPlaybackSpeed(speed: number) {
   const nextSpeed = Number(speed);
   playbackSpeed.value = Number.isFinite(nextSpeed) ? -Math.abs(nextSpeed) : -1;
   mediaElement.value.playbackRate = 1;
+  mediaElement.value.muted = true;
 
   const absSpeed = Math.max(0.1, Number(speed) || 1);
   reversePlaybackTimer = window.setInterval(() => {

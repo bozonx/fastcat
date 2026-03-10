@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
@@ -34,6 +35,7 @@ import { isOpenableProjectFileName } from '~/utils/media-types';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
 const { currentProjectId } = storeToRefs(projectStore);
@@ -164,11 +166,29 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 onMounted(async () => {
   window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
   const projectId = route.params.id as string;
-  if (projectId) {
+  if (!projectId) {
+    router.push('/');
+    return;
+  }
+
+  const initProject = async () => {
+    if (!workspaceStore.workspaceHandle) {
+      router.push('/');
+      return;
+    }
     const { openProject } = useProjectActions();
     await openProject(decodeURIComponent(projectId));
+  };
+
+  if (workspaceStore.isInitializing) {
+    const unwatch = watch(() => workspaceStore.isInitializing, async (isInit) => {
+      if (!isInit) {
+        unwatch();
+        await initProject();
+      }
+    });
   } else {
-    router.push('/');
+    await initProject();
   }
 });
 

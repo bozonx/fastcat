@@ -15,7 +15,7 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
-import { TauriDirectoryHandle } from "~/stores/workspace/provider/tauri-handle";
+import { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 
 export class TauriFileSystemAdapter implements IFileSystemAdapter {
   id = 'tauri';
@@ -37,22 +37,32 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
       throw new Error('Not running in Tauri environment');
     }
 
-    await mkdir('', {
-      baseDir: await this.getBaseDirectory(),
+    const { tauriPath, options } = await this.getTauriFsArgs('');
+    await mkdir(tauriPath, {
+      ...options,
       recursive: true,
     }).catch(() => undefined);
   }
 
-  private async getBaseDirectory(): Promise<BaseDirectory | undefined> {
+  private async getTauriFsArgs(
+    path: string,
+  ): Promise<{ tauriPath: string; options: { baseDir?: BaseDirectory } }> {
+    const normalizedPath = this.normalizePath(path);
     const basePath = await this.getBasePath();
-    if (basePath.startsWith('/')) {
-      return undefined;
-    }
+
     if (basePath === 'app-data') {
-      return BaseDirectory.AppData;
+      return {
+        tauriPath: normalizedPath,
+        options: { baseDir: BaseDirectory.AppData },
+      };
     }
 
-    throw new Error(`Unsupported Tauri base path: ${basePath}`);
+    // Treat as absolute path
+    const tauriPath = normalizedPath ? await join(basePath, normalizedPath) : basePath;
+    return {
+      tauriPath,
+      options: { baseDir: undefined },
+    };
   }
 
   private normalizePath(path: string): string {
@@ -107,11 +117,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async readDirectory(path: string): Promise<VfsEntry[]> {
-    const normalizedPath = this.normalizePath(path);
-    const entries = await readDir(normalizedPath, {
-      baseDir: await this.getBaseDirectory(),
-    });
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    const entries = await readDir(tauriPath, options);
 
+    const normalizedPath = this.normalizePath(path);
     return entries.map((entry) => {
       const name = entry.name ?? '';
       const entryPath = normalizedPath ? `${normalizedPath}/${name}` : name;
@@ -126,8 +135,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async createDirectory(path: string): Promise<void> {
-    await mkdir(this.normalizePath(path), {
-      baseDir: await this.getBaseDirectory(),
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    await mkdir(tauriPath, {
+      ...options,
       recursive: true,
     });
   }
@@ -138,47 +148,42 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async readFile(path: string): Promise<Blob> {
-    const normalizedPath = this.normalizePath(path);
-    const bytes = await readFile(normalizedPath, {
-      baseDir: await this.getBaseDirectory(),
-    });
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    const bytes = await readFile(tauriPath, options);
     return new Blob([bytes]);
   }
 
   async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
-    const normalizedPath = this.normalizePath(path);
-    await this.ensureParentDirectory(normalizedPath);
-    await writeFile(normalizedPath, await this.toBytes(data), {
-      baseDir: await this.getBaseDirectory(),
-    });
+    await this.ensureParentDirectory(path);
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    await writeFile(tauriPath, await this.toBytes(data), options);
   }
 
   async deleteEntry(path: string, recursive?: boolean): Promise<void> {
-    await remove(this.normalizePath(path), {
-      baseDir: await this.getBaseDirectory(),
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    await remove(tauriPath, {
+      ...options,
       recursive,
     });
   }
 
   async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
-    const normalizedSourcePath = this.normalizePath(sourcePath);
-    const normalizedTargetPath = this.normalizePath(targetPath);
-
-    await this.ensureParentDirectory(normalizedTargetPath);
-    await rename(normalizedSourcePath, normalizedTargetPath, {
-      oldPathBaseDir: await this.getBaseDirectory(),
-      newPathBaseDir: await this.getBaseDirectory(),
+    await this.ensureParentDirectory(targetPath);
+    const source = await this.getTauriFsArgs(sourcePath);
+    const target = await this.getTauriFsArgs(targetPath);
+    await rename(source.tauriPath, target.tauriPath, {
+      oldPathBaseDir: source.options.baseDir,
+      newPathBaseDir: target.options.baseDir,
     });
   }
 
   async copyFile(sourcePath: string, targetPath: string): Promise<void> {
-    const normalizedSourcePath = this.normalizePath(sourcePath);
-    const normalizedTargetPath = this.normalizePath(targetPath);
-
-    await this.ensureParentDirectory(normalizedTargetPath);
-    await copyFile(normalizedSourcePath, normalizedTargetPath, {
-      fromPathBaseDir: await this.getBaseDirectory(),
-      toPathBaseDir: await this.getBaseDirectory(),
+    await this.ensureParentDirectory(targetPath);
+    const source = await this.getTauriFsArgs(sourcePath);
+    const target = await this.getTauriFsArgs(targetPath);
+    await copyFile(source.tauriPath, target.tauriPath, {
+      fromPathBaseDir: source.options.baseDir,
+      toPathBaseDir: target.options.baseDir,
     });
   }
 
@@ -198,22 +203,19 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async exists(path: string): Promise<boolean> {
-    return await exists(this.normalizePath(path), {
-      baseDir: await this.getBaseDirectory(),
-    });
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    return await exists(tauriPath, options);
   }
 
   async getMetadata(
     path: string,
   ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null> {
-    const normalizedPath = this.normalizePath(path);
-    if (!(await this.exists(normalizedPath))) {
+    if (!(await this.exists(path))) {
       return null;
     }
 
-    const metadata = await stat(normalizedPath, {
-      baseDir: await this.getBaseDirectory(),
-    });
+    const { tauriPath, options } = await this.getTauriFsArgs(path);
+    const metadata = await stat(tauriPath, options);
 
     return {
       size: metadata.size ?? 0,

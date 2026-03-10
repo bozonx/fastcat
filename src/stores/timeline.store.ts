@@ -737,9 +737,10 @@ export const useTimelineStore = defineStore('timeline', () => {
         const words = extractTranscriptionWords(record);
         if (words.length === 0) continue;
 
+        const speedRaw = clip.speed;
         const speed =
-          typeof clip.speed === 'number' && Number.isFinite(clip.speed)
-            ? Math.max(0.1, clip.speed)
+          typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
+            ? Math.abs(speedRaw)
             : 1;
 
         allWords.push(
