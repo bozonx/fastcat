@@ -1317,7 +1317,7 @@ defineExpose({
         <span class="text-sm text-ui-text">{{
           t('granVideoEditor.clip.reversed', 'Reverse Playback')
         }}</span>
-        <UToggle :model-value="isReversed" @update:model-value="toggleReversed" />
+        <USwitch :model-value="isReversed" @update:model-value="toggleReversed" />
       </div>
 
       <div v-if="canEditTransform" class="space-y-4">

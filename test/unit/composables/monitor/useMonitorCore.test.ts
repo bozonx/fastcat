@@ -104,9 +104,10 @@ describe('useMonitorCore', () => {
     });
 
     const projectStore = reactive({
-      projectSettings: {
-        export: { width: 1920, height: 1080 },
-        monitor: createMonitorSettings(),
+          projectSettings: {
+            project: { width: 1920, height: 1080, audioDeclickDurationUs: 5000 },
+            export: { width: 1920, height: 1080 },
+            monitor: createMonitorSettings(),
       },
       getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
     });
