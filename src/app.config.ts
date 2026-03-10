@@ -5,5 +5,11 @@ export default defineAppConfig({
       //primary: 'mist',
       //neutral: 'slate',
     },
+    toast: {
+      slots: {
+        title: 'select-text',
+        description: 'select-text',
+      },
+    },
   },
 });

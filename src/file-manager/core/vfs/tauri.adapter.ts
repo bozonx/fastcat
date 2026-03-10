@@ -98,8 +98,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
       return;
     }
 
-    await mkdir(parentPath, {
-      baseDir: await this.getBaseDirectory(),
+    const { tauriPath, options } = await this.getTauriFsArgs(parentPath);
+    await mkdir(tauriPath, {
+      ...options,
       recursive: true,
     });
   }

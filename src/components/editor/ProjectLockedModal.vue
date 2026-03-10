@@ -13,6 +13,8 @@ watch(
   (isReadOnly) => {
     if (isReadOnly) {
       isOpen.value = true;
+    } else {
+      isOpen.value = false;
     }
   },
   { immediate: true },
