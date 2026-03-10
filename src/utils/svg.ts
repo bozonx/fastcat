@@ -26,11 +26,10 @@ export function isSvgFilename(value: string | null | undefined): boolean {
 }
 
 export function isSvgFile(params: {
-  file?: Pick<File, 'type' | 'name'> | null;
+  file?: { name: string } | null;
   path?: string | null;
 }): boolean {
   return (
-    isSvgMimeType(params.file?.type) ||
     isSvgFilename(params.file?.name) ||
     isSvgFilename(params.path)
   );

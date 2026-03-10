@@ -14,7 +14,7 @@ import type { FileAction as FileActionBase } from '~/composables/fileManager/use
 import { useProxyStore } from '~/stores/proxy.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import { getMediaTypeFromFilename, getMimeTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
@@ -173,7 +173,7 @@ async function submitTranscription() {
       file,
       filePath: entry.path,
       fileName: entry.name,
-      fileType: typeof file.type === 'string' ? file.type : '',
+      fileType: getMimeTypeFromFilename(entry.name),
       language: sttTranscriptionLanguage.value,
       granPublicadorBaseUrl:
         typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'

@@ -6,6 +6,7 @@ import { useProjectStore } from './project.store';
 
 import { createMediaCacheFsModule } from '~/stores/media/mediaCacheFs';
 import { createMediaWorkerModule } from '~/stores/media/mediaWorker';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 interface VideoColorSpaceInit {
   fullRange?: boolean;
@@ -83,42 +84,10 @@ export const useMediaStore = defineStore('media', () => {
     // Clear missing status if we are here (we have a file handle)
     missingPaths.value[projectRelativePath] = false;
 
-    const fileType = typeof file.type === 'string' ? file.type : '';
-    const isKnownMediaByMime =
-      fileType.startsWith('video/') ||
-      fileType.startsWith('audio/') ||
-      fileType.startsWith('image/');
-    const isKnownMediaByExt = (() => {
-      const ext = projectRelativePath.split('.').pop()?.toLowerCase() ?? '';
-      if (!ext) return false;
-      return [
-        // Video
-        'mp4',
-        'mov',
-        'mkv',
-        'webm',
-        'm4v',
-        'avi',
-        // Audio
-        'mp3',
-        'wav',
-        'ogg',
-        'm4a',
-        'aac',
-        'flac',
-        // Images
-        'png',
-        'jpg',
-        'jpeg',
-        'webp',
-        'bmp',
-        'gif',
-        'tiff',
-        'tif',
-      ].includes(ext);
-    })();
+    const mediaType = getMediaTypeFromFilename(projectRelativePath);
+    const isKnownMedia = mediaType === 'video' || mediaType === 'audio' || mediaType === 'image';
 
-    if (!isKnownMediaByMime && !isKnownMediaByExt) return null;
+    if (!isKnownMedia) return null;
 
     if (!options?.forceRefresh && mediaMetadata.value[cacheKey]) {
       const cached = mediaMetadata.value[cacheKey]!;

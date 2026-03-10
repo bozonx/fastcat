@@ -1,6 +1,10 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import yaml from 'js-yaml';
-import { TEXT_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
+import {
+  TEXT_EXTENSIONS,
+  getMediaTypeFromFilename,
+  getMimeTypeFromFilename,
+} from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { TimelineDocument } from '~/timeline/types';
@@ -193,7 +197,7 @@ export function useEntryPreview(params: {
 
         const textExtensions = TEXT_EXTENSIONS;
 
-        if (fileExt === 'otio') {
+        if (fileExt === 'otio' || extBasedType === 'timeline') {
           mediaType.value = 'text';
           try {
             const text = await file.text();
@@ -206,13 +210,13 @@ export function useEntryPreview(params: {
           } catch {
             timelineDocSummary.value = null;
           }
-        } else if (file.type.startsWith('image/')) {
+        } else if (extBasedType === 'image') {
           mediaType.value = 'image';
-        } else if (file.type.startsWith('video/')) {
+        } else if (extBasedType === 'video') {
           mediaType.value = 'video';
-        } else if (file.type.startsWith('audio/')) {
+        } else if (extBasedType === 'audio') {
           mediaType.value = 'audio';
-        } else if (textExtensions.includes(fileExt || '') || file.type.startsWith('text/')) {
+        } else if (extBasedType === 'text') {
           mediaType.value = 'text';
           const textSlice = file.slice(0, 1024 * 1024);
           textContent.value = await textSlice.text();
@@ -245,7 +249,7 @@ export function useEntryPreview(params: {
           createdAt:
             typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
           lastModified: file.lastModified,
-          mimeType: typeof file.type === 'string' ? file.type : undefined,
+          mimeType: getMimeTypeFromFilename(file.name),
           ext: fileExt,
           metadata:
             entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')

@@ -19,6 +19,7 @@ import { formatBytes } from '~/utils/format';
 import {
   getMediaTypeFromFilename,
   getIconForMediaType,
+  getMimeTypeFromFilename,
   isOpenableProjectFileName,
 } from '~/utils/media-types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
@@ -1322,7 +1323,7 @@ async function supplementEntries(entries: FsEntry[]): Promise<ExtendedFsEntry[]>
           return {
             ...entry,
             size: file.size,
-            mimeType: file.type || getMimeFromExt(entry.name),
+            mimeType: getMimeTypeFromFilename(entry.name),
             lastModified: file.lastModified,
             created: file.lastModified,
             objectUrl,
@@ -1347,12 +1348,6 @@ async function createPreviewUrl(name: string, file: File): Promise<string | unde
   }
 }
 
-function getMimeFromExt(filename: string): string {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  const type = getMediaTypeFromFilename(filename);
-  if (type !== 'unknown') return type;
-  return ext || 'file';
-}
 
 const sortedEntries = computed(() => {
   const arr = [...folderEntries.value] as ExtendedFsEntry[];

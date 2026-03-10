@@ -12,6 +12,7 @@ export interface TimelinePersistenceDeps {
 
   isTimelineDirty: Ref<boolean>;
   isSavingTimeline: Ref<boolean>;
+  isReadOnly?: Ref<boolean>;
   timelineSaveError: Ref<string | null>;
 
   currentProjectName: Ref<string | null>;
@@ -51,6 +52,7 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
     doSave: async () => {
       const doc = deps.timelineDoc.value;
       if (!doc || !deps.isTimelineDirty.value) return false;
+      if (deps.isReadOnly?.value) return false;
 
       deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
