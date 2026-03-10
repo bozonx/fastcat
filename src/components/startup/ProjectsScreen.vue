@@ -19,17 +19,17 @@ async function createNewProject() {
   if (!newProjectName.value.trim()) return;
   await projectStore.createProject(newProjectName.value.trim());
   if (workspaceStore.userSettings.openLastProjectOnStart) {
-    await openProject(newProjectName.value.trim());
+    // await openProject(newProjectName.value.trim()); // Now handled by route
     projectStore.goToCut();
-    navigateTo('/editor');
+    navigateTo(`/editor/${encodeURIComponent(newProjectName.value.trim())}`);
   }
   newProjectName.value = '';
 }
 
 async function handleOpenProject(project: string) {
-  await openProject(project);
+  // await openProject(project); // Now handled by route
   projectStore.goToCut();
-  navigateTo('/editor');
+  navigateTo(`/editor/${encodeURIComponent(project)}`);
 }
 </script>
 

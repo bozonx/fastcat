@@ -26,7 +26,6 @@ onMounted(() => {
 
   // Очищаем из local storage имя последнего проекта, чтобы при перезагрузке страницы
   // приложение не пыталось его открыть автоматически
-  workspaceStore.lastProjectName = null;
 });
 </script>
 

@@ -21,10 +21,10 @@ const statusToneClasses: Record<VideoDiagnosticsStatus['tone'], string> = {
 };
 
 const sectionContainerClasses: Record<VideoDiagnosticsStatus['tone'], string> = {
-  danger: 'border-red-500/30 bg-red-500/5',
-  neutral: 'border-ui-border-muted bg-ui-bg-muted/30',
-  success: 'border-ui-border-muted bg-ui-bg-muted/30',
-  warning: 'border-amber-500/30 bg-amber-500/5',
+  danger: 'border-red-500/50 bg-red-500/10',
+  neutral: 'border-ui-border-muted bg-transparent',
+  success: 'border-ui-border-muted bg-transparent',
+  warning: 'border-amber-500/50 bg-amber-500/10',
 };
 
 async function loadDiagnostics() {
@@ -119,11 +119,12 @@ function resetDefaults() {
         }}
       </div>
 
-      <div v-if="diagnostics" class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+      <div v-if="diagnostics" class="flex flex-col gap-4">
         <div
           v-for="section in diagnostics.sections"
           :key="section.title"
-          class="rounded-lg border border-ui-border-muted bg-ui-bg-muted/30 p-4 flex flex-col gap-3"
+          class="rounded-lg border p-4 flex flex-col gap-3"
+          :class="sectionContainerClasses[section.status.tone]"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="flex flex-col gap-1">
@@ -142,14 +143,14 @@ function resetDefaults() {
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-2">
+          <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
             <div
               v-for="item in section.items"
               :key="`${section.title}-${item.label}`"
-              class="flex items-start justify-between gap-3 rounded border border-ui-border-muted/60 bg-ui-bg/40 px-3 py-2"
+              class="flex items-start justify-between gap-4 px-3 py-2.5"
             >
-              <span class="text-xs text-ui-text-muted">{{ item.label }}</span>
-              <span class="text-xs text-right text-ui-text font-medium break-all">{{ item.value }}</span>
+              <span class="text-sm text-ui-text-muted">{{ item.label }}</span>
+              <span class="text-sm text-right text-ui-text font-medium break-all">{{ item.value }}</span>
             </div>
           </div>
         </div>

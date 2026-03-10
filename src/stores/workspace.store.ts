@@ -33,7 +33,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
-  const lastProjectName = ref<string | null>(readLocalStorageString('gran-editor-last-project'));
+  const lastProjectName = ref<string | null>(readLocalStorageString('gran-editor-last-opened-project'));
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {
@@ -65,8 +65,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(lastProjectName, (v) => {
     if (typeof window === 'undefined') return;
     try {
-      if (v === null) window.localStorage.removeItem('gran-editor-last-project');
-      else window.localStorage.setItem('gran-editor-last-project', v);
+      if (v === null) window.localStorage.removeItem('gran-editor-last-opened-project');
+      else window.localStorage.setItem('gran-editor-last-opened-project', v);
     } catch {
       // ignore
     }

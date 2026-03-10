@@ -2,6 +2,8 @@
 import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useRoute, useRouter } from 'vue-router';
+import { onMounted } from 'vue';
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import MobileExportForm from '~/components/export/MobileExportForm.vue';
 
@@ -10,6 +12,18 @@ definePageMeta({
 });
 
 const projectStore = useProjectStore();
+const route = useRoute();
+const router = useRouter();
+const { openProject } = useProjectActions();
+
+onMounted(() => {
+  const projectId = route.params.id as string;
+  if (projectId) {
+    openProject(decodeURIComponent(projectId));
+  } else {
+    router.push('/m');
+  }
+});
 const { leaveProject } = useProjectActions();
 
 type TabId = 'files' | 'edit' | 'sound' | 'export';
