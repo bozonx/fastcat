@@ -40,8 +40,7 @@ export default defineNuxtPlugin(async () => {
     ]);
   }
 
-  // Можно инициализировать адаптер при необходимости
-  // await adapter.init();
+  await adapter.init();
 
   return {
     provide: {

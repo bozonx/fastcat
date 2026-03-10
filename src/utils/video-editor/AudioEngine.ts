@@ -18,6 +18,7 @@ export interface AudioEngineClip {
   startUs: number;
   durationUs: number;
   sourceStartUs: number;
+  sourceRangeDurationUs: number;
   sourceDurationUs: number;
   speed?: number;
   reversed?: boolean;
@@ -238,6 +239,7 @@ export class AudioEngine {
         startUs: c.startUs,
         durationUs: c.durationUs,
         sourceStartUs: c.sourceStartUs,
+        sourceRangeDurationUs: c.sourceRangeDurationUs,
         sourceDurationUs: c.sourceDurationUs,
       })),
     );
@@ -504,6 +506,32 @@ export class AudioEngine {
         console.warn(
           `[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`,
         );
+      }
+      return;
+    }
+
+    const clipStartS = clip.startUs / 1_000_000;
+    const clipDurationS = clip.durationUs / 1_000_000;
+    const clipEndS = clipStartS + clipDurationS;
+
+    const isTimelineBackward = this.globalSpeed < 0;
+    const isClipReversed = clip.reversed === true;
+    const playReversedBuffer = isTimelineBackward !== isClipReversed;
+
+    // If the clip is already completely in the past relative to current time, skip
+    if (isTimelineBackward) {
+      if (clipStartS >= currentTimeS) return;
+    } else {
+      if (clipEndS <= currentTimeS) return;
+    }
+
+    const sourceStartS = clip.sourceStartUs / 1_000_000;
+    const sourceRangeDurationS = Math.max(0, clip.sourceRangeDurationUs / 1_000_000);
+
+    const speedRaw = clip.speed;
+    const speed =
+      typeof speedRaw === 'number' && Number.isFinite(speedRaw)
+        ? Math.max(0.1, Math.min(10, speedRaw))
         : 1;
 
     const effectiveSpeed = speed * Math.abs(this.globalSpeed);
