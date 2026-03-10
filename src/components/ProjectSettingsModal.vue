@@ -9,6 +9,7 @@ import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   checkVideoCodecSupport,
@@ -104,6 +105,7 @@ async function resetToDefaults() {
   projectStore.projectSettings.project.orientation = pDefaults.orientation;
   projectStore.projectSettings.project.aspectRatio = pDefaults.aspectRatio;
   projectStore.projectSettings.project.isCustomResolution = pDefaults.isCustomResolution;
+  projectStore.projectSettings.project.audioDeclickDurationUs = pDefaults.audioDeclickDurationUs;
 
   // Reset export encoding settings to workspace defaults
   const eDefaults = workspaceStore.userSettings.exportDefaults.encoding;
@@ -181,6 +183,39 @@ async function resetToDefaults() {
           v-model:audio-channels="projectStore.projectSettings.project.audioChannels"
           v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
         />
+
+        <div class="space-y-2 rounded border border-ui-border bg-ui-bg-elevated p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm font-medium text-ui-text">
+                {{ t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') }}
+              </div>
+              <div class="text-xs text-ui-text-muted">
+                {{
+                  t(
+                    'videoEditor.settings.projectAudioDeclickHint',
+                    'Default linear fade in/out applied to all audio and video clips. 0 disables it.',
+                  )
+                }}
+              </div>
+            </div>
+            <div class="w-32">
+              <WheelNumberInput
+                :model-value="projectStore.projectSettings.project.audioDeclickDurationUs / 1000"
+                size="sm"
+                :step="1"
+                :min="0"
+                :max="1000"
+                @update:model-value="
+                  (value: number) =>
+                    (projectStore.projectSettings.project.audioDeclickDurationUs = Math.round(
+                      Math.max(0, Math.min(1000, Number(value) || 0)) * 1000,
+                    ))
+                "
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="h-px bg-ui-border"></div>

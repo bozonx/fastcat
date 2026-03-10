@@ -98,7 +98,7 @@ describe('FileManagerTree', () => {
       },
     });
 
-    const dropzones = wrapper.findAll('div').filter(w => w.attributes('role') === 'treeitem');
+    const dropzones = wrapper.findAll('div').filter((w) => w.attributes('role') === 'treeitem');
     const dropzone = dropzones.at(0);
     expect(dropzone?.exists()).toBe(true);
 
@@ -142,7 +142,7 @@ describe('FileManagerTree', () => {
       },
     });
 
-    const dropzones = wrapper.findAll('div').filter(w => w.attributes('role') === 'treeitem');
+    const dropzones = wrapper.findAll('div').filter((w) => w.attributes('role') === 'treeitem');
     const dropzone = dropzones.at(0);
     expect(dropzone?.exists()).toBe(true);
 

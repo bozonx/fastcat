@@ -118,7 +118,10 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
 
 <template>
   <div :class="props.asContents ? 'contents' : 'flex flex-col gap-2'">
-    <template v-for="control in visibleControls" :key="control.key ?? `${control.kind}-${getLabel(control)}`">
+    <template
+      v-for="control in visibleControls"
+      :key="control.key ?? `${control.kind}-${getLabel(control)}`"
+    >
       <div
         v-if="control.kind === 'row'"
         class="grid gap-2"
@@ -139,8 +142,10 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
           <span>
             {{
               control.format
-                ? control.format(Number(getValue(control.key) ?? control.defaultValue ?? control.min))
-                : getValue(control.key) ?? control.defaultValue ?? control.min
+                ? control.format(
+                    Number(getValue(control.key) ?? control.defaultValue ?? control.min),
+                  )
+                : (getValue(control.key) ?? control.defaultValue ?? control.min)
             }}
           </span>
         </div>
@@ -190,7 +195,9 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
           label-key="label"
           :size="size"
           :disabled="control.disabled"
-          @update:model-value="(value: unknown) => updateValue(control.key, normalizeSelectValue(value))"
+          @update:model-value="
+            (value: unknown) => updateValue(control.key, normalizeSelectValue(value))
+          "
         />
       </div>
 
@@ -202,7 +209,9 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
           size="xs"
           :disabled="control.disabled"
           fluid
-          @update:model-value="(value: unknown) => updateValue(control.key, normalizeSelectValue(value))"
+          @update:model-value="
+            (value: unknown) => updateValue(control.key, normalizeSelectValue(value))
+          "
         />
       </div>
 
@@ -226,7 +235,9 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
           :placeholder="control.placeholder"
           :size="size"
           :disabled="control.disabled"
-          @update:model-value="(value: string | number) => updateValue(control.key, String(value ?? ''))"
+          @update:model-value="
+            (value: string | number) => updateValue(control.key, String(value ?? ''))
+          "
         />
         <UInput
           v-else
@@ -234,7 +245,9 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
           :placeholder="control.placeholder"
           :size="size"
           :disabled="control.disabled"
-          @update:model-value="(value: string | number) => updateValue(control.key, String(value ?? ''))"
+          @update:model-value="
+            (value: string | number) => updateValue(control.key, String(value ?? ''))
+          "
         />
       </div>
 

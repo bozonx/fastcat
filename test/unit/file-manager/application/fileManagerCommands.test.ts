@@ -182,7 +182,11 @@ describe('fileManagerCommands', () => {
     };
     (projectDir.getDirectoryHandle as any).mockResolvedValue(timelinesDir);
 
-    const path = await createTimelineCommand({ projectDir, timelinesDirName: '_timelines', vfs: vfs as any });
+    const path = await createTimelineCommand({
+      projectDir,
+      timelinesDirName: '_timelines',
+      vfs: vfs as any,
+    });
     expect(path).toBe('_timelines/timeline_002.otio');
     expect(vfs.writeJson).toHaveBeenCalled();
   });

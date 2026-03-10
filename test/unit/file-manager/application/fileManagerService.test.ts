@@ -70,7 +70,12 @@ describe('fileManagerService', () => {
 
     const vfs = {
       readDirectory: vi.fn(async () => [
-        { kind: 'file', name: 'a.mp4', path: `${VIDEO_DIR_NAME}/a.mp4`, parentPath: VIDEO_DIR_NAME },
+        {
+          kind: 'file',
+          name: 'a.mp4',
+          path: `${VIDEO_DIR_NAME}/a.mp4`,
+          parentPath: VIDEO_DIR_NAME,
+        },
       ]),
     } as any;
 
@@ -98,7 +103,9 @@ describe('fileManagerService', () => {
     const vfs = {
       readDirectory: vi.fn(async (path?: string) => {
         if (path === 'folder') {
-          return [{ kind: 'file', name: 'child.txt', path: 'folder/child.txt', parentPath: 'folder' }];
+          return [
+            { kind: 'file', name: 'child.txt', path: 'folder/child.txt', parentPath: 'folder' },
+          ];
         }
         return [];
       }),
@@ -219,7 +226,9 @@ describe('fileManagerService', () => {
     const vfs = {
       readDirectory: vi.fn(async (path?: string) => {
         if (!path) {
-          return [{ kind: 'directory', name: VIDEO_DIR_NAME, path: VIDEO_DIR_NAME, parentPath: '' }];
+          return [
+            { kind: 'directory', name: VIDEO_DIR_NAME, path: VIDEO_DIR_NAME, parentPath: '' },
+          ];
         }
 
         return [];
@@ -251,10 +260,19 @@ describe('fileManagerService', () => {
     const vfs = {
       readDirectory: vi.fn(async (path?: string) => {
         if (path === 'folder') {
-          return [{ kind: 'directory', name: 'nested', path: 'folder/nested', parentPath: 'folder' }];
+          return [
+            { kind: 'directory', name: 'nested', path: 'folder/nested', parentPath: 'folder' },
+          ];
         }
         if (path === 'folder/nested') {
-          return [{ kind: 'file', name: 'child.txt', path: 'folder/nested/child.txt', parentPath: 'folder/nested' }];
+          return [
+            {
+              kind: 'file',
+              name: 'child.txt',
+              path: 'folder/nested/child.txt',
+              parentPath: 'folder/nested',
+            },
+          ];
         }
         return [];
       }),

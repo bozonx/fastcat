@@ -18,13 +18,7 @@ const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
-const {
-  readDirectory,
-  getFileIcon,
-  findEntryByPath,
-  mediaCache,
-  vfs,
-} = useFileManager();
+const { readDirectory, getFileIcon, findEntryByPath, mediaCache, vfs } = useFileManager();
 
 const entries = ref<FsEntry[]>([]);
 const isLoading = ref(false);

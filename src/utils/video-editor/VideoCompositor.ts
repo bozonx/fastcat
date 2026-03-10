@@ -164,6 +164,7 @@ export interface CompositorClip {
   /** Full duration of the source media file, used to compute available handle material */
   sourceDurationUs: number;
   speed?: number;
+  reversed?: boolean;
   freezeFrameSourceUs?: number;
   sprite: Sprite;
   clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
@@ -577,6 +578,8 @@ export class VideoCompositor {
           ? Math.max(0.1, Math.min(10, speedRaw))
           : undefined;
 
+      const reversed = Boolean((clipData as any).reversed);
+
       const startUs =
         typeof clipData.timelineRange?.startUs === 'number'
           ? Math.max(0, Math.round(Number(clipData.timelineRange.startUs)))
@@ -621,6 +624,7 @@ export class VideoCompositor {
             : reusable.sourceRangeDurationUs;
         reusable.sourceDurationUs = safeSourceDurationUs;
         reusable.speed = speed;
+        reusable.reversed = reversed;
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
         reusable.trackId = trackId;
@@ -684,6 +688,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
+          reversed,
           sprite,
           clipKind: 'solid',
           sourceKind: 'bitmap',
@@ -753,6 +758,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
+          reversed,
           sprite,
           clipKind: 'text',
           sourceKind: 'canvas',
@@ -829,6 +835,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
+          reversed,
           sprite,
           clipKind: 'shape',
           sourceKind: 'canvas',
@@ -895,6 +902,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
+          reversed,
           sprite,
           clipKind: 'adjustment',
           sourceKind: 'bitmap',
@@ -949,6 +957,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
+          reversed,
           sprite,
           clipKind: 'hud',
           sourceKind: 'bitmap',
@@ -1188,6 +1197,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
+          reversed,
           sprite,
           clipKind: 'image',
           sourceKind: 'bitmap',
@@ -1272,6 +1282,7 @@ export class VideoCompositor {
             requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
           sourceDurationUs,
           speed,
+          reversed,
           freezeFrameSourceUs,
           sprite,
           clipKind: 'video',
@@ -1588,6 +1599,7 @@ export class VideoCompositor {
 
         const localTimeUs = timeUs - clip.startUs;
         const speed = typeof clip.speed === 'number' ? clip.speed : 1;
+        const reversed = clip.reversed === true;
         const maxTimelineUs = speed > 0 ? Math.round(clip.sourceDurationUs / speed) : 0;
         if (localTimeUs < 0 || localTimeUs >= maxTimelineUs) {
           console.warn('[DBG] clip hidden by maxTimelineUs', {
@@ -1603,10 +1615,16 @@ export class VideoCompositor {
         }
 
         const freezeUs = clip.freezeFrameSourceUs;
+
+        // Calculate effective local time based on playback direction
+        const effectiveLocalUs = reversed
+          ? clip.sourceRangeDurationUs - Math.round(localTimeUs * speed)
+          : Math.round(localTimeUs * speed);
+
         const sampleTimeS =
           typeof freezeUs === 'number'
             ? Math.max(0, freezeUs) / 1_000_000
-            : (clip.sourceStartUs + Math.round(localTimeUs * speed)) / 1_000_000;
+            : Math.max(0, clip.sourceStartUs + effectiveLocalUs) / 1_000_000;
 
         if (clip.transitionIn) {
           console.warn('[DBG-IN]', {
