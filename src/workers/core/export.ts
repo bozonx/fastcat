@@ -14,13 +14,17 @@ export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle)
       ? fileOrHandle
       : await (fileOrHandle as FileSystemFileHandle).getFile();
 
-  if (typeof file?.type === 'string' && file.type.startsWith('image/')) {
+  const isImage =
+    (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+    (file?.name && /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(file.name));
+
+  if (isImage) {
     return {
       source: {
         size: file.size,
         lastModified: file.lastModified,
       },
-      mimeType: typeof file.type === 'string' ? file.type : undefined,
+      mimeType: typeof file?.type === 'string' && file.type ? file.type : 'image/jpeg',
       container: 'image',
       duration: 0,
     };
