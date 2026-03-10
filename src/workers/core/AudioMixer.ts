@@ -86,50 +86,6 @@ export function normalizeSampleChannels(params: {
   });
 }
 
-export function resamplePlanarChannels(params: {
-  planes: Float32Array[];
-  sourceFrames: number;
-  targetFrames: number;
-}): Float32Array[] {
-  const { planes, sourceFrames, targetFrames } = params;
-
-  if (targetFrames <= 0) {
-    return planes.map(() => new Float32Array());
-  }
-
-  if (sourceFrames <= 0) {
-    return planes.map(() => new Float32Array(targetFrames));
-  }
-
-  if (sourceFrames === targetFrames) {
-    return planes;
-  }
-
-  if (sourceFrames === 1) {
-    return planes.map((plane) => {
-      const value = plane[0] ?? 0;
-      const next = new Float32Array(targetFrames);
-      next.fill(value);
-      return next;
-    });
-  }
-
-  const ratio = (sourceFrames - 1) / Math.max(1, targetFrames - 1);
-  return planes.map((plane) => {
-    const next = new Float32Array(targetFrames);
-    for (let index = 0; index < targetFrames; index += 1) {
-      const sourcePos = index * ratio;
-      const leftIndex = Math.floor(sourcePos);
-      const rightIndex = Math.min(sourceFrames - 1, leftIndex + 1);
-      const mix = sourcePos - leftIndex;
-      const left = plane[leftIndex] ?? 0;
-      const right = plane[rightIndex] ?? left;
-      next[index] = left + (right - left) * mix;
-    }
-    return next;
-  });
-}
-
 export async function resampleChannelsOfflineAudioContext(params: {
   planes: Float32Array[];
   sourceSampleRate: number;
@@ -546,25 +502,14 @@ export class AudioMixer {
 
             if (sr !== sampleRate) {
               normalizedFrames = Math.max(1, Math.round((frames * sampleRate) / sr));
-              try {
-                normalizedPlanes = await resampleChannelsOfflineAudioContext({
-                  planes: normalizedPlanes,
-                  sourceSampleRate: sr,
-                  targetSampleRate: sampleRate,
-                  sourceFrames: frames,
-                  targetFrames: normalizedFrames,
-                  channels: numberOfChannels,
-                });
-              } catch (err) {
-                await reportExportWarning(
-                  '[Worker Export] OfflineAudioContext resample failed; applying linear fallback.',
-                );
-                normalizedPlanes = resamplePlanarChannels({
-                  planes: normalizedPlanes,
-                  sourceFrames: frames,
-                  targetFrames: normalizedFrames,
-                });
-              }
+              normalizedPlanes = await resampleChannelsOfflineAudioContext({
+                planes: normalizedPlanes,
+                sourceSampleRate: sr,
+                targetSampleRate: sampleRate,
+                sourceFrames: frames,
+                targetFrames: normalizedFrames,
+                channels: numberOfChannels,
+              });
             } else if (ch !== numberOfChannels) {
               await reportExportWarning(
                 '[Worker Export] Audio clip channel mismatch; normalizing channel layout.',
