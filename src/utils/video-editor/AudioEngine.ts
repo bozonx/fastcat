@@ -21,7 +21,7 @@ export interface AudioEngineClip {
   sourceRangeDurationUs: number;
   sourceDurationUs: number;
   speed?: number;
-  reversed?: boolean;
+  
   audioGain?: number;
   audioBalance?: number;
   audioFadeInUs?: number;
@@ -515,8 +515,6 @@ export class AudioEngine {
     const clipEndS = clipStartS + clipDurationS;
 
     const isTimelineBackward = this.globalSpeed < 0;
-    const isClipReversed = clip.reversed === true;
-    const playReversedBuffer = isTimelineBackward !== isClipReversed;
 
     // If the clip is already completely in the past relative to current time, skip
     if (isTimelineBackward) {
@@ -529,12 +527,15 @@ export class AudioEngine {
     const sourceRangeDurationS = Math.max(0, clip.sourceRangeDurationUs / 1_000_000);
 
     const speedRaw = clip.speed;
-    const speed =
-      typeof speedRaw === 'number' && Number.isFinite(speedRaw)
-        ? Math.max(0.1, Math.min(10, speedRaw))
+    const clipSpeed =
+      typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
+        ? Math.max(-10, Math.min(10, speedRaw))
         : 1;
 
-    const effectiveSpeed = speed * Math.abs(this.globalSpeed);
+    const isClipReversed = clipSpeed < 0;
+    const playReversedBuffer = isTimelineBackward !== isClipReversed;
+    const absSpeed = Math.abs(clipSpeed);
+    const effectiveSpeed = absSpeed * Math.abs(this.globalSpeed);
 
     const currentClipLocalS = isTimelineBackward
       ? Math.max(0, Math.min(clipEndS, currentTimeS) - clipStartS)
@@ -561,8 +562,8 @@ export class AudioEngine {
         : this.ctx.currentTime;
 
     const currentSourceTimeS = isClipReversed
-      ? sourceStartS + Math.max(0, sourceRangeDurationS - currentClipLocalS * speed)
-      : sourceStartS + currentClipLocalS * speed;
+      ? sourceStartS + Math.max(0, sourceRangeDurationS - currentClipLocalS * absSpeed)
+      : sourceStartS + currentClipLocalS * absSpeed;
 
     if (playReversedBuffer) {
       let reversedBuffer = this.reversedDecodedCache.get(sourceKey) ?? null;
@@ -585,7 +586,7 @@ export class AudioEngine {
     const remainingInClipS = isTimelineBackward
       ? currentClipLocalS
       : Math.max(0, clipDurationS - currentClipLocalS);
-    const durationToPlayS = remainingInClipS * speed;
+    const durationToPlayS = remainingInClipS * absSpeed;
 
     let safeBufferOffsetS = playReversedBuffer
       ? buffer.duration - currentSourceTimeS
@@ -722,7 +723,7 @@ export class AudioEngine {
       const outStartClipS = clipDurationS - fadeOutS;
       if (fadeOutS > 0 && t0 > outStartClipS) {
         const rampEndClipS = Math.max(outStartClipS, t1); // the time we stop fading (during backward)
-        const rampEndAtS = startAtS + (t0 - rampEndClipS) / speed;
+        const rampEndAtS = startAtS + (t0 - rampEndClipS) / absSpeed;
         if (typeof gainParam.setValueAtTime === 'function') {
           // It's a bit complex with linearRampToValueAtTime since we ramp to a value over backward time.
           // We can just use setValueAtTime for the endpoints.
@@ -732,7 +733,7 @@ export class AudioEngine {
       const inEndClipS = fadeInS;
       if (fadeInS > 0 && t1 < inEndClipS) {
         const rampStartClipS = Math.min(inEndClipS, t0);
-        const rampStartAtS = startAtS + (t0 - rampStartClipS) / speed;
+        const rampStartAtS = startAtS + (t0 - rampStartClipS) / absSpeed;
         gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
         gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), endAtS);
       }

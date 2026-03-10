@@ -567,20 +567,6 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         });
       }
 
-      if (clipItem.clipType === 'media' || clipItem.clipType === 'timeline') {
-        mainGroup.push({
-          label: clipItem.reversed
-            ? options.t('granVideoEditor.timeline.unreverse', 'Play Forward')
-            : options.t('granVideoEditor.timeline.reverse', 'Reverse'),
-          icon: 'i-heroicons-arrows-right-left',
-          onSelect: async () => {
-            options.updateClipProperties(track.id, clipItem.id, {
-              reversed: !clipItem.reversed,
-            });
-            await options.requestTimelineSave({ immediate: true });
-          },
-        });
-      }
 
       const docTracks = options.timelineDoc.value?.tracks ?? [];
       const hasReturnFromVideoClip =
