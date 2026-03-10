@@ -504,32 +504,6 @@ export class AudioEngine {
         console.warn(
           `[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`,
         );
-      }
-      return;
-    }
-
-    const clipStartS = clip.startUs / 1_000_000;
-    const clipDurationS = clip.durationUs / 1_000_000;
-    const clipEndS = clipStartS + clipDurationS;
-
-    const isTimelineBackward = this.globalSpeed < 0;
-    const isClipReversed = clip.reversed === true;
-    const playReversedBuffer = isTimelineBackward !== isClipReversed;
-
-    // If the clip is already completely in the past relative to current time, skip
-    if (isTimelineBackward) {
-      if (clipStartS >= currentTimeS) return;
-    } else {
-      if (clipEndS <= currentTimeS) return;
-    }
-
-    const sourceStartS = clip.sourceStartUs / 1_000_000;
-    const sourceDurationS = Math.max(0, clip.sourceDurationUs / 1_000_000);
-
-    const speedRaw = clip.speed;
-    const speed =
-      typeof speedRaw === 'number' && Number.isFinite(speedRaw)
-        ? Math.max(0.1, Math.min(10, speedRaw))
         : 1;
 
     const effectiveSpeed = speed * Math.abs(this.globalSpeed);
@@ -559,7 +533,7 @@ export class AudioEngine {
         : this.ctx.currentTime;
 
     const currentSourceTimeS = isClipReversed
-      ? sourceStartS + sourceDurationS - currentClipLocalS * speed
+      ? sourceStartS + Math.max(0, sourceRangeDurationS - currentClipLocalS * speed)
       : sourceStartS + currentClipLocalS * speed;
 
     if (playReversedBuffer) {

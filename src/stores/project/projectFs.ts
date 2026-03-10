@@ -3,6 +3,7 @@ import {
   isWorkspaceCommonPath,
   normalizeWorkspaceFilePath,
   stripWorkspaceCommonPathPrefix,
+  toWorkspaceCommonPath,
   WORKSPACE_COMMON_DIR_NAME,
 } from '~/utils/workspace-common';
 
@@ -141,7 +142,9 @@ export function createProjectFsModule(params: {
       const commonDir = await getWorkspaceCommonDirHandle(options?.create ?? false);
       if (!commonDir) return null;
 
-      const commonRelativePath = stripWorkspaceCommonPathPrefix(normalizedPath);
+      const commonRelativePath = stripWorkspaceCommonPathPrefix(
+        toWorkspaceCommonPath(normalizedPath),
+      );
       if (!commonRelativePath) return commonDir;
 
       try {
