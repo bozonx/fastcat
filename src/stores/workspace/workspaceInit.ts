@@ -3,17 +3,16 @@ import type { Ref } from 'vue';
 import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
-import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
+import type { WorkspaceProvider } from './provider';
 
 export interface WorkspaceInitDeps {
   workspaceHandle: Ref<FileSystemDirectoryHandle | null>;
   projectsHandle: Ref<FileSystemDirectoryHandle | null>;
   settingsRepo: Ref<WorkspaceSettingsRepository | null>;
-  workspaceHandleStorage: Ref<WorkspaceHandleStorage<FileSystemDirectoryHandle> | null>;
+  workspaceProvider: WorkspaceProvider;
   isLoading: Ref<boolean>;
   error: Ref<string | null>;
   isInitializing: Ref<boolean>;
-  isApiSupported: boolean;
 
   loadProjects: () => Promise<void>;
   loadWorkspaceSettingsFromDisk: () => Promise<void>;
@@ -72,22 +71,14 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
   }
 
   async function openWorkspace() {
-    if (!deps.isApiSupported) return;
+    if (!deps.workspaceProvider.isSupported) return;
 
     deps.error.value = null;
     deps.isLoading.value = true;
     try {
-      const picker = (
-        window as unknown as {
-          showDirectoryPicker?: (options: {
-            mode: 'readwrite' | 'readonly';
-          }) => Promise<FileSystemDirectoryHandle>;
-        }
-      ).showDirectoryPicker;
-      if (!picker) return;
-      const handle = await picker({ mode: 'readwrite' });
-      await setupWorkspace(handle);
-      await deps.workspaceHandleStorage.value?.set(handle);
+      const handle = await deps.workspaceProvider.openWorkspace();
+      if (!handle) return;
+      await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
     } catch (e: unknown) {
       if (!isAbortError(e)) {
         deps.error.value = getErrorMessage(e, 'Failed to open workspace folder');
@@ -104,31 +95,23 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     deps.error.value = null;
 
     deps.resetSettingsState();
-    deps.workspaceHandleStorage.value?.clear().catch(console.warn);
+    deps.workspaceProvider.clearWorkspace().catch(console.warn);
   }
 
   async function init() {
-    if (!deps.isApiSupported) {
+    if (!deps.workspaceProvider.isSupported) {
       deps.isInitializing.value = false;
       return;
     }
 
     try {
-      const handle = await deps.workspaceHandleStorage.value?.get();
+      const handle = await deps.workspaceProvider.restoreWorkspace();
       if (!handle) {
         deps.isInitializing.value = false;
         return;
       }
 
-      const handleWithPerm = handle as unknown as {
-        queryPermission?: (options: {
-          mode: 'readwrite' | 'readonly';
-        }) => Promise<'granted' | 'denied' | 'prompt'>;
-      };
-      const options = { mode: 'readwrite' as const };
-      if ((await handleWithPerm.queryPermission?.(options)) === 'granted') {
-        await setupWorkspace(handle);
-      }
+      await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
     } catch (e) {
       console.warn('Failed to restore workspace handle:', e);
     } finally {

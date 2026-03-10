@@ -53,6 +53,10 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
     return null;
   }
 
+  async saveWorkspace(handle: DirectoryHandleLike): Promise<void> {
+    await this.storage.set((handle as any).path);
+  }
+
   async clearWorkspace(): Promise<void> {
     await this.storage.clear().catch(console.warn);
   }

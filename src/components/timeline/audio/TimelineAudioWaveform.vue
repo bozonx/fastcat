@@ -303,8 +303,9 @@ onBeforeUnmount(() => {
 
 const speed = computed(() => {
   const s = props.item.speed || 1;
+  const abs = Math.abs(s);
   // Prevent division by zero and extreme values
-  return Math.max(0.001, Math.min(100, s));
+  return Math.max(0.001, Math.min(100, abs));
 });
 
 const trimOffsetPx = computed(() => {

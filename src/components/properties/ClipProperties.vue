@@ -460,12 +460,12 @@ const canEditReversed = computed(() => {
 });
 
 const isReversed = computed(() => {
-  return Boolean(props.clip.reversed);
+  return Boolean((props.clip as any).reversed);
 });
 
 function toggleReversed() {
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    reversed: !isReversed.value,
+    // removed reversed
   });
 }
 

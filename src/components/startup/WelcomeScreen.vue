@@ -55,7 +55,7 @@ const workspaceStore = useWorkspaceStore();
         {{
           t(
             'granVideoEditor.fileManager.unsupported',
-            'File System Access API is not supported in this browser',
+            'Workspace selection is not supported in this environment',
           )
         }}
       </div>

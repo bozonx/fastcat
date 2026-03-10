@@ -164,7 +164,7 @@ export interface CompositorClip {
   /** Full duration of the source media file, used to compute available handle material */
   sourceDurationUs: number;
   speed?: number;
-  reversed?: boolean;
+  
   freezeFrameSourceUs?: number;
   sprite: Sprite;
   clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
@@ -574,11 +574,11 @@ export class VideoCompositor {
 
       const speedRaw = (clipData as any).speed;
       const speed =
-        typeof speedRaw === 'number' && Number.isFinite(speedRaw)
-          ? Math.max(0.1, Math.min(10, speedRaw))
+        typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
+          ? Math.max(-10, Math.min(10, speedRaw))
           : undefined;
 
-      const reversed = Boolean((clipData as any).reversed);
+      
 
       const startUs =
         typeof clipData.timelineRange?.startUs === 'number'
@@ -624,7 +624,7 @@ export class VideoCompositor {
             : reusable.sourceRangeDurationUs;
         reusable.sourceDurationUs = safeSourceDurationUs;
         reusable.speed = speed;
-        reusable.reversed = reversed;
+        
         reusable.freezeFrameSourceUs = freezeFrameSourceUs;
         reusable.layer = layer;
         reusable.trackId = trackId;
@@ -688,8 +688,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          reversed,
-          sprite,
+                    sprite,
           clipKind: 'solid',
           sourceKind: 'bitmap',
           imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
@@ -758,8 +757,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          reversed,
-          sprite,
+                    sprite,
           clipKind: 'text',
           sourceKind: 'canvas',
           imageSource,
@@ -835,8 +833,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          reversed,
-          sprite,
+                    sprite,
           clipKind: 'shape',
           sourceKind: 'canvas',
           imageSource,
@@ -902,8 +899,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          reversed,
-          sprite,
+                    sprite,
           clipKind: 'adjustment',
           sourceKind: 'bitmap',
           imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
@@ -957,8 +953,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          reversed,
-          sprite,
+                    sprite,
           clipKind: 'hud',
           sourceKind: 'bitmap',
           imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
@@ -1197,8 +1192,7 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          reversed,
-          sprite,
+                    sprite,
           clipKind: 'image',
           sourceKind: 'bitmap',
           imageSource,
@@ -1282,8 +1276,7 @@ export class VideoCompositor {
             requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
           sourceDurationUs,
           speed,
-          reversed,
-          freezeFrameSourceUs,
+                    freezeFrameSourceUs,
           sprite,
           clipKind: 'video',
           sourceKind: 'videoFrame',
@@ -1388,10 +1381,10 @@ export class VideoCompositor {
       const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
       const speedRaw = (next as any).speed;
       const speed =
-        typeof speedRaw === 'number' && Number.isFinite(speedRaw)
-          ? Math.max(0.1, Math.min(10, speedRaw))
+        typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
+          ? Math.max(-10, Math.min(10, speedRaw))
           : undefined;
-      const reversed = Boolean((next as any).reversed);
+      
       const freezeFrameSourceUsRaw = (next as any).freezeFrameSourceUs;
       const freezeFrameSourceUs =
         typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
@@ -1405,7 +1398,7 @@ export class VideoCompositor {
       clip.sourceRangeDurationUs = sourceRangeDurationUs;
       clip.sourceDurationUs = sourceDurationUs;
       clip.speed = speed;
-      clip.reversed = reversed;
+      
       clip.freezeFrameSourceUs = freezeFrameSourceUs;
       clip.layer = layer;
       clip.trackId =
@@ -1600,8 +1593,9 @@ export class VideoCompositor {
         }
 
         const localTimeUs = timeUs - clip.startUs;
-        const speed = typeof clip.speed === 'number' ? clip.speed : 1;
-        const reversed = clip.reversed === true;
+        const speedRaw = typeof clip.speed === 'number' && clip.speed !== 0 ? clip.speed : 1;
+        const speed = Math.abs(speedRaw);
+        const reversed = speedRaw < 0;
         if (localTimeUs < 0 || localTimeUs >= clip.durationUs) {
           clip.sprite.visible = false;
           continue;
@@ -1700,7 +1694,7 @@ export class VideoCompositor {
 
         if (handleUs < 1_000) {
           // No extra source material: freeze the last frame of the used source range.
-          const lastUs = prevClip.reversed
+          const lastUs = ((prevClip.speed || 1) < 0)
             ? Math.max(0, prevClip.sourceStartUs + 1_000)
             : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
@@ -1722,7 +1716,7 @@ export class VideoCompositor {
         const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
 
         let clampedUs: number;
-        if (prevClip.reversed) {
+        if (((prevClip.speed || 1) < 0)) {
           clampedUs = Math.max(0, prevClip.sourceStartUs - overrunUs);
         } else {
           const handleSampleUs = sourceRangeEndUs + overrunUs;
@@ -2173,7 +2167,7 @@ export class VideoCompositor {
     const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
 
     let sampleUs: number;
-    if (clip.reversed) {
+    if (((clip.speed || 1) < 0)) {
       // In reverse, "overrun" goes before sourceStartUs
       sampleUs =
         handleUs < 1_000

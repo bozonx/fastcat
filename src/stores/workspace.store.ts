@@ -13,6 +13,9 @@ import {
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
+import { createWorkspaceInitModule } from '~/stores/workspace/workspaceInit';
+import { createWorkspaceProvider } from '~/stores/workspace/provider';
+import type { DirectoryHandleLike } from '~/repositories/gran-fs';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -45,16 +48,11 @@ function readLocalStorageString(key: string): string | null {
 }
 
 export const useWorkspaceStore = defineStore('workspace', () => {
+  const workspaceProvider = createWorkspaceProvider();
+
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
   const settingsRepo = ref<WorkspaceSettingsRepository | null>(null);
-  const workspaceHandleStorage = ref<WorkspaceHandleStorage<FileSystemDirectoryHandle> | null>(
-    typeof window === 'undefined'
-      ? null
-      : window.indexedDB
-        ? createIndexedDbWorkspaceHandleStorage({ indexedDB: window.indexedDB })
-        : null,
-  );
 
   const projects = ref<string[]>([]);
   const isLoading = ref(false);
@@ -143,8 +141,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ).showDirectoryPicker;
       if (!picker) return;
       const handle = await picker({ mode: 'readwrite' });
-      await setupWorkspace(handle);
-      await workspaceHandleStorage.value?.set(handle);
+      await setupWorkspace(handle as FileSystemDirectoryHandle);
+      await workspaceProvider.saveWorkspace(handle);
     } catch (e: unknown) {
       if (!isAbortError(e)) {
         error.value = getErrorMessage(e, 'Failed to open workspace folder');
@@ -163,7 +161,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     resetSettingsState();
 
-    workspaceHandleStorage.value?.clear().catch(console.warn);
+    workspaceProvider.clearWorkspace().catch(console.warn);
 
     // Reset dependent stores when workspace is closed
     const projectStore = useProjectStore();
@@ -188,7 +186,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     try {
-      const handle = await workspaceHandleStorage.value?.get();
+      const handle = await workspaceProvider.restoreWorkspace();
       if (!handle) {
         isInitializing.value = false;
         return;
@@ -201,7 +199,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       };
       const options = { mode: 'readwrite' as const };
       if ((await handleWithPerm.queryPermission?.(options)) === 'granted') {
-        await setupWorkspace(handle);
+        await setupWorkspace(handle as FileSystemDirectoryHandle);
       }
     } catch (e) {
       console.warn('Failed to restore workspace handle:', e);
