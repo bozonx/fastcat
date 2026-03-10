@@ -59,7 +59,7 @@ export function createProjectFsModule(params: {
       const commonRelativePath = stripWorkspaceCommonPathPrefix(normalizedPath);
       if (!commonRelativePath) return null;
 
-      const parts = commonRelativePath.split('/');
+      const parts = commonRelativePath.split('/').filter(Boolean);
       const fileName = parts.pop();
       if (!fileName) return null;
 
@@ -84,7 +84,7 @@ export function createProjectFsModule(params: {
 
     if (!params.projectsHandle.value || !params.currentProjectName.value) return null;
 
-    const parts = normalizedPath.split('/');
+    const parts = normalizedPath.split('/').filter(Boolean);
     const fileName = parts.pop();
     if (!fileName) return null;
 
