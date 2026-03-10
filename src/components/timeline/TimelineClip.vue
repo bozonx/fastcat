@@ -754,7 +754,7 @@ const isFreePosition = computed(() => {
     >
       <div
         v-if="clipItem && clipItem.reversed && !isMediaMissing"
-        class="absolute inset-0 rounded border-2 border-violet-400 pointer-events-none z-15"
+        class="absolute inset-0 rounded border-2 border-violet-400 pointer-events-none z-40"
       ></div>
 
       <div
