@@ -264,6 +264,7 @@ export const useProjectStore = defineStore('project', () => {
     getFileHandleByPath,
     getFileByPath,
     getDirectoryHandleByPath,
+    getProjectDirHandle,
     createFallbackTimelineDoc,
     loadProjectSettings,
     saveProjectSettings,
