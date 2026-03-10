@@ -66,6 +66,7 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
     },
     optimization: { ...DEFAULT_USER_SETTINGS.optimization },
     projectDefaults: createDefaultProjectDefaults(),
+    video: { ...DEFAULT_USER_SETTINGS.video },
     exportDefaults: {
       encoding: { ...DEFAULT_USER_SETTINGS.exportDefaults.encoding },
     },
