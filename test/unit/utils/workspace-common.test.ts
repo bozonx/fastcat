@@ -56,8 +56,8 @@ describe('workspace-common utils', () => {
     expect(getWorkspacePathParent('common/nested')).toBe('common');
     expect(getWorkspacePathParent('common')).toBe('');
 
-    expect(getWorkspacePathParent('@common/nested/file.otio')).toBe('@common/nested');
-    expect(getWorkspacePathParent('@common/nested')).toBe('@common');
+    expect(getWorkspacePathParent('@common/nested/file.otio')).toBe('common/nested');
+    expect(getWorkspacePathParent('@common/nested')).toBe('common');
     expect(getWorkspacePathParent('@common')).toBe('');
   });
 
@@ -66,7 +66,7 @@ describe('workspace-common utils', () => {
     expect(getWorkspacePathFileName('common/nested/file.otio')).toBe('file.otio');
     expect(getWorkspacePathFileName('common')).toBe('common');
     expect(getWorkspacePathFileName('@common/nested/file.otio')).toBe('file.otio');
-    expect(getWorkspacePathFileName('@common')).toBe('@common');
+    expect(getWorkspacePathFileName('@common')).toBe('common');
   });
 
   it('identifies project media paths', () => {
