@@ -130,7 +130,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     if (normalizedPath === WORKSPACE_COMMON_PATH_PREFIX) {
       return {
-        name: WORKSPACE_COMMON_DIR_NAME,
+        name: deps.t('videoEditor.fileManager.commonFolder', 'Shared Files'),
         kind: 'directory',
         path: WORKSPACE_COMMON_PATH_PREFIX,
       };
@@ -162,7 +162,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       (entry) => entry.path === WORKSPACE_COMMON_PATH_PREFIX,
     );
     const commonEntry: FsEntry = {
-      name: WORKSPACE_COMMON_DIR_NAME,
+      name: deps.t('videoEditor.fileManager.commonFolder', 'Shared Files'),
       kind: 'directory',
       path: WORKSPACE_COMMON_PATH_PREFIX,
       parentPath: undefined,

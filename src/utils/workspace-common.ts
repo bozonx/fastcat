@@ -1,7 +1,5 @@
 export const WORKSPACE_COMMON_DIR_NAME = 'common';
-export const WORKSPACE_COMMON_PATH_PREFIX = WORKSPACE_COMMON_DIR_NAME;
-
-const LEGACY_WORKSPACE_COMMON_PATH_PREFIX = '@common';
+export const WORKSPACE_COMMON_PATH_PREFIX = '@common';
 
 function isWorkspaceCommonPrefix(path: string, prefix: string): boolean {
   return path === prefix || path.startsWith(`${prefix}/`);
@@ -9,22 +7,14 @@ function isWorkspaceCommonPrefix(path: string, prefix: string): boolean {
 
 export function isWorkspaceCommonPath(path?: string | null): boolean {
   if (!path) return false;
-  return (
-    isWorkspaceCommonPrefix(path, WORKSPACE_COMMON_PATH_PREFIX) ||
-    isWorkspaceCommonPrefix(path, LEGACY_WORKSPACE_COMMON_PATH_PREFIX)
-  );
+  return isWorkspaceCommonPrefix(path, WORKSPACE_COMMON_PATH_PREFIX);
 }
 
 export function stripWorkspaceCommonPathPrefix(path: string): string {
   if (!isWorkspaceCommonPath(path)) return normalizeWorkspaceFilePath(path);
   if (path === WORKSPACE_COMMON_PATH_PREFIX) return '';
-  if (path === LEGACY_WORKSPACE_COMMON_PATH_PREFIX) return '';
 
-  if (path.startsWith(`${WORKSPACE_COMMON_PATH_PREFIX}/`)) {
-    return path.slice(`${WORKSPACE_COMMON_PATH_PREFIX}/`.length);
-  }
-
-  return path.slice(`${LEGACY_WORKSPACE_COMMON_PATH_PREFIX}/`.length);
+  return path.slice(`${WORKSPACE_COMMON_PATH_PREFIX}/`.length);
 }
 
 export function toWorkspaceCommonPath(path?: string | null): string {
@@ -49,11 +39,7 @@ export function normalizeWorkspaceFilePath(path: string): string {
 
   if (isWorkspaceCommonPath(trimmed)) {
     const relative = trimmed
-      .slice(
-        trimmed.startsWith(LEGACY_WORKSPACE_COMMON_PATH_PREFIX)
-          ? LEGACY_WORKSPACE_COMMON_PATH_PREFIX.length
-          : WORKSPACE_COMMON_PATH_PREFIX.length,
-      )
+      .slice(WORKSPACE_COMMON_PATH_PREFIX.length)
       .split('/')
       .map((part) => part.trim())
       .filter(Boolean)
@@ -88,10 +74,16 @@ export function getWorkspacePathFileName(path?: string | null): string {
 
 export function isProjectVideoPath(path?: string | null): boolean {
   const normalized = normalizeWorkspaceFilePath(path ?? '');
-  return normalized.startsWith('_video/') || normalized.startsWith('common/_video/');
+  return (
+    normalized.startsWith('_video/') ||
+    normalized.startsWith(`${WORKSPACE_COMMON_PATH_PREFIX}/_video/`)
+  );
 }
 
 export function isProjectAudioPath(path?: string | null): boolean {
   const normalized = normalizeWorkspaceFilePath(path ?? '');
-  return normalized.startsWith('_audio/') || normalized.startsWith('common/_audio/');
+  return (
+    normalized.startsWith('_audio/') ||
+    normalized.startsWith(`${WORKSPACE_COMMON_PATH_PREFIX}/_audio/`)
+  );
 }

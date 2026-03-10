@@ -295,6 +295,7 @@
         "project": "Project",
         "freeSpace": "Free space"
       },
+      "commonFolder": "Shared Files",
       "preview": {
         "original": "Original",
         "proxy": "Proxy"

@@ -354,6 +354,7 @@
         "project": "Проект",
         "freeSpace": "Свободное место"
       },
+      "commonFolder": "Общие файлы",
       "preview": {
         "original": "Оригинал",
         "proxy": "Прокси"

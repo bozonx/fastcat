@@ -20,6 +20,13 @@ const statusToneClasses: Record<VideoDiagnosticsStatus['tone'], string> = {
   warning: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
 };
 
+const sectionContainerClasses: Record<VideoDiagnosticsStatus['tone'], string> = {
+  danger: 'border-red-500/30 bg-red-500/5',
+  neutral: 'border-ui-border-muted bg-ui-bg-muted/30',
+  success: 'border-ui-border-muted bg-ui-bg-muted/30',
+  warning: 'border-amber-500/30 bg-amber-500/5',
+};
+
 async function loadDiagnostics() {
   isLoadingDiagnostics.value = true;
 
