@@ -361,9 +361,14 @@ const contextMenuItems = computed(() => {
   ];
 });
 
-defineProps<{
-  isFullscreen?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    isFullscreen?: boolean;
+  }>(),
+  {
+    isFullscreen: false,
+  },
+);
 
 const emit = defineEmits<{
   panelDragStart: [e: DragEvent];
@@ -371,14 +376,15 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems" class="h-full">
+  <UContextMenu :items="contextMenuItems" class="h-full group/monitor">
     <div
-      class="flex h-full bg-ui-bg-elevated min-w-0 min-h-0"
+      class="flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
       :class="[
-        toolbarPosition === 'bottom' ? 'flex-col' : '',
-        toolbarPosition === 'top' ? 'flex-col-reverse' : '',
-        toolbarPosition === 'right' ? 'flex-row' : '',
-        toolbarPosition === 'left' ? 'flex-row-reverse' : '',
+        isFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
+        !isFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
+        !isFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
+        !isFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
+        !isFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
         {
           'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
             !isFullscreen && focusStore.isPanelFocused('monitor'),
@@ -450,7 +456,12 @@ const emit = defineEmits<{
 
           <span
             ref="timecodeEl"
-            class="absolute bottom-3 right-3 text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded"
+            class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300"
+            :class="[
+              isFullscreen
+                ? 'bottom-24 right-8 opacity-0 group-hover/monitor:opacity-100 translate-y-2 group-hover/monitor:translate-y-0'
+                : 'bottom-3 right-3',
+            ]"
           >
             00:00:00:00 / 00:00:00:00
           </span>
@@ -459,15 +470,20 @@ const emit = defineEmits<{
 
       <!-- Playback controls -->
       <div
-        class="flex flex-wrap items-center justify-center gap-3 px-4 py-3.5 border-ui-border shrink-0 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
+        class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
         :class="[
-          toolbarPosition === 'bottom' ? 'border-t' : '',
-          toolbarPosition === 'top' ? 'border-b' : '',
-          toolbarPosition === 'right' ? 'border-l' : '',
-          toolbarPosition === 'left' ? 'border-r' : '',
-          toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
+          isFullscreen
+            ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none opacity-0 group-hover/monitor:opacity-100 hover:!opacity-100 translate-y-4 group-hover/monitor:translate-y-0'
+            : 'px-4 py-3.5 bg-ui-bg-elevated cursor-grab active:cursor-grabbing',
+          !isFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
+          !isFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
+          !isFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
+          !isFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
+          (toolbarPosition === 'left' || toolbarPosition === 'right') && !isFullscreen
+            ? 'flex-col'
+            : '',
         ]"
-        draggable="true"
+        :draggable="!isFullscreen"
         @dragstart="(e) => emit('panelDragStart', e)"
       >
         <div
@@ -597,9 +613,9 @@ const emit = defineEmits<{
 
           <UButton
             v-if="isFullscreen"
-            size="xs"
-            color="neutral"
-            variant="ghost"
+            size="sm"
+            color="primary"
+            variant="solid"
             icon="i-heroicons-arrow-left"
             :label="t('common.back', 'Back')"
             @click="projectStore.goToCut()"

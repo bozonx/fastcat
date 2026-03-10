@@ -9,6 +9,7 @@ const projectStoreMock = {
   currentTimelinePath: 'timeline.otio',
   getFileHandleByPath: vi.fn(),
   getFileByPath: vi.fn(),
+  getFileByPath: vi.fn(),
   createFallbackTimelineDoc: () => ({
     OTIO_SCHEMA: 'Timeline.1',
     id: 'doc-1',
@@ -509,10 +510,10 @@ describe('TimelineStore', () => {
     } as any;
 
     projectStoreMock.getFileByPath.mockResolvedValue({
-        type: 'audio/mpeg',
-        size: 123,
-        lastModified: 1,
-      });
+      type: 'audio/mpeg',
+      size: 123,
+      lastModified: 1,
+    });
 
     mediaStoreMock.getOrFetchMetadata.mockResolvedValue({
       source: { size: 123, lastModified: 1 },
@@ -610,10 +611,13 @@ describe('TimelineStore', () => {
       2,
     );
 
-    projectStoreMock.getFileHandleByPath.mockResolvedValue({
-      getFile: async () => ({
-        text: async () => otio,
-      }),
+    projectStoreMock.getFileByPath.mockImplementation(async (path: string) => {
+      if (path === 'nested.otio') {
+        return {
+          text: async () => otio,
+        };
+      }
+      return null;
     });
 
     await store.addTimelineClipToTimelineFromPath({
@@ -752,20 +756,20 @@ describe('TimelineStore', () => {
     );
 
     projectStoreMock.getFileByPath.mockImplementation(async (path: string) => {
-        if (path === 'video-only.otio') {
-          return {
-            text: async () => videoOnlyNestedOtio,
-          };
-        }
+      if (path === 'video-only.otio') {
+        return {
+          text: async () => videoOnlyNestedOtio,
+        };
+      }
 
-        if (path === 'nested-av.otio') {
-          return {
-            text: async () => avNestedOtio,
-          };
-        }
+      if (path === 'nested-av.otio') {
+        return {
+          text: async () => avNestedOtio,
+        };
+      }
 
-        return null;
-      });
+      return null;
+    });
 
     await expect(
       store.addTimelineClipToTimelineFromPath({
@@ -864,14 +868,14 @@ describe('TimelineStore', () => {
     );
 
     projectStoreMock.getFileByPath.mockImplementation(async (path: string) => {
-        if (path === 'nested-cycle.otio') {
-          return {
-            text: async () => nestedOtioWithBackReference,
-          };
-        }
+      if (path === 'nested-cycle.otio') {
+        return {
+          text: async () => nestedOtioWithBackReference,
+        };
+      }
 
-        return null;
-      });
+      return null;
+    });
 
     await expect(
       store.addTimelineClipToTimelineFromPath({

@@ -167,6 +167,7 @@ export interface UpdateClipPropertiesCommand {
       | 'effects'
       | 'freezeFrameSourceUs'
       | 'speed'
+      | 'reversed'
       | 'transform'
       | 'audioGain'
       | 'audioBalance'

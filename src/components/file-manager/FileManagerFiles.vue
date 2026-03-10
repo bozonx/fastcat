@@ -99,10 +99,7 @@ const props = defineProps<{
   getFileIcon: (entry: FsEntry) => string;
   findEntryByPath: (path: string) => FsEntry | null;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
-  moveEntry: (params: {
-    source: FsEntry;
-    targetDirPath: string;
-  }) => Promise<void>;
+  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
 }>();
 
@@ -139,10 +136,7 @@ function getEntryMeta(entry: FsEntry): {
   return { hasProxy, generatingProxy, proxyProgress, isUsedInTimeline };
 }
 
-async function onRequestMove(params: {
-  sourcePath: string;
-  targetDirPath: string;
-}) {
+async function onRequestMove(params: { sourcePath: string; targetDirPath: string }) {
   const source = props.findEntryByPath(params.sourcePath);
   if (!source) return;
   await props.moveEntry({
@@ -152,18 +146,12 @@ async function onRequestMove(params: {
   uiStore.notifyFileManagerUpdate();
 }
 
-async function onRequestUpload(params: {
-  files: File[];
-  targetDirPath: string;
-}) {
+async function onRequestUpload(params: { files: File[]; targetDirPath: string }) {
   await props.handleFiles(params.files, params.targetDirPath);
   uiStore.notifyFileManagerUpdate();
 }
 
-function onRequestDownload(params: {
-  entry: RemoteFsEntry;
-  targetDirPath: string;
-}) {
+function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string }) {
   uiStore.pendingRemoteDownloadRequest = params;
 }
 

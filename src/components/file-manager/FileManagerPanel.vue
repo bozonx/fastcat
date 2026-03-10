@@ -256,23 +256,9 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       try {
         const blob = await vfs.readFile(entry.path);
         const content = await blob.text();
-        projectStore.addTextPanel(
-          entry.path,
-          content,
-          entry.name,
-          undefined,
-          undefined,
-          view,
-        );
+        projectStore.addTextPanel(entry.path, content, entry.name, undefined, undefined, view);
       } catch {
-        projectStore.addTextPanel(
-          entry.path,
-          '',
-          entry.name,
-          undefined,
-          undefined,
-          view,
-        );
+        projectStore.addTextPanel(entry.path, '', entry.name, undefined, undefined, view);
       }
     } else if (['video', 'audio', 'image'].includes(mediaType)) {
       projectStore.addMediaPanel(entry, mediaType as any, entry.name, undefined, undefined, view);

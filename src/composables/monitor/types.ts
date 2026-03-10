@@ -5,6 +5,7 @@ export interface WorkerTimelineClip {
   trackId?: string;
   layer: number;
   speed?: number;
+  reversed?: boolean;
   audioGain?: number;
   audioBalance?: number;
   audioFadeInUs?: number;

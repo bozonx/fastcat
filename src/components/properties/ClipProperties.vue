@@ -376,7 +376,8 @@ function handleUpdateStrokeWidth(val: number) {
 
 function handleUpdateShapeConfig(configUpdate: Partial<import('~/timeline/types').ShapeConfig>) {
   if (props.clip.clipType !== 'shape') return;
-  const currentConfig = (props.clip as import('~/timeline/types').TimelineShapeClipItem).shapeConfig || {};
+  const currentConfig =
+    (props.clip as import('~/timeline/types').TimelineShapeClipItem).shapeConfig || {};
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     shapeConfig: { ...currentConfig, ...configUpdate },
   } as any);
@@ -452,6 +453,21 @@ const {
     timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transform: next });
   },
 });
+
+const canEditReversed = computed(() => {
+  const clipType = props.clip.clipType;
+  return clipType === 'media' || clipType === 'timeline';
+});
+
+const isReversed = computed(() => {
+  return Boolean(props.clip.reversed);
+});
+
+function toggleReversed() {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    reversed: !isReversed.value,
+  });
+}
 
 const {
   audioBalance,
@@ -1288,14 +1304,24 @@ defineExpose({
 
     <!-- Transform -->
     <div
-      v-if="canEditTransform"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+      v-if="canEditTransform || canEditReversed"
+      class="space-y-4 bg-ui-bg-elevated p-4 rounded-lg border border-ui-border"
     >
       <div
-        class="flex items-center justify-between text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
+        class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-2"
       >
-        <span>{{ t('granVideoEditor.clip.transform.title', 'Transform') }}</span>
-        <div class="flex items-center gap-1">
+        {{ t('granVideoEditor.clip.transform.title', 'Transform') }}
+      </div>
+
+      <div v-if="canEditReversed" class="flex items-center justify-between">
+        <span class="text-sm text-ui-text">{{
+          t('granVideoEditor.clip.reversed', 'Reverse Playback')
+        }}</span>
+        <UToggle :model-value="isReversed" @update:model-value="toggleReversed" />
+      </div>
+
+      <div v-if="canEditTransform" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
           <UButton
             icon="i-heroicons-arrows-right-left"
             size="2xs"

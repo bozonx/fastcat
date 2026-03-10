@@ -727,10 +727,7 @@ async function onBrowserRootDrop(e: DragEvent) {
   await onRootDrop(e);
 }
 
-async function performRemoteDownload(params: {
-  entry: RemoteFsEntry;
-  targetDirPath: string;
-}) {
+async function performRemoteDownload(params: { entry: RemoteFsEntry; targetDirPath: string }) {
   const config = remoteFilesConfig.value;
   if (!config) return;
   if (params.entry.kind !== 'file') return;
