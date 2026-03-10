@@ -359,14 +359,8 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         return;
       }
 
-      const width = Math.max(
-        160,
-        Math.round(Number(projectStore.projectSettings?.project?.width ?? 320)),
-      );
-      const height = Math.max(
-        90,
-        Math.round(Number(projectStore.projectSettings?.project?.height ?? 180)),
-      );
+      const width = Math.max(160, Math.round(TIMELINE_CLIP_THUMBNAILS.WIDTH));
+      const height = Math.max(90, Math.round(TIMELINE_CLIP_THUMBNAILS.HEIGHT));
       const previewTimeUs = Math.max(
         0,
         Math.min(

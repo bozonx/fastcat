@@ -17,7 +17,10 @@ export interface VideoCoreWorkerAPI {
   ): Promise<void>;
   loadTimeline(clips: any[]): Promise<number>;
   updateTimelineLayout(clips: any[]): Promise<number>;
-  renderFrame(timeUs: number, options?: PreviewRenderOptions): Promise<void>;
+  renderFrame(
+    timeUs: number,
+    options?: PreviewRenderOptions,
+  ): Promise<OffscreenCanvas | HTMLCanvasElement | null>;
   clearClips(): Promise<void>;
   destroyCompositor(): Promise<void>;
 

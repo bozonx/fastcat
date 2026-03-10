@@ -27,6 +27,109 @@ export function interleavedToPlanar(params: {
   return planar;
 }
 
+export function normalizeSampleChannels(params: {
+  planes: Float32Array[];
+  sourceChannels: number;
+  targetChannels: number;
+  frames: number;
+}): Float32Array[] {
+  const { planes, sourceChannels, targetChannels, frames } = params;
+
+  if (targetChannels <= 0 || frames <= 0) {
+    return [];
+  }
+
+  if (sourceChannels === targetChannels) {
+    return Array.from({ length: targetChannels }, (_, index) => {
+      const plane = planes[index];
+      if (plane && plane.length >= frames) {
+        return plane;
+      }
+      const fallback = new Float32Array(frames);
+      if (plane) {
+        fallback.set(plane.subarray(0, Math.min(frames, plane.length)));
+      }
+      return fallback;
+    });
+  }
+
+  if (sourceChannels <= 1 && targetChannels === 2) {
+    const mono = planes[0] ?? new Float32Array(frames);
+    const left = new Float32Array(frames);
+    const right = new Float32Array(frames);
+    for (let i = 0; i < frames; i += 1) {
+      const value = mono[i] ?? 0;
+      left[i] = value;
+      right[i] = value;
+    }
+    return [left, right];
+  }
+
+  if (sourceChannels >= 2 && targetChannels === 1) {
+    const left = planes[0] ?? new Float32Array(frames);
+    const right = planes[1] ?? left;
+    const mono = new Float32Array(frames);
+    for (let i = 0; i < frames; i += 1) {
+      mono[i] = ((left[i] ?? 0) + (right[i] ?? 0)) * 0.5;
+    }
+    return [mono];
+  }
+
+  return Array.from({ length: targetChannels }, (_, index) => {
+    const sourceIndex = Math.min(index, Math.max(0, sourceChannels - 1));
+    const sourcePlane = planes[sourceIndex] ?? planes[0];
+    const nextPlane = new Float32Array(frames);
+    if (sourcePlane) {
+      nextPlane.set(sourcePlane.subarray(0, Math.min(frames, sourcePlane.length)));
+    }
+    return nextPlane;
+  });
+}
+
+export function resamplePlanarChannels(params: {
+  planes: Float32Array[];
+  sourceFrames: number;
+  targetFrames: number;
+}): Float32Array[] {
+  const { planes, sourceFrames, targetFrames } = params;
+
+  if (targetFrames <= 0) {
+    return planes.map(() => new Float32Array());
+  }
+
+  if (sourceFrames <= 0) {
+    return planes.map(() => new Float32Array(targetFrames));
+  }
+
+  if (sourceFrames === targetFrames) {
+    return planes;
+  }
+
+  if (sourceFrames === 1) {
+    return planes.map((plane) => {
+      const value = plane[0] ?? 0;
+      const next = new Float32Array(targetFrames);
+      next.fill(value);
+      return next;
+    });
+  }
+
+  const ratio = (sourceFrames - 1) / Math.max(1, targetFrames - 1);
+  return planes.map((plane) => {
+    const next = new Float32Array(targetFrames);
+    for (let index = 0; index < targetFrames; index += 1) {
+      const sourcePos = index * ratio;
+      const leftIndex = Math.floor(sourcePos);
+      const rightIndex = Math.min(sourceFrames - 1, leftIndex + 1);
+      const mix = sourcePos - leftIndex;
+      const left = plane[leftIndex] ?? 0;
+      const right = plane[rightIndex] ?? left;
+      next[index] = left + (right - left) * mix;
+    }
+    return next;
+  });
+}
+
 export interface PreparedClip {
   clipStartS: number;
   offsetS: number;
@@ -373,9 +476,9 @@ export class AudioMixer {
             const ch = Number(sample.numberOfChannels) || 0;
 
             if (frames <= 0) continue;
-            if (sr !== sampleRate || ch !== numberOfChannels) {
+            if (sr <= 0 || ch <= 0) {
               await reportExportWarning(
-                '[Worker Export] Audio clip sample format mismatch; skipping some audio.',
+                '[Worker Export] Audio clip sample format is invalid; skipping some audio.',
               );
               continue;
             }
@@ -388,18 +491,42 @@ export class AudioMixer {
             const writeOffsetFrames = startFrameGlobal - startFrameInChunkGlobal;
             if (writeOffsetFrames >= framesInChunk) continue;
 
-            const tmpPlanes: Float32Array[] = [];
-            for (let planeIndex = 0; planeIndex < numberOfChannels; planeIndex += 1) {
+            const sourcePlanes: Float32Array[] = [];
+            for (let planeIndex = 0; planeIndex < ch; planeIndex += 1) {
               const bytesNeeded = sample.allocationSize({
                 format: 'f32-planar',
                 planeIndex,
               });
               const plane = new Float32Array(bytesNeeded / 4);
               sample.copyTo(plane, { format: 'f32-planar', planeIndex });
-              tmpPlanes.push(plane);
+              sourcePlanes.push(plane);
             }
 
-            for (let i = 0; i < frames; i += 1) {
+            let normalizedPlanes = normalizeSampleChannels({
+              planes: sourcePlanes,
+              sourceChannels: ch,
+              targetChannels: numberOfChannels,
+              frames,
+            });
+            let normalizedFrames = frames;
+
+            if (sr !== sampleRate) {
+              await reportExportWarning(
+                '[Worker Export] Audio clip sample rate mismatch; applying linear resample.',
+              );
+              normalizedFrames = Math.max(1, Math.round((frames * sampleRate) / sr));
+              normalizedPlanes = resamplePlanarChannels({
+                planes: normalizedPlanes,
+                sourceFrames: frames,
+                targetFrames: normalizedFrames,
+              });
+            } else if (ch !== numberOfChannels) {
+              await reportExportWarning(
+                '[Worker Export] Audio clip channel mismatch; normalizing channel layout.',
+              );
+            }
+
+            for (let i = 0; i < normalizedFrames; i += 1) {
               const dstFrame = writeOffsetFrames + i;
               if (dstFrame < 0) continue;
               if (dstFrame >= framesInChunk) break;
@@ -408,7 +535,7 @@ export class AudioMixer {
               const gain = gainAtClipTimeS(tClipS);
 
               for (let c = 0; c < numberOfChannels; c += 1) {
-                const plane = tmpPlanes[c];
+                const plane = normalizedPlanes[c];
                 const panScale =
                   hasStereoPan && c === 0 ? leftScale : hasStereoPan && c === 1 ? rightScale : 1;
                 const v = (plane ? (plane[i] ?? 0) : 0) * gain * panScale;
