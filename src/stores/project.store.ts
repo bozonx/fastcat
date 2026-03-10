@@ -115,6 +115,7 @@ export const useProjectStore = defineStore('project', () => {
   projectSettingsStore.setContext({
     getProjectDirHandle,
     getCurrentProjectName: () => currentProjectName.value,
+    getIsReadOnly: () => isReadOnly.value,
   });
 
   async function loadProjectSettings() {

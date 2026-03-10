@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref, watch, toRef } from 'vue';
 
 import type {
   TimelineDocument,
@@ -453,6 +453,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
+
+    isReadOnly: toRef(projectStore, 'isReadOnly'),
 
     currentProjectName,
     currentTimelinePath,

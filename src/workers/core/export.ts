@@ -7,6 +7,10 @@ import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
 import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
+import {
+  getMediaTypeFromFilename,
+  getMimeTypeFromFilename,
+} from '../../utils/media-types';
 
 export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle) {
   const file =
@@ -14,9 +18,7 @@ export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle)
       ? fileOrHandle
       : await (fileOrHandle as FileSystemFileHandle).getFile();
 
-  const isImage =
-    (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-    (file?.name && /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(file.name));
+  const isImage = getMediaTypeFromFilename(file.name) === 'image';
 
   if (isImage) {
     return {
@@ -24,7 +26,7 @@ export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle)
         size: file.size,
         lastModified: file.lastModified,
       },
-      mimeType: typeof file?.type === 'string' && file.type ? file.type : 'image/jpeg',
+      mimeType: getMimeTypeFromFilename(file.name),
       container: 'image',
       duration: 0,
     };
@@ -48,7 +50,7 @@ export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle)
           size: file.size,
           lastModified: file.lastModified,
         },
-        mimeType: mimeType ?? (typeof file.type === 'string' ? file.type : undefined),
+        mimeType: mimeType ?? getMimeTypeFromFilename(file.name),
         container: format?.name ?? format?.constructor?.name,
         duration: durationS,
       };

@@ -4,6 +4,7 @@ import {
 } from '~/repositories/transcription-cache.repository';
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
 import type { GranVideoEditorUserSettings } from '~/utils/settings';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 export interface SttTranscriptionRequest {
   file: File | FileSystemFileHandle;
@@ -36,6 +37,9 @@ function normalizeModels(models: string[]): string[] {
 }
 
 function normalizeFileType(fileType: string | undefined, file: File): string {
+  const extMime = getMimeTypeFromFilename(file.name);
+  if (extMime !== 'application/octet-stream') return extMime;
+
   if (typeof fileType === 'string' && fileType.trim()) {
     return fileType.trim().toLowerCase();
   }
@@ -173,7 +177,7 @@ export async function transcribeProjectAudioFile(
   // Modern STT services (e.g. Whisper) can extract audio from video containers natively.
   // This avoids OOM crashes, UI freezes, and 'failed to fetch' caused by chunked requests or giant Blobs.
   const body: BodyInit = file;
-  const contentType = file.type || 'application/octet-stream';
+  const contentType = normalizedFileType;
 
   const headers = createRequestHeaders({
     file,

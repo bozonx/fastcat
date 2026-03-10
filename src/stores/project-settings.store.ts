@@ -28,15 +28,16 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
   const getProjectDirHandle = ref<(() => Promise<FileSystemDirectoryHandle | null>) | null>(null);
   const getCurrentProjectName = ref<(() => string | null) | null>(null);
+  const getIsReadOnly = ref<(() => boolean) | null>(null);
 
   const autoSave = createAutoSave({
     doSave: async () => {
       if (!workspaceStore.projectsHandle) return false;
       if (!getCurrentProjectName.value?.()) return false;
       if (isLoadingProjectSettings.value) return false;
+      if (getIsReadOnly.value?.()) return false;
 
       isSavingProjectSettings.value = true;
-
       try {
         await ensureRepo();
         const repo: ProjectSettingsRepo | null = projectSettingsRepo.value;
@@ -59,13 +60,14 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       }
     },
   });
-
   function setContext(input: {
     getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
     getCurrentProjectName: () => string | null;
+    getIsReadOnly: () => boolean;
   }) {
     getProjectDirHandle.value = input.getProjectDirHandle;
     getCurrentProjectName.value = input.getCurrentProjectName;
+    getIsReadOnly.value = input.getIsReadOnly;
   }
 
   function closeProjectSettings() {

@@ -9,6 +9,7 @@ import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/forma
 import {
   VIDEO_EXTENSIONS,
   getMediaTypeFromFilename,
+  getMimeTypeFromFilename,
   isOpenableProjectFileName,
 } from '~/utils/media-types';
 import { formatAudioChannels } from '~/utils/audio';
@@ -390,7 +391,7 @@ async function submitAudioTranscription() {
       file,
       filePath: selectedEntry.path,
       fileName: selectedEntry.name,
-      fileType: selectedEntry.mimeType || (isVideoFile.value ? 'video/mp4' : 'audio/mpeg'),
+      fileType: getMimeTypeFromFilename(selectedEntry.name),
       language: transcriptionLanguage.value,
       granPublicadorBaseUrl:
         typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
