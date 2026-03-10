@@ -614,7 +614,7 @@ export class AudioEngine {
       clipStartS,
       clipDurationS,
       currentTimeS,
-      bufferOffsetS: originalBufferOffsetS,
+      bufferOffsetS: safeBufferOffsetS,
       durationToPlayS,
       playStartS,
       ctxCurrentTime: this.ctx.currentTime,

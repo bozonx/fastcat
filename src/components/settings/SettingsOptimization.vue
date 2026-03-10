@@ -34,22 +34,41 @@ function resetDefaults() {
     </div>
 
     <div class="grid grid-cols-4 gap-4">
-      <UFormField :label="t('videoEditor.settings.proxyResolution', 'Proxy resolution')">
+      <UFormField :label="t('videoEditor.settings.proxyMaxPixels', 'Max proxy resolution')">
         <USelectMenu
-          v-model="workspaceStore.userSettings.optimization.proxyResolution"
+          v-slot="{ modelValue }"
+          v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
           :items="[
-            { label: '360p', value: '360p' },
-            { label: '480p', value: '480p' },
-            { label: '720p', value: '720p' },
-            { label: '1080p', value: '1080p' },
+            { label: '2.5 MP (1080p)', value: 2_500_000 },
+            { label: '1.3 MP (720p)', value: 1_300_000 },
+            { label: '0.6 MP (480p)', value: 600_000 },
+            { label: '0.3 MP (360p)', value: 300_000 },
+            { label: '0.2 MP (240p)', value: 200_000 },
           ]"
           value-key="value"
           label-key="label"
           class="w-full"
           @update:model-value="
-            (v: any) => (workspaceStore.userSettings.optimization.proxyResolution = v?.value ?? v)
+            (v: any) => (workspaceStore.userSettings.optimization.proxyMaxPixels = v?.value ?? v)
           "
-        />
+        >
+          <UButton
+            color="neutral"
+            variant="outline"
+            class="w-full justify-between"
+            :label="
+              [
+                { label: '2.5 MP (1080p)', value: 2_500_000 },
+                { label: '1.3 MP (720p)', value: 1_300_000 },
+                { label: '0.6 MP (480p)', value: 600_000 },
+                { label: '0.3 MP (360p)', value: 300_000 },
+                { label: '0.2 MP (240p)', value: 200_000 },
+              ].find((i) => i.value === workspaceStore.userSettings.optimization.proxyMaxPixels)
+                ?.label || workspaceStore.userSettings.optimization.proxyMaxPixels + ' px'
+            "
+            icon-trailing="i-lucide-chevron-down"
+          />
+        </USelectMenu>
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.proxyConcurrency', 'Concurrency')">

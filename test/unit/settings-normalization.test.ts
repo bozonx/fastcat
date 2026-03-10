@@ -12,6 +12,32 @@ describe('settings normalization', () => {
     expect(normalized.hotkeys.bindings).toBeDefined();
   });
 
+  it('migrates proxyResolution to proxyMaxPixels', () => {
+    expect(
+      normalizeUserSettings({ optimization: { proxyResolution: '360p' } }).optimization
+        .proxyMaxPixels,
+    ).toBe(230_000);
+    expect(
+      normalizeUserSettings({ optimization: { proxyResolution: '1080p' } }).optimization
+        .proxyMaxPixels,
+    ).toBe(2_073_600);
+  });
+
+  it('normalizes proxyMaxPixels', () => {
+    expect(
+      normalizeUserSettings({ optimization: { proxyMaxPixels: 500_000 } }).optimization
+        .proxyMaxPixels,
+    ).toBe(500_000);
+    expect(
+      normalizeUserSettings({ optimization: { proxyMaxPixels: 50_000 } }).optimization
+        .proxyMaxPixels,
+    ).toBe(100_000); // min limit
+    expect(
+      normalizeUserSettings({ optimization: { proxyMaxPixels: 20_000_000 } }).optimization
+        .proxyMaxPixels,
+    ).toBe(10_000_000); // max limit
+  });
+
   it('normalizes locale', () => {
     expect(normalizeUserSettings({ locale: 'ru-RU' }).locale).toBe('ru-RU');
     expect(normalizeUserSettings({ locale: 'ru' }).locale).toBe('ru-RU');
