@@ -253,6 +253,22 @@ describe('AudioEngine', () => {
     expect(source.stop).toHaveBeenCalledTimes(1);
   });
 
+  it('does not schedule audio for negative-speed clips', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({ speed: -1 });
+    await engine.loadClips([clip]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+
+    await engine.play(0);
+
+    expect(audioContextInstance.createdSources.length).toBe(0);
+  });
+
   it('retries playback after seek when playing', async () => {
     const engine = new AudioEngine();
     await engine.init();

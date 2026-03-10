@@ -21,7 +21,7 @@ export interface AudioEngineClip {
   sourceRangeDurationUs: number;
   sourceDurationUs: number;
   speed?: number;
-  
+
   audioGain?: number;
   audioBalance?: number;
   audioFadeInUs?: number;
@@ -500,15 +500,7 @@ export class AudioEngine {
       // Re-evaluate current time since decoding takes time
       currentTimeS = this.getCurrentTimeS();
     }
-    if (!this.isPlaying) return;
-    if (!buffer) {
-      if (!clip.id.endsWith('__audio')) {
-        console.warn(
-          `[AudioEngine] Buffer could not be decoded for clip ${clip.id} (${sourceKey})`,
-        );
-      }
-      return;
-    }
+    let scheduledBuffer = buffer!;
 
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;
@@ -533,6 +525,7 @@ export class AudioEngine {
         : 1;
 
     const isClipReversed = clipSpeed < 0;
+    if (isClipReversed) return;
     const playReversedBuffer = isTimelineBackward !== isClipReversed;
     const absSpeed = Math.abs(clipSpeed);
     const effectiveSpeed = absSpeed * Math.abs(this.globalSpeed);
@@ -569,18 +562,18 @@ export class AudioEngine {
       let reversedBuffer = this.reversedDecodedCache.get(sourceKey) ?? null;
       if (!reversedBuffer) {
         reversedBuffer = this.ctx.createBuffer(
-          buffer.numberOfChannels,
-          buffer.length,
-          buffer.sampleRate,
+          scheduledBuffer.numberOfChannels,
+          scheduledBuffer.length,
+          scheduledBuffer.sampleRate,
         );
-        for (let i = 0; i < buffer.numberOfChannels; i++) {
+        for (let i = 0; i < scheduledBuffer.numberOfChannels; i++) {
           const dest = reversedBuffer.getChannelData(i);
-          dest.set(buffer.getChannelData(i));
+          dest.set(scheduledBuffer.getChannelData(i));
           dest.reverse();
         }
         this.reversedDecodedCache.set(sourceKey, reversedBuffer);
       }
-      buffer = reversedBuffer;
+      scheduledBuffer = reversedBuffer;
     }
 
     const remainingInClipS = isTimelineBackward
@@ -589,7 +582,7 @@ export class AudioEngine {
     const durationToPlayS = remainingInClipS * absSpeed;
 
     let safeBufferOffsetS = playReversedBuffer
-      ? buffer.duration - currentSourceTimeS
+      ? scheduledBuffer.duration - currentSourceTimeS
       : currentSourceTimeS;
     let safeDurationToPlayS = durationToPlayS;
 
@@ -597,13 +590,15 @@ export class AudioEngine {
       safeBufferOffsetS = 0;
     }
 
-    if (safeBufferOffsetS >= buffer.duration) {
-      const epsilon = 1 / Math.max(1, Math.round(Number((buffer as any).sampleRate) || 48000));
-      safeBufferOffsetS = Math.max(0, buffer.duration - epsilon);
+    if (safeBufferOffsetS >= scheduledBuffer.duration) {
+      const epsilon =
+        1 / Math.max(1, Math.round(Number((scheduledBuffer as any).sampleRate) || 48000));
+      safeBufferOffsetS = Math.max(0, scheduledBuffer.duration - epsilon);
     }
 
-    const epsilon = 1 / Math.max(1, Math.round(Number((buffer as any).sampleRate) || 48000));
-    const remainingInBufferS = Math.max(0, buffer.duration - safeBufferOffsetS);
+    const epsilon =
+      1 / Math.max(1, Math.round(Number((scheduledBuffer as any).sampleRate) || 48000));
+    const remainingInBufferS = Math.max(0, scheduledBuffer.duration - safeBufferOffsetS);
     safeDurationToPlayS = Math.min(
       Math.max(safeDurationToPlayS, epsilon),
       Math.max(remainingInBufferS, epsilon),
@@ -621,11 +616,11 @@ export class AudioEngine {
       durationToPlayS,
       playStartS,
       ctxCurrentTime: this.ctx.currentTime,
-      bufferDuration: buffer.duration,
+      bufferDuration: scheduledBuffer.duration,
     });
 
     const sourceNode = this.ctx.createBufferSource();
-    sourceNode.buffer = buffer;
+    sourceNode.buffer = scheduledBuffer;
     if (sourceNode.playbackRate) {
       sourceNode.playbackRate.value = effectiveSpeed;
     }
