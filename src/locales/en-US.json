@@ -140,6 +140,12 @@
     "text": "Text"
   },
   "videoEditor": {
+    "project": {
+      "lockedTitle": "Project Locked",
+      "lockedDescription": "This project is currently open in another tab or browser window. Concurrent editing of the same project is not supported and may lead to data loss or conflicts.",
+      "lockedSuggestion": "You can continue in Read-Only mode to view the project, but we recommend returning to your original tab for editing.",
+      "lockedAcknowledge": "Understood, Read-Only"
+    },
     "settings": {
       "title": "Editor settings",
       "userSection": "User settings",

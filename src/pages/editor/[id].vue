@@ -160,6 +160,12 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
+  const projectId = route.params.id as string;
+  if (projectId) {
+    projectStore.openProject(decodeURIComponent(projectId));
+  } else {
+    router.push('/');
+  }
 });
 
 onUnmounted(() => {
