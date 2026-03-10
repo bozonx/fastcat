@@ -9,6 +9,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
   private rootHandle: FileSystemDirectoryHandle | null = null;
 
+  private async getRoot(): Promise<FileSystemDirectoryHandle | null> {
+    if (this.rootHandle) return this.rootHandle;
+    return await this.getWorkspaceRoot();
+  }
+
   constructor(private getWorkspaceRoot: () => Promise<FileSystemDirectoryHandle | null>) {}
 
   async init(): Promise<void> {
@@ -19,11 +24,12 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     path: string,
     options?: { create?: boolean; isFile?: boolean },
   ): Promise<FileSystemHandle | null> {
-    if (!this.rootHandle) return null;
-    if (!path || path === '/') return this.rootHandle;
+    const root = await this.getRoot();
+    if (!root) return null;
+    if (!path || path === '/') return root;
 
     const parts = path.split('/').filter(Boolean);
-    let currentDir = this.rootHandle;
+    let currentDir = root;
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
@@ -55,7 +61,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     options?: { create?: boolean },
   ): Promise<FileSystemDirectoryHandle | null> {
     const parts = path.split('/').filter(Boolean);
-    if (parts.length <= 1) return this.rootHandle;
+    if (parts.length <= 1) return await this.getRoot();
     const parentPath = parts.slice(0, -1).join('/');
     return (await this.getHandleByPath(parentPath, {
       create: options?.create,
