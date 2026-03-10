@@ -519,6 +519,7 @@ export class AudioEngine {
     const sourceRangeDurationS = Math.max(0, clip.sourceRangeDurationUs / 1_000_000);
 
     const speedRaw = clip.speed;
+    if (typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw <= 0) return;
     const clipSpeed =
       typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
         ? Math.max(-10, Math.min(10, speedRaw))

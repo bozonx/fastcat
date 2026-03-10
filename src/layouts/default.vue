@@ -80,6 +80,7 @@ onMounted(async () => {
     await workspaceStore.init();
 
     if (
+      route.path === '/' &&
       workspaceStore.workspaceHandle &&
       workspaceStore.userSettings.openLastProjectOnStart &&
       workspaceStore.lastProjectName &&
