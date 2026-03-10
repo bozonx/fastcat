@@ -2,6 +2,7 @@ import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
 import { WORKSPACE_COMMON_DIR_NAME } from '~/utils/workspace-common';
+import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
@@ -10,11 +11,6 @@ import { createWorkspaceInitModule } from '~/stores/workspace/workspaceInit';
 import { createWorkspaceProvider } from '~/stores/workspace/provider';
 
 import { useProjectStore } from './project.store';
-import { useMediaStore } from './media.store';
-import { useTimelineStore } from './timeline.store';
-import { useSelectionStore } from './selection.store';
-import { useFilesPageStore } from './filesPage.store';
-import { useHistoryStore } from './history.store';
 import { useProxyStore } from './proxy.store';
 
 function readLocalStorageString(key: string): string | null {

@@ -14,18 +14,31 @@ import {
 export default defineNuxtPlugin(async () => {
   let adapter: IFileSystemAdapter;
 
+  const workspaceStore = useWorkspaceStore();
+  const projectStore = useProjectStore();
+
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
   if (isTauri) {
-    // В будущем здесь можно передавать базовый путь, например, директорию документов
-    const workspaceStore = useWorkspaceStore();
     const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle;
-    adapter = new TauriFileSystemAdapter(handle?.path || 'app-data');
+    const workspacePath = handle?.path || 'app-data';
+
+    const projectAdapter = new TauriFileSystemAdapter(async () => {
+      const projectHandle = await projectStore.getProjectDirHandle();
+      return (projectHandle as unknown as TauriDirectoryHandle)?.path || workspacePath;
+    });
+
+    const workspaceAdapter = new TauriFileSystemAdapter(workspacePath);
+
+    adapter = new RouterFileSystemAdapter(projectAdapter, [
+      {
+        prefix: WORKSPACE_COMMON_PATH_PREFIX,
+        adapter: workspaceAdapter,
+        stripPrefix: toWorkspaceCommonStoragePath,
+      },
+    ]);
   } else {
     // Дефолтный веб-подход на базе OPFS
-    const projectStore = useProjectStore();
-    const workspaceStore = useWorkspaceStore();
-
     const projectAdapter = new OpfsFileSystemAdapter(async () => {
       return await projectStore.getProjectDirHandle();
     });

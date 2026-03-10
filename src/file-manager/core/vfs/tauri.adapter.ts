@@ -19,10 +19,17 @@ import { TauriDirectoryHandle } from "~/stores/workspace/provider/tauri-handle";
 
 export class TauriFileSystemAdapter implements IFileSystemAdapter {
   id = 'tauri';
-  private basePath: string;
+  private basePath: string | (() => string | Promise<string>);
 
-  constructor(basePath: string) {
+  constructor(basePath: string | (() => string | Promise<string>)) {
     this.basePath = basePath;
+  }
+
+  private async getBasePath(): Promise<string> {
+    if (typeof this.basePath === 'function') {
+      return await this.basePath();
+    }
+    return this.basePath;
   }
 
   async init(): Promise<void> {
@@ -31,20 +38,21 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     }
 
     await mkdir('', {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
       recursive: true,
     }).catch(() => undefined);
   }
 
-  private getBaseDirectory(): BaseDirectory | undefined {
-    if (this.basePath.startsWith('/')) {
+  private async getBaseDirectory(): Promise<BaseDirectory | undefined> {
+    const basePath = await this.getBasePath();
+    if (basePath.startsWith('/')) {
       return undefined;
     }
-    if (this.basePath === 'app-data') {
+    if (basePath === 'app-data') {
       return BaseDirectory.AppData;
     }
 
-    throw new Error(`Unsupported Tauri base path: ${this.basePath}`);
+    throw new Error(`Unsupported Tauri base path: ${basePath}`);
   }
 
   private normalizePath(path: string): string {
@@ -69,7 +77,8 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
   private async resolveStreamPath(path: string): Promise<string> {
     const normalizedPath = this.normalizePath(path);
-    const baseDirPath = this.basePath.startsWith('/') ? this.basePath : await appDataDir();
+    const basePath = await this.getBasePath();
+    const baseDirPath = basePath.startsWith('/') ? basePath : await appDataDir();
     return normalizedPath ? await join(baseDirPath, normalizedPath) : baseDirPath;
   }
 
@@ -80,7 +89,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     }
 
     await mkdir(parentPath, {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
       recursive: true,
     });
   }
@@ -100,7 +109,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   async readDirectory(path: string): Promise<VfsEntry[]> {
     const normalizedPath = this.normalizePath(path);
     const entries = await readDir(normalizedPath, {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
     });
 
     return entries.map((entry) => {
@@ -118,7 +127,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
   async createDirectory(path: string): Promise<void> {
     await mkdir(this.normalizePath(path), {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
       recursive: true,
     });
   }
@@ -131,7 +140,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   async readFile(path: string): Promise<Blob> {
     const normalizedPath = this.normalizePath(path);
     const bytes = await readFile(normalizedPath, {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
     });
     return new Blob([bytes]);
   }
@@ -140,13 +149,13 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const normalizedPath = this.normalizePath(path);
     await this.ensureParentDirectory(normalizedPath);
     await writeFile(normalizedPath, await this.toBytes(data), {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
     });
   }
 
   async deleteEntry(path: string, recursive?: boolean): Promise<void> {
     await remove(this.normalizePath(path), {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
       recursive,
     });
   }
@@ -157,8 +166,8 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
     await this.ensureParentDirectory(normalizedTargetPath);
     await rename(normalizedSourcePath, normalizedTargetPath, {
-      oldPathBaseDir: this.getBaseDirectory(),
-      newPathBaseDir: this.getBaseDirectory(),
+      oldPathBaseDir: await this.getBaseDirectory(),
+      newPathBaseDir: await this.getBaseDirectory(),
     });
   }
 
@@ -168,8 +177,8 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
     await this.ensureParentDirectory(normalizedTargetPath);
     await copyFile(normalizedSourcePath, normalizedTargetPath, {
-      fromPathBaseDir: this.getBaseDirectory(),
-      toPathBaseDir: this.getBaseDirectory(),
+      fromPathBaseDir: await this.getBaseDirectory(),
+      toPathBaseDir: await this.getBaseDirectory(),
     });
   }
 
@@ -190,7 +199,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
   async exists(path: string): Promise<boolean> {
     return await exists(this.normalizePath(path), {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
     });
   }
 
@@ -203,7 +212,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     }
 
     const metadata = await stat(normalizedPath, {
-      baseDir: this.getBaseDirectory(),
+      baseDir: await this.getBaseDirectory(),
     });
 
     return {

@@ -16,7 +16,7 @@ import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
-import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -139,7 +139,7 @@ function isSelected(entry: FsEntry): boolean {
 }
 
 function isWorkspaceCommonRoot(entry: FsEntry): boolean {
-  return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
+  return entry.kind === 'directory' && isWorkspaceCommonPath(entry.path);
 }
 
 function getEntryIconClass(entry: FsEntry): string {
