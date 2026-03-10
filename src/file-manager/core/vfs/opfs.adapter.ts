@@ -7,18 +7,15 @@ interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
 
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
-  private rootHandle: FileSystemDirectoryHandle | null = null;
 
   private async getRoot(): Promise<FileSystemDirectoryHandle | null> {
-    if (this.rootHandle) return this.rootHandle;
-    this.rootHandle = await this.getProjectRoot();
-    return this.rootHandle;
+    return await this.getProjectRoot();
   }
 
   constructor(private getProjectRoot: () => Promise<FileSystemDirectoryHandle | null>) {}
 
   async init(): Promise<void> {
-    this.rootHandle = await this.getProjectRoot();
+    // No-op, we fetch root lazily
   }
 
   private async getHandleByPath(
