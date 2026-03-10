@@ -1602,16 +1602,7 @@ export class VideoCompositor {
         const localTimeUs = timeUs - clip.startUs;
         const speed = typeof clip.speed === 'number' ? clip.speed : 1;
         const reversed = clip.reversed === true;
-        const maxTimelineUs = speed > 0 ? Math.round(clip.sourceRangeDurationUs / speed) : 0;
-        if (localTimeUs < 0 || localTimeUs >= maxTimelineUs) {
-          console.warn('[DBG] clip hidden by maxTimelineUs', {
-            id: clip.itemId,
-            localTimeUs,
-            maxTimelineUs,
-            sourceDurationUs: clip.sourceDurationUs,
-            sourceRangeDurationUs: clip.sourceRangeDurationUs,
-            durationUs: clip.durationUs,
-          });
+        if (localTimeUs < 0 || localTimeUs >= clip.durationUs) {
           clip.sprite.visible = false;
           continue;
         }
@@ -1638,7 +1629,6 @@ export class VideoCompositor {
             sourceRangeDurationUs: clip.sourceRangeDurationUs,
             sourceDurationUs: clip.sourceDurationUs,
             durationUs: clip.durationUs,
-            maxTimelineUs,
           });
         }
 
