@@ -294,6 +294,33 @@ const speedModalSpeed = computed({
   },
 });
 
+const speedModalTargetClip = computed(() => {
+  const modal = speedModal.value;
+  if (!modal) return null;
+  const track = props.tracks.find((item) => item.id === modal.trackId);
+  const clip = track?.items.find((item) => item.kind === 'clip' && item.id === modal.itemId);
+  return clip?.kind === 'clip' ? clip : null;
+});
+
+const speedModalTargetHasAudio = computed(() => {
+  const clip = speedModalTargetClip.value;
+  if (!clip) return false;
+
+  if (clip.trackId) {
+    const track = props.tracks.find((item) => item.id === clip.trackId);
+    if (track?.kind === 'audio') return true;
+    if (track?.kind === 'video' && clip.audioFromVideoDisabled) return false;
+  }
+
+  if (!clip.source?.path) return false;
+
+  return Boolean(mediaStore.mediaMetadata[clip.source.path]?.audio);
+});
+
+const showNegativeSpeedAudioWarning = computed(() => {
+  return Number(speedModalSpeed.value) < 0 && speedModalTargetHasAudio.value;
+});
+
 function openSpeedModal(trackId: string, itemId: string, currentSpeed: unknown) {
   const base = typeof currentSpeed === 'number' && Number.isFinite(currentSpeed) ? currentSpeed : 1;
   speedModal.value = {
@@ -379,6 +406,24 @@ function selectTransition(
         </div>
 
         <WheelNumberInput v-model="speedModalSpeed" :min="-10" :max="10" :step="0.05" />
+
+        <UAlert
+          v-if="showNegativeSpeedAudioWarning"
+          color="warning"
+          variant="subtle"
+          :title="
+            t(
+              'granVideoEditor.timeline.negativeSpeedAudioUnsupportedTitle',
+              'Negative-speed audio is not supported',
+            )
+          "
+          :description="
+            t(
+              'granVideoEditor.timeline.negativeSpeedAudioUnsupportedDescription',
+              'Audio will not be played for clips with negative speed. Extract the audio track from the video, reverse it separately, and then place the processed audio on the timeline. These functions are not available yet.',
+            )
+          "
+        />
       </div>
 
       <template #footer>

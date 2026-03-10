@@ -56,6 +56,7 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
         class="w-full justify-center transition-all hover:scale-[1.02]"
         :label="t('granVideoEditor.welcome.openWorkspace', 'Select Workspace Folder')"
         :loading="workspaceStore.isLoading"
+        :disabled="workspaceStore.isLoading"
         @click="workspaceStore.openWorkspace"
       />
       <div v-else class="text-orange-400 text-sm">

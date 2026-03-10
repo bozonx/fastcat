@@ -43,6 +43,8 @@ function isAbortError(e: unknown): boolean {
 }
 
 export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceInitApi {
+  let isOpeningWorkspace = false;
+
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     deps.workspaceHandle.value = handle;
     deps.settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
@@ -72,8 +74,10 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
   async function openWorkspace() {
     if (!deps.workspaceProvider.isSupported) return;
+    if (isOpeningWorkspace || deps.isLoading.value) return;
 
     deps.error.value = null;
+    isOpeningWorkspace = true;
     deps.isLoading.value = true;
     try {
       const handle = await deps.workspaceProvider.openWorkspace();
@@ -84,6 +88,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
         deps.error.value = getErrorMessage(e, 'Failed to open workspace folder');
       }
     } finally {
+      isOpeningWorkspace = false;
       deps.isLoading.value = false;
     }
   }
