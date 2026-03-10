@@ -27,9 +27,12 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 
 vi.mock('~/utils/video-editor/AudioEngine', () => {
   class AudioEngineMock {
+    clips: any[] = [];
+    getClips() { return this.clips; }
+    loadClips = vi.fn().mockImplementation(async (clips) => { this.clips = clips; });
     setVolume = vi.fn();
     init = vi.fn().mockResolvedValue(undefined);
-    loadClips = vi.fn().mockResolvedValue(undefined);
+    // loadClips redefined
     updateTimelineLayout = vi.fn();
     destroy = vi.fn();
     setMasterVolume = vi.fn();
@@ -127,7 +130,7 @@ describe('useMonitorCore', () => {
             videoItems: ref([]),
             workerTimelineClips: ref([]),
             workerAudioClips: audioClips,
-            safeDurationUs: ref(5000000),
+            safeDurationUs: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             audioClipSourceSignature: ref(1),
@@ -192,7 +195,7 @@ describe('useMonitorCore', () => {
             videoItems: ref([]),
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
-            safeDurationUs: ref(5000000),
+            safeDurationUs: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             audioClipSourceSignature: ref(1),

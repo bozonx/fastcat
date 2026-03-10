@@ -351,13 +351,13 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       proxyMaxPixels: Number.isFinite(proxyMaxPixels) && proxyMaxPixels > 0
         ? Math.min(10_000_000, Math.max(100_000, proxyMaxPixels))
         : proxyResolutionRaw === '360p'
-          ? 230_000
+          ? 400_000
           : proxyResolutionRaw === '480p'
-            ? 410_000
+            ? 700_000
             : proxyResolutionRaw === '720p'
-              ? 921_600
+              ? 1_500_000
               : proxyResolutionRaw === '1080p'
-                ? 2_073_600
+                ? 3_000_000
                 : DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels,
       proxyVideoBitrateMbps:
         Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
