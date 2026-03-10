@@ -162,6 +162,7 @@
       "proxyAudioBitrate": "Proxy audio bitrate (kbps)",
       "proxyCopyOpusAudio": "Copy Opus audio directly without re-encoding",
       "proxyInfo": "Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.",
+      "proxyMaxPixels": "Max proxy resolution",
       "proxyResolution": "Proxy resolution",
       "proxyVideoBitrate": "Video bitrate (Mbps)",
       "proxyVideoBitrateHelp": "Higher bitrate means better quality but larger file size",

@@ -68,7 +68,7 @@ export interface GranVideoEditorUserSettings {
     bindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>>;
   };
   optimization: {
-    proxyResolution: '360p' | '480p' | '720p' | '1080p';
+    proxyMaxPixels: number;
     proxyVideoBitrateMbps: number;
     proxyAudioBitrateKbps: number;
     proxyCopyOpusAudio: boolean;
@@ -217,7 +217,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     bindings: {},
   },
   optimization: {
-    proxyResolution: '720p',
+    proxyMaxPixels: 1_300_000,
     proxyVideoBitrateMbps: 2,
     proxyAudioBitrateKbps: 128,
     proxyCopyOpusAudio: true,

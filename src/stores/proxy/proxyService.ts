@@ -40,7 +40,7 @@ export function createProxyService(params: {
   getFileByPath: (path: string) => Promise<File | null>;
 
   getOptimizationSettings: () => {
-    proxyResolution: string;
+    proxyMaxPixels: number;
     proxyVideoBitrateMbps: number;
     proxyAudioBitrateKbps: number;
     proxyCopyOpusAudio: boolean;
@@ -153,18 +153,25 @@ export function createProxyService(params: {
 
           const optimization = params.getOptimizationSettings();
 
-          let width = 1280;
-          let height = 720;
-          if (optimization.proxyResolution === '360p') {
-            width = 640;
-            height = 360;
-          } else if (optimization.proxyResolution === '480p') {
-            width = 854;
-            height = 480;
-          } else if (optimization.proxyResolution === '1080p') {
-            width = 1920;
-            height = 1080;
+          const meta = await (getExportWorkerClient().client as any).extractMetadata(file);
+          const sourceWidth = meta.video?.width || 1920;
+          const sourceHeight = meta.video?.height || 1080;
+
+          const scales = [1, 1 / 2, 1 / 4, 1 / 8, 1 / 16];
+          let scale = 1 / 16;
+
+          for (const s of scales) {
+            const w = Math.round(sourceWidth * s);
+            const h = Math.round(sourceHeight * s);
+            if (w * h <= optimization.proxyMaxPixels) {
+              scale = s;
+              break;
+            }
           }
+
+          // Ensure minimum dimensions and even numbers for codecs
+          const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
+          const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
           const { client } = getExportWorkerClient();
 
@@ -180,7 +187,8 @@ export function createProxyService(params: {
             }),
           );
 
-          const meta = await client.extractMetadata(file);
+          // We already extracted metadata above to calculate resolution
+          // const meta = await client.extractMetadata(file);
           const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
           if (!durationUs) throw new Error('Invalid video duration');

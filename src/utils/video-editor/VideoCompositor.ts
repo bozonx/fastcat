@@ -1710,10 +1710,9 @@ export class VideoCompositor {
 
         if (handleUs < 1_000) {
           // No extra source material: freeze the last frame of the used source range.
-          const lastUs = Math.max(
-            0,
-            prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000,
-          );
+          const lastUs = prevClip.reversed
+            ? Math.max(0, prevClip.sourceStartUs + 1_000)
+            : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
           const req = this.withVideoSampleSlot(() =>
             getVideoSampleWithZeroFallback(
@@ -1731,12 +1730,18 @@ export class VideoCompositor {
         // Seek into handle material: frames past the source range end point
         const overrunUs = localTimeUs;
         const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
-        const handleSampleUs = sourceRangeEndUs + overrunUs;
-        // Clamp to available handle
-        const clampedUs = Math.min(
-          handleSampleUs,
-          prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000,
-        );
+
+        let clampedUs: number;
+        if (prevClip.reversed) {
+          clampedUs = Math.max(0, prevClip.sourceStartUs - overrunUs);
+        } else {
+          const handleSampleUs = sourceRangeEndUs + overrunUs;
+          clampedUs = Math.min(
+            handleSampleUs,
+            prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000,
+          );
+        }
+
         const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
         const req = this.withVideoSampleSlot(() =>
           getVideoSampleWithZeroFallback(
@@ -2176,13 +2181,23 @@ export class VideoCompositor {
       clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
     );
     const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
-    const sampleUs =
-      handleUs < 1_000
-        ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
-        : Math.min(
-            sourceRangeEndUs + transitionOffsetUs,
-            clip.sourceStartUs + clip.sourceDurationUs - 1_000,
-          );
+
+    let sampleUs: number;
+    if (clip.reversed) {
+      // In reverse, "overrun" goes before sourceStartUs
+      sampleUs =
+        handleUs < 1_000
+          ? Math.max(0, clip.sourceStartUs + 1_000)
+          : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
+    } else {
+      sampleUs =
+        handleUs < 1_000
+          ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
+          : Math.min(
+              sourceRangeEndUs + transitionOffsetUs,
+              clip.sourceStartUs + clip.sourceDurationUs - 1_000,
+            );
+    }
 
     const sample = await this.withVideoSampleSlot(() =>
       getVideoSampleWithZeroFallback(

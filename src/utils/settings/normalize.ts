@@ -191,7 +191,8 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
 
   const optimizationInput = input.optimization ?? {};
-  const proxyResolution = (optimizationInput as Record<string, unknown>).proxyResolution;
+  const proxyMaxPixels = Number((optimizationInput as Record<string, unknown>).proxyMaxPixels);
+  const proxyResolutionRaw = (optimizationInput as Record<string, unknown>).proxyResolution;
   const proxyVideoBitrateMbps = Number(
     (optimizationInput as Record<string, unknown>).proxyVideoBitrateMbps,
   );
@@ -347,9 +348,17 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     },
     hotkeys,
     optimization: {
-      proxyResolution: ['360p', '480p', '720p', '1080p'].includes(proxyResolution as string)
-        ? (proxyResolution as '360p' | '480p' | '720p' | '1080p')
-        : DEFAULT_USER_SETTINGS.optimization.proxyResolution,
+      proxyMaxPixels: Number.isFinite(proxyMaxPixels) && proxyMaxPixels > 0
+        ? Math.min(10_000_000, Math.max(100_000, proxyMaxPixels))
+        : proxyResolutionRaw === '360p'
+          ? 230_000
+          : proxyResolutionRaw === '480p'
+            ? 410_000
+            : proxyResolutionRaw === '720p'
+              ? 921_600
+              : proxyResolutionRaw === '1080p'
+                ? 2_073_600
+                : DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels,
       proxyVideoBitrateMbps:
         Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
           ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
@@ -384,6 +393,11 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       isCustomResolution,
       audioChannels,
       sampleRate,
+      audioDeclickDurationUs:
+        Number.isFinite(Number(projectInputRec.audioDeclickDurationUs)) &&
+        Number(projectInputRec.audioDeclickDurationUs) >= 0
+          ? Number(projectInputRec.audioDeclickDurationUs)
+          : DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
     },
     exportDefaults: {
       encoding: {
