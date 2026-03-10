@@ -1,4 +1,5 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
+import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
 
 interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -8,27 +9,41 @@ interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
   private rootHandle: FileSystemDirectoryHandle | null = null;
+  private workspaceRootHandle: FileSystemDirectoryHandle | null = null;
 
   private async getRoot(): Promise<FileSystemDirectoryHandle | null> {
     if (this.rootHandle) return this.rootHandle;
-    return await this.getWorkspaceRoot();
+    this.rootHandle = await this.getProjectRoot();
+    return this.rootHandle;
   }
 
-  constructor(private getWorkspaceRoot: () => Promise<FileSystemDirectoryHandle | null>) {}
+  private async getWorkspaceRootHandle(): Promise<FileSystemDirectoryHandle | null> {
+    if (this.workspaceRootHandle) return this.workspaceRootHandle;
+    this.workspaceRootHandle = await this.getWorkspaceRoot();
+    return this.workspaceRootHandle;
+  }
+
+  constructor(
+    private getProjectRoot: () => Promise<FileSystemDirectoryHandle | null>,
+    private getWorkspaceRoot: () => Promise<FileSystemDirectoryHandle | null>,
+  ) {}
 
   async init(): Promise<void> {
-    this.rootHandle = await this.getWorkspaceRoot();
+    this.rootHandle = await this.getProjectRoot();
+    this.workspaceRootHandle = await this.getWorkspaceRoot();
   }
 
   private async getHandleByPath(
     path: string,
     options?: { create?: boolean; isFile?: boolean },
   ): Promise<FileSystemHandle | null> {
-    const root = await this.getRoot();
+    const isCommonPath = isWorkspaceCommonPath(path);
+    const normalizedPath = isCommonPath ? stripWorkspaceCommonPathPrefix(path) : path;
+    const root = isCommonPath ? await this.getWorkspaceRootHandle() : await this.getRoot();
     if (!root) return null;
-    if (!path || path === '/') return root;
+    if (!normalizedPath || normalizedPath === '/') return root;
 
-    const parts = path.split('/').filter(Boolean);
+    const parts = normalizedPath.split('/').filter(Boolean);
     let currentDir = root;
 
     for (let i = 0; i < parts.length; i++) {

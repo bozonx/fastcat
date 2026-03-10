@@ -1,6 +1,7 @@
 import { defineNuxtPlugin } from 'nuxt/app';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -14,12 +15,16 @@ export default defineNuxtPlugin(async () => {
     adapter = new TauriFileSystemAdapter('app-data');
   } else {
     // Дефолтный веб-подход на базе OPFS
-    adapter = new OpfsFileSystemAdapter(async () => {
-      // Инициализация корня OPFS (будет запрашиваться через workspaceStore или нативно)
-      // Временное решение для старта: получаем корень OPFS
-      const projectStore = useProjectStore();
-      return await projectStore.getProjectDirHandle();
-    });
+    const projectStore = useProjectStore();
+    const workspaceStore = useWorkspaceStore();
+    adapter = new OpfsFileSystemAdapter(
+      async () => {
+        return await projectStore.getProjectDirHandle();
+      },
+      async () => {
+        return workspaceStore.workspaceHandle ?? null;
+      },
+    );
   }
 
   // Можно инициализировать адаптер при необходимости

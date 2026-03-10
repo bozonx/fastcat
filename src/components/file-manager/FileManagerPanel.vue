@@ -126,6 +126,7 @@ type FileAction =
   | 'openAsPanelCut'
   | 'openAsPanelSound'
   | 'openAsProjectTab'
+  | 'uploadRemote'
   | 'transcribe';
 
 function isTranscribableMediaFile(entry: FsEntry): boolean {
@@ -271,7 +272,11 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     onFileActionBase('createOtioVersion', entry);
   } else if (action === 'createProxyForFolder') {
     if (entry.kind === 'directory' && entry.path !== undefined) {
+      const dirHandle = await projectStore.getDirectoryHandleByPath(entry.path);
+      if (!dirHandle) return;
+
       void proxyStore.generateProxiesForFolder({
+        dirHandle,
         dirPath: entry.path,
       });
     }
@@ -423,7 +428,7 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 watch(
   () => uiStore.pendingFsEntryDelete,
   (value) => {
-    const entries = value as FsEntry[] | null;
+    const entries = value;
     if (entries && entries.length > 0) {
       openDeleteConfirmModal(entries);
       uiStore.pendingFsEntryDelete = null;
@@ -432,34 +437,56 @@ watch(
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryRename,
+  () => uiStore.pendingFsEntryRename,
   (value) => {
-    const entry = value as FsEntry | null;
+    const entry = value;
     if (entry) {
       startRename(entry);
-      (uiStore as any).pendingFsEntryRename = null;
+      uiStore.pendingFsEntryRename = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateFolder,
+  () => uiStore.pendingFsEntryCreateFolder,
   (value) => {
-    const entry = value as FsEntry | null;
+    const entry = value;
     if (entry && entry.kind === 'directory') {
       onFileAction('createFolder', entry);
-      (uiStore as any).pendingFsEntryCreateFolder = null;
+      uiStore.pendingFsEntryCreateFolder = null;
     }
   },
 );
 
 watch(
-  () => (uiStore as any).pendingFsEntryCreateTimeline,
+  () => uiStore.pendingFsEntryCreateTimeline,
   async (value) => {
-    const entry = value as FsEntry | null;
+    const entry = value;
     if (entry && entry.kind === 'directory') {
       await createTimelineInDirectory(entry);
-      (uiStore as any).pendingFsEntryCreateTimeline = null;
+      uiStore.pendingFsEntryCreateTimeline = null;
+    }
+  },
+);
+
+watch(
+  () => uiStore.pendingFsEntryCreateMarkdown,
+  (value) => {
+    const entry = value;
+    if (entry && entry.kind === 'directory') {
+      void onFileAction('createMarkdown', entry);
+      uiStore.pendingFsEntryCreateMarkdown = null;
+    }
+  },
+);
+
+watch(
+  () => uiStore.pendingOtioCreateVersion,
+  (value) => {
+    const entry = value;
+    if (entry && entry.kind === 'file') {
+      void onFileActionBase('createOtioVersion', entry);
+      uiStore.pendingOtioCreateVersion = null;
     }
   },
 );
