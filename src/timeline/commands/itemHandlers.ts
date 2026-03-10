@@ -464,17 +464,34 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   if (leftDurationUs <= 0 || rightDurationUs <= 0) return { next: doc };
 
   const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
-  const localCutUs = Math.max(0, Math.round((atUs - startUs) * speed));
-  const leftSourceDurationUs = Math.max(0, localCutUs);
-  const rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + localCutUs);
-  const rightSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs) - localCutUs);
+  const absSpeed = Math.abs(speed);
+  const localCutUs = Math.max(0, Math.round((atUs - startUs) * absSpeed));
+
+  let leftSourceStartUs: number;
+  let leftSourceDurationUs: number;
+  let rightSourceStartUs: number;
+  let rightSourceDurationUs: number;
+
+  if (speed >= 0) {
+    leftSourceStartUs = Math.round(item.sourceRange.startUs);
+    leftSourceDurationUs = Math.max(0, localCutUs);
+    rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + localCutUs);
+    rightSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs) - localCutUs);
+  } else {
+    // For reversed clips, the left part of the timeline is the later part of the source range.
+    const sourceDurationUs = Math.round(item.sourceRange.durationUs);
+    leftSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + sourceDurationUs - localCutUs);
+    leftSourceDurationUs = localCutUs;
+    rightSourceStartUs = Math.round(item.sourceRange.startUs);
+    rightSourceDurationUs = Math.max(0, sourceDurationUs - localCutUs);
+  }
 
   const rightItemId = nextItemId(track.id, 'clip');
 
   const leftPatched: TimelineClipItem = {
     ...(item as TimelineClipItem),
     timelineRange: { startUs, durationUs: leftDurationUs },
-    sourceRange: { startUs: item.sourceRange.startUs, durationUs: leftSourceDurationUs },
+    sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
     transitionOut: undefined,
     effects: item.effects ? structuredClone(item.effects) : undefined,
   };
@@ -677,12 +694,12 @@ export function updateClipProperties(
   if ('speed' in nextProps) {
     const raw = (nextProps as any).speed;
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
-    const speed = v === undefined ? undefined : Math.max(0.1, Math.min(10, v));
-    if (speed === undefined) {
+    const speed = v === undefined ? undefined : Math.max(-10, Math.min(10, v));
+    if (speed === undefined || speed === 0) {
       delete nextProps.speed;
     } else {
       nextProps.speed = speed;
-      const nextDurationUsRaw = Math.round(item.sourceRange.durationUs / speed);
+      const nextDurationUsRaw = Math.round(item.sourceRange.durationUs / Math.abs(speed));
       const nextDurationUs = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
       const startUs = item.timelineRange.startUs;
       const prevDurationUs = Math.max(0, item.timelineRange.durationUs);
@@ -1496,9 +1513,10 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
     : deltaCandidate;
 
   const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
+  const absSpeed = Math.abs(speed);
   const sourceDeltaUs = shouldQuantizeToFrames
-    ? quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round')
-    : Math.round(deltaUs * speed);
+    ? quantizeDeltaUsToFrames(Math.round(deltaUs * absSpeed), fps, 'round')
+    : Math.round(deltaUs * absSpeed);
 
   const prevTimelineStartUs = Math.max(0, Math.round(item.timelineRange.startUs));
   const prevTimelineDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
@@ -1524,23 +1542,47 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   let nextSourceEndUs = prevSourceEndUs;
 
   if (cmd.edge === 'start') {
-    const unclampedSourceStartUs = prevSourceStartUs + sourceDeltaUs;
-    nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
-    const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
+    if (speed >= 0) {
+      const unclampedSourceStartUs = prevSourceStartUs + sourceDeltaUs;
+      nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
+      const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
+      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
 
-    const appliedTimelineDeltaUs = speed > 0 ? Math.round(appliedDeltaUs / speed) : 0;
-    nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
-    nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
-    nextSourceEndUs = prevSourceEndUs;
+      nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
+      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
+      nextSourceEndUs = prevSourceEndUs;
+    } else {
+      // Reversed: trim start of timeline means trim end of source range.
+      const unclampedSourceEndUs = prevSourceEndUs - sourceDeltaUs;
+      nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
+      const appliedDeltaUs = prevSourceEndUs - nextSourceEndUs;
+      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
+
+      nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
+      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
+      nextSourceStartUs = prevSourceStartUs;
+    }
   } else {
-    const unclampedSourceEndUs = prevSourceEndUs + sourceDeltaUs;
-    nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
-    const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
+    if (speed >= 0) {
+      const unclampedSourceEndUs = prevSourceEndUs + sourceDeltaUs;
+      nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
+      const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
+      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
 
-    const appliedTimelineDeltaUs = speed > 0 ? Math.round(appliedDeltaUs / speed) : 0;
-    nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
-    nextTimelineStartUs = prevTimelineStartUs;
-    nextSourceStartUs = prevSourceStartUs;
+      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
+      nextTimelineStartUs = prevTimelineStartUs;
+      nextSourceStartUs = prevSourceStartUs;
+    } else {
+      // Reversed: trim end of timeline means trim start of source range.
+      const unclampedSourceStartUs = prevSourceStartUs - sourceDeltaUs;
+      nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
+      const appliedDeltaUs = prevSourceStartUs - nextSourceStartUs;
+      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
+
+      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
+      nextTimelineStartUs = prevTimelineStartUs;
+      nextSourceEndUs = prevSourceEndUs;
+    }
   }
 
   const nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);

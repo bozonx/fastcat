@@ -27,10 +27,12 @@ import { useHistoryStore } from './history.store';
 import { createProjectFsModule } from '~/stores/project/projectFs';
 import { createProjectMetaModule } from '~/stores/project/projectMeta';
 import { createProjectTimelinesModule } from '~/stores/project/projectTimelines';
+import { useProjectLock } from '~/composables/editor/useProjectLock';
 
 export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
   const projectSettingsStore = useProjectSettingsStore();
+  const projectLock = useProjectLock();
 
   const { projectSettings, isLoadingProjectSettings, isSavingProjectSettings } =
     storeToRefs(projectSettingsStore);
@@ -46,6 +48,8 @@ export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref<string | null>(null);
   const currentTimelinePath = ref<string | null>(null);
   const currentFileName = ref<string | null>(null);
+
+  const isReadOnly = ref(false);
 
   const editorViewModule = createEditorViewModule(currentProjectId);
 
@@ -71,12 +75,14 @@ export const useProjectStore = defineStore('project', () => {
   });
   const { loadProjectMeta, clearProjectMetaState } = metaModule;
 
-  function closeProject() {
+  async function closeProject() {
     projectSettingsStore.closeProjectSettings();
     currentProjectName.value = null;
     currentProjectId.value = null;
     currentTimelinePath.value = null;
     currentFileName.value = null;
+    isReadOnly.value = false;
+    await projectLock.releaseLock();
     clearProjectMetaState();
 
     // Reset dependent stores when a project is closed
@@ -204,6 +210,15 @@ export const useProjectStore = defineStore('project', () => {
 
     await loadProjectMeta();
 
+    // Acquire lock after project ID is known (loaded from meta)
+    if (currentProjectId.value) {
+      const lockAcquired = await projectLock.acquireLock(currentProjectId.value);
+      isReadOnly.value = !lockAcquired;
+    } else {
+      console.warn('Cannot acquire lock: projectId is unknown');
+      isReadOnly.value = false;
+    }
+
     await loadProjectSettings();
 
     // If no timelines are open, open the default one
@@ -222,7 +237,9 @@ export const useProjectStore = defineStore('project', () => {
       await openTimelineFile(openPaths[0]!);
     }
 
-    await saveProjectSettings();
+    if (!isReadOnly.value) {
+      await saveProjectSettings();
+    }
   }
 
   function createFallbackTimelineDoc(): TimelineDocument {
@@ -251,6 +268,7 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectId,
     currentTimelinePath,
     currentFileName,
+    isReadOnly,
     projectSettings,
     isLoadingProjectSettings,
     isSavingProjectSettings,

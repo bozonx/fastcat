@@ -2,20 +2,12 @@ import { defineStore, skipHydrate } from 'pinia';
 import { ref, watch } from 'vue';
 import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
 import { WORKSPACE_COMMON_DIR_NAME } from '~/utils/workspace-common';
-import {
-  createWorkspaceSettingsRepository,
-  type WorkspaceSettingsRepository,
-} from '~/repositories/workspace-settings.repository';
-import {
-  createIndexedDbWorkspaceHandleStorage,
-  type WorkspaceHandleStorage,
-} from '~/repositories/workspace-handle.repository';
+import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
 import { createWorkspaceInitModule } from '~/stores/workspace/workspaceInit';
 import { createWorkspaceProvider } from '~/stores/workspace/provider';
-import type { DirectoryHandleLike } from '~/repositories/gran-fs';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -24,19 +16,6 @@ import { useSelectionStore } from './selection.store';
 import { useFilesPageStore } from './filesPage.store';
 import { useHistoryStore } from './history.store';
 import { useProxyStore } from './proxy.store';
-
-function getErrorMessage(e: unknown, fallback: string): string {
-  if (!e || typeof e !== 'object') return fallback;
-  if (!('message' in e)) return fallback;
-  const msg = (e as { message?: unknown }).message;
-  return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
-}
-
-function isAbortError(e: unknown): boolean {
-  if (!e || typeof e !== 'object') return false;
-  if (!('name' in e)) return false;
-  return (e as { name?: unknown }).name === 'AbortError';
-}
 
 function readLocalStorageString(key: string): string | null {
   if (typeof window === 'undefined') return null;
@@ -97,7 +76,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   });
 
-  const isApiSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+  const isApiSupported = workspaceProvider.isSupported;
+  const workspaceProviderId = workspaceProvider.id;
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
@@ -126,31 +106,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await saveUserSettingsToDisk();
   }
 
-  async function openWorkspace() {
-    if (!isApiSupported) return;
+  const workspaceInitModule = createWorkspaceInitModule({
+    workspaceHandle,
+    projectsHandle,
+    settingsRepo,
+    workspaceProvider,
+    isLoading,
+    error,
+    isInitializing,
+    loadProjects,
+    loadWorkspaceSettingsFromDisk,
+    loadUserSettingsFromDisk,
+    saveWorkspaceSettingsToDisk,
+    saveUserSettingsToDisk,
+    resetSettingsState,
+  });
 
-    error.value = null;
-    isLoading.value = true;
-    try {
-      const picker = (
-        window as unknown as {
-          showDirectoryPicker?: (options: {
-            mode: 'readwrite' | 'readonly';
-          }) => Promise<FileSystemDirectoryHandle>;
-        }
-      ).showDirectoryPicker;
-      if (!picker) return;
-      const handle = await picker({ mode: 'readwrite' });
-      await setupWorkspace(handle as FileSystemDirectoryHandle);
-      await workspaceProvider.saveWorkspace(handle);
-    } catch (e: unknown) {
-      if (!isAbortError(e)) {
-        error.value = getErrorMessage(e, 'Failed to open workspace folder');
-      }
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  const { init, openWorkspace } = workspaceInitModule;
 
   function resetWorkspace() {
     workspaceHandle.value = null;
@@ -165,7 +137,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     // Reset dependent stores when workspace is closed
     const projectStore = useProjectStore();
-    projectStore.closeProject();
+    void projectStore.closeProject();
 
     // Some stores are already reset by closeProject, but we do proxy here since it's workspace-level too
     const proxyStore = useProxyStore();
@@ -179,35 +151,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     proxyStore.activeWorkerPaths.clear();
   }
 
-  async function init() {
-    if (!isApiSupported) {
-      isInitializing.value = false;
-      return;
-    }
-
-    try {
-      const handle = await workspaceProvider.restoreWorkspace();
-      if (!handle) {
-        isInitializing.value = false;
-        return;
-      }
-
-      const handleWithPerm = handle as unknown as {
-        queryPermission?: (options: {
-          mode: 'readwrite' | 'readonly';
-        }) => Promise<'granted' | 'denied' | 'prompt'>;
-      };
-      const options = { mode: 'readwrite' as const };
-      if ((await handleWithPerm.queryPermission?.(options)) === 'granted') {
-        await setupWorkspace(handle as FileSystemDirectoryHandle);
-      }
-    } catch (e) {
-      console.warn('Failed to restore workspace handle:', e);
-    } finally {
-      isInitializing.value = false;
-    }
-  }
-
   return {
     workspaceHandle,
     projectsHandle,
@@ -215,6 +158,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isLoading,
     error,
     isApiSupported,
+    workspaceProviderId,
     lastProjectName: skipHydrate(lastProjectName),
     userSettings: skipHydrate(userSettings),
     workspaceSettings: skipHydrate(workspaceSettings),

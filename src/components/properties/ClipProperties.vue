@@ -460,12 +460,13 @@ const canEditReversed = computed(() => {
 });
 
 const isReversed = computed(() => {
-  return Boolean((props.clip as any).reversed);
+  return typeof props.clip.speed === 'number' && props.clip.speed < 0;
 });
 
 function toggleReversed() {
+  const currentSpeed = typeof props.clip.speed === 'number' ? props.clip.speed : 1;
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    // removed reversed
+    speed: -currentSpeed,
   });
 }
 

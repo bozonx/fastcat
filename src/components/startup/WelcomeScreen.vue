@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === 'tauri');
 </script>
 
 <template>
@@ -26,10 +28,15 @@ const workspaceStore = useWorkspaceStore();
 
       <p class="text-ui-text-muted">
         {{
-          t(
-            'granVideoEditor.welcome.selectFolder',
-            'Select a workspace folder on your computer. This folder will store all your project files, media proxies, and cache.',
-          )
+          isTauriWorkspace
+            ? t(
+                'granVideoEditor.welcome.selectTauriWorkspace',
+                'Select a workspace folder on your computer. Gran Video Editor will store projects, source media, proxies, and cache in this folder.',
+              )
+            : t(
+                'granVideoEditor.welcome.selectWebWorkspace',
+                'Select a workspace folder on your computer. Your browser will ask for access to store project files, media proxies, and cache.',
+              )
         }}
       </p>
 
