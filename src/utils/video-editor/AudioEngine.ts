@@ -26,6 +26,7 @@ export interface AudioEngineClip {
   audioFadeOutUs?: number;
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
+  audioDeclickDurationUs?: number;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
 }

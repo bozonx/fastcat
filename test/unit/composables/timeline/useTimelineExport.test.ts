@@ -14,7 +14,9 @@ import type { TimelineTrackItem } from '../../../../src/timeline/types';
 describe('useTimelineExport pure functions', () => {
   it('VideoCoreHostAPI allows omitting onExportPhase (backward compatible)', () => {
     const api: VideoCoreHostAPI = {
+      getCurrentProjectId: async () => null,
       getFileHandleByPath: async () => null,
+      ensureVectorImageRaster: async () => null,
       onExportProgress: () => {},
     };
     expect(typeof api.onExportProgress).toBe('function');
@@ -22,7 +24,9 @@ describe('useTimelineExport pure functions', () => {
 
   it('VideoCoreHostAPI allows omitting onExportWarning (backward compatible)', () => {
     const api: VideoCoreHostAPI = {
+      getCurrentProjectId: async () => null,
       getFileHandleByPath: async () => null,
+      ensureVectorImageRaster: async () => null,
       onExportProgress: () => {},
     };
     expect(typeof api.onExportProgress).toBe('function');
@@ -291,10 +295,10 @@ describe('useTimelineExport pure functions', () => {
     ];
 
     const projectStoreMock = {
-      getFileHandleByPath: async (path: string) => {
+      getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
-          getFile: async () => ({ text: async () => nestedOtio }),
+          text: async () => nestedOtio,
         } as any;
       },
     } as any;
@@ -346,10 +350,10 @@ describe('useTimelineExport pure functions', () => {
     });
 
     const projectStoreMock = {
-      getFileHandleByPath: async (path: string) => {
+      getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
-          getFile: async () => ({ text: async () => nestedOtio }),
+          text: async () => nestedOtio,
         } as any;
       },
     } as any;
@@ -458,10 +462,10 @@ describe('useTimelineExport pure functions', () => {
     ];
 
     const projectStoreMock = {
-      getFileHandleByPath: async (path: string) => {
+      getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
-          getFile: async () => ({ text: async () => nestedOtio }),
+          text: async () => nestedOtio,
         } as any;
       },
     } as any;

@@ -57,31 +57,28 @@ function createDirEntry(params: { name: string; path: string; parent: FileSystem
 
 describe('fileManagerCommands', () => {
   it('handleFilesCommand keeps svg source file unchanged on import', async () => {
-    const projectDir = createDirHandleMock();
-    const targetDir = createDirHandleMock();
-    const writable = { write: vi.fn(async () => undefined), close: vi.fn(async () => undefined) };
-
-    (targetDir.getFileHandle as any)
-      .mockRejectedValueOnce(Object.assign(new Error('nf'), { name: 'NotFoundError' }))
-      .mockResolvedValueOnce({ createWritable: vi.fn(async () => writable) });
-
     const file = new File(['<svg></svg>'], 'logo.svg', { type: 'image/svg+xml' });
     const onMediaImported = vi.fn(async () => undefined);
+
+    const vfs = {
+      // In the new handleFilesCommand logic, if the file already exists, it throws an error immediately.
+      // So to make it save, vfs.exists must return false.
+      exists: vi.fn(async () => false),
+      writeFile: vi.fn(async () => undefined),
+    };
 
     await handleFilesCommand(
       [file],
       {},
       {
-        getProjectDirHandle: async () => projectDir,
-        getTargetDirHandle: async () => ({ dir: targetDir, relativePathBase: 'images' }),
+        vfs: vfs as any,
+        getTargetDirPath: async () => 'images',
         onSkipProjectFile: vi.fn(),
         onMediaImported,
       },
     );
 
-    expect(targetDir.getFileHandle).toHaveBeenNthCalledWith(1, 'logo.svg');
-    expect(targetDir.getFileHandle).toHaveBeenNthCalledWith(2, 'logo.svg', { create: true });
-    expect(writable.write).toHaveBeenCalledWith(file);
+    expect(vfs.writeFile).toHaveBeenCalledWith('images/logo.svg', file);
     expect(onMediaImported).not.toHaveBeenCalled();
   });
 
@@ -91,14 +88,13 @@ describe('fileManagerCommands', () => {
 
     const removeEntry = vi.fn(async () => undefined);
     const onFileDeleted = vi.fn(async () => undefined);
+    const vfs = {
+      deleteEntry: vi.fn(async () => undefined),
+    };
 
-    await deleteEntryCommand(entry, { removeEntry, onFileDeleted });
+    await deleteEntryCommand(entry, { removeEntry, onFileDeleted, vfs: vfs as any });
 
-    expect(removeEntry).toHaveBeenCalledWith({
-      parentHandle: parent,
-      name: 'a.mp4',
-      recursive: true,
-    });
+    expect(vfs.deleteEntry).toHaveBeenCalledWith('video/a.mp4', true);
     expect(onFileDeleted).toHaveBeenCalledWith({ path: 'video/a.mp4' });
   });
 
@@ -108,30 +104,34 @@ describe('fileManagerCommands', () => {
 
     const removeEntry = vi.fn(async () => undefined);
     const onFileDeleted = vi.fn(async () => undefined);
+    const vfs = {
+      deleteEntry: vi.fn(async () => undefined),
+    };
 
-    await deleteEntryCommand(entry, { removeEntry, onFileDeleted });
+    await deleteEntryCommand(entry, { removeEntry, onFileDeleted, vfs: vfs as any });
 
-    expect(removeEntry).toHaveBeenCalledWith({
-      parentHandle: parent,
-      name: 'images',
-      recursive: true,
-    });
+    expect(vfs.deleteEntry).toHaveBeenCalledWith('images', true);
     expect(onFileDeleted).not.toHaveBeenCalled();
   });
 
-  it('renameEntryCommand uses handle.move when available', async () => {
+  it('renameEntryCommand uses vfs.moveEntry', async () => {
     const parent = createDirHandleMock();
     const { entry, handle } = createFileEntry({ name: 'a.txt', path: 'files/a.txt', parent });
+    const vfs = {
+      exists: vi.fn(async () => false),
+      moveEntry: vi.fn(async () => undefined),
+    };
 
     await renameEntryCommand(
       { target: entry, newName: 'b.txt' },
       {
         ensureTargetNameDoesNotExist: vi.fn(async () => undefined),
         removeEntry: vi.fn(async () => undefined),
+        vfs: vfs as any,
       },
     );
 
-    expect((handle as any).move).toHaveBeenCalledWith('b.txt');
+    expect(vfs.moveEntry).toHaveBeenCalledWith('files/a.txt', 'files/b.txt');
   });
 
   it('moveEntryCommand calls deps.onFileMoved for files', async () => {
@@ -146,12 +146,11 @@ describe('fileManagerCommands', () => {
 
     const removeEntry = vi.fn(async () => undefined);
     const onFileMoved = vi.fn(async () => undefined);
-
-    // Mock: assertEntryDoesNotExist -> internally calls targetDir.getFileHandle / getDirectoryHandle.
-    // Here simulate file doesn't exist.
-    (targetDir.getFileHandle as any).mockRejectedValueOnce(
-      Object.assign(new Error('nf'), { name: 'NotFoundError' }),
-    );
+    const vfs = {
+      exists: vi.fn(async () => false),
+      copyFile: vi.fn(async () => undefined),
+      moveEntry: vi.fn(async () => undefined),
+    };
 
     // Mock file copy
     (targetDir.getFileHandle as any).mockResolvedValueOnce({
@@ -164,31 +163,28 @@ describe('fileManagerCommands', () => {
         targetDirHandle: targetDir,
         targetDirPath: 'files2',
       },
-      { removeEntry, onFileMoved },
+      { removeEntry, onFileMoved, vfs: vfs as any },
     );
 
-    expect(removeEntry).toHaveBeenCalled();
+    expect(vfs.moveEntry).toHaveBeenCalledWith('files/a.txt', 'files2/a.txt');
     expect(onFileMoved).toHaveBeenCalledWith({ oldPath: 'files/a.txt', newPath: 'files2/a.txt' });
   });
 
   it('createTimelineCommand picks first available index on NotFoundError', async () => {
     const projectDir = createDirHandleMock();
     const timelinesDir = createDirHandleMock();
+    const vfs = {
+      createDirectory: vi.fn(async () => undefined),
+      exists: vi.fn(async (path: string) => {
+        return path === '_timelines/timeline_001.otio';
+      }),
+      writeJson: vi.fn(async () => undefined),
+    };
     (projectDir.getDirectoryHandle as any).mockResolvedValue(timelinesDir);
 
-    // timeline_001 exists, timeline_002 does not
-    (timelinesDir.getFileHandle as any)
-      .mockResolvedValueOnce({})
-      .mockRejectedValueOnce(Object.assign(new Error('nf'), { name: 'NotFoundError' }));
-
-    const writable = { write: vi.fn(async () => undefined), close: vi.fn(async () => undefined) };
-    (timelinesDir.getFileHandle as any).mockResolvedValueOnce({
-      createWritable: vi.fn(async () => writable),
-    });
-
-    const path = await createTimelineCommand({ projectDir, timelinesDirName: '_timelines' });
+    const path = await createTimelineCommand({ projectDir, timelinesDirName: '_timelines', vfs: vfs as any });
     expect(path).toBe('_timelines/timeline_002.otio');
-    expect(writable.write).toHaveBeenCalled();
+    expect(vfs.writeJson).toHaveBeenCalled();
   });
 
   it('moveEntryCommand calls deps.onDirectoryMoved for directories', async () => {
@@ -198,11 +194,11 @@ describe('fileManagerCommands', () => {
 
     const removeEntry = vi.fn(async () => undefined);
     const onDirectoryMoved = vi.fn(async () => undefined);
-
-    // assertEntryDoesNotExist: directory doesn't exist
-    (targetDir.getDirectoryHandle as any).mockRejectedValueOnce(
-      Object.assign(new Error('nf'), { name: 'NotFoundError' }),
-    );
+    const vfs = {
+      exists: vi.fn(async () => false),
+      copyDirectory: vi.fn(async () => undefined),
+      moveEntry: vi.fn(async () => undefined),
+    };
 
     // target dir creation
     const createdDir = createDirHandleMock();
@@ -210,14 +206,10 @@ describe('fileManagerCommands', () => {
 
     await moveEntryCommand(
       { source: entry, targetDirHandle: targetDir, targetDirPath: '_files' },
-      { removeEntry, onDirectoryMoved },
+      { removeEntry, onDirectoryMoved, vfs: vfs as any },
     );
 
-    expect(removeEntry).toHaveBeenCalledWith({
-      parentHandle: parent,
-      name: 'dir1',
-      recursive: true,
-    });
+    expect(vfs.moveEntry).toHaveBeenCalledWith('_files/dir1', '_files/dir1');
     expect(onDirectoryMoved).toHaveBeenCalled();
   });
 });

@@ -11,6 +11,7 @@ export interface GranVideoEditorProjectSettings {
     isCustomResolution: boolean;
     audioChannels: 'stereo' | 'mono';
     sampleRate: number;
+    audioDeclickDurationUs: number;
   };
   exportDefaults: {
     encoding: {
@@ -61,6 +62,7 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     isCustomResolution: false,
     audioChannels: 'stereo',
     sampleRate: 48000,
+    audioDeclickDurationUs: 5_000,
   },
   exportDefaults: {
     encoding: {
@@ -114,6 +116,7 @@ function getProjectSettingsFromUserDefaults(
       isCustomResolution: userSettings.projectDefaults.isCustomResolution,
       audioChannels: userSettings.projectDefaults.audioChannels,
       sampleRate: userSettings.projectDefaults.sampleRate,
+      audioDeclickDurationUs: userSettings.projectDefaults.audioDeclickDurationUs,
     },
     exportDefaults: {
       encoding: {
@@ -188,6 +191,11 @@ export function normalizeProjectSettings(
     Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
       ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
       : defaultSettings.project.sampleRate;
+  const audioDeclickDurationUsRaw = Number(projectInput.audioDeclickDurationUs);
+  const audioDeclickDurationUs =
+    Number.isFinite(audioDeclickDurationUsRaw) && audioDeclickDurationUsRaw >= 0
+      ? Math.round(Math.min(1_000_000, Math.max(0, audioDeclickDurationUsRaw)))
+      : defaultSettings.project.audioDeclickDurationUs;
 
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
@@ -248,6 +256,7 @@ export function normalizeProjectSettings(
           : preset.isCustomResolution,
       audioChannels,
       sampleRate,
+      audioDeclickDurationUs,
     },
     exportDefaults: {
       encoding: {

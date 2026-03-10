@@ -47,6 +47,7 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
     isCustomResolution: preset.isCustomResolution,
     audioChannels: DEFAULT_USER_SETTINGS.projectDefaults.audioChannels,
     sampleRate: DEFAULT_USER_SETTINGS.projectDefaults.sampleRate,
+    audioDeclickDurationUs: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
   };
 }
 

@@ -85,6 +85,7 @@ export interface GranVideoEditorUserSettings {
     isCustomResolution: boolean;
     audioChannels: 'stereo' | 'mono';
     sampleRate: number;
+    audioDeclickDurationUs: number;
   };
   exportDefaults: {
     encoding: {
@@ -233,6 +234,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     isCustomResolution: false,
     audioChannels: 'stereo',
     sampleRate: 48000,
+    audioDeclickDurationUs: 5_000,
   },
   exportDefaults: {
     encoding: {

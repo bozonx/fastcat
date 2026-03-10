@@ -79,6 +79,7 @@ export interface WorkerTimelineClip {
   audioFadeOutUs?: number;
   audioFadeInCurve?: 'linear' | 'logarithmic';
   audioFadeOutCurve?: 'linear' | 'logarithmic';
+  audioDeclickDurationUs?: number;
   source?: { path: string };
   backgroundColor?: string;
   text?: string;
@@ -237,6 +238,7 @@ async function buildVideoTrackTree(
         audioFadeOutUs: (item as any).audioFadeOutUs,
         audioFadeInCurve: (item as any).audioFadeInCurve,
         audioFadeOutCurve: (item as any).audioFadeOutCurve,
+        audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
@@ -512,6 +514,7 @@ export async function toWorkerTimelineClips(
       audioFadeOutUs: (item as any).audioFadeOutUs,
       audioFadeInCurve: (item as any).audioFadeInCurve,
       audioFadeOutCurve: (item as any).audioFadeOutCurve,
+      audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
       opacity: combinedOpacity,
       blendMode: combinedBlendMode,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,

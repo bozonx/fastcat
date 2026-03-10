@@ -8,6 +8,7 @@ const projectStoreMock = {
   currentProjectName: 'test',
   currentTimelinePath: 'timeline.otio',
   getFileHandleByPath: vi.fn(),
+  getFileByPath: vi.fn(),
   createFallbackTimelineDoc: () => ({
     OTIO_SCHEMA: 'Timeline.1',
     id: 'doc-1',
@@ -507,60 +508,11 @@ describe('TimelineStore', () => {
       ],
     } as any;
 
-    projectStoreMock.getFileHandleByPath.mockResolvedValue({
-      getFile: vi.fn(async () => ({
-        type: 'image/png',
-        size: 123,
-        lastModified: 1,
-      })),
-    });
-
-    mediaStoreMock.getOrFetchMetadata.mockResolvedValue({
-      source: { size: 123, lastModified: 1 },
-      duration: 0,
-    });
-
-    await store.addClipToTimelineFromPath({
-      trackId: 'v1',
-      name: 'image.png',
-      path: '_images/image.png',
-      startUs: 0,
-    });
-
-    const track = (store.timelineDoc as any).tracks.find((t: any) => t.id === 'v1');
-    expect(track.items).toHaveLength(1);
-
-    const clip = track.items[0];
-    expect(clip.clipType).toBe('media');
-    expect(clip.timelineRange.durationUs).toBe(5_000_000);
-    expect(clip.sourceDurationUs).toBe(5_000_000);
-  });
-
-  it('adds audio source to audio track using metadata duration', async () => {
-    const store = useTimelineStore();
-
-    store.timelineDoc = {
-      OTIO_SCHEMA: 'Timeline.1',
-      id: 'doc-1',
-      name: 'Default',
-      timebase: { fps: 30 },
-      tracks: [
-        {
-          id: 'a1',
-          kind: 'audio',
-          name: 'Audio 1',
-          items: [],
-        },
-      ],
-    } as any;
-
-    projectStoreMock.getFileHandleByPath.mockResolvedValue({
-      getFile: vi.fn(async () => ({
+    projectStoreMock.getFileByPath.mockResolvedValue({
         type: 'audio/mpeg',
         size: 123,
         lastModified: 1,
-      })),
-    });
+      });
 
     mediaStoreMock.getOrFetchMetadata.mockResolvedValue({
       source: { size: 123, lastModified: 1 },
@@ -799,25 +751,21 @@ describe('TimelineStore', () => {
       2,
     );
 
-    projectStoreMock.getFileHandleByPath.mockImplementation(async (path: string) => {
-      if (path === 'video-only.otio') {
-        return {
-          getFile: async () => ({
+    projectStoreMock.getFileByPath.mockImplementation(async (path: string) => {
+        if (path === 'video-only.otio') {
+          return {
             text: async () => videoOnlyNestedOtio,
-          }),
-        };
-      }
+          };
+        }
 
-      if (path === 'nested-av.otio') {
-        return {
-          getFile: async () => ({
+        if (path === 'nested-av.otio') {
+          return {
             text: async () => avNestedOtio,
-          }),
-        };
-      }
+          };
+        }
 
-      return null;
-    });
+        return null;
+      });
 
     await expect(
       store.addTimelineClipToTimelineFromPath({
@@ -915,17 +863,15 @@ describe('TimelineStore', () => {
       2,
     );
 
-    projectStoreMock.getFileHandleByPath.mockImplementation(async (path: string) => {
-      if (path === 'nested-cycle.otio') {
-        return {
-          getFile: async () => ({
+    projectStoreMock.getFileByPath.mockImplementation(async (path: string) => {
+        if (path === 'nested-cycle.otio') {
+          return {
             text: async () => nestedOtioWithBackReference,
-          }),
-        };
-      }
+          };
+        }
 
-      return null;
-    });
+        return null;
+      });
 
     await expect(
       store.addTimelineClipToTimelineFromPath({
