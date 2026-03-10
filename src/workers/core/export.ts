@@ -7,10 +7,7 @@ import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
 import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
-import {
-  getMediaTypeFromFilename,
-  getMimeTypeFromFilename,
-} from '../../utils/media-types';
+import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '../../utils/media-types';
 
 export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle) {
   const file =
@@ -347,11 +344,20 @@ export async function runExport(
 
       const fullCodecString =
         fallbackCodecString && options.videoCodec ? options.videoCodec : undefined;
+      const keyFrameIntervalSec = Number(options.keyframeIntervalSec);
+      const fps = Math.max(1, Math.round(Number(options.fps) || 30));
+      const keyFrameInterval =
+        Number.isFinite(keyFrameIntervalSec) && keyFrameIntervalSec > 0
+          ? Math.max(1, Math.round(keyFrameIntervalSec * fps))
+          : undefined;
 
       const videoSource = new CanvasSource(localCompositor.canvas as any, {
         codec: getBunnyVideoCodec(options.videoCodec),
         fullCodecString,
         bitrate: options.bitrate,
+        alpha: options.exportAlpha ? 'keep' : 'discard',
+        bitrateMode: options.bitrateMode === 'constant' ? 'constant' : 'variable',
+        keyFrameInterval,
         hardwareAcceleration: preference,
       });
       output.addVideoTrack(videoSource);

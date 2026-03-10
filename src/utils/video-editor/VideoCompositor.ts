@@ -226,6 +226,7 @@ export class VideoCompositor {
   private width = 1920;
   private height = 1080;
   private clipById = new Map<string, CompositorClip>();
+  private prevClipById = new Map<string, CompositorClip | null>();
   private trackById = new Map<string, CompositorTrack>();
   private trackByLayer = new Map<number, CompositorTrack>();
   private tracks: CompositorTrack[] = [];
@@ -359,6 +360,41 @@ export class VideoCompositor {
       return this.trackById.get(clip.trackId) ?? this.trackByLayer.get(clip.layer) ?? null;
     }
     return this.trackByLayer.get(clip.layer) ?? null;
+  }
+
+  private rebuildPrevClipIndex() {
+    this.prevClipById.clear();
+
+    const byLayer = new Map<number, CompositorClip[]>();
+    for (const clip of this.clips) {
+      const clips = byLayer.get(clip.layer);
+      if (clips) {
+        clips.push(clip);
+      } else {
+        byLayer.set(clip.layer, [clip]);
+      }
+    }
+
+    for (const layerClips of byLayer.values()) {
+      const sorted = [...layerClips].sort(
+        (a, b) => a.startUs - b.startUs || a.endUs - b.endUs || a.itemId.localeCompare(b.itemId),
+      );
+
+      for (let index = 0; index < sorted.length; index++) {
+        const clip = sorted[index];
+        if (!clip) continue;
+
+        let prev: CompositorClip | null = null;
+        for (let prevIndex = index - 1; prevIndex >= 0; prevIndex -= 1) {
+          const candidate = sorted[prevIndex];
+          if (!candidate || candidate.itemId === clip.itemId) continue;
+          prev = candidate;
+          break;
+        }
+
+        this.prevClipById.set(clip.itemId, prev);
+      }
+    }
   }
 
   private sortTrackContainerChildren() {
@@ -1323,6 +1359,7 @@ export class VideoCompositor {
     this.clips = nextClips;
     this.clipById = nextClipById;
     this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
+    this.rebuildPrevClipIndex();
     const maxClipEndUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
     this.maxDurationUs = Math.max(maxClipEndUs, sequentialTimeUs);
 
@@ -1491,6 +1528,7 @@ export class VideoCompositor {
     }
 
     this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
+    this.rebuildPrevClipIndex();
     this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
 
     this.lastRenderedTimeUs = Number.NaN;
@@ -1610,19 +1648,6 @@ export class VideoCompositor {
           typeof freezeUs === 'number'
             ? Math.max(0, freezeUs) / 1_000_000
             : Math.max(0, clip.sourceStartUs + effectiveLocalUs) / 1_000_000;
-
-        if (clip.transitionIn) {
-          console.warn('[DBG-IN]', {
-            id: clip.itemId,
-            localTimeUs,
-            sampleTimeS,
-            freezeUs,
-            sourceStartUs: clip.sourceStartUs,
-            sourceRangeDurationUs: clip.sourceRangeDurationUs,
-            sourceDurationUs: clip.sourceDurationUs,
-            durationUs: clip.durationUs,
-          });
-        }
 
         if (!clip.sink) {
           clip.sprite.visible = false;
@@ -1927,13 +1952,7 @@ export class VideoCompositor {
   /** Find the clip on the same layer immediately adjacent to `clip` (for blend shadow rendering).
    *  Returns null if there is a gap larger than 200ms between the clips. */
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
-    let best: CompositorClip | null = null;
-    for (const c of this.clips) {
-      if (c.layer !== clip.layer) continue;
-      if (c.itemId === clip.itemId) continue;
-      if (c.startUs > clip.startUs + 1_000) continue;
-      if (!best || c.endUs > best.endUs) best = c;
-    }
+    const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
     // Reject only for a large gap — allow small gaps to still show a reasonable blend shadow.
     if (clip.startUs - best.endUs > 1_000_000) return null;
@@ -3327,6 +3346,7 @@ export class VideoCompositor {
     this.clips = [];
     this.tracks = [];
     this.clipById.clear();
+    this.prevClipById.clear();
     this.trackById.clear();
     this.trackByLayer.clear();
     this.replacedClipIds.clear();
