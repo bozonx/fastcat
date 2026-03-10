@@ -54,6 +54,7 @@ const emit = defineEmits<{
     e: 'action',
     action:
       | 'createFolder'
+      | 'createTimeline'
       | 'rename'
       | 'delete'
       | 'createProxy'
@@ -68,6 +69,7 @@ const emit = defineEmits<{
       | 'openAsPanelCut'
       | 'openAsPanelSound'
       | 'openAsProjectTab'
+      | 'uploadRemote'
       | 'transcribe',
     entry: FsEntry,
   ): void;
@@ -294,13 +296,16 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
       return;
     }
 
-    const sourcePath = typeof parsed?.path === 'string' ? parsed.path : '';
-    if (!sourcePath) return;
+    const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
+    for (const item of itemsToMove) {
+      const sourcePath = typeof item?.path === 'string' ? item.path : '';
+      if (!sourcePath || sourcePath === entry.path) continue;
 
-    emit('requestMove', {
-      sourcePath,
-      targetDirPath: entry.path,
-    });
+      emit('requestMove', {
+        sourcePath,
+        targetDirPath: entry.path,
+      });
+    }
     return;
   }
 

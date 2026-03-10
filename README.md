@@ -120,7 +120,7 @@ Notes:
 
 - `GPAN_PUBLICADOR_BASE_URL` defines the Gran Publicador instance URL for connect flow and API resolution
 - Gran connect app name is fixed globally and is not editable in user settings
-- user integration settings are stored in `.gran/user.settings.json`
+- user integration settings are stored in `.gran-workspace/user.settings.json`
 - manual STT `baseUrl` may point to the service root, `/api/v1`, `/api/v1/external/stt`, or the full `/api/v1/transcribe/stream` endpoint
 - Gran STT streaming uses `POST /api/v1/external/api/v1/transcribe/stream`
 

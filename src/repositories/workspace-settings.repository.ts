@@ -25,6 +25,7 @@ export function createWorkspaceSettingsRepository(input: {
         baseDir: input.workspaceDir,
         filename: 'user.settings.json',
         create: false,
+        folderName: '.gran-workspace',
       });
       if (!handle) return null;
       return await readJsonFromFileHandle(handle);
@@ -35,6 +36,7 @@ export function createWorkspaceSettingsRepository(input: {
         baseDir: input.workspaceDir,
         filename: 'user.settings.json',
         create: true,
+        folderName: '.gran-workspace',
       });
       if (!handle) return;
       await writeJsonToFileHandle({ handle, data });
@@ -45,6 +47,7 @@ export function createWorkspaceSettingsRepository(input: {
         baseDir: input.workspaceDir,
         filename: 'workspace.settings.json',
         create: false,
+        folderName: '.gran-workspace',
       });
       if (!handle) return null;
       return await readJsonFromFileHandle(handle);
@@ -55,6 +58,7 @@ export function createWorkspaceSettingsRepository(input: {
         baseDir: input.workspaceDir,
         filename: 'workspace.settings.json',
         create: true,
+        folderName: '.gran-workspace',
       });
       if (!handle) return;
       await writeJsonToFileHandle({ handle, data });

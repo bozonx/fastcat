@@ -186,7 +186,9 @@ const emit = defineEmits<{
       | 'openAsPanelSound'
       | 'openAsProjectTab'
       | 'createOtioVersion'
-      | 'convertFile',
+      | 'convertFile'
+      | 'uploadRemote'
+      | 'transcribe',
     entry: FsEntry,
   ): void;
   (e: 'commitRename', entry: FsEntry, newName: string): void;

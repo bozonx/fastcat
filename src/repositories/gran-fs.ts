@@ -11,9 +11,12 @@ export async function ensureGranFileHandle(input: {
   baseDir: DirectoryHandleLike;
   filename: string;
   create: boolean;
+  folderName?: string;
 }): Promise<FileHandleLike | null> {
   try {
-    const granDir = await input.baseDir.getDirectoryHandle('.gran', { create: input.create });
+    const granDir = await input.baseDir.getDirectoryHandle(input.folderName ?? '.gran', {
+      create: input.create,
+    });
     return await granDir.getFileHandle(input.filename, { create: input.create });
   } catch {
     return null;

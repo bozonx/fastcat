@@ -75,6 +75,12 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
         class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0 focus:outline-none"
         :class="{
           'bg-ui-bg-elevated ring-1 ring-(--selection-ring)': isSelected(entry),
+          'text-(--color-success)!':
+            fileManager.mediaCache.hasProxy(entry.path || '') &&
+            !proxyStore.generatingProxies.has(entry.path || ''),
+          'text-amber-400!':
+            proxyStore.generatingProxies.has(entry.path || '') ||
+            isGeneratingProxyInDirectory(entry),
           'border-b-2 border-b-red-500':
             entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
           'opacity-30': entry.name.startsWith('.'),
@@ -164,6 +170,14 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                 : 'font-medium text-ui-text group-hover:text-primary-400'
               : 'text-ui-text',
             entry.name.startsWith('.') ? 'opacity-50' : '',
+            fileManager.mediaCache.hasProxy(entry.path || '') &&
+            !proxyStore.generatingProxies.has(entry.path || '')
+              ? 'text-(--color-success)!'
+              : '',
+            proxyStore.generatingProxies.has(entry.path || '') ||
+            isGeneratingProxyInDirectory(entry)
+              ? 'text-amber-400!'
+              : '',
             {
               'text-xs':
                 currentGridSizeName === 'xs' ||

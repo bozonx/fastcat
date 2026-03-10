@@ -27,6 +27,7 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import AppModal from '~/components/ui/AppModal.vue';
+import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 
 const props = defineProps<{
@@ -278,6 +279,42 @@ const hasExistingProxyForFile = computed(() => {
   return proxyStore.existingProxies.has(selectedPath.value!);
 });
 
+const canConvertFile = computed(() => {
+  return mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
+});
+
+async function loadCachedTranscription() {
+  const selectedEntry = props.selectedFsEntry;
+  if (
+    !selectedEntry ||
+    selectedEntry.kind !== 'file' ||
+    !projectStore.currentProjectId ||
+    !workspaceStore.workspaceHandle ||
+    !(isAudioFile.value || isVideoFile.value)
+  ) {
+    latestTranscriptionText.value = '';
+    latestTranscriptionCacheKey.value = '';
+    latestTranscriptionWasCached.value = false;
+    return;
+  }
+
+  try {
+    const repository = createTranscriptionCacheRepository({
+      workspaceDir: workspaceStore.workspaceHandle,
+      projectId: projectStore.currentProjectId,
+    });
+    const records = await repository.list();
+    const record = records.find((item) => item.sourcePath === selectedEntry.path);
+    latestTranscriptionText.value = record ? extractTranscriptionText(record.response) : '';
+    latestTranscriptionCacheKey.value = record?.key ?? '';
+    latestTranscriptionWasCached.value = Boolean(record);
+  } catch {
+    latestTranscriptionText.value = '';
+    latestTranscriptionCacheKey.value = '';
+    latestTranscriptionWasCached.value = false;
+  }
+}
+
 function onRename() {
   const entry = props.selectedFsEntry;
   if (!entry) return;
@@ -287,7 +324,7 @@ function onRename() {
 function onDelete() {
   const entry = props.selectedFsEntry;
   if (!entry) return;
-  uiStore.pendingFsEntryDelete = entry;
+  uiStore.pendingFsEntryDelete = [entry];
 }
 
 function openAsTextPanel(view: 'cut' | 'sound' = 'cut') {
@@ -386,7 +423,7 @@ async function submitAudioTranscription() {
 
 watch(
   () => props.selectedFsEntry?.path,
-  () => {
+  async () => {
     transcriptionLanguage.value = '';
     transcriptionError.value = '';
     latestTranscriptionText.value = '';
@@ -394,7 +431,10 @@ watch(
     latestTranscriptionWasCached.value = false;
     isTranscriptionModalOpen.value = false;
     isTranscribingAudio.value = false;
+
+    await loadCachedTranscription();
   },
+  { immediate: true },
 );
 </script>
 
@@ -527,7 +567,7 @@ watch(
             id: 'convertFile',
             title: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
             icon: 'i-heroicons-arrow-path',
-            hidden: mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image',
+            hidden: !canConvertFile,
             onClick: () => emit('convert', props.selectedFsEntry),
           },
           {
@@ -564,7 +604,7 @@ watch(
             id: 'openAsProjectTab',
             label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
             icon: 'i-heroicons-squares-plus',
-            hidden: !canOpenAsProjectTab || props.isFilesPage,
+            hidden: !canOpenAsProjectTab,
             onClick: openAsProjectTab,
           },
           {
