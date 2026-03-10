@@ -1,4 +1,5 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
+import { getProjectCacheSegments } from '~/utils/vardata-paths';
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
 
@@ -32,7 +33,7 @@ function normalizeDimension(value: number): number {
 }
 
 function getVectorImageRootSegments(projectId: string): string[] {
-  return ['cache', projectId, 'vector_image'];
+  return [...getProjectCacheSegments(projectId), 'vector_image'];
 }
 
 function getVectorImageSourceDirName(projectRelativePath: string): string {
