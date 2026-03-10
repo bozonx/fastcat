@@ -90,4 +90,14 @@ export interface IFileSystemAdapter {
    * Writes JSON to a file.
    */
   writeJson(path: string, data: unknown): Promise<void>;
+
+  /**
+   * Reads file contents as a ReadableStream
+   */
+  readStream(path: string): Promise<ReadableStream<Uint8Array>>;
+
+  /**
+   * Opens a WritableStream to a file
+   */
+  writeStream(path: string): Promise<WritableStream<Uint8Array>>;
 }

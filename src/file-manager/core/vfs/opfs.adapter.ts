@@ -1,5 +1,4 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
-import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
 
 interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -9,7 +8,6 @@ interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
   private rootHandle: FileSystemDirectoryHandle | null = null;
-  private workspaceRootHandle: FileSystemDirectoryHandle | null = null;
 
   private async getRoot(): Promise<FileSystemDirectoryHandle | null> {
     if (this.rootHandle) return this.rootHandle;
@@ -17,33 +15,21 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     return this.rootHandle;
   }
 
-  private async getWorkspaceRootHandle(): Promise<FileSystemDirectoryHandle | null> {
-    if (this.workspaceRootHandle) return this.workspaceRootHandle;
-    this.workspaceRootHandle = await this.getWorkspaceRoot();
-    return this.workspaceRootHandle;
-  }
-
-  constructor(
-    private getProjectRoot: () => Promise<FileSystemDirectoryHandle | null>,
-    private getWorkspaceRoot: () => Promise<FileSystemDirectoryHandle | null>,
-  ) {}
+  constructor(private getProjectRoot: () => Promise<FileSystemDirectoryHandle | null>) {}
 
   async init(): Promise<void> {
     this.rootHandle = await this.getProjectRoot();
-    this.workspaceRootHandle = await this.getWorkspaceRoot();
   }
 
   private async getHandleByPath(
     path: string,
     options?: { create?: boolean; isFile?: boolean },
   ): Promise<FileSystemHandle | null> {
-    const isCommonPath = isWorkspaceCommonPath(path);
-    const normalizedPath = isCommonPath ? stripWorkspaceCommonPathPrefix(path) : path;
-    const root = isCommonPath ? await this.getWorkspaceRootHandle() : await this.getRoot();
+    const root = await this.getRoot();
     if (!root) return null;
-    if (!normalizedPath || normalizedPath === '/') return root;
+    if (!path || path === '/') return root;
 
-    const parts = normalizedPath.split('/').filter(Boolean);
+    const parts = path.split('/').filter(Boolean);
     let currentDir = root;
 
     for (let i = 0; i < parts.length; i++) {
@@ -228,6 +214,37 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     })) as FileSystemFileHandle | null;
     if (!handle) return null;
     return await handle.getFile();
+  }
+
+  async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
+    const file = await this.getFile(path);
+    if (!file) throw new Error(`File not found: ${path}`);
+    return file.stream();
+  }
+
+  async writeStream(path: string): Promise<WritableStream<Uint8Array>> {
+    const parentHandle = await this.getParentDirHandle(path, { create: true });
+    if (!parentHandle) throw new Error(`Could not create parent directory for: ${path}`);
+
+    const parts = path.split('/').filter(Boolean);
+    const fileName = parts[parts.length - 1];
+    if (!fileName) throw new Error(`Invalid file name in path: ${path}`);
+
+    const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+    const writable = await (fileHandle as any).createWritable();
+
+    // Convert FileSystemWritableFileStream to a standard WritableStream for compatibility
+    return new WritableStream({
+      write: async (chunk) => {
+        await writable.write(chunk);
+      },
+      close: async () => {
+        await writable.close();
+      },
+      abort: async (err) => {
+        await writable.abort(err);
+      },
+    });
   }
 
   async writeJson(path: string, data: unknown): Promise<void> {

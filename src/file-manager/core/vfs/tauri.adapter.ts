@@ -70,6 +70,14 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     throw new Error('Method not implemented.');
   }
 
+  async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
+    throw new Error('Method not implemented.');
+  }
+
+  async writeStream(path: string): Promise<WritableStream<Uint8Array>> {
+    throw new Error('Method not implemented.');
+  }
+
   async writeJson(path: string, data: unknown): Promise<void> {
     throw new Error('Method not implemented.');
   }
