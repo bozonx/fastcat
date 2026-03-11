@@ -355,6 +355,16 @@
         "downloadFiles": "Скачать файлы",
         "uploadRemote": "Загрузить по ссылке"
       },
+      "dropOverlay": {
+        "autoTitle": "Автоматическая сортировка",
+        "autoDescription": "Отпустите файлы здесь или в любом месте за пределами дерева папок. Файлы будут автоматически отсортированы по типу:",
+        "autoVideo": "Видео → _video",
+        "autoImages": "Изображения → _images",
+        "autoAudio": "Аудио → _audio",
+        "autoFiles": "Прочие файлы → _files",
+        "folderTitle": "Загрузка в папку",
+        "folderDescription": "Перетащите файлы на нужную папку"
+      },
       "projectRoot": {
         "title": "Корень проекта",
         "project": "Проект",
