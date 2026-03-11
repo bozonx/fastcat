@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, watch, ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import {
   useTimelineExport,
   sanitizeBaseName,
@@ -11,7 +10,6 @@ import {
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
 const toast = useToast();
 
 const {
@@ -31,10 +29,6 @@ const {
   exportWidth,
   exportHeight,
   exportFps,
-  resolutionFormat,
-  orientation,
-  aspectRatio,
-  isCustomResolution,
   bitrateMode,
   keyframeIntervalSec,
   exportAlpha,
@@ -56,6 +50,14 @@ const {
 } = useTimelineExport();
 
 const showAdvanced = ref(false);
+const exportLocation = computed(() =>
+  projectStore.currentProjectName ? `${projectStore.currentProjectName}/exports` : 'Project exports',
+);
+
+const exportSummary = computed(() => {
+  const audioPart = excludeAudio.value ? 'No audio' : `${audioCodec.value.toUpperCase()} audio`;
+  return `${outputFormat.value.toUpperCase()} • ${normalizedExportWidth.value}x${normalizedExportHeight.value} • ${normalizedExportFps.value} fps • ${audioPart}`;
+});
 
 const formatOptions = [
   { value: 'mp4', label: 'MP4 (H.264)' },
@@ -155,10 +157,16 @@ function getPhaseLabel() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-4 bg-slate-950 min-h-full">
+  <div class="flex min-h-full flex-col gap-6 bg-slate-950 p-4">
     <div class="flex flex-col gap-1">
       <h2 class="text-xl font-bold text-white">Export Project</h2>
       <p class="text-xs text-slate-400">Save your work as a video file</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Summary</p>
+      <p class="mt-2 text-sm font-medium text-white">{{ exportSummary }}</p>
+      <p class="mt-1 text-xs text-slate-500">Saved to {{ exportLocation }}</p>
     </div>
 
     <!-- Основные настройки -->
@@ -187,7 +195,7 @@ function getPhaseLabel() {
         </UFormField>
       </div>
 
-      <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800 space-y-3">
+      <div class="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-3">
         <div class="flex items-center justify-between text-xs">
           <span class="text-slate-400">Resolution</span>
           <span class="text-slate-200 font-medium"
@@ -197,9 +205,13 @@ function getPhaseLabel() {
         <div class="flex items-center justify-between text-xs">
           <span class="text-slate-400">Audio</span>
           <div class="flex items-center gap-2">
-            <span class="text-slate-200">{{ excludeAudio ? 'None' : 'Included' }}</span>
+            <span class="text-slate-200">{{ excludeAudio ? 'Off' : 'On' }}</span>
             <USwitch v-model="excludeAudio" size="xs" :disabled="isExporting" />
           </div>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Estimated quality</span>
+          <span class="font-medium text-slate-200">{{ bitrateMbps }} Mbps</span>
         </div>
       </div>
     </div>
@@ -215,39 +227,69 @@ function getPhaseLabel() {
       </button>
 
       <div v-if="showAdvanced" class="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField label="Audio Codec">
-            <USelect
-              v-model="audioCodec"
-              :options="[
-                { value: 'aac', label: 'AAC' },
-                { value: 'opus', label: 'Opus' },
-              ]"
-              class="w-full"
+        <div v-if="!excludeAudio" class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Audio</p>
+          <div class="grid grid-cols-2 gap-4">
+            <UFormField label="Audio Codec">
+              <USelect
+                v-model="audioCodec"
+                :options="[
+                  { value: 'aac', label: 'AAC' },
+                  { value: 'opus', label: 'Opus' },
+                ]"
+                class="w-full"
+                :disabled="isExporting"
+              />
+            </UFormField>
+            <UFormField label="Sample Rate">
+              <USelect
+                :model-value="audioSampleRate"
+                :options="[
+                  { value: 44100, label: '44.1 kHz' },
+                  { value: 48000, label: '48 kHz' },
+                ]"
+                class="w-full"
+                :disabled="isExporting"
+                @update:model-value="(v) => (audioSampleRate = Number(v))"
+              />
+            </UFormField>
+          </div>
+          <UFormField label="Audio Bitrate">
+            <UInput
+              :model-value="String(audioBitrateKbps)"
+              type="number"
+              min="64"
+              max="512"
+              step="16"
               :disabled="isExporting"
-            />
+              @update:model-value="(v) => (audioBitrateKbps = Number(v))"
+            >
+              <template #trailing>
+                <span class="text-xs text-slate-500">kbps</span>
+              </template>
+            </UInput>
           </UFormField>
-          <UFormField label="Sample Rate">
-            <USelect
-              :model-value="audioSampleRate"
-              :options="[
-                { value: 44100, label: '44.1 kHz' },
-                { value: 48000, label: '48 kHz' },
-              ]"
-              class="w-full"
+        </div>
+
+        <div class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Metadata</p>
+          <div class="grid grid-cols-1 gap-4">
+            <UFormField label="Title">
+              <UInput v-model="metadataTitle" placeholder="Project title" :disabled="isExporting" />
+            </UFormField>
+            <UFormField label="Author">
+              <UInput v-model="metadataAuthor" placeholder="Author" :disabled="isExporting" />
+            </UFormField>
+          </div>
+          <UFormField label="Tags">
+            <UTextarea
+              v-model="metadataTags"
+              placeholder="tag1, tag2"
+              :rows="2"
               :disabled="isExporting"
-              @update:model-value="(v) => (audioSampleRate = Number(v))"
             />
           </UFormField>
         </div>
-        <UFormField label="Metadata Description">
-          <UTextarea
-            v-model="metadataTags"
-            placeholder="Tags..."
-            :rows="2"
-            :disabled="isExporting"
-          />
-        </UFormField>
       </div>
     </div>
 
@@ -296,7 +338,7 @@ function getPhaseLabel() {
         @click="handleStartExport"
       />
       <p class="text-[10px] text-slate-500 text-center mt-3">
-        Do not close the app or lock your screen during export
+        Keep the app open and the screen awake until export finishes
       </p>
     </div>
   </div>

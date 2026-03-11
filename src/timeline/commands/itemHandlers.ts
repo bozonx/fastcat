@@ -123,37 +123,45 @@ export function addVirtualClipToTrack(
     sourceRange: { startUs: 0, durationUs },
   };
 
-  const clip: TimelineClipItem =
-    cmd.clipType === 'background'
-      ? {
-          ...base,
-          clipType: 'background',
-          backgroundColor: cmd.backgroundColor ?? '#1a56db',
-        }
-      : cmd.clipType === 'text'
-        ? {
-            ...base,
-            clipType: 'text',
-            text: typeof cmd.text === 'string' ? cmd.text : 'Text',
-            style: cmd.style,
-          }
-        : cmd.clipType === 'shape'
-          ? {
-              ...base,
-              clipType: 'shape',
-              shapeType: cmd.shapeType ?? 'square',
-              fillColor: '#ffffff',
-            }
-          : cmd.clipType === 'hud'
-            ? {
-                ...base,
-                clipType: 'hud',
-                hudType: cmd.hudType ?? 'media_frame',
-              }
-            : {
-                ...base,
-                clipType: 'adjustment',
-              };
+  let clip: TimelineClipItem;
+  switch (cmd.clipType) {
+    case 'background':
+      clip = {
+        ...base,
+        clipType: 'background',
+        backgroundColor: cmd.backgroundColor ?? '#1a56db',
+      };
+      break;
+    case 'text':
+      clip = {
+        ...base,
+        clipType: 'text',
+        text: typeof cmd.text === 'string' ? cmd.text : 'Text',
+        style: cmd.style,
+      };
+      break;
+    case 'shape':
+      clip = {
+        ...base,
+        clipType: 'shape',
+        shapeType: cmd.shapeType ?? 'square',
+        fillColor: '#ffffff',
+      };
+      break;
+    case 'hud':
+      clip = {
+        ...base,
+        clipType: 'hud',
+        hudType: cmd.hudType ?? 'media_frame',
+      };
+      break;
+    default:
+      clip = {
+        ...base,
+        clipType: 'adjustment',
+      };
+      break;
+  }
 
   const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
@@ -698,7 +706,10 @@ export function updateClipProperties(
     const raw = (nextProps as any).speed;
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
     const speed = v === undefined ? undefined : Math.max(-10, Math.min(10, v));
-    if (speed === undefined || speed === 0) {
+    if (speed === 0) {
+      throw new Error('Speed cannot be 0');
+    }
+    if (speed === undefined) {
       delete nextProps.speed;
     } else {
       nextProps.speed = speed;

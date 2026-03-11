@@ -4,7 +4,6 @@ import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProxyStore } from '~/stores/proxy.store';
-import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -18,11 +17,19 @@ import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 
+const props = withDefaults(
+  defineProps<{
+    mode?: 'edit' | 'sound';
+  }>(),
+  {
+    mode: 'edit',
+  },
+);
+
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const proxyStore = useProxyStore();
-const focusStore = useFocusStore();
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
@@ -59,13 +66,11 @@ const viewportEl = computed(() => (viewportRef.value?.viewportEl as HTMLDivEleme
 const {
   isLoading,
   loadError,
-  previewEffectsEnabled,
   scheduleRender,
   scheduleBuild,
   clampToTimeline,
   updateStoreTime,
   audioEngine,
-  useProxyInMonitor,
   setCurrentTimeProvider,
 } = useMonitorCore({
   projectStore,
@@ -95,6 +100,17 @@ const {
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );
+
+const containerHeightClass = computed(() =>
+  props.mode === 'sound' ? 'h-[30vh] min-h-[220px] max-h-[340px]' : 'h-[34vh] min-h-[240px] max-h-[420px]',
+);
+
+const statusText = computed(() => {
+  if (loadError.value) return 'Preview failed';
+  if (isLoading.value) return 'Preparing preview';
+  if (videoItems.value.length === 0) return 'Add media to preview it here';
+  return props.mode === 'sound' ? 'Sound view' : 'Preview';
+});
 
 function blurActiveElement() {
   (document.activeElement as HTMLElement | null)?.blur?.();
@@ -167,7 +183,10 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col h-full min-w-0 min-h-0 bg-ui-bg-elevated border-b border-ui-border shrink-0" style="height: 35vh;">
+  <div
+    class="flex min-w-0 shrink-0 flex-col border-b border-ui-border bg-ui-bg-elevated"
+    :class="containerHeightClass"
+  >
     <!-- Video area -->
     <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight" class="bg-black/80">
       <template #canvas>
@@ -200,51 +219,59 @@ watch(
       <template #default>
         <div
           v-if="videoItems.length === 0"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-ui-text-disabled"
         >
           <UIcon name="lucide:play-circle" class="w-12 h-12" />
+          <p class="text-sm text-ui-text-muted">{{ statusText }}</p>
         </div>
         <div
           v-else-if="isLoading"
-          class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-muted"
         >
           <UIcon name="lucide:loader-2" class="w-8 h-8 animate-spin" />
+          <p class="text-sm">{{ statusText }}</p>
         </div>
         <div
           v-else-if="loadError"
-          class="absolute inset-0 flex items-center justify-center text-red-500"
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-red-300"
         >
-          {{ loadError }}
+          <UIcon name="lucide:triangle-alert" class="w-7 h-7" />
+          <p class="text-sm font-medium">{{ statusText }}</p>
+          <p class="text-xs text-red-200/80">{{ loadError }}</p>
         </div>
       </template>
     </MonitorViewport>
 
     <!-- Playback controls -->
-    <div class="flex items-center justify-between px-4 py-2 shrink-0 bg-ui-bg">
-      <div class="flex gap-2">
-        <span ref="timecodeEl" class="text-xs font-mono tabular-nums text-ui-text">
+    <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2.5">
+      <div class="mb-2 flex items-center justify-between gap-3 text-[11px] text-ui-text-muted">
+        <span class="uppercase tracking-[0.18em]">{{ props.mode === 'sound' ? 'Monitor' : 'Preview' }}</span>
+        <span class="truncate">{{ statusText }}</span>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <span ref="timecodeEl" class="min-w-0 text-xs font-mono tabular-nums text-ui-text">
           00:00:00:00 / 00:00:00:00
         </span>
-      </div>
-      <div class="flex items-center gap-2">
-        <UButton
-          size="md"
-          variant="ghost"
-          color="neutral"
-          icon="lucide:skip-back"
-          :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
-          :disabled="!canInteractPlayback"
-          @click="rewindToStart"
-        />
-        <UButton
-          size="md"
-          variant="solid"
-          color="primary"
-          :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
-          :aria-label="t('granVideoEditor.monitor.play', 'Play')"
-          :disabled="!canInteractPlayback"
-          @click="togglePlayback"
-        />
+        <div class="flex items-center gap-2">
+          <UButton
+            size="md"
+            variant="ghost"
+            color="neutral"
+            icon="lucide:skip-back"
+            :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
+            :disabled="!canInteractPlayback"
+            @click="rewindToStart"
+          />
+          <UButton
+            size="md"
+            variant="solid"
+            color="primary"
+            :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
+            :aria-label="t('granVideoEditor.monitor.play', 'Play')"
+            :disabled="!canInteractPlayback"
+            @click="togglePlayback"
+          />
+        </div>
       </div>
     </div>
   </div>
