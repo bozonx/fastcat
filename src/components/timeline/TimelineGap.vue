@@ -1,0 +1,73 @@
+<script setup lang="ts">
+import type { TimelineTrackItem } from '~/timeline/types';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
+import { timeUsToPx } from '~/utils/timeline/geometry';
+
+const { t } = useI18n();
+const timelineStore = useTimelineStore();
+const selectionStore = useSelectionStore();
+
+const props = defineProps<{
+  item: TimelineTrackItem;
+  trackId: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'select', event: PointerEvent): void;
+  (e: 'marqueeStart', event: PointerEvent): void;
+}>();
+
+const style = computed(() => ({
+  left: `${timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
+  width: `${Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
+}));
+
+const isSelected = computed(() => timelineStore.selectedItemIds.includes(props.item.id));
+
+function onDelete() {
+  timelineStore.applyTimeline({
+    type: 'delete_items',
+    trackId: props.trackId,
+    itemIds: [props.item.id],
+  });
+  timelineStore.clearSelection();
+  selectionStore.clearSelection();
+}
+
+function onPointerdown(e: PointerEvent) {
+  if (e.button === 0) {
+    e.stopPropagation();
+    emit('marqueeStart', e);
+  } else if (e.button !== 1) {
+    e.stopPropagation();
+    emit('select', e);
+  }
+}
+</script>
+
+<template>
+  <UContextMenu
+    :items="[
+      [
+        {
+          label: t('granVideoEditor.timeline.delete'),
+          icon: 'i-heroicons-trash',
+          onSelect: onDelete,
+        },
+      ],
+    ]"
+  >
+    <div
+      :data-gap-id="item.id"
+      class="absolute inset-y-0 rounded border border-dashed transition-colors z-10 cursor-pointer select-none"
+      :class="
+        isSelected
+          ? 'border-primary-500 bg-primary-500/15 hover:bg-primary-500/25'
+          : 'border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40'
+      "
+      :style="style"
+      @pointerdown="onPointerdown"
+    />
+  </UContextMenu>
+</template>

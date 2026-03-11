@@ -22,6 +22,7 @@ import {
 import TimelineTracks from './TimelineTracks.vue';
 import TimelineRuler from './TimelineRuler.vue';
 import TimelineGrid from './TimelineGrid.vue';
+import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -48,7 +49,8 @@ const scrollEl = ref<HTMLElement | null>(null);
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
   for (const t of tracks.value) {
-    heights[t.id] = 40;
+    // Mobile optimized heights: video tracks are taller for easier manipulation
+    heights[t.id] = t.kind === 'video' ? 64 : 48;
   }
   return heights;
 });
@@ -167,13 +169,11 @@ function onTimelineClick(e: MouseEvent) {
   if (!el) return;
 
   const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
-  const totalTracksHeight = docTracks.reduce((sum, tr) => {
-    return sum + (trackHeights.value[tr.id] ?? 40);
-  }, 0);
+  const tracksHeight = Object.values(trackHeights.value).reduce((a, b) => a + b, 0);
 
   const scrollerRectY = el.getBoundingClientRect();
   const y = e.clientY - scrollerRectY.top + el.scrollTop;
-  if (y > totalTracksHeight + 32) {
+  if (y > tracksHeight + 32) {
     timelineStore.selectTimelineProperties();
     return;
   }
@@ -251,9 +251,11 @@ async function onClipAction(payload: {
 
 <template>
   <div class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden" @pointerdown="focusStore.setMainFocus('timeline')">
+    <MobileTimelineToolbar />
+    
     <div
       ref="scrollEl"
-      class="flex-1 w-full overflow-auto relative overscroll-none touch-pan-x touch-pan-y"
+      class="flex-1 w-full overflow-auto relative overscroll-none touch-pan-x touch-pan-y no-scrollbar"
       @scroll.passive="onScroll"
       @touchstart.passive="onTouchStart"
       @touchmove="onTouchMove"
@@ -261,7 +263,12 @@ async function onClipAction(payload: {
       @click="onTimelineClick"
     >
       <div class="relative min-w-max h-full">
-        <TimelineGrid :is-timeline-scrolling="false" :scroll-el="scrollEl" :timeline-zoom="timelineStore.timelineZoom" :tracks-height="tracks.length * 40" />
+        <TimelineGrid 
+          :is-timeline-scrolling="false" 
+          :scroll-el="scrollEl" 
+          :timeline-zoom="timelineStore.timelineZoom" 
+          :tracks-height="Object.values(trackHeights).reduce((a, b) => a + b, 0)" 
+        />
 
         <div class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm">
           <TimelineRuler
@@ -280,6 +287,7 @@ async function onClipAction(payload: {
           :dragging-mode="draggingMode"
           :dragging-item-id="draggingItemId"
           :move-preview="movePreview"
+          is-mobile
           @select-item="selectItem"
           @start-move-item="startMoveItem"
           @start-trim-item="startTrimItem"
@@ -309,5 +317,12 @@ async function onClipAction(payload: {
 <style scoped>
 .timeline-playhead {
   will-change: transform;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 </style>
