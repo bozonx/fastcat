@@ -96,7 +96,7 @@ export interface WorkerTimelineClip {
   freezeFrameSourceUs?: number;
   opacity?: number;
   blendMode?: TimelineBlendMode;
-  effects?: unknown[];
+  effects?: ClipEffect[];
   transform?: ClipTransform;
   transitionIn?: import('~/timeline/types').ClipTransition;
   transitionOut?: import('~/timeline/types').ClipTransition;
@@ -111,12 +111,12 @@ export interface WorkerTimelineTrack {
   layer: number;
   opacity?: number;
   blendMode?: TimelineBlendMode;
-  effects?: unknown[];
+  effects?: ClipEffect[];
 }
 
 export interface WorkerTimelineMeta {
   kind: 'meta';
-  masterEffects: unknown[];
+  masterEffects: ClipEffect[];
 }
 
 export type WorkerVideoPayloadItem = WorkerTimelineMeta | WorkerTimelineTrack | WorkerTimelineClip;
@@ -139,7 +139,7 @@ export function buildWorkerVideoTracks(tracks: TimelineTrack[]): WorkerTrackPayl
 export function buildVideoWorkerPayload(input: {
   clips: WorkerTimelineClip[];
   tracks?: WorkerTrackPayloadSource[];
-  masterEffects?: unknown[];
+  masterEffects?: ClipEffect[];
 }): WorkerVideoPayloadItem[] {
   const meta =
     Array.isArray(input.masterEffects) && input.masterEffects.length > 0
@@ -417,7 +417,7 @@ async function buildVideoTrackTree(
 export async function buildVideoWorkerPayloadFromTracks(input: {
   tracks: TimelineTrack[];
   projectStore: ReturnType<typeof useProjectStore>;
-  masterEffects?: unknown[];
+  masterEffects?: ClipEffect[];
 }): Promise<BuildVideoPayloadFromTracksResult> {
   const result = await buildVideoTrackTree({
     tracks: input.tracks,

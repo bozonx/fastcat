@@ -26,3 +26,28 @@ export function parseUs(us: number | string | undefined | null, fallback = 0): n
   if (us == null || isNaN(Number(us))) return fallback;
   return Math.max(0, Math.round(Number(us)));
 }
+
+export function parseHexColor(value: string): number {
+  const raw = String(value ?? '').trim();
+  const hex = raw.startsWith('#') ? raw.slice(1) : raw;
+  if (hex.length === 3) {
+    const r = hex[0] ?? '0';
+    const g = hex[1] ?? '0';
+    const b = hex[2] ?? '0';
+    const expanded = `${r}${r}${g}${g}${b}${b}`;
+    const parsed = Number.parseInt(expanded, 16);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const parsed = Number.parseInt(hex.padStart(6, '0').slice(0, 6), 16);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * Checks whether an error indicates a disposed media input.
+ * Used across ResourceManager to normalize error handling.
+ */
+export function isInputDisposed(e: unknown): boolean {
+  const name = String((e as any)?.name ?? '');
+  const msg = String((e as any)?.message ?? e ?? '');
+  return name === 'InputDisposedError' || msg.includes('Input has been disposed');
+}

@@ -8,6 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import MobileExportForm from '~/components/export/MobileExportForm.vue';
+import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
+import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 
 definePageMeta({
   layout: 'mobile',
@@ -87,9 +89,9 @@ async function handleBack() {
         <MobileFileBrowser />
       </div>
 
-      <div v-show="activeTab === 'edit'" class="p-4 h-full">
-        <h2 class="text-xl font-bold mb-4">Edit</h2>
-        <div class="text-slate-400">Mobile video editor will be here.</div>
+      <div v-show="activeTab === 'edit'" class="flex flex-col h-full overflow-hidden bg-slate-950">
+        <MobileMonitorContainer />
+        <MobileTimeline />
       </div>
 
       <div v-show="activeTab === 'sound'" class="p-4 h-full">

@@ -54,6 +54,7 @@ export interface CompositorClip {
 
   freezeFrameSourceUs?: number;
   sprite: any; // Sprite | Graphics | Text
+  clipType?: 'background' | 'adjustment' | 'media' | 'text' | 'shape' | 'hud';
   clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap' | 'graphics';
   imageSource: ImageSource;
@@ -154,4 +155,16 @@ export function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): bo
     a.backgroundColor === b.backgroundColor &&
     arePaddingValuesEqual(a.padding, b.padding)
   );
+}
+
+export function areShapeConfigsEqual(
+  a: Record<string, unknown> | undefined,
+  b: Record<string, unknown> | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return !a && !b;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((key) => a[key] === b[key]);
 }

@@ -8,6 +8,7 @@ import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '../../utils/media-types';
+import type { ExportOptions } from '../../utils/video-editor/worker-rpc';
 
 export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle) {
   const file =
@@ -147,7 +148,7 @@ async function buildPassthroughAudioTrack(params: {
 
 export async function runExport(
   targetHandle: FileSystemFileHandle,
-  options: any,
+  options: ExportOptions,
   timelineClips: any[],
   audioClips: any[],
   hostClient: VideoCoreHostAPI | null,
@@ -273,9 +274,13 @@ export async function runExport(
       ensureNotCancelled();
 
       const generatedCanvas = await params.compositor.renderFrame(currentTimeUs);
-      if (generatedCanvas) {
-        await (params.videoSource as any).add(usToS(currentTimeUs), dtS);
+      if (!generatedCanvas) {
+        console.warn(
+          `[Export] Frame ${frameNum} at ${usToS(currentTimeUs)}s render returned null — encoding blank frame`,
+        );
       }
+      // Always encode the frame to maintain video timing
+      await (params.videoSource as any).add(usToS(currentTimeUs), dtS);
       currentTimeUs += dtUs;
 
       const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));

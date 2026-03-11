@@ -85,10 +85,17 @@ const api: any = {
         const opt = latestPreviewOptions;
         latestRenderTimeUs = null;
         latestPreviewOptions = undefined;
-        await compositor.renderFrame(next, opt);
+        try {
+          await compositor.renderFrame(next, opt);
+        } catch (err) {
+          if ((err as any)?.name === 'AbortError') break;
+          console.error('[Worker] renderFrame error at time', next, err);
+        }
       }
     } finally {
       renderInFlight = false;
+      latestRenderTimeUs = null;
+      latestPreviewOptions = undefined;
     }
   },
 

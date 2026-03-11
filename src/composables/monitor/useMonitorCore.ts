@@ -114,6 +114,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let isUnmounted = false;
   let forceRecreateCompositorNextBuild = false;
   let currentTimeProvider: (() => number) | null = null;
+  let layoutUpdateFromQueue = false;
   const audioHandleCache = new Map<string, FileSystemFileHandle>();
 
   const audioEngine = new AudioEngine();
@@ -138,8 +139,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       if (typeof structuredClone === 'function') {
         return structuredClone(value);
       }
-    } catch {
-      // ignore and fallback
+    } catch (err) {
+      console.warn('[Monitor] structuredClone failed, using mutable reference:', err);
     }
     return value;
   }
@@ -261,6 +262,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           workerTimelineClips.value = flattenedClips;
           workerAudioClips.value = flattenedAudio;
 
+          layoutUpdateFromQueue = true;
+
           const payload = cloneWorkerPayload(builtVideo.payload);
           const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(flattenedAudio);
@@ -268,6 +271,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           // when disabled clips are excluded from the worker payload.
           timelineStore.duration = Math.max(timelineStore.duration, maxDuration, audioDuration);
           lastBuiltLayoutSignature = clipLayoutSignature.value;
+          layoutUpdateFromQueue = false;
           scheduleRender(getRenderTimeForLayoutUpdate());
         } catch (error) {
           console.error('[Monitor] Failed to update timeline layout', error);
@@ -423,6 +427,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     try {
       await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
       forceRecreateCompositorNextBuild = false;
+
+      // Invalidate audio handle cache on full rebuild
+      audioHandleCache.clear();
 
       const rawAudio = rawWorkerAudioClips?.value ?? workerAudioClips.value;
 
@@ -617,6 +624,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       return;
     }
     if (clipLayoutSignature.value === lastBuiltLayoutSignature) {
+      return;
+    }
+    if (layoutUpdateFromQueue) {
       return;
     }
 

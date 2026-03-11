@@ -1,5 +1,6 @@
 import type { VideoSampleSink } from 'mediabunny';
 import { VIDEO_CORE_LIMITS } from '../../constants';
+import { isInputDisposed } from '../utils';
 
 export interface ResourceManagerContext {
   sampleRequestsInFlight: number;
@@ -11,27 +12,19 @@ export async function getVideoSampleWithZeroFallback(
   timeS: number,
   firstTimestampS?: number,
 ): Promise<unknown | null> {
-  const primary = await sink.getSample(timeS).catch((e) => {
-    const msg = String((e as any)?.message ?? e ?? '');
-    const name = String((e as any)?.name ?? '');
-    if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
-      return null;
-    }
-    throw e;
-  });
+  const safeSample = (t: number) =>
+    sink.getSample(t).catch((e) => {
+      if (isInputDisposed(e)) return null;
+      throw e;
+    });
+
+  const primary = await safeSample(timeS);
   if (primary) return primary;
 
   if (Number.isFinite(firstTimestampS) && typeof firstTimestampS === 'number') {
     const safeFirst = Math.max(0, firstTimestampS);
     if (timeS <= safeFirst) {
-      const first = await sink.getSample(safeFirst).catch((e) => {
-        const msg = String((e as any)?.message ?? e ?? '');
-        const name = String((e as any)?.name ?? '');
-        if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
-          return null;
-        }
-        throw e;
-      });
+      const first = await safeSample(safeFirst);
       if (first) return first;
     }
   }
@@ -41,14 +34,7 @@ export async function getVideoSampleWithZeroFallback(
   }
 
   // Some decoders return null for exact 0.0 but can provide the first frame for a tiny epsilon.
-  return sink.getSample(1e-6).catch((e) => {
-    const msg = String((e as any)?.message ?? e ?? '');
-    const name = String((e as any)?.name ?? '');
-    if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
-      return null;
-    }
-    throw e;
-  });
+  return safeSample(1e-6);
 }
 
 export class ResourceManager {
@@ -103,6 +89,20 @@ export class ResourceManager {
         next.resolve();
       }
     }
+  }
+
+  /**
+   * Creates a new AbortController for the given id, aborting any existing one.
+   * This is the preferred way to manage sample abort controllers from outside.
+   */
+  public createAbortController(id: string): AbortController {
+    const existing = this.sampleAbortControllers.get(id);
+    if (existing) {
+      existing.abort();
+    }
+    const controller = new AbortController();
+    this.sampleAbortControllers.set(id, controller);
+    return controller;
   }
 
   public getAbortController(id: string): AbortController {
