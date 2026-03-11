@@ -61,6 +61,10 @@ const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
 
+const playheadLeft = computed(() => Math.round(playheadPx.value - scrollLeftRef.value));
+
+const tracksHeightPx = computed(() => Object.values(trackHeights.value).reduce((a, b) => a + b, 0));
+
 function onScroll() {
   const el = scrollEl.value;
   if (!el) return;
@@ -263,18 +267,10 @@ async function onClipAction(payload: {
       @click="onTimelineClick"
     >
       <div class="relative min-w-max h-full">
-        <TimelineGrid 
-          :is-timeline-scrolling="false" 
-          :scroll-el="scrollEl" 
-          :timeline-zoom="timelineStore.timelineZoom" 
-          :tracks-height="Object.values(trackHeights).reduce((a, b) => a + b, 0)" 
-        />
-
         <div class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm">
           <TimelineRuler
             class="touch-none"
             :scroll-el="scrollEl"
-            :timeline-zoom="timelineStore.timelineZoom"
             @pointerdown="onTimeRulerPointerDown"
           />
         </div>
@@ -294,11 +290,17 @@ async function onClipAction(payload: {
           @clip-action="onClipAction"
         />
 
+        <TimelineGrid
+          class="absolute left-0 right-0 bottom-0 pointer-events-none"
+          :style="{ top: '32px', height: `${tracksHeightPx}px` }"
+          :scroll-el="scrollEl"
+        />
+
         <div
-          class="absolute top-0 bottom-0 z-30 pointer-events-none transition-transform timeline-playhead"
+          class="absolute bottom-0 z-30 pointer-events-none timeline-playhead"
           :style="{
-            left: '0px',
-            transform: `translateX(${playheadPx}px)`,
+            top: '0px',
+            left: `${playheadLeft}px`,
           }"
         >
           <div class="w-px h-full bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.5)]"></div>
