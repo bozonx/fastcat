@@ -252,7 +252,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         if (targetDirPath !== undefined) {
           await reloadDirectory(targetDirPath);
         } else {
-          await loadProjectDirectory();
+          await loadProjectDirectory({ fullRefresh: true });
         }
       },
       defaultErrorMessage: 'Failed to upload files',

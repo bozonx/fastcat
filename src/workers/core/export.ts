@@ -306,6 +306,10 @@ export async function runExport(
           if (!hostClient) return null;
           return hostClient.getFileHandleByPath(path);
         },
+        getFileByPath: async (path: string) => {
+          if (!hostClient?.getFileByPath) return null;
+          return hostClient.getFileByPath(path);
+        },
         getCurrentProjectId: async () => {
           if (!hostClient) return null;
           return await hostClient.getCurrentProjectId();
