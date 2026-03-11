@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { MAX_AUDIO_FILE_BYTES } from '~/utils/constants';
 import {
   getGainAtClipTime,
   normalizeBalance,
@@ -33,29 +34,7 @@ export interface AudioEngineClip {
   transitionOut?: AudioTransitionEnvelope | null;
 }
 
-interface DecodeRequest {
-  type: 'decode' | 'extract-peaks';
-  id: number;
-  sourceKey: string;
-  arrayBuffer: ArrayBuffer;
-  options?: {
-    maxLength?: number;
-    precision?: number;
-  };
-}
-
-interface DecodeResponse {
-  type: 'decode-result';
-  id: number;
-  ok: boolean;
-  error?: { name?: string; message: string; stack?: string };
-  result?: {
-    sampleRate: number;
-    numberOfChannels: number;
-    channelBuffers: ArrayBuffer[];
-    peaks?: number[][];
-  };
-}
+import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -118,6 +97,7 @@ export class AudioEngine {
         pending.reject(new Error('Audio decode worker crashed'));
       }
       this.decodePending.clear();
+      this.decodeWorker = null;
     });
 
     this.decodeWorker = worker;
@@ -323,6 +303,9 @@ export class AudioEngine {
     const task = this.withDecodeSlot(async () => {
       try {
         const file = await fileHandle.getFile();
+        if (file.size > MAX_AUDIO_FILE_BYTES) {
+          throw new Error('Audio file is too large to decode in memory');
+        }
         const arrayBuffer = await file.arrayBuffer();
         if (!this.ctx) return null;
 
@@ -713,6 +696,9 @@ export class AudioEngine {
     if (this.decodeWorker) {
       this.decodeWorker.terminate();
       this.decodeWorker = null;
+    }
+    for (const [, pending] of this.decodePending.entries()) {
+      pending.reject(new Error('AudioEngine destroyed'));
     }
     this.decodePending.clear();
   }

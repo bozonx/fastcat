@@ -243,8 +243,7 @@ export class AudioMixer {
       );
 
     const idx = sameTrack.findIndex(
-      (candidate) =>
-        Number(candidate.startUs ?? candidate.timelineRange?.startUs ?? 0) === currentStartUs,
+      (candidate) => candidate === current
     );
 
     return {
@@ -520,13 +519,19 @@ export class AudioMixer {
               );
             }
 
+            // Precompute gains to avoid per-sample function calls
+            const gains = new Float32Array(normalizedFrames);
+            for (let i = 0; i < normalizedFrames; i += 1) {
+              const tClipS = timelineTimeS + i / sampleRate - clip.clipStartS;
+              gains[i] = gainAtClipTimeS(tClipS);
+            }
+
             for (let i = 0; i < normalizedFrames; i += 1) {
               const dstFrame = writeOffsetFrames + i;
               if (dstFrame < 0) continue;
               if (dstFrame >= framesInChunk) break;
 
-              const tClipS = timelineTimeS + i / sampleRate - clip.clipStartS;
-              const gain = gainAtClipTimeS(tClipS);
+              const gain = gains[i] ?? 0;
 
               for (let c = 0; c < numberOfChannels; c += 1) {
                 const plane = normalizedPlanes[c];
@@ -541,7 +546,8 @@ export class AudioMixer {
             safeDispose(sample);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') throw err;
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
       }
     }

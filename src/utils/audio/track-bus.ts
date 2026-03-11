@@ -27,19 +27,19 @@ export function buildEffectiveAudioClipItems(
   for (const track of effectiveAudioTracks) {
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
-      if ((item as any).disabled || (item as any).audioMuted) continue;
-      const clipType = (item as any).clipType ?? 'media';
+      if (item.disabled || item.audioMuted) continue;
+      const clipType = item.clipType ?? 'media';
       if (clipType !== 'media' && clipType !== 'timeline') continue;
-      const path = (item as any).source?.path;
+      const path = item.source?.path;
       if (!path) continue;
 
       result.push({
-        ...(item as any),
+        ...item,
         clipType,
         source: { path },
-        audioGain: mergeGain(track.audioGain, (item as any).audioGain),
-        audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
-      } as any);
+        audioGain: mergeGain(track.audioGain, item.audioGain),
+        audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
+      } as import('~/timeline/types').TimelineClipItem);
     }
   }
 
@@ -49,21 +49,21 @@ export function buildEffectiveAudioClipItems(
 
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
-      if ((item as any).disabled || (item as any).audioMuted) continue;
-      const clipType = (item as any).clipType ?? 'media';
+      if (item.disabled || item.audioMuted) continue;
+      const clipType = item.clipType ?? 'media';
       if (clipType !== 'media' && clipType !== 'timeline') continue;
-      if ((item as any).audioFromVideoDisabled) continue;
-      const path = (item as any).source?.path;
+      if (item.audioFromVideoDisabled) continue;
+      const path = item.source?.path;
       if (!path) continue;
 
       result.push({
-        ...(item as any),
+        ...item,
         clipType,
         id: `${item.id}__audio`,
         source: { path },
-        audioGain: mergeGain(track.audioGain, (item as any).audioGain),
-        audioBalance: mergeBalance(track.audioBalance, (item as any).audioBalance),
-      } as any);
+        audioGain: mergeGain(track.audioGain, item.audioGain),
+        audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
+      } as import('~/timeline/types').TimelineClipItem);
     }
   }
 
