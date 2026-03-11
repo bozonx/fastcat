@@ -26,7 +26,11 @@ import {
   normalizeTransitionParams,
 } from '~/transitions';
 import type { PreviewRenderOptions } from './worker-rpc';
-import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE, resolveNormalizedAnchor } from './clip-layout';
+import {
+  computeClipBoxLayout,
+  TRANSFORM_DESIGN_BASE,
+  resolveNormalizedAnchor,
+} from './clip-layout';
 import { computeTextLayoutMetrics } from './text-layout';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import type {
@@ -53,6 +57,15 @@ import { LayoutManager } from './compositor/LayoutManager';
 import { VideoRenderer } from './compositor/renderers/VideoRenderer';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 
+interface CachedVideoFrameEntry {
+  key: string;
+  clipId: string;
+  sampleTimeKey: string;
+  frame: VideoFrame;
+  sizeBytes: number;
+  width: number;
+  height: number;
+}
 
 export class VideoCompositor {
   public app: Application | null = null;
@@ -83,13 +96,17 @@ export class VideoCompositor {
   private stageSortDirty = true;
   private activeSortDirty = true;
   private clipPreferBitmapFallback = new Map<string, boolean>();
+  private readonly maxVideoFrameCacheBytes =
+    Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024;
+  private videoFrameCache = new Map<string, CachedVideoFrameEntry>();
+  private videoFrameCacheSizeBytes = 0;
 
   // Managers
   private resourceManager = new ResourceManager();
   private effectManager = new EffectManager();
   private transitionManager = new TransitionManager();
   private layoutManager = new LayoutManager();
-  
+
   // Renderers
   private videoRenderer = new VideoRenderer();
   private textRenderer = new TextRenderer();
@@ -105,6 +122,163 @@ export class VideoCompositor {
     return this.resourceManager.withVideoSampleSlot(task, signal);
   }
 
+  private buildVideoFrameCacheKey(clipId: string, sampleTimeS: number): string {
+    const safeTimeS = Number.isFinite(sampleTimeS) ? Math.max(0, sampleTimeS) : 0;
+    const sampleTimeKey = safeTimeS.toFixed(6);
+    return `${clipId}:${sampleTimeKey}`;
+  }
+
+  private estimateVideoFrameSizeBytes(frame: VideoFrame, width: number, height: number): number {
+    const codedWidth = Math.max(1, Math.round(Number((frame as any).codedWidth) || width || 1));
+    const codedHeight = Math.max(1, Math.round(Number((frame as any).codedHeight) || height || 1));
+    return codedWidth * codedHeight * 4;
+  }
+
+  private getCachedVideoFrame(key: string): CachedVideoFrameEntry | null {
+    const entry = this.videoFrameCache.get(key);
+    if (!entry) return null;
+    this.videoFrameCache.delete(key);
+    this.videoFrameCache.set(key, entry);
+    return entry;
+  }
+
+  private setCachedVideoFrame(entry: CachedVideoFrameEntry) {
+    if (this.maxVideoFrameCacheBytes <= 0) {
+      try {
+        entry.frame.close();
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    const existing = this.videoFrameCache.get(entry.key);
+    if (existing) {
+      this.videoFrameCache.delete(entry.key);
+      this.videoFrameCacheSizeBytes -= existing.sizeBytes;
+      try {
+        existing.frame.close();
+      } catch {
+        // ignore
+      }
+    }
+
+    this.videoFrameCache.set(entry.key, entry);
+    this.videoFrameCacheSizeBytes += entry.sizeBytes;
+    this.evictVideoFrameCacheIfNeeded();
+  }
+
+  private evictVideoFrameCacheIfNeeded() {
+    while (
+      this.videoFrameCacheSizeBytes > this.maxVideoFrameCacheBytes &&
+      this.videoFrameCache.size > 0
+    ) {
+      const oldestKey = this.videoFrameCache.keys().next().value;
+      if (typeof oldestKey !== 'string') break;
+      const oldest = this.videoFrameCache.get(oldestKey);
+      this.videoFrameCache.delete(oldestKey);
+      if (!oldest) continue;
+      this.videoFrameCacheSizeBytes -= oldest.sizeBytes;
+      try {
+        oldest.frame.close();
+      } catch {
+        // ignore
+      }
+    }
+
+    if (this.videoFrameCacheSizeBytes < 0) {
+      this.videoFrameCacheSizeBytes = 0;
+    }
+  }
+
+  private clearVideoFrameCacheForClip(clipId: string) {
+    for (const [key, entry] of this.videoFrameCache.entries()) {
+      if (entry.clipId !== clipId) continue;
+      this.videoFrameCache.delete(key);
+      this.videoFrameCacheSizeBytes -= entry.sizeBytes;
+      try {
+        entry.frame.close();
+      } catch {
+        // ignore
+      }
+    }
+
+    if (this.videoFrameCacheSizeBytes < 0) {
+      this.videoFrameCacheSizeBytes = 0;
+    }
+  }
+
+  private clearVideoFrameCache() {
+    for (const entry of this.videoFrameCache.values()) {
+      try {
+        entry.frame.close();
+      } catch {
+        // ignore
+      }
+    }
+    this.videoFrameCache.clear();
+    this.videoFrameCacheSizeBytes = 0;
+  }
+
+  private async getVideoSampleForClip(params: {
+    clip: CompositorClip;
+    sampleTimeS: number;
+    abortSignal?: AbortSignal;
+  }): Promise<any | null> {
+    const { clip, sampleTimeS, abortSignal } = params;
+    const cacheKey = this.buildVideoFrameCacheKey(clip.itemId, sampleTimeS);
+    const cached = this.getCachedVideoFrame(cacheKey);
+    if (cached) {
+      return {
+        toVideoFrame: () => cached.frame.clone(),
+      };
+    }
+
+    const sample = await this.withVideoSampleSlot(
+      () => getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
+      abortSignal,
+    );
+    const sampleValue = sample as any;
+
+    if (!sampleValue || typeof sampleValue.toVideoFrame !== 'function') {
+      return sample;
+    }
+
+    try {
+      const frame = sampleValue.toVideoFrame() as VideoFrame;
+      const width = Math.max(
+        1,
+        Math.round(Number((frame as any).displayWidth ?? (frame as any).codedWidth) || 1),
+      );
+      const height = Math.max(
+        1,
+        Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight) || 1),
+      );
+      const sizeBytes = this.estimateVideoFrameSizeBytes(frame, width, height);
+
+      this.setCachedVideoFrame({
+        key: cacheKey,
+        clipId: clip.itemId,
+        sampleTimeKey: sampleTimeS.toFixed(6),
+        frame,
+        sizeBytes,
+        width,
+        height,
+      });
+
+      return {
+        toVideoFrame: () => frame.clone(),
+      };
+    } finally {
+      if (typeof sampleValue?.close === 'function') {
+        try {
+          sampleValue.close();
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
 
   private normalizeTrackOpacity(value: unknown): number | undefined {
     if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
@@ -272,7 +446,6 @@ export class VideoCompositor {
     }
   }
 
-
   async init(
     width: number,
     height: number,
@@ -340,6 +513,7 @@ export class VideoCompositor {
     console.warn('[VideoCompositor] WebGL/WebGPU context restored!');
     this.contextLost = false;
     this.stageSortDirty = true;
+    this.clearVideoFrameCache();
     for (const clip of this.clips) {
       clip.textDirty = true;
       clip.shapeDirty = true;
@@ -631,7 +805,7 @@ export class VideoCompositor {
 
         const sprite = new Text({
           text: String((clipData as any).text ?? ''),
-          style: new TextStyle({ fill: '#ffffff' })
+          style: new TextStyle({ fill: '#ffffff' }),
         });
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
@@ -1502,12 +1676,15 @@ export class VideoCompositor {
           continue;
         }
 
-        const abortController = this.resourceManager.createAbortController(clip.itemId + '_primary');
-        
-        const request = this.withVideoSampleSlot(() =>
-          getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
-          abortController.signal
-        )
+        const abortController = this.resourceManager.createAbortController(
+          clip.itemId + '_primary',
+        );
+
+        const request = this.getVideoSampleForClip({
+          clip,
+          sampleTimeS,
+          abortSignal: abortController.signal,
+        })
           .then((sample) => ({ clip, sample }))
           .catch((error) => {
             console.error('[VideoCompositor] Failed to render sample', error);
@@ -1573,15 +1750,14 @@ export class VideoCompositor {
               ? Math.max(0, prevClip.sourceStartUs + 1_000)
               : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
-          const abortController = this.resourceManager.createAbortController(prevClip.itemId + '_shadow_end');
-          const req = this.withVideoSampleSlot(() =>
-            getVideoSampleWithZeroFallback(
-              prevClip.sink as any,
-              shadowSampleTimeS,
-              prevClip.firstTimestampS,
-            ),
-            abortController.signal
-          )
+          const abortController = this.resourceManager.createAbortController(
+            prevClip.itemId + '_shadow_end',
+          );
+          const req = this.getVideoSampleForClip({
+            clip: prevClip,
+            sampleTimeS: shadowSampleTimeS,
+            abortSignal: abortController.signal,
+          })
             .then((sample) => ({ clip: prevClip, sample }))
             .catch(() => ({ clip: prevClip, sample: null }));
           blendShadowRequests.push(req);
@@ -1604,15 +1780,14 @@ export class VideoCompositor {
         }
 
         const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
-        const abortController = this.resourceManager.createAbortController(prevClip.itemId + '_shadow_overrun');
-        const req = this.withVideoSampleSlot(() =>
-          getVideoSampleWithZeroFallback(
-            prevClip.sink as any,
-            shadowSampleTimeS,
-            prevClip.firstTimestampS,
-          ),
-          abortController.signal
-        )
+        const abortController = this.resourceManager.createAbortController(
+          prevClip.itemId + '_shadow_overrun',
+        );
+        const req = this.getVideoSampleForClip({
+          clip: prevClip,
+          sampleTimeS: shadowSampleTimeS,
+          abortSignal: abortController.signal,
+        })
           .then((sample) => ({ clip: prevClip, sample }))
           .catch(() => ({ clip: prevClip, sample: null }));
         blendShadowRequests.push(req);
@@ -1743,7 +1918,9 @@ export class VideoCompositor {
 
         // Only the first (lowest) adjustment layer is supported
         if (adjustmentCount > 1) {
-          console.warn('[VideoCompositor] Multiple adjustment layers detected — only the lowest one is applied');
+          console.warn(
+            '[VideoCompositor] Multiple adjustment layers detected — only the lowest one is applied',
+          );
         }
 
         let applied = false;
@@ -2060,16 +2237,14 @@ export class VideoCompositor {
             );
     }
 
-    const abortController = this.resourceManager.createAbortController(clip.itemId + '_transition_texture');
-    const sample = await this.withVideoSampleSlot(() =>
-      getVideoSampleWithZeroFallback(
-        clip.sink as any,
-        Math.max(0, sampleUs / 1_000_000),
-        clip.firstTimestampS,
-      ),
-      abortController.signal
-    ).catch(() => null);
-
+    const abortController = this.resourceManager.createAbortController(
+      clip.itemId + '_transition_texture',
+    );
+    const sample = await this.getVideoSampleForClip({
+      clip,
+      sampleTimeS: sampleUs / 1_000_000,
+      abortSignal: abortController.signal,
+    });
     if (!sample) {
       return false;
     }
@@ -2407,11 +2582,7 @@ export class VideoCompositor {
       this.applyShapeLayout(clip);
       return;
     }
-    if (
-      clip.clipKind === 'solid' ||
-      clip.clipKind === 'adjustment' ||
-      clip.clipKind === 'hud'
-    ) {
+    if (clip.clipKind === 'solid' || clip.clipKind === 'adjustment' || clip.clipKind === 'hud') {
       this.applySolidLayout(clip);
       return;
     }
@@ -2587,14 +2758,12 @@ export class VideoCompositor {
       this.app.stage,
       this.masterEffects,
       this.masterEffectFilters,
-      { previewEffectsEnabled: this.previewEffectsEnabled }
+      { previewEffectsEnabled: this.previewEffectsEnabled },
     );
   }
 
-
   private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
     try {
-
       // Prefer WebCodecs VideoFrame path (GPU-friendly upload).
       if (typeof sample?.toVideoFrame === 'function') {
         if (clip.lastVideoFrame) {
@@ -2701,7 +2870,7 @@ export class VideoCompositor {
 
   private drawShapeClip(clip: CompositorClip) {
     if (clip.clipKind !== 'shape') return;
-    
+
     const graphics = clip.sprite;
     if (!graphics || typeof graphics.clear !== 'function') return;
 
@@ -2849,12 +3018,12 @@ export class VideoCompositor {
 
   private drawTextClip(clip: CompositorClip) {
     if (clip.clipKind !== 'text') return;
-    
+
     const textObj = clip.sprite;
     if (!textObj || typeof textObj.text !== 'string') return;
 
     textObj.text = String(clip.text ?? '');
-    
+
     const style = clip.style || {};
     textObj.style = new TextStyle({
       fontFamily: style.fontFamily ?? 'Arial',
@@ -3008,6 +3177,7 @@ export class VideoCompositor {
   }
 
   clearClips() {
+    this.clearVideoFrameCache();
     for (const clip of this.clips) {
       this.destroyClip(clip);
     }
@@ -3054,6 +3224,7 @@ export class VideoCompositor {
 
   destroy() {
     this.clearClips();
+    this.clearVideoFrameCache();
     if (this.adjustmentTexture) {
       this.adjustmentTexture?.destroy(true);
       this.adjustmentTexture = null;
@@ -3105,6 +3276,7 @@ export class VideoCompositor {
   }
 
   private destroyClip(clip: CompositorClip) {
+    this.clearVideoFrameCacheForClip(clip.itemId);
     safeDispose(clip.sink);
     safeDispose(clip.input);
     if (clip.lastVideoFrame) {
