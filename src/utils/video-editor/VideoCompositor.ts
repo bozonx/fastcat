@@ -7,6 +7,9 @@ import {
   Application,
   Sprite,
   Texture,
+  Graphics,
+  Text,
+  TextStyle,
   CanvasSource,
   ImageSource,
   DOMAdapter,
@@ -167,9 +170,9 @@ export interface CompositorClip {
   speed?: number;
 
   freezeFrameSourceUs?: number;
-  sprite: Sprite;
+  sprite: any; // Sprite | Graphics | Text
   clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
-  sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
+  sourceKind: 'videoFrame' | 'canvas' | 'bitmap' | 'graphics';
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | null;
   canvas: OffscreenCanvas | null;
@@ -234,7 +237,6 @@ export class VideoCompositor {
   private replacedClipIds = new Set<string>();
   private lastRenderedTimeUs = 0;
   private clipPreferBitmapFallback = new Map<string, boolean>();
-  private clipPreferCanvasFallback = new Map<string, boolean>();
   private stageSortDirty = true;
   private activeSortDirty = true;
   private contextLost = false;
@@ -247,7 +249,8 @@ export class VideoCompositor {
   private transitionCombineSprite: Sprite | null = null;
   private sampleRequestsInFlight = 0;
   private previewEffectsEnabled = true;
-  private readonly sampleRequestQueue: Array<() => void> = [];
+  private readonly sampleRequestQueue: Array<{ resolve: () => void; signal?: AbortSignal }> = [];
+  private sampleAbortControllers = new Map<string, AbortController>();
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
     getStartUs: (clip) => clip.startUs,
@@ -427,18 +430,50 @@ export class VideoCompositor {
     }
   }
 
-  private async withVideoSampleSlot<T>(task: () => Promise<T>): Promise<T> {
+  private async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
     if (this.sampleRequestsInFlight >= max) {
-      await new Promise<void>((resolve) => this.sampleRequestQueue.push(resolve));
+      await new Promise<void>((resolve, reject) => {
+        if (signal?.aborted) {
+          reject(new Error('Aborted before acquiring slot'));
+          return;
+        }
+        
+        const queueItem = { resolve, signal };
+        
+        if (signal) {
+          const onAbort = () => {
+            signal.removeEventListener('abort', onAbort);
+            const index = this.sampleRequestQueue.indexOf(queueItem);
+            if (index !== -1) {
+              this.sampleRequestQueue.splice(index, 1);
+            }
+            reject(new Error('Aborted before acquiring slot'));
+          };
+          signal.addEventListener('abort', onAbort);
+        }
+        
+        this.sampleRequestQueue.push(queueItem);
+      });
     }
+
+    if (signal?.aborted) {
+      throw new Error('Aborted before executing task');
+    }
+
     this.sampleRequestsInFlight += 1;
     try {
       return await task();
     } finally {
       this.sampleRequestsInFlight = Math.max(0, this.sampleRequestsInFlight - 1);
-      const next = this.sampleRequestQueue.shift();
-      if (next) next();
+      
+      while (this.sampleRequestQueue.length > 0) {
+        const next = this.sampleRequestQueue.shift();
+        if (next && (!next.signal || !next.signal.aborted)) {
+          next.resolve();
+          break;
+        }
+      }
     }
   }
 
@@ -495,10 +530,8 @@ export class VideoCompositor {
     // Stop the automatic ticker, we will render manually
     this.app.ticker.stop();
 
-    this.adjustmentTexture = RenderTexture.create({
-      width: this.width,
-      height: this.height,
-    });
+    const texAny = RenderTexture as any;
+    this.adjustmentTexture = RenderTexture.create({ width: this.width, height: this.height });
   }
 
   private onContextLost = (event: Event) => {
@@ -514,10 +547,6 @@ export class VideoCompositor {
     for (const clip of this.clips) {
       clip.textDirty = true;
       clip.shapeDirty = true;
-      clip.hudDirty = true;
-      if (clip.clipKind === 'video') {
-        this.clipPreferCanvasFallback.set(clip.itemId, true);
-      }
     }
   };
 
@@ -771,23 +800,12 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const clipCanvas = new OffscreenCanvas(Math.max(1, this.width), Math.max(1, this.height));
-        const clipCtx = clipCanvas.getContext('2d');
-        if (!clipCtx) {
-          sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-          continue;
-        }
-
-        const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
-        const texture = new Texture({ source: imageSource });
-        const sprite = new Sprite(texture);
-        sprite.width = this.width;
-        sprite.height = this.height;
+        const sprite = new Text({
+          text: String((clipData as any).text ?? ''),
+          style: new TextStyle({ fill: '#ffffff' })
+        });
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-
-        const canvasSource = new CanvasSource({ resource: clipCanvas as any });
-        sprite.texture.source = canvasSource as any;
 
         const compositorClip: CompositorClip = {
           itemId,
@@ -802,11 +820,11 @@ export class VideoCompositor {
           speed,
           sprite,
           clipKind: 'text',
-          sourceKind: 'canvas',
-          imageSource,
+          sourceKind: 'graphics',
+          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
           lastVideoFrame: null,
-          canvas: clipCanvas,
-          ctx: clipCtx,
+          canvas: null,
+          ctx: null,
           bitmap: null,
           text: String((clipData as any).text ?? ''),
           style: (clipData as any).style,
@@ -825,12 +843,11 @@ export class VideoCompositor {
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
+          trackRuntime.container.addChild(sprite as any);
         } else {
-          this.app.stage.addChild(sprite);
+          this.app.stage.addChild(sprite as any);
         }
 
-        this.drawTextClip(compositorClip);
         this.applySolidLayout(compositorClip);
 
         nextClips.push(compositorClip);
@@ -847,23 +864,9 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const clipCanvas = new OffscreenCanvas(Math.max(1, this.width), Math.max(1, this.height));
-        const clipCtx = clipCanvas.getContext('2d');
-        if (!clipCtx) {
-          sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-          continue;
-        }
-
-        const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
-        const texture = new Texture({ source: imageSource });
-        const sprite = new Sprite(texture);
-        sprite.width = this.width;
-        sprite.height = this.height;
+        const sprite = new Graphics();
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
-
-        const canvasSource = new CanvasSource({ resource: clipCanvas as any });
-        sprite.texture.source = canvasSource as any;
 
         const compositorClip: CompositorClip = {
           itemId,
@@ -878,11 +881,11 @@ export class VideoCompositor {
           speed,
           sprite,
           clipKind: 'shape',
-          sourceKind: 'canvas',
-          imageSource,
+          sourceKind: 'graphics',
+          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
           lastVideoFrame: null,
-          canvas: clipCanvas,
-          ctx: clipCtx,
+          canvas: null,
+          ctx: null,
           bitmap: null,
           shapeType: (clipData as any).shapeType ?? 'square',
           fillColor: String((clipData as any).fillColor ?? '#ffffff'),
@@ -903,12 +906,11 @@ export class VideoCompositor {
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
+          trackRuntime.container.addChild(sprite as any);
         } else {
-          this.app.stage.addChild(sprite);
+          this.app.stage.addChild(sprite as any);
         }
 
-        this.drawShapeClip(compositorClip);
         this.applySolidLayout(compositorClip);
 
         nextClips.push(compositorClip);
@@ -1553,6 +1555,13 @@ export class VideoCompositor {
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas || !this.app.renderer) return null;
 
+    if (timeUs !== this.lastRenderedTimeUs) {
+      for (const [id, controller] of this.sampleAbortControllers.entries()) {
+        controller.abort();
+      }
+      this.sampleAbortControllers.clear();
+    }
+
     this.previewEffectsEnabled = options?.previewEffectsEnabled !== false;
 
     if (this.contextLost) {
@@ -1663,8 +1672,12 @@ export class VideoCompositor {
           continue;
         }
 
+        const abortController = new AbortController();
+        this.sampleAbortControllers.set(clip.itemId + '_primary', abortController);
+        
         const request = this.withVideoSampleSlot(() =>
           getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
+          abortController.signal
         )
           .then((sample) => ({ clip, sample }))
           .catch((error) => {
@@ -1731,12 +1744,15 @@ export class VideoCompositor {
               ? Math.max(0, prevClip.sourceStartUs + 1_000)
               : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
+          const abortController = new AbortController();
+          this.sampleAbortControllers.set(prevClip.itemId + '_shadow_end', abortController);
           const req = this.withVideoSampleSlot(() =>
             getVideoSampleWithZeroFallback(
               prevClip.sink as any,
               shadowSampleTimeS,
               prevClip.firstTimestampS,
             ),
+            abortController.signal
           )
             .then((sample) => ({ clip: prevClip, sample }))
             .catch(() => ({ clip: prevClip, sample: null }));
@@ -1760,12 +1776,15 @@ export class VideoCompositor {
         }
 
         const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
+        const abortController = new AbortController();
+        this.sampleAbortControllers.set(prevClip.itemId + '_shadow_overrun', abortController);
         const req = this.withVideoSampleSlot(() =>
           getVideoSampleWithZeroFallback(
             prevClip.sink as any,
             shadowSampleTimeS,
             prevClip.firstTimestampS,
           ),
+          abortController.signal
         )
           .then((sample) => ({ clip: prevClip, sample }))
           .catch(() => ({ clip: prevClip, sample: null }));
@@ -1869,14 +1888,12 @@ export class VideoCompositor {
           typeof (this.adjustmentTexture as any)?.uid === 'number';
         if (!textureOk) {
           try {
-            safeDispose(this.adjustmentTexture);
+            this.adjustmentTexture?.destroy(true);
           } catch {
             // ignore
           }
-          this.adjustmentTexture = RenderTexture.create({
-            width: this.width,
-            height: this.height,
-          });
+          const texAny = RenderTexture as any;
+          this.adjustmentTexture = RenderTexture.create({ width: this.width, height: this.height });
         }
 
         const children = this.app.stage.children;
@@ -2210,12 +2227,15 @@ export class VideoCompositor {
             );
     }
 
+    const abortController = new AbortController();
+    this.sampleAbortControllers.set(clip.itemId + '_transition_texture', abortController);
     const sample = await this.withVideoSampleSlot(() =>
       getVideoSampleWithZeroFallback(
         clip.sink as any,
         Math.max(0, sampleUs / 1_000_000),
         clip.firstTimestampS,
       ),
+      abortController.signal
     ).catch(() => null);
 
     if (!sample) {
@@ -2879,12 +2899,7 @@ export class VideoCompositor {
   }
 
   private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
-    const preferCanvas = this.clipPreferCanvasFallback.get(clip.itemId) === true;
-
     try {
-      if (preferCanvas) {
-        throw new Error('Prefer canvas fallback');
-      }
 
       // Prefer WebCodecs VideoFrame path (GPU-friendly upload).
       if (typeof sample?.toVideoFrame === 'function') {
@@ -2925,7 +2940,6 @@ export class VideoCompositor {
         return;
       }
     } catch (err) {
-      this.clipPreferCanvasFallback.set(clip.itemId, true);
       console.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
     }
 
@@ -2993,41 +3007,21 @@ export class VideoCompositor {
 
   private drawShapeClip(clip: CompositorClip) {
     if (clip.clipKind !== 'shape') return;
-    if (!clip.canvas || !clip.ctx) return;
+    
+    const graphics = clip.sprite;
+    if (!graphics || typeof graphics.clear !== 'function') return;
 
-    const ctx = clip.ctx;
-    const canvas = clip.canvas;
+    graphics.clear();
 
     const size = Math.min(this.width, this.height) * 0.8;
     const strokeWidth = clip.strokeWidth ?? 0;
     const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
     const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
 
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
-      try {
-        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
-          (clip.sprite.texture.source as any).resize(targetW, targetH);
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     const type = clip.shapeType ?? 'square';
     const fill = clip.fillColor ?? '#ffffff';
     const stroke = clip.strokeColor ?? '#000000';
     const config = clip.shapeConfig ?? {};
-
-    ctx.save();
-    ctx.fillStyle = fill;
-    if (strokeWidth > 0) {
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = strokeWidth;
-    }
 
     const cx = targetW / 2;
     const cy = targetH / 2;
@@ -3036,14 +3030,13 @@ export class VideoCompositor {
     const drawPolygon = (points: Array<{ x: number; y: number }>) => {
       const [first, ...rest] = points;
       if (!first) return;
-      ctx.moveTo(first.x, first.y);
+      graphics.moveTo(first.x, first.y);
       for (const point of rest) {
-        ctx.lineTo(point.x, point.y);
+        graphics.lineTo(point.x, point.y);
       }
-      ctx.closePath();
+      graphics.closePath();
     };
 
-    ctx.beginPath();
     if (type === 'square') {
       const w = ((config.width ?? 100) / 100) * size;
       const h = ((config.height ?? 100) / 100) * size;
@@ -3051,16 +3044,16 @@ export class VideoCompositor {
       const x = cx - w / 2;
       const y = cy - h / 2;
       if (r > 0) {
-        ctx.roundRect(x, y, w, h, r);
+        graphics.roundRect(x, y, w, h, r);
       } else {
-        ctx.rect(x, y, w, h);
+        graphics.rect(x, y, w, h);
       }
     } else if (type === 'circle') {
       const sqX = (config.squashX ?? 0) / 100;
       const sqY = (config.squashY ?? 0) / 100;
       const rx = half * (1 - sqX);
       const ry = half * (1 - sqY);
-      ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
+      graphics.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry));
     } else if (type === 'triangle') {
       const baseLen = ((config.baseLength ?? 100) / 100) * size;
       const vOffsetRaw = (config.vertexOffset ?? 50) / 100;
@@ -3104,16 +3097,16 @@ export class VideoCompositor {
     } else if (type === 'cloud') {
       const cloudType = config.cloudType ?? 1;
       if (cloudType === 1) {
-        ctx.arc(cx - half * 0.4, cy, half * 0.5, 0, Math.PI * 2);
-        ctx.arc(cx + half * 0.4, cy, half * 0.5, 0, Math.PI * 2);
-        ctx.arc(cx, cy - half * 0.3, half * 0.6, 0, Math.PI * 2);
-        ctx.arc(cx, cy + half * 0.2, half * 0.4, 0, Math.PI * 2);
+        graphics.circle(cx - half * 0.4, cy, half * 0.5);
+        graphics.circle(cx + half * 0.4, cy, half * 0.5);
+        graphics.circle(cx, cy - half * 0.3, half * 0.6);
+        graphics.circle(cx, cy + half * 0.2, half * 0.4);
       } else {
-        ctx.arc(cx - half * 0.5, cy + half * 0.1, half * 0.4, 0, Math.PI * 2);
-        ctx.arc(cx + half * 0.5, cy + half * 0.1, half * 0.4, 0, Math.PI * 2);
-        ctx.arc(cx - half * 0.2, cy - half * 0.3, half * 0.5, 0, Math.PI * 2);
-        ctx.arc(cx + half * 0.2, cy - half * 0.2, half * 0.45, 0, Math.PI * 2);
-        ctx.arc(cx, cy + half * 0.3, half * 0.3, 0, Math.PI * 2);
+        graphics.circle(cx - half * 0.5, cy + half * 0.1, half * 0.4);
+        graphics.circle(cx + half * 0.5, cy + half * 0.1, half * 0.4);
+        graphics.circle(cx - half * 0.2, cy - half * 0.3, half * 0.5);
+        graphics.circle(cx + half * 0.2, cy - half * 0.2, half * 0.45);
+        graphics.circle(cx, cy + half * 0.3, half * 0.3);
       }
     } else if (type === 'speech_bubble') {
       const w = ((config.width ?? 100) / 100) * size;
@@ -3130,135 +3123,54 @@ export class VideoCompositor {
       const pointerWidth = w * ((config.pointerAngle ?? 20) / 100);
       const pointerHeight = h * ((config.pointerSharpness ?? 40) / 100);
 
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      graphics.moveTo(x + r, y);
+      graphics.lineTo(x + w - r, y);
+      graphics.quadraticCurveTo(x + w, y, x + w, y + r);
+      graphics.lineTo(x + w, y + h - r);
+      graphics.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
 
       if (pointerDir === 'right') {
-        ctx.lineTo(x + pointerXBase + pointerWidth, y + h);
-        ctx.lineTo(x + pointerXBase + pointerWidth, y + h + pointerHeight);
-        ctx.lineTo(x + pointerXBase, y + h);
+        graphics.lineTo(x + pointerXBase + pointerWidth, y + h);
+        graphics.lineTo(x + pointerXBase + pointerWidth, y + h + pointerHeight);
+        graphics.lineTo(x + pointerXBase, y + h);
       } else {
-        ctx.lineTo(x + pointerXBase + pointerWidth, y + h);
-        ctx.lineTo(x + pointerXBase, y + h + pointerHeight);
-        ctx.lineTo(x + pointerXBase, y + h);
+        graphics.lineTo(x + pointerXBase + pointerWidth, y + h);
+        graphics.lineTo(x + pointerXBase, y + h + pointerHeight);
+        graphics.lineTo(x + pointerXBase, y + h);
       }
 
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
+      graphics.lineTo(x + r, y + h);
+      graphics.quadraticCurveTo(x, y + h, x, y + h - r);
+      graphics.lineTo(x, y + r);
+      graphics.quadraticCurveTo(x, y, x + r, y);
     } else {
-      ctx.rect(cx - half, cy - half, size, size);
+      graphics.rect(cx - half, cy - half, size, size);
     }
 
-    ctx.fill();
+    graphics.fill(parseHexColor(fill));
     if (strokeWidth > 0) {
-      ctx.stroke();
+      graphics.stroke({ width: strokeWidth, color: parseHexColor(stroke) });
     }
-    ctx.restore();
-
-    clip.sprite.texture.source.update();
   }
 
   private drawTextClip(clip: CompositorClip) {
     if (clip.clipKind !== 'text') return;
-    if (!clip.canvas || !clip.ctx) return;
+    
+    const textObj = clip.sprite;
+    if (!textObj || typeof textObj.text !== 'string') return;
 
-    const ctx = clip.ctx;
-    const canvas = clip.canvas;
-
-    const targetW = Math.max(1, Math.round(this.width));
-    const targetH = Math.max(1, Math.round(this.height));
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
-      try {
-        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
-          (clip.sprite.texture.source as any).resize(targetW, targetH);
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const layout = computeTextLayoutMetrics({
-      text: String(clip.text ?? ''),
-      style: clip.style,
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-      measureText: (text, font) => {
-        ctx.font = font;
-        return ctx.measureText(text).width;
-      },
+    textObj.text = String(clip.text ?? '');
+    
+    const style = clip.style || {};
+    textObj.style = new TextStyle({
+      fontFamily: style.fontFamily ?? 'Arial',
+      fontSize: style.fontSize ?? 24,
+      fontWeight: (style.fontWeight as any) ?? 'normal',
+      fill: style.color ?? '#ffffff',
+      align: (style.align as any) ?? 'center',
+      lineHeight: style.lineHeight,
+      letterSpacing: style.letterSpacing,
     });
-
-    if (layout.style.backgroundColor.length > 0) {
-      ctx.save();
-      ctx.fillStyle = layout.style.backgroundColor;
-      ctx.fillRect(
-        layout.backgroundX,
-        layout.backgroundY,
-        layout.backgroundWidth,
-        layout.backgroundHeight,
-      );
-      ctx.restore();
-    }
-
-    ctx.fillStyle = layout.style.color;
-    ctx.textAlign = layout.style.align;
-    ctx.textBaseline = 'top';
-    ctx.font = `${layout.style.fontWeight} ${layout.fontSizePx}px ${layout.style.fontFamily}`;
-
-    const drawWithLetterSpacing = (text: string, x: number, y: number) => {
-      if (!Number.isFinite(layout.letterSpacingPx) || layout.letterSpacingPx === 0) {
-        ctx.fillText(text, x, y);
-        return;
-      }
-
-      ctx.save();
-      ctx.textAlign = 'left';
-
-      if (layout.style.align === 'center' || layout.style.align === 'right') {
-        const baseWidth = ctx.measureText(text).width;
-        const extra = Math.max(0, text.length - 1) * layout.letterSpacingPx;
-        const total = baseWidth + extra;
-        const leftX = layout.style.align === 'center' ? x - total / 2 : x - total;
-
-        let dx = leftX;
-        for (let i = 0; i < text.length; i++) {
-          const ch = text[i] ?? '';
-          ctx.fillText(ch, dx, y);
-          dx += ctx.measureText(ch).width + layout.letterSpacingPx;
-        }
-        ctx.restore();
-        return;
-      }
-
-      let dx = x;
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i] ?? '';
-        ctx.fillText(ch, dx, y);
-        dx += ctx.measureText(ch).width + layout.letterSpacingPx;
-      }
-      ctx.restore();
-    };
-
-    for (let i = 0; i < layout.lines.length; i++) {
-      const line = layout.lines[i] ?? '';
-      const y = layout.textBlockTopPx + i * layout.lineHeightPx + layout.yOffsetPx;
-      drawWithLetterSpacing(line, layout.textStartX, y);
-    }
-
-    try {
-      (clip.sprite.texture.source as any)?.update?.();
-    } catch {
-      // ignore
-    }
   }
 
   private drawHudClip(clip: CompositorClip) {
@@ -3449,7 +3361,7 @@ export class VideoCompositor {
   destroy() {
     this.clearClips();
     if (this.adjustmentTexture) {
-      safeDispose(this.adjustmentTexture);
+      this.adjustmentTexture?.destroy(true);
       this.adjustmentTexture = null;
     }
     if (this.filterQuadSprite) {
