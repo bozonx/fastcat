@@ -38,9 +38,9 @@ export function useClipAudio(options: UseClipAudioOptions) {
 
     const clip = options.clip.value;
     const track = options.tracks.value?.find((t) => t.id === clip.trackId);
-    if (track?.kind === 'video' && (clip as any).audioFromVideoDisabled) return false;
+    if (track?.kind === 'video' && clip.audioFromVideoDisabled) return false;
 
-    const path = (clip as any).source?.path as string | undefined;
+    const path = clip.source?.path;
     if (path) {
       const meta = options.mediaMetadataByPath.value[path];
       if (meta && !meta.audio) return false;
@@ -54,13 +54,13 @@ export function useClipAudio(options: UseClipAudioOptions) {
   });
 
   const audioGain = computed(() => {
-    const v = (options.clip.value as any)?.audioGain;
+    const v = options.clip.value.audioGain;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 1;
     return Math.max(0, Math.min(2, safe));
   });
 
   const audioBalance = computed(() => {
-    const v = (options.clip.value as any)?.audioBalance;
+    const v = options.clip.value.audioBalance;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
     return Math.max(-1, Math.min(1, safe));
   });
@@ -80,19 +80,19 @@ export function useClipAudio(options: UseClipAudioOptions) {
   });
 
   const audioFadeInSec = computed(() => {
-    const v = (options.clip.value as any)?.audioFadeInUs;
+    const v = options.clip.value.audioFadeInUs;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
     return Math.max(0, safe / 1_000_000);
   });
 
   const audioFadeOutSec = computed(() => {
-    const v = (options.clip.value as any)?.audioFadeOutUs;
+    const v = options.clip.value.audioFadeOutUs;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
     return Math.max(0, safe / 1_000_000);
   });
 
   const audioFadeInMaxSec = computed(() => {
-    const oppUs = (options.clip.value as any)?.audioFadeOutUs;
+    const oppUs = options.clip.value.audioFadeOutUs;
     const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
     return Math.max(
       0,
@@ -101,7 +101,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
   });
 
   const audioFadeOutMaxSec = computed(() => {
-    const oppUs = (options.clip.value as any)?.audioFadeInUs;
+    const oppUs = options.clip.value.audioFadeInUs;
     const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
     return Math.max(
       0,
@@ -110,11 +110,11 @@ export function useClipAudio(options: UseClipAudioOptions) {
   });
 
   const audioFadeInCurve = computed<AudioFadeCurve>(() => {
-    return normalizeAudioFadeCurve((options.clip.value as any)?.audioFadeInCurve);
+    return normalizeAudioFadeCurve(options.clip.value.audioFadeInCurve);
   });
 
   const audioFadeOutCurve = computed<AudioFadeCurve>(() => {
-    return normalizeAudioFadeCurve((options.clip.value as any)?.audioFadeOutCurve);
+    return normalizeAudioFadeCurve(options.clip.value.audioFadeOutCurve);
   });
 
   function updateAudioFadeInSec(val: number) {

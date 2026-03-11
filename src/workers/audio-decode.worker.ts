@@ -1,28 +1,6 @@
 import { AudioSampleSink, BlobSource, Input, ALL_FORMATS } from 'mediabunny';
 
-interface DecodeRequest {
-  type: 'decode' | 'extract-peaks';
-  id: number;
-  sourceKey: string;
-  arrayBuffer: ArrayBuffer;
-  options?: {
-    maxLength?: number;
-    precision?: number;
-  };
-}
-
-interface DecodeResponse {
-  type: 'decode-result';
-  id: number;
-  ok: boolean;
-  error?: { name?: string; message: string; stack?: string };
-  result?: {
-    sampleRate: number;
-    numberOfChannels: number;
-    channelBuffers: ArrayBuffer[];
-    peaks?: number[][];
-  };
-}
+import type { DecodeRequest, DecodeResponse } from '../utils/audio/types';
 
 async function decodeToFloat32Channels(arrayBuffer: ArrayBuffer) {
   const blob = new Blob([arrayBuffer]);
@@ -121,7 +99,7 @@ function extractPeaks(
 
     for (let j = 0; j < maxLength; j++) {
       const start = Math.floor(j * sampleSize);
-      const end = Math.ceil((j + 1) * sampleSize);
+      const end = Math.floor((j + 1) * sampleSize);
       let max = 0;
 
       for (let x = start; x < end && x < channel.length; x++) {

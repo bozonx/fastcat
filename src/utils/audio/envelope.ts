@@ -141,9 +141,18 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
       : params.nextClip?.audioFadeInCurve,
   });
 
+  let fadeInS = Math.min(clipDurationS, Math.max(0, fadeIn.durationUs / 1_000_000));
+  let fadeOutS = Math.min(clipDurationS, Math.max(0, fadeOut.durationUs / 1_000_000));
+
+  if (fadeInS + fadeOutS > clipDurationS && clipDurationS > 0) {
+    const ratio = clipDurationS / (fadeInS + fadeOutS);
+    fadeInS *= ratio;
+    fadeOutS *= ratio;
+  }
+
   return {
-    fadeInS: Math.min(clipDurationS, Math.max(0, fadeIn.durationUs / 1_000_000)),
-    fadeOutS: Math.min(clipDurationS, Math.max(0, fadeOut.durationUs / 1_000_000)),
+    fadeInS,
+    fadeOutS,
     fadeInCurve: fadeIn.curve,
     fadeOutCurve: fadeOut.curve,
   };
@@ -164,8 +173,14 @@ export function computeFadeDurationsSeconds(params: {
   const rawFadeInS = fadeInUs / 1_000_000;
   const rawFadeOutS = fadeOutUs / 1_000_000;
 
-  const fadeInS = Math.min(clipDurationS, Math.max(0, rawFadeInS));
-  const fadeOutS = Math.min(clipDurationS, Math.max(0, rawFadeOutS));
+  let fadeInS = Math.min(clipDurationS, Math.max(0, rawFadeInS));
+  let fadeOutS = Math.min(clipDurationS, Math.max(0, rawFadeOutS));
+
+  if (fadeInS + fadeOutS > clipDurationS && clipDurationS > 0) {
+    const ratio = clipDurationS / (fadeInS + fadeOutS);
+    fadeInS *= ratio;
+    fadeOutS *= ratio;
+  }
 
   return { fadeInS, fadeOutS };
 }

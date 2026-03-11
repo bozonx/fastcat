@@ -60,7 +60,7 @@ function focusTrack(trackId: string) {
     @pointerdown.capture="focusAudioMixer"
   >
     <div class="px-4 py-2 border-b border-ui-border bg-ui-bg-elevated shrink-0">
-      <h3 class="font-medium text-sm text-ui-text">Микшер</h3>
+      <h3 class="font-medium text-sm text-ui-text">{{ t('granVideoEditor.audioMixer.title', 'Микшер') }}</h3>
     </div>
 
     <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 flex gap-4 min-h-0">

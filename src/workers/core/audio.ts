@@ -1,10 +1,16 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { getBunnyAudioCodec } from './utils';
 import { AudioMixer } from './AudioMixer';
+import type { AudioMixerPrepareParams } from './AudioMixer';
 
 export async function buildMixedAudioTrack(
-  options: any,
-  audioClips: any[],
+  options: {
+    audioSampleRate?: number;
+    audioChannels?: 'mono' | 'stereo';
+    audioCodec?: string;
+    audioBitrate?: number;
+  },
+  audioClips: AudioMixerPrepareParams['audioClips'],
   durationS: number,
   hostClient: VideoCoreHostAPI | null,
   reportExportWarning: (message: string) => Promise<void>,
