@@ -57,7 +57,7 @@ export function computeAnchoredScrollLeft(params: {
   return Math.max(0, nextScrollLeft);
 }
 
-function sanitizeFps(value: unknown): number {
+export function sanitizeFps(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 30;
   const rounded = Math.round(parsed);

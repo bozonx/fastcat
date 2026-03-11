@@ -1,148 +1,105 @@
 <script setup lang="ts">
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useFocusStore } from '~/stores/focus.store';
-import { useDraggedFile } from '~/composables/useDraggedFile';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const focusStore = useFocusStore();
-const { setDraggedFile, clearDraggedFile } = useDraggedFile();
+const settingsStore = useTimelineSettingsStore();
 
-function onDragStart(e: DragEvent, kind: 'adjustment' | 'background' | 'text') {
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData(
-      'application/json',
-      JSON.stringify({
-        kind,
-        name: t(`granVideoEditor.timeline.${kind}ClipDefaultName`, kind),
-        path: '',
-      }),
-    );
-  }
+const emit = defineEmits<{
+  (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
+  (e: 'dragVirtualEnd'): void;
+}>();
 
-  const labels: Record<string, string> = {
-    adjustment: t('granVideoEditor.timeline.adjustmentClipDefaultName', 'Adjustment'),
-    background: t('granVideoEditor.timeline.backgroundClipDefaultName', 'Background'),
-    text: t('granVideoEditor.timeline.textClipDefaultName', 'Text'),
-  };
+const trimMenuItems = [
+  [
+    {
+      label: t('granVideoEditor.timeline.rippleTrimLeft', 'Ripple trim left'),
+      icon: 'i-heroicons-arrow-left',
+      onSelect: () => timelineStore.rippleTrimLeft(),
+    },
+    {
+      label: t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right'),
+      icon: 'i-heroicons-arrow-right',
+      onSelect: () => timelineStore.rippleTrimRight(),
+    },
+  ],
+];
 
-  setDraggedFile({
-    kind,
-    name: labels[kind] ?? kind,
-    path: '',
-  });
-}
-
-function onDragEnd() {
-  clearDraggedFile();
-}
-
-function addAdjustmentClip() {
-  timelineStore.addAdjustmentClipAtPlayhead();
-}
-
-function addBackgroundClip() {
-  timelineStore.addBackgroundClipAtPlayhead();
-}
-
-function addTextClip() {
-  const defaultName = t('granVideoEditor.timeline.textClipDefaultName', 'Text');
-  const defaultText = t('granVideoEditor.timeline.textClipDefaultText', 'Text');
-  timelineStore.addTextClipAtPlayhead({ name: defaultName, text: defaultText });
-}
-
-async function splitClips() {
-  await timelineStore.splitClipsAtPlayhead();
-}
-
-async function rippleTrimLeft() {
-  await timelineStore.rippleTrimLeft();
-}
-
-async function rippleTrimRight() {
-  await timelineStore.rippleTrimRight();
+function toggleClipSnapMode() {
+  settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
 }
 </script>
 
 <template>
-  <div
-    class="flex items-center gap-2 px-2 py-1.5 border-t-2 border-ui-border shrink-0 bg-ui-bg-elevated min-h-10 h-auto flex-wrap mt-auto w-full"
-    @pointerdown="focusStore.setMainFocus('timeline')"
-  >
-    <div class="ml-2 flex items-center gap-1.5">
-      <div
-        draggable="true"
-        class="cursor-grab active:cursor-grabbing"
-        @dragstart="onDragStart($event, 'adjustment')"
-        @dragend="onDragEnd"
-      >
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-adjustments-horizontal"
-          :aria-label="t('granVideoEditor.timeline.addAdjustmentClip', 'Add adjustment clip')"
-          @click="addAdjustmentClip"
-        />
-      </div>
-      <div
-        draggable="true"
-        class="cursor-grab active:cursor-grabbing"
-        @dragstart="onDragStart($event, 'background')"
-        @dragend="onDragEnd"
-      >
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-swatch"
-          :aria-label="t('granVideoEditor.timeline.addBackgroundClip', 'Add background clip')"
-          @click="addBackgroundClip"
-        />
-      </div>
-      <div
-        draggable="true"
-        class="cursor-grab active:cursor-grabbing"
-        @dragstart="onDragStart($event, 'text')"
-        @dragend="onDragEnd"
-      >
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-chat-bubble-bottom-center-text"
-          :aria-label="t('granVideoEditor.timeline.addTextClip', 'Add text clip')"
-          @click="addTextClip"
-        />
-      </div>
-
-      <div class="w-px h-5 bg-ui-border mx-1.5" />
-
+  <div class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5">
+    <UTooltip :text="t('granVideoEditor.timeline.properties.title', 'Timeline properties')">
       <UButton
-        size="sm"
+        size="xs"
         variant="ghost"
         color="neutral"
-        icon="i-heroicons-scissors"
-        :aria-label="t('granVideoEditor.timeline.splitClips', 'Split clips at playhead')"
-        @click="splitClips"
+        icon="i-heroicons-cog-6-tooth"
+        @click="timelineStore.selectTimelineProperties()"
       />
+    </UTooltip>
 
+    <UTooltip 
+      :text="settingsStore.clipSnapMode === 'clips' 
+        ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips') 
+        : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')"
+    >
       <UButton
-        size="sm"
+        size="xs"
+        :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
+        :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
+        icon="i-heroicons-link"
+        @click="toggleClipSnapMode"
+      />
+    </UTooltip>
+
+    <div class="ml-auto flex items-center gap-0.5">
+      <UTooltip :text="t('granVideoEditor.timeline.trim', 'Trim')">
+        <UiSplitDropdownButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-scissors"
+          :items="trimMenuItems"
+          @click="timelineStore.splitClipsAtPlayhead()"
+        />
+      </UTooltip>
+
+      <!-- Virtual Clips Drag Handles -->
+      <UButton
+        draggable="true"
+        size="xs"
         variant="ghost"
         color="neutral"
-        icon="i-heroicons-arrow-left"
-        :aria-label="t('granVideoEditor.timeline.rippleTrimLeft', 'Ripple trim left')"
-        @click="rippleTrimLeft"
+        icon="i-heroicons-adjustments-horizontal"
+        @dragstart="emit('dragVirtualStart', $event, 'adjustment')"
+        @dragend="emit('dragVirtualEnd')"
+        @click="timelineStore.addAdjustmentClipAtPlayhead()"
       />
       <UButton
-        size="sm"
+        draggable="true"
+        size="xs"
         variant="ghost"
         color="neutral"
-        icon="i-heroicons-arrow-right"
-        :aria-label="t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right')"
-        @click="rippleTrimRight"
+        icon="i-heroicons-swatch"
+        @dragstart="emit('dragVirtualStart', $event, 'background')"
+        @dragend="emit('dragVirtualEnd')"
+        @click="timelineStore.addBackgroundClipAtPlayhead()"
+      />
+      <UButton
+        draggable="true"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-chat-bubble-bottom-center-text"
+        @dragstart="emit('dragVirtualStart', $event, 'text')"
+        @dragend="emit('dragVirtualEnd')"
+        @click="timelineStore.addTextClipAtPlayhead()"
       />
     </div>
   </div>

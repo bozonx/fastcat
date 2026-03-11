@@ -1,0 +1,139 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { TimelineTrack, TimelineClipItem, TimelineTrackItem } from '~/timeline/types';
+import { timeUsToPx } from '~/utils/timeline/geometry';
+
+const props = defineProps<{
+  clip: TimelineClipItem;
+  item: TimelineTrackItem;
+  track: TimelineTrack;
+  zoom: number;
+  clipWidthPx: number;
+  canEdit: boolean;
+  isDragging?: boolean;
+  isResizingVolume?: boolean;
+  isMobile?: boolean;
+  trackHeight: number;
+}>();
+
+const emit = defineEmits<{
+  (e: 'startResizeFade', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
+  (e: 'startResizeVolume', event: PointerEvent, gain: number): void;
+  (e: 'resetVolume'): void;
+}>();
+
+function getAudioFadePath(edge: 'in' | 'out', curve?: string) {
+  if (edge === 'in') return 'M 0 100 L 100 0 L 100 100 Z';
+  return 'M 0 0 L 100 100 L 0 100 Z';
+}
+
+function shouldCollapseFades() {
+  return props.clipWidthPx < 20;
+}
+
+function clampHandlePx(px: number, width: number) {
+  return Math.min(Math.max(0, px), width);
+}
+
+const volumeY = computed(() => {
+  const g = Math.max(0, Math.min(2, props.clip.audioGain ?? 1));
+  return (1 - (g / 2)) * 100;
+});
+</script>
+
+<template>
+  <div v-if="!shouldCollapseFades()" class="absolute inset-0 pointer-events-none rounded overflow-hidden" style="z-index: 25">
+    <!-- Fade Paths -->
+    <svg
+      v-if="(clip.audioFadeInUs ?? 0) > 0 && (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs"
+      class="absolute left-0 top-0 h-full"
+      preserveAspectRatio="none"
+      viewBox="0 0 100 100"
+      :style="{
+        width: `${Math.min(
+          Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeInUs) || 0)), zoom)),
+          clipWidthPx,
+        )}px`,
+      }"
+    >
+      <path :d="getAudioFadePath('in', clip.audioFadeInCurve)" fill="var(--clip-lower-tri)" />
+    </svg>
+
+    <svg
+      v-if="(clip.audioFadeOutUs ?? 0) > 0 && (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs"
+      class="absolute right-0 top-0 h-full"
+      preserveAspectRatio="none"
+      viewBox="0 0 100 100"
+      :style="{
+        width: `${Math.min(
+          Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutUs) || 0)), zoom)),
+          clipWidthPx,
+        )}px`,
+      }"
+    >
+      <path :d="getAudioFadePath('out', clip.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
+    </svg>
+
+    <!-- Fade Handles -->
+    <template v-if="canEdit && !clip.locked">
+      <div
+        class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+        :class="[
+          clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'
+        ]"
+        :style="{
+          left: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeInUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+        }"
+        @pointerdown.stop.prevent="emit('startResizeFade', $event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })"
+      >
+        <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
+      </div>
+
+      <div
+        class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+        :class="[
+          clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'
+        ]"
+        :style="{
+          right: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeOutUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+        }"
+        @pointerdown.stop.prevent="emit('startResizeFade', $event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })"
+      >
+        <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
+      </div>
+    </template>
+
+    <!-- Volume Control Line -->
+    <div
+      class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity pointer-events-auto"
+      :class="[
+        canEdit && !clip.locked ? 'cursor-ns-resize' : '',
+        clip.audioMuted ? 'opacity-0 hover:opacity-100' : 'opacity-100',
+        isDragging && !isResizingVolume ? 'opacity-0! pointer-events-none' : '',
+      ]"
+      :style="{ top: `${volumeY}%` }"
+      @pointerdown.stop.prevent="canEdit && !clip.locked && emit('startResizeVolume', $event, clip.audioGain ?? 1)"
+      @dblclick.stop.prevent="canEdit && !clip.locked && emit('resetVolume')"
+    >
+      <div
+        class="w-full bg-yellow-400 opacity-80"
+        :class="[
+          clipWidthPx >= (isMobile ? 5 : 15) ? 'opacity-100' : 'hidden',
+          isMobile ? 'h-1' : 'h-[1.5px]'
+        ]"
+      ></div>
+
+      <div
+        class="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity"
+        :class="[
+          clipWidthPx < 30 ? 'hidden' : 'opacity-100',
+          (clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',
+        ]"
+      >
+        {{ Math.round((clip.audioGain ?? 1) * 100) }}%
+      </div>
+    </div>
+  </div>
+</template>
