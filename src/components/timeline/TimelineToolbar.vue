@@ -65,6 +65,7 @@ function toggleClipSnapMode() {
           variant="ghost"
           color="neutral"
           icon="i-heroicons-scissors"
+          :ariaLabel="t('granVideoEditor.timeline.trim', 'Trim')"
           :items="trimMenuItems"
           @click="timelineStore.splitClipsAtPlayhead()"
         />

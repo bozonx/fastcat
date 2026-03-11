@@ -222,3 +222,57 @@ export function getFadeLinePattern(
     };
   });
 }
+
+export function getPrevClipForItem(track: TimelineTrack, item: TimelineTrackItem): TimelineClipItem | null {
+  const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
+  const idx = clips.findIndex((c) => c.id === item.id);
+  if (idx <= 0) return null;
+  return clips[idx - 1] ?? null;
+}
+
+export function getNextClipForItem(track: TimelineTrack, item: TimelineTrackItem): TimelineClipItem | null {
+  const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
+  const idx = clips.findIndex((c) => c.id === item.id);
+  if (idx < 0 || idx >= clips.length - 1) return null;
+  return clips[idx + 1] ?? null;
+}
+
+export function getClipHeadHandleUs(clip: TimelineClipItem): number {
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.round(clip.sourceRange?.startUs ?? 0));
+}
+
+export function getClipTailHandleUs(clip: TimelineClipItem): number {
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
+  const sourceEndUs = Math.max(
+    0,
+    Math.round(Number(clip.sourceRange?.startUs ?? 0) + Number(clip.sourceRange?.durationUs ?? 0)),
+  );
+  return Math.max(0, sourceDurationUs - sourceEndUs);
+}
+
+export function getOverlayGuideOffsetPx(
+  track: TimelineTrack,
+  clipItem: TimelineClipItem | null,
+  edge: 'in' | 'out',
+  clipWidthPx: number,
+  transitionUsToPxFn: (us: number) => number,
+): number | null {
+  if (!clipItem) return null;
+
+  const transition = edge === 'in' ? clipItem.transitionIn : clipItem.transitionOut;
+  if (!transition) return null;
+  if (transition.mode !== 'transition') return null;
+
+  const adjacent =
+    edge === 'in'
+      ? getPrevClipForItem(track, clipItem)
+      : getNextClipForItem(track, clipItem);
+  if (!adjacent) return null;
+
+  const handleUs = edge === 'in' ? getClipTailHandleUs(adjacent) : getClipHeadHandleUs(adjacent);
+  if (!Number.isFinite(handleUs) || handleUs <= 0) return null;
+
+  return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(handleUs)));
+}

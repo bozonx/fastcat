@@ -8,7 +8,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
-import { getClipClass } from '~/utils/timeline/clip';
+import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
 import { getEffectManifest } from '~/effects';
 import { getTransitionManifest, DEFAULT_TRANSITION_MODE, DEFAULT_TRANSITION_CURVE, normalizeTransitionParams } from '~/transitions';
 
@@ -182,6 +182,37 @@ const isFreePosition = computed(() => {
   const durFrame = (clipItem.value.timelineRange.durationUs * fps) / 1_000_000;
   return Math.abs(startFrame - Math.round(startFrame)) > 0.001 || Math.abs(durFrame - Math.round(durFrame)) > 0.001;
 });
+
+const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const offsetPx = getOverlayGuideOffsetPx(
+    props.track,
+    clipItem.value,
+    'in',
+    clipWidthPx.value,
+    (us) => timeUsToPx(us, timelineStore.timelineZoom)
+  );
+  if (offsetPx === null) return null;
+
+  return {
+    left: `${offsetPx}px`,
+  };
+});
+
+const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const offsetPx = getOverlayGuideOffsetPx(
+    props.track,
+    clipItem.value,
+    'out',
+    clipWidthPx.value,
+    (us) => timeUsToPx(us, timelineStore.timelineZoom)
+  );
+  if (offsetPx === null) return null;
+
+  return {
+    left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
+  };
+});
+
 </script>
 
 <template>
@@ -255,6 +286,18 @@ const isFreePosition = computed(() => {
         <div v-if="clipItem" class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none">
           <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">{{ clipItem.name }}</span>
         </div>
+
+        <div
+          v-if="transitionInOverlayGuideStyle"
+          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none z-25"
+          :style="transitionInOverlayGuideStyle"
+        />
+
+        <div
+          v-if="transitionOutOverlayGuideStyle"
+          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none z-25"
+          :style="transitionOutOverlayGuideStyle"
+        />
       </div>
 
       <!-- Trim Handles -->

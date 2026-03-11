@@ -2,6 +2,21 @@
 import { computed } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem, ClipTransition } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import {
+  getFadeLinePattern as getTransitionFadeLinePattern,
+  getTransitionSolidPath,
+} from '~/utils/timeline/clip';
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+
+import {
+  getClipHeadHandleUs,
+  getClipTailHandleUs,
+  getNextClipForItem,
+  getPrevClipForItem,
+} from '~/utils/timeline/clip';
+
+
+const { t } = useI18n();
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -16,52 +31,149 @@ const emit = defineEmits<{
   (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
 }>();
 
-const DEFAULT_TRANSITION_MODE = 'fade';
-
 function transitionUsToPx(us: number) {
   return timeUsToPx(us, props.zoom);
 }
 
 function getTransitionButtonClass(selected: boolean, hasProblem: boolean, overridden: boolean) {
   return [
-    selected ? 'bg-primary-500/40 ring-2 ring-primary-500 z-30' : 'bg-black/20 hover:bg-black/30',
+    selected ? 'bg-primary-500/40 ring-2 ring-primary-500 z-30' : 'hover:bg-black/30',
     hasProblem ? 'border border-red-500 ring-red-500 ring-1' : '',
     overridden ? 'border border-yellow-400 ring-yellow-400 ring-1' : '',
   ];
 }
 
-function hasTransitionProblem(edge: 'in' | 'out') {
-  return false; // simplified as per main component
-}
+function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): string | null {
+  const tr = item.transitionIn;
+  if (!tr) return null;
+  const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-function getTransitionButtonTitle(edge: 'in' | 'out') {
-  return edge === 'in' ? 'Transition In' : 'Transition Out';
-}
+  if (mode === 'fade') return null;
 
-function getTransitionFadeLines() {
-  const lines = [];
-  for (let i = 0; i < 5; i++) {
-    lines.push({ x: i * 20, width: 2 });
+  const needS = tr.durationUs / 1e6;
+  const clipDurS = item.timelineRange.durationUs / 1e6;
+  if (clipDurS < needS) {
+    return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+      need: needS.toFixed(2),
+      have: clipDurS.toFixed(2),
+    });
   }
-  return lines;
+
+  if (mode === 'transition') {
+    const prev = getPrevClipForItem(track, item);
+    if (!prev)
+      return t(
+        'granVideoEditor.timeline.transition.errorNoPreviousClip',
+        'No previous clip found for transition',
+      );
+    const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
+    const gapUs = item.timelineRange.startUs - prevEndUs;
+    if (gapUs > 1_000)
+      return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
+        gapSeconds: (gapUs / 1e6).toFixed(2),
+      });
+    const prevTailHandleUs = getClipTailHandleUs(prev);
+    if (prevTailHandleUs < tr.durationUs - 1_000) {
+      return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: Math.max(0, prevTailHandleUs / 1e6).toFixed(2),
+      });
+    }
+    return null;
+  }
+
+  return null;
 }
 
-function getFadeLineColor(problem: boolean) {
-  return problem ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.1)';
+function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): string | null {
+  const tr = item.transitionOut;
+  if (!tr) return null;
+  const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
+
+  if (mode === 'fade') return null;
+
+  const clipDurS = item.timelineRange.durationUs / 1e6;
+  const needS = tr.durationUs / 1e6;
+  if (clipDurS < needS) {
+    return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+      need: needS.toFixed(2),
+      have: clipDurS.toFixed(2),
+    });
+  }
+
+  if (mode === 'transition') {
+    const next = getNextClipForItem(track, item);
+    if (!next)
+      return t(
+        'granVideoEditor.timeline.transition.errorNoNextClip',
+        'No next clip found for transition',
+      );
+    const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
+    const gapUs = next.timelineRange.startUs - clipEndUs;
+    if (gapUs > 1_000)
+      return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
+        gapSeconds: (gapUs / 1e6).toFixed(2),
+      });
+    const nextHeadHandleUs = getClipHeadHandleUs(next);
+    if (nextHeadHandleUs < tr.durationUs - 1_000)
+      return t('granVideoEditor.timeline.transition.errorNextHandleTooShort', {
+        needSeconds: needS.toFixed(2),
+        haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
+      });
+  }
+
+  return null;
+}
+
+function hasTransitionProblem(edge: 'in' | 'out'): boolean {
+  return Boolean(
+    edge === 'in' 
+      ? hasTransitionInProblem(props.track, props.clip) 
+      : hasTransitionOutProblem(props.track, props.clip)
+  );
+}
+
+function getTransitionButtonTitle(edge: 'in' | 'out'): string | undefined {
+  const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
+  if (!transition) return undefined;
+
+  const mode = transition.mode ?? DEFAULT_TRANSITION_MODE;
+  if (mode !== 'transition') return undefined;
+
+  return (
+    (edge === 'in' 
+      ? hasTransitionInProblem(props.track, props.clip) 
+      : hasTransitionOutProblem(props.track, props.clip)) ?? undefined
+  );
+}
+
+function getTransitionFadeLines(edge: 'in' | 'out') {
+  const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
+  const curve = transition?.curve ?? DEFAULT_TRANSITION_CURVE;
+  return getTransitionFadeLinePattern(edge, curve, 100);
+}
+
+function getFadeLineColor(hasProblem: boolean) {
+  if (hasProblem) return 'rgba(127, 29, 29, 0.95)';
+  return 'rgba(0, 0, 0, 0.82)';
 }
 
 function getTransitionCurvePath(edge: 'in' | 'out') {
-  if (edge === 'in') return 'M 0 100 Q 50 100 100 0 L 100 100 L 0 100 Z';
-  return 'M 0 0 Q 50 100 100 100 L 100 100 L 0 100 Z';
+  const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
+  const curve = transition?.curve ?? DEFAULT_TRANSITION_CURVE;
+  return getTransitionSolidPath(100, 100, curve, edge);
 }
 
-function getTransitionSvgFill(edge: 'in' | 'out', problem: boolean) {
-  return problem ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.1)';
+function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
+  if (hasProblem) return 'rgba(239, 68, 68, 0.45)';
+  if (edge === 'in') return 'var(--clip-lower-tri)';
+  return 'rgba(255, 255, 255, 0.2)';
 }
+
 </script>
 
 <template>
-  <div class="absolute inset-0 pointer-events-none overflow-hidden rounded">
+  <div class="absolute inset-0 pointer-events-none overflow-hidden rounded" style="z-index: 25">
     <!-- Transition In -->
     <div
       v-if="clip.transitionIn"
@@ -91,9 +203,9 @@ function getTransitionSvgFill(edge: 'in' | 'out', problem: boolean) {
       >
         <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
           <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
-            <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
+            <rect x="0" y="0" width="100" height="100" fill="transparent" />
             <rect
-              v-for="line in getTransitionFadeLines()"
+              v-for="line in getTransitionFadeLines('in')"
               :key="`fade-in-${line.x}`"
               :x="line.x"
               y="0"
@@ -144,9 +256,9 @@ function getTransitionSvgFill(edge: 'in' | 'out', problem: boolean) {
       >
         <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
           <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
-            <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
+            <rect x="0" y="0" width="100" height="100" fill="transparent" />
             <rect
-              v-for="line in getTransitionFadeLines()"
+              v-for="line in getTransitionFadeLines('out')"
               :key="`fade-out-${line.x}`"
               :x="line.x"
               y="0"

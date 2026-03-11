@@ -199,23 +199,23 @@ function toggleClipSnapMode() {
         </UContextMenu>
       </div>
     </div>
-  </div>
 
-  <UiConfirmModal
-    v-if="selectedTrack"
-    v-model:open="isConfirmDeleteOpen"
-    :title="t('granVideoEditor.timeline.deleteTrackTitle', 'Delete track?')"
-    :description="
-      t(
-        'granVideoEditor.timeline.deleteTrackDescription',
-        'Track is not empty. This action cannot be undone.',
-      )
-    "
-    color="error"
-    icon="i-heroicons-exclamation-triangle"
-    :confirm-text="t('common.delete', 'Delete')"
-    @confirm="confirmDelete"
-  />
+    <UiConfirmModal
+      v-if="selectedTrack"
+      v-model:open="isConfirmDeleteOpen"
+      :title="t('granVideoEditor.timeline.deleteTrackTitle', 'Delete track?')"
+      :description="
+        t(
+          'granVideoEditor.timeline.deleteTrackDescription',
+          'Track is not empty. This action cannot be undone.',
+        )
+      "
+      color="error"
+      icon="i-heroicons-exclamation-triangle"
+      :confirm-text="t('common.delete', 'Delete')"
+      @confirm="confirmDelete"
+    />
+  </div>
 </template>
 
 <style scoped>

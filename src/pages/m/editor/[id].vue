@@ -4,7 +4,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { watch, onMounted } from 'vue';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useRoute, useRouter } from 'vue-router';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import MobileExportForm from '~/components/export/MobileExportForm.vue';

@@ -22,9 +22,23 @@ const emit = defineEmits<{
   (e: 'resetVolume'): void;
 }>();
 
-function getAudioFadePath(edge: 'in' | 'out', curve?: string) {
-  if (edge === 'in') return 'M 0 100 L 100 0 L 100 100 Z';
-  return 'M 0 0 L 100 100 L 0 100 Z';
+function getAudioFadePath(edge: 'in' | 'out', curve: string | undefined): string {
+  const isLog = curve === 'logarithmic';
+  if (edge === 'in') {
+    if (isLog) {
+      // Starts from Top-Right (100,0) and curves down to Bottom-Left (0,100)
+      // bowing towards Top-Left (0,0)
+      return 'M 0,0 L 100,0 C 40,0 0,40 0,100 Z';
+    }
+    return 'M 0,0 L 100,0 L 0,100 Z';
+  } else {
+    if (isLog) {
+      // Starts from Bottom-Right (100,100) and curves up to Top-Left (0,0)
+      // bowing towards Top-Right (100,0)
+      return 'M 0,0 L 100,0 L 100,100 C 100,40 60,0 0,0 Z';
+    }
+    return 'M 0,0 L 100,0 L 100,100 Z';
+  }
 }
 
 function shouldCollapseFades() {
@@ -42,37 +56,39 @@ const volumeY = computed(() => {
 </script>
 
 <template>
-  <div v-if="!shouldCollapseFades()" class="absolute inset-0 pointer-events-none rounded overflow-hidden" style="z-index: 25">
+  <div v-if="!shouldCollapseFades()" class="absolute inset-0 pointer-events-none" style="z-index: 25">
     <!-- Fade Paths -->
-    <svg
-      v-if="(clip.audioFadeInUs ?? 0) > 0 && (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs"
-      class="absolute left-0 top-0 h-full"
-      preserveAspectRatio="none"
-      viewBox="0 0 100 100"
-      :style="{
-        width: `${Math.min(
-          Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeInUs) || 0)), zoom)),
-          clipWidthPx,
-        )}px`,
-      }"
-    >
-      <path :d="getAudioFadePath('in', clip.audioFadeInCurve)" fill="var(--clip-lower-tri)" />
-    </svg>
+    <div class="absolute inset-0 rounded overflow-hidden">
+      <svg
+        v-if="(clip.audioFadeInUs ?? 0) > 0 && (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs"
+        class="absolute left-0 top-0 h-full"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100"
+        :style="{
+          width: `${Math.min(
+            Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeInUs) || 0)), zoom)),
+            clipWidthPx,
+          )}px`,
+        }"
+      >
+        <path :d="getAudioFadePath('in', clip.audioFadeInCurve)" fill="var(--clip-lower-tri)" />
+      </svg>
 
-    <svg
-      v-if="(clip.audioFadeOutUs ?? 0) > 0 && (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs"
-      class="absolute right-0 top-0 h-full"
-      preserveAspectRatio="none"
-      viewBox="0 0 100 100"
-      :style="{
-        width: `${Math.min(
-          Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutUs) || 0)), zoom)),
-          clipWidthPx,
-        )}px`,
-      }"
-    >
-      <path :d="getAudioFadePath('out', clip.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
-    </svg>
+      <svg
+        v-if="(clip.audioFadeOutUs ?? 0) > 0 && (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs"
+        class="absolute right-0 top-0 h-full"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100"
+        :style="{
+          width: `${Math.min(
+            Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutUs) || 0)), zoom)),
+            clipWidthPx,
+          )}px`,
+        }"
+      >
+        <path :d="getAudioFadePath('out', clip.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
+      </svg>
+    </div>
 
     <!-- Fade Handles -->
     <template v-if="canEdit && !clip.locked">
