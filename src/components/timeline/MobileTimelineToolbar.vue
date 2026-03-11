@@ -46,7 +46,7 @@ function handleZoomOut() {
     <div class="flex items-center gap-1">
       <UTooltip :text="t('videoEditor.hotkeys.general.undo')">
         <UButton
-          icon="i-heroicons-arrow-uturn-left"
+          icon="lucide:undo"
           variant="ghost"
           color="neutral"
           size="sm"
@@ -55,7 +55,7 @@ function handleZoomOut() {
       </UTooltip>
       <UTooltip :text="t('videoEditor.hotkeys.general.redo')">
         <UButton
-          icon="i-heroicons-arrow-uturn-right"
+          icon="lucide:redo"
           variant="ghost"
           color="neutral"
           size="sm"
@@ -78,7 +78,7 @@ function handleZoomOut() {
       </UTooltip>
       <UTooltip :text="t('videoEditor.hotkeys.general.delete')">
         <UButton
-          icon="i-heroicons-trash"
+          icon="lucide:trash-2"
           variant="ghost"
           color="neutral"
           size="sm"
@@ -93,7 +93,7 @@ function handleZoomOut() {
     <div class="flex items-center gap-1">
       <UTooltip :text="t('videoEditor.hotkeys.general.zoomOut')">
         <UButton
-          icon="i-heroicons-minus"
+          icon="lucide:zoom-out"
           variant="ghost"
           color="neutral"
           size="sm"
@@ -102,7 +102,7 @@ function handleZoomOut() {
       </UTooltip>
       <UTooltip :text="t('videoEditor.hotkeys.general.zoomIn')">
         <UButton
-          icon="i-heroicons-plus"
+          icon="lucide:zoom-in"
           variant="ghost"
           color="neutral"
           size="sm"

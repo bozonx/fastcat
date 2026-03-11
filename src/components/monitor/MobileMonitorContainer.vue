@@ -202,13 +202,13 @@ watch(
           v-if="videoItems.length === 0"
           class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
         >
-          <UIcon name="i-heroicons-play-circle" class="w-12 h-12" />
+          <UIcon name="lucide:play-circle" class="w-12 h-12" />
         </div>
         <div
           v-else-if="isLoading"
           class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
         >
-          <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
+          <UIcon name="lucide:loader-2" class="w-8 h-8 animate-spin" />
         </div>
         <div
           v-else-if="loadError"
@@ -231,7 +231,7 @@ watch(
           size="md"
           variant="ghost"
           color="neutral"
-          icon="i-heroicons-arrow-uturn-left"
+          icon="lucide:skip-back"
           :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
           :disabled="!canInteractPlayback"
           @click="rewindToStart"
@@ -240,7 +240,7 @@ watch(
           size="md"
           variant="solid"
           color="primary"
-          :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
+          :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
           :aria-label="t('granVideoEditor.monitor.play', 'Play')"
           :disabled="!canInteractPlayback"
           @click="togglePlayback"

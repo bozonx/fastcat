@@ -7,6 +7,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { useTimelineStore } from '~/stores/timeline.store';
 import type { FsEntry } from '~/types/fs';
 import {
   getWorkspacePathParent,
@@ -18,6 +19,9 @@ const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
+const timelineStore = useTimelineStore();
+const toast = useToast();
+const { t } = useI18n();
 const { readDirectory, getFileIcon, findEntryByPath, mediaCache, vfs } = useFileManager();
 
 const entries = ref<FsEntry[]>([]);
@@ -137,6 +141,71 @@ function getStatusColor(entry: FsEntry) {
   if (entry.path && proxyStore.generatingProxies.has(entry.path)) return 'text-amber-400';
   if (entry.path && mediaCache.hasProxy(entry.path)) return 'text-green-500';
   return '';
+}
+
+async function handleAddToProject() {
+  const entity = selectionStore.selectedEntity;
+  if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
+
+  const mediaType = getMediaTypeFromFilename(entity.name);
+  if (mediaType === 'unknown') {
+    toast.add({
+      title: t('common.error', 'Error'),
+      description: 'Unknown file type',
+      color: 'error',
+    });
+    return;
+  }
+
+  try {
+    const startUs = timelineStore.currentTime;
+    const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
+    const tracks = timelineStore.timelineDoc?.tracks || [];
+    let trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
+
+    if (!trackId) {
+      toast.add({
+        title: t('common.error', 'Error'),
+        description: 'No suitable track found',
+        color: 'error',
+      });
+      return;
+    }
+
+    if (mediaType === 'text') {
+      const file = await vfs.getFile(entity.path);
+      if (file) {
+        const text = await file.text();
+        await timelineStore.addVirtualClipToTrack({
+          trackId,
+          startUs,
+          clipType: 'text',
+          name: entity.name,
+          text,
+        });
+      }
+    } else {
+      await timelineStore.addClipToTimelineFromPath({
+        trackId,
+        name: entity.name,
+        path: entity.path,
+        startUs,
+      });
+    }
+
+    await timelineStore.requestTimelineSave({ immediate: true });
+    toast.add({
+      title: 'Success',
+      description: 'Clip added to timeline',
+      color: 'success',
+    });
+  } catch (err: any) {
+    toast.add({
+      title: t('common.error', 'Error'),
+      description: String(err?.message || err),
+      color: 'error',
+    });
+  }
 }
 
 // Следим за изменением выбранной папки
@@ -278,7 +347,7 @@ onMounted(() => {
             color="primary"
             icon="lucide:plus"
             label="Add to project"
-            @click="() => {}"
+            @click="handleAddToProject"
           />
         </div>
       </div>

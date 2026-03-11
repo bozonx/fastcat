@@ -174,7 +174,7 @@ function selectTransition(e: MouseEvent | PointerEvent, payload: { trackId: stri
           width: `${Math.max(2, timeUsToPx(props.tracks.flatMap(t => t.items).find(it => it.id === movePreview?.itemId)?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
         }"
       >
-        <span class="truncate">{{ props.tracks.flatMap(t => t.items).find(it => it.id === movePreview?.itemId)?.name }}</span>
+        <span class="truncate">{{ (props.tracks.flatMap(t => t.items).find(it => it.id === movePreview?.itemId) as any)?.name }}</span>
       </div>
 
       <template v-for="item in track.items" :key="item.id">
