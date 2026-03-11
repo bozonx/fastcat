@@ -45,6 +45,11 @@ export interface VideoCoreWorkerAPI {
     timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
     quality: number,
   ): Promise<Blob | null>;
+
+  extractAudio(
+    sourcePath: string,
+    targetPath: string,
+  ): Promise<void>;
 }
 
 export interface ExportOptions {

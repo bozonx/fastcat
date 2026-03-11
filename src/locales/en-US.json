@@ -294,7 +294,8 @@
         "transcribe": "Transcribe",
         "title": "Actions",
         "downloadFiles": "Download files",
-        "uploadRemote": "Upload from URL"
+        "uploadRemote": "Upload from URL",
+        "extractAudio": "Extract Audio"
       },
       "dropOverlay": {
         "autoTitle": "Auto-sort upload",
@@ -372,6 +373,10 @@
       "remote": {
         "exchange": "Authentication token",
         "exchangeDescription": "Enter the token from the Gran platform to access your remote files."
+      },
+      "extractAudio": {
+        "success": "Audio extracted successfully",
+        "failed": "Failed to extract audio"
       }
     },
     "export": {

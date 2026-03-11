@@ -353,7 +353,8 @@
         "transcribe": "Транскрибировать",
         "title": "Действия",
         "downloadFiles": "Скачать файлы",
-        "uploadRemote": "Загрузить по ссылке"
+        "uploadRemote": "Загрузить по ссылке",
+        "extractAudio": "Извлечь аудио"
       },
       "dropOverlay": {
         "autoTitle": "Автоматическая сортировка",
@@ -431,6 +432,10 @@
       "remote": {
         "exchange": "Токен авторизации",
         "exchangeDescription": "Введите токен с платформы Gran для доступа к вашим удаленным файлам."
+      },
+      "extractAudio": {
+        "success": "Аудио успешно извлечено",
+        "failed": "Ошибка при извлечении аудио"
       }
     },
     "export": {

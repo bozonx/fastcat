@@ -1,7 +1,7 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
 import { safeDispose } from '../../utils/video-editor/utils';
-import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec } from './utils';
+import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
 import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
 import { usToS } from './time';
@@ -469,5 +469,89 @@ export async function runExport(
     }
   } finally {
     localCompositor.destroy();
+  }
+}
+
+export async function extractAudioStream(
+  sourcePath: string,
+  targetPath: string,
+  hostClient: VideoCoreHostAPI | null,
+  reportExportWarning: (msg: string) => Promise<void>,
+  checkCancel: () => boolean,
+) {
+  if (!hostClient) throw new Error('Host API not set');
+  const sourceHandle = await hostClient.getFileHandleByPath(sourcePath);
+  if (!sourceHandle) throw new Error('Source file not found');
+  const targetHandle = await hostClient.getFileHandleByPath(targetPath);
+  if (!targetHandle) throw new Error('Target file handle not found');
+
+  const sourceFile = await sourceHandle.getFile();
+  const {
+    Input,
+    BlobSource,
+    ALL_FORMATS,
+    Output,
+    StreamTarget,
+    Mp4OutputFormat,
+    WebMOutputFormat,
+    MkvOutputFormat,
+    EncodedAudioPacketSource,
+    EncodedPacketSink,
+  } = await import('mediabunny');
+
+  const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as any);
+
+  try {
+    const audioTrack = await input.getPrimaryAudioTrack();
+    if (!audioTrack) throw new Error('No audio track found in source file');
+
+    const codecStr = (await audioTrack.getCodecParameterString()) || audioTrack.codec || '';
+    const lowercaseCodec = codecStr.toLowerCase();
+
+    let format: any;
+    if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
+      format = new Mp4OutputFormat();
+    } else if (lowercaseCodec.includes('opus')) {
+      format = new WebMOutputFormat();
+    } else {
+      format = new MkvOutputFormat();
+    }
+
+    const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
+    const target = new StreamTarget(writable, { chunked: true });
+    const output = new Output({ target, format });
+
+    const decoderConfig = await audioTrack.getDecoderConfig();
+    const packetSource = new EncodedAudioPacketSource(getBunnyAudioCodec(codecStr));
+    output.addAudioTrack(packetSource);
+
+    await output.start();
+    const packetSink = new EncodedPacketSink(audioTrack);
+
+    let isFirstPacket = true;
+    for await (const packet of packetSink.packets()) {
+      if (checkCancel()) {
+        const err = new Error('Extraction cancelled');
+        (err as any).name = 'AbortError';
+        throw err;
+      }
+      if (isFirstPacket) {
+        await packetSource.add(packet, { decoderConfig: decoderConfig || undefined });
+        isFirstPacket = false;
+      } else {
+        await packetSource.add(packet);
+      }
+    }
+
+    if (typeof (packetSource as any).close === 'function') {
+      (packetSource as any).close();
+    }
+    await output.finalize();
+    await writable.close();
+  } catch (err) {
+    console.error('[Worker Export] Failed to extract audio:', err);
+    throw err;
+  } finally {
+    safeDispose(input);
   }
 }

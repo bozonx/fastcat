@@ -7,7 +7,7 @@ import type { PreviewRenderOptions } from '../utils/video-editor/worker-rpc';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
-import { extractMetadata, runExport } from './core/export';
+import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { VIDEO_CORE_LIMITS } from '../utils/constants';
 
 DOMAdapter.set(WebWorkerAdapter);
@@ -180,6 +180,17 @@ const api: any = {
     } finally {
       localCompositor.destroy();
     }
+  },
+
+  async extractAudio(sourcePath: string, targetPath: string) {
+    cancelExportRequested = false;
+    await extractAudioStream(
+      sourcePath,
+      targetPath,
+      hostClient,
+      reportExportWarning,
+      () => cancelExportRequested,
+    );
   },
 };
 

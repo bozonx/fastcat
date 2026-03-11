@@ -23,6 +23,7 @@ import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder'
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
+import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -52,6 +53,7 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const toast = useToast();
+const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabs();
 const fileManager = useFileManager();
 const runtimeConfig = useRuntimeConfig();
@@ -646,6 +648,13 @@ watch(
             icon: 'i-heroicons-document-duplicate',
             hidden: !isOtio,
             onClick: () => (uiStore.pendingOtioCreateVersion = props.selectedFsEntry),
+          },
+          {
+            id: 'extractAudio',
+            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+            icon: 'i-heroicons-musical-note',
+            hidden: !isVideoFile,
+            onClick: () => extractAudio(props.selectedFsEntry),
           },
         ]"
       />
