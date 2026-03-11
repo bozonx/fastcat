@@ -2,7 +2,6 @@ import { safeDispose } from './utils';
 import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { isSvgFile } from '../svg';
-import type { Filter } from 'pixi.js';
 import {
   Application,
   Sprite,
@@ -17,7 +16,7 @@ import {
   RenderTexture,
   Container,
 } from 'pixi.js';
-import type { Input, VideoSampleSink } from 'mediabunny';
+import type { Filter } from 'pixi.js';
 import { getEffectManifest } from '../../effects';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import {
@@ -29,6 +28,7 @@ import {
 import type { PreviewRenderOptions } from './worker-rpc';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE, resolveNormalizedAnchor } from './clip-layout';
 import { computeTextLayoutMetrics } from './text-layout';
+import { VIDEO_CORE_LIMITS } from '../constants';
 import type {
   TextClipStyle,
   ClipEffect,
@@ -36,190 +36,22 @@ import type {
   ClipTransition,
   TimelineBlendMode,
 } from '~/timeline/types';
-import { VIDEO_CORE_LIMITS } from '../constants';
 
-function resolveBlendMode(value: unknown): TimelineBlendMode {
-  return value === 'add' ||
-    value === 'multiply' ||
-    value === 'screen' ||
-    value === 'darken' ||
-    value === 'lighten'
-    ? value
-    : 'normal';
-}
+// Internal modules
+import {
+  type CompositorClip,
+  type CompositorTrack,
+  type HudMediaState,
+  resolveBlendMode,
+  areTextClipStylesEqual,
+} from './compositor/types';
+import { ResourceManager, getVideoSampleWithZeroFallback } from './compositor/ResourceManager';
+import { EffectManager } from './compositor/EffectManager';
+import { TransitionManager } from './compositor/TransitionManager';
+import { LayoutManager } from './compositor/LayoutManager';
+import { VideoRenderer } from './compositor/renderers/VideoRenderer';
+import { TextRenderer } from './compositor/renderers/TextRenderer';
 
-function isEdgePadding(
-  value: TextClipStyle['padding'],
-): value is Extract<
-  TextClipStyle['padding'],
-  { top?: number; right?: number; bottom?: number; left?: number }
-> {
-  return (
-    Boolean(value) &&
-    typeof value === 'object' &&
-    ('top' in value || 'right' in value || 'bottom' in value || 'left' in value)
-  );
-}
-
-function arePaddingValuesEqual(a: TextClipStyle['padding'], b: TextClipStyle['padding']): boolean {
-  if (a === b) return true;
-  if (typeof a === 'number' || typeof b === 'number') {
-    return a === b;
-  }
-  if (!a || !b) return !a && !b;
-  if (!isEdgePadding(a) || !isEdgePadding(b)) return false;
-  return a.top === b.top && a.right === b.right && a.bottom === b.bottom && a.left === b.left;
-}
-
-function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): boolean {
-  if (a === b) return true;
-  if (!a || !b) return !a && !b;
-
-  return (
-    a.width === b.width &&
-    a.fontFamily === b.fontFamily &&
-    a.fontSize === b.fontSize &&
-    a.fontWeight === b.fontWeight &&
-    a.color === b.color &&
-    a.align === b.align &&
-    a.verticalAlign === b.verticalAlign &&
-    a.lineHeight === b.lineHeight &&
-    a.letterSpacing === b.letterSpacing &&
-    a.backgroundColor === b.backgroundColor &&
-    arePaddingValuesEqual(a.padding, b.padding)
-  );
-}
-
-export async function getVideoSampleWithZeroFallback(
-  sink: Pick<VideoSampleSink, 'getSample'>,
-  timeS: number,
-  firstTimestampS?: number,
-): Promise<unknown | null> {
-  const primary = await sink.getSample(timeS).catch((e) => {
-    const msg = String((e as any)?.message ?? e ?? '');
-    const name = String((e as any)?.name ?? '');
-    if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
-      return null;
-    }
-    throw e;
-  });
-  if (primary) return primary;
-
-  if (Number.isFinite(firstTimestampS) && typeof firstTimestampS === 'number') {
-    const safeFirst = Math.max(0, firstTimestampS);
-    if (timeS <= safeFirst) {
-      const first = await sink.getSample(safeFirst).catch((e) => {
-        const msg = String((e as any)?.message ?? e ?? '');
-        const name = String((e as any)?.name ?? '');
-        if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
-          return null;
-        }
-        throw e;
-      });
-      if (first) return first;
-    }
-  }
-
-  if (timeS !== 0) {
-    return null;
-  }
-
-  // Some decoders return null for exact 0.0 but can provide the first frame for a tiny epsilon.
-  return sink.getSample(1e-6).catch((e) => {
-    const msg = String((e as any)?.message ?? e ?? '');
-    const name = String((e as any)?.name ?? '');
-    if (name === 'InputDisposedError' || msg.includes('Input has been disposed')) {
-      return null;
-    }
-    throw e;
-  });
-}
-
-export interface HudMediaState {
-  sourcePath?: string;
-  fileHandle?: FileSystemFileHandle;
-  input?: any;
-  sink?: any;
-  firstTimestampS?: number;
-  sourceDurationUs: number;
-  clipKind: 'video' | 'image' | 'solid';
-  sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
-  imageSource: ImageSource;
-  sprite: Sprite;
-  lastVideoFrame: VideoFrame | null;
-  bitmap: ImageBitmap | null;
-}
-
-export interface CompositorClip {
-  itemId: string;
-  trackId?: string;
-  layer: number;
-  sourcePath?: string;
-  fileHandle?: FileSystemFileHandle;
-  input?: Input;
-  sink?: VideoSampleSink;
-  firstTimestampS?: number;
-  startUs: number;
-  endUs: number;
-  durationUs: number;
-  sourceStartUs: number;
-  /** Duration of the used source range (trimmed), i.e. sourceRange.durationUs */
-  sourceRangeDurationUs: number;
-  /** Full duration of the source media file, used to compute available handle material */
-  sourceDurationUs: number;
-  speed?: number;
-
-  freezeFrameSourceUs?: number;
-  sprite: any; // Sprite | Graphics | Text
-  clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
-  sourceKind: 'videoFrame' | 'canvas' | 'bitmap' | 'graphics';
-  imageSource: ImageSource;
-  lastVideoFrame: VideoFrame | null;
-  canvas: OffscreenCanvas | null;
-  ctx: OffscreenCanvasRenderingContext2D | null;
-  bitmap: ImageBitmap | null;
-  backgroundColor?: string;
-  text?: string;
-  style?: TextClipStyle;
-  shapeType?: import('~/timeline/types').ShapeType;
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  shapeConfig?: import('~/timeline/types').ShapeConfig;
-  hudType?: import('~/timeline/types').HudType;
-  background?: import('~/timeline/types').HudMediaParams;
-  content?: import('~/timeline/types').HudMediaParams;
-  opacity?: number;
-  blendMode?: TimelineBlendMode;
-  effects?: ClipEffect[];
-  transform?: ClipTransform;
-  effectFilters?: Map<string, Filter>;
-  transitionIn?: ClipTransition;
-  transitionOut?: ClipTransition;
-  transitionFilter?: Filter | null;
-  transitionFilterType?: string | null;
-  transitionSprite?: Sprite | null;
-  transitionFromTexture?: RenderTexture | null;
-  transitionToTexture?: RenderTexture | null;
-  transitionOutputTexture?: RenderTexture | null;
-  transitionCombinedTexture?: RenderTexture | null;
-  textDirty?: boolean;
-  shapeDirty?: boolean;
-  hudMediaStates?: {
-    background?: HudMediaState;
-    content?: HudMediaState;
-  };
-}
-
-export interface CompositorTrack {
-  id: string;
-  layer: number;
-  opacity?: number;
-  blendMode?: TimelineBlendMode;
-  effects?: ClipEffect[];
-  container: Container;
-  effectFilters?: Map<string, Filter>;
-}
 
 export class VideoCompositor {
   public app: Application | null = null;
@@ -236,26 +68,47 @@ export class VideoCompositor {
   private tracks: CompositorTrack[] = [];
   private replacedClipIds = new Set<string>();
   private lastRenderedTimeUs = 0;
-  private clipPreferBitmapFallback = new Map<string, boolean>();
-  private stageSortDirty = true;
-  private activeSortDirty = true;
   private contextLost = false;
+  private previewEffectsEnabled = true;
+
+  // Legacy fields (to be migrated)
   private adjustmentTexture: RenderTexture | null = null;
   private stageVisibilityState: boolean[] = [];
   private masterEffects: ClipEffect[] | null = null;
-  private masterEffectFilters: Map<string, Filter> | null = null;
+  private masterEffectFilters = new Map<string, Filter>();
   private transitionFilters = new Map<string, Filter>();
   private filterQuadSprite: Sprite | null = null;
   private transitionCombineSprite: Sprite | null = null;
-  private sampleRequestsInFlight = 0;
-  private previewEffectsEnabled = true;
-  private readonly sampleRequestQueue: Array<{ resolve: () => void; signal?: AbortSignal }> = [];
-  private sampleAbortControllers = new Map<string, AbortController>();
+  private stageSortDirty = true;
+  private activeSortDirty = true;
+  private clipPreferBitmapFallback = new Map<string, boolean>();
+
+  // Managers
+  private resourceManager = new ResourceManager();
+  private effectManager = new EffectManager();
+  private transitionManager = new TransitionManager();
+  private layoutManager = new LayoutManager();
+  
+  // Renderers
+  private videoRenderer = new VideoRenderer();
+  private textRenderer = new TextRenderer();
+
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
     getStartUs: (clip) => clip.startUs,
     getEndUs: (clip) => clip.endUs,
   });
+
+  // Resource Management Delegation
+  private async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    return this.resourceManager.withVideoSampleSlot(task, signal);
+  }
+
+  private get sampleAbortControllers() {
+      // Temporary accessor for remaining code
+      return (this.resourceManager as any).sampleAbortControllers as Map<string, AbortController>;
+  }
+
 
   private normalizeTrackOpacity(value: unknown): number | undefined {
     if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
@@ -430,52 +283,6 @@ export class VideoCompositor {
     }
   }
 
-  private async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-    const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
-    if (this.sampleRequestsInFlight >= max) {
-      await new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) {
-          reject(new Error('Aborted before acquiring slot'));
-          return;
-        }
-        
-        const queueItem = { resolve, signal };
-        
-        if (signal) {
-          const onAbort = () => {
-            signal.removeEventListener('abort', onAbort);
-            const index = this.sampleRequestQueue.indexOf(queueItem);
-            if (index !== -1) {
-              this.sampleRequestQueue.splice(index, 1);
-            }
-            reject(new Error('Aborted before acquiring slot'));
-          };
-          signal.addEventListener('abort', onAbort);
-        }
-        
-        this.sampleRequestQueue.push(queueItem);
-      });
-    }
-
-    if (signal?.aborted) {
-      throw new Error('Aborted before executing task');
-    }
-
-    this.sampleRequestsInFlight += 1;
-    try {
-      return await task();
-    } finally {
-      this.sampleRequestsInFlight = Math.max(0, this.sampleRequestsInFlight - 1);
-      
-      while (this.sampleRequestQueue.length > 0) {
-        const next = this.sampleRequestQueue.shift();
-        if (next && (!next.signal || !next.signal.aborted)) {
-          next.resolve();
-          break;
-        }
-      }
-    }
-  }
 
   async init(
     width: number,
@@ -2738,165 +2545,27 @@ export class VideoCompositor {
   }
 
   private applyClipEffects(clip: CompositorClip) {
-    if (!clip.effectFilters) {
-      clip.effectFilters = new Map();
-    }
-
-    if (!this.previewEffectsEnabled) {
-      clip.sprite.filters = null;
-      return;
-    }
-
-    const filters: Filter[] = [];
-    const seenIds = new Set<string>();
-
-    if (Array.isArray(clip.effects) && clip.effects.length > 0) {
-      for (const effect of clip.effects) {
-        if (!effect?.enabled) continue;
-        if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
-        if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
-
-        const manifest = getEffectManifest(effect.type);
-        if (!manifest) continue;
-
-        seenIds.add(effect.id);
-        let filter = clip.effectFilters.get(effect.id);
-        if (!filter) {
-          filter = manifest.createFilter();
-          clip.effectFilters.set(effect.id, filter);
-        }
-
-        try {
-          manifest.updateFilter(filter, effect);
-        } catch (err) {
-          console.error('[VideoCompositor] Failed to update effect filter', err);
-          continue;
-        }
-
-        filters.push(filter);
-      }
-    }
-
-    // Cleanup filters for removed effects
-    for (const [id, filter] of clip.effectFilters.entries()) {
-      if (seenIds.has(id)) continue;
-      clip.effectFilters.delete(id);
-      try {
-        (filter as any)?.destroy?.();
-      } catch {
-        // ignore
-      }
-    }
-
-    clip.sprite.filters = filters.length > 0 ? filters : null;
+    this.effectManager.applyClipEffects(clip, {
+      previewEffectsEnabled: this.previewEffectsEnabled,
+    });
   }
 
   private applyTrackEffects(track: CompositorTrack) {
-    if (!track.effectFilters) {
-      track.effectFilters = new Map();
-    }
-
-    if (!this.previewEffectsEnabled) {
-      track.container.filters = null;
-      return;
-    }
-
-    const filters: Filter[] = [];
-    const seenIds = new Set<string>();
-
-    if (Array.isArray(track.effects) && track.effects.length > 0) {
-      for (const effect of track.effects) {
-        if (!effect?.enabled) continue;
-        if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
-        if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
-
-        const manifest = getEffectManifest(effect.type);
-        if (!manifest) continue;
-
-        seenIds.add(effect.id);
-        let filter = track.effectFilters.get(effect.id);
-        if (!filter) {
-          filter = manifest.createFilter();
-          track.effectFilters.set(effect.id, filter);
-        }
-
-        try {
-          manifest.updateFilter(filter, effect);
-        } catch (err) {
-          console.error('[VideoCompositor] Failed to update track effect filter', err);
-          continue;
-        }
-
-        filters.push(filter);
-      }
-    }
-
-    for (const [id, filter] of track.effectFilters.entries()) {
-      if (seenIds.has(id)) continue;
-      track.effectFilters.delete(id);
-      try {
-        (filter as any)?.destroy?.();
-      } catch {
-        // ignore
-      }
-    }
-
-    track.container.filters = filters.length > 0 ? filters : null;
+    this.effectManager.applyTrackEffects(track, {
+      previewEffectsEnabled: this.previewEffectsEnabled,
+    });
   }
 
   private applyMasterEffects() {
     if (!this.app) return;
-
-    if (!this.masterEffectFilters) {
-      this.masterEffectFilters = new Map();
-    }
-
-    if (!this.previewEffectsEnabled) {
-      this.app.stage.filters = null;
-      return;
-    }
-
-    const filters: Filter[] = [];
-    const seenIds = new Set<string>();
-    const effects = Array.isArray(this.masterEffects) ? this.masterEffects : [];
-
-    for (const effect of effects) {
-      if (!effect?.enabled) continue;
-      if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
-      if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
-
-      const manifest = getEffectManifest(effect.type);
-      if (!manifest) continue;
-
-      seenIds.add(effect.id);
-      let filter = this.masterEffectFilters.get(effect.id);
-      if (!filter) {
-        filter = manifest.createFilter();
-        this.masterEffectFilters.set(effect.id, filter);
-      }
-
-      try {
-        manifest.updateFilter(filter, effect);
-      } catch (err) {
-        console.error('[VideoCompositor] Failed to update master effect filter', err);
-        continue;
-      }
-
-      filters.push(filter);
-    }
-
-    for (const [id, filter] of this.masterEffectFilters.entries()) {
-      if (seenIds.has(id)) continue;
-      this.masterEffectFilters.delete(id);
-      try {
-        (filter as any)?.destroy?.();
-      } catch {
-        // ignore
-      }
-    }
-
-    this.app.stage.filters = filters.length > 0 ? filters : null;
+    this.effectManager.applyMasterEffects(
+      this.app.stage,
+      this.masterEffects,
+      this.masterEffectFilters,
+      { previewEffectsEnabled: this.previewEffectsEnabled }
+    );
   }
+
 
   private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
     try {
