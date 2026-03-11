@@ -91,6 +91,8 @@ function createWorker(channel: WorkerChannel): Worker {
               (err as any).name = (errData as any).name;
             if (typeof (errData as any).stack === 'string')
               (err as any).stack = (errData as any).stack;
+            if ((errData as any).cause !== undefined)
+              (err as any).cause = (errData as any).cause;
           }
           pending.reject(err);
         } else pending.resolve(data.result);

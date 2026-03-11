@@ -1,4 +1,3 @@
-import { createChannel } from 'bidc';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 
 export interface PreviewRenderOptions {
@@ -48,18 +47,20 @@ export interface VideoCoreWorkerAPI {
   ): Promise<Blob | null>;
 }
 
-export type WorkerCallbacks = {
-  // Functions the worker can call on the main thread
-  onExportProgress: (progress: number) => void;
-  onExportPhase?: (phase: 'encoding' | 'saving') => void;
-  getCurrentProjectId: () => Promise<string | null>;
-  getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-  getFileByPath?: (path: string) => Promise<File | null>;
-  ensureVectorImageRaster: (params: {
-    projectId: string;
-    projectRelativePath: string;
-    width: number;
-    height: number;
-    sourceFileHandle: FileSystemFileHandle;
-  }) => Promise<FileSystemFileHandle | null>;
-};
+export interface ExportOptions {
+  width: number;
+  height: number;
+  fps: number;
+  bitrate: number;
+  videoCodec: string;
+  format: 'mp4' | 'webm' | 'mkv';
+  exportAlpha?: boolean;
+  bitrateMode?: 'constant' | 'variable';
+  keyframeIntervalSec?: number;
+  audio?: boolean;
+  audioPassthrough?: boolean;
+  audioSampleRate?: number;
+  audioChannels?: 'mono' | 'stereo';
+  audioCodec?: string;
+  audioBitrate?: number;
+}

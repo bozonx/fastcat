@@ -1,4 +1,4 @@
-import { safeDispose } from './utils';
+import { safeDispose, parseHexColor } from './utils';
 import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { isSvgFile } from '../svg';
@@ -44,6 +44,7 @@ import {
   type HudMediaState,
   resolveBlendMode,
   areTextClipStylesEqual,
+  areShapeConfigsEqual,
 } from './compositor/types';
 import { ResourceManager, getVideoSampleWithZeroFallback } from './compositor/ResourceManager';
 import { EffectManager } from './compositor/EffectManager';
@@ -102,11 +103,6 @@ export class VideoCompositor {
   // Resource Management Delegation
   private async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     return this.resourceManager.withVideoSampleSlot(task, signal);
-  }
-
-  private get sampleAbortControllers() {
-      // Temporary accessor for remaining code
-      return (this.resourceManager as any).sampleAbortControllers as Map<string, AbortController>;
   }
 
 
@@ -240,15 +236,8 @@ export class VideoCompositor {
       for (let index = 0; index < sorted.length; index++) {
         const clip = sorted[index];
         if (!clip) continue;
-
-        let prev: CompositorClip | null = null;
-        for (let prevIndex = index - 1; prevIndex >= 0; prevIndex -= 1) {
-          const candidate = sorted[prevIndex];
-          if (!candidate || candidate.itemId === clip.itemId) continue;
-          prev = candidate;
-          break;
-        }
-
+        // Previous clip is always at index-1 in sorted order (O(n) instead of O(n²))
+        const prev = index > 0 ? (sorted[index - 1] ?? null) : null;
         this.prevClipById.set(clip.itemId, prev);
       }
     }
@@ -381,12 +370,13 @@ export class VideoCompositor {
       }
     }
 
+    // Recreate the adjustment render texture after context restore
     if (this.adjustmentTexture) {
       try {
         this.adjustmentTexture.destroy(true);
       } catch {}
-      this.adjustmentTexture = null;
     }
+    this.adjustmentTexture = RenderTexture.create({ width: this.width, height: this.height });
   };
 
   async loadTimeline(
@@ -614,7 +604,7 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
         };
 
-        (compositorClip as any).clipType = 'background';
+        compositorClip.clipType = 'background';
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
@@ -678,7 +668,7 @@ export class VideoCompositor {
           textDirty: true,
         };
 
-        (compositorClip as any).clipType = 'text';
+        compositorClip.clipType = 'text';
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
@@ -741,7 +731,7 @@ export class VideoCompositor {
           shapeDirty: true,
         };
 
-        (compositorClip as any).clipType = 'shape';
+        compositorClip.clipType = 'shape';
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
@@ -797,7 +787,7 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
         };
 
-        (compositorClip as any).clipType = 'adjustment';
+        compositorClip.clipType = 'adjustment';
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
@@ -866,7 +856,7 @@ export class VideoCompositor {
           sprite.texture.source = canvasSource as any;
         }
 
-        (compositorClip as any).clipType = 'hud';
+        compositorClip.clipType = 'hud';
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
@@ -1335,7 +1325,7 @@ export class VideoCompositor {
           clip.fillColor !== nextFill ||
           clip.strokeColor !== nextStroke ||
           clip.strokeWidth !== nextStrokeWidth ||
-          JSON.stringify(clip.shapeConfig) !== JSON.stringify(nextConfig) ||
+          !areShapeConfigsEqual(clip.shapeConfig as any, nextConfig as any) ||
           clip.shapeDirty === true
         ) {
           clip.shapeDirty = true;
@@ -1395,10 +1385,7 @@ export class VideoCompositor {
     if (!this.app || !this.canvas || !this.app.renderer) return null;
 
     if (timeUs !== this.lastRenderedTimeUs) {
-      for (const [id, controller] of this.sampleAbortControllers.entries()) {
-        controller.abort();
-      }
-      this.sampleAbortControllers.clear();
+      this.resourceManager.abortInFlight();
     }
 
     this.previewEffectsEnabled = options?.previewEffectsEnabled !== false;
@@ -1515,8 +1502,7 @@ export class VideoCompositor {
           continue;
         }
 
-        const abortController = new AbortController();
-        this.sampleAbortControllers.set(clip.itemId + '_primary', abortController);
+        const abortController = this.resourceManager.createAbortController(clip.itemId + '_primary');
         
         const request = this.withVideoSampleSlot(() =>
           getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
@@ -1587,8 +1573,7 @@ export class VideoCompositor {
               ? Math.max(0, prevClip.sourceStartUs + 1_000)
               : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
           const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
-          const abortController = new AbortController();
-          this.sampleAbortControllers.set(prevClip.itemId + '_shadow_end', abortController);
+          const abortController = this.resourceManager.createAbortController(prevClip.itemId + '_shadow_end');
           const req = this.withVideoSampleSlot(() =>
             getVideoSampleWithZeroFallback(
               prevClip.sink as any,
@@ -1619,8 +1604,7 @@ export class VideoCompositor {
         }
 
         const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
-        const abortController = new AbortController();
-        this.sampleAbortControllers.set(prevClip.itemId + '_shadow_overrun', abortController);
+        const abortController = this.resourceManager.createAbortController(prevClip.itemId + '_shadow_overrun');
         const req = this.withVideoSampleSlot(() =>
           getVideoSampleWithZeroFallback(
             prevClip.sink as any,
@@ -1748,11 +1732,18 @@ export class VideoCompositor {
         }
 
         const visibleAdjustmentByParent = new Map<Container, CompositorClip>();
+        let adjustmentCount = 0;
         for (const clip of active) {
           if (clip.clipKind !== 'adjustment' || !clip.sprite.visible) continue;
           const parent = clip.sprite.parent;
           if (!parent || !(parent instanceof Container)) continue;
           visibleAdjustmentByParent.set(parent, clip);
+          adjustmentCount++;
+        }
+
+        // Only the first (lowest) adjustment layer is supported
+        if (adjustmentCount > 1) {
+          console.warn('[VideoCompositor] Multiple adjustment layers detected — only the lowest one is applied');
         }
 
         let applied = false;
@@ -1819,12 +1810,11 @@ export class VideoCompositor {
   }
 
   /** Find the clip on the same layer immediately adjacent to `clip` (for blend shadow rendering).
-   *  Returns null if there is a gap larger than 200ms between the clips. */
+   *  Returns null if there is a gap larger than the configured threshold. */
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    // Reject only for a large gap — allow small gaps to still show a reasonable blend shadow.
-    if (clip.startUs - best.endUs > 200_000) return null;
+    if (clip.startUs - best.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US) return null;
     return best;
   }
 
@@ -2070,8 +2060,7 @@ export class VideoCompositor {
             );
     }
 
-    const abortController = new AbortController();
-    this.sampleAbortControllers.set(clip.itemId + '_transition_texture', abortController);
+    const abortController = this.resourceManager.createAbortController(clip.itemId + '_transition_texture');
     const sample = await this.withVideoSampleSlot(() =>
       getVideoSampleWithZeroFallback(
         clip.sink as any,
@@ -3176,19 +3165,4 @@ export class VideoCompositor {
     }
     clip.sprite.destroy(true);
   }
-}
-
-function parseHexColor(value: string): number {
-  const raw = String(value ?? '').trim();
-  const hex = raw.startsWith('#') ? raw.slice(1) : raw;
-  if (hex.length === 3) {
-    const r = hex[0] ?? '0';
-    const g = hex[1] ?? '0';
-    const b = hex[2] ?? '0';
-    const expanded = `${r}${r}${g}${g}${b}${b}`;
-    const parsed = Number.parseInt(expanded, 16);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  const parsed = Number.parseInt(hex.padStart(6, '0').slice(0, 6), 16);
-  return Number.isFinite(parsed) ? parsed : 0;
 }

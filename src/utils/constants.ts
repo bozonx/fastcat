@@ -19,6 +19,8 @@ export const STORAGE_LIMITS = {
 export const VIDEO_CORE_LIMITS = {
   MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS: 4,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
+  /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */
+  BLEND_SHADOW_GAP_THRESHOLD_US: 200_000,
 };
 
 export const TIMELINE_CLIP_THUMBNAILS = {
