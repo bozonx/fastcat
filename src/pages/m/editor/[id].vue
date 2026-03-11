@@ -10,6 +10,7 @@ import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import MobileExportForm from '~/components/export/MobileExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
+import AudioMixer from '~/components/audio/AudioMixer.vue';
 
 definePageMeta({
   layout: 'mobile',
@@ -94,9 +95,9 @@ async function handleBack() {
         <MobileTimeline />
       </div>
 
-      <div v-show="activeTab === 'sound'" class="p-4 h-full">
-        <h2 class="text-xl font-bold mb-4">Sound</h2>
-        <div class="text-slate-400">Mobile audio editor will be here.</div>
+      <div v-show="activeTab === 'sound'" class="flex flex-col h-full overflow-hidden bg-slate-950">
+        <MobileMonitorContainer />
+        <AudioMixer />
       </div>
 
       <div v-show="activeTab === 'export'" class="h-full">
