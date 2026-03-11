@@ -354,6 +354,38 @@ export class VideoCompositor {
     for (const clip of this.clips) {
       clip.textDirty = true;
       clip.shapeDirty = true;
+      if (clip.lastVideoFrame) {
+        safeDispose(clip.lastVideoFrame);
+        clip.lastVideoFrame = null;
+      }
+      clip.canvas = null;
+      if (clip.bitmap) {
+        try {
+          clip.bitmap.close();
+        } catch {}
+        clip.bitmap = null;
+      }
+      try {
+        if (
+          clip.imageSource?.resource &&
+          typeof (clip.imageSource.resource as any).update === 'function'
+        ) {
+          (clip.imageSource.resource as any).update();
+        }
+      } catch {}
+      if (clip.transitionFilter) {
+        try {
+          clip.transitionFilter.destroy();
+        } catch {}
+        clip.transitionFilter = null;
+      }
+    }
+
+    if (this.adjustmentTexture) {
+      try {
+        this.adjustmentTexture.destroy(true);
+      } catch {}
+      this.adjustmentTexture = null;
     }
   };
 
@@ -1469,10 +1501,14 @@ export class VideoCompositor {
           ? Math.max(0, clip.sourceRangeDurationUs - Math.round(localTimeUs * speed))
           : Math.round(localTimeUs * speed);
 
-        const sampleTimeS =
+        let sampleTimeS =
           typeof freezeUs === 'number'
             ? Math.max(0, freezeUs) / 1_000_000
             : Math.max(0, clip.sourceStartUs + effectiveLocalUs) / 1_000_000;
+
+        if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) {
+          sampleTimeS = 0;
+        }
 
         if (!clip.sink) {
           clip.sprite.visible = false;
@@ -1788,7 +1824,7 @@ export class VideoCompositor {
     const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
     // Reject only for a large gap — allow small gaps to still show a reasonable blend shadow.
-    if (clip.startUs - best.endUs > 1_000_000) return null;
+    if (clip.startUs - best.endUs > 200_000) return null;
     return best;
   }
 
@@ -2199,7 +2235,7 @@ export class VideoCompositor {
       return false;
     }
 
-    return candidate.resources != null;
+    return candidate.resources != null && Object.keys(candidate.resources).length > 0;
   }
 
   private recreateTransitionFilter(clip: CompositorClip, manifest: any): Filter | null {

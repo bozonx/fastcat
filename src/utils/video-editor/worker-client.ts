@@ -23,7 +23,7 @@ interface WorkerChannelState {
   workerInstance: Worker | null;
   hostApiInstance: VideoCoreHostAPI | null;
   callIdCounter: number;
-  pendingCalls: Map<number, { resolve: Function; reject: Function }>;
+  pendingCalls: Map<number, { resolve: Function; reject: Function; timeoutId?: number }>;
 }
 
 const channelStates: Record<WorkerChannel, WorkerChannelState> = {
@@ -44,6 +44,7 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
 function rejectAllPendingCalls(state: WorkerChannelState, error: Error) {
   for (const [id, pending] of state.pendingCalls.entries()) {
     try {
+      if (pending.timeoutId !== undefined) window.clearTimeout(pending.timeoutId);
       pending.reject(error);
     } finally {
       state.pendingCalls.delete(id);
@@ -74,6 +75,7 @@ function createWorker(channel: WorkerChannel): Worker {
     if (data.type === 'rpc-response') {
       const pending = state.pendingCalls.get(data.id);
       if (pending) {
+        if (pending.timeoutId !== undefined) window.clearTimeout(pending.timeoutId);
         if (data.error) {
           const errData = data.error;
           const message =
@@ -181,8 +183,15 @@ function createChannelClient(channel: WorkerChannel): {
                 reject(err);
                 return;
               }
-              const id = ++state.callIdCounter;
-              state.pendingCalls.set(id, { resolve, reject });
+              const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
+              const timeoutId = window.setTimeout(() => {
+                const p = state.pendingCalls.get(id);
+                if (p) {
+                  state.pendingCalls.delete(id);
+                  p.reject(new Error(`Worker RPC timeout for method: initCompositor`));
+                }
+              }, 30000);
+              state.pendingCalls.set(id, { resolve, reject, timeoutId });
               ensureWorker(channel).postMessage(
                 {
                   type: 'rpc-call',
@@ -203,8 +212,15 @@ function createChannelClient(channel: WorkerChannel): {
               reject(err);
               return;
             }
-            const id = ++state.callIdCounter;
-            state.pendingCalls.set(id, { resolve, reject });
+            const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
+            const timeoutId = window.setTimeout(() => {
+              const p = state.pendingCalls.get(id);
+              if (p) {
+                state.pendingCalls.delete(id);
+                p.reject(new Error(`Worker RPC timeout for method: ${method}`));
+              }
+            }, 30000);
+            state.pendingCalls.set(id, { resolve, reject, timeoutId });
             ensureWorker(channel).postMessage({ type: 'rpc-call', id, method, args });
           });
         };

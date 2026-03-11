@@ -20,6 +20,7 @@ let cancelExportRequested = false;
 
 let renderInFlight = false;
 let latestRenderTimeUs: number | null = null;
+let latestPreviewOptions: PreviewRenderOptions | undefined;
 
 async function reportExportWarning(message: string) {
   console.warn(message);
@@ -74,14 +75,17 @@ const api: any = {
   async renderFrame(timeUs: number, options?: PreviewRenderOptions) {
     if (!compositor) return;
     latestRenderTimeUs = Math.round(Number(timeUs) || 0);
+    latestPreviewOptions = options;
     if (renderInFlight) return;
 
     renderInFlight = true;
     try {
       while (latestRenderTimeUs !== null) {
         const next = latestRenderTimeUs;
+        const opt = latestPreviewOptions;
         latestRenderTimeUs = null;
-        await compositor.renderFrame(next, options);
+        latestPreviewOptions = undefined;
+        await compositor.renderFrame(next, opt);
       }
     } finally {
       renderInFlight = false;
@@ -173,7 +177,7 @@ const api: any = {
 };
 
 let callIdCounter = 0;
-const pendingCalls = new Map<number, { resolve: Function; reject: Function }>();
+const pendingCalls = new Map<number, { resolve: Function; reject: Function; timeoutId?: number }>();
 
 self.addEventListener('message', async (e: any) => {
   const data = e.data;
@@ -182,6 +186,7 @@ self.addEventListener('message', async (e: any) => {
   if (data.type === 'rpc-response') {
     const pending = pendingCalls.get(data.id);
     if (pending) {
+      if (pending.timeoutId !== undefined) self.clearTimeout(pending.timeoutId);
       if (data.error) pending.reject(normalizeRpcError(data.error));
       else pending.resolve(data.result);
       pendingCalls.delete(data.id);
@@ -204,6 +209,7 @@ self.addEventListener('message', async (e: any) => {
         error: {
           name: err?.name || 'Error',
           message: err?.message || String(err),
+          cause: err?.cause,
           stack: err?.stack,
         },
       });
@@ -224,8 +230,15 @@ hostClient = new Proxy(
             reject(err);
             return;
           }
-          const id = ++callIdCounter;
-          pendingCalls.set(id, { resolve, reject });
+          const id = (callIdCounter = (callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
+          const timeoutId = self.setTimeout(() => {
+            const p = pendingCalls.get(id);
+            if (p) {
+              pendingCalls.delete(id);
+              p.reject(new Error(`Host RPC timeout for method: ${method}`));
+            }
+          }, 30000);
+          pendingCalls.set(id, { resolve, reject, timeoutId });
           self.postMessage({ type: 'rpc-call', id, method, args });
         });
       };

@@ -144,11 +144,12 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
     try {
       const children = await readDirectory(path);
-      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
-        ...e,
-        children,
-      }));
-    } catch (e) {
+        deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+          ...e,
+          children,
+        }));
+        deps.onDirectoryLoaded?.();
+      } catch (e) {
       applyExpandedState(false);
       deps.onError?.({
         title: 'File manager error',
@@ -276,6 +277,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     if (!path) {
       const nextRoot = await readDirectory('');
       deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
+      deps.onDirectoryLoaded?.();
       return;
     }
     const entry = findEntryByPath(path);
@@ -287,6 +289,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         expanded: deps.isPathExpanded(path),
         children: mergeEntries(e.children, nextChildren),
       }));
+      deps.onDirectoryLoaded?.();
     } catch (e) {
       deps.onError?.({
         title: 'File manager error',
