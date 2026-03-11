@@ -21,6 +21,15 @@ const scrollLeft = ref(0);
 
 let tickColor = 'rgba(255, 255, 255, 0.06)';
 let majorTickColor = 'rgba(255, 255, 255, 0.12)';
+let drawRafId: number | null = null;
+
+function scheduleDraw() {
+  if (drawRafId !== null) return;
+  drawRafId = requestAnimationFrame(() => {
+    drawRafId = null;
+    draw();
+  });
+}
 
 onMounted(() => {
   // Read theme colors and create canvas-compatible rgba values
@@ -43,7 +52,7 @@ onMounted(() => {
 function onScroll() {
   if (props.scrollEl) {
     scrollLeft.value = props.scrollEl.scrollLeft;
-    draw();
+    scheduleDraw();
   }
 }
 
@@ -65,13 +74,17 @@ useResizeObserver(containerRef, (entries) => {
   if (entry) {
     width.value = entry.contentRect.width;
     height.value = entry.contentRect.height;
-    draw();
+    scheduleDraw();
   }
 });
 
 onUnmounted(() => {
   if (props.scrollEl) {
     props.scrollEl.removeEventListener('scroll', onScroll);
+  }
+  if (drawRafId !== null) {
+    cancelAnimationFrame(drawRafId);
+    drawRafId = null;
   }
 });
 
@@ -80,7 +93,7 @@ const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 
 watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
-  requestAnimationFrame(draw);
+  scheduleDraw();
 });
 
 function draw() {
