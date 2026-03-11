@@ -480,7 +480,10 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   } else {
     // For reversed clips, the left part of the timeline is the later part of the source range.
     const sourceDurationUs = Math.round(item.sourceRange.durationUs);
-    leftSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + sourceDurationUs - localCutUs);
+    leftSourceStartUs = Math.max(
+      0,
+      Math.round(item.sourceRange.startUs) + sourceDurationUs - localCutUs,
+    );
     leftSourceDurationUs = localCutUs;
     rightSourceStartUs = Math.round(item.sourceRange.startUs);
     rightSourceDurationUs = Math.max(0, sourceDurationUs - localCutUs);
@@ -704,12 +707,15 @@ export function updateClipProperties(
       const startUs = item.timelineRange.startUs;
       const prevDurationUs = Math.max(0, item.timelineRange.durationUs);
 
-      const shouldTryRipple = nextDurationUs > prevDurationUs;
+      const shouldTryRipple = nextDurationUs !== prevDurationUs;
       if (shouldTryRipple) {
         try {
-          assertNoOverlap(track, item.id, startUs, nextDurationUs);
+          if (nextDurationUs > prevDurationUs) {
+            assertNoOverlap(track, item.id, startUs, nextDurationUs);
+          }
           nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
         } catch {
+          // Exception means overlap occurred (or we want to explicitly ripple shift)
           const clips = track.items
             .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
             .map((c) => ({ ...c, timelineRange: { ...c.timelineRange } }));
@@ -725,17 +731,24 @@ export function updateClipProperties(
             };
           });
 
+          // Calculate how much the clips after this one should move
+          const deltaUs = nextDurationUs - prevDurationUs;
+          let foundCurrent = false;
+
           for (let i = 0; i < nextClips.length; i++) {
             const curr = nextClips[i];
             if (!curr) continue;
-            const prev = i > 0 ? nextClips[i - 1] : null;
-            if (!prev) continue;
 
-            const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-            const currStartUs = curr.timelineRange.startUs;
-            if (currStartUs < prevEndUs) {
-              const qStartUs = quantizeTimeUsToFrames(prevEndUs, fps, 'round');
-              if (qStartUs !== currStartUs) {
+            if (curr.id === item.id) {
+              foundCurrent = true;
+              continue;
+            }
+
+            if (foundCurrent) {
+              // Shift all subsequent clips by the duration delta
+              const newStartUs = Math.max(0, curr.timelineRange.startUs + deltaUs);
+              const qStartUs = quantizeTimeUsToFrames(newStartUs, fps, 'round');
+              if (qStartUs !== curr.timelineRange.startUs) {
                 nextClips[i] = {
                   ...curr,
                   timelineRange: { ...curr.timelineRange, startUs: qStartUs },

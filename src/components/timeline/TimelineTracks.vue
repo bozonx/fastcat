@@ -321,6 +321,11 @@ const showNegativeSpeedAudioWarning = computed(() => {
   return Number(speedModalSpeed.value) < 0 && speedModalTargetHasAudio.value;
 });
 
+const showLowSpeedWarning = computed(() => {
+  const s = Number(speedModalSpeed.value);
+  return Math.abs(s) > 0 && Math.abs(s) < 0.1;
+});
+
 function openSpeedModal(trackId: string, itemId: string, currentSpeed: unknown) {
   const base = typeof currentSpeed === 'number' && Number.isFinite(currentSpeed) ? currentSpeed : 1;
   speedModal.value = {
@@ -334,7 +339,7 @@ function openSpeedModal(trackId: string, itemId: string, currentSpeed: unknown) 
 async function saveSpeedModal() {
   if (!speedModal.value) return;
   const speed = Number(speedModal.value.speed);
-  if (!Number.isFinite(speed) || speed === 0) return;
+  if (!Number.isFinite(speed) || speed === 0 || Math.abs(speed) < 0.1) return;
   timelineStore.updateClipProperties(speedModal.value.trackId, speedModal.value.itemId, {
     speed: Math.max(-10, Math.min(10, speed)),
   });
@@ -421,6 +426,19 @@ function selectTransition(
             t(
               'granVideoEditor.timeline.negativeSpeedAudioUnsupportedDescription',
               'Audio will not be played for clips with negative speed. Extract the audio track from the video, reverse it separately, and then place the processed audio on the timeline. These functions are not available yet.',
+            )
+          "
+        />
+
+        <UAlert
+          v-if="showLowSpeedWarning"
+          color="warning"
+          variant="subtle"
+          :title="t('granVideoEditor.timeline.speedTooLowTitle', 'Speed is too low')"
+          :description="
+            t(
+              'granVideoEditor.timeline.speedTooLowDescription',
+              'Playback speed must be at least 0.1 or -0.1. A lower value will not be saved.',
             )
           "
         />
