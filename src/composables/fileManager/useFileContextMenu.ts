@@ -18,7 +18,8 @@ export type FileAction =
   | 'openAsProjectTab'
   | 'convertFile'
   | 'uploadRemote'
-  | 'transcribe';
+  | 'transcribe'
+  | 'extractAudio';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
@@ -275,6 +276,16 @@ export function useFileContextMenu(
           },
         ]);
       }
+    }
+
+    if (deps.isVideo(entry)) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+          icon: 'i-heroicons-musical-note',
+          onSelect: () => onAction('extractAudio', entry),
+        },
+      ]);
     }
 
     const isOtioFile = entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio');

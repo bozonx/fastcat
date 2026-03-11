@@ -48,6 +48,7 @@ import {
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFocusStore } from '~/stores/focus.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
@@ -85,6 +86,7 @@ const runtimeConfig = useRuntimeConfig();
 const toast = useToast();
 
 const fileConversion = useFileConversion();
+const { extractAudio } = useAudioExtraction();
 const {
   isModalOpen: conversionModalOpen,
   videoFormat: conversionVideoFormat,
@@ -475,6 +477,14 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
       onFileActionBase('deleteProxy', entry);
       return;
     }
+    if (action === 'extractAudio') {
+      for (const e of entry) {
+        if (e.kind === 'file') {
+          void extractAudio(e);
+        }
+      }
+      return;
+    }
     return;
   }
 
@@ -584,6 +594,10 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     onFileActionBase('deleteProxy', entry);
   } else if (action === 'upload') {
     onFileActionBase('upload', entry);
+  } else if (action === 'extractAudio') {
+    if (entry.kind === 'file') {
+      void extractAudio(entry);
+    }
   }
 }
 
