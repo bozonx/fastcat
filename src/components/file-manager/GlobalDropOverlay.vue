@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import GlobalDropOverlayTree from '~/components/file-manager/GlobalDropOverlayTree.vue';
 
 const props = defineProps<{
   rootEntries: FsEntry[];
