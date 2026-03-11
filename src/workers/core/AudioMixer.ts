@@ -16,12 +16,16 @@ export function interleavedToPlanar(params: {
   interleaved: Float32Array;
   frames: number;
   numberOfChannels: number;
+  planarOut?: Float32Array;
 }): Float32Array {
-  const { interleaved, frames, numberOfChannels } = params;
-  const planar = new Float32Array(frames * numberOfChannels);
-  for (let i = 0; i < frames; i += 1) {
-    for (let c = 0; c < numberOfChannels; c += 1) {
-      planar[c * frames + i] = interleaved[i * numberOfChannels + c] ?? 0;
+  const { interleaved, frames, numberOfChannels, planarOut } = params;
+  const planar = planarOut ?? new Float32Array(frames * numberOfChannels);
+  for (let c = 0; c < numberOfChannels; c += 1) {
+    const dstOffset = c * frames;
+    let srcOffset = c;
+    for (let i = 0; i < frames; i += 1) {
+      planar[dstOffset + i] = interleaved[srcOffset] ?? 0;
+      srcOffset += numberOfChannels;
     }
   }
   return planar;
@@ -545,6 +549,7 @@ export class AudioMixer {
     try {
       const maxFramesInChunk = Math.ceil(sampleRate * chunkDurationS);
       const mixedInterleavedPool = new Float32Array(maxFramesInChunk * numberOfChannels);
+      const planarOutPool = new Float32Array(maxFramesInChunk * numberOfChannels);
 
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
         ensureNotCancelled();
@@ -562,14 +567,16 @@ export class AudioMixer {
           await mixClipIntoChunk({ clip, chunkStartS, chunkEndS, framesInChunk, mixedInterleaved });
         }
 
+        const planarOut = planarOutPool.subarray(0, framesInChunk * numberOfChannels);
         const planar = interleavedToPlanar({
           interleaved: mixedInterleaved,
           frames: framesInChunk,
           numberOfChannels,
+          planarOut,
         });
 
         const audioSample = new AudioSample({
-          data: planar,
+          data: planar.slice(), // Slice to detach from pool
           format: 'f32-planar',
           numberOfChannels,
           sampleRate,
