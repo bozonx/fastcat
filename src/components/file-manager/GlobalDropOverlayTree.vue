@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
+import GlobalDropOverlayTree from '~/components/file-manager/GlobalDropOverlayTree.vue';
 
 const props = defineProps<{
   entries: FsEntry[];
