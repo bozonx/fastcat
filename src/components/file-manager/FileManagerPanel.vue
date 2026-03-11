@@ -67,7 +67,6 @@ const {
   vfs,
 } = fileManager;
 
-const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const sttTranscriptionModalOpen = ref(false);
 const sttTranscriptionLanguage = ref('');
@@ -516,43 +515,11 @@ watch(
 // Sync: refresh the tree when needed
 // (Removed watch on fileManagerUpdateCounter to prevent full tree reloads.
 // Tree updates reactively via rootEntries modification in reloadDirectory)
-
-function onDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('Files')) {
-    isDragging.value = true;
-    uiStore.isFileManagerDragging = true;
-  }
-}
-
-function onDragLeave(e: DragEvent) {
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  const relatedTarget = e.relatedTarget as Node | null;
-  if (!currentTarget?.contains(relatedTarget)) {
-    isDragging.value = false;
-    uiStore.isFileManagerDragging = false;
-  }
-}
-
-function onDrop(e: DragEvent) {
-  isDragging.value = false;
-  uiStore.isFileManagerDragging = false;
-  uiStore.isGlobalDragging = false;
-
-  if (e.dataTransfer?.files) {
-    handleFiles(e.dataTransfer.files);
-  }
-}
 </script>
 
 <template>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
-    :class="{
-      'bg-ui-bg-accent outline-2 outline-primary-500/50 -outline-offset-2 z-10': isDragging,
-    }"
-    @dragover.prevent="onDragOver"
-    @dragleave.prevent="onDragLeave"
-    @drop.prevent="onDrop"
   >
     <!-- Hidden inputs -->
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
@@ -664,7 +631,7 @@ function onDrop(e: DragEvent) {
         :editing-entry-path="editingEntryPath"
         :folders-only="foldersOnly"
         :is-files-page="isFilesPage"
-        :is-dragging="isDragging"
+        :is-dragging="false"
         :is-loading="isLoading"
         :is-api-supported="isApiSupported"
         :root-entries="rootEntries"
@@ -783,19 +750,5 @@ function onDrop(e: DragEvent) {
       </template>
     </AppModal>
 
-    <!-- Global Drag Highlight -->
-    <div
-      v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
-      class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary-500/10 border-4 border-dashed border-primary-500/50 m-2 rounded-2xl pointer-events-none transition-all duration-300"
-    >
-      <div
-        class="flex flex-col items-center bg-ui-bg-elevated/90 px-6 py-4 rounded-xl border border-primary-500/30 shadow-xl"
-      >
-        <UIcon name="i-heroicons-folder-arrow-down" class="w-10 h-10 text-primary-400 mb-2" />
-        <p class="text-sm font-bold text-primary-400 text-center uppercase tracking-wider">
-          {{ t('videoEditor.fileManager.actions.dropZone', 'Move to folder') }}
-        </p>
-      </div>
-    </div>
   </div>
 </template>

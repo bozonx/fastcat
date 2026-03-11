@@ -32,14 +32,45 @@ export function useGlobalDragAndDrop() {
     }
   }
 
+  /**
+   * Handles auto-sorted file drop (no specific folder target).
+   * The overlay intercepts drops to specific folders via events.
+   */
+  async function handleAutoFileDrop(files: File[]) {
+    if (isDropInProgress.value) return;
+    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+
+    isDropInProgress.value = true;
+    try {
+      await fm.handleFiles(files);
+    } finally {
+      isDropInProgress.value = false;
+    }
+  }
+
+  /**
+   * Handles file drop to specific folder.
+   */
+  async function handleFolderFileDrop(files: File[], targetDirPath: string) {
+    if (isDropInProgress.value) return;
+    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+
+    isDropInProgress.value = true;
+    try {
+      await fm.handleFiles(files, targetDirPath);
+    } finally {
+      isDropInProgress.value = false;
+    }
+  }
+
   async function onGlobalDrop(e: DragEvent) {
+    // The overlay handles drops via its own events, so the global drop
+    // is only for fallback when overlay is not shown
     if (isDropInProgress.value) return;
     isDropInProgress.value = true;
 
     try {
       uiStore.isGlobalDragging = false;
-
-      if (uiStore.isFileManagerDragging) return;
 
       const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
       if (files.length === 0) return;
@@ -67,29 +98,20 @@ export function useGlobalDragAndDrop() {
             uiStore.isGlobalDragging = false;
 
             if (isDropInProgress.value) return;
-            if (uiStore.isFileManagerDragging) return;
             if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
             isDropInProgress.value = true;
             try {
-              // Extract the file paths from the event payload
               const paths = event.payload.paths || [];
               if (paths.length === 0) return;
 
-              // Map native paths to File objects that handleFiles expects
-              // In Tauri, we might need a different method to process native paths
-              // Let's use the vfs getFile or the Tauri core fs plugin
               const files: File[] = [];
 
-              // We'll pass the paths to a handler. Wait, fm.handleFiles takes FileList | File[].
-              // We can convert paths to File objects using tauri plugin fs readFile or similar?
-              // Wait, in Tauri we can use our VFS `getFile` method with the absolute path
               for (const path of paths) {
                 const file = await fm.vfs.getFile(path);
                 if (file) {
                   files.push(file);
                 } else {
-                  // Fallback for getting file from native path
                   const { readFile, stat } = await import('@tauri-apps/plugin-fs');
                   const metadata = await stat(path);
                   const bytes = await readFile(path);
@@ -130,5 +152,7 @@ export function useGlobalDragAndDrop() {
     onGlobalDragOver,
     onGlobalDragLeave,
     onGlobalDrop,
+    handleAutoFileDrop,
+    handleFolderFileDrop,
   };
 }

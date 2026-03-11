@@ -3,6 +3,7 @@ import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 export interface HandleFilesDeps {
   vfs: IFileSystemAdapter;
@@ -46,7 +47,8 @@ export async function handleFilesCommand(
 
       await deps.vfs.writeFile(targetPath, file);
 
-      if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+      const mediaType = getMediaTypeFromFilename(file.name);
+      if (mediaType === 'video' || mediaType === 'audio') {
         deps.onMediaImported({ projectRelativePath: targetPath, file });
       }
     }),
@@ -56,14 +58,20 @@ export async function handleFilesCommand(
 }
 
 export async function resolveDefaultTargetDir(params: { file: File }): Promise<string | null> {
-  if (params.file.name.endsWith('.otio')) return null;
+  const mediaType = getMediaTypeFromFilename(params.file.name);
 
-  let targetDirName = FILES_DIR_NAME;
-  if (params.file.type.startsWith('audio/')) targetDirName = AUDIO_DIR_NAME;
-  else if (params.file.type.startsWith('image/')) targetDirName = IMAGES_DIR_NAME;
-  else if (params.file.type.startsWith('video/')) targetDirName = VIDEO_DIR_NAME;
+  if (mediaType === 'timeline') return null;
 
-  return targetDirName;
+  switch (mediaType) {
+    case 'audio':
+      return AUDIO_DIR_NAME;
+    case 'image':
+      return IMAGES_DIR_NAME;
+    case 'video':
+      return VIDEO_DIR_NAME;
+    default:
+      return FILES_DIR_NAME;
+  }
 }
 
 export async function createFolderCommand(params: {

@@ -156,7 +156,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!types) return;
     if (types.includes('Files') || types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) {
       isDragOverPanel.value = true;
-      uiStore.isFileManagerDragging = true;
       e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
     }
   }
@@ -165,14 +164,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const currentTarget = e.currentTarget as HTMLElement | null;
     if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
       isDragOverPanel.value = false;
-      uiStore.isFileManagerDragging = false;
     }
   }
 
   async function onPanelDrop(e: DragEvent) {
     isDragOverPanel.value = false;
-    uiStore.isFileManagerDragging = false;
-    uiStore.isGlobalDragging = false;
 
     const targetFolder = filesPageStore.selectedFolder;
     const targetPath = targetFolder?.path ?? '';

@@ -296,6 +296,16 @@
         "downloadFiles": "Download files",
         "uploadRemote": "Upload from URL"
       },
+      "dropOverlay": {
+        "autoTitle": "Auto-sort upload",
+        "autoDescription": "Drop files here or anywhere outside the folder tree. Files will be automatically sorted by type:",
+        "autoVideo": "Video → _video",
+        "autoImages": "Images → _images",
+        "autoAudio": "Audio → _audio",
+        "autoFiles": "Other files → _files",
+        "folderTitle": "Upload to folder",
+        "folderDescription": "Drop files on a specific folder to upload there"
+      },
       "projectRoot": {
         "title": "Project root",
         "project": "Project",

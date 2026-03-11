@@ -24,7 +24,9 @@ import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -34,7 +36,8 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const route = useRoute();
 
-const { onGlobalDragOver, onGlobalDragLeave, onGlobalDrop } = useGlobalDragAndDrop();
+const { onGlobalDragOver, onGlobalDragLeave, onGlobalDrop, handleAutoFileDrop, handleFolderFileDrop } = useGlobalDragAndDrop();
+const fileManager = useFileManager();
 
 const isEditorSettingsOpen = ref(false);
 const isProjectSettingsOpen = ref(false);
@@ -92,6 +95,16 @@ onMounted(async () => {
     isStartingUp.value = false;
   }
 });
+
+function onOverlayAutoSort(files: File[]) {
+  uiStore.isGlobalDragging = false;
+  handleAutoFileDrop(files);
+}
+
+function onOverlayFolderDrop(files: File[], targetDirPath: string) {
+  uiStore.isGlobalDragging = false;
+  handleFolderFileDrop(files, targetDirPath);
+}
 
 useHead({
   title: t('navigation.granVideoEditor'),
@@ -165,43 +178,13 @@ useHead({
         @cancel="fileConversion.cancelConversion"
       />
 
-      <!-- Drag Overlay Hint -->
-      <div
-        v-if="uiStore.isGlobalDragging && !uiStore.isFileManagerDragging"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity pointer-events-none"
-      >
-        <div
-          class="flex flex-col items-center justify-center p-12 bg-ui-bg-elevated/90 border border-primary-500/50 rounded-3xl shadow-2xl animate-pulse-slow"
-        >
-          <UIcon name="i-heroicons-arrow-down-tray" class="w-20 h-20 text-primary-500 mb-6" />
-          <h2 class="text-3xl font-bold text-white mb-2 text-center">
-            {{ t('videoEditor.fileManager.actions.dropFilesHere', 'Drop files here') }}
-          </h2>
-          <div class="space-y-4 text-center max-w-md">
-            <p class="text-lg text-ui-text-muted">
-              {{
-                t(
-                  'videoEditor.fileManager.actions.dropFilesGlobalDescription',
-                  'Release files to automatically save them to the project sources folder',
-                )
-              }}
-            </p>
-            <div
-              class="flex items-center justify-center gap-2 py-2 px-4 bg-primary-500/10 rounded-xl border border-primary-400/20"
-            >
-              <UIcon name="i-heroicons-folder" class="w-5 h-5 text-primary-400" />
-              <p class="text-sm font-medium text-primary-400">
-                {{
-                  t(
-                    'videoEditor.fileManager.actions.dropToFolderHint',
-                    'Drag to the File Manager on the left to upload to a specific folder',
-                  )
-                }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Global Drop Overlay -->
+      <GlobalDropOverlay
+        v-if="uiStore.isGlobalDragging && projectStore.currentProjectName && route.path !== '/'"
+        :root-entries="fileManager.rootEntries.value"
+        @drop-to-auto="onOverlayAutoSort"
+        @drop-to-folder="onOverlayFolderDrop"
+      />
     </div>
   </div>
 </template>
