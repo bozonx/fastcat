@@ -2,11 +2,8 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useUiStore } from '~/stores/ui.store';
 
-const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const uiStore = useUiStore();
 
 const { selectedItemIds, timelineZoom } = storeToRefs(timelineStore);
 
@@ -42,73 +39,68 @@ function handleZoomOut() {
 </script>
 
 <template>
-  <div class="flex items-center justify-between px-2 py-1.5 bg-ui-bg-elevated border-b border-ui-border overflow-x-auto no-scrollbar gap-1 shadow-sm">
-    <div class="flex items-center gap-1">
-      <UTooltip :text="t('videoEditor.hotkeys.general.undo')">
+  <div class="flex items-center justify-between gap-2 overflow-x-auto border-b border-ui-border bg-ui-bg-elevated px-2 py-2 shadow-sm no-scrollbar">
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
         <UButton
           icon="lucide:undo"
           variant="ghost"
           color="neutral"
           size="sm"
+          aria-label="Undo"
           @click="handleUndo"
         />
-      </UTooltip>
-      <UTooltip :text="t('videoEditor.hotkeys.general.redo')">
         <UButton
           icon="lucide:redo"
           variant="ghost"
           color="neutral"
           size="sm"
+          aria-label="Redo"
           @click="handleRedo"
         />
-      </UTooltip>
-    </div>
+      </div>
 
-    <div class="h-6 w-px bg-ui-border mx-1 shrink-0" />
-
-    <div class="flex items-center gap-1">
-      <UTooltip :text="t('videoEditor.hotkeys.timeline.splitAtPlayhead')">
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
         <UButton
           icon="i-lucide-scissors"
           variant="ghost"
           color="neutral"
           size="sm"
+          aria-label="Split"
           @click="handleSplit"
         />
-      </UTooltip>
-      <UTooltip :text="t('videoEditor.hotkeys.general.delete')">
         <UButton
           icon="lucide:trash-2"
           variant="ghost"
           color="neutral"
           size="sm"
+          aria-label="Delete selection"
           :disabled="!hasSelection"
           @click="handleDelete"
         />
-      </UTooltip>
+      </div>
     </div>
 
-    <div class="h-6 w-px bg-ui-border mx-1 shrink-0" />
-
-    <div class="flex items-center gap-1">
-      <UTooltip :text="t('videoEditor.hotkeys.general.zoomOut')">
+    <div class="flex items-center gap-2">
+      <span class="text-[11px] font-medium tabular-nums text-ui-text-muted">{{ timelineZoom }}%</span>
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
         <UButton
           icon="lucide:zoom-out"
           variant="ghost"
           color="neutral"
           size="sm"
+          aria-label="Zoom out"
           @click="handleZoomOut"
         />
-      </UTooltip>
-      <UTooltip :text="t('videoEditor.hotkeys.general.zoomIn')">
         <UButton
           icon="lucide:zoom-in"
           variant="ghost"
           color="neutral"
           size="sm"
+          aria-label="Zoom in"
           @click="handleZoomIn"
         />
-      </UTooltip>
+      </div>
     </div>
   </div>
 </template>

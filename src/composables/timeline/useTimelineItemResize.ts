@@ -21,6 +21,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
   let activePointerMove: ((e: PointerEvent) => void) | null = null;
   let activePointerUp: ((e?: PointerEvent) => void) | null = null;
+  let activeKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
   function clearActivePointerListeners() {
     if (activePointerMove) {
@@ -30,6 +31,10 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     if (activePointerUp) {
       window.removeEventListener('pointerup', activePointerUp as any);
       activePointerUp = null;
+    }
+    if (activeKeyDown) {
+      window.removeEventListener('keydown', activeKeyDown);
+      activeKeyDown = null;
     }
   }
 
@@ -98,10 +103,22 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       clearActivePointerListeners();
     }
 
+    function onKeyDown(ev: KeyboardEvent) {
+      if (ev.key === 'Escape' && resizeVolume.value) {
+        timelineStore.updateClipProperties(trackId, itemId, {
+          audioGain: resizeVolume.value.startGain,
+        });
+        resizeVolume.value = null;
+        clearActivePointerListeners();
+      }
+    }
+
     activePointerMove = onPointerMove;
     activePointerUp = onPointerUp;
+    activeKeyDown = onKeyDown;
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
   }
 
   function startResizeFade(
@@ -161,10 +178,23 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       clearActivePointerListeners();
     }
 
+    function onKeyDown(ev: KeyboardEvent) {
+      if (ev.key === 'Escape' && resizeFade.value) {
+        const propName = edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+        timelineStore.updateClipProperties(trackId, itemId, {
+          [propName]: resizeFade.value.startFadeUs,
+        });
+        resizeFade.value = null;
+        clearActivePointerListeners();
+      }
+    }
+
     activePointerMove = onPointerMove;
     activePointerUp = onPointerUp;
+    activeKeyDown = onKeyDown;
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
   }
 
   function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
@@ -412,10 +442,30 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       clearActivePointerListeners();
     }
 
+    function onKeyDown(ev: KeyboardEvent) {
+      if (ev.key === 'Escape' && resizeTransition.value) {
+        const tracks = tracksRef();
+        const track = tracks.find((t) => t.id === trackId);
+        const item = track?.items.find((i) => i.id === itemId);
+        if (item && item.kind === 'clip') {
+          const current = edge === 'in' ? item.transitionIn : item.transitionOut;
+          if (current) {
+            timelineStore.updateClipTransition(trackId, itemId, {
+              [edge === 'in' ? 'transitionIn' : 'transitionOut']: { ...current, durationUs: resizeTransition.value.startDurationUs }
+            });
+          }
+        }
+        resizeTransition.value = null;
+        clearActivePointerListeners();
+      }
+    }
+
     activePointerMove = onPointerMove;
     activePointerUp = onPointerUp;
+    activeKeyDown = onKeyDown;
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
   }
 
   onBeforeUnmount(() => {

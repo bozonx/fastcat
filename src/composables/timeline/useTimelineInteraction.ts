@@ -493,7 +493,7 @@ export function useTimelineInteraction(
 
             draggingTrackId.value = targetTrackId;
             hasPendingTimelinePersist.value = true;
-          } catch {}
+          } catch (err) { console.warn('Timeline interaction error:', err); }
         }
 
         return;
@@ -525,7 +525,7 @@ export function useTimelineInteraction(
         lastDragAppliedCmd.value = cmd as any;
         draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
-      } catch {}
+      } catch (err) { console.warn('Timeline interaction error:', err); }
       return;
     }
 
@@ -585,7 +585,8 @@ export function useTimelineInteraction(
       timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
       lastDragAppliedCmd.value = cmd as any;
       hasPendingTimelinePersist.value = true;
-    } catch {
+    } catch (err) {
+      console.warn('Timeline trim error:', err);
       // Keep last applied quantized delta unchanged on failure? We intentionally keep it,
       // so the user can continue dragging and we only apply deltas when possible.
     }
@@ -632,7 +633,8 @@ export function useTimelineInteraction(
     if (e) {
       try {
         (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
-      } catch {
+      } catch (err) {
+        console.warn('Timeline interaction error:', err);
         // ignore
       }
     }
@@ -687,7 +689,7 @@ export function useTimelineInteraction(
                   },
                 );
                 hasPendingTimelinePersist.value = true;
-              } catch {}
+              } catch (err) { console.warn('Timeline interaction error:', err); }
             }
           }
         }
@@ -721,7 +723,7 @@ export function useTimelineInteraction(
                 skipHistory: true,
               });
               hasPendingTimelinePersist.value = true;
-            } catch {}
+            } catch (err) { console.warn('Timeline interaction error:', err); }
           }
         }
       }
@@ -749,7 +751,7 @@ export function useTimelineInteraction(
             timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
             lastDragAppliedCmd.value = cmd as any;
             hasPendingTimelinePersist.value = true;
-          } catch {}
+          } catch (err) { console.warn('Timeline interaction error:', err); }
         }
       }
     }

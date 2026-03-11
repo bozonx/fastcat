@@ -106,6 +106,16 @@ function handleEntryClick(entry: FsEntry) {
   }
 }
 
+async function handleEntryPrimaryAction(entry: FsEntry) {
+  if (entry.kind === 'directory') {
+    filesPageStore.openFolder(entry);
+    return;
+  }
+
+  filesPageStore.selectFile(entry);
+  await handleAddToProject();
+}
+
 async function goBack() {
   const folder = filesPageStore.selectedFolder;
   if (!folder || !folder.path) return;
@@ -142,6 +152,17 @@ function getStatusColor(entry: FsEntry) {
   if (entry.path && mediaCache.hasProxy(entry.path)) return 'text-green-500';
   return '';
 }
+
+const selectedFile = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file') return null;
+  return entity;
+});
+
+const selectedFileTypeLabel = computed(() => {
+  if (!selectedFile.value) return '';
+  return getMediaTypeFromFilename(selectedFile.value.name);
+});
 
 async function handleAddToProject() {
   const entity = selectionStore.selectedEntity;
@@ -229,7 +250,7 @@ onMounted(() => {
 <template>
   <div class="flex flex-col h-full bg-slate-950 text-slate-200">
     <!-- Навигация (Breadcrumbs/Back) -->
-    <div class="flex items-center gap-2 px-2 py-2 border-b border-slate-800 bg-slate-900/50">
+    <div class="flex items-center gap-2 border-b border-slate-800 bg-slate-900/50 px-3 py-2.5">
       <UButton
         v-if="filesPageStore.selectedFolder?.path"
         icon="lucide:chevron-left"
@@ -251,7 +272,7 @@ onMounted(() => {
 
     <!-- Список файлов -->
     <div class="flex-1 overflow-y-auto min-h-0">
-      <div v-if="isLoading" class="flex items-center justify-center h-32">
+      <div v-if="isLoading" class="flex h-32 items-center justify-center">
         <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-blue-500" />
       </div>
 
@@ -263,90 +284,98 @@ onMounted(() => {
         <p class="text-sm">Empty folder</p>
       </div>
 
-      <div v-else class="divide-y divide-slate-900">
-        <button
+      <div v-else class="divide-y divide-slate-900/70 px-2 py-2">
+        <div
           v-for="entry in entries"
           :key="entry.path"
-          class="w-full flex items-center gap-3 px-4 py-3 active:bg-slate-900 transition-colors text-left"
-          :class="{ 'bg-blue-600/10 ring-1 ring-blue-500/30 inset': isSelected(entry) }"
-          @click="handleEntryClick(entry)"
+          class="overflow-hidden rounded-2xl"
         >
-          <!-- Иконка / Превью -->
-          <div
-            class="w-10 h-10 rounded bg-slate-900 flex items-center justify-center shrink-0 overflow-hidden relative"
+          <button
+            class="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors active:bg-slate-900"
+            :class="{ 'bg-blue-600/10 ring-1 ring-blue-500/30 inset': isSelected(entry) }"
+            @click="handleEntryClick(entry)"
           >
-            <Icon
-              :name="getFileIcon(entry)"
-              class="w-6 h-6"
-              :class="[
-                isWorkspaceCommonRoot(entry)
-                  ? 'text-violet-400'
-                  : entry.kind === 'directory'
-                    ? 'text-slate-400'
-                    : 'text-slate-400',
-                getStatusColor(entry),
-              ]"
-            />
-
-            <!-- Индикатор процесса прокси -->
             <div
-              v-if="entry.path && proxyStore.generatingProxies.has(entry.path)"
-              class="absolute inset-0 bg-black/40 flex items-center justify-center"
+              class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900"
             >
+              <Icon
+                :name="getFileIcon(entry)"
+                class="w-6 h-6"
+                :class="[
+                  isWorkspaceCommonRoot(entry)
+                    ? 'text-violet-400'
+                    : entry.kind === 'directory'
+                      ? 'text-slate-400'
+                      : 'text-slate-400',
+                  getStatusColor(entry),
+                ]"
+              />
+
               <div
-                class="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Информация -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-medium text-sm truncate" :class="getStatusColor(entry)">
-                {{ entry.name }}
-              </span>
-              <span v-if="entry.kind === 'file'" class="text-[10px] text-slate-500 tabular-nums">
-                {{ formatBytes((entry as any).size || 0) }}
-              </span>
-            </div>
-            <div class="text-[10px] text-slate-500 flex items-center gap-2">
-              <span>{{
-                entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name)
-              }}</span>
-              <span v-if="entry.lastModified"
-                >• {{ new Date(entry.lastModified).toLocaleDateString() }}</span
+                v-if="entry.path && proxyStore.generatingProxies.has(entry.path)"
+                class="absolute inset-0 flex items-center justify-center bg-black/40"
               >
+                <div
+                  class="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"
+                ></div>
+              </div>
             </div>
-          </div>
 
-          <Icon
-            v-if="entry.kind === 'directory'"
-            name="lucide:chevron-right"
-            class="w-4 h-4 text-slate-700"
-          />
-        </button>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <span class="truncate text-sm font-medium" :class="getStatusColor(entry)">
+                  {{ entry.name }}
+                </span>
+                <span v-if="entry.kind === 'file'" class="text-[10px] tabular-nums text-slate-500">
+                  {{ formatBytes((entry as any).size || 0) }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-slate-500">
+                <span>{{ entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name) }}</span>
+                <span v-if="entry.lastModified">• {{ new Date(entry.lastModified).toLocaleDateString() }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <UButton
+                v-if="entry.kind === 'file'"
+                size="xs"
+                color="primary"
+                variant="soft"
+                icon="lucide:plus"
+                aria-label="Add file to project"
+                @click.stop="handleEntryPrimaryAction(entry)"
+              />
+              <Icon
+                v-if="entry.kind === 'directory'"
+                name="lucide:chevron-right"
+                class="h-4 w-4 text-slate-700"
+              />
+            </div>
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Инфо-панель (только если что-то выбрано) -->
     <div
-      v-if="
-        selectionStore.selectedEntity?.source === 'fileManager' &&
-        selectionStore.selectedEntity.kind === 'file'
-      "
-      class="bg-slate-900 p-3 border-t border-slate-800 animate-in slide-in-from-bottom-5"
+      v-if="selectedFile"
+      class="border-t border-slate-800 bg-slate-900 p-3 animate-in slide-in-from-bottom-5"
     >
       <div class="flex items-center justify-between gap-4">
         <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold truncate">{{ selectionStore.selectedEntity.name }}</p>
-          <p class="text-[10px] text-slate-500">File selected</p>
+          <p class="truncate text-xs font-semibold">{{ selectedFile.name }}</p>
+          <p class="text-[10px] text-slate-500">
+            {{ selectedFileTypeLabel }}
+            <span v-if="selectedFile.path">• ready to add at playhead</span>
+          </p>
         </div>
         <div class="flex gap-2">
           <UButton
             size="xs"
             color="primary"
             icon="lucide:plus"
-            label="Add to project"
+            label="Add"
             @click="handleAddToProject"
           />
         </div>
