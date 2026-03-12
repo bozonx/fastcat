@@ -17,6 +17,7 @@ const props = withDefaults(
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { required: true });
 const audioSampleRate = defineModel<number>('audioSampleRate', { required: true });
+const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 
 const { t } = useI18n();
 
@@ -81,6 +82,15 @@ const sampleRateOptions = computed(() => {
           label-key="label"
         />
       </div>
+    </div>
+    <div class="flex items-center justify-between">
+      <label class="text-xs text-ui-text-muted font-medium cursor-pointer" @click="!props.disabled && (audioReverse = !audioReverse)">
+        {{ t('videoEditor.audio.reverse', 'Reverse audio') }}
+      </label>
+      <USwitch
+        v-model="audioReverse"
+        :disabled="props.disabled"
+      />
     </div>
   </div>
 </template>
