@@ -105,7 +105,7 @@ export class AudioEngine {
   }
 
   private extractPeaksInWorker(
-    arrayBuffer: ArrayBuffer,
+    blob: Blob,
     sourceKey: string,
     options?: { maxLength?: number; precision?: number },
   ) {
@@ -113,8 +113,8 @@ export class AudioEngine {
     return new Promise<DecodeResponse['result']>((resolve, reject) => {
       const id = ++this.decodeCallId;
       this.decodePending.set(id, { resolve, reject });
-      const req: DecodeRequest = { type: 'extract-peaks', id, sourceKey, arrayBuffer, options };
-      worker.postMessage(req, [arrayBuffer]);
+      const req: DecodeRequest = { type: 'extract-peaks', id, sourceKey, blob, options };
+      worker.postMessage(req);
     });
   }
 
@@ -150,9 +150,8 @@ export class AudioEngine {
     const task = this.withDecodeSlot(async () => {
       try {
         const file = await fileHandle.getFile();
-        const arrayBuffer = await file.arrayBuffer();
 
-        const decoded = await this.extractPeaksInWorker(arrayBuffer, sourceKey, options);
+        const decoded = await this.extractPeaksInWorker(file, sourceKey, options);
         if (!decoded || !decoded.peaks) {
           console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`);
           return null;

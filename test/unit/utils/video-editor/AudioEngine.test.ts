@@ -7,10 +7,11 @@ interface WorkerMessageEvent<T> {
 }
 
 interface DecodeRequest {
-  type: 'decode';
+  type: 'decode' | 'extract-peaks';
   id: number;
   sourceKey: string;
-  arrayBuffer: ArrayBuffer;
+  arrayBuffer?: ArrayBuffer;
+  blob?: Blob;
 }
 
 interface DecodeResponse {
