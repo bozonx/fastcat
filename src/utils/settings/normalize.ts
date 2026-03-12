@@ -407,6 +407,11 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         Number(projectInputRec.audioDeclickDurationUs) >= 0
           ? Number(projectInputRec.audioDeclickDurationUs)
           : DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
+      defaultAudioFadeCurve:
+        projectInputRec.defaultAudioFadeCurve === 'linear' ||
+        projectInputRec.defaultAudioFadeCurve === 'logarithmic'
+          ? projectInputRec.defaultAudioFadeCurve
+          : DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
     },
     exportDefaults: {
       encoding: {

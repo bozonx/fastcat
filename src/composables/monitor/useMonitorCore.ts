@@ -255,6 +255,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           const builtVideo = await buildVideoWorkerPayloadFromTracks({
             tracks: timelineStore.timelineDoc?.tracks ?? [],
             projectStore: projectStore as any,
+            workspaceStore: workspaceStore as any,
             masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
           });
           const flattenedClips = builtVideo.clips;
@@ -461,6 +462,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: timelineStore.timelineDoc?.tracks ?? [],
         projectStore: projectStore as any,
+        workspaceStore: workspaceStore as any,
         masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
       });
       const flattenedClips = builtVideo.clips;
