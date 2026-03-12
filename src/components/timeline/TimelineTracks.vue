@@ -159,6 +159,7 @@ function selectTransition(
     <div
       v-for="track in tracks"
       :key="track.id"
+      :data-track-id="track.id"
       class="flex items-center px-2 relative transition-colors border-b border-ui-border"
       :class="[
         timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : '',

@@ -130,6 +130,8 @@ export interface PreparedClip {
   input: MediabunnyInput;
   sink: MediabunnyAudioSampleSink;
   sourcePath: string;
+  speed: number;
+  reversed: boolean;
   audioGain: number;
   audioBalance: number;
   audioFadeInS: number;
@@ -170,6 +172,7 @@ interface AudioClipData {
   durationUs?: number;
   sourceStartUs?: number;
   sourceDurationUs?: number;
+  speed?: number;
   audioGain?: number;
   audioBalance?: number;
   audioFadeInUs?: number;
@@ -314,11 +317,17 @@ export class AudioMixer {
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
+      const speedRaw = Number((clipData as any).speed);
+      const speed =
+        Number.isFinite(speedRaw) && speedRaw !== 0
+          ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
+          : 1;
+      const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
       const clipDurationS = Math.max(
         0,
         Math.min(
-          usToS(Number(sourceDurationUs)),
-          usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)),
+          usToS(Number(sourceDurationUs)) / speed,
+          usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)) / speed,
         ),
       );
       if (clipDurationS <= 0) continue;
@@ -350,7 +359,7 @@ export class AudioMixer {
           (Number.isFinite(trackDurationS) ? Number(trackDurationS) : Number.POSITIVE_INFINITY) -
             offsetS,
         );
-        const playDurationS = Math.min(clipDurationS, maxPlayableS);
+        const playDurationS = Math.min(clipDurationS, maxPlayableS / speed);
         if (playDurationS <= 0) {
           safeDispose(sink);
           safeDispose(input);
@@ -364,6 +373,8 @@ export class AudioMixer {
           input,
           sink,
           sourcePath,
+          speed,
+          reversed,
           audioGain,
           audioBalance,
           audioFadeInS,
@@ -445,8 +456,14 @@ export class AudioMixer {
 
       const clipLocalStartS = overlapStartS - clipGlobalStartS;
       const clipLocalEndS = overlapEndS - clipGlobalStartS;
-      const sinkStartS = clip.offsetS + clipLocalStartS;
-      const sinkEndS = clip.offsetS + clipLocalEndS;
+      const sourceWindowStartS = clip.reversed
+        ? clip.offsetS + (clip.playDurationS - clipLocalEndS) * clip.speed
+        : clip.offsetS + clipLocalStartS * clip.speed;
+      const sourceWindowEndS = clip.reversed
+        ? clip.offsetS + (clip.playDurationS - clipLocalStartS) * clip.speed
+        : clip.offsetS + clipLocalEndS * clip.speed;
+      const sinkStartS = Math.max(0, Math.min(sourceWindowStartS, sourceWindowEndS));
+      const sinkEndS = Math.max(sinkStartS, Math.max(sourceWindowStartS, sourceWindowEndS));
 
       try {
         for await (const sampleRaw of clip.sink.samples(sinkStartS, sinkEndS)) {
@@ -466,7 +483,12 @@ export class AudioMixer {
               continue;
             }
 
-            const timelineTimeS = clip.clipStartS + (Number(sample.timestamp) - clip.offsetS);
+            const sampleSourceOffsetS = Number(sample.timestamp) - clip.offsetS;
+            const timelineTimeS = clip.reversed
+              ? clip.clipStartS +
+                clip.playDurationS -
+                (sampleSourceOffsetS + frames / sr) / clip.speed
+              : clip.clipStartS + sampleSourceOffsetS / clip.speed;
             if (!Number.isFinite(timelineTimeS)) continue;
 
             const startFrameGlobal = Math.floor(timelineTimeS * sampleRate);
@@ -482,6 +504,9 @@ export class AudioMixer {
               });
               const plane = new Float32Array(bytesNeeded / 4);
               sample.copyTo(plane, { format: 'f32-planar', planeIndex });
+              if (clip.reversed) {
+                plane.reverse();
+              }
               sourcePlanes.push(plane);
             }
 

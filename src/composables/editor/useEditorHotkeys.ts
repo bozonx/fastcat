@@ -2,6 +2,7 @@ import { onMounted, onUnmounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -15,6 +16,7 @@ export function useEditorHotkeys() {
   const workspaceStore = useWorkspaceStore();
   const focusStore = useFocusStore();
   const projectStore = useProjectStore();
+  const timelineStore = useTimelineStore();
 
   const volumeHoldRunner = createHotkeyHoldRunner();
   const zoomHoldRunner = createHotkeyHoldRunner();
@@ -43,9 +45,18 @@ export function useEditorHotkeys() {
     return projectStore.currentView === 'cut' || projectStore.currentView === 'sound';
   }
 
-  async function onGlobalKeydown(e: KeyboardEvent) {
+  function onGlobalKeydown(e: KeyboardEvent) {
     if (e.defaultPrevented) return;
     if (e.repeat) return;
+
+    if (e.key === 'Escape') {
+      if (timelineStore.isTrimModeActive) {
+        timelineStore.isTrimModeActive = false;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
 
     if (hasBlockingModalState() && e.key !== 'Escape') return;
 

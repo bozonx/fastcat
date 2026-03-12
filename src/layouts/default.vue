@@ -65,6 +65,7 @@ const {
   audioOnlyBitrateKbps: conversionAudioOnlyBitrateKbps,
   audioChannels: conversionAudioChannels,
   audioSampleRate: conversionAudioSampleRate,
+  audioReverse: conversionAudioReverse,
   imageQuality: conversionImageQuality,
   imageWidth: conversionImageWidth,
   imageHeight: conversionImageHeight,
@@ -168,6 +169,7 @@ useHead({
         v-model:audio-only-bitrate-kbps="conversionAudioOnlyBitrateKbps"
         v-model:audio-channels="conversionAudioChannels"
         v-model:audio-sample-rate="conversionAudioSampleRate"
+        v-model:audio-reverse="conversionAudioReverse"
         v-model:image-quality="conversionImageQuality"
         v-model:image-width="conversionImageWidth"
         v-model:image-height="conversionImageHeight"

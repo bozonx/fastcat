@@ -60,6 +60,7 @@ const audioOnlyCodec = defineModel<'opus' | 'aac'>('audioOnlyCodec', { default: 
 const audioOnlyBitrateKbps = defineModel<number>('audioOnlyBitrateKbps', { default: 128 });
 const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
 const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
+const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 
 // Image Settings
 const imageQuality = defineModel<number>('imageQuality', { default: 80 });
@@ -290,6 +291,7 @@ const modalTitle = computed(() => {
             v-model:audio-bitrate-kbps="audioOnlyBitrateKbps"
             v-model:audio-channels="audioChannels"
             v-model:audio-sample-rate="audioSampleRate"
+            v-model:audio-reverse="audioReverse"
             :original-sample-rate="props.originalAudioSampleRate"
             :allow-original-sample-rate="true"
             :disabled="isConverting"

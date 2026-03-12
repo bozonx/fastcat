@@ -100,9 +100,15 @@ const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = us
 );
 
 const { handleZoomWheel } = useTimelineZoom({ scrollEl });
-const { dragPreview, handleFileDrop, handleLibraryDrop, getDropPosition } = useTimelineDropHandling(
-  { scrollEl },
-);
+const {
+  dragPreview,
+  clearDragPreview,
+  handleFileDrop,
+  handleLibraryDrop,
+  getDropPosition,
+  onTrackDragOver,
+  onTrackDragLeave,
+} = useTimelineDropHandling({ scrollEl });
 
 const {
   draggingMode,
@@ -151,6 +157,22 @@ function onTimelineClick(e: MouseEvent) {
   }
 }
 
+function onGlobalTimelineClick(e: MouseEvent) {
+  if (!timelineStore.isTrimModeActive) return;
+  const target = e.target as HTMLElement;
+  if (!target?.closest('.timeline-scroll-el') && !target?.closest('[data-clip-id]')) {
+    timelineStore.isTrimModeActive = false;
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('click', onGlobalTimelineClick, { capture: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', onGlobalTimelineClick, { capture: true });
+});
+
 function onTimelineWheel(e: WheelEvent) {
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const isCtrl = e.ctrlKey || e.metaKey;
@@ -198,6 +220,8 @@ const onDrop = async (e: DragEvent, trackId: string) => {
   const startUs = getDropPosition(e);
   if (startUs === null) return;
 
+  const pseudo = isLayer1Active(e as unknown as MouseEvent, workspaceStore.userSettings);
+
   const libraryItemData =
     e.dataTransfer?.getData('gran-item') || e.dataTransfer?.getData('application/json');
   if (libraryItemData) {
@@ -205,7 +229,7 @@ const onDrop = async (e: DragEvent, trackId: string) => {
       const parsed = JSON.parse(libraryItemData);
       // Only handle if it's our known internal drag objects
       if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
-        await handleLibraryDrop(libraryItemData, trackId, startUs);
+        await handleLibraryDrop(libraryItemData, trackId, startUs, { pseudo });
         return;
       }
     } catch {
@@ -217,9 +241,9 @@ const onDrop = async (e: DragEvent, trackId: string) => {
   if (files.length > 0) {
     await handleFileDrop(files, trackId, startUs);
   }
+
+  clearDragPreview();
 };
-const onTrackDragOver = () => {};
-const onTrackDragLeave = () => {};
 const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e);
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
   if (e.button === 1) startPan(e);

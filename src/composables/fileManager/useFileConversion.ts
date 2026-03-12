@@ -46,6 +46,7 @@ const audioOnlyCodec = ref<'opus' | 'aac'>('opus');
 const audioOnlyBitrateKbps = ref(128);
 const audioChannels = ref<'stereo' | 'mono'>('stereo');
 const audioSampleRate = ref(0);
+const audioReverse = ref(false);
 const originalAudioSampleRate = ref<number | null>(null);
 
 // Image Settings
@@ -321,6 +322,7 @@ export function useFileConversion() {
             timelineRange: { startUs: 0, durationUs },
             sourceRange: { startUs: 0, durationUs },
             audioGain: 1,
+            speed: audioReverse.value ? -1 : 1,
           },
         ];
       }
@@ -462,6 +464,7 @@ export function useFileConversion() {
     audioOnlyBitrateKbps,
     audioChannels,
     audioSampleRate,
+    audioReverse,
     originalAudioSampleRate,
     imageQuality,
     imageWidth,
