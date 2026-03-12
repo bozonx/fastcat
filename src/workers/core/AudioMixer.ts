@@ -323,14 +323,43 @@ export class AudioMixer {
           ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
           : 1;
       const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
-      const clipDurationS = Math.max(
+
+      let baseClipDurationS = Math.max(
         0,
         Math.min(
           usToS(Number(sourceDurationUs)) / speed,
           usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)) / speed,
         ),
       );
-      if (clipDurationS <= 0) continue;
+
+      // Extend duration and adjust start for adjacent transitions (handles)
+      let playDurationS = baseClipDurationS;
+      let effectiveClipStartS = clipStartS;
+      let effectiveOffsetS = rawOffsetS;
+
+      const transitionOut = clipData.transitionOut ?? clipData.gran?.transitionOut;
+      if (
+        transitionOut?.durationUs &&
+        Number(transitionOut.durationUs) > 0 &&
+        transitionOut.mode === 'adjacent'
+      ) {
+        const outExtensionS = usToS(Number(transitionOut.durationUs));
+        playDurationS += outExtensionS;
+      }
+
+      const transitionIn = clipData.transitionIn ?? clipData.gran?.transitionIn;
+      if (
+        transitionIn?.durationUs &&
+        Number(transitionIn.durationUs) > 0 &&
+        transitionIn.mode === 'adjacent'
+      ) {
+        const inExtensionS = usToS(Number(transitionIn.durationUs));
+        playDurationS += inExtensionS;
+        effectiveClipStartS = Math.max(0, clipStartS - inExtensionS);
+        effectiveOffsetS = Math.max(0, rawOffsetS - inExtensionS * speed);
+      }
+
+      if (playDurationS <= 0) continue;
 
       const audioGain = normalizeGain(clipData.audioGain ?? clipData.gran?.audioGain, 1);
       const audioBalance = normalizeBalance(
@@ -352,14 +381,14 @@ export class AudioMixer {
 
         const sink = new AudioSampleSink(aTrack);
 
-        const offsetS = Math.max(0, rawOffsetS);
+        const offsetS = Math.max(0, effectiveOffsetS);
         const trackDurationS = (aTrack as any).duration;
         const maxPlayableS = Math.max(
           0,
           (Number.isFinite(trackDurationS) ? Number(trackDurationS) : Number.POSITIVE_INFINITY) -
             offsetS,
         );
-        const playDurationS = Math.min(clipDurationS, maxPlayableS / speed);
+        playDurationS = Math.min(playDurationS, maxPlayableS / speed);
         if (playDurationS <= 0) {
           safeDispose(sink);
           safeDispose(input);
@@ -367,7 +396,7 @@ export class AudioMixer {
         }
 
         prepared.push({
-          clipStartS,
+          clipStartS: effectiveClipStartS,
           offsetS,
           playDurationS,
           input,

@@ -1530,6 +1530,49 @@ export function moveItemToTrack(
     }
   }
 
+  // Auto-adapt transitions after move: if the clip is no longer adjacent, fallback to 'transparent'
+  nextTracks = nextTracks.map((t) => {
+    return {
+      ...t,
+      items: t.items.map((it, idx, arr) => {
+        if (it.kind !== 'clip') return it;
+
+        let transitionIn = it.transitionIn;
+        let transitionOut = it.transitionOut;
+
+        if (transitionIn?.mode === 'adjacent') {
+          const prev = idx > 0 ? arr[idx - 1] : null;
+          if (
+            !prev ||
+            prev.kind !== 'clip' ||
+            it.timelineRange.startUs -
+              (prev.timelineRange.startUs + prev.timelineRange.durationUs) >
+              1000
+          ) {
+            transitionIn = { ...transitionIn, mode: 'transparent' };
+          }
+        }
+
+        if (transitionOut?.mode === 'adjacent') {
+          const next = idx < arr.length - 1 ? arr[idx + 1] : null;
+          if (
+            !next ||
+            next.kind !== 'clip' ||
+            next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs) >
+              1000
+          ) {
+            transitionOut = { ...transitionOut, mode: 'transparent' };
+          }
+        }
+
+        if (transitionIn !== it.transitionIn || transitionOut !== it.transitionOut) {
+          return { ...it, transitionIn, transitionOut };
+        }
+        return it;
+      }),
+    };
+  });
+
   return { next: { ...doc, tracks: nextTracks } };
 }
 
@@ -1663,6 +1706,41 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
       sourceDurationUs: item.sourceDurationUs,
     }));
   }
+
+  // Auto-adapt transitions if the new clip duration is smaller than the transition duration
+  nextTracks = nextTracks.map((t) => {
+    return {
+      ...t,
+      items: t.items.map((it) => {
+        if (it.kind !== 'clip' || it.id !== item.id) return it;
+
+        const clipDurationUs = nextTimelineDurationUs;
+        let transitionIn = it.transitionIn;
+        let transitionOut = it.transitionOut;
+
+        if (transitionIn && transitionIn.durationUs > clipDurationUs) {
+          if (clipDurationUs < 100_000) {
+            transitionIn = undefined;
+          } else {
+            transitionIn = { ...transitionIn, durationUs: clipDurationUs };
+          }
+        }
+
+        if (transitionOut && transitionOut.durationUs > clipDurationUs) {
+          if (clipDurationUs < 100_000) {
+            transitionOut = undefined;
+          } else {
+            transitionOut = { ...transitionOut, durationUs: clipDurationUs };
+          }
+        }
+
+        if (transitionIn !== it.transitionIn || transitionOut !== it.transitionOut) {
+          return { ...it, transitionIn, transitionOut };
+        }
+        return it;
+      }),
+    };
+  });
 
   return { next: { ...doc, tracks: nextTracks } };
 }

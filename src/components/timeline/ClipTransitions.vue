@@ -234,6 +234,11 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           />
         </svg>
         <span
+          v-if="hasTransitionProblem('in')"
+          class="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 z-50"
+          :title="getTransitionButtonTitle('in')"
+        />
+        <span
           v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
           class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
         />
@@ -307,6 +312,11 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
             :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))"
           />
         </svg>
+        <span
+          v-if="hasTransitionProblem('out')"
+          class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 z-50"
+          :title="getTransitionButtonTitle('out')"
+        />
         <span
           v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
           class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
