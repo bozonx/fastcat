@@ -2171,7 +2171,11 @@ export class VideoCompositor {
     }
   }
 
-  private renderSingleClipToTexture(clip: CompositorClip, texture: RenderTexture) {
+  private renderSingleClipToTexture(
+    clip: CompositorClip,
+    texture: RenderTexture,
+    forceVisible = false,
+  ) {
     if (!this.app?.renderer) return;
 
     const stageChildren = this.app.stage.children;
@@ -2194,7 +2198,9 @@ export class VideoCompositor {
     }
 
     const previousClipVisible = clip.sprite.visible;
-    clip.sprite.visible = true;
+    if (forceVisible) {
+      clip.sprite.visible = true;
+    }
 
     this.app.renderer.render({
       container: this.app.stage,
@@ -2349,7 +2355,12 @@ export class VideoCompositor {
       clip.transitionOutputTexture = this.ensureTransitionRenderTexture(
         clip.transitionOutputTexture ?? null,
       );
-      this.renderSingleClipToTexture(clip, clip.transitionToTexture);
+
+      // Hide the clip on the main stage before taking its snapshot and before lower layers render
+      const prevClipVisible = clip.sprite.visible;
+      clip.sprite.visible = false;
+
+      this.renderSingleClipToTexture(clip, clip.transitionToTexture, true);
 
       const fromTexture = clip.transitionFromTexture;
       let prevClip: CompositorClip | null = null;
@@ -2424,6 +2435,24 @@ export class VideoCompositor {
       clip.sprite.visible = false;
       if (prevClip) {
         prevClip.sprite.visible = false;
+      }
+
+      // Now that the transition is rendered onto the transitionSprite and added to the stage,
+      // we must hide the original background layers on the stage so they don't double-render
+      // behind the transition sprite (since the transition sprite already contains them).
+      if (mode === 'background') {
+        const children = this.app!.stage.children;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i] as any;
+          if (!child || child === transitionSprite) continue;
+
+          const track = this.trackById.get(child?.__trackId ?? '');
+          const childLayer =
+            typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
+          if (childLayer < clip.layer) {
+            child.visible = false;
+          }
+        }
       }
     }
   }
