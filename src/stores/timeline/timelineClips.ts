@@ -100,14 +100,18 @@ export interface TimelineClipsApi {
     input: {
       trackId: string;
       startUs: number;
-      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
+      clipType: Extract<
+        import('~/timeline/types').TimelineClipType,
+        'adjustment' | 'background' | 'text' | 'shape' | 'hud'
+      >;
       name: string;
       durationUs?: number;
       backgroundColor?: string;
       text?: string;
-      style?: TextClipStyle;
+      style?: import('~/timeline/types').TextClipStyle;
       shapeType?: import('~/timeline/types').ShapeType;
       hudType?: import('~/timeline/types').HudType;
+      pseudo?: boolean;
     },
     options?: {
       skipHistory?: boolean;
@@ -329,14 +333,18 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     input: {
       trackId: string;
       startUs: number;
-      clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
+      clipType: Extract<
+        import('~/timeline/types').TimelineClipType,
+        'adjustment' | 'background' | 'text' | 'shape' | 'hud'
+      >;
       name: string;
       durationUs?: number;
       backgroundColor?: string;
       text?: string;
-      style?: TextClipStyle;
+      style?: import('~/timeline/types').TextClipStyle;
       shapeType?: import('~/timeline/types').ShapeType;
       hudType?: import('~/timeline/types').HudType;
+      pseudo?: boolean;
     },
     options?: {
       skipHistory?: boolean;
@@ -354,6 +362,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       {
         type: 'add_virtual_clip_to_track',
         trackId: input.trackId,
+        startUs: input.startUs,
         clipType: input.clipType,
         name: input.name,
         durationUs: input.durationUs,
@@ -362,7 +371,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         style: input.style,
         shapeType: input.shapeType,
         hudType: input.hudType,
-        startUs: input.startUs,
+        pseudo: input.pseudo,
       },
       options,
     );

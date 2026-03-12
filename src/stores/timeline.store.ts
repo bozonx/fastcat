@@ -521,6 +521,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       name: string;
       path: string;
       startUs?: number;
+      pseudo?: boolean;
     },
     options?: {
       historyMode?: 'immediate' | 'debounced';
@@ -539,6 +540,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       name: string;
       path: string;
       startUs?: number;
+      pseudo?: boolean;
     },
     options?: {
       historyMode?: 'immediate' | 'debounced';

@@ -272,6 +272,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
             name: name || (kind === 'shape' ? 'Shape' : 'HUD'),
             shapeType: kind === 'shape' ? item.type || 'square' : undefined,
             hudType: kind === 'hud' ? item.type || 'media_frame' : undefined,
+            pseudo,
           });
           currentStartUs = nextStartUs + 5_000_000;
           addedCount++;
@@ -291,6 +292,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
             name: name || 'Timeline',
             path: path!,
             startUs: nextStartUs,
+            pseudo,
           });
           currentStartUs = nextStartUs + res.durationUs;
           addedCount++;
@@ -314,6 +316,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
                 clipType: 'text',
                 name,
                 text,
+                pseudo,
               });
               currentStartUs = nextStartUs + 5_000_000;
               addedCount++;
@@ -334,6 +337,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
               name: name || getWorkspacePathFileName(path),
               path,
               startUs: nextStartUs,
+              pseudo,
             });
             currentStartUs = nextStartUs + res.durationUs;
             addedCount++;

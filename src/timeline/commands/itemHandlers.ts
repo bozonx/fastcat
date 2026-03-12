@@ -25,6 +25,7 @@ import {
   computeTrackEndUs,
   assertNoOverlap,
   nextItemId,
+  sliceTrackItemsForOverlay,
   normalizeGaps,
   findClipById,
   updateLinkedLockedAudio,
@@ -62,8 +63,6 @@ export function addClipToTrack(
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
 
-  assertNoOverlap(track, '', startUs, durationUs);
-
   const clipType = cmd.clipType === 'timeline' ? 'timeline' : 'media';
 
   const clip: TimelineClipItem = {
@@ -79,11 +78,20 @@ export function addClipToTrack(
     sourceRange: { startUs: 0, durationUs },
   };
 
-  const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
-  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
-
-  const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+  let nextTracks = doc.tracks;
+  if (cmd.pseudo) {
+    const sliced = sliceTrackItemsForOverlay(track.items, startUs, durationUs, fps, false);
+    const nextItemsRaw = [...sliced, clip];
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
+    nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+  } else {
+    assertNoOverlap(track, '', startUs, durationUs);
+    const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
+    nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+  }
 
   return {
     next: {
@@ -108,8 +116,6 @@ export function addVirtualClipToTrack(
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
-
-  assertNoOverlap(track, '', startUs, durationUs);
 
   const base: Omit<Extract<TimelineClipItem, { kind: 'clip' }>, 'clipType'> & {
     clipType: AddVirtualClipToTrackCommand['clipType'];
@@ -163,10 +169,20 @@ export function addVirtualClipToTrack(
       break;
   }
 
-  const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
-  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
-  const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+  let nextTracks = doc.tracks;
+  if (cmd.pseudo) {
+    const sliced = sliceTrackItemsForOverlay(track.items, startUs, durationUs, fps, false);
+    const nextItemsRaw = [...sliced, clip];
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
+    nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+  } else {
+    assertNoOverlap(track, '', startUs, durationUs);
+    const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
+    nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
+  }
 
   return {
     next: {
@@ -1795,117 +1811,13 @@ export function overlayPlaceItem(
   const isSameTrack = fromTrack.id === toTrack.id;
   const destItems: TimelineTrackItem[] = isSameTrack ? [...nextFromItemsRaw] : [...toTrack.items];
 
-  const nextDestItems: TimelineTrackItem[] = [];
-  for (const it of destItems) {
-    if (it.kind !== 'clip') {
-      nextDestItems.push(it);
-      continue;
-    }
-
-    if (it.locked) {
-      const itStartLocked = it.timelineRange.startUs;
-      const itEndLocked = itStartLocked + it.timelineRange.durationUs;
-      const overlapsLocked = itEndLocked > startUs && itStartLocked < endUs;
-      if (overlapsLocked) {
-        throw new Error('Locked clip');
-      }
-      nextDestItems.push(it);
-      continue;
-    }
-
-    const itStart = it.timelineRange.startUs;
-    const itEnd = itStart + it.timelineRange.durationUs;
-
-    if (itEnd <= startUs || itStart >= endUs) {
-      nextDestItems.push(it);
-      continue;
-    }
-
-    // Fully covered: delete
-    if (itStart >= startUs && itEnd <= endUs) {
-      continue;
-    }
-
-    // Overlaps only on the left side: trim end of existing clip
-    if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
-      const newDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
-        : Math.max(0, Math.round(startUs - itStart));
-      if (newDuration > 0) {
-        nextDestItems.push({
-          ...it,
-          timelineRange: { startUs: itStart, durationUs: newDuration },
-          sourceRange: { ...it.sourceRange, durationUs: newDuration },
-        });
-      }
-      continue;
-    }
-
-    // Overlaps only on the right side: trim start of existing clip
-    if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
-      const trimDelta = endUs - itStart;
-      const newStart = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
-        : Math.max(0, Math.round(endUs));
-      const newDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
-        : Math.max(0, Math.round(itEnd - endUs));
-      if (newDuration > 0) {
-        const newSourceStartUs = Math.min(
-          it.sourceRange.startUs + trimDelta,
-          it.sourceRange.startUs + it.sourceRange.durationUs,
-        );
-        nextDestItems.push({
-          ...it,
-          timelineRange: { startUs: newStart, durationUs: newDuration },
-          sourceRange: {
-            startUs: newSourceStartUs,
-            durationUs: Math.max(0, it.sourceRange.durationUs - trimDelta),
-          },
-        });
-      }
-      continue;
-    }
-
-    // Existing clip fully contains the new item: split into two
-    if (itStart < startUs && itEnd > endUs) {
-      const leftDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
-        : Math.max(0, Math.round(startUs - itStart));
-      if (leftDuration > 0) {
-        nextDestItems.push({
-          ...it,
-          timelineRange: { startUs: itStart, durationUs: leftDuration },
-          sourceRange: { ...it.sourceRange, durationUs: leftDuration },
-        });
-      }
-      const rightTrimDelta = endUs - itStart;
-      const rightStart = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
-        : Math.max(0, Math.round(endUs));
-      const rightDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
-        : Math.max(0, Math.round(itEnd - endUs));
-      if (rightDuration > 0) {
-        const rightSourceStartUs = Math.min(
-          it.sourceRange.startUs + rightTrimDelta,
-          it.sourceRange.startUs + it.sourceRange.durationUs,
-        );
-        nextDestItems.push({
-          ...it,
-          id: nextItemId(toTrack.id, 'clip'),
-          timelineRange: { startUs: rightStart, durationUs: rightDuration },
-          sourceRange: {
-            startUs: rightSourceStartUs,
-            durationUs: Math.max(0, it.sourceRange.durationUs - rightTrimDelta),
-          },
-        });
-      }
-      continue;
-    }
-
-    nextDestItems.push(it);
-  }
+  const nextDestItems = sliceTrackItemsForOverlay(
+    destItems,
+    startUs,
+    durationUs,
+    fps,
+    shouldQuantizeToFrames,
+  );
 
   const movedItem: TimelineTrackItem = {
     ...item,

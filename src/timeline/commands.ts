@@ -34,6 +34,7 @@ export interface AddClipToTrackCommand {
   sourceDurationUs?: number;
   isImage?: boolean;
   startUs?: number;
+  pseudo?: boolean;
 }
 
 export interface AddVirtualClipToTrackCommand {
@@ -46,6 +47,7 @@ export interface AddVirtualClipToTrackCommand {
   name: string;
   durationUs?: number;
   startUs?: number;
+  pseudo?: boolean;
   backgroundColor?: string;
   text?: string;
   style?: import('./types').TextClipStyle;

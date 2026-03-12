@@ -228,6 +228,134 @@ export function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem
   return result;
 }
 
+export function sliceTrackItemsForOverlay(
+  items: import('../types').TimelineTrackItem[],
+  startUs: number,
+  durationUs: number,
+  fps: number,
+  shouldQuantizeToFrames: boolean,
+  excludeItemId?: string,
+): import('../types').TimelineTrackItem[] {
+  const endUs = startUs + durationUs;
+  const nextItems: import('../types').TimelineTrackItem[] = [];
+
+  for (const it of items) {
+    if (it.kind !== 'clip') {
+      nextItems.push(it);
+      continue;
+    }
+    if (excludeItemId && it.id === excludeItemId) {
+      continue;
+    }
+
+    if (it.locked) {
+      const itStartLocked = it.timelineRange.startUs;
+      const itEndLocked = itStartLocked + it.timelineRange.durationUs;
+      const overlapsLocked = itEndLocked > startUs && itStartLocked < endUs;
+      if (overlapsLocked) {
+        throw new Error('Locked clip');
+      }
+      nextItems.push(it);
+      continue;
+    }
+
+    const itStart = it.timelineRange.startUs;
+    const itEnd = itStart + it.timelineRange.durationUs;
+
+    if (itEnd <= startUs || itStart >= endUs) {
+      nextItems.push(it);
+      continue;
+    }
+
+    // Fully covered: delete
+    if (itStart >= startUs && itEnd <= endUs) {
+      continue;
+    }
+
+    // Overlaps only on the left side: trim end of existing clip
+    if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
+      const newDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
+        : Math.max(0, Math.round(startUs - itStart));
+      if (newDuration > 0) {
+        nextItems.push({
+          ...it,
+          timelineRange: { startUs: itStart, durationUs: newDuration },
+          sourceRange: { ...it.sourceRange, durationUs: newDuration },
+        });
+      }
+      continue;
+    }
+
+    // Overlaps only on the right side: trim start of existing clip
+    if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
+      const trimDelta = endUs - itStart;
+      const newStart = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
+        : Math.max(0, Math.round(endUs));
+      const newDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
+        : Math.max(0, Math.round(itEnd - endUs));
+      if (newDuration > 0) {
+        const newSourceStartUs = Math.min(
+          it.sourceRange.startUs + trimDelta,
+          it.sourceRange.startUs + it.sourceRange.durationUs,
+        );
+        nextItems.push({
+          ...it,
+          timelineRange: { startUs: newStart, durationUs: newDuration },
+          sourceRange: {
+            startUs: newSourceStartUs,
+            durationUs: Math.max(0, it.sourceRange.durationUs - trimDelta),
+          },
+        });
+      }
+      continue;
+    }
+
+    // Existing clip fully contains the new item: split into two
+    if (itStart < startUs && itEnd > endUs) {
+      const leftDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
+        : Math.max(0, Math.round(startUs - itStart));
+      if (leftDuration > 0) {
+        nextItems.push({
+          ...it,
+          timelineRange: { startUs: itStart, durationUs: leftDuration },
+          sourceRange: { ...it.sourceRange, durationUs: leftDuration },
+        });
+      }
+      const rightTrimDelta = endUs - itStart;
+      const rightStart = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
+        : Math.max(0, Math.round(endUs));
+      const rightDuration = shouldQuantizeToFrames
+        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
+        : Math.max(0, Math.round(itEnd - endUs));
+      if (rightDuration > 0) {
+        const rightSourceStartUs = Math.min(
+          it.sourceRange.startUs + rightTrimDelta,
+          it.sourceRange.startUs + it.sourceRange.durationUs,
+        );
+        nextItems.push({
+          ...it,
+          id: nextItemId(it.trackId, 'clip'),
+          timelineRange: { startUs: rightStart, durationUs: rightDuration },
+          sourceRange: {
+            startUs: rightSourceStartUs,
+            durationUs: Math.max(0, it.sourceRange.durationUs - rightTrimDelta),
+          },
+        });
+      }
+      continue;
+    }
+
+    nextItems.push(it);
+  }
+
+  return nextItems;
+}
+
 export function normalizeGaps(
   doc: TimelineDocument,
   trackId: string,
