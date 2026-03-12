@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
-import { getAllEffectManifests, getEffectManifest } from '~/effects';
+import { getAllVideoEffectManifests, getEffectManifest } from '~/effects';
 import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -12,10 +12,10 @@ const presetsStore = usePresetsStore();
 
 const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 
-const effects = computed(() => getAllEffectManifests());
+const videoEffects = computed(() => getAllVideoEffectManifests());
 const transitions = computed(() => getAllTransitionManifests());
 
-const standardEffects = computed(() => effects.value.filter((e) => !e.isCustom));
+const standardEffects = computed(() => videoEffects.value.filter((e) => !e.isCustom));
 const customEffects = computed(() => {
   const presetManifests = presetsStore.customPresets
     .filter((preset) => preset.category === 'effect')
@@ -26,7 +26,7 @@ const customEffects = computed(() => {
       Boolean(manifest),
     );
 
-  return presetManifests;
+  return presetManifests.filter((manifest) => (manifest.target ?? 'video') === 'video');
 });
 
 const standardTransitions = computed(() => transitions.value.filter((t) => !t.isCustom));

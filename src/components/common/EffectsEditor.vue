@@ -2,19 +2,19 @@
 import { computed, ref } from 'vue';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
-import { getEffectManifest } from '~/effects';
-import type { ClipEffect } from '~/timeline/types';
+import { getVideoEffectManifest } from '~/effects';
+import type { VideoClipEffect } from '~/timeline/types';
 import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
-  effects?: ClipEffect[];
+  effects?: VideoClipEffect[];
   title?: string;
   addLabel?: string;
   emptyLabel?: string;
 }>();
 
 const emit = defineEmits<{
-  'update:effects': [effects: ClipEffect[]];
+  'update:effects': [effects: VideoClipEffect[]];
 }>();
 
 const { t } = useI18n();
@@ -49,27 +49,28 @@ function onDrop(e: DragEvent) {
   handleAddEffect(effectType);
 }
 
-function setEffects(next: ClipEffect[]) {
+function setEffects(next: VideoClipEffect[]) {
   emit('update:effects', next);
 }
 
 function handleAddEffect(type: string) {
-  const manifest = getEffectManifest(type);
+  const manifest = getVideoEffectManifest(type);
   if (!manifest) return;
 
   const newEffect = {
     id: `effect_${Date.now()}`,
     type,
     enabled: true,
+    target: 'video',
     ...manifest.defaultValues,
-  } as unknown as ClipEffect;
+  } as VideoClipEffect;
 
   setEffects([...safeEffects.value, newEffect]);
 }
 
-function handleUpdateEffect(effectId: string, updates: Partial<ClipEffect>) {
+function handleUpdateEffect(effectId: string, updates: Partial<VideoClipEffect>) {
   const next = safeEffects.value.map((e) =>
-    e.id === effectId ? ({ ...e, ...updates } as ClipEffect) : e,
+    e.id === effectId ? ({ ...e, ...updates } as VideoClipEffect) : e,
   );
   setEffects(next);
 }
@@ -84,7 +85,7 @@ function handleSavePreset() {
   const effect = safeEffects.value.find((e) => e.id === savingEffectId.value);
   if (!effect) return;
 
-  const manifest = getEffectManifest(effect.type);
+  const manifest = getVideoEffectManifest(effect.type);
   if (!manifest) return;
 
   const baseType = manifest.baseType || manifest.type;
@@ -106,7 +107,7 @@ function openSaveModal(effectId: string) {
 }
 
 function handleUpdateEffectValue(effectId: string, key: string, value: any) {
-  handleUpdateEffect(effectId, { [key]: value } as Partial<ClipEffect>);
+  handleUpdateEffect(effectId, { [key]: value } as Partial<VideoClipEffect>);
 }
 </script>
 
@@ -147,7 +148,7 @@ function handleUpdateEffectValue(effectId: string, key: string, value: any) {
               @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
             />
             <span class="font-medium">{{
-              getEffectManifest(effect.type)?.name || effect.type
+              getVideoEffectManifest(effect.type)?.name || effect.type
             }}</span>
           </div>
           <div class="flex items-center gap-1">
@@ -171,8 +172,8 @@ function handleUpdateEffectValue(effectId: string, key: string, value: any) {
 
         <div class="space-y-3">
           <ParamsRenderer
-            v-if="getEffectManifest(effect.type)?.controls"
-            :controls="getEffectManifest(effect.type)?.controls ?? []"
+            v-if="getVideoEffectManifest(effect.type)?.controls"
+            :controls="getVideoEffectManifest(effect.type)?.controls ?? []"
             :values="effect as any"
             @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"
           />

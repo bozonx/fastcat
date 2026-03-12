@@ -2,7 +2,6 @@ import type { Filter, Sprite, ImageSource, RenderTexture, Container } from 'pixi
 import type { Input, VideoSampleSink } from 'mediabunny';
 import type {
   TextClipStyle,
-  ClipEffect,
   ClipTransform,
   ClipTransition,
   TimelineBlendMode,
@@ -10,6 +9,7 @@ import type {
   ShapeConfig,
   HudType,
   HudMediaParams,
+  VideoClipEffect,
 } from '~/timeline/types';
 
 export interface HudMediaState {
@@ -70,7 +70,7 @@ export interface CompositorClip {
   content?: HudMediaParams;
   opacity?: number;
   blendMode?: TimelineBlendMode;
-  effects?: ClipEffect[];
+  effects?: VideoClipEffect[];
   transform?: ClipTransform;
   effectFilters?: Map<string, Filter>;
   transitionIn?: ClipTransition;
@@ -96,7 +96,7 @@ export interface CompositorTrack {
   layer: number;
   opacity?: number;
   blendMode?: TimelineBlendMode;
-  effects?: ClipEffect[];
+  effects?: VideoClipEffect[];
   container: Container;
   effectFilters?: Map<string, Filter>;
 }

@@ -1,6 +1,6 @@
 import type { Filter, Container } from 'pixi.js';
-import { getEffectManifest } from '../../../effects';
-import type { ClipEffect } from '~/timeline/types';
+import { getVideoEffectManifest } from '../../../effects';
+import type { VideoClipEffect } from '~/timeline/types';
 import type { CompositorClip, CompositorTrack } from './types';
 
 export interface EffectManagerContext {
@@ -47,7 +47,7 @@ export class EffectManager {
    */
   public applyMasterEffects(
     container: Container,
-    effects: ClipEffect[] | null,
+    effects: VideoClipEffect[] | null,
     filtersMap: Map<string, Filter>,
     context: EffectManagerContext,
   ) {
@@ -63,7 +63,7 @@ export class EffectManager {
   /**
    * Universal filter synchronization logic.
    */
-  private syncFilters(filtersMap: Map<string, Filter>, effects: ClipEffect[]): Filter[] {
+  private syncFilters(filtersMap: Map<string, Filter>, effects: VideoClipEffect[]): Filter[] {
     if (!filtersMap) return [];
     const filters: Filter[] = [];
     const seenIds = new Set<string>();
@@ -73,7 +73,7 @@ export class EffectManager {
       if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
       if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
 
-      const manifest = getEffectManifest(effect.type);
+      const manifest = getVideoEffectManifest(effect.type);
       if (!manifest) continue;
 
       seenIds.add(effect.id);
