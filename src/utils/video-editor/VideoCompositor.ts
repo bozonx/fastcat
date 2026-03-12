@@ -2258,7 +2258,22 @@ export class VideoCompositor {
       sampleTimeS: sampleUs / 1_000_000,
       abortSignal: abortController.signal,
     });
+
+    // Fallback: If no sample due to lacking handles, but we have a valid last frame, use it
     if (!sample) {
+      if (clip.lastVideoFrame) {
+        try {
+          await this.updateClipTextureFromSample(
+            { frame: clip.lastVideoFrame, close: () => {} } as any,
+            clip,
+          );
+          clip.sprite.visible = true;
+          this.renderSingleClipToTexture(clip, texture);
+          return true;
+        } catch {
+          return false;
+        }
+      }
       return false;
     }
 

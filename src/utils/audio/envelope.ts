@@ -88,9 +88,10 @@ function resolveEdgeFade(input: {
   autoDurationUs?: unknown;
   transition?: AudioTransitionEnvelope | null;
   transitionOwnerCurve?: unknown;
+  defaultCurve?: 'linear' | 'logarithmic';
 }): { durationUs: number; curve: AudioFadeCurve } {
   const manualDurationUs = clampNumber(input.manualDurationUs, 0, Number.MAX_SAFE_INTEGER);
-  const manualCurve = normalizeAudioFadeCurve(input.manualCurve);
+  const manualCurve = normalizeAudioFadeCurve(input.manualCurve ?? input.defaultCurve);
   const autoDurationUs = clampNumber(input.autoDurationUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
   const transitionDurationUs =
     clampNumber(input.transition?.durationUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
@@ -105,13 +106,13 @@ function resolveEdgeFade(input: {
   if (transitionDurationUs > 0 && normalizeTransitionMode(input.transition?.mode) === 'adjacent') {
     return {
       durationUs: transitionDurationUs,
-      curve: normalizeAudioFadeCurve(input.transitionOwnerCurve),
+      curve: normalizeAudioFadeCurve(input.transitionOwnerCurve ?? input.defaultCurve),
     };
   }
 
   return {
     durationUs: autoDurationUs,
-    curve: 'linear',
+    curve: normalizeAudioFadeCurve(input.defaultCurve),
   };
 }
 
@@ -120,6 +121,7 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
   clip: AudioEnvelopeClipLike;
   previousClip?: AudioEnvelopeClipLike | null;
   nextClip?: AudioEnvelopeClipLike | null;
+  defaultAudioFadeCurve?: 'linear' | 'logarithmic';
 }): EffectiveFadeDurationsSeconds {
   const clipDurationS = Number.isFinite(params.clipDurationS)
     ? Math.max(0, params.clipDurationS)
@@ -139,6 +141,7 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
     transitionOwnerCurve: hasOwnIncomingTransition
       ? params.clip.audioFadeInCurve
       : params.previousClip?.audioFadeOutCurve,
+    defaultCurve: params.defaultAudioFadeCurve,
   });
   const fadeOut = resolveEdgeFade({
     manualDurationUs: params.clip.audioFadeOutUs,
@@ -148,6 +151,7 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
     transitionOwnerCurve: hasOwnOutgoingTransition
       ? params.clip.audioFadeOutCurve
       : params.nextClip?.audioFadeInCurve,
+    defaultCurve: params.defaultAudioFadeCurve,
   });
 
   let fadeInS = Math.min(clipDurationS, Math.max(0, fadeIn.durationUs / 1_000_000));

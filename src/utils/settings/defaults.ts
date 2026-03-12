@@ -91,6 +91,7 @@ export interface GranVideoEditorUserSettings {
     audioChannels: 'stereo' | 'mono';
     sampleRate: number;
     audioDeclickDurationUs: number;
+    defaultAudioFadeCurve: 'linear' | 'logarithmic';
   };
   exportDefaults: {
     encoding: {
@@ -242,6 +243,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     audioChannels: 'stereo',
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
+    defaultAudioFadeCurve: 'logarithmic',
   },
   exportDefaults: {
     encoding: {

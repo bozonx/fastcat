@@ -546,7 +546,6 @@ export class AudioEngine {
         : 1;
 
     const effectiveSpeed = clipSpeed * this.globalSpeed;
-    const currentClipLocalS = Math.max(0, currentTimeS - clipStartS);
 
     const { previousClip, nextClip } = this.getAdjacentClips(clip);
     const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
@@ -559,14 +558,44 @@ export class AudioEngine {
     const audioGain = normalizeGain(clip.audioGain, 1);
     const audioBalance = normalizeBalance(clip.audioBalance, 0);
 
+    let effectivePlayDurationS = clipDurationS;
+    let effectiveStartUs = clip.startUs;
+    let effectiveSourceStartUs = clip.sourceStartUs;
+
+    if (
+      clip.transitionOut?.durationUs &&
+      Number(clip.transitionOut.durationUs) > 0 &&
+      clip.transitionOut.mode === 'adjacent'
+    ) {
+      effectivePlayDurationS += Number(clip.transitionOut.durationUs) / 1_000_000;
+    }
+
+    if (
+      clip.transitionIn?.durationUs &&
+      Number(clip.transitionIn.durationUs) > 0 &&
+      clip.transitionIn.mode === 'adjacent'
+    ) {
+      const inExtensionS = Number(clip.transitionIn.durationUs) / 1_000_000;
+      effectivePlayDurationS += inExtensionS;
+      effectiveStartUs = Math.max(0, clip.startUs - Number(clip.transitionIn.durationUs));
+      effectiveSourceStartUs = Math.max(
+        0,
+        clip.sourceStartUs - Number(clip.transitionIn.durationUs) * clipSpeed,
+      );
+    }
+
+    const effectiveStartS = effectiveStartUs / 1_000_000;
+    const effectiveSourceStartS = effectiveSourceStartUs / 1_000_000;
+
     const playStartS =
-      currentTimeS < clipStartS
-        ? this.ctx.currentTime + (clipStartS - currentTimeS) / this.globalSpeed
+      currentTimeS < effectiveStartS
+        ? this.ctx.currentTime + (effectiveStartS - currentTimeS) / this.globalSpeed
         : this.ctx.currentTime;
 
-    const currentSourceTimeS = sourceStartS + currentClipLocalS * clipSpeed;
+    const currentClipLocalS = Math.max(0, currentTimeS - effectiveStartS);
+    const currentSourceTimeS = effectiveSourceStartS + currentClipLocalS * clipSpeed;
 
-    const remainingInClipS = Math.max(0, clipDurationS - currentClipLocalS);
+    const remainingInClipS = Math.max(0, effectivePlayDurationS - currentClipLocalS);
     const durationToPlayS = remainingInClipS * clipSpeed;
 
     let safeBufferOffsetS = currentSourceTimeS;
