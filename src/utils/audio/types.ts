@@ -2,7 +2,8 @@ export interface DecodeRequest {
   type: 'decode' | 'extract-peaks';
   id: number;
   sourceKey: string;
-  arrayBuffer: ArrayBuffer;
+  arrayBuffer?: ArrayBuffer;
+  blob?: Blob;
   options?: {
     maxLength?: number;
     precision?: number;

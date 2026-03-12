@@ -1,4 +1,3 @@
-import { MAX_AUDIO_FILE_BYTES } from '../../utils/constants';
 import { safeDispose } from '../../utils/video-editor/utils';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import {
@@ -242,9 +241,7 @@ export class AudioMixer {
           Number(b.startUs ?? b.timelineRange?.startUs ?? 0),
       );
 
-    const idx = sameTrack.findIndex(
-      (candidate) => candidate === current
-    );
+    const idx = sameTrack.findIndex((candidate) => candidate === current);
 
     return {
       previousClip: idx > 0 ? (sameTrack[idx - 1] ?? null) : null,
@@ -279,13 +276,6 @@ export class AudioMixer {
         file = (await hostClient?.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
       } catch {
         await reportExportWarning('[Worker Export] Failed to read audio file handle');
-        continue;
-      }
-
-      if (file.size > MAX_AUDIO_FILE_BYTES) {
-        await reportExportWarning(
-          '[Worker Export] Audio file is too large to decode in memory; skipping audio clip.',
-        );
         continue;
       }
 
