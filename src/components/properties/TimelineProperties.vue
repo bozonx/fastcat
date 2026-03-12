@@ -5,7 +5,7 @@ import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
-import type { ClipEffect } from '~/timeline/types';
+import type { VideoClipEffect } from '~/timeline/types';
 import {
   DEFAULT_TIMELINE_ZOOM_POSITION,
   formatZoomMultiplier,
@@ -37,7 +37,10 @@ const masterGain = computed({
 });
 
 const masterEffects = computed(
-  () => timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? [],
+  () =>
+    (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
+      (effect): effect is VideoClipEffect => effect?.target !== 'audio',
+    ),
 );
 
 const masterMuted = computed({
@@ -66,7 +69,7 @@ const timelineZoomMultiplierInput = computed({
   },
 });
 
-function handleUpdateMasterEffects(effects: ClipEffect[]) {
+function handleUpdateMasterEffects(effects: VideoClipEffect[]) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
     effects: [...effects],

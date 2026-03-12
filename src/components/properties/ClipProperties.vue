@@ -13,6 +13,7 @@ import type {
   TimelineClipItem,
   TimelineTrack,
   TrackKind,
+  VideoClipEffect,
 } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
@@ -508,6 +509,12 @@ const {
 });
 
 const effectsSectionRef = ref<HTMLElement | null>(null);
+
+const clipVideoEffects = computed(() =>
+  (clipRef.value?.effects ?? []).filter(
+    (effect): effect is VideoClipEffect => effect?.target !== 'audio',
+  ),
+);
 
 watch(
   () => uiStore.scrollToEffectsTrigger,
@@ -1337,7 +1344,7 @@ defineExpose({
 
     <div ref="effectsSectionRef">
       <EffectsEditor
-        :effects="clip.effects"
+        :effects="clipVideoEffects"
         :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
         :add-label="t('granVideoEditor.effects.add', 'Add')"
         :empty-label="t('granVideoEditor.effects.empty', 'No effects')"

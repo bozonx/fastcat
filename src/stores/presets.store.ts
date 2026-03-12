@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import { getEffectManifest, registerEffect } from '~/effects';
+import { getVideoEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
 
 export interface CustomPreset {
@@ -8,6 +8,7 @@ export interface CustomPreset {
   baseType: string;
   name: string;
   category: 'effect' | 'transition';
+  effectTarget?: 'video' | 'audio';
   params: Record<string, any>;
   order: number;
 }
@@ -71,13 +72,16 @@ export const usePresetsStore = defineStore('presets', () => {
 
   function registerPresetManifest(preset: CustomPreset) {
     if (preset.category === 'effect') {
-      const baseManifest = getEffectManifest(preset.baseType);
+      if ((preset.effectTarget ?? 'video') !== 'video') return;
+
+      const baseManifest = getVideoEffectManifest(preset.baseType);
       if (!baseManifest) return;
 
       registerEffect({
         ...baseManifest,
         type: preset.id,
         name: preset.name,
+        target: 'video',
         isCustom: true,
         baseType: preset.baseType,
         defaultValues: { ...baseManifest.defaultValues, ...preset.params },
@@ -108,6 +112,7 @@ export const usePresetsStore = defineStore('presets', () => {
       baseType,
       name,
       category,
+      effectTarget: category === 'effect' ? 'video' : undefined,
       params,
       order: customPresets.value.filter((p) => p.category === category).length,
     };

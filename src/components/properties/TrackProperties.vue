@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineBlendMode, TimelineTrack } from '~/timeline/types';
+import type { TimelineBlendMode, TimelineTrack, VideoClipEffect } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -87,7 +87,11 @@ const trackAudioBalance = computed({
   },
 });
 
-function handleUpdateTrackEffects(effects: any[]) {
+const trackVideoEffects = computed(() =>
+  (props.track.effects ?? []).filter((effect): effect is VideoClipEffect => effect?.target !== 'audio'),
+);
+
+function handleUpdateTrackEffects(effects: VideoClipEffect[]) {
   timelineStore.updateTrackProperties(props.track.id, { effects: [...effects] });
 }
 
@@ -242,7 +246,7 @@ function confirmDeleteTrack() {
     </div>
 
     <EffectsEditor
-      :effects="track.effects"
+      :effects="trackVideoEffects"
       :title="t('granVideoEditor.effects.trackTitle', 'Track effects')"
       :add-label="t('granVideoEditor.effects.add', 'Add')"
       :empty-label="t('granVideoEditor.effects.empty', 'No effects')"

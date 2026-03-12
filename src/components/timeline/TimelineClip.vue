@@ -9,7 +9,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
-import { getEffectManifest } from '~/effects';
+import { getVideoEffectManifest } from '~/effects';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -179,12 +179,13 @@ function handleDrop(e: DragEvent) {
   const transitionType = e.dataTransfer?.getData('gran-transition');
 
   if (effectType) {
-    const manifest = getEffectManifest(effectType);
+    const manifest = getVideoEffectManifest(effectType);
     if (!manifest) return;
     const newEffect = {
       id: `effect_${Date.now()}`,
       type: effectType,
       enabled: true,
+      target: 'video',
       ...manifest.defaultValues,
     } as any;
     timelineStore.updateClipProperties(props.track.id, props.item.id, {

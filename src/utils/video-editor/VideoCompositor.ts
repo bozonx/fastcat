@@ -15,7 +15,6 @@ import {
   Container,
 } from 'pixi.js';
 import type { Filter } from 'pixi.js';
-import { getEffectManifest } from '../../effects';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import {
   DEFAULT_TRANSITION_CURVE,
@@ -33,10 +32,10 @@ import { computeTextLayoutMetrics } from './text-layout';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import type {
   TextClipStyle,
-  ClipEffect,
   ClipTransform,
   ClipTransition,
   TimelineBlendMode,
+  VideoClipEffect,
 } from '~/timeline/types';
 
 // Internal modules
@@ -84,7 +83,7 @@ export class VideoCompositor {
   private contextLost = false;
   private previewEffectsEnabled = true;
 
-  private masterEffects: ClipEffect[] | null = null;
+  private masterEffects: VideoClipEffect[] | null = null;
   private masterEffectFilters = new Map<string, Filter>();
   private transitionFilters = new Map<string, Filter>();
   private filterQuadSprite: Sprite | null = null;
@@ -368,12 +367,25 @@ export class VideoCompositor {
     return Math.max(0, Math.min(1, value));
   }
 
+  private toVideoEffects(value: unknown): VideoClipEffect[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+
+    return value.filter((effect): effect is VideoClipEffect => {
+      if (!effect || typeof effect !== 'object') return false;
+      if (typeof (effect as any).id !== 'string' || (effect as any).id.length === 0) return false;
+      if (typeof (effect as any).type !== 'string' || (effect as any).type.length === 0)
+        return false;
+
+      return (effect as any).target !== 'audio';
+    });
+  }
+
   private buildTrackRuntimeList(timelineItems: any[]): Array<{
     id: string;
     layer: number;
     opacity?: number;
     blendMode?: TimelineBlendMode;
-    effects?: ClipEffect[];
+    effects?: VideoClipEffect[];
   }> {
     const explicitTracks = timelineItems
       .filter((item) => item && typeof item === 'object' && item.kind === 'track')
@@ -385,7 +397,7 @@ export class VideoCompositor {
         layer: Math.round(Number(track.layer ?? 0)),
         opacity: this.normalizeTrackOpacity(track.opacity),
         blendMode: resolveBlendMode(track.blendMode),
-        effects: Array.isArray(track.effects) ? (track.effects as ClipEffect[]) : undefined,
+        effects: this.toVideoEffects(track.effects),
       }));
 
     const inferredLayers = new Set<number>();
@@ -652,8 +664,7 @@ export class VideoCompositor {
     // Extract stage-level (master) effects from meta items.
     // We keep the payload format flexible since it comes from a worker boundary.
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
-    const nextMaster =
-      meta && Array.isArray((meta as any).masterEffects) ? (meta as any).masterEffects : null;
+    const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
     this.syncTrackRuntimes(timelineClips);
     this.stageSortDirty = true;
@@ -783,7 +794,7 @@ export class VideoCompositor {
         reusable.trackId = trackId;
         reusable.opacity = clipData.opacity;
         reusable.blendMode = resolveBlendMode((clipData as any).blendMode);
-        reusable.effects = clipData.effects;
+        reusable.effects = this.toVideoEffects(clipData.effects);
         reusable.transform = (clipData as any).transform;
         reusable.transitionIn = clipData.transitionIn;
         reusable.transitionOut = clipData.transitionOut;
@@ -868,7 +879,7 @@ export class VideoCompositor {
           backgroundColor,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
         };
 
@@ -925,7 +936,7 @@ export class VideoCompositor {
           style: (clipData as any).style,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
@@ -986,7 +997,7 @@ export class VideoCompositor {
           strokeWidth: Number((clipData as any).strokeWidth ?? 0),
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
@@ -1047,7 +1058,7 @@ export class VideoCompositor {
           bitmap: null,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           adjustmentSourceTexture: null,
         };
@@ -1105,7 +1116,7 @@ export class VideoCompositor {
           content: (clipData as any).content,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
@@ -1342,7 +1353,7 @@ export class VideoCompositor {
           backgroundColor: undefined,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
@@ -1434,7 +1445,7 @@ export class VideoCompositor {
           backgroundColor: undefined,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: clipData.effects,
+          effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
@@ -1485,8 +1496,7 @@ export class VideoCompositor {
 
   updateTimelineLayout(timelineClips: any[]): number {
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
-    const nextMaster =
-      meta && Array.isArray((meta as any).masterEffects) ? (meta as any).masterEffects : null;
+    const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
     this.syncTrackRuntimes(timelineClips);
 
@@ -1554,7 +1564,7 @@ export class VideoCompositor {
           : this.getTrackRuntimeForClip({ layer })?.id;
       clip.opacity = next.opacity;
       clip.blendMode = resolveBlendMode((next as any).blendMode);
-      clip.effects = next.effects;
+      clip.effects = this.toVideoEffects(next.effects);
       clip.transform = (next as any).transform;
       this.applyClipLayoutForCurrentSource(clip);
       const prevTransitionInType = clip.transitionIn?.type ?? null;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { getAllEffectManifests } from '~/effects';
+import { getAllVideoEffectManifests } from '~/effects';
 
 const props = defineProps<{
   open: boolean;
@@ -26,7 +26,7 @@ watch(isOpen, (val) => {
   }
 });
 
-const effects = computed(() => getAllEffectManifests());
+const effects = computed(() => getAllVideoEffectManifests());
 
 function handleSelect(type: string) {
   emit('select', type);
