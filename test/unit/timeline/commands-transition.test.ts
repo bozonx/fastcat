@@ -39,7 +39,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionOut).toEqual({
       type: 'dissolve',
       durationUs: 500_000,
-      mode: 'fade',
+      mode: 'transparent',
       curve: 'linear',
       params: {},
       isOverridden: undefined,
@@ -61,7 +61,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionIn).toEqual({
       type: 'dissolve',
       durationUs: 300_000,
-      mode: 'fade',
+      mode: 'transparent',
       curve: 'linear',
       params: {},
       isOverridden: undefined,
@@ -157,7 +157,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextLeft.transitionOut).toEqual({
       type: 'dissolve',
       durationUs: 2_000_000,
-      mode: 'transition',
+      mode: 'adjacent',
       curve: 'linear',
       params: {},
     });
@@ -286,7 +286,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionOut).toEqual({
       type: 'wipe',
       durationUs: 500_000,
-      mode: 'fade',
+      mode: 'transparent',
       curve: 'linear',
       params: {
         direction: 'up',
@@ -321,7 +321,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(clip.transitionIn).toEqual({
       type: 'circle',
       durationUs: 300_000,
-      mode: 'fade',
+      mode: 'transparent',
       curve: 'linear',
       params: {
         direction: 'from-center',
@@ -336,5 +336,40 @@ describe('timeline/commands update_clip_transition', () => {
       },
       isOverridden: undefined,
     });
+  });
+
+  it('switches non-overridden transitionOut to transparent after unsnapping', () => {
+    const left = {
+      ...baseClip,
+      id: 'c1',
+      trackId: 'v1',
+      timelineRange: { startUs: 0, durationUs: 5_000_000 },
+      sourceRange: { startUs: 0, durationUs: 5_000_000 },
+      transitionOut: {
+        type: 'dissolve',
+        durationUs: 500_000,
+        mode: 'adjacent',
+      },
+    };
+    const right = {
+      ...baseClip,
+      id: 'c2',
+      trackId: 'v1',
+      timelineRange: { startUs: 5_500_000, durationUs: 5_000_000 },
+      sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    };
+
+    const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_transition',
+      trackId: 'v1',
+      itemId: 'c1',
+      transitionOut: left.transitionOut,
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.transitionOut?.mode).toBe('transparent');
+    expect(clip.transitionOut?.isOverridden).toBeUndefined();
   });
 });

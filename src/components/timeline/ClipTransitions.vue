@@ -53,7 +53,7 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): s
   if (!tr) return null;
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-  if (mode === 'fade') return null;
+  if (mode === 'background' || mode === 'transparent') return null;
 
   const needS = tr.durationUs / 1e6;
   const clipDurS = item.timelineRange.durationUs / 1e6;
@@ -64,7 +64,7 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): s
     });
   }
 
-  if (mode === 'transition') {
+  if (mode === 'adjacent') {
     const prev = getPrevClipForItem(track, item);
     if (!prev)
       return t(
@@ -78,13 +78,12 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): s
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
     const prevTailHandleUs = getClipTailHandleUs(prev);
-    if (prevTailHandleUs < tr.durationUs - 1_000) {
+    if (Number.isFinite(prevTailHandleUs) && prevTailHandleUs < tr.durationUs - 1_000) {
       return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
         needSeconds: needS.toFixed(2),
         haveSeconds: Math.max(0, prevTailHandleUs / 1e6).toFixed(2),
       });
     }
-    return null;
   }
 
   return null;
@@ -95,7 +94,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
   if (!tr) return null;
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
 
-  if (mode === 'fade') return null;
+  if (mode === 'background' || mode === 'transparent') return null;
 
   const clipDurS = item.timelineRange.durationUs / 1e6;
   const needS = tr.durationUs / 1e6;
@@ -106,7 +105,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
     });
   }
 
-  if (mode === 'transition') {
+  if (mode === 'adjacent') {
     const next = getNextClipForItem(track, item);
     if (!next)
       return t(
@@ -120,7 +119,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
     const nextHeadHandleUs = getClipHeadHandleUs(next);
-    if (nextHeadHandleUs < tr.durationUs - 1_000)
+    if (Number.isFinite(nextHeadHandleUs) && nextHeadHandleUs < tr.durationUs - 1_000)
       return t('granVideoEditor.timeline.transition.errorNextHandleTooShort', {
         needSeconds: needS.toFixed(2),
         haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
@@ -143,7 +142,7 @@ function getTransitionButtonTitle(edge: 'in' | 'out'): string | undefined {
   if (!transition) return undefined;
 
   const mode = transition.mode ?? DEFAULT_TRANSITION_MODE;
-  if (mode !== 'transition') return undefined;
+  if (mode !== 'adjacent') return undefined;
 
   return (
     (edge === 'in'
@@ -205,7 +204,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           })
         "
       >
-        <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
+        <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'background'">
           <svg
             class="w-full h-full block absolute inset-0"
             preserveAspectRatio="none"
@@ -235,7 +234,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           />
         </svg>
         <span
-          v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'"
+          v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
           class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
         />
         <div
@@ -275,7 +274,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           })
         "
       >
-        <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
+        <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'background'">
           <svg
             class="w-full h-full block absolute inset-0"
             preserveAspectRatio="none"
@@ -305,7 +304,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           />
         </svg>
         <span
-          v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'"
+          v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
           class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
         />
         <div

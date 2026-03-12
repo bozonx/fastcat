@@ -3,7 +3,7 @@ import type { ParamControl, ParamOption } from '~/components/properties/params';
 
 export type TransitionType = string;
 
-export type TransitionMode = 'transition' | 'fade';
+export type TransitionMode = 'adjacent' | 'background' | 'transparent';
 
 export type TransitionCurve =
   | 'linear'
@@ -14,7 +14,7 @@ export type TransitionCurve =
   | 'slow-linear-end'
   | 'linear-fast-end';
 
-export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transition';
+export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transparent';
 
 export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
 
@@ -162,16 +162,20 @@ export function hexColorToRgb01(color: string): { r: number; g: number; b: numbe
 }
 
 export function normalizeTransitionMode(value: unknown): TransitionMode {
-  if (value === 'transition' || value === 'fade') {
+  if (value === 'adjacent' || value === 'background' || value === 'transparent') {
     return value;
   }
 
-  if (value === 'blend_previous') {
-    return 'transition';
+  if (value === 'transition' || value === 'blend_previous') {
+    return 'adjacent';
   }
 
-  if (value === 'composite' || value === 'blend') {
-    return 'fade';
+  if (value === 'fade' || value === 'composite' || value === 'blend') {
+    return 'background';
+  }
+
+  if (value === 'none' || value === 'opacity' || value === 'alpha') {
+    return 'transparent';
   }
 
   return DEFAULT_TRANSITION_MODE;

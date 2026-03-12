@@ -396,10 +396,10 @@ export function normalizeGaps(
     }
 
     if (current.transitionIn && !current.transitionIn.isOverridden) {
-      current.transitionIn.mode = isAdjacentLeft ? 'transition' : 'fade';
+      current.transitionIn.mode = isAdjacentLeft ? 'adjacent' : 'transparent';
     } else if (current.transitionIn) {
-      const expectedMode = isAdjacentLeft ? 'transition' : 'fade';
-      const actualMode = current.transitionIn.mode ?? 'transition';
+      const expectedMode = isAdjacentLeft ? 'adjacent' : 'transparent';
+      const actualMode = current.transitionIn.mode ?? 'transparent';
       if (actualMode === expectedMode) {
         current.transitionIn.isOverridden = false;
         current.transitionIn.mode = expectedMode;
@@ -407,10 +407,10 @@ export function normalizeGaps(
     }
 
     if (current.transitionOut && !current.transitionOut.isOverridden) {
-      current.transitionOut.mode = isAdjacentRight ? 'transition' : 'fade';
+      current.transitionOut.mode = isAdjacentRight ? 'adjacent' : 'transparent';
     } else if (current.transitionOut) {
-      const expectedMode = isAdjacentRight ? 'transition' : 'fade';
-      const actualMode = current.transitionOut.mode ?? 'transition';
+      const expectedMode = isAdjacentRight ? 'adjacent' : 'transparent';
+      const actualMode = current.transitionOut.mode ?? 'transparent';
       if (actualMode === expectedMode) {
         current.transitionOut.isOverridden = false;
         current.transitionOut.mode = expectedMode;

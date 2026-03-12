@@ -1,5 +1,5 @@
 import type { ClipEffect as BaseClipEffect } from '../effects/core/registry';
-import type { TransitionCurve } from '../transitions';
+import type { TransitionCurve, TransitionMode } from '../transitions';
 import type { ColorAdjustmentParams } from '../effects/video/color-adjustment/manifest';
 import type { BlurParams } from '../effects/video/blur/manifest';
 import type { ColorMatrixParams } from '../effects/video/color-matrix/manifest';
@@ -93,8 +93,7 @@ export interface ClipTransform {
 export interface ClipTransition {
   type: string;
   durationUs: number;
-  /** 'transition' = use adjacent clip on the same track. 'fade' = fade with lower tracks */
-  mode?: 'transition' | 'fade';
+  mode?: TransitionMode;
   /** True if the user manually changed the transition mode */
   isOverridden?: boolean;
   /** Opacity interpolation curve */

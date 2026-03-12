@@ -66,8 +66,20 @@ export function normalizeAudioFadeCurve(value: unknown): AudioFadeCurve {
   return value === 'logarithmic' ? 'logarithmic' : 'linear';
 }
 
-function normalizeTransitionMode(value: unknown): 'transition' | 'fade' {
-  return value === 'fade' ? 'fade' : 'transition';
+function normalizeTransitionMode(value: unknown): 'adjacent' | 'background' | 'transparent' {
+  if (value === 'adjacent' || value === 'background' || value === 'transparent') {
+    return value;
+  }
+
+  if (value === 'fade') {
+    return 'background';
+  }
+
+  if (value === 'transition') {
+    return 'adjacent';
+  }
+
+  return 'transparent';
 }
 
 function resolveEdgeFade(input: {
@@ -90,10 +102,7 @@ function resolveEdgeFade(input: {
     };
   }
 
-  if (
-    transitionDurationUs > 0 &&
-    normalizeTransitionMode(input.transition?.mode) === 'transition'
-  ) {
+  if (transitionDurationUs > 0 && normalizeTransitionMode(input.transition?.mode) === 'adjacent') {
     return {
       durationUs: transitionDurationUs,
       curve: normalizeAudioFadeCurve(input.transitionOwnerCurve),
