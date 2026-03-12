@@ -10,7 +10,14 @@ import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
 import { getEffectManifest } from '~/effects';
-import { getTransitionManifest, DEFAULT_TRANSITION_MODE, DEFAULT_TRANSITION_CURVE, normalizeTransitionParams } from '~/transitions';
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import {
+  getTransitionManifest,
+  DEFAULT_TRANSITION_MODE,
+  DEFAULT_TRANSITION_CURVE,
+  normalizeTransitionParams,
+} from '~/transitions';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -41,11 +48,40 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
   (e: 'startMoveItem', event: PointerEvent, trackId: string, itemId: string, startUs: number): void;
-  (e: 'startTrimItem', event: PointerEvent, payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number }): void;
-  (e: 'startResizeVolume', event: PointerEvent, trackId: string, itemId: string, gain: number, height: number): void;
-  (e: 'startResizeFade', event: PointerEvent, trackId: string, itemId: string, edge: 'in' | 'out', durationUs: number): void;
-  (e: 'startResizeTransition', event: PointerEvent, trackId: string, itemId: string, edge: 'in' | 'out', durationUs: number): void;
-  (e: 'selectTransition', event: MouseEvent | PointerEvent, payload: { trackId: string; itemId: string; edge: 'in' | 'out' }): void;
+  (
+    e: 'startTrimItem',
+    event: PointerEvent,
+    payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
+  ): void;
+  (
+    e: 'startResizeVolume',
+    event: PointerEvent,
+    trackId: string,
+    itemId: string,
+    gain: number,
+    height: number,
+  ): void;
+  (
+    e: 'startResizeFade',
+    event: PointerEvent,
+    trackId: string,
+    itemId: string,
+    edge: 'in' | 'out',
+    durationUs: number,
+  ): void;
+  (
+    e: 'startResizeTransition',
+    event: PointerEvent,
+    trackId: string,
+    itemId: string,
+    edge: 'in' | 'out',
+    durationUs: number,
+  ): void;
+  (
+    e: 'selectTransition',
+    event: MouseEvent | PointerEvent,
+    payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
+  ): void;
   (e: 'clipAction', payload: any): void;
   (e: 'openSpeedModal', payload: { trackId: string; itemId: string; speed: number }): void;
   (e: 'resetVolume', trackId: string, itemId: string): void;
@@ -57,15 +93,22 @@ const selectionStore = useSelectionStore();
 const mediaStore = useMediaStore();
 const uiStore = useUiStore();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 
 const isDraggingOver = ref(false);
 let didStartClipDrag = false;
 
-const clipItem = computed<TimelineClipItem | null>(() => props.item.kind === 'clip' ? props.item as TimelineClipItem : null);
-const clipWidthPx = computed(() => Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)));
+const clipItem = computed<TimelineClipItem | null>(() =>
+  props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
+);
+const clipWidthPx = computed(() =>
+  Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
+);
 
 function onClipPointerdown(e: PointerEvent) {
-  if (e.button !== 0 || !props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
+  if (timelineStore.isTrimModeActive) return;
+  if (e.button !== 0 || !props.canEditClipContent || !clipItem.value || clipItem.value.locked)
+    return;
   didStartClipDrag = false;
   const startX = e.clientX;
   const startY = e.clientY;
@@ -84,12 +127,34 @@ function onClipPointerdown(e: PointerEvent) {
 
 function onClipClick(e: MouseEvent) {
   if (didStartClipDrag) return;
+  if (timelineStore.isTrimModeActive) {
+    if (e.button === 0 && props.canEditClipContent && clipItem.value && !clipItem.value.locked) {
+      const isShift = isLayer1Active(e, workspaceStore.userSettings);
+      const isCtrl = isLayer2Active(e, workspaceStore.userSettings);
+
+      timelineStore.selectTimelineItems([props.item.id]);
+
+      if (isShift && !isCtrl) {
+        // Удалится левая часть
+        timelineStore.trimToPlayheadRightNoRipple();
+      } else if (!isShift && isCtrl) {
+        // Удалится правая часть
+        timelineStore.trimToPlayheadLeftNoRipple();
+      } else {
+        timelineStore.splitClipAtPlayhead();
+      }
+    }
+    return;
+  }
   if (e.button === 0) emit('selectItem', e as PointerEvent, props.item.id);
 }
 
 // Drag & Drop Handling for Effects/Transitions
 function hasSupportedClipDrop(e: DragEvent) {
-  return e.dataTransfer?.types.includes('gran-effect') || e.dataTransfer?.types.includes('gran-transition');
+  return (
+    e.dataTransfer?.types.includes('gran-effect') ||
+    e.dataTransfer?.types.includes('gran-transition')
+  );
 }
 
 function handleDragEnter(e: DragEvent) {
@@ -116,28 +181,56 @@ function handleDrop(e: DragEvent) {
   if (effectType) {
     const manifest = getEffectManifest(effectType);
     if (!manifest) return;
-    const newEffect = { id: `effect_${Date.now()}`, type: effectType, enabled: true, ...manifest.defaultValues } as any;
-    timelineStore.updateClipProperties(props.track.id, props.item.id, { effects: [newEffect, ...(clipItem.value.effects || [])] });
+    const newEffect = {
+      id: `effect_${Date.now()}`,
+      type: effectType,
+      enabled: true,
+      ...manifest.defaultValues,
+    } as any;
+    timelineStore.updateClipProperties(props.track.id, props.item.id, {
+      effects: [newEffect, ...(clipItem.value.effects || [])],
+    });
     selectionStore.selectTimelineItem(props.track.id, props.item.id, 'clip');
     setTimeout(() => uiStore.triggerScrollToEffects(), 50);
   } else if (transitionType) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const edge = (e.clientX - rect.left) <= rect.width / 2 ? 'in' : 'out';
+    const edge = e.clientX - rect.left <= rect.width / 2 ? 'in' : 'out';
     const manifest = getTransitionManifest(transitionType);
     if (!manifest) return;
-    const durationUs = Math.min(manifest.defaultDurationUs ?? 1000000, Math.round(clipItem.value.timelineRange.durationUs * 0.3));
-    const transition = { type: transitionType, durationUs, mode: DEFAULT_TRANSITION_MODE, curve: DEFAULT_TRANSITION_CURVE, params: normalizeTransitionParams(transitionType) };
-    timelineStore.updateClipTransition(props.track.id, props.item.id, edge === 'in' ? { transitionIn: transition } : { transitionOut: transition });
+    const durationUs = Math.min(
+      manifest.defaultDurationUs ?? 1000000,
+      Math.round(clipItem.value.timelineRange.durationUs * 0.3),
+    );
+    const transition = {
+      type: transitionType,
+      durationUs,
+      mode: DEFAULT_TRANSITION_MODE,
+      curve: DEFAULT_TRANSITION_CURVE,
+      params: normalizeTransitionParams(transitionType),
+    };
+    timelineStore.updateClipTransition(
+      props.track.id,
+      props.item.id,
+      edge === 'in' ? { transitionIn: transition } : { transitionOut: transition },
+    );
     selectionStore.selectTimelineTransition(props.track.id, props.item.id, edge);
   }
 }
 
 function isVideo(it: TimelineTrackItem): it is TimelineClipItem {
-  return it.kind === 'clip' && (it.clipType === 'media' || it.clipType === 'timeline') && props.track.kind === 'video';
+  return (
+    it.kind === 'clip' &&
+    (it.clipType === 'media' || it.clipType === 'timeline') &&
+    props.track.kind === 'video'
+  );
 }
 
 function isAudio(it: TimelineTrackItem): it is TimelineClipItem {
-  return it.kind === 'clip' && (it.clipType === 'media' || it.clipType === 'timeline') && props.track.kind === 'audio';
+  return (
+    it.kind === 'clip' &&
+    (it.clipType === 'media' || it.clipType === 'timeline') &&
+    props.track.kind === 'audio'
+  );
 }
 
 function clipHasAudio(it: TimelineTrackItem, track: TimelineTrack): boolean {
@@ -151,7 +244,11 @@ function clipHasAudio(it: TimelineTrackItem, track: TimelineTrack): boolean {
 }
 
 const isMediaMissing = computed(() => {
-  if (!clipItem.value || (clipItem.value.clipType !== 'media' && clipItem.value.clipType !== 'timeline')) return false;
+  if (
+    !clipItem.value ||
+    (clipItem.value.clipType !== 'media' && clipItem.value.clipType !== 'timeline')
+  )
+    return false;
   return mediaStore.missingPaths[clipItem.value.source.path] === true;
 });
 
@@ -164,12 +261,15 @@ const { contextMenuItems } = useClipContextMenu({
   selectedItemIds: computed(() => timelineStore.selectedItemIds),
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
   batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
-  updateClipProperties: (trackId, itemId, p) => timelineStore.updateClipProperties(trackId, itemId, p),
-  updateClipTransition: (trackId, itemId, p) => timelineStore.updateClipTransition(trackId, itemId, p),
+  updateClipProperties: (trackId, itemId, p) =>
+    timelineStore.updateClipProperties(trackId, itemId, p),
+  updateClipTransition: (trackId, itemId, p) =>
+    timelineStore.updateClipTransition(trackId, itemId, p),
   requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
   selectTransition: (p) => timelineStore.selectTransition(p),
   clearSelection: () => selectionStore.clearSelection(),
-  selectTimelineTransition: (trackId, itemId, edge) => selectionStore.selectTimelineTransition(trackId, itemId, edge),
+  selectTimelineTransition: (trackId, itemId, edge) =>
+    selectionStore.selectTimelineTransition(trackId, itemId, edge),
   emitOpenSpeedModal: (p) => emit('openSpeedModal', p),
   emitClipAction: (p) => emit('clipAction', p),
   t,
@@ -180,7 +280,10 @@ const isFreePosition = computed(() => {
   const fps = sanitizeFps(timelineStore.timelineDoc.timebase.fps);
   const startFrame = (clipItem.value.timelineRange.startUs * fps) / 1_000_000;
   const durFrame = (clipItem.value.timelineRange.durationUs * fps) / 1_000_000;
-  return Math.abs(startFrame - Math.round(startFrame)) > 0.001 || Math.abs(durFrame - Math.round(durFrame)) > 0.001;
+  return (
+    Math.abs(startFrame - Math.round(startFrame)) > 0.001 ||
+    Math.abs(durFrame - Math.round(durFrame)) > 0.001
+  );
 });
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
@@ -189,7 +292,7 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
     clipItem.value,
     'in',
     clipWidthPx.value,
-    (us) => timeUsToPx(us, timelineStore.timelineZoom)
+    (us) => timeUsToPx(us, timelineStore.timelineZoom),
   );
   if (offsetPx === null) return null;
 
@@ -204,7 +307,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     clipItem.value,
     'out',
     clipWidthPx.value,
-    (us) => timeUsToPx(us, timelineStore.timelineZoom)
+    (us) => timeUsToPx(us, timelineStore.timelineZoom),
   );
   if (offsetPx === null) return null;
 
@@ -212,7 +315,6 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
   };
 });
-
 </script>
 
 <template>
@@ -220,11 +322,16 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
-      class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 cursor-pointer select-none transition-shadow group/clip"
+      class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 select-none transition-shadow group/clip"
       :class="[
-        timelineStore.selectedItemIds.includes(item.id) ? 'outline-2 outline-(--selection-ring) z-20 shadow-lg' : '',
+        timelineStore.isTrimModeActive ? 'cursor-crosshair' : 'cursor-pointer',
+        timelineStore.selectedItemIds.includes(item.id)
+          ? 'outline-2 outline-(--selection-ring) z-20 shadow-lg'
+          : '',
         isDraggingOver ? 'ring-2 ring-primary-500 z-30' : '',
-        clipItem && typeof clipItem.freezeFrameSourceUs === 'number' ? 'outline-(--color-warning) outline-2' : '',
+        clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
+          ? 'outline-(--color-warning) outline-2'
+          : '',
         clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden)) ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
@@ -243,11 +350,25 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
       @drop="handleDrop"
     >
       <!-- Indicators -->
-      <div v-if="clipItem && typeof clipItem.speed === 'number' && clipItem.speed !== 1 && !isMediaMissing" class="absolute inset-0 rounded border-2 pointer-events-none z-40" :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'" />
-      <div v-if="isFreePosition" class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none z-35" />
+      <div
+        v-if="
+          clipItem && typeof clipItem.speed === 'number' && clipItem.speed !== 1 && !isMediaMissing
+        "
+        class="absolute inset-0 rounded border-2 pointer-events-none z-40"
+        :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
+      />
+      <div
+        v-if="isFreePosition"
+        class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none z-35"
+      />
 
       <!-- Overlays (Missing Media, Disabled, Muted) -->
-      <ClipMetadata :item="item" :track="track" :is-media-missing="isMediaMissing" :clip-width-px="clipWidthPx" />
+      <ClipMetadata
+        :item="item"
+        :track="track"
+        :is-media-missing="isMediaMissing"
+        :clip-width-px="clipWidthPx"
+      />
 
       <!-- Sub-components for Transitions and Fades -->
       <ClipTransitions
@@ -258,7 +379,10 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         :selected-transition="selectedTransition"
         :can-edit="canEditClipContent"
         @select="(e, payload) => emit('selectTransition', e, payload)"
-        @resize="(e, payload) => emit('startResizeTransition', e, track.id, item.id, payload.edge, payload.durationUs)"
+        @resize="
+          (e, payload) =>
+            emit('startResizeTransition', e, track.id, item.id, payload.edge, payload.durationUs)
+        "
       />
 
       <ClipAudioFades
@@ -273,18 +397,38 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
         :is-resizing-volume="resizeVolume?.itemId === item.id"
         :is-mobile="isMobile"
-        @start-resize-fade="(e, payload) => emit('startResizeFade', e, track.id, item.id, payload.edge, payload.durationUs)"
-        @start-resize-volume="(e, gain) => emit('startResizeVolume', e, track.id, item.id, gain, trackHeight)"
+        @start-resize-fade="
+          (e, payload) =>
+            emit('startResizeFade', e, track.id, item.id, payload.edge, payload.durationUs)
+        "
+        @start-resize-volume="
+          (e, gain) => emit('startResizeVolume', e, track.id, item.id, gain, trackHeight)
+        "
         @reset-volume="emit('resetVolume', track.id, item.id)"
       />
 
       <!-- Content Area (Thumbnails / Waveform) -->
       <div class="flex-1 flex w-full min-h-0 relative z-20">
-        <TimelineClipThumbnails v-if="isVideo(item) && clipItem?.showThumbnails !== false" :item="item as any" :width="clipWidthPx" />
-        <TimelineAudioWaveform v-if="isAudio(item) || (isVideo(item) && clipHasAudio(item, track) && clipItem?.showWaveform !== false)" :item="item as any" />
+        <TimelineClipThumbnails
+          v-if="isVideo(item) && clipItem?.showThumbnails !== false"
+          :item="item as any"
+          :width="clipWidthPx"
+        />
+        <TimelineAudioWaveform
+          v-if="
+            isAudio(item) ||
+            (isVideo(item) && clipHasAudio(item, track) && clipItem?.showWaveform !== false)
+          "
+          :item="item as any"
+        />
 
-        <div v-if="clipItem" class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none">
-          <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">{{ clipItem.name }}</span>
+        <div
+          v-if="clipItem"
+          class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none"
+        >
+          <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">{{
+            clipItem.name
+          }}</span>
         </div>
 
         <div
@@ -302,8 +446,30 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
 
       <!-- Trim Handles -->
       <template v-if="clipItem && canEditClipContent && !clipItem.locked">
-        <div class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim" :class="isMobile ? 'w-4' : 'w-1.5'" @pointerdown.stop="emit('startTrimItem', $event, { trackId: item.trackId, itemId: item.id, edge: 'start', startUs: item.timelineRange.startUs })" />
-        <div class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim" :class="isMobile ? 'w-4' : 'w-1.5'" @pointerdown.stop="emit('startTrimItem', $event, { trackId: item.trackId, itemId: item.id, edge: 'end', startUs: item.timelineRange.startUs })" />
+        <div
+          class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
+          :class="isMobile ? 'w-4' : 'w-1.5'"
+          @pointerdown.stop="
+            emit('startTrimItem', $event, {
+              trackId: item.trackId,
+              itemId: item.id,
+              edge: 'start',
+              startUs: item.timelineRange.startUs,
+            })
+          "
+        />
+        <div
+          class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
+          :class="isMobile ? 'w-4' : 'w-1.5'"
+          @pointerdown.stop="
+            emit('startTrimItem', $event, {
+              trackId: item.trackId,
+              itemId: item.id,
+              edge: 'end',
+              startUs: item.timelineRange.startUs,
+            })
+          "
+        />
       </template>
     </div>
   </UContextMenu>

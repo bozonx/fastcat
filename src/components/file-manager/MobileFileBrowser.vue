@@ -182,7 +182,7 @@ async function handleAddToProject() {
     const startUs = timelineStore.currentTime;
     const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
     const tracks = timelineStore.timelineDoc?.tracks || [];
-    let trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
+    const trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
 
     if (!trackId) {
       toast.add({
@@ -285,11 +285,7 @@ onMounted(() => {
       </div>
 
       <div v-else class="divide-y divide-slate-900/70 px-2 py-2">
-        <div
-          v-for="entry in entries"
-          :key="entry.path"
-          class="overflow-hidden rounded-2xl"
-        >
+        <div v-for="entry in entries" :key="entry.path" class="overflow-hidden rounded-2xl">
           <button
             class="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors active:bg-slate-900"
             :class="{ 'bg-blue-600/10 ring-1 ring-blue-500/30 inset': isSelected(entry) }"
@@ -331,8 +327,12 @@ onMounted(() => {
                 </span>
               </div>
               <div class="flex items-center gap-2 text-[10px] text-slate-500">
-                <span>{{ entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name) }}</span>
-                <span v-if="entry.lastModified">• {{ new Date(entry.lastModified).toLocaleDateString() }}</span>
+                <span>{{
+                  entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name)
+                }}</span>
+                <span v-if="entry.lastModified"
+                  >• {{ new Date(entry.lastModified).toLocaleDateString() }}</span
+                >
               </div>
             </div>
 

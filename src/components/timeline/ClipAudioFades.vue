@@ -17,7 +17,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'startResizeFade', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
+  (
+    e: 'startResizeFade',
+    event: PointerEvent,
+    payload: { edge: 'in' | 'out'; durationUs: number },
+  ): void;
   (e: 'startResizeVolume', event: PointerEvent, gain: number): void;
   (e: 'resetVolume'): void;
 }>();
@@ -51,16 +55,23 @@ function clampHandlePx(px: number, width: number) {
 
 const volumeY = computed(() => {
   const g = Math.max(0, Math.min(2, props.clip.audioGain ?? 1));
-  return (1 - (g / 2)) * 100;
+  return (1 - g / 2) * 100;
 });
 </script>
 
 <template>
-  <div v-if="!shouldCollapseFades()" class="absolute inset-0 pointer-events-none" style="z-index: 25">
+  <div
+    v-if="!shouldCollapseFades()"
+    class="absolute inset-0 pointer-events-none"
+    style="z-index: 25"
+  >
     <!-- Fade Paths -->
     <div class="absolute inset-0 rounded overflow-hidden">
       <svg
-        v-if="(clip.audioFadeInUs ?? 0) > 0 && (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs"
+        v-if="
+          (clip.audioFadeInUs ?? 0) > 0 &&
+          (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs
+        "
         class="absolute left-0 top-0 h-full"
         preserveAspectRatio="none"
         viewBox="0 0 100 100"
@@ -75,13 +86,19 @@ const volumeY = computed(() => {
       </svg>
 
       <svg
-        v-if="(clip.audioFadeOutUs ?? 0) > 0 && (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs"
+        v-if="
+          (clip.audioFadeOutUs ?? 0) > 0 &&
+          (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs
+        "
         class="absolute right-0 top-0 h-full"
         preserveAspectRatio="none"
         viewBox="0 0 100 100"
         :style="{
           width: `${Math.min(
-            Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutUs) || 0)), zoom)),
+            Math.max(
+              0,
+              timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutUs) || 0)), zoom),
+            ),
             clipWidthPx,
           )}px`,
         }"
@@ -96,12 +113,14 @@ const volumeY = computed(() => {
         class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'
+          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
           left: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeInUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
         }"
-        @pointerdown.stop.prevent="emit('startResizeFade', $event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })"
+        @pointerdown.stop.prevent="
+          emit('startResizeFade', $event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
+        "
       >
         <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
       </div>
@@ -110,12 +129,14 @@ const volumeY = computed(() => {
         class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'
+          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
           right: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeOutUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
         }"
-        @pointerdown.stop.prevent="emit('startResizeFade', $event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })"
+        @pointerdown.stop.prevent="
+          emit('startResizeFade', $event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
+        "
       >
         <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
       </div>
@@ -130,14 +151,16 @@ const volumeY = computed(() => {
         isDragging && !isResizingVolume ? 'opacity-0! pointer-events-none' : '',
       ]"
       :style="{ top: `${volumeY}%` }"
-      @pointerdown.stop.prevent="canEdit && !clip.locked && emit('startResizeVolume', $event, clip.audioGain ?? 1)"
+      @pointerdown.stop.prevent="
+        canEdit && !clip.locked && emit('startResizeVolume', $event, clip.audioGain ?? 1)
+      "
       @dblclick.stop.prevent="canEdit && !clip.locked && emit('resetVolume')"
     >
       <div
         class="w-full bg-yellow-400 opacity-80"
         :class="[
           clipWidthPx >= (isMobile ? 5 : 15) ? 'opacity-100' : 'hidden',
-          isMobile ? 'h-1' : 'h-[1.5px]'
+          isMobile ? 'h-1' : 'h-[1.5px]',
         ]"
       ></div>
 

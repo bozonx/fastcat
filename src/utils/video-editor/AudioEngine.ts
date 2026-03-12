@@ -9,6 +9,8 @@ import {
   type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
 
+import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
+
 const logger = createDevLogger('AudioEngine');
 
 export interface AudioEngineClip {
@@ -33,8 +35,6 @@ export interface AudioEngineClip {
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
 }
-
-import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;

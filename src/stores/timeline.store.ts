@@ -99,6 +99,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     edge: 'in' | 'out';
   } | null>(null);
 
+  const isTrimModeActive = ref(false);
+
   // Wrapper for applyTimeline to resolve circular dependencies in setup
   function applyTimeline(
     cmd: TimelineCommand,
@@ -895,6 +897,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     hoveredTrackId,
     renamingTrackId,
     selectedTransition,
+    isTrimModeActive,
     loadTimeline,
     saveTimeline,
     requestTimelineSave,

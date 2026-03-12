@@ -312,14 +312,20 @@ export function useTimelineInteraction(
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
-    if (e.key !== 'Escape') return;
+    if (e.key === 'Escape') {
+      if (timelineStore.isTrimModeActive) {
+        timelineStore.isTrimModeActive = false;
+        e.preventDefault();
+        return;
+      }
 
-    const hasActiveDrag = Boolean(draggingMode.value) || isDraggingPlayhead.value;
-    if (!hasActiveDrag) return;
+      const hasActiveDrag = Boolean(draggingMode.value) || isDraggingPlayhead.value;
+      if (!hasActiveDrag) return;
 
-    dragCancelRequested.value = true;
-    e.preventDefault();
-    onGlobalPointerUp();
+      dragCancelRequested.value = true;
+      e.preventDefault();
+      onGlobalPointerUp();
+    }
   }
 
   function applyDragFromPendingClientX() {
@@ -493,7 +499,9 @@ export function useTimelineInteraction(
 
             draggingTrackId.value = targetTrackId;
             hasPendingTimelinePersist.value = true;
-          } catch (err) { console.warn('Timeline interaction error:', err); }
+          } catch (err) {
+            console.warn('Timeline interaction error:', err);
+          }
         }
 
         return;
@@ -525,7 +533,9 @@ export function useTimelineInteraction(
         lastDragAppliedCmd.value = cmd as any;
         draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
-      } catch (err) { console.warn('Timeline interaction error:', err); }
+      } catch (err) {
+        console.warn('Timeline interaction error:', err);
+      }
       return;
     }
 
@@ -600,6 +610,15 @@ export function useTimelineInteraction(
   }
 
   function onGlobalPointerMove(e: PointerEvent) {
+    if (timelineStore.isTrimModeActive && !isDraggingPlayhead.value && !draggingMode.value) {
+      const scrollerRect = scrollEl.value?.getBoundingClientRect();
+      if (scrollerRect) {
+        const scrollX = scrollEl.value?.scrollLeft ?? 0;
+        const x = e.clientX - scrollerRect.left + scrollX;
+        timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+      }
+    }
+
     if (isDraggingPlayhead.value) {
       if (e.buttons === 0) {
         onGlobalPointerUp(e);
@@ -689,7 +708,9 @@ export function useTimelineInteraction(
                   },
                 );
                 hasPendingTimelinePersist.value = true;
-              } catch (err) { console.warn('Timeline interaction error:', err); }
+              } catch (err) {
+                console.warn('Timeline interaction error:', err);
+              }
             }
           }
         }
@@ -723,7 +744,9 @@ export function useTimelineInteraction(
                 skipHistory: true,
               });
               hasPendingTimelinePersist.value = true;
-            } catch (err) { console.warn('Timeline interaction error:', err); }
+            } catch (err) {
+              console.warn('Timeline interaction error:', err);
+            }
           }
         }
       }
@@ -751,7 +774,9 @@ export function useTimelineInteraction(
             timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
             lastDragAppliedCmd.value = cmd as any;
             hasPendingTimelinePersist.value = true;
-          } catch (err) { console.warn('Timeline interaction error:', err); }
+          } catch (err) {
+            console.warn('Timeline interaction error:', err);
+          }
         }
       }
     }

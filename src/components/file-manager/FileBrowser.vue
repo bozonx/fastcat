@@ -1362,7 +1362,6 @@ async function createPreviewUrl(name: string, file: File): Promise<string | unde
   }
 }
 
-
 const sortedEntries = computed(() => {
   const arr = [...folderEntries.value] as ExtendedFsEntry[];
 

@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { TimelineTrack, TimelineTrackItem, TimelineClipItem, ClipTransition } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineTrackItem,
+  TimelineClipItem,
+  ClipTransition,
+} from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
   getFadeLinePattern as getTransitionFadeLinePattern,
   getTransitionSolidPath,
-} from '~/utils/timeline/clip';
-import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
-
-import {
   getClipHeadHandleUs,
   getClipTailHandleUs,
   getNextClipForItem,
   getPrevClipForItem,
 } from '~/utils/timeline/clip';
-
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 const { t } = useI18n();
 
@@ -27,7 +28,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', event: PointerEvent, payload: { trackId: string; itemId: string; edge: 'in' | 'out' }): void;
+  (
+    e: 'select',
+    event: PointerEvent,
+    payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
+  ): void;
   (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
 }>();
 
@@ -127,9 +132,9 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
 
 function hasTransitionProblem(edge: 'in' | 'out'): boolean {
   return Boolean(
-    edge === 'in' 
-      ? hasTransitionInProblem(props.track, props.clip) 
-      : hasTransitionOutProblem(props.track, props.clip)
+    edge === 'in'
+      ? hasTransitionInProblem(props.track, props.clip)
+      : hasTransitionOutProblem(props.track, props.clip),
   );
 }
 
@@ -141,8 +146,8 @@ function getTransitionButtonTitle(edge: 'in' | 'out'): string | undefined {
   if (mode !== 'transition') return undefined;
 
   return (
-    (edge === 'in' 
-      ? hasTransitionInProblem(props.track, props.clip) 
+    (edge === 'in'
+      ? hasTransitionInProblem(props.track, props.clip)
       : hasTransitionOutProblem(props.track, props.clip)) ?? undefined
   );
 }
@@ -169,7 +174,6 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   if (edge === 'in') return 'var(--clip-lower-tri)';
   return 'rgba(255, 255, 255, 0.2)';
 }
-
 </script>
 
 <template>
@@ -202,7 +206,11 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
         "
       >
         <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
-          <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+          <svg
+            class="w-full h-full block absolute inset-0"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+          >
             <rect x="0" y="0" width="100" height="100" fill="transparent" />
             <rect
               v-for="line in getTransitionFadeLines('in')"
@@ -215,14 +223,27 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
             />
           </svg>
         </template>
-        <svg v-else class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
-          <path :d="getTransitionCurvePath('in')" :fill="getTransitionSvgFill('in', hasTransitionProblem('in'))" />
+        <svg
+          v-else
+          class="w-full h-full block absolute inset-0"
+          preserveAspectRatio="none"
+          viewBox="0 0 100 100"
+        >
+          <path
+            :d="getTransitionCurvePath('in')"
+            :fill="getTransitionSvgFill('in', hasTransitionProblem('in'))"
+          />
         </svg>
-        <span v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'" class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+        <span
+          v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'"
+          class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+        />
         <div
           v-if="canEdit && !clip.locked"
           class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-          @pointerdown.stop.prevent="emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })"
+          @pointerdown.stop.prevent="
+            emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
+          "
         />
       </button>
     </div>
@@ -255,7 +276,11 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
         "
       >
         <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'fade'">
-          <svg class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+          <svg
+            class="w-full h-full block absolute inset-0"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+          >
             <rect x="0" y="0" width="100" height="100" fill="transparent" />
             <rect
               v-for="line in getTransitionFadeLines('out')"
@@ -268,14 +293,27 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
             />
           </svg>
         </template>
-        <svg v-else class="w-full h-full block absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
-          <path :d="getTransitionCurvePath('out')" :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))" />
+        <svg
+          v-else
+          class="w-full h-full block absolute inset-0"
+          preserveAspectRatio="none"
+          viewBox="0 0 100 100"
+        >
+          <path
+            :d="getTransitionCurvePath('out')"
+            :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))"
+          />
         </svg>
-        <span v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'" class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70" />
+        <span
+          v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transition'"
+          class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+        />
         <div
           v-if="canEdit && !clip.locked"
           class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-          @pointerdown.stop.prevent="emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })"
+          @pointerdown.stop.prevent="
+            emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
+          "
         />
       </button>
     </div>

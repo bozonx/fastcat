@@ -29,10 +29,7 @@ export function isSvgFile(params: {
   file?: { name: string } | null;
   path?: string | null;
 }): boolean {
-  return (
-    isSvgFilename(params.file?.name) ||
-    isSvgFilename(params.path)
-  );
+  return isSvgFilename(params.file?.name) || isSvgFilename(params.path);
 }
 
 export function parseSvgDimensions(svgText: string): SvgDimensions {

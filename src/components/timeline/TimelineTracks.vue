@@ -23,7 +23,13 @@ const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
   canEditClipContent: boolean;
-  dragPreview?: { trackId: string; startUs: number; label: string; durationUs: number; kind: 'timeline-clip' | 'file' } | null;
+  dragPreview?: {
+    trackId: string;
+    startUs: number;
+    label: string;
+    durationUs: number;
+    kind: 'timeline-clip' | 'file';
+  } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number } | null;
   draggingMode?: 'move' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
@@ -37,16 +43,25 @@ const emit = defineEmits<{
   (e: 'startMoveItem', event: PointerEvent, trackId: string, itemId: string, startUs: number): void;
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
   (e: 'clipAction', payload: any): void;
-  (e: 'startTrimItem', event: PointerEvent, payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number }): void;
+  (
+    e: 'startTrimItem',
+    event: PointerEvent,
+    payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
+  ): void;
 }>();
 
 const DEFAULT_TRACK_HEIGHT = 40;
 const containerRef = ref<HTMLElement | null>(null);
 
 const { tracks, trackHeights } = toRefs(props);
-const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(containerRef, tracks, trackHeights);
+const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
+  containerRef,
+  tracks,
+  trackHeights,
+);
 
-const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } = useTimelineItemResize(() => props.tracks);
+const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } =
+  useTimelineItemResize(() => props.tracks);
 
 const timelineWidthPx = computed(() => {
   const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
@@ -63,10 +78,17 @@ const selectionRangeStyle = computed(() => {
 });
 
 // Speed Modal State
-const speedModal = ref<{ open: boolean; trackId: string; itemId: string; speed: number } | null>(null);
+const speedModal = ref<{ open: boolean; trackId: string; itemId: string; speed: number } | null>(
+  null,
+);
 
 function openSpeedModal(trackId: string, itemId: string, currentSpeed: any) {
-  speedModal.value = { open: true, trackId, itemId, speed: typeof currentSpeed === 'number' ? currentSpeed : 1 };
+  speedModal.value = {
+    open: true,
+    trackId,
+    itemId,
+    speed: typeof currentSpeed === 'number' ? currentSpeed : 1,
+  };
 }
 
 async function saveSpeedModal() {
@@ -80,14 +102,19 @@ async function saveSpeedModal() {
 
 const speedModalTargetHasAudio = computed(() => {
   if (!speedModal.value) return false;
-  const track = props.tracks.find(t => t.id === speedModal.value!.trackId);
-  const clip = track?.items.find(it => it.id === speedModal.value!.itemId && it.kind === 'clip') as any;
+  const track = props.tracks.find((t) => t.id === speedModal.value!.trackId);
+  const clip = track?.items.find(
+    (it) => it.id === speedModal.value!.itemId && it.kind === 'clip',
+  ) as any;
   if (!clip || (track?.kind === 'video' && clip.audioFromVideoDisabled)) return false;
   if (track?.kind === 'audio') return true;
   return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
 });
 
-function selectTransition(e: MouseEvent | PointerEvent, payload: { trackId: string; itemId: string; edge: 'in' | 'out' }) {
+function selectTransition(
+  e: MouseEvent | PointerEvent,
+  payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
+) {
   e.stopPropagation();
   timelineStore.selectTransition(payload);
   selectionStore.selectTimelineTransition(payload.trackId, payload.itemId, payload.edge);
@@ -135,7 +162,9 @@ function selectTransition(e: MouseEvent | PointerEvent, payload: { trackId: stri
       class="flex items-center px-2 relative transition-colors border-b border-ui-border"
       :class="[
         timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : '',
-        timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id ? 'bg-ui-bg-elevated/50' : '',
+        timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id
+          ? 'bg-ui-bg-elevated/50'
+          : '',
       ]"
       :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
       @pointerdown="
@@ -157,7 +186,11 @@ function selectTransition(e: MouseEvent | PointerEvent, payload: { trackId: stri
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"
         class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
-        :class="dragPreview.kind === 'file' ? 'bg-primary-600 border border-primary-400' : 'bg-ui-bg-accent border border-ui-border'"
+        :class="
+          dragPreview.kind === 'file'
+            ? 'bg-primary-600 border border-primary-400'
+            : 'bg-ui-bg-accent border border-ui-border'
+        "
         :style="{
           left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
           width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
@@ -171,10 +204,13 @@ function selectTransition(e: MouseEvent | PointerEvent, payload: { trackId: stri
         class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
         :style="{
           left: `${timeUsToPx(movePreview.startUs, timelineStore.timelineZoom)}px`,
-          width: `${Math.max(2, timeUsToPx(props.tracks.flatMap(t => t.items).find(it => it.id === movePreview?.itemId)?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
+          width: `${Math.max(2, timeUsToPx(props.tracks.flatMap((t) => t.items).find((it) => it.id === movePreview?.itemId)?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
         }"
       >
-        <span class="truncate">{{ (props.tracks.flatMap(t => t.items).find(it => it.id === movePreview?.itemId) as any)?.name }}</span>
+        <span class="truncate">{{
+          (props.tracks.flatMap((t) => t.items).find((it) => it.id === movePreview?.itemId) as any)
+            ?.name
+        }}</span>
       </div>
 
       <template v-for="item in track.items" :key="item.id">
@@ -213,4 +249,3 @@ function selectTransition(e: MouseEvent | PointerEvent, payload: { trackId: stri
     <div class="h-16 shrink-0" />
   </div>
 </template>
-

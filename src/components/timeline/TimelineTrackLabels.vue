@@ -102,26 +102,34 @@ function onSelectTrack(trackId: string) {
 
 function getTrackContextMenuItems(track: TimelineTrack) {
   const kind = track.kind;
-  const otherIdx = props.tracks.filter(tr => tr.kind === kind).length + 1;
-  
+  const otherIdx = props.tracks.filter((tr) => tr.kind === kind).length + 1;
+
   return [
     [
       {
         label: t(`granVideoEditor.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackAbove`),
         icon: kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
-        onSelect: () => timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, { insertBeforeId: track.id }),
+        onSelect: () =>
+          timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, {
+            insertBeforeId: track.id,
+          }),
       },
       {
         label: t(`granVideoEditor.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackBelow`),
         icon: kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
-        onSelect: () => timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, { insertAfterId: track.id }),
+        onSelect: () =>
+          timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, {
+            insertAfterId: track.id,
+          }),
       },
     ],
     [
       {
         label: t('granVideoEditor.timeline.renameTrack'),
         icon: 'i-heroicons-pencil',
-        onSelect: () => { timelineStore.renamingTrackId = track.id; },
+        onSelect: () => {
+          timelineStore.renamingTrackId = track.id;
+        },
       },
       {
         label: t('granVideoEditor.timeline.deleteTrack'),
@@ -137,12 +145,20 @@ const emptyAreaContextMenuItems = [
     {
       label: t('granVideoEditor.timeline.addVideoTrack'),
       icon: 'i-heroicons-video-camera',
-      onSelect: () => timelineStore.addTrack('video', `Video ${props.tracks.filter(t => t.kind === 'video').length + 1}`),
+      onSelect: () =>
+        timelineStore.addTrack(
+          'video',
+          `Video ${props.tracks.filter((t) => t.kind === 'video').length + 1}`,
+        ),
     },
     {
       label: t('granVideoEditor.timeline.addAudioTrack'),
       icon: 'i-heroicons-musical-note',
-      onSelect: () => timelineStore.addTrack('audio', `Audio ${props.tracks.filter(t => t.kind === 'audio').length + 1}`),
+      onSelect: () =>
+        timelineStore.addTrack(
+          'audio',
+          `Audio ${props.tracks.filter((t) => t.kind === 'audio').length + 1}`,
+        ),
     },
   ],
 ];

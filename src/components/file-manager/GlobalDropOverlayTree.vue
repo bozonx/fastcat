@@ -31,10 +31,7 @@ const emit = defineEmits<{
         @dragleave="emit('folderDragLeave', $event, entry.path ?? '')"
         @drop="emit('folderDrop', $event, entry.path ?? '')"
       >
-        <UIcon
-          :name="getFolderIcon(entry.name)"
-          class="w-4 h-4 text-ui-text-muted/80 shrink-0"
-        />
+        <UIcon :name="getFolderIcon(entry.name)" class="w-4 h-4 text-ui-text-muted/80 shrink-0" />
         <span class="text-sm text-ui-text truncate">
           {{ entry.name }}
         </span>

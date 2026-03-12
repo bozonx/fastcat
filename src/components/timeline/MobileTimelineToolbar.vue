@@ -39,7 +39,9 @@ function handleZoomOut() {
 </script>
 
 <template>
-  <div class="flex items-center justify-between gap-2 overflow-x-auto border-b border-ui-border bg-ui-bg-elevated px-2 py-2 shadow-sm no-scrollbar">
+  <div
+    class="flex items-center justify-between gap-2 overflow-x-auto border-b border-ui-border bg-ui-bg-elevated px-2 py-2 shadow-sm no-scrollbar"
+  >
     <div class="flex items-center gap-2">
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
         <UButton
@@ -82,7 +84,9 @@ function handleZoomOut() {
     </div>
 
     <div class="flex items-center gap-2">
-      <span class="text-[11px] font-medium tabular-nums text-ui-text-muted">{{ timelineZoom }}%</span>
+      <span class="text-[11px] font-medium tabular-nums text-ui-text-muted"
+        >{{ timelineZoom }}%</span
+      >
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
         <UButton
           icon="lucide:zoom-out"

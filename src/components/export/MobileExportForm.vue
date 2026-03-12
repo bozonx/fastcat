@@ -51,7 +51,9 @@ const {
 
 const showAdvanced = ref(false);
 const exportLocation = computed(() =>
-  projectStore.currentProjectName ? `${projectStore.currentProjectName}/exports` : 'Project exports',
+  projectStore.currentProjectName
+    ? `${projectStore.currentProjectName}/exports`
+    : 'Project exports',
 );
 
 const exportSummary = computed(() => {
@@ -227,7 +229,10 @@ function getPhaseLabel() {
       </button>
 
       <div v-if="showAdvanced" class="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
-        <div v-if="!excludeAudio" class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
+        <div
+          v-if="!excludeAudio"
+          class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3"
+        >
           <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Audio</p>
           <div class="grid grid-cols-2 gap-4">
             <UFormField label="Audio Codec">

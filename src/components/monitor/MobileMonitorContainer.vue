@@ -102,7 +102,9 @@ const canInteractPlayback = computed(
 );
 
 const containerHeightClass = computed(() =>
-  props.mode === 'sound' ? 'h-[30vh] min-h-[220px] max-h-[340px]' : 'h-[34vh] min-h-[240px] max-h-[420px]',
+  props.mode === 'sound'
+    ? 'h-[30vh] min-h-[220px] max-h-[340px]'
+    : 'h-[34vh] min-h-[240px] max-h-[420px]',
 );
 
 const statusText = computed(() => {
@@ -188,7 +190,12 @@ watch(
     :class="containerHeightClass"
   >
     <!-- Video area -->
-    <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight" class="bg-black/80">
+    <MonitorViewport
+      ref="viewportRef"
+      :render-width="renderWidth"
+      :render-height="renderHeight"
+      class="bg-black/80"
+    >
       <template #canvas>
         <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
       </template>
@@ -245,7 +252,9 @@ watch(
     <!-- Playback controls -->
     <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2.5">
       <div class="mb-2 flex items-center justify-between gap-3 text-[11px] text-ui-text-muted">
-        <span class="uppercase tracking-[0.18em]">{{ props.mode === 'sound' ? 'Monitor' : 'Preview' }}</span>
+        <span class="uppercase tracking-[0.18em]">{{
+          props.mode === 'sound' ? 'Monitor' : 'Preview'
+        }}</span>
         <span class="truncate">{{ statusText }}</span>
       </div>
       <div class="flex items-center justify-between gap-3">
