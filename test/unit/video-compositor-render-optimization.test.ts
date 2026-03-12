@@ -48,6 +48,33 @@ describe('VideoCompositor render optimization', () => {
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
 
+  it('prepares adjustment clips before and after shader transitions during renderFrame', async () => {
+    const { compositor, app } = createCompositor();
+    compositor.lastRenderedTimeUs = 0;
+    compositor.clips = [];
+    compositor.tracks = [];
+    compositor.trackById = new Map();
+    compositor.activeTracker = {
+      update: vi.fn(() => ({ activeClips: [], activeChanged: false })),
+    };
+
+    const events: string[] = [];
+    compositor.prepareAdjustmentClips = vi.fn(() => {
+      events.push('prepare');
+    });
+    compositor.applyShaderTransitions = vi.fn(async () => {
+      events.push('transition');
+    });
+    compositor.applyMasterEffects = vi.fn();
+
+    await compositor.renderFrame(1_000);
+
+    expect(compositor.prepareAdjustmentClips).toHaveBeenCalledTimes(2);
+    expect(compositor.applyShaderTransitions).toHaveBeenCalledTimes(1);
+    expect(events).toEqual(['prepare', 'transition', 'prepare']);
+    expect(app.renderer.render).toHaveBeenCalledTimes(1);
+  });
+
   it('sorts track containers and clip order inside a track when stage sort is dirty', async () => {
     const { compositor, app } = createCompositor();
 
