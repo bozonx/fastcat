@@ -102,7 +102,11 @@ useResizeObserver(containerRef, (entries) => {
 function onScroll() {
   if (props.scrollEl) {
     scrollLeft.value = props.scrollEl.scrollLeft;
-    scheduleDraw();
+    if (drawRafId !== null) {
+      cancelAnimationFrame(drawRafId);
+      drawRafId = null;
+    }
+    draw();
   }
 }
 
@@ -137,7 +141,7 @@ const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 
-watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
+watch([fps, zoom, width, height, scrollLeft], () => {
   scheduleDraw();
 });
 
@@ -411,6 +415,30 @@ const selectionRangePoint = computed(() => {
   };
 });
 
+const currentFrameHighlightStyle = computed(() => {
+  const currentZoom = zoom.value;
+  const currentFps = fps.value;
+  const pxPerFrame = zoomToPxPerSecond(currentZoom) / currentFps;
+  if (pxPerFrame < 6) return null;
+
+  const frameDurationUs = 1_000_000 / currentFps;
+  const currentFrameStartUs = Math.floor(currentTime.value / frameDurationUs) * frameDurationUs;
+  const currentFrameStartX = timeUsToPx(currentFrameStartUs, currentZoom) - scrollLeft.value;
+
+  return {
+    transform: `translate3d(${currentFrameStartX}px, 0, 0)`,
+    width: `${pxPerFrame}px`,
+  };
+});
+
+const playheadStyle = computed(() => {
+  const playheadX = Math.round(timeUsToPx(currentTime.value, zoom.value) - scrollLeft.value);
+
+  return {
+    transform: `translate3d(${playheadX}px, 0, 0)`,
+  };
+});
+
 function formatTime(us: number, fpsValue: number): string {
   const totalFrames = Math.round((us / 1_000_000) * fpsValue);
   const ff = totalFrames % fpsValue;
@@ -451,21 +479,6 @@ function draw() {
   const endPx = startPx + w;
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
-
-  if (pxPerFrame >= 6) {
-    const frameDurationUs = 1_000_000 / currentFps;
-    const currentFrameStartUs = Math.floor(currentTime.value / frameDurationUs) * frameDurationUs;
-    const currentFrameStartX = timeUsToPx(currentFrameStartUs, currentZoom) - startPx;
-
-    if (currentFrameStartX < w && currentFrameStartX + pxPerFrame > 0) {
-      const styles = window.getComputedStyle(document.documentElement);
-      const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
-      ctx.fillStyle = primaryColor;
-      ctx.globalAlpha = 0.12;
-      ctx.fillRect(currentFrameStartX, 0, pxPerFrame, h);
-      ctx.globalAlpha = 1;
-    }
-  }
 
   const MIN_DIST_PX = 90;
   const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
@@ -536,30 +549,6 @@ function draw() {
     }
   }
   ctx.stroke();
-
-  // Playhead indicator in ruler
-  // Use Math.round without +0.5 offset to match the CSS playhead line pixel position
-  const playheadX = Math.round(timeUsToPx(currentTime.value, currentZoom) - startPx);
-  if (playheadX >= -10 && playheadX <= w + 10) {
-    const styles = window.getComputedStyle(document.documentElement);
-    const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
-
-    ctx.beginPath();
-    ctx.fillStyle = primaryColor;
-
-    const pw = 10;
-    const ph = 10;
-    const tipX = playheadX + 0.5;
-
-    // Triangle pointing down, touching the bottom edge of the ruler
-    ctx.moveTo(tipX - pw / 2, h - ph);
-    ctx.lineTo(tipX + pw / 2, h - ph);
-    ctx.lineTo(tipX, h);
-    ctx.fill();
-
-    // Draw a 1px vertical line from triangle tip to bottom edge for precise alignment
-    ctx.fillRect(playheadX, h - 1, 1, 1);
-  }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -768,6 +757,31 @@ const selectionRangeMenuItems = computed(() => [
       @wheel.prevent="onRulerWheel"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
+
+      <div
+        v-if="currentFrameHighlightStyle"
+        class="absolute inset-y-0 pointer-events-none"
+        :style="{
+          ...currentFrameHighlightStyle,
+          willChange: 'transform',
+          backgroundColor: 'var(--color-primary-500, #3b82f6)',
+          opacity: '0.12',
+        }"
+      />
+
+      <div
+        class="absolute inset-y-0 w-0 pointer-events-none"
+        :style="{ ...playheadStyle, willChange: 'transform' }"
+      >
+        <div
+          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-t-0 border-b-[10px] border-l-transparent border-r-transparent"
+          :style="{ borderBottomColor: 'var(--color-primary-500, #3b82f6)' }"
+        />
+        <div
+          class="absolute left-0 bottom-0 -translate-x-1/2 w-px h-px"
+          :style="{ backgroundColor: 'var(--color-primary-500, #3b82f6)' }"
+        />
+      </div>
 
       <div class="absolute inset-0 pointer-events-none">
         <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems">

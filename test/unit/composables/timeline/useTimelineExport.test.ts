@@ -263,6 +263,13 @@ describe('useTimelineExport pure functions', () => {
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
 
+    const workspaceStoreMock = {
+      userSettings: {
+        projectDefaults: { audioDeclickDurationUs: 5000 },
+        optimization: { videoFrameCacheMb: 256 },
+      },
+    } as any;
+
     const result = await buildVideoWorkerPayloadFromTracks({
       tracks: [
         {
@@ -301,6 +308,7 @@ describe('useTimelineExport pure functions', () => {
         } as any,
       ],
       projectStore: projectStoreMock,
+      workspaceStore: workspaceStoreMock,
     });
 
     expect(result.clips.filter((clip) => clip.clipType === 'adjustment')).toHaveLength(2);
@@ -364,6 +372,13 @@ describe('useTimelineExport pure functions', () => {
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
 
+    const workspaceStoreMock = {
+      userSettings: {
+        projectDefaults: { audioDeclickDurationUs: 5000 },
+        optimization: { videoFrameCacheMb: 256 },
+      },
+    } as any;
+
     const result = await buildVideoWorkerPayloadFromTracks({
       tracks: [
         {
@@ -391,6 +406,7 @@ describe('useTimelineExport pure functions', () => {
         } as any,
       ],
       projectStore: projectStoreMock,
+      workspaceStore: workspaceStoreMock,
     });
 
     expect(result.clips[0]).toMatchObject({
@@ -501,6 +517,13 @@ describe('useTimelineExport pure functions', () => {
   });
 
   it('buildVideoWorkerPayloadFromTracks should emit explicit nested track payload items', async () => {
+    const workspaceStoreMock = {
+      userSettings: {
+        projectDefaults: { audioDeclickDurationUs: 5000 },
+        optimization: { videoFrameCacheMb: 256 },
+      },
+    } as any;
+
     const nestedOtio = JSON.stringify({
       OTIO_SCHEMA: 'Timeline.1',
       name: 'nested',
@@ -568,6 +591,7 @@ describe('useTimelineExport pure functions', () => {
         } as any,
       ],
       projectStore: projectStoreMock,
+      workspaceStore: workspaceStoreMock,
     });
 
     expect(result.tracks).toEqual([

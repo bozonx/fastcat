@@ -25,6 +25,16 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
   setPreviewHostApi: vi.fn(),
 }));
 
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => ({
+    userSettings: {
+      optimization: { videoFrameCacheMb: 256 },
+      projectDefaults: { audioDeclickDurationUs: 5000 },
+    },
+    workspaceHandle: null,
+  }),
+}));
+
 vi.mock('~/utils/video-editor/AudioEngine', () => {
   class AudioEngineMock {
     clips: any[] = [];
@@ -297,12 +307,18 @@ describe('useMonitorCore', () => {
     projectStore.projectSettings.monitor.previewEffectsEnabled = false;
     await nextTick();
 
-    expect(mockClient.renderFrame).toHaveBeenCalledWith(1250, { previewEffectsEnabled: false });
+    expect(mockClient.renderFrame).toHaveBeenCalledWith(
+      1250,
+      expect.objectContaining({ previewEffectsEnabled: false }),
+    );
 
     projectStore.projectSettings.monitor.previewEffectsEnabled = true;
     await nextTick();
 
-    expect(mockClient.renderFrame).toHaveBeenLastCalledWith(1250, { previewEffectsEnabled: true });
+    expect(mockClient.renderFrame).toHaveBeenLastCalledWith(
+      1250,
+      expect.objectContaining({ previewEffectsEnabled: true }),
+    );
 
     wrapper.unmount();
   });

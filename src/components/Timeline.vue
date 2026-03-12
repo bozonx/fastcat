@@ -15,7 +15,7 @@ import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 import type { TimelineTrack } from '~/timeline/types';
-import { timeUsToPx, pxToTimeUs } from '~/utils/timeline/geometry';
+import { timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { formatZoomMultiplier, timelineZoomPositionToScale } from '~/utils/zoom';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
@@ -60,10 +60,25 @@ const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersi
 const canEditClipContent = computed(() => ['cut', 'files', 'sound'].includes(currentView.value));
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 
+const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
-const playheadLeft = computed(() => Math.round(playheadPx.value - scrollLeftRef.value));
+const playheadTransform = computed(() => `translate3d(${Math.round(playheadPx.value)}px, 0, 0)`);
+
+const currentFrameHighlightStyle = computed(() => {
+  const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
+  if (pxPerFrame < 6) return null;
+
+  const frameDurationUs = 1_000_000 / fps.value;
+  const currentFrameStartUs = Math.floor(timelineStore.currentTime / frameDurationUs) * frameDurationUs;
+  const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
+
+  return {
+    transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,
+    width: `${pxPerFrame}px`,
+  };
+});
 
 const zoomFactor = computed(() =>
   formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom)),
@@ -325,6 +340,27 @@ const onTimelinePointerUp = onGlobalPointerUp;
                 @start-trim-item="startTrimItem"
                 @clip-action="onClipAction"
               />
+
+              <div
+                v-if="currentFrameHighlightStyle"
+                class="absolute top-0 bottom-0 pointer-events-none"
+                :style="{
+                  ...currentFrameHighlightStyle,
+                  zIndex: 5,
+                  backgroundColor: 'var(--color-primary-500, #3b82f6)',
+                  opacity: '0.12',
+                }"
+              />
+
+              <div
+                class="absolute top-0 bottom-0 w-px pointer-events-none"
+                :style="{
+                  transform: playheadTransform,
+                  willChange: 'transform',
+                  zIndex: 50,
+                  backgroundColor: 'var(--color-primary-500, #3b82f6)',
+                }"
+              />
             </div>
 
             <!-- Grid lines overlaid on tracks area, below ruler -->
@@ -332,22 +368,6 @@ const onTimelinePointerUp = onGlobalPointerUp;
               class="absolute left-0 right-0 pointer-events-none"
               :style="{ top: '28px', bottom: `${scrollbarHeight}px` }"
               :scroll-el="scrollEl"
-            />
-
-            <!--
-              Playhead overlay — positioned absolutely to the track-area container (not the
-              scroll container), so it stays above all clips and spans the full visible height.
-              The ruler height (h-7 = 28px) is subtracted from top so the line starts below ruler.
-            -->
-            <div
-              class="absolute bottom-0 pointer-events-none"
-              :style="{
-                top: '27px',
-                left: `${playheadLeft}px`,
-                width: '1px',
-                zIndex: 50,
-                backgroundColor: 'var(--color-primary-500, #3b82f6)',
-              }"
             />
 
             <!-- Zoom indicator — absolute in bottom-right of visible track area -->
