@@ -231,16 +231,11 @@ async function handleSelectInFileManager() {
     }
   }
 
-  if (parentPath) {
-    const parentEntry = fileManager.findEntryByPath(parentPath);
-    if (parentEntry && parentEntry.kind === 'directory') {
-      filesPageStore.selectFolder(parentEntry);
-    }
-  }
-
   const entry = fileManager.findEntryByPath(path);
   if (!entry) return;
 
+  // Set selectedFsEntry before selectFolder so that loadFolderContent
+  // triggered by the selectedFolder watcher already sees the pending scroll path
   uiStore.selectedFsEntry = {
     kind: entry.kind,
     name: entry.name,
@@ -254,6 +249,14 @@ async function handleSelectInFileManager() {
     remoteData: entry.remoteData,
   };
   selectionStore.selectFsEntry(entry);
+
+  if (parentPath) {
+    const parentEntry = fileManager.findEntryByPath(parentPath);
+    if (parentEntry && parentEntry.kind === 'directory') {
+      filesPageStore.selectFolder(parentEntry);
+    }
+  }
+
   focusStore.setTempFocus('left');
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, toRaw, onUnmounted } from 'vue';
+import { ref, computed, watch, toRaw, onUnmounted, nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import {
@@ -1117,6 +1117,10 @@ watch(
 );
 
 async function loadFolderContent() {
+  // Preserve scroll position when a scroll-to-entry is pending
+  const savedScrollTop =
+    pendingScrollToEntryPath.value ? (rootContainer.value?.scrollTop ?? null) : null;
+
   if (isRemoteMode.value) {
     if (!remoteCurrentFolder.value || !remoteFilesConfig.value) {
       folderEntries.value = [];
@@ -1176,6 +1180,14 @@ async function loadFolderContent() {
     console.error('Failed to load folder content:', error);
     cleanupObjectUrls();
     folderEntries.value = [];
+  }
+
+  // Restore scroll position after re-render so pending scroll-to-entry works correctly
+  if (savedScrollTop !== null) {
+    await nextTick();
+    if (rootContainer.value && pendingScrollToEntryPath.value) {
+      rootContainer.value.scrollTop = savedScrollTop;
+    }
   }
 }
 
@@ -1275,6 +1287,7 @@ watch(
 
     if (targetParentPath !== selectedFolderPath) return;
 
+    await nextTick();
     requestAnimationFrame(() => {
       if (!pendingScrollToEntryPath.value) return;
       if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
@@ -1312,11 +1325,13 @@ watch(
       skipNextUpdateReload.value = false;
       return;
     }
+
     // only reload the current view content, not the whole tree
     await loadFolderContent();
 
     if (!pendingScrollToEntryPath.value) return;
 
+    await nextTick();
     requestAnimationFrame(() => {
       if (!pendingScrollToEntryPath.value) return;
       if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
