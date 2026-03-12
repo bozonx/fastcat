@@ -10,6 +10,7 @@ import {
   normalizeTransitionMode,
   normalizeTransitionParams,
 } from '~/transitions';
+import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
@@ -126,7 +127,7 @@ export function useMonitorTimeline() {
         } else if (clipType === 'background') {
           clips.push({
             ...base,
-            backgroundColor: String((item as any).backgroundColor ?? '#000000'),
+            backgroundColor: sanitizeTimelineColor((item as any).backgroundColor, '#000000'),
           });
         } else if (clipType === 'text') {
           clips.push({
@@ -274,7 +275,10 @@ export function useMonitorTimeline() {
         if (item.clipType === 'media' && item.source?.path) {
           hash = mixHash(hash, hashString(item.source.path));
         } else if (item.clipType === 'background') {
-          hash = mixHash(hash, hashString((item as any).backgroundColor ?? '#000000'));
+          hash = mixHash(
+            hash,
+            hashString(sanitizeTimelineColor((item as any).backgroundColor, '#000000')),
+          );
         } else if ((item as any).clipType === 'text') {
           hash = mixHash(hash, hashString(String((item as any).text ?? '')));
           const style = (item as any).style;
@@ -341,7 +345,7 @@ export function useMonitorTimeline() {
         }
 
         if (item.clipType === 'background') {
-          const bgColor = (item as any).backgroundColor;
+          const bgColor = sanitizeTimelineColor((item as any).backgroundColor, '#000000');
           if (bgColor) {
             hash = mixHash(hash, hashString(bgColor));
           }

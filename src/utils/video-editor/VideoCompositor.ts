@@ -1,4 +1,4 @@
-import { safeDispose, parseHexColor } from './utils';
+import { safeDispose, parseHexColor, sanitizeTimelineColor } from './utils';
 import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { isSvgFile } from '../svg';
@@ -85,9 +85,6 @@ export class VideoCompositor {
   private contextLost = false;
   private previewEffectsEnabled = true;
 
-  // Legacy fields (to be migrated)
-  private adjustmentTexture: RenderTexture | null = null;
-  private stageVisibilityState: boolean[] = [];
   private masterEffects: ClipEffect[] | null = null;
   private masterEffectFilters = new Map<string, Filter>();
   private transitionFilters = new Map<string, Filter>();
@@ -159,6 +156,57 @@ export class VideoCompositor {
     this.evictVideoFrameCacheIfNeeded();
     if (this.maxVideoFrameCacheBytes === 0) {
       this.clearVideoFrameCache();
+    }
+  }
+
+  private ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
+    const valid =
+      texture &&
+      !(texture as any).destroyed &&
+      typeof (texture as any).uid === 'number' &&
+      texture.width === this.width &&
+      texture.height === this.height;
+
+    if (valid) {
+      return texture as RenderTexture;
+    }
+
+    if (texture) {
+      try {
+        safeDispose(texture);
+      } catch {
+        // ignore
+      }
+    }
+
+    return RenderTexture.create({
+      width: this.width,
+      height: this.height,
+    });
+  }
+
+  private prepareAdjustmentClips(active: CompositorClip[]) {
+    if (!this.app?.renderer) return;
+
+    const adjustmentClips = active
+      .filter((clip) => clip.clipKind === 'adjustment' && clip.sprite.visible)
+      .sort(
+        (a, b) => a.layer - b.layer || a.startUs - b.startUs || a.itemId.localeCompare(b.itemId),
+      );
+
+    for (const clip of this.clips) {
+      if (clip.clipKind !== 'adjustment') continue;
+      if (!adjustmentClips.includes(clip) && clip.sprite.texture !== Texture.EMPTY) {
+        clip.sprite.texture = Texture.EMPTY;
+      }
+    }
+
+    for (const clip of adjustmentClips) {
+      clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
+        clip.adjustmentSourceTexture ?? null,
+      );
+      this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
+      clip.sprite.texture = clip.adjustmentSourceTexture;
     }
   }
 
@@ -533,9 +581,6 @@ export class VideoCompositor {
 
     // Stop the automatic ticker, we will render manually
     this.app.ticker.stop();
-
-    const texAny = RenderTexture as any;
-    this.adjustmentTexture = RenderTexture.create({ width: this.width, height: this.height });
   }
 
   private onContextLost = (event: Event) => {
@@ -577,15 +622,13 @@ export class VideoCompositor {
         } catch {}
         clip.transitionFilter = null;
       }
+      if (clip.adjustmentSourceTexture) {
+        try {
+          clip.adjustmentSourceTexture.destroy(true);
+        } catch {}
+        clip.adjustmentSourceTexture = null;
+      }
     }
-
-    // Recreate the adjustment render texture after context restore
-    if (this.adjustmentTexture) {
-      try {
-        this.adjustmentTexture.destroy(true);
-      } catch {}
-    }
-    this.adjustmentTexture = RenderTexture.create({ width: this.width, height: this.height });
   };
 
   async loadTimeline(
@@ -784,7 +827,7 @@ export class VideoCompositor {
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
 
-        const backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
+        const backgroundColor = sanitizeTimelineColor((clipData as any).backgroundColor, '#000000');
         sprite.tint = parseHexColor(backgroundColor);
 
         const compositorClip: CompositorClip = {
@@ -994,6 +1037,7 @@ export class VideoCompositor {
           blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: clipData.effects,
           transform: (clipData as any).transform,
+          adjustmentSourceTexture: null,
         };
 
         compositorClip.clipType = 'adjustment';
@@ -1573,8 +1617,9 @@ export class VideoCompositor {
         trackRuntime.container.addChild(clip.sprite);
       }
       if (clip.clipKind === 'solid') {
-        clip.backgroundColor = String(
-          (next as any).backgroundColor ?? clip.backgroundColor ?? '#000000',
+        clip.backgroundColor = sanitizeTimelineColor(
+          (next as any).backgroundColor,
+          clip.backgroundColor ?? '#000000',
         );
         clip.sprite.tint = parseHexColor(clip.backgroundColor);
       }
@@ -1925,95 +1970,9 @@ export class VideoCompositor {
         return null;
       }
 
+      this.prepareAdjustmentClips(active);
+
       this.lastRenderedTimeUs = timeUs;
-
-      if (
-        this.adjustmentTexture &&
-        active.some((c) => c.clipKind === 'adjustment' && c.sprite.visible)
-      ) {
-        const textureOk =
-          !(this.adjustmentTexture as any)?.destroyed &&
-          typeof (this.adjustmentTexture as any)?.uid === 'number';
-        if (!textureOk) {
-          try {
-            this.adjustmentTexture?.destroy(true);
-          } catch {
-            // ignore
-          }
-          const texAny = RenderTexture as any;
-          this.adjustmentTexture = RenderTexture.create({ width: this.width, height: this.height });
-        }
-
-        const children = this.app.stage.children;
-        if (this.stageVisibilityState.length !== children.length) {
-          this.stageVisibilityState = new Array(children.length);
-        }
-        for (let i = 0; i < children.length; i++) {
-          this.stageVisibilityState[i] = children[i]?.visible ?? false;
-        }
-
-        const visibleAdjustmentByParent = new Map<Container, CompositorClip>();
-        let adjustmentCount = 0;
-        for (const clip of active) {
-          if (clip.clipKind !== 'adjustment' || !clip.sprite.visible) continue;
-          const parent = clip.sprite.parent;
-          if (!parent || !(parent instanceof Container)) continue;
-          visibleAdjustmentByParent.set(parent, clip);
-          adjustmentCount++;
-        }
-
-        // Only the first (lowest) adjustment layer is supported
-        if (adjustmentCount > 1) {
-          console.warn(
-            '[VideoCompositor] Multiple adjustment layers detected — only the lowest one is applied',
-          );
-        }
-
-        let applied = false;
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i] as Container | undefined;
-          if (!child) continue;
-
-          const adjustmentClip = visibleAdjustmentByParent.get(child);
-          if (!adjustmentClip) continue;
-
-          // Hide adjustment layer itself and everything above it
-          for (let j = i; j < children.length; j++) {
-            const childObj = children[j];
-            if (childObj) childObj.visible = false;
-          }
-
-          if (this.adjustmentTexture && this.app.renderer) {
-            this.app.renderer.render({
-              container: this.app.stage,
-              target: this.adjustmentTexture,
-              clear: true,
-            });
-          }
-
-          // Restore visibility
-          for (let j = 0; j < children.length; j++) {
-            const childObj = children[j];
-            if (childObj) childObj.visible = this.stageVisibilityState[j] as boolean;
-          }
-
-          if (this.adjustmentTexture) {
-            adjustmentClip.sprite.texture = this.adjustmentTexture;
-          }
-
-          applied = true;
-          break;
-        }
-
-        if (!applied) {
-          for (const c of this.clips) {
-            if (c.clipKind !== 'adjustment') continue;
-            if (c.sprite.texture === this.adjustmentTexture) {
-              c.sprite.texture = Texture.EMPTY;
-            }
-          }
-        }
-      }
 
       this.applyMasterEffects();
 
@@ -3296,16 +3255,11 @@ export class VideoCompositor {
     this.stageSortDirty = true;
     this.activeSortDirty = true;
     this.maxDurationUs = 0;
-    this.stageVisibilityState = [];
   }
 
   destroy() {
     this.clearClips();
     this.clearVideoFrameCache();
-    if (this.adjustmentTexture) {
-      this.adjustmentTexture?.destroy(true);
-      this.adjustmentTexture = null;
-    }
     if (this.filterQuadSprite) {
       this.filterQuadSprite.destroy();
       this.filterQuadSprite = null;

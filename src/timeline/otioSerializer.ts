@@ -11,6 +11,7 @@ import type {
   TrackKind,
 } from './types';
 import { normalizeTransitionCurve, normalizeTransitionMode } from '~/transitions';
+import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 
 interface OtioRationalTime {
   OTIO_SCHEMA: 'RationalTime.1';
@@ -426,16 +427,12 @@ function parseClipItem(input: {
     return {
       ...base,
       clipType: 'background',
-      source: { path: path || '' },
-      backgroundColor:
-        typeof granMeta?.backgroundColor === 'string' && granMeta.backgroundColor.trim().length > 0
-          ? granMeta.backgroundColor
-          : '#000000',
+      backgroundColor: sanitizeTimelineColor(granMeta?.backgroundColor, '#000000'),
     };
   }
 
   if (clipType === 'adjustment') {
-    return { ...base, clipType: 'adjustment', source: { path: path || '' } };
+    return { ...base, clipType: 'adjustment' };
   }
 
   if (clipType === 'text') {

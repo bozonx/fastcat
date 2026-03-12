@@ -207,6 +207,84 @@ describe('useMonitorTimeline', () => {
     ]);
   });
 
+  it('normalizes background clip color in raw worker timeline clips', () => {
+    const timelineStore = getTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'bg1',
+              kind: 'clip',
+              clipType: 'background',
+              trackId: 'v1',
+              backgroundColor: 'abc',
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { rawWorkerTimelineClips } = useMonitorTimeline();
+
+    expect(rawWorkerTimelineClips.value).toHaveLength(1);
+    expect(rawWorkerTimelineClips.value[0]).toMatchObject({
+      clipType: 'background',
+      backgroundColor: '#aabbcc',
+    });
+  });
+
+  it('preserves multiple adjustment clips in raw worker timeline clips', () => {
+    const timelineStore = getTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'adj1',
+              kind: 'clip',
+              clipType: 'adjustment',
+              trackId: 'v1',
+              effects: [{ id: 'fx1', type: 'blur', enabled: true, amount: 2 }],
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+        {
+          id: 'v2',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'adj2',
+              kind: 'clip',
+              clipType: 'adjustment',
+              trackId: 'v2',
+              effects: [{ id: 'fx2', type: 'color-adjustment', enabled: true, brightness: 1 }],
+              timelineRange: { startUs: 0, durationUs: 1000 },
+              sourceRange: { startUs: 0, durationUs: 1000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const { rawWorkerTimelineClips } = useMonitorTimeline();
+
+    expect(
+      rawWorkerTimelineClips.value.filter((clip: any) => clip.clipType === 'adjustment'),
+    ).toHaveLength(2);
+  });
+
   it('workerAudioClips does not duplicate audio from video clips', () => {
     const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {

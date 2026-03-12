@@ -82,6 +82,7 @@ export interface CompositorClip {
   transitionToTexture?: RenderTexture | null;
   transitionOutputTexture?: RenderTexture | null;
   transitionCombinedTexture?: RenderTexture | null;
+  adjustmentSourceTexture?: RenderTexture | null;
   textDirty?: boolean;
   shapeDirty?: boolean;
   hudMediaStates?: {

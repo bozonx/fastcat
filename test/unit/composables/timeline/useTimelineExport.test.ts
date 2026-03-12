@@ -230,6 +230,85 @@ describe('useTimelineExport pure functions', () => {
     expect(clips[0]?.effects).toEqual([{ id: 'clip-1', type: 'blur', enabled: true, amount: 1 }]);
   });
 
+  it('toWorkerTimelineClips should normalize background clip colors', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'background',
+        id: 'bg1',
+        trackId: 't1',
+        name: 'Background',
+        backgroundColor: 'abc',
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toMatchObject({
+      clipType: 'background',
+      backgroundColor: '#aabbcc',
+    });
+  });
+
+  it('buildVideoWorkerPayloadFromTracks should preserve multiple adjustment clips', async () => {
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'adjustment',
+              id: 'adj-1',
+              trackId: 'v1',
+              name: 'Adjustment 1',
+              effects: [{ id: 'fx-1', type: 'blur', enabled: true, amount: 2 }],
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        } as any,
+        {
+          id: 'v2',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'adjustment',
+              id: 'adj-2',
+              trackId: 'v2',
+              name: 'Adjustment 2',
+              effects: [{ id: 'fx-2', type: 'color-adjustment', enabled: true, brightness: 1 }],
+              timelineRange: { startUs: 250_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        } as any,
+      ],
+      projectStore: projectStoreMock,
+    });
+
+    expect(result.clips.filter((clip) => clip.clipType === 'adjustment')).toHaveLength(2);
+    expect(
+      result.payload.filter((item) => item.kind === 'clip' && item.clipType === 'adjustment'),
+    ).toHaveLength(2);
+  });
+
   it('toWorkerTimelineClips should respect item.layer when options.layer is not provided', async () => {
     const items: TimelineTrackItem[] = [
       {
