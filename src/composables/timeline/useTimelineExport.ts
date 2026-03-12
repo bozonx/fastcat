@@ -627,7 +627,9 @@ export async function toWorkerTimelineClips(
                     clips.push({
                       ...resolvedNClip,
                       id: `${item.id}_nested_${resolvedNClip.id}`,
-                      trackId: undefined,
+                      trackId: resolvedNClip.trackId
+                        ? `${item.trackId}::${item.id}::${resolvedNClip.trackId}`
+                        : undefined,
                       layer: nestedLayer,
                       audioGain: resolvedNClip.audioGain,
                       audioBalance: resolvedNClip.audioBalance,

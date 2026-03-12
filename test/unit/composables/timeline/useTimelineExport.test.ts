@@ -497,7 +497,7 @@ describe('useTimelineExport pure functions', () => {
     expect(clips.length).toBe(1);
     expect(clips[0]?.clipType).toBe('media');
     expect(clips[0]?.source?.path).toBe('_timelines/media/video.mp4');
-    expect(clips[0]?.trackId).toBeUndefined();
+    expect(clips[0]?.trackId).toBe('t1::nested1::v1');
   });
 
   it('buildVideoWorkerPayloadFromTracks should emit explicit nested track payload items', async () => {
