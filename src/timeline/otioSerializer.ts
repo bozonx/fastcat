@@ -10,8 +10,13 @@ import type {
   TimelineTrackItem,
   TrackKind,
 } from './types';
+import type { ClipEffect } from './types';
 import { normalizeTransitionCurve, normalizeTransitionMode } from '~/transitions';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+
+// ---------------------------------------------------------------------------
+// OTIO schema types
+// ---------------------------------------------------------------------------
 
 interface OtioRationalTime {
   OTIO_SCHEMA: 'RationalTime.1';
@@ -28,14 +33,52 @@ interface OtioTimeRange {
 interface OtioExternalReference {
   OTIO_SCHEMA: 'ExternalReference.1';
   target_url: string;
+  available_range?: OtioTimeRange;
+  metadata?: Record<string, unknown>;
+}
+
+interface OtioMissingReference {
+  OTIO_SCHEMA: 'MissingReference.1';
+  metadata?: Record<string, unknown>;
+}
+
+type OtioMediaReference = OtioExternalReference | OtioMissingReference;
+
+interface OtioEffect {
+  OTIO_SCHEMA: 'Effect.1';
+  name: string;
+  effect_name: string;
+  enabled: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+interface OtioMarker {
+  OTIO_SCHEMA: 'Marker.2';
+  name: string;
+  color: string;
+  comment: string;
+  marked_range: OtioTimeRange;
+  metadata?: Record<string, unknown>;
+}
+
+interface OtioTransition {
+  OTIO_SCHEMA: 'Transition.1';
+  name: string;
+  transition_type: string;
+  in_offset: OtioRationalTime;
+  out_offset: OtioRationalTime;
+  parameters: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 interface OtioClip {
   OTIO_SCHEMA: 'Clip.1';
   name: string;
-  media_reference: OtioExternalReference;
+  media_reference: OtioMediaReference;
   source_range: OtioTimeRange;
   enabled?: boolean;
+  effects?: OtioEffect[];
+  markers?: OtioMarker[];
   metadata?: Record<string, unknown>;
 }
 
@@ -43,14 +86,19 @@ interface OtioGap {
   OTIO_SCHEMA: 'Gap.1';
   name: string;
   source_range: OtioTimeRange;
+  effects?: OtioEffect[];
   metadata?: Record<string, unknown>;
 }
+
+type OtioTrackChild = OtioClip | OtioGap | OtioTransition;
 
 interface OtioTrack {
   OTIO_SCHEMA: 'Track.1';
   name: string;
   kind: 'Video' | 'Audio';
-  children: Array<OtioClip | OtioGap>;
+  children: OtioTrackChild[];
+  effects?: OtioEffect[];
+  markers?: OtioMarker[];
   metadata?: Record<string, unknown>;
 }
 
@@ -58,18 +106,32 @@ interface OtioStack {
   OTIO_SCHEMA: 'Stack.1';
   name: string;
   children: OtioTrack[];
+  markers?: OtioMarker[];
 }
 
 interface OtioTimeline {
   OTIO_SCHEMA: 'Timeline.1';
   name: string;
   tracks: OtioStack;
+  markers?: OtioMarker[];
   metadata?: Record<string, unknown>;
 }
 
+// ---------------------------------------------------------------------------
+// Time conversion helpers
+// ---------------------------------------------------------------------------
+
 const TIME_RATE_US = 1_000_000;
 
-function toRationalTimeUs(us: number): OtioRationalTime {
+/** Convert microseconds to RationalTime, using fps-aware rate when provided. */
+function toRationalTime(us: number, fps?: number): OtioRationalTime {
+  if (fps && fps > 0) {
+    return {
+      OTIO_SCHEMA: 'RationalTime.1',
+      value: Math.round((us / TIME_RATE_US) * fps),
+      rate: fps,
+    };
+  }
   return {
     OTIO_SCHEMA: 'RationalTime.1',
     value: Math.round(us),
@@ -77,6 +139,7 @@ function toRationalTimeUs(us: number): OtioRationalTime {
   };
 }
 
+/** Convert any RationalTime to microseconds. Supports any rate including fractional fps. */
 function fromRationalTimeUs(rt: any): number {
   const value = Number(rt?.value);
   const rate = Number(rt?.rate);
@@ -85,11 +148,11 @@ function fromRationalTimeUs(rt: any): number {
   return Math.round((value / rate) * TIME_RATE_US);
 }
 
-function toTimeRange(range: TimelineRange): OtioTimeRange {
+function toTimeRange(range: TimelineRange, fps?: number): OtioTimeRange {
   return {
     OTIO_SCHEMA: 'TimeRange.1',
-    start_time: toRationalTimeUs(range.startUs),
-    duration: toRationalTimeUs(range.durationUs),
+    start_time: toRationalTime(range.startUs, fps),
+    duration: toRationalTime(range.durationUs, fps),
   };
 }
 
@@ -110,14 +173,17 @@ function trackKindFromOtioKind(kind: any): TrackKind {
 
 function assertTimelineTimebase(raw: any): TimelineTimebase {
   const fps = Number(raw?.fps);
-  return {
-    fps: Number.isFinite(fps) && fps > 0 ? Math.round(Math.min(240, Math.max(1, fps))) : 25,
-  };
+  if (!Number.isFinite(fps) || fps <= 0) return { fps: 25 };
+  // Preserve fractional fps (e.g. 23.976, 29.97) up to 3 decimal places.
+  return { fps: Math.min(240, Math.max(1, Math.round(fps * 1000) / 1000)) };
 }
 
+// ---------------------------------------------------------------------------
+// Coercion helpers
+// ---------------------------------------------------------------------------
+
 function coerceId(raw: any, fallback: string): string {
-  const v = typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
-  return v;
+  return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
 }
 
 function coerceBlendMode(raw: unknown): import('./types').TimelineBlendMode | undefined {
@@ -132,30 +198,7 @@ function coerceBlendMode(raw: unknown): import('./types').TimelineBlendMode | un
 }
 
 function coerceName(raw: any, fallback: string): string {
-  const v = typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
-  return v;
-}
-
-function parseItemSequenceDurationUs(child: any): number {
-  if (!child || typeof child !== 'object') return 0;
-  if (child.OTIO_SCHEMA === 'Gap.1') {
-    return Math.max(0, fromRationalTimeUs(child?.source_range?.duration));
-  }
-  if (child.OTIO_SCHEMA === 'Clip.1') {
-    return Math.max(0, fromRationalTimeUs(child?.source_range?.duration));
-  }
-  return 0;
-}
-
-function safeGranMetadata(raw: any): any {
-  if (!raw || typeof raw !== 'object') return {};
-  const gran = (raw as any).gran;
-  if (!gran || typeof gran !== 'object') return {};
-  return gran;
-}
-
-function isOtioPath(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().toLowerCase().endsWith('.otio');
+  return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
 }
 
 function clampNumber(value: unknown, min: number, max: number): number {
@@ -214,12 +257,7 @@ function coerceTransform(raw: any): import('./types').ClipTransform | undefined 
       : undefined;
 
   if (!scale && rotationDeg === undefined && !position && !anchor) return undefined;
-  return {
-    scale,
-    rotationDeg,
-    position,
-    anchor,
-  };
+  return { scale, rotationDeg, position, anchor };
 }
 
 function hashString(input: string): string {
@@ -278,19 +316,261 @@ function resolveStableItemId(input: {
   });
 }
 
+function safeGranMetadata(raw: any): any {
+  if (!raw || typeof raw !== 'object') return {};
+  const gran = (raw as any).gran;
+  if (!gran || typeof gran !== 'object') return {};
+  return gran;
+}
+
+function isOtioPath(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().toLowerCase().endsWith('.otio');
+}
+
+// ---------------------------------------------------------------------------
+// Effects serialization helpers
+// ---------------------------------------------------------------------------
+
+/** Serialize ClipEffect[] to standard OTIO Effect.1 array. Editor-specific params go to metadata.gran. */
+function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[] | undefined {
+  if (!Array.isArray(effects) || effects.length === 0) return undefined;
+  return effects.map((e) => ({
+    OTIO_SCHEMA: 'Effect.1' as const,
+    name: e.id,
+    effect_name: e.type,
+    enabled: e.enabled !== false,
+    metadata: {
+      gran: {
+        id: e.id,
+        type: e.type,
+        target: e.target,
+        // All remaining custom params are serialized here.
+        params: Object.fromEntries(
+          Object.entries(e).filter(([k]) => !['id', 'type', 'enabled', 'target'].includes(k)),
+        ),
+      },
+    },
+  }));
+}
+
+/** Parse OTIO Effect.1[] back to ClipEffect[]. Falls back gracefully if effect_name is missing. */
+function parseEffects(raw: any[]): ClipEffect[] {
+  const result: ClipEffect[] = [];
+  for (const e of raw) {
+    if (!e || typeof e !== 'object') continue;
+    if (e.OTIO_SCHEMA !== 'Effect.1') continue;
+    const granMeta = safeGranMetadata(e.metadata);
+    const id = coerceId(granMeta?.id ?? e.name, '');
+    const type =
+      typeof granMeta?.type === 'string'
+        ? granMeta.type
+        : typeof e.effect_name === 'string'
+          ? e.effect_name
+          : '';
+    if (!id || !type) continue;
+    const params = granMeta?.params && typeof granMeta.params === 'object' ? granMeta.params : {};
+    result.push({
+      id,
+      type,
+      enabled: e.enabled !== false,
+      target: granMeta?.target,
+      ...params,
+    });
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Markers serialization helpers
+// ---------------------------------------------------------------------------
+
+/** Map internal color (hex string or named) to OTIO standard color name. Best-effort. */
+function colorToOtioColor(color: string | undefined): string {
+  if (!color) return 'WHITE';
+  const map: Record<string, string> = {
+    red: 'RED',
+    '#ff0000': 'RED',
+    green: 'GREEN',
+    '#00ff00': 'GREEN',
+    blue: 'BLUE',
+    '#0000ff': 'BLUE',
+    yellow: 'YELLOW',
+    '#ffff00': 'YELLOW',
+    cyan: 'CYAN',
+    '#00ffff': 'CYAN',
+    magenta: 'MAGENTA',
+    '#ff00ff': 'MAGENTA',
+    orange: 'ORANGE',
+    pink: 'PINK',
+    purple: 'PURPLE',
+    black: 'BLACK',
+    '#000000': 'BLACK',
+    white: 'WHITE',
+    '#ffffff': 'WHITE',
+  };
+  return map[color.toLowerCase()] ?? 'WHITE';
+}
+
+/** Serialize TimelineMarker to OTIO Marker.2. */
+function serializeMarker(marker: TimelineMarker, fps?: number): OtioMarker {
+  return {
+    OTIO_SCHEMA: 'Marker.2',
+    name: marker.text,
+    color: colorToOtioColor(marker.color),
+    comment: marker.text,
+    marked_range: toTimeRange({ startUs: marker.timeUs, durationUs: marker.durationUs ?? 0 }, fps),
+    metadata: {
+      gran: {
+        id: marker.id,
+        color: marker.color,
+      },
+    },
+  };
+}
+
+/** Parse OTIO markers array back to TimelineMarker[]. */
+function parseOtioMarkers(raw: any): TimelineMarker[] {
+  if (!Array.isArray(raw)) return [];
+  const result: TimelineMarker[] = [];
+  for (const m of raw) {
+    if (!m || typeof m !== 'object') continue;
+    if (m.OTIO_SCHEMA !== 'Marker.2' && m.OTIO_SCHEMA !== 'Marker.1') continue;
+    const granMeta = safeGranMetadata(m.metadata);
+    const range = fromTimeRange(m.marked_range);
+    const id = coerceId(granMeta?.id, '');
+    if (!id) continue;
+    const text =
+      typeof m.comment === 'string' && m.comment.length > 0
+        ? m.comment
+        : typeof m.name === 'string'
+          ? m.name
+          : '';
+    // Use editor-specific color from gran if present; ignore canonical OTIO color enum string.
+    const color = typeof granMeta?.color === 'string' ? granMeta.color : undefined;
+    const durationUs = range.durationUs > 0 ? range.durationUs : undefined;
+    result.push({ id, timeUs: Math.max(0, range.startUs), durationUs, text, color });
+  }
+  result.sort((a, b) => a.timeUs - b.timeUs);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Transitions serialization helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Map our internal transition type to OTIO transition_type string.
+ * Standard OTIO defines SMPTE_Dissolve; other types are vendor-namespaced.
+ */
+function transitionTypeToOtio(type: string): string {
+  if (type === 'dissolve') return 'SMPTE_Dissolve';
+  return `gran:${type}`;
+}
+
+/** Reverse: OTIO transition_type → our type. */
+function transitionTypeFromOtio(otioType: string): string {
+  if (otioType === 'SMPTE_Dissolve') return 'dissolve';
+  if (otioType.startsWith('gran:')) return otioType.slice(5);
+  return otioType;
+}
+
+/** Build OTIO Transition.1 from ClipTransition. Returns null if transition data is incomplete. */
+function buildOtioTransition(
+  transition: import('./types').ClipTransition,
+  name: string,
+  fps?: number,
+): OtioTransition | null {
+  if (!transition.type || !transition.durationUs) return null;
+  const halfUs = Math.round(transition.durationUs / 2);
+  return {
+    OTIO_SCHEMA: 'Transition.1',
+    name,
+    transition_type: transitionTypeToOtio(transition.type),
+    in_offset: toRationalTime(halfUs, fps),
+    out_offset: toRationalTime(transition.durationUs - halfUs, fps),
+    parameters: transition.params ?? {},
+    metadata: {
+      gran: {
+        type: transition.type,
+        durationUs: transition.durationUs,
+        mode: transition.mode,
+        curve: transition.curve,
+        params: transition.params,
+        isOverridden: transition.isOverridden,
+      },
+    },
+  };
+}
+
+/** Parse OTIO Transition.1 back to ClipTransition. */
+function parseOtioTransition(t: any): import('./types').ClipTransition | null {
+  if (!t || t.OTIO_SCHEMA !== 'Transition.1') return null;
+  const inUs = fromRationalTimeUs(t.in_offset);
+  const outUs = fromRationalTimeUs(t.out_offset);
+  const durationUs = inUs + outUs;
+  if (durationUs <= 0) return null;
+  const granMeta = safeGranMetadata(t.metadata);
+  const type = granMeta?.type ?? transitionTypeFromOtio(t.transition_type ?? '');
+  if (!type) return null;
+  return {
+    type,
+    durationUs: granMeta?.durationUs ?? durationUs,
+    mode: normalizeTransitionMode(granMeta?.mode),
+    curve: normalizeTransitionCurve(granMeta?.curve),
+    params:
+      granMeta?.params && typeof granMeta.params === 'object'
+        ? (granMeta.params as Record<string, unknown>)
+        : Object.keys(t.parameters ?? {}).length > 0
+          ? (t.parameters as Record<string, unknown>)
+          : undefined,
+    isOverridden: granMeta?.isOverridden !== undefined ? Boolean(granMeta.isOverridden) : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sequence duration helper
+// ---------------------------------------------------------------------------
+
+function parseItemSequenceDurationUs(child: any): number {
+  if (!child || typeof child !== 'object') return 0;
+  const schema = child.OTIO_SCHEMA;
+  if (schema === 'Gap.1' || schema === 'Clip.1') {
+    return Math.max(0, fromRationalTimeUs(child?.source_range?.duration));
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Clip / Gap parsers
+// ---------------------------------------------------------------------------
+
 function parseClipItem(input: {
   trackId: string;
   otio: OtioClip;
   index: number;
   occupiedIds: Set<string>;
   fallbackStartUs: number;
+  transitionIn?: import('./types').ClipTransition;
+  transitionOut?: import('./types').ClipTransition;
 }): TimelineClipItem {
-  const { trackId, otio, index, occupiedIds, fallbackStartUs } = input;
+  const { trackId, otio, index, occupiedIds, fallbackStartUs, transitionIn, transitionOut } = input;
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
+
+  const ref = otio.media_reference as any;
   const path =
-    typeof otio.media_reference?.target_url === 'string' ? otio.media_reference.target_url : '';
+    ref?.OTIO_SCHEMA === 'ExternalReference.1' && typeof ref.target_url === 'string'
+      ? ref.target_url
+      : '';
+
+  // Source duration: prefer available_range on media_reference, then metadata.
+  const availableRange =
+    ref?.OTIO_SCHEMA === 'ExternalReference.1' && ref.available_range
+      ? fromTimeRange(ref.available_range)
+      : null;
+
   const granMeta = safeGranMetadata(otio.metadata);
+
   const clipTypeRaw = granMeta?.clipType;
   const clipType =
     clipTypeRaw === 'background' ||
@@ -304,8 +584,15 @@ function parseClipItem(input: {
       : isOtioPath(path)
         ? 'timeline'
         : 'media';
+
   const timelineStartUs = fallbackStartUs;
-  const sourceDurationUs = Math.max(0, Math.round(Number(granMeta?.sourceDurationUs ?? 0)));
+
+  const sourceDurationUsFromMeta = Math.max(0, Math.round(Number(granMeta?.sourceDurationUs ?? 0)));
+  const sourceDurationUs =
+    sourceDurationUsFromMeta > 0
+      ? sourceDurationUsFromMeta
+      : (availableRange?.durationUs ?? sourceRange.durationUs);
+
   const id = resolveStableItemId({
     prefix: 'clip',
     trackId,
@@ -320,6 +607,14 @@ function parseClipItem(input: {
     occupiedIds,
   });
 
+  // Effects: standard OTIO effects take priority; merge with gran-only effects if needed.
+  const otioEffects =
+    Array.isArray(otio.effects) && otio.effects.length > 0
+      ? parseEffects(otio.effects)
+      : Array.isArray(granMeta?.effects)
+        ? (granMeta.effects as ClipEffect[])
+        : undefined;
+
   const base = {
     kind: 'clip' as const,
     clipType,
@@ -328,7 +623,7 @@ function parseClipItem(input: {
     name,
     disabled: otio.enabled === false ? true : undefined,
     locked: granMeta?.locked !== undefined ? Boolean(granMeta.locked) : undefined,
-    sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
+    sourceDurationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
     speed:
@@ -377,37 +672,11 @@ function parseClipItem(input: {
         ? Math.max(0, Math.min(1, granMeta.opacity))
         : undefined,
     blendMode: coerceBlendMode(granMeta?.blendMode),
-    effects: Array.isArray(granMeta?.effects) ? (granMeta.effects as any[]) : undefined,
-    transitionIn:
-      granMeta?.transitionIn &&
-      typeof granMeta.transitionIn.type === 'string' &&
-      typeof granMeta.transitionIn.durationUs === 'number'
-        ? {
-            type: granMeta.transitionIn.type,
-            durationUs: Math.max(0, Math.round(granMeta.transitionIn.durationUs)),
-            mode: normalizeTransitionMode(granMeta.transitionIn.mode),
-            curve: normalizeTransitionCurve(granMeta.transitionIn.curve),
-            params:
-              granMeta.transitionIn.params && typeof granMeta.transitionIn.params === 'object'
-                ? (granMeta.transitionIn.params as Record<string, unknown>)
-                : undefined,
-          }
-        : undefined,
-    transitionOut:
-      granMeta?.transitionOut &&
-      typeof granMeta.transitionOut.type === 'string' &&
-      typeof granMeta.transitionOut.durationUs === 'number'
-        ? {
-            type: granMeta.transitionOut.type,
-            durationUs: Math.max(0, Math.round(granMeta.transitionOut.durationUs)),
-            mode: normalizeTransitionMode(granMeta.transitionOut.mode),
-            curve: normalizeTransitionCurve(granMeta.transitionOut.curve),
-            params:
-              granMeta.transitionOut.params && typeof granMeta.transitionOut.params === 'object'
-                ? (granMeta.transitionOut.params as Record<string, unknown>)
-                : undefined,
-          }
-        : undefined,
+    effects: otioEffects,
+    // Transitions come from adjacent Transition.1 nodes (passed in from track parser),
+    // falling back to metadata.gran for backward compat with external OTIO that has no gran transitions.
+    transitionIn: transitionIn ?? parseGranTransition(granMeta?.transitionIn),
+    transitionOut: transitionOut ?? parseGranTransition(granMeta?.transitionOut),
     linkedGroupId:
       typeof granMeta?.linkedGroupId === 'string' && granMeta.linkedGroupId.trim().length > 0
         ? granMeta.linkedGroupId
@@ -442,7 +711,7 @@ function parseClipItem(input: {
     return {
       ...base,
       clipType: 'text',
-      sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
+      sourceDurationUs,
       timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
       sourceRange,
       text,
@@ -465,7 +734,7 @@ function parseClipItem(input: {
     return {
       ...base,
       clipType: 'shape',
-      sourceDurationUs: sourceDurationUs > 0 ? sourceDurationUs : sourceRange.durationUs,
+      sourceDurationUs,
       timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
       sourceRange,
       shapeType,
@@ -503,17 +772,25 @@ function parseClipItem(input: {
   }
 
   if (clipType === 'timeline') {
-    return {
-      ...base,
-      clipType: 'timeline',
-      source: { path },
-    };
+    return { ...base, clipType: 'timeline', source: { path } };
   }
 
+  return { ...base, clipType: 'media', source: { path } };
+}
+
+/** Parse legacy gran-metadata transition object (for round-trip safety). */
+function parseGranTransition(raw: any): import('./types').ClipTransition | undefined {
+  if (!raw || typeof raw.type !== 'string' || typeof raw.durationUs !== 'number') return undefined;
   return {
-    ...base,
-    clipType: 'media',
-    source: { path },
+    type: raw.type,
+    durationUs: Math.max(0, Math.round(raw.durationUs)),
+    mode: normalizeTransitionMode(raw.mode),
+    curve: normalizeTransitionCurve(raw.curve),
+    params:
+      raw.params && typeof raw.params === 'object'
+        ? (raw.params as Record<string, unknown>)
+        : undefined,
+    isOverridden: raw.isOverridden !== undefined ? Boolean(raw.isOverridden) : undefined,
   };
 }
 
@@ -548,6 +825,10 @@ function parseGapItem(input: {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export function createDefaultTimelineDocument(params: {
   id: string;
   name: string;
@@ -566,35 +847,12 @@ export function createDefaultTimelineDocument(params: {
     ],
     metadata: {
       gran: {
-        version: 0,
+        version: 1,
         docId: params.id,
         timebase: { fps: params.fps },
-        markers: [],
       },
     },
   };
-}
-
-function coerceMarkers(raw: unknown): TimelineMarker[] {
-  if (!Array.isArray(raw)) return [];
-  const result: TimelineMarker[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== 'object') continue;
-    const id = typeof (item as any).id === 'string' ? String((item as any).id).trim() : '';
-    const timeUs = Number((item as any).timeUs);
-    const text = typeof (item as any).text === 'string' ? String((item as any).text) : '';
-    const color = typeof (item as any).color === 'string' ? String((item as any).color) : undefined;
-    const durationUsRaw = (item as any).durationUs;
-    const durationUs =
-      typeof durationUsRaw === 'number' && Number.isFinite(durationUsRaw)
-        ? Math.max(0, Math.round(durationUsRaw))
-        : undefined;
-    if (!id) continue;
-    if (!Number.isFinite(timeUs)) continue;
-    result.push({ id, timeUs: Math.max(0, Math.round(timeUs)), durationUs, text, color });
-  }
-  result.sort((a, b) => a.timeUs - b.timeUs);
-  return result;
 }
 
 function coerceSelectionRange(raw: unknown): TimelineSelectionRange | undefined {
@@ -608,34 +866,29 @@ function coerceSelectionRange(raw: unknown): TimelineSelectionRange | undefined 
 
   if (nextEndUs <= nextStartUs) return undefined;
 
-  return {
-    startUs: nextStartUs,
-    endUs: nextEndUs,
-  };
+  return { startUs: nextStartUs, endUs: nextEndUs };
 }
 
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
+  const fps = doc.timebase?.fps;
+
   const tracks: OtioTrack[] = doc.tracks.map((t) => {
     const sortedItems = [...t.items].sort(
       (a, b) => a.timelineRange.startUs - b.timelineRange.startUs,
     );
-    const children: Array<OtioClip | OtioGap> = [];
+    const children: OtioTrackChild[] = [];
     let cursorUs = 0;
+
     for (const item of sortedItems) {
       const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
       const durationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
 
       if (startUs > cursorUs) {
-        const gapDurationUs = startUs - cursorUs;
         children.push({
           OTIO_SCHEMA: 'Gap.1',
           name: 'gap',
-          source_range: toTimeRange({ startUs: 0, durationUs: gapDurationUs }),
-          metadata: {
-            gran: {
-              id: `gap_${t.id}_${cursorUs}`,
-            },
-          },
+          source_range: toTimeRange({ startUs: 0, durationUs: startUs - cursorUs }, fps),
+          metadata: { gran: { id: `gap_${t.id}_${cursorUs}` } },
         });
         cursorUs = startUs;
       }
@@ -644,42 +897,48 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         children.push({
           OTIO_SCHEMA: 'Gap.1',
           name: 'gap',
-          source_range: toTimeRange({ startUs: 0, durationUs }),
-          metadata: {
-            gran: {
-              id: item.id,
-            },
-          },
+          source_range: toTimeRange({ startUs: 0, durationUs }, fps),
+          metadata: { gran: { id: item.id } },
         });
         cursorUs += durationUs;
         continue;
       }
 
+      // Emit transitionIn as a Transition.1 *before* this clip.
+      if (item.transitionIn) {
+        const t1 = buildOtioTransition(item.transitionIn, `${item.name}_transition_in`, fps);
+        if (t1) children.push(t1);
+      }
+
+      const path =
+        item.clipType === 'media' || item.clipType === 'timeline' ? item.source.path : '';
+
+      const mediaReference: OtioMediaReference = path
+        ? {
+            OTIO_SCHEMA: 'ExternalReference.1',
+            target_url: path,
+            available_range:
+              item.clipType === 'media' || item.clipType === 'timeline'
+                ? toTimeRange({ startUs: 0, durationUs: item.sourceDurationUs }, fps)
+                : undefined,
+          }
+        : { OTIO_SCHEMA: 'MissingReference.1' };
+
       children.push({
         OTIO_SCHEMA: 'Clip.1',
         name: item.name,
         enabled: item.disabled ? false : undefined,
-        media_reference: {
-          OTIO_SCHEMA: 'ExternalReference.1',
-          target_url:
-            item.clipType === 'media' || item.clipType === 'timeline' ? item.source.path : '',
-        },
-        source_range: toTimeRange(item.sourceRange),
+        media_reference: mediaReference,
+        source_range: toTimeRange(item.sourceRange, fps),
+        effects: serializeEffects(item.effects),
         metadata: {
           gran: {
             id: item.id,
             clipType: item.clipType,
-            otioClipKind:
-              item.clipType === 'timeline' && item.source?.path
-                ? 'nested_timeline_reference'
-                : undefined,
             locked: item.locked ? true : undefined,
-            sourceDurationUs:
-              item.clipType === 'media' || item.clipType === 'timeline'
-                ? item.sourceDurationUs
-                : undefined,
             speed: item.speed,
             audioGain: item.audioGain,
+            audioBalance: item.audioBalance,
             audioFadeInUs: item.audioFadeInUs,
             audioFadeOutUs: item.audioFadeOutUs,
             audioFadeInCurve: item.audioFadeInCurve,
@@ -692,7 +951,6 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
             opacity: item.opacity,
             blendMode: item.blendMode,
-            effects: item.effects,
             transitionIn: item.transitionIn,
             transitionOut: item.transitionOut,
             linkedGroupId: item.linkedGroupId,
@@ -715,6 +973,13 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           },
         },
       });
+
+      // Emit transitionOut as a Transition.1 *after* this clip.
+      if (item.transitionOut) {
+        const t1 = buildOtioTransition(item.transitionOut, `${item.name}_transition_out`, fps);
+        if (t1) children.push(t1);
+      }
+
       cursorUs += durationUs;
     }
 
@@ -723,11 +988,11 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       name: t.name,
       kind: trackKindToOtioKind(t.kind),
       children,
+      effects: serializeEffects(t.effects),
       metadata: {
         gran: {
           id: t.id,
           kind: t.kind,
-          name: t.name,
           videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
           opacity: t.opacity,
           blendMode: t.blendMode,
@@ -735,11 +1000,17 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           audioSolo: Boolean(t.audioSolo),
           audioGain: t.audioGain,
           audioBalance: t.audioBalance,
-          effects: Array.isArray(t.effects) ? t.effects : undefined,
         },
       },
     };
   });
+
+  const granMeta = doc.metadata?.gran;
+  const markers = Array.isArray(granMeta?.markers)
+    ? [...(granMeta.markers as TimelineMarker[])]
+        .sort((a, b) => a.timeUs - b.timeUs)
+        .map((m) => serializeMarker(m, fps))
+    : [];
 
   const payload: OtioTimeline = {
     OTIO_SCHEMA: 'Timeline.1',
@@ -749,15 +1020,18 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       name: 'tracks',
       children: tracks,
     },
+    markers,
     metadata: {
       gran: {
-        version: 0,
+        version: 1,
         docId: doc.id,
         timebase: doc.timebase,
-        markers: coerceMarkers((doc as any)?.metadata?.gran?.markers),
-        selectionRange: coerceSelectionRange((doc as any)?.metadata?.gran?.selectionRange),
-        snapThresholdPx: (doc as any)?.metadata?.gran?.snapThresholdPx,
-        playheadUs: (doc as any)?.metadata?.gran?.playheadUs,
+        selectionRange: coerceSelectionRange(granMeta?.selectionRange),
+        snapThresholdPx: granMeta?.snapThresholdPx,
+        playheadUs: granMeta?.playheadUs,
+        masterGain: granMeta?.masterGain,
+        masterMuted: granMeta?.masterMuted,
+        masterEffects: Array.isArray(granMeta?.masterEffects) ? granMeta.masterEffects : undefined,
       },
     },
   };
@@ -815,27 +1089,65 @@ export function parseTimelineFromOtio(
     const occupiedIds = new Set<string>();
     let cursorUs = 0;
 
-    const rawItems: TimelineTrackItem[] = children.map((child: any, itemIndex: number) => {
-      const item =
-        child?.OTIO_SCHEMA === 'Gap.1'
-          ? parseGapItem({
-              trackId: id,
-              otio: child as OtioGap,
-              index: itemIndex,
-              occupiedIds,
-              fallbackStartUs: cursorUs,
-            })
-          : parseClipItem({
-              trackId: id,
-              otio: child as OtioClip,
-              index: itemIndex,
-              occupiedIds,
-              fallbackStartUs: cursorUs,
-            });
+    // Pre-scan track children to associate adjacent Transition.1 nodes with clips.
+    // A Transition.1 before a Clip becomes transitionIn; one after becomes transitionOut.
+    const pendingTransition: { node: any } | null = null;
+    let pendingTransitionIn: import('./types').ClipTransition | null = null;
 
-      cursorUs += parseItemSequenceDurationUs(child);
-      return item;
-    });
+    const rawItems: TimelineTrackItem[] = [];
+
+    for (let i = 0; i < children.length; i += 1) {
+      const child = children[i] as any;
+
+      if (child?.OTIO_SCHEMA === 'Transition.1') {
+        // A Transition between two clips: attribute to next clip as transitionIn
+        // and previously parsed clip as transitionOut (if exists).
+        const transition = parseOtioTransition(child);
+        if (transition) {
+          // Attribute as transitionOut of previous clip.
+          const prev = rawItems[rawItems.length - 1];
+          if (prev && prev.kind === 'clip') {
+            (prev as any).transitionOut = transition;
+          }
+          // Remember for next clip as transitionIn.
+          pendingTransitionIn = transition;
+        }
+        // Transitions don't advance the cursor.
+        continue;
+      }
+
+      if (child?.OTIO_SCHEMA === 'Gap.1') {
+        const item = parseGapItem({
+          trackId: id,
+          otio: child as OtioGap,
+          index: i,
+          occupiedIds,
+          fallbackStartUs: cursorUs,
+        });
+        rawItems.push(item);
+        cursorUs += parseItemSequenceDurationUs(child);
+        pendingTransitionIn = null;
+        continue;
+      }
+
+      if (child?.OTIO_SCHEMA === 'Clip.1') {
+        const item = parseClipItem({
+          trackId: id,
+          otio: child as OtioClip,
+          index: i,
+          occupiedIds,
+          fallbackStartUs: cursorUs,
+          transitionIn: pendingTransitionIn ?? undefined,
+        });
+        rawItems.push(item);
+        cursorUs += parseItemSequenceDurationUs(child);
+        pendingTransitionIn = null;
+        continue;
+      }
+    }
+
+    // Suppress unused variable warning.
+    void pendingTransition;
 
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
@@ -855,9 +1167,20 @@ export function parseTimelineFromOtio(
       typeof trackGranMeta?.audioBalance === 'number' && Number.isFinite(trackGranMeta.audioBalance)
         ? Math.max(-1, Math.min(1, Number(trackGranMeta.audioBalance)))
         : undefined;
-    const effects = Array.isArray(trackGranMeta?.effects)
-      ? (trackGranMeta.effects as any[])
-      : undefined;
+
+    // Track effects: prefer OTIO standard, fallback to gran metadata.
+    const effects =
+      Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
+        ? parseEffects(otioTrack.effects)
+        : Array.isArray(trackGranMeta?.effects)
+          ? (trackGranMeta.effects as ClipEffect[])
+          : undefined;
+
+    // Track-level markers (e.g. from an external OTIO).
+    const trackMarkers =
+      Array.isArray((otioTrack as any).markers) && (otioTrack as any).markers.length > 0
+        ? parseOtioMarkers((otioTrack as any).markers)
+        : undefined;
 
     return {
       id,
@@ -872,13 +1195,22 @@ export function parseTimelineFromOtio(
       audioBalance,
       effects,
       items,
+      ...(trackMarkers && trackMarkers.length > 0 ? { markers: trackMarkers } : {}),
     };
   });
 
   const docId = coerceId(granMeta?.docId, fallback.id);
   const version = typeof granMeta?.version === 'number' ? granMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
-  const markers = coerceMarkers(granMeta?.markers);
+
+  // Markers: prefer standard OTIO markers on Timeline, fallback to gran metadata for old files.
+  const markers =
+    Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
+      ? parseOtioMarkers(parsed.markers as any[])
+      : Array.isArray(granMeta?.markers)
+        ? parseOtioMarkers(granMeta.markers)
+        : [];
+
   const selectionRange = coerceSelectionRange(granMeta?.selectionRange);
   const playheadUs =
     typeof granMeta?.playheadUs === 'number' && Number.isFinite(granMeta.playheadUs)
