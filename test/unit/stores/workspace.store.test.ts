@@ -22,11 +22,11 @@ describe('WorkspaceStore', () => {
     const store = useWorkspaceStore();
     store.lastProjectName = 'test-project';
     await nextTick();
-    expect(localStorage.getItem('gran-editor-last-project')).toBe('test-project');
+    expect(localStorage.getItem('gran-editor-last-opened-project')).toBe('test-project');
 
     store.lastProjectName = null;
     await nextTick();
-    expect(localStorage.getItem('gran-editor-last-project')).toBeNull();
+    expect(localStorage.getItem('gran-editor-last-opened-project')).toBeNull();
   });
 
   it('resets workspace state', () => {

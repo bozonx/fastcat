@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 
-import { getVideoSampleWithZeroFallback } from '../../src/utils/video-editor/VideoCompositor';
+import { getVideoSampleWithZeroFallback } from '../../src/utils/video-editor/compositor/ResourceManager';
 
 describe('getVideoSampleWithZeroFallback', () => {
   it('returns sample at non-zero time without retry', async () => {

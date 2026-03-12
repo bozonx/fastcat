@@ -69,9 +69,9 @@ describe('VideoCompositor render optimization', () => {
 
     await compositor.renderFrame(1_000);
 
-    expect(compositor.prepareAdjustmentClips).toHaveBeenCalledTimes(2);
+    expect(compositor.prepareAdjustmentClips).toHaveBeenCalledTimes(1);
     expect(compositor.applyShaderTransitions).toHaveBeenCalledTimes(1);
-    expect(events).toEqual(['prepare', 'transition', 'prepare']);
+    expect(events).toEqual(['prepare', 'transition']);
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
 
