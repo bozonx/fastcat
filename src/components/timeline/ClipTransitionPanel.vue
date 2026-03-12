@@ -67,16 +67,21 @@ const {
   onUpdate: (payload) => emit('update', payload),
 });
 
-const modeOptions = computed(() => [
+const sourceOptions = computed(() => [
   {
-    value: 'transition',
-    label: t('granVideoEditor.timeline.transition.modeTransitionShort'),
-    title: t('granVideoEditor.timeline.transition.modeTransition'),
+    value: 'adjacent',
+    label: t('granVideoEditor.timeline.transition.sourceAdjacentShort'),
+    title: t('granVideoEditor.timeline.transition.sourceAdjacent'),
   },
   {
-    value: 'fade',
-    label: t('granVideoEditor.timeline.transition.modeFadeShort'),
-    title: t('granVideoEditor.timeline.transition.modeFade'),
+    value: 'background',
+    label: t('granVideoEditor.timeline.transition.sourceBackgroundShort'),
+    title: t('granVideoEditor.timeline.transition.sourceBackground'),
+  },
+  {
+    value: 'transparent',
+    label: t('granVideoEditor.timeline.transition.sourceTransparentShort'),
+    title: t('granVideoEditor.timeline.transition.sourceTransparent'),
   },
 ]);
 
@@ -240,8 +245,8 @@ function handleSavePreset() {
 
     <!-- Mode toggle -->
     <div class="flex flex-col gap-1">
-      <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.mode') }}</span>
-      <AppButtonGroup v-model="selectedMode" :options="modeOptions" />
+      <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.source') }}</span>
+      <AppButtonGroup v-model="selectedMode" :options="sourceOptions" />
     </div>
 
     <!-- Curve toggle -->

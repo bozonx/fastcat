@@ -245,11 +245,13 @@ export function getNextClipForItem(
 
 export function getClipHeadHandleUs(clip: TimelineClipItem): number {
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  if (clip.isImage) return Number.POSITIVE_INFINITY;
   return Math.max(0, Math.round(clip.sourceRange?.startUs ?? 0));
 }
 
 export function getClipTailHandleUs(clip: TimelineClipItem): number {
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  if (clip.isImage) return Number.POSITIVE_INFINITY;
   const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
   const sourceEndUs = Math.max(
     0,
@@ -269,7 +271,7 @@ export function getOverlayGuideOffsetPx(
 
   const transition = edge === 'in' ? clipItem.transitionIn : clipItem.transitionOut;
   if (!transition) return null;
-  if (transition.mode !== 'transition') return null;
+  if (transition.mode !== 'adjacent') return null;
 
   const adjacent =
     edge === 'in' ? getPrevClipForItem(track, clipItem) : getNextClipForItem(track, clipItem);

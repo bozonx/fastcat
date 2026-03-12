@@ -1748,7 +1748,7 @@ export class VideoCompositor {
       for (const clip of active) {
         const tr = clip.transitionIn;
         const mode = tr?.mode ?? DEFAULT_TRANSITION_MODE;
-        if (!tr || mode !== 'transition' || tr.durationUs <= 0) continue;
+        if (!tr || mode !== 'adjacent' || tr.durationUs <= 0) continue;
         const localTimeUs = timeUs - clip.startUs;
         if (localTimeUs >= tr.durationUs) continue;
 
@@ -1866,7 +1866,9 @@ export class VideoCompositor {
       // In composite mode, the clip fades in over lower tracks only; prev clip on same layer must not show.
       for (const clip of active) {
         const tr = clip.transitionIn;
-        if (!tr || tr.mode !== 'fade' || tr.durationUs <= 0) continue;
+        const mode = tr?.mode ?? DEFAULT_TRANSITION_MODE;
+        if (!tr || (mode !== 'background' && mode !== 'transparent') || tr.durationUs <= 0)
+          continue;
         const localTimeUs = timeUs - clip.startUs;
         if (localTimeUs >= tr.durationUs) continue;
         const prevClip = this.findPrevClipOnLayer(clip);
@@ -2334,7 +2336,7 @@ export class VideoCompositor {
       }
 
       const mode = state.transition.mode ?? DEFAULT_TRANSITION_MODE;
-      if (mode !== 'transition' && mode !== 'fade') {
+      if (mode !== 'adjacent' && mode !== 'background' && mode !== 'transparent') {
         continue;
       }
 
@@ -2352,8 +2354,10 @@ export class VideoCompositor {
       const fromTexture = clip.transitionFromTexture;
       let prevClip: CompositorClip | null = null;
 
-      if (mode === 'fade') {
+      if (mode === 'background') {
         this.renderLowerLayersToTexture(clip.layer, fromTexture);
+      } else if (mode === 'transparent') {
+        this.renderLowerLayersToTexture(Number.NEGATIVE_INFINITY, fromTexture);
       } else {
         prevClip = this.findPrevClipOnLayer(clip);
         if (!prevClip) {

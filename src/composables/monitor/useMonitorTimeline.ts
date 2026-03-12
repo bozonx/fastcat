@@ -167,7 +167,7 @@ export function useMonitorTimeline() {
         if (!current || !next) continue;
 
         const transitionOut = current.transitionOut;
-        if (!transitionOut || (transitionOut.mode ?? 'transition') !== 'transition') continue;
+        if (!transitionOut || (transitionOut.mode ?? 'transparent') !== 'adjacent') continue;
 
         const currentEndUs = current.timelineRange.startUs + current.timelineRange.durationUs;
         const gapUs = next.timelineRange.startUs - currentEndUs;

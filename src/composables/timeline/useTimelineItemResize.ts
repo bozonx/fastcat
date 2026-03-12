@@ -273,14 +273,14 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     let limitByHandle = Number.POSITIVE_INFINITY;
 
     const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
-    if (mode === 'transition' && adjacent) {
+    if (mode === 'adjacent' && adjacent) {
       limitByHandle = getTransitionAdjacentHandleLimitUs({
         edge: input.edge,
         adjacent,
       });
     }
 
-    if (mode === 'fade') {
+    if (mode === 'background' || mode === 'transparent') {
       if (input.edge === 'in') {
         limitByHandle =
           clip.clipType === 'media' || clip.clipType === 'timeline'
@@ -318,7 +318,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
     const { clip, adjacent } = resolved;
     const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
-    if (mode !== 'transition' || !adjacent) return null;
+    if (mode !== 'adjacent' || !adjacent) return null;
 
     const clipEdgeUs =
       input.edge === 'in'
