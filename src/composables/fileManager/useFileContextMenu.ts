@@ -102,6 +102,16 @@ export function useFileContextMenu(
         }
       }
 
+      if (hasVideo) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+            icon: 'i-heroicons-musical-note',
+            onSelect: () => onAction('extractAudio', selectedEntries),
+          },
+        ]);
+      }
+
       items.push([
         {
           label: t('common.delete', 'Delete'),

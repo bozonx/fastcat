@@ -55,13 +55,30 @@ export function useAudioExtraction() {
 
       const dirPath = entry.path.split('/').slice(0, -1).join('/');
       const baseName = entry.name.replace(/\.[^.]+$/, '');
-      const newFileName = `${baseName}_extracted.${ext}`;
-      const targetPath = dirPath ? `${dirPath}/${newFileName}` : newFileName;
-
-      // Ensure target file is created
+      
       const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
       if (!dirHandle) throw new Error('Target directory not found');
+
+      let newFileName = `${baseName}_extracted.${ext}`;
+      let counter = 2;
+
+      while (true) {
+        try {
+          await dirHandle.getFileHandle(newFileName, { create: false });
+          // If we are here, the file exists
+          newFileName = `${baseName}_extracted (${counter}).${ext}`;
+          counter++;
+        } catch (err: any) {
+          if (err.name === 'NotFoundError') {
+            break;
+          }
+          throw err;
+        }
+      }
+
+      const targetPath = dirPath ? `${dirPath}/${newFileName}` : newFileName;
       
+      // Ensure target file is created
       await dirHandle.getFileHandle(newFileName, { create: true });
 
       await client.extractAudio(entry.path, targetPath);
