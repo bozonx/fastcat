@@ -78,6 +78,7 @@ export interface GranVideoEditorUserSettings {
     proxyCopyOpusAudio: boolean;
     autoCreateProxies: boolean;
     proxyConcurrency: number;
+    videoFrameCacheMb: number;
   };
   projectDefaults: {
     width: number;
@@ -228,6 +229,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     proxyCopyOpusAudio: true,
     autoCreateProxies: false,
     proxyConcurrency: 2,
+    videoFrameCacheMb: 256,
   },
   projectDefaults: {
     width: 1920,

@@ -79,6 +79,23 @@ function resetDefaults() {
           :step="1"
         />
       </UFormField>
+
+      <UFormField
+        :label="t('videoEditor.settings.videoFrameCacheMb', 'Video frame cache (MB)')"
+        :help="
+          t(
+            'videoEditor.settings.videoFrameCacheMbHelp',
+            'Maximum RAM budget for decoded preview video frames. Set 0 to disable the cache.',
+          )
+        "
+      >
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.optimization.videoFrameCacheMb"
+          :min="0"
+          :max="4096"
+          :step="16"
+        />
+      </UFormField>
     </div>
 
     <div class="grid grid-cols-4 gap-4">

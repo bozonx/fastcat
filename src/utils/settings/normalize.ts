@@ -202,6 +202,9 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const proxyCopyOpusAudio = (optimizationInput as Record<string, unknown>).proxyCopyOpusAudio;
   const autoCreateProxies = (optimizationInput as Record<string, unknown>).autoCreateProxies;
   const proxyConcurrency = Number((optimizationInput as Record<string, unknown>).proxyConcurrency);
+  const videoFrameCacheMb = Number(
+    (optimizationInput as Record<string, unknown>).videoFrameCacheMb,
+  );
   const integrationsInput = (input.integrations ?? {}) as Record<string, unknown>;
   const granPublicadorInput = (integrationsInput.granPublicador ?? {}) as Record<string, unknown>;
   const manualFilesApiInput = (integrationsInput.manualFilesApi ?? {}) as Record<string, unknown>;
@@ -349,17 +352,18 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     },
     hotkeys,
     optimization: {
-      proxyMaxPixels: Number.isFinite(proxyMaxPixels) && proxyMaxPixels > 0
-        ? Math.min(10_000_000, Math.max(100_000, proxyMaxPixels))
-        : proxyResolutionRaw === '360p'
-          ? 400_000
-          : proxyResolutionRaw === '480p'
-            ? 700_000
-            : proxyResolutionRaw === '720p'
-              ? 1_500_000
-              : proxyResolutionRaw === '1080p'
-                ? 3_000_000
-                : DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels,
+      proxyMaxPixels:
+        Number.isFinite(proxyMaxPixels) && proxyMaxPixels > 0
+          ? Math.min(10_000_000, Math.max(100_000, proxyMaxPixels))
+          : proxyResolutionRaw === '360p'
+            ? 400_000
+            : proxyResolutionRaw === '480p'
+              ? 700_000
+              : proxyResolutionRaw === '720p'
+                ? 1_500_000
+                : proxyResolutionRaw === '1080p'
+                  ? 3_000_000
+                  : DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels,
       proxyVideoBitrateMbps:
         Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
           ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
@@ -380,6 +384,10 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         Number.isFinite(proxyConcurrency) && proxyConcurrency > 0
           ? Math.min(16, Math.max(1, Math.round(proxyConcurrency)))
           : DEFAULT_USER_SETTINGS.optimization.proxyConcurrency,
+      videoFrameCacheMb:
+        Number.isFinite(videoFrameCacheMb) && videoFrameCacheMb >= 0
+          ? Math.min(4096, Math.max(0, Math.round(videoFrameCacheMb)))
+          : DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb,
     },
     projectDefaults: {
       width: normalizedWidth,

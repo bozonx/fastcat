@@ -547,7 +547,6 @@ export async function extractAudioStream(
       (packetSource as any).close();
     }
     await output.finalize();
-    await writable.close();
   } catch (err) {
     console.error('[Worker Export] Failed to extract audio:', err);
     throw err;

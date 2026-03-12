@@ -60,7 +60,7 @@ import { TextRenderer } from './compositor/renderers/TextRenderer';
 interface CachedVideoFrameEntry {
   key: string;
   clipId: string;
-  sampleTimeKey: string;
+  frameIndex: number;
   frame: VideoFrame;
   sizeBytes: number;
   width: number;
@@ -96,7 +96,7 @@ export class VideoCompositor {
   private stageSortDirty = true;
   private activeSortDirty = true;
   private clipPreferBitmapFallback = new Map<string, boolean>();
-  private readonly maxVideoFrameCacheBytes =
+  private maxVideoFrameCacheBytes =
     Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024;
   private videoFrameCache = new Map<string, CachedVideoFrameEntry>();
   private videoFrameCacheSizeBytes = 0;
@@ -122,10 +122,44 @@ export class VideoCompositor {
     return this.resourceManager.withVideoSampleSlot(task, signal);
   }
 
-  private buildVideoFrameCacheKey(clipId: string, sampleTimeS: number): string {
+  private resolveClipFrameRate(clip: CompositorClip): number {
+    const clipFrameRate = Number(clip.frameRate);
+    if (Number.isFinite(clipFrameRate) && clipFrameRate > 0) {
+      return clipFrameRate;
+    }
+    return 30;
+  }
+
+  private computeFrameIndex(clip: CompositorClip, sampleTimeS: number): number {
     const safeTimeS = Number.isFinite(sampleTimeS) ? Math.max(0, sampleTimeS) : 0;
-    const sampleTimeKey = safeTimeS.toFixed(6);
-    return `${clipId}:${sampleTimeKey}`;
+    const originS =
+      typeof clip.firstTimestampS === 'number' && Number.isFinite(clip.firstTimestampS)
+        ? Math.max(0, clip.firstTimestampS)
+        : 0;
+    const frameRate = this.resolveClipFrameRate(clip);
+    const relativeTimeS = Math.max(0, safeTimeS - originS);
+    return Math.max(0, Math.round(relativeTimeS * frameRate));
+  }
+
+  private buildVideoFrameCacheKey(clip: CompositorClip, frameIndex: number): string {
+    return `${clip.itemId}:${frameIndex}`;
+  }
+
+  private applyVideoFrameCacheLimit(cacheLimitMb?: number) {
+    if (typeof cacheLimitMb !== 'number' || !Number.isFinite(cacheLimitMb)) {
+      return;
+    }
+
+    const normalizedBytes = Math.max(0, Math.round(cacheLimitMb)) * 1024 * 1024;
+    if (normalizedBytes === this.maxVideoFrameCacheBytes) {
+      return;
+    }
+
+    this.maxVideoFrameCacheBytes = normalizedBytes;
+    this.evictVideoFrameCacheIfNeeded();
+    if (this.maxVideoFrameCacheBytes === 0) {
+      this.clearVideoFrameCache();
+    }
   }
 
   private estimateVideoFrameSizeBytes(frame: VideoFrame, width: number, height: number): number {
@@ -226,7 +260,8 @@ export class VideoCompositor {
     abortSignal?: AbortSignal;
   }): Promise<any | null> {
     const { clip, sampleTimeS, abortSignal } = params;
-    const cacheKey = this.buildVideoFrameCacheKey(clip.itemId, sampleTimeS);
+    const frameIndex = this.computeFrameIndex(clip, sampleTimeS);
+    const cacheKey = this.buildVideoFrameCacheKey(clip, frameIndex);
     const cached = this.getCachedVideoFrame(cacheKey);
     if (cached) {
       return {
@@ -259,7 +294,7 @@ export class VideoCompositor {
       this.setCachedVideoFrame({
         key: cacheKey,
         clipId: clip.itemId,
-        sampleTimeKey: sampleTimeS.toFixed(6),
+        frameIndex,
         frame,
         sizeBytes,
         width,
@@ -1281,6 +1316,12 @@ export class VideoCompositor {
 
         const sink = new VideoSampleSink(track);
         const firstTimestampS = await track.getFirstTimestamp();
+        const trackAny = track as any;
+        const frameRateRaw =
+          typeof trackAny.getFrameRate === 'function'
+            ? await trackAny.getFrameRate()
+            : (trackAny.frameRate ?? trackAny.fps);
+        const frameRate = Number(frameRateRaw);
         const mediaDurationUs = Math.max(
           0,
           Math.round((await track.computeDuration()) * 1_000_000),
@@ -1316,6 +1357,7 @@ export class VideoCompositor {
           input,
           sink,
           firstTimestampS,
+          frameRate: Number.isFinite(frameRate) && frameRate > 0 ? frameRate : undefined,
           startUs,
           endUs,
           durationUs,
@@ -1557,6 +1599,8 @@ export class VideoCompositor {
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas || !this.app.renderer) return null;
+
+    this.applyVideoFrameCacheLimit(options?.videoFrameCacheMb);
 
     if (timeUs !== this.lastRenderedTimeUs) {
       this.resourceManager.abortInFlight();

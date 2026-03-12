@@ -131,6 +131,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   function getPreviewRenderOptions(): PreviewRenderOptions {
     return {
       previewEffectsEnabled: previewEffectsEnabled.value,
+      videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
     };
   }
 
@@ -235,7 +236,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 id: c.id,
                 trackId: c.trackId,
                 speed: (c as any).speed,
-                                audioGain: (c as any).audioGain,
+                audioGain: (c as any).audioGain,
                 audioBalance: (c as any).audioBalance,
                 audioFadeInUs: (c as any).audioFadeInUs,
                 audioFadeOutUs: (c as any).audioFadeOutUs,
@@ -300,7 +301,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 sourceRangeDurationUs: clip.sourceRange.durationUs,
                 sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
                 speed: (clip as any).speed,
-                                audioGain: (clip as any).audioGain,
+                audioGain: (clip as any).audioGain,
                 audioBalance: (clip as any).audioBalance,
                 audioFadeInUs: (clip as any).audioFadeInUs,
                 audioFadeOutUs: (clip as any).audioFadeOutUs,
@@ -443,7 +444,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             trackId: c.trackId,
             audioBalance: (c as any).audioBalance,
             speed: (c as any).speed,
-                        audioGain: (c as any).audioGain,
+            audioGain: (c as any).audioGain,
             audioFadeInUs: (c as any).audioFadeInUs,
             audioFadeOutUs: (c as any).audioFadeOutUs,
             source: c.source,
@@ -547,7 +548,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               sourceRangeDurationUs: clip.sourceRange.durationUs,
               sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
               speed: (clip as any).speed,
-                            audioGain: (clip as any).audioGain,
+              audioGain: (clip as any).audioGain,
               audioBalance: (clip as any).audioBalance,
               audioFadeInUs: (clip as any).audioFadeInUs,
               audioFadeOutUs: (clip as any).audioFadeOutUs,
