@@ -10,6 +10,9 @@ import { useClipTransitionPanel } from '~/composables/timeline/useClipTransition
 import { getTransitionCurveSinglePath } from '~/utils/timeline/clip';
 import { usePresetsStore } from '~/stores/presets.store';
 
+import { getPrevClipForItem, getNextClipForItem } from '~/utils/timeline/clip';
+import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
+
 interface CurveOption {
   value: TransitionCurve;
   label: string;
@@ -23,6 +26,8 @@ const props = defineProps<{
   edge: 'in' | 'out';
   trackId: string;
   itemId: string;
+  clip?: TimelineClipItem;
+  track?: TimelineTrack;
   transition: ClipTransition | undefined;
   maxDuration?: number;
 }>();
@@ -67,11 +72,34 @@ const {
   onUpdate: (payload) => emit('update', payload),
 });
 
+const isAdjacentAvailable = computed(() => {
+  if (!props.track || !props.clip) return true; // Default to true if missing info
+
+  const adjacent =
+    props.edge === 'in'
+      ? getPrevClipForItem(props.track, props.clip)
+      : getNextClipForItem(props.track, props.clip);
+
+  if (!adjacent) return false;
+
+  const clipEdgeUs =
+    props.edge === 'in'
+      ? props.clip.timelineRange.startUs
+      : props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
+  const adjacentEdgeUs =
+    props.edge === 'in'
+      ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
+      : adjacent.timelineRange.startUs;
+
+  return Math.abs(clipEdgeUs - adjacentEdgeUs) <= 1_000;
+});
+
 const sourceOptions = computed(() => [
   {
     value: 'adjacent',
     label: t('granVideoEditor.timeline.transition.sourceAdjacentShort'),
     title: t('granVideoEditor.timeline.transition.sourceAdjacent'),
+    disabled: !isAdjacentAvailable.value,
   },
   {
     value: 'background',

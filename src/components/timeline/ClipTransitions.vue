@@ -204,7 +204,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           })
         "
       >
-        <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'background'">
+        <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transparent'">
           <svg
             class="w-full h-full block absolute inset-0"
             preserveAspectRatio="none"
@@ -236,6 +236,10 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
         <span
           v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
           class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+        />
+        <span
+          v-else-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'background'"
+          class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
         />
         <div
           v-if="canEdit && !clip.locked"
@@ -274,7 +278,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           })
         "
       >
-        <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'background'">
+        <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transparent'">
           <svg
             class="w-full h-full block absolute inset-0"
             preserveAspectRatio="none"
@@ -306,6 +310,10 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
         <span
           v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
           class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+        />
+        <span
+          v-else-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'background'"
+          class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
         />
         <div
           v-if="canEdit && !clip.locked"

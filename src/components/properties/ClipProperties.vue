@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
@@ -37,6 +38,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const { setActiveTab } = useProjectTabs();
 const mediaStore = useMediaStore();
 const selectionStore = useSelectionStore();
 const editorViewStore = useEditorViewStore();
@@ -209,7 +211,11 @@ async function handleSelectInFileManager() {
   const path = props.clip.source.path;
   const parentPath = path.split('/').slice(0, -1).join('/');
 
-  editorViewStore.goToFiles();
+  if (projectStore.currentView === 'cut' || projectStore.currentView === 'sound') {
+    setActiveTab('files');
+  } else {
+    editorViewStore.goToFiles();
+  }
 
   await fileManager.loadProjectDirectory();
 
