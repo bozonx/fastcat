@@ -1,10 +1,4 @@
-import type {
-  Filter,
-  Sprite,
-  ImageSource,
-  RenderTexture,
-  Container,
-} from 'pixi.js';
+import type { Filter, Sprite, ImageSource, RenderTexture, Container } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import type {
   TextClipStyle,
@@ -42,6 +36,7 @@ export interface CompositorClip {
   input?: Input;
   sink?: VideoSampleSink;
   firstTimestampS?: number;
+  frameRate?: number;
   startUs: number;
   endUs: number;
   durationUs: number;
@@ -128,7 +123,10 @@ export function isEdgePadding(
   );
 }
 
-export function arePaddingValuesEqual(a: TextClipStyle['padding'], b: TextClipStyle['padding']): boolean {
+export function arePaddingValuesEqual(
+  a: TextClipStyle['padding'],
+  b: TextClipStyle['padding'],
+): boolean {
   if (a === b) return true;
   if (typeof a === 'number' || typeof b === 'number') {
     return a === b;

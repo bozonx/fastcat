@@ -2,6 +2,7 @@ import type { WorkerTimelineClip } from '../../composables/monitor/types';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
+  videoFrameCacheMb?: number;
 }
 
 export interface VideoCoreWorkerAPI {
@@ -46,10 +47,7 @@ export interface VideoCoreWorkerAPI {
     quality: number,
   ): Promise<Blob | null>;
 
-  extractAudio(
-    sourcePath: string,
-    targetPath: string,
-  ): Promise<void>;
+  extractAudio(sourcePath: string, targetPath: string): Promise<void>;
 }
 
 export interface ExportOptions {
