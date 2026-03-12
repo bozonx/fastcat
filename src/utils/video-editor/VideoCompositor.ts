@@ -7,8 +7,6 @@ import {
   Sprite,
   Texture,
   Graphics,
-  Text,
-  TextStyle,
   CanvasSource,
   ImageSource,
   DOMAdapter,
@@ -56,6 +54,7 @@ import { TransitionManager } from './compositor/TransitionManager';
 import { LayoutManager } from './compositor/LayoutManager';
 import { VideoRenderer } from './compositor/renderers/VideoRenderer';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
+import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 
 interface CachedVideoFrameEntry {
   key: string;
@@ -107,6 +106,7 @@ export class VideoCompositor {
   // Renderers
   private videoRenderer = new VideoRenderer();
   private textRenderer = new TextRenderer();
+  private shapeRenderer = new ShapeRenderer();
 
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
@@ -804,6 +804,22 @@ export class VideoCompositor {
           reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
           this.applySolidLayout(reusable);
         }
+        if (reusable.clipKind === 'shape') {
+          reusable.shapeType = (clipData as any).shapeType ?? reusable.shapeType ?? 'square';
+          reusable.fillColor = String(
+            (clipData as any).fillColor ?? reusable.fillColor ?? '#ffffff',
+          );
+          reusable.strokeColor = String(
+            (clipData as any).strokeColor ?? reusable.strokeColor ?? '#000000',
+          );
+          reusable.strokeWidth = Number((clipData as any).strokeWidth ?? reusable.strokeWidth ?? 0);
+          const nextConfig = (clipData as any).shapeConfig;
+          if (!areShapeConfigsEqual(reusable.shapeConfig as any, nextConfig)) {
+            reusable.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
+          }
+          reusable.shapeDirty = true;
+        }
+
         reusable.sprite.visible = false;
 
         nextClips.push(reusable);
@@ -881,10 +897,8 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const sprite = new Text({
-          text: String((clipData as any).text ?? ''),
-          style: new TextStyle({ fill: '#ffffff' }),
-        });
+        // Text clips render via Canvas2D into a Sprite
+        const sprite = new Sprite(Texture.EMPTY);
         sprite.visible = false;
         (sprite as any).__clipId = itemId;
 
@@ -901,8 +915,8 @@ export class VideoCompositor {
           speed,
           sprite,
           clipKind: 'text',
-          sourceKind: 'graphics',
-          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+          sourceKind: 'canvas',
+          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }), // Will be replaced by CanvasSource
           lastVideoFrame: null,
           canvas: null,
           ctx: null,
@@ -924,12 +938,10 @@ export class VideoCompositor {
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
         if (trackRuntime) {
-          trackRuntime.container.addChild(sprite as any);
+          trackRuntime.container.addChild(sprite);
         } else {
-          this.app.stage.addChild(sprite as any);
+          this.app.stage.addChild(sprite);
         }
-
-        this.applySolidLayout(compositorClip);
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -992,7 +1004,7 @@ export class VideoCompositor {
           this.app.stage.addChild(sprite as any);
         }
 
-        this.applySolidLayout(compositorClip);
+        this.applyShapeLayout(compositorClip);
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -1719,7 +1731,16 @@ export class VideoCompositor {
 
         if (clip.clipKind === 'shape') {
           if (clip.shapeDirty) {
-            this.drawShapeClip(clip);
+            this.shapeRenderer.draw({
+              graphics: clip.sprite,
+              type: clip.shapeType ?? 'square',
+              fill: clip.fillColor ?? '#ffffff',
+              stroke: clip.strokeColor ?? '#000000',
+              strokeWidth: clip.strokeWidth ?? 0,
+              config: clip.shapeConfig ?? {},
+              canvasWidth: this.width,
+              canvasHeight: this.height,
+            });
             clip.shapeDirty = false;
           }
           clip.sprite.visible = true;
@@ -1728,7 +1749,8 @@ export class VideoCompositor {
 
         if (clip.clipKind === 'text') {
           if (clip.textDirty) {
-            this.drawTextClip(clip);
+            this.textRenderer.draw(clip, this.width, this.height);
+            this.applyTextLayout(clip);
             clip.textDirty = false;
           }
           clip.sprite.visible = true;
@@ -1817,6 +1839,7 @@ export class VideoCompositor {
           prevClip.clipKind === 'image' ||
           prevClip.clipKind === 'solid' ||
           prevClip.clipKind === 'shape' ||
+          prevClip.clipKind === 'text' ||
           prevClip.clipKind === 'hud'
         ) {
           prevClip.sprite.visible = true;
@@ -1971,8 +1994,6 @@ export class VideoCompositor {
       if (!this.app || !this.canvas || !this.app.renderer) {
         return null;
       }
-
-      this.prepareAdjustmentClips(active);
 
       this.lastRenderedTimeUs = timeUs;
 
@@ -2213,7 +2234,12 @@ export class VideoCompositor {
     texture: RenderTexture,
     options?: { transitionOffsetUs?: number },
   ): Promise<boolean> {
-    if (clip.clipKind === 'image' || clip.clipKind === 'solid' || clip.clipKind === 'text') {
+    if (
+      clip.clipKind === 'image' ||
+      clip.clipKind === 'solid' ||
+      clip.clipKind === 'text' ||
+      clip.clipKind === 'shape'
+    ) {
       this.renderSingleClipToTexture(clip, texture);
       return true;
     }
@@ -2919,174 +2945,6 @@ export class VideoCompositor {
     sprite.rotation = (input.rotationDeg * Math.PI) / 180;
     sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
     sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
-  }
-
-  private drawShapeClip(clip: CompositorClip) {
-    if (clip.clipKind !== 'shape') return;
-
-    const graphics = clip.sprite;
-    if (!graphics || typeof graphics.clear !== 'function') return;
-
-    graphics.clear();
-
-    const size = Math.min(this.width, this.height) * 0.8;
-    const strokeWidth = clip.strokeWidth ?? 0;
-    const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
-    const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
-
-    const type = clip.shapeType ?? 'square';
-    const fill = clip.fillColor ?? '#ffffff';
-    const stroke = clip.strokeColor ?? '#000000';
-    const config = clip.shapeConfig ?? {};
-
-    const cx = targetW / 2;
-    const cy = targetH / 2;
-    const half = size / 2;
-
-    const drawPolygon = (points: Array<{ x: number; y: number }>) => {
-      const [first, ...rest] = points;
-      if (!first) return;
-      graphics.moveTo(first.x, first.y);
-      for (const point of rest) {
-        graphics.lineTo(point.x, point.y);
-      }
-      graphics.closePath();
-    };
-
-    if (type === 'square') {
-      const w = ((config.width ?? 100) / 100) * size;
-      const h = ((config.height ?? 100) / 100) * size;
-      const r = ((config.cornerRadius ?? 0) / 100) * (Math.min(w, h) / 2);
-      const x = cx - w / 2;
-      const y = cy - h / 2;
-      if (r > 0) {
-        graphics.roundRect(x, y, w, h, r);
-      } else {
-        graphics.rect(x, y, w, h);
-      }
-    } else if (type === 'circle') {
-      const sqX = (config.squashX ?? 0) / 100;
-      const sqY = (config.squashY ?? 0) / 100;
-      const rx = half * (1 - sqX);
-      const ry = half * (1 - sqY);
-      graphics.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry));
-    } else if (type === 'triangle') {
-      const baseLen = ((config.baseLength ?? 100) / 100) * size;
-      const vOffsetRaw = (config.vertexOffset ?? 50) / 100;
-      const vOffset = vOffsetRaw * baseLen;
-      const topY = cy - half;
-      const bottomY = cy + half;
-      const leftX = cx - baseLen / 2;
-      drawPolygon([
-        { x: leftX + vOffset, y: topY },
-        { x: leftX + baseLen, y: bottomY },
-        { x: leftX, y: bottomY },
-      ]);
-    } else if (type === 'star') {
-      const points = config.rays ?? 5;
-      const innerRadius = half * ((config.innerRadius ?? 40) / 100);
-      const step = Math.PI / points;
-      const res = [];
-      for (let i = 0; i < points * 2; i++) {
-        const radius = i % 2 === 0 ? half : innerRadius;
-        const angle = i * step - Math.PI / 2;
-        res.push({
-          x: cx + Math.cos(angle) * radius,
-          y: cy + Math.sin(angle) * radius,
-        });
-      }
-      drawPolygon(res);
-    } else if (type === 'bang') {
-      const points = config.rays ?? 12;
-      const innerRadius = half * ((config.innerRadius ?? 70) / 100);
-      const step = Math.PI / points;
-      const res = [];
-      for (let i = 0; i < points * 2; i++) {
-        const radius = i % 2 === 0 ? half : innerRadius;
-        const angle = i * step - Math.PI / 2;
-        res.push({
-          x: cx + Math.cos(angle) * radius,
-          y: cy + Math.sin(angle) * radius,
-        });
-      }
-      drawPolygon(res);
-    } else if (type === 'cloud') {
-      const cloudType = config.cloudType ?? 1;
-      if (cloudType === 1) {
-        graphics.circle(cx - half * 0.4, cy, half * 0.5);
-        graphics.circle(cx + half * 0.4, cy, half * 0.5);
-        graphics.circle(cx, cy - half * 0.3, half * 0.6);
-        graphics.circle(cx, cy + half * 0.2, half * 0.4);
-      } else {
-        graphics.circle(cx - half * 0.5, cy + half * 0.1, half * 0.4);
-        graphics.circle(cx + half * 0.5, cy + half * 0.1, half * 0.4);
-        graphics.circle(cx - half * 0.2, cy - half * 0.3, half * 0.5);
-        graphics.circle(cx + half * 0.2, cy - half * 0.2, half * 0.45);
-        graphics.circle(cx, cy + half * 0.3, half * 0.3);
-      }
-    } else if (type === 'speech_bubble') {
-      const w = ((config.width ?? 100) / 100) * size;
-      const h = ((config.height ?? 70) / 100) * size;
-      const x = cx - w / 2;
-      const y = cy - h / 2 - half * 0.15;
-      const r = Math.min(
-        ((config.cornerRadius ?? 20) / 100) * (Math.min(w, h) / 2),
-        Math.min(w, h) / 2,
-      );
-
-      const pointerDir = config.pointerDirection ?? 'left';
-      const pointerXBase = w * ((config.pointerX ?? 30) / 100);
-      const pointerWidth = w * ((config.pointerAngle ?? 20) / 100);
-      const pointerHeight = h * ((config.pointerSharpness ?? 40) / 100);
-
-      graphics.moveTo(x + r, y);
-      graphics.lineTo(x + w - r, y);
-      graphics.quadraticCurveTo(x + w, y, x + w, y + r);
-      graphics.lineTo(x + w, y + h - r);
-      graphics.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-
-      if (pointerDir === 'right') {
-        graphics.lineTo(x + pointerXBase + pointerWidth, y + h);
-        graphics.lineTo(x + pointerXBase + pointerWidth, y + h + pointerHeight);
-        graphics.lineTo(x + pointerXBase, y + h);
-      } else {
-        graphics.lineTo(x + pointerXBase + pointerWidth, y + h);
-        graphics.lineTo(x + pointerXBase, y + h + pointerHeight);
-        graphics.lineTo(x + pointerXBase, y + h);
-      }
-
-      graphics.lineTo(x + r, y + h);
-      graphics.quadraticCurveTo(x, y + h, x, y + h - r);
-      graphics.lineTo(x, y + r);
-      graphics.quadraticCurveTo(x, y, x + r, y);
-    } else {
-      graphics.rect(cx - half, cy - half, size, size);
-    }
-
-    graphics.fill(parseHexColor(fill));
-    if (strokeWidth > 0) {
-      graphics.stroke({ width: strokeWidth, color: parseHexColor(stroke) });
-    }
-  }
-
-  private drawTextClip(clip: CompositorClip) {
-    if (clip.clipKind !== 'text') return;
-
-    const textObj = clip.sprite;
-    if (!textObj || typeof textObj.text !== 'string') return;
-
-    textObj.text = String(clip.text ?? '');
-
-    const style = clip.style || {};
-    textObj.style = new TextStyle({
-      fontFamily: style.fontFamily ?? 'Arial',
-      fontSize: style.fontSize ?? 24,
-      fontWeight: (style.fontWeight as any) ?? 'normal',
-      fill: style.color ?? '#ffffff',
-      align: (style.align as any) ?? 'center',
-      lineHeight: style.lineHeight,
-      letterSpacing: style.letterSpacing,
-    });
   }
 
   private drawHudClip(clip: CompositorClip) {

@@ -48,6 +48,7 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
     audioChannels: DEFAULT_USER_SETTINGS.projectDefaults.audioChannels,
     sampleRate: DEFAULT_USER_SETTINGS.projectDefaults.sampleRate,
     audioDeclickDurationUs: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
+    defaultAudioFadeCurve: DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
   };
 }
 

@@ -171,6 +171,7 @@ interface BuildVideoPayloadFromTracksResult {
 interface BuildVideoTrackTreeParams {
   tracks: TimelineTrack[];
   projectStore: ReturnType<typeof useProjectStore>;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
   layerOffset?: number;
   trackIdPrefix?: string;
   visitedPaths?: Set<string>;
@@ -240,7 +241,8 @@ async function buildVideoTrackTree(
         audioFadeOutUs: (item as any).audioFadeOutUs,
         audioFadeInCurve: (item as any).audioFadeInCurve,
         audioFadeOutCurve: (item as any).audioFadeOutCurve,
-        audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
+        audioDeclickDurationUs:
+          params.workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs,
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
@@ -287,6 +289,7 @@ async function buildVideoTrackTree(
           const nestedResult = await buildVideoTrackTree({
             tracks: nestedDoc.tracks,
             projectStore: params.projectStore,
+            workspaceStore: params.workspaceStore,
             layerOffset: layer,
             trackIdPrefix: `${runtimeTrackId}::${item.id}`,
             visitedPaths: new Set(visitedPaths).add(path),
@@ -418,11 +421,13 @@ async function buildVideoTrackTree(
 export async function buildVideoWorkerPayloadFromTracks(input: {
   tracks: TimelineTrack[];
   projectStore: ReturnType<typeof useProjectStore>;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
   masterEffects?: ClipEffect[];
 }): Promise<BuildVideoPayloadFromTracksResult> {
   const result = await buildVideoTrackTree({
     tracks: input.tracks,
     projectStore: input.projectStore,
+    workspaceStore: input.workspaceStore,
   });
 
   return {
@@ -1112,6 +1117,7 @@ export function useTimelineExport() {
     const builtVideo = await buildVideoWorkerPayloadFromTracks({
       tracks: doc?.tracks ?? [],
       projectStore,
+      workspaceStore,
       masterEffects: doc?.metadata?.gran?.masterEffects,
     });
 

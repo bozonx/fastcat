@@ -351,6 +351,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: nestedDoc.tracks,
         projectStore: projectStore as any,
+        workspaceStore: workspaceStore as any,
       });
       const rawClips = builtVideo.payload;
 

@@ -811,6 +811,33 @@ defineExpose({
           @update:model-value="handleUpdateText"
         />
 
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-ui-text-muted">{{
+            t('granVideoEditor.textClip.fontFamily', 'Font family')
+          }}</span>
+          <USelectMenu
+            :model-value="String((clip as any).style?.fontFamily ?? 'sans-serif')"
+            :items="[
+              { value: 'sans-serif', label: 'Sans Serif' },
+              { value: 'serif', label: 'Serif' },
+              { value: 'monospace', label: 'Monospace' },
+              { value: 'Arial', label: 'Arial' },
+              { value: 'Arial Black', label: 'Arial Black' },
+              { value: 'Verdana', label: 'Verdana' },
+              { value: 'Tahoma', label: 'Tahoma' },
+              { value: 'Trebuchet MS', label: 'Trebuchet MS' },
+              { value: 'Georgia', label: 'Georgia' },
+              { value: 'Times New Roman', label: 'Times New Roman' },
+              { value: 'Courier New', label: 'Courier New' },
+              { value: 'Impact', label: 'Impact' },
+            ]"
+            value-key="value"
+            label-key="label"
+            size="sm"
+            @update:model-value="(v: any) => handleUpdateTextStyle({ fontFamily: v?.value ?? v })"
+          />
+        </div>
+
         <div class="grid grid-cols-2 gap-2">
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{
@@ -825,12 +852,51 @@ defineExpose({
             />
           </div>
           <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">{{
+              t('granVideoEditor.textClip.fontWeight', 'Font weight')
+            }}</span>
+            <USelectMenu
+              :model-value="String((clip as any).style?.fontWeight ?? '700')"
+              :items="[
+                { value: '100', label: '100' },
+                { value: '200', label: '200' },
+                { value: '300', label: '300' },
+                { value: '400', label: '400' },
+                { value: '500', label: '500' },
+                { value: '600', label: '600' },
+                { value: '700', label: '700' },
+                { value: '800', label: '800' },
+                { value: '900', label: '900' },
+              ]"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              @update:model-value="(v: any) => handleUpdateTextStyle({ fontWeight: v?.value ?? v })"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
             <UColorPicker
               :model-value="String((clip as any).style?.color ?? '#ffffff')"
               format="hex"
               size="sm"
               @update:model-value="(v: any) => handleUpdateTextStyle({ color: String(v) })"
+            />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">{{
+              t('granVideoEditor.textClip.backgroundColor', 'Background')
+            }}</span>
+            <UColorPicker
+              :model-value="String((clip as any).style?.backgroundColor ?? '')"
+              format="hex"
+              size="sm"
+              @update:model-value="
+                (v: any) => handleUpdateTextStyle({ backgroundColor: String(v) })
+              "
             />
           </div>
         </div>
@@ -909,18 +975,6 @@ defineExpose({
               @update:model-value="(v: any) => handleUpdateTextStyle({ letterSpacing: Number(v) })"
             />
           </div>
-        </div>
-
-        <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.textClip.backgroundColor', 'Background')
-          }}</span>
-          <UColorPicker
-            :model-value="String((clip as any).style?.backgroundColor ?? '')"
-            format="hex"
-            size="sm"
-            @update:model-value="(v: any) => handleUpdateTextStyle({ backgroundColor: String(v) })"
-          />
         </div>
 
         <div class="flex flex-col gap-0.5">

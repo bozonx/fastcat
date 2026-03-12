@@ -40,6 +40,14 @@ const intrinsicDimensions = computed(() => {
     return { w: props.renderWidth, h: props.renderHeight };
   }
 
+  if (type === 'shape') {
+    const strokeWidth = (clipData.value as any)?.strokeWidth ?? 0;
+    const size = Math.min(props.renderWidth, props.renderHeight) * 0.8;
+    const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    return { w: targetW, h: targetH };
+  }
+
   const sourcePath = clipData.value.source?.path;
   if (!sourcePath) return { w: props.renderWidth, h: props.renderHeight };
 
@@ -90,6 +98,11 @@ const layout = computed(() => {
     canvasHeight: props.renderHeight,
     transform,
   });
+
+  // For shape clips, the layout in compositor handles centering via baseX/baseY, but
+  // computeClipBoxLayout handles the scale correctly, so we need to adjust baseX/baseY
+  // if computeClipBoxLayout does not center it properly for custom sizes.
+  // Actually, computeClipBoxLayout does (canvasWidth - targetWidth) / 2 which perfectly matches shape logic.
 
   return {
     targetW: boxLayout.targetWidth,

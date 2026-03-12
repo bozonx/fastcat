@@ -1,4 +1,4 @@
-import type { Filter, RenderTexture, Sprite, type Renderer as PixiRenderer } from 'pixi.js';
+import type { Filter, RenderTexture, Sprite, Renderer as PixiRenderer } from 'pixi.js';
 import {
   getTransitionManifest,
   normalizeTransitionParams,

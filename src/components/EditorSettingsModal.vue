@@ -10,6 +10,7 @@ import SettingsProjectDefaults from '~/components/settings/SettingsProjectDefaul
 import SettingsExportDefaults from '~/components/settings/SettingsExportDefaults.vue';
 import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue';
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
+import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
 
 interface Props {
@@ -34,6 +35,7 @@ type SettingsSection =
   | 'user.export'
   | 'user.integrations'
   | 'user.video'
+  | 'user.audio'
   | 'workspace.storage';
 
 const activeSection = ref<SettingsSection>('user.general');
@@ -140,6 +142,14 @@ watch(
               :disabled="activeSection === 'user.video'"
               @click="activeSection = 'user.video'"
             />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userAudio', 'Audio')"
+              :disabled="activeSection === 'user.audio'"
+              @click="activeSection = 'user.audio'"
+            />
           </div>
 
           <div class="flex flex-col gap-2">
@@ -170,6 +180,7 @@ watch(
         />
         <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
         <SettingsVideo v-else-if="activeSection === 'user.video'" />
+        <SettingsAudio v-else-if="activeSection === 'user.audio'" />
         <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
       </div>
     </div>
