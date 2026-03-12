@@ -10,6 +10,7 @@ const props = defineProps<{
     edge: 'in' | 'out';
   };
   clip: any; // TimelineClipItem
+  track?: any; // TimelineTrack
 }>();
 
 const timelineStore = useTimelineStore();
@@ -57,6 +58,8 @@ function handleTransitionUpdate(payload: {
       :edge="transitionSelection.edge"
       :track-id="transitionSelection.trackId"
       :item-id="transitionSelection.itemId"
+      :track="track"
+      :clip="clip"
       :transition="transitionValue"
       :max-duration="maxDurationSec"
       @update="handleTransitionUpdate"

@@ -1055,6 +1055,28 @@ watch(
 
     if (entry?.kind === 'file' && entry.path) {
       pendingScrollToEntryPath.value = entry.path;
+      
+      // If we are already in the correct folder, scroll immediately
+      const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
+      const targetParentPath = entry.path.split('/').slice(0, -1).join('/');
+      if (targetParentPath === selectedFolderPath) {
+        requestAnimationFrame(() => {
+          const container = rootContainer.value;
+          if (!container || !pendingScrollToEntryPath.value) return;
+
+          const targetNode = container.querySelector<HTMLElement>(
+            `[data-entry-path="${CSS.escape(pendingScrollToEntryPath.value)}"]`,
+          );
+          if (!targetNode) return;
+
+          targetNode.scrollIntoView({
+            block: 'nearest',
+            inline: 'nearest',
+            behavior: 'auto',
+          });
+          pendingScrollToEntryPath.value = null;
+        });
+      }
     }
   },
   { immediate: true },
@@ -1253,9 +1275,8 @@ watch(
       targetNode.scrollIntoView({
         block: 'nearest',
         inline: 'nearest',
-        behavior: 'smooth',
+        behavior: 'auto',
       });
-      targetNode.focus();
       pendingScrollToEntryPath.value = null;
     });
   },
@@ -1307,9 +1328,8 @@ watch(
       targetNode.scrollIntoView({
         block: 'nearest',
         inline: 'nearest',
-        behavior: 'smooth',
+        behavior: 'auto',
       });
-      targetNode.focus();
       pendingScrollToEntryPath.value = null;
     });
   },

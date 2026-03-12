@@ -60,12 +60,15 @@ const selectedTransition = computed(() => {
   return { trackId: entity.trackId, itemId: entity.itemId, edge: entity.edge };
 });
 
-const selectedTransitionClip = computed<TimelineClipItem | null>(() => {
-  const sel = selectedTransition.value;
-  if (!sel) return null;
-  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === sel.trackId);
-  const item = track?.items.find((it) => it.id === sel.itemId);
-  return item && item.kind === 'clip' ? (item as TimelineClipItem) : null;
+const selectedTransitionClip = computed(() => {
+  if (!selectedTransition.value) return null;
+  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === selectedTransition.value!.trackId);
+  return track?.items.find((i) => i.id === selectedTransition.value!.itemId) ?? null;
+});
+
+const selectedTransitionTrack = computed(() => {
+  if (!selectedTransition.value) return null;
+  return timelineStore.timelineDoc?.tracks.find((t) => t.id === selectedTransition.value!.trackId) ?? null;
 });
 
 const selectedTrack = computed<TimelineTrack | null>(() => {
@@ -203,7 +206,7 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'transition'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
-            {{ selectedTransitionClip?.name }}
+            {{ selectedTransitionClip?.kind === 'clip' ? selectedTransitionClip.name : '' }}
           </span>
           <span
             v-else-if="displayMode === 'file' && selectedFsEntry"
@@ -298,6 +301,7 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
             :transition-selection="selectedTransition"
             :clip="selectedTransitionClip"
+            :track="selectedTransitionTrack"
           />
 
           <MultiClipProperties
