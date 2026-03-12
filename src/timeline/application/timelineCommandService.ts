@@ -43,6 +43,7 @@ export interface AddClipToTimelineFromPathInput {
   name: string;
   path: string;
   startUs?: number;
+  pseudo?: boolean;
 }
 
 export interface MoveItemToTrackInput {
@@ -62,6 +63,7 @@ export interface AddTimelineClipFromPathInput {
   name: string;
   path: string;
   startUs?: number;
+  pseudo?: boolean;
 }
 
 function isOtioPath(path: string) {
@@ -266,6 +268,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         sourceDurationUs,
         isImage: isImageLike,
         startUs: input.startUs,
+        pseudo: input.pseudo,
       },
       options,
     );
@@ -384,6 +387,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         durationUs,
         sourceDurationUs: durationUs,
         startUs: input.startUs,
+        pseudo: input.pseudo,
       },
       options,
     );

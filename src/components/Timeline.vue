@@ -220,7 +220,9 @@ const onDrop = async (e: DragEvent, trackId: string) => {
   const startUs = getDropPosition(e);
   if (startUs === null) return;
 
-  const pseudo = isLayer1Active(e as unknown as MouseEvent, workspaceStore.userSettings);
+  const pseudo =
+    isLayer1Active(e as unknown as MouseEvent, workspaceStore.userSettings) ||
+    timelineSettingsStore.overlapMode === 'pseudo';
 
   const libraryItemData =
     e.dataTransfer?.getData('gran-item') || e.dataTransfer?.getData('application/json');
