@@ -42,6 +42,7 @@ import {
   mergeFadeOutUs,
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
+import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 
 export interface ExportOptions {
   format: 'mp4' | 'webm' | 'mkv';
@@ -369,7 +370,7 @@ async function buildVideoTrackTree(
       if (clipType === 'background') {
         result.clips.push({
           ...baseClip,
-          backgroundColor: String((item as any).backgroundColor ?? '#000000'),
+          backgroundColor: sanitizeTimelineColor((item as any).backgroundColor, '#000000'),
         });
         continue;
       }
@@ -761,7 +762,7 @@ export async function toWorkerTimelineClips(
     } else if (clipType === 'background') {
       clips.push({
         ...base,
-        backgroundColor: String((item as any).backgroundColor ?? '#000000'),
+        backgroundColor: sanitizeTimelineColor((item as any).backgroundColor, '#000000'),
       });
     } else if (clipType === 'text') {
       clips.push({

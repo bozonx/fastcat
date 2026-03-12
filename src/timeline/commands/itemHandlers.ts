@@ -41,6 +41,7 @@ import {
   normalizeTransitionParams,
 } from '~/transitions';
 import type { TransitionCurve, TransitionMode } from '~/transitions';
+import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 
 function assertClipNotLocked(item: TimelineTrackItem, action: string) {
   if (item.kind !== 'clip') return;
@@ -135,7 +136,7 @@ export function addVirtualClipToTrack(
       clip = {
         ...base,
         clipType: 'background',
-        backgroundColor: cmd.backgroundColor ?? '#1a56db',
+        backgroundColor: sanitizeTimelineColor(cmd.backgroundColor, '#1a56db'),
       };
       break;
     case 'text':
@@ -841,9 +842,7 @@ export function updateClipProperties(
     if (item.clipType !== 'background') {
       delete nextProps.backgroundColor;
     } else {
-      const raw = nextProps.backgroundColor;
-      const value = typeof raw === 'string' ? raw.trim() : '';
-      nextProps.backgroundColor = value.length > 0 ? value : '#000000';
+      nextProps.backgroundColor = sanitizeTimelineColor(nextProps.backgroundColor, '#000000');
     }
   }
 

@@ -390,6 +390,7 @@ const { getContextMenuItems } = useFileContextMenu(
         <UContextMenu :items="getContextMenuItems(entry)">
           <div
             class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
+            :data-entry-path="entry.path ?? undefined"
             :style="{ paddingLeft: `${8 + depth * 14}px` }"
             :class="[
               isDragOver === entry.path

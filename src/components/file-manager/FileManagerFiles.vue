@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, provide } from 'vue';
+import { ref, computed, provide, watch, nextTick } from 'vue';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -28,6 +28,45 @@ const workspaceStore = useWorkspaceStore();
 const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
+
+function scrollToSelectedEntry(path: string): boolean {
+  const container = scrollEl.value;
+  if (!container) return false;
+
+  const targetNode = container.querySelector<HTMLElement>(`[data-entry-path="${CSS.escape(path)}"]`);
+  if (!targetNode) return false;
+
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = targetNode.getBoundingClientRect();
+  const targetTop = targetRect.top - containerRect.top + container.scrollTop;
+  const targetBottom = targetTop + targetRect.height;
+  const visibleTop = container.scrollTop;
+  const visibleBottom = visibleTop + container.clientHeight;
+
+  if (targetTop < visibleTop) {
+    container.scrollTop = Math.max(targetTop - 8, 0);
+  } else if (targetBottom > visibleBottom) {
+    container.scrollTop = Math.max(targetBottom - container.clientHeight + 8, 0);
+  }
+
+  return true;
+}
+
+watch(
+  () => uiStore.selectedFsEntry,
+  async (entry) => {
+    if (!entry?.path) return;
+    const path = entry.path;
+    await nextTick();
+    requestAnimationFrame(() => {
+      // First attempt — tree may not have re-rendered yet after toggleDirectory
+      if (!scrollToSelectedEntry(path)) {
+        // Retry after another paint cycle
+        requestAnimationFrame(() => scrollToSelectedEntry(path));
+      }
+    });
+  },
+);
 
 function onContainerKeyDown(e: KeyboardEvent) {
   const container = scrollEl.value;

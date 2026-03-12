@@ -232,6 +232,7 @@ describe('VideoCompositor render optimization', () => {
 
   it('recreates invalid shader transition filter when resources are missing', async () => {
     const compositor = new VideoCompositor() as any;
+    compositor.previewEffectsEnabled = true;
     const recreatedFilter = { resources: {}, destroyed: false };
     const createFilter = vi.fn(() => recreatedFilter);
     const updateFilter = vi.fn();
@@ -251,7 +252,7 @@ describe('VideoCompositor render optimization', () => {
       transitionIn: {
         type: 'fade-to-black',
         durationUs: 1_000,
-        mode: 'fade',
+        mode: 'background',
         curve: 'linear',
         params: {},
       },
@@ -278,6 +279,9 @@ describe('VideoCompositor render optimization', () => {
     compositor.app = {
       renderer: {
         render: vi.fn(),
+      },
+      stage: {
+        children: [],
       },
     };
     compositor.ensureTransitionRenderTexture = vi.fn((texture) => texture ?? { source: {} });
@@ -313,5 +317,117 @@ describe('VideoCompositor render optimization', () => {
     );
     expect(compositor.filterQuadSprite.filters).toEqual([recreatedFilter]);
     expect(clip.transitionFilter).toBe(recreatedFilter);
+  });
+
+  it('prepares adjustment textures for all active adjustment clips', () => {
+    const compositor = new VideoCompositor() as any;
+    compositor.width = 1920;
+    compositor.height = 1080;
+    compositor.app = {
+      renderer: {
+        render: vi.fn(),
+      },
+    };
+
+    const textureA = { id: 'tex-a', width: 1920, height: 1080, uid: 1 };
+    const textureB = { id: 'tex-b', width: 1920, height: 1080, uid: 2 };
+    compositor.ensureClipRenderTexture = vi
+      .fn()
+      .mockReturnValueOnce(textureA)
+      .mockReturnValueOnce(textureB);
+    compositor.renderLowerLayersToTexture = vi.fn();
+
+    const activeAdjustmentLow = {
+      itemId: 'adj-low',
+      clipKind: 'adjustment',
+      layer: 1,
+      startUs: 0,
+      sprite: { visible: true, texture: null },
+      adjustmentSourceTexture: null,
+    } as any;
+    const activeAdjustmentHigh = {
+      itemId: 'adj-high',
+      clipKind: 'adjustment',
+      layer: 3,
+      startUs: 0,
+      sprite: { visible: true, texture: null },
+      adjustmentSourceTexture: null,
+    } as any;
+    const inactiveAdjustment = {
+      itemId: 'adj-inactive',
+      clipKind: 'adjustment',
+      layer: 5,
+      startUs: 0,
+      sprite: { visible: false, texture: { stale: true } },
+      adjustmentSourceTexture: null,
+    } as any;
+
+    compositor.clips = [inactiveAdjustment, activeAdjustmentHigh, activeAdjustmentLow];
+
+    compositor.prepareAdjustmentClips([activeAdjustmentHigh, activeAdjustmentLow]);
+
+    expect(compositor.ensureClipRenderTexture).toHaveBeenCalledTimes(2);
+    expect(compositor.renderLowerLayersToTexture).toHaveBeenNthCalledWith(1, 1, textureA);
+    expect(compositor.renderLowerLayersToTexture).toHaveBeenNthCalledWith(2, 3, textureB);
+    expect(activeAdjustmentLow.sprite.texture).toBe(textureA);
+    expect(activeAdjustmentHigh.sprite.texture).toBe(textureB);
+    expect(inactiveAdjustment.sprite.texture).toBeDefined();
+    expect(inactiveAdjustment.sprite.texture).not.toEqual({ stale: true });
+  });
+
+  it('normalizes background color when updating solid clips in updateTimelineLayout', () => {
+    const compositor = new VideoCompositor() as any;
+    compositor.width = 1920;
+    compositor.height = 1080;
+    compositor.syncTrackRuntimes = vi.fn();
+    compositor.rebuildPrevClipIndex = vi.fn();
+    compositor.activeTracker = { reset: vi.fn() };
+    compositor.getTrackRuntimeForClip = () => null;
+    compositor.transitionFilters = new Map();
+
+    const clip = {
+      itemId: 'bg1',
+      startUs: 0,
+      endUs: 1000,
+      durationUs: 1000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1000,
+      sourceDurationUs: 1000,
+      layer: 0,
+      trackId: 'track_0',
+      clipKind: 'solid',
+      backgroundColor: '#000000',
+      sprite: {
+        tint: 0,
+        parent: null,
+        anchor: { set: vi.fn() },
+        scale: { x: 1, y: 1 },
+        width: 1,
+        height: 1,
+        rotation: 0,
+        x: 0,
+        y: 0,
+      },
+      imageSource: { width: 1920, height: 1080 },
+      effectFilters: new Map(),
+    } as any;
+
+    compositor.clips = [clip];
+
+    compositor.updateTimelineLayout([
+      {
+        kind: 'clip',
+        id: 'bg1',
+        trackId: 'track_0',
+        layer: 0,
+        clipType: 'background',
+        backgroundColor: 'abc',
+        timelineRange: { startUs: 0, durationUs: 1000 },
+        sourceRange: { startUs: 0, durationUs: 1000 },
+      },
+    ]);
+
+    expect(clip.backgroundColor).toBe('#aabbcc');
+    expect(clip.sprite.tint).toBe(0xaabbcc);
   });
 });
