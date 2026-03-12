@@ -52,7 +52,11 @@ onMounted(() => {
 function onScroll() {
   if (props.scrollEl) {
     scrollLeft.value = props.scrollEl.scrollLeft;
-    scheduleDraw();
+    if (drawRafId !== null) {
+      cancelAnimationFrame(drawRafId);
+      drawRafId = null;
+    }
+    draw();
   }
 }
 
@@ -90,9 +94,8 @@ onUnmounted(() => {
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
-const currentTime = computed(() => timelineStore.currentTime);
 
-watch([fps, zoom, width, height, scrollLeft, currentTime], () => {
+watch([fps, zoom, width, height, scrollLeft], () => {
   scheduleDraw();
 });
 
@@ -123,21 +126,6 @@ function draw() {
   const endPx = startPx + w;
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
-
-  if (pxPerFrame >= 6) {
-    const frameDurationUs = 1_000_000 / currentFps;
-    const currentFrameStartUs = Math.floor(currentTime.value / frameDurationUs) * frameDurationUs;
-    const currentFrameStartX = timeUsToPx(currentFrameStartUs, currentZoom) - startPx;
-
-    if (currentFrameStartX < w && currentFrameStartX + pxPerFrame > 0) {
-      const styles = window.getComputedStyle(document.documentElement);
-      const primaryColor = styles.getPropertyValue('--color-primary-500').trim() || '#3b82f6';
-      ctx.fillStyle = primaryColor;
-      ctx.globalAlpha = 0.12;
-      ctx.fillRect(currentFrameStartX, 0, pxPerFrame, h);
-      ctx.globalAlpha = 1;
-    }
-  }
 
   // Same step calculation as TimelineRuler for perfect sync
   const MIN_DIST_PX = 90;
