@@ -1964,6 +1964,8 @@ export class VideoCompositor {
         this.stageSortDirty = false;
       }
 
+      this.prepareAdjustmentClips(active);
+
       await this.applyShaderTransitions(active, timeUs);
 
       if (!this.app || !this.canvas || !this.app.renderer) {

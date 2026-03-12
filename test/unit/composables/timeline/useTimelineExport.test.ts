@@ -309,6 +309,100 @@ describe('useTimelineExport pure functions', () => {
     ).toHaveLength(2);
   });
 
+  it('toWorkerTimelineClips should preserve transitions on background clips', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'background',
+        id: 'bg1',
+        trackId: 't1',
+        name: 'Background',
+        backgroundColor: '#112233',
+        transitionIn: {
+          type: 'fade-to-black',
+          durationUs: 250_000,
+          mode: 'background',
+          curve: 'linear',
+          params: {},
+        },
+        transitionOut: {
+          type: 'dissolve',
+          durationUs: 250_000,
+          mode: 'transparent',
+          curve: 'linear',
+          params: {},
+        },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+
+    expect(clips[0]).toMatchObject({
+      clipType: 'background',
+      transitionIn: {
+        type: 'fade-to-black',
+        durationUs: 250_000,
+        mode: 'background',
+      },
+      transitionOut: {
+        type: 'dissolve',
+        durationUs: 250_000,
+        mode: 'transparent',
+      },
+    });
+  });
+
+  it('buildVideoWorkerPayloadFromTracks should preserve transition data on adjustment clips', async () => {
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'adjustment',
+              id: 'adj-1',
+              trackId: 'v1',
+              name: 'Adjustment 1',
+              transitionIn: {
+                type: 'fade-to-black',
+                durationUs: 300_000,
+                mode: 'background',
+                curve: 'linear',
+                params: {},
+              },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        } as any,
+      ],
+      projectStore: projectStoreMock,
+    });
+
+    expect(result.clips[0]).toMatchObject({
+      clipType: 'adjustment',
+      transitionIn: {
+        type: 'fade-to-black',
+        durationUs: 300_000,
+        mode: 'background',
+      },
+    });
+  });
+
   it('toWorkerTimelineClips should respect item.layer when options.layer is not provided', async () => {
     const items: TimelineTrackItem[] = [
       {
