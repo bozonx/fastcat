@@ -78,8 +78,8 @@ describe('videoDiagnostics', () => {
     expect(snapshot.sections[0]?.status.tone).toBe('danger');
     expect(snapshot.sections[1]?.status.tone).toBe('danger');
     expect(snapshot.sections[2]?.status.label).toContain('No WebGPU adapter');
-    expect(snapshot.sections[0]?.items.find((item) => item.label === 'Compositor path')?.value).toBe(
-      'Limited or fallback-only',
-    );
+    expect(
+      snapshot.sections[0]?.items.find((item) => item.label === 'Compositor path')?.value,
+    ).toBe('Limited or fallback-only');
   });
 });

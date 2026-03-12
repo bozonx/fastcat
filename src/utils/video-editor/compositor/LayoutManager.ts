@@ -29,7 +29,12 @@ export class LayoutManager {
     }
   }
 
-  public applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip, context: LayoutManagerContext) {
+  public applySpriteLayout(
+    frameW: number,
+    frameH: number,
+    clip: CompositorClip,
+    context: LayoutManagerContext,
+  ) {
     const box = computeClipBoxLayout({
       canvasWidth: context.width,
       canvasHeight: context.height,

@@ -28,8 +28,12 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 vi.mock('~/utils/video-editor/AudioEngine', () => {
   class AudioEngineMock {
     clips: any[] = [];
-    getClips() { return this.clips; }
-    loadClips = vi.fn().mockImplementation(async (clips) => { this.clips = clips; });
+    getClips() {
+      return this.clips;
+    }
+    loadClips = vi.fn().mockImplementation(async (clips) => {
+      this.clips = clips;
+    });
     setVolume = vi.fn();
     init = vi.fn().mockResolvedValue(undefined);
     // loadClips redefined
@@ -104,10 +108,10 @@ describe('useMonitorCore', () => {
     });
 
     const projectStore = reactive({
-          projectSettings: {
-            project: { width: 1920, height: 1080, audioDeclickDurationUs: 5000 },
-            export: { width: 1920, height: 1080 },
-            monitor: createMonitorSettings(),
+      projectSettings: {
+        project: { width: 1920, height: 1080, audioDeclickDurationUs: 5000 },
+        export: { width: 1920, height: 1080 },
+        monitor: createMonitorSettings(),
       },
       getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
     });

@@ -4,7 +4,7 @@ import { RouterFileSystemAdapter } from '~/file-manager/core/vfs/router.adapter'
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
-import { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
+import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
   WORKSPACE_COMMON_PATH_PREFIX,

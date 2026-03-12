@@ -1,9 +1,9 @@
-vi.mock('#app-manifest', () => ({}));
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useMediaStore } from '../../../src/stores/media.store';
 import { useWorkspaceStore } from '../../../src/stores/workspace.store';
 import { useProjectStore } from '../../../src/stores/project.store';
+vi.mock('#app-manifest', () => ({}));
 
 vi.mock('../../../src/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({

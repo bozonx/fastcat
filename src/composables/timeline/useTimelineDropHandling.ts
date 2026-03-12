@@ -57,7 +57,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
   async function handleLibraryDrop(data: string, trackId: string, startUs: number) {
     try {
       const payload = JSON.parse(data);
-      const items = Array.isArray(payload) ? payload : [payload];
+      const items = Array.isArray(payload?.items) ? payload.items : (Array.isArray(payload) ? payload : [payload]);
       let currentStartUs = startUs;
       let addedCount = 0;
 

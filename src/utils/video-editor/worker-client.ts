@@ -91,8 +91,7 @@ function createWorker(channel: WorkerChannel): Worker {
               (err as any).name = (errData as any).name;
             if (typeof (errData as any).stack === 'string')
               (err as any).stack = (errData as any).stack;
-            if ((errData as any).cause !== undefined)
-              (err as any).cause = (errData as any).cause;
+            if ((errData as any).cause !== undefined) (err as any).cause = (errData as any).cause;
           }
           pending.reject(err);
         } else pending.resolve(data.result);
@@ -185,7 +184,8 @@ function createChannelClient(channel: WorkerChannel): {
                 reject(err);
                 return;
               }
-              const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
+              const id = (state.callIdCounter =
+                (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
               const timeoutId = window.setTimeout(() => {
                 const p = state.pendingCalls.get(id);
                 if (p) {

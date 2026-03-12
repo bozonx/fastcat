@@ -49,7 +49,7 @@ export class EffectManager {
     container: Container,
     effects: ClipEffect[] | null,
     filtersMap: Map<string, Filter>,
-    context: EffectManagerContext
+    context: EffectManagerContext,
   ) {
     if (!context.previewEffectsEnabled) {
       container.filters = null;

@@ -73,7 +73,7 @@ export interface WorkerTimelineClip {
   trackId?: string;
   layer: number;
   speed?: number;
-  
+
   audioGain?: number;
   audioBalance?: number;
   audioFadeInUs?: number;
@@ -233,7 +233,7 @@ async function buildVideoTrackTree(
         trackId: runtimeTrackId,
         layer,
         speed: (item as any).speed,
-                audioGain: (item as any).audioGain,
+        audioGain: (item as any).audioGain,
         audioBalance: (item as any).audioBalance,
         audioFadeInUs: (item as any).audioFadeInUs,
         audioFadeOutUs: (item as any).audioFadeOutUs,
@@ -324,7 +324,7 @@ async function buildVideoTrackTree(
                 startUs: nestedClip.sourceRange.startUs + sourceShiftUs,
                 durationUs: visibleDurationUs,
               },
-                            audioGain: mergeGain((item as any).audioGain, nestedClip.audioGain),
+              audioGain: mergeGain((item as any).audioGain, nestedClip.audioGain),
               audioBalance: mergeBalance((item as any).audioBalance, nestedClip.audioBalance),
               audioFadeInUs: mergeFadeInUs({
                 childFadeInUs: nestedClip.audioFadeInUs,
@@ -509,7 +509,7 @@ export async function toWorkerTimelineClips(
           ? Math.round((item as any).layer)
           : 0),
       speed: (item as any).speed,
-            audioGain: mergeGain(parentAudioGain, (item as any).audioGain),
+      audioGain: mergeGain(parentAudioGain, (item as any).audioGain),
       audioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
       audioFadeInUs: (item as any).audioFadeInUs,
       audioFadeOutUs: (item as any).audioFadeOutUs,
@@ -628,7 +628,7 @@ export async function toWorkerTimelineClips(
                       id: `${item.id}_nested_${resolvedNClip.id}`,
                       trackId: undefined,
                       layer: nestedLayer,
-                                            audioGain: resolvedNClip.audioGain,
+                      audioGain: resolvedNClip.audioGain,
                       audioBalance: resolvedNClip.audioBalance,
                       audioFadeInUs: mergeFadeInUs({
                         childFadeInUs: resolvedNClip.audioFadeInUs,
@@ -717,7 +717,7 @@ export async function toWorkerTimelineClips(
                     id: `${item.id}_nested_${resolvedNClip.id}`,
                     trackId: resolvedNClip.trackId,
                     layer: 0,
-                                        audioGain: resolvedNClip.audioGain,
+                    audioGain: resolvedNClip.audioGain,
                     audioBalance: resolvedNClip.audioBalance,
                     audioFadeInUs: mergeFadeInUs({
                       childFadeInUs: resolvedNClip.audioFadeInUs,

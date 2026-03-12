@@ -26,7 +26,7 @@ export function useAudioExtraction() {
       if (!sourceFile) throw new Error('Failed to access source file');
 
       const { client } = getExportWorkerClient();
-      
+
       // Need to set host API for the worker to access files
       setExportHostApi(
         createVideoCoreHostApi({
@@ -43,7 +43,7 @@ export function useAudioExtraction() {
 
       const codec = meta.audio.codec || '';
       const lowercaseCodec = codec.toLowerCase();
-      
+
       let ext = 'mka';
       if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
         ext = 'm4a';
@@ -55,7 +55,7 @@ export function useAudioExtraction() {
 
       const dirPath = entry.path.split('/').slice(0, -1).join('/');
       const baseName = entry.name.replace(/\.[^.]+$/, '');
-      
+
       const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
       if (!dirHandle) throw new Error('Target directory not found');
 
@@ -77,7 +77,7 @@ export function useAudioExtraction() {
       }
 
       const targetPath = dirPath ? `${dirPath}/${newFileName}` : newFileName;
-      
+
       // Ensure target file is created
       await dirHandle.getFileHandle(newFileName, { create: true });
 

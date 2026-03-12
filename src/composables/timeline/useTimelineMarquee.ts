@@ -5,7 +5,11 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
-export function useTimelineMarquee(containerRef: Ref<HTMLElement | null>, tracks: Ref<TimelineTrack[]>, trackHeights: Ref<Record<string, number>>) {
+export function useTimelineMarquee(
+  containerRef: Ref<HTMLElement | null>,
+  tracks: Ref<TimelineTrack[]>,
+  trackHeights: Ref<Record<string, number>>,
+) {
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
@@ -60,7 +64,10 @@ export function useTimelineMarquee(containerRef: Ref<HTMLElement | null>, tracks
         for (const item of track.items) {
           if (item.kind !== 'clip' || (item as any).locked) continue;
           const startPx = timeUsToPx(item.timelineRange.startUs, zoom);
-          const endPx = timeUsToPx(item.timelineRange.startUs + item.timelineRange.durationUs, zoom);
+          const endPx = timeUsToPx(
+            item.timelineRange.startUs + item.timelineRange.durationUs,
+            zoom,
+          );
           if (startPx >= left && endPx <= right) {
             selectedItems.push({ trackId: track.id, itemId: item.id });
           }
@@ -70,7 +77,7 @@ export function useTimelineMarquee(containerRef: Ref<HTMLElement | null>, tracks
     }
 
     if (selectedItems.length > 0) {
-      timelineStore.selectTimelineItems(selectedItems.map(i => i.itemId));
+      timelineStore.selectTimelineItems(selectedItems.map((i) => i.itemId));
       const canOpen = projectStore.currentView === 'cut' || projectStore.currentView === 'sound';
       if (canOpen) selectionStore.selectTimelineItems(selectedItems);
       else selectionStore.clearSelection();
@@ -89,11 +96,16 @@ export function useTimelineMarquee(containerRef: Ref<HTMLElement | null>, tracks
 
     try {
       containerRef.value?.setPointerCapture(e.pointerId);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     const onMove = (ev: PointerEvent) => {
       const cur = getPointerCoords(ev);
-      if (!didMove && (Math.abs(cur.x - marqueeStart.value.x) > 3 || Math.abs(cur.y - marqueeStart.value.y) > 3)) {
+      if (
+        !didMove &&
+        (Math.abs(cur.x - marqueeStart.value.x) > 3 || Math.abs(cur.y - marqueeStart.value.y) > 3)
+      ) {
         didMove = true;
         isMarqueeSelecting.value = true;
         timelineStore.clearSelection();
@@ -112,7 +124,11 @@ export function useTimelineMarquee(containerRef: Ref<HTMLElement | null>, tracks
       } else if (onClick) {
         onClick();
       }
-      try { containerRef.value?.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
+      try {
+        containerRef.value?.releasePointerCapture(ev.pointerId);
+      } catch {
+        /* ignore */
+      }
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
@@ -124,6 +140,6 @@ export function useTimelineMarquee(containerRef: Ref<HTMLElement | null>, tracks
   return {
     isMarqueeSelecting,
     marqueeStyle,
-    startMarquee
+    startMarquee,
   };
 }

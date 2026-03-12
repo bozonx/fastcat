@@ -21,7 +21,7 @@ export class RenderingEngine {
     timeUs: number,
     clips: CompositorClip[],
     tracks: CompositorTrack[],
-    context: RenderingEngineContext
+    context: RenderingEngineContext,
   ) {
     // 1. Update tracks
     for (const track of tracks) {

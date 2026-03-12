@@ -36,7 +36,13 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const route = useRoute();
 
-const { onGlobalDragOver, onGlobalDragLeave, onGlobalDrop, handleAutoFileDrop, handleFolderFileDrop } = useGlobalDragAndDrop();
+const {
+  onGlobalDragOver,
+  onGlobalDragLeave,
+  onGlobalDrop,
+  handleAutoFileDrop,
+  handleFolderFileDrop,
+} = useGlobalDragAndDrop();
 const fileManager = useFileManager();
 
 const isEditorSettingsOpen = ref(false);
