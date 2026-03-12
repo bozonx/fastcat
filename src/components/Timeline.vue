@@ -60,41 +60,78 @@ const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersi
 const canEditClipContent = computed(() => ['cut', 'files', 'sound'].includes(currentView.value));
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 
-const playheadPx = computed(() => timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom));
+const playheadPx = computed(() =>
+  timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
+);
 const playheadLeft = computed(() => Math.round(playheadPx.value - scrollLeftRef.value));
 
-const zoomFactor = computed(() => formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom)));
+const zoomFactor = computed(() =>
+  formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom)),
+);
 const isZooming = ref(false);
 let zoomTimeout: number | null = null;
 
-watch(() => timelineStore.timelineZoom, () => {
-  isZooming.value = true;
-  if (zoomTimeout) clearTimeout(zoomTimeout);
-  zoomTimeout = window.setTimeout(() => { isZooming.value = false; }, 1200);
-});
+watch(
+  () => timelineStore.timelineZoom,
+  () => {
+    isZooming.value = true;
+    if (zoomTimeout) clearTimeout(zoomTimeout);
+    zoomTimeout = window.setTimeout(() => {
+      isZooming.value = false;
+    }, 1200);
+  },
+);
 
 useResizeObserver(scrollEl, () => {
-  if (scrollEl.value) scrollbarHeight.value = scrollEl.value.offsetHeight - scrollEl.value.clientHeight;
+  if (scrollEl.value)
+    scrollbarHeight.value = scrollEl.value.offsetHeight - scrollEl.value.clientHeight;
 });
 
-const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = useTimelineScrollSync({
-  scrollEl,
-  labelsScrollContainer: computed(() => timelineTrackLabelsRef.value?.labelsScrollContainer ?? null),
-  onScrollCallback: () => { if (scrollEl.value) scrollLeftRef.value = scrollEl.value.scrollLeft; }
-});
+const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = useTimelineScrollSync(
+  {
+    scrollEl,
+    labelsScrollContainer: computed(
+      () => timelineTrackLabelsRef.value?.labelsScrollContainer ?? null,
+    ),
+    onScrollCallback: () => {
+      if (scrollEl.value) scrollLeftRef.value = scrollEl.value.scrollLeft;
+    },
+  },
+);
 
 const { handleZoomWheel } = useTimelineZoom({ scrollEl });
-const { dragPreview, handleFileDrop, handleLibraryDrop, getDropPosition } = useTimelineDropHandling({ scrollEl });
+const { dragPreview, handleFileDrop, handleLibraryDrop, getDropPosition } = useTimelineDropHandling(
+  { scrollEl },
+);
 
 const {
-  draggingMode, draggingItemId, movePreview, onTimeRulerPointerDown, startPlayheadDrag,
-  onGlobalPointerMove, onGlobalPointerUp, selectItem, startMoveItem, startTrimItem
+  draggingMode,
+  draggingItemId,
+  movePreview,
+  onTimeRulerPointerDown,
+  startPlayheadDrag,
+  onGlobalPointerMove,
+  onGlobalPointerUp,
+  selectItem,
+  startMoveItem,
+  startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
 
 function onTimelineClick(e: MouseEvent) {
   if (e.button !== 0) return;
   const target = e.target as HTMLElement;
-  if (target?.closest('button, .cursor-ew-resize, .cursor-ns-resize, [data-clip-id], [data-gap-id]')) return;
+
+  if (timelineStore.isTrimModeActive) {
+    if (!target?.closest('[data-clip-id]')) {
+      timelineStore.isTrimModeActive = false;
+    }
+    return;
+  }
+
+  if (
+    target?.closest('button, .cursor-ew-resize, .cursor-ns-resize, [data-clip-id], [data-gap-id]')
+  )
+    return;
 
   const el = scrollEl.value;
   if (!el) return;
@@ -103,7 +140,10 @@ function onTimelineClick(e: MouseEvent) {
   const x = e.clientX - rect.left + el.scrollLeft;
   const y = e.clientY - rect.top + el.scrollTop;
 
-  const totalTracksHeight = tracks.value.reduce((sum, tr) => sum + (trackHeights.value[tr.id] ?? 40), 0);
+  const totalTracksHeight = tracks.value.reduce(
+    (sum, tr) => sum + (trackHeights.value[tr.id] ?? 40),
+    0,
+  );
   if (y > totalTracksHeight) {
     timelineStore.selectTimelineProperties();
   } else {
@@ -130,9 +170,15 @@ function onTimelineWheel(e: WheelEvent) {
 async function onClipAction(payload: any) {
   try {
     if (payload.action === 'extractAudio') {
-      await timelineStore.extractAudioToTrack({ videoTrackId: payload.trackId, videoItemId: payload.itemId });
+      await timelineStore.extractAudioToTrack({
+        videoTrackId: payload.trackId,
+        videoItemId: payload.itemId,
+      });
     } else if (payload.action === 'freezeFrame') {
-      timelineStore.setClipFreezeFrameFromPlayhead({ trackId: payload.trackId, itemId: payload.itemId });
+      timelineStore.setClipFreezeFrameFromPlayhead({
+        trackId: payload.trackId,
+        itemId: payload.itemId,
+      });
     } else if (payload.action === 'resetFreezeFrame') {
       timelineStore.resetClipFreezeFrame({ trackId: payload.trackId, itemId: payload.itemId });
     } else {
@@ -166,7 +212,9 @@ const onDrop = async (e: DragEvent, trackId: string) => {
 const onTrackDragOver = () => {};
 const onTrackDragLeave = () => {};
 const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e);
-const onTrackAreaPointerDownCapture = (e: PointerEvent) => { if (e.button === 1) startPan(e); };
+const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
+  if (e.button === 1) startPan(e);
+};
 const onTimelinePointerDownCapture = () => {};
 const onTimelinePointerMove = onGlobalPointerMove;
 const onTimelinePointerUp = onGlobalPointerUp;

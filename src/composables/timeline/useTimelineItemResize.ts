@@ -451,7 +451,10 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           const current = edge === 'in' ? item.transitionIn : item.transitionOut;
           if (current) {
             timelineStore.updateClipTransition(trackId, itemId, {
-              [edge === 'in' ? 'transitionIn' : 'transitionOut']: { ...current, durationUs: resizeTransition.value.startDurationUs }
+              [edge === 'in' ? 'transitionIn' : 'transitionOut']: {
+                ...current,
+                durationUs: resizeTransition.value.startDurationUs,
+              },
             });
           }
         }

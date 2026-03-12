@@ -144,12 +144,12 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
     try {
       const children = await readDirectory(path);
-        deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
-          ...e,
-          children,
-        }));
-        deps.onDirectoryLoaded?.();
-      } catch (e) {
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+        ...e,
+        children,
+      }));
+      deps.onDirectoryLoaded?.();
+    } catch (e) {
       applyExpandedState(false);
       deps.onError?.({
         title: 'File manager error',

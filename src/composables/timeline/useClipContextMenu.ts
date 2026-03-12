@@ -567,7 +567,6 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         });
       }
 
-
       const docTracks = options.timelineDoc.value?.tracks ?? [];
       const hasReturnFromVideoClip =
         track.kind === 'video' &&

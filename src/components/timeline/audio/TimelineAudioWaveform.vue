@@ -312,7 +312,9 @@ const trimOffsetPx = computed(() => {
   return timeUsToPx(props.item.sourceRange.startUs / speed.value, timelineStore.timelineZoom);
 });
 
-const durationUs = computed(() => props.item.sourceDurationUs || props.item.sourceRange.durationUs || 0);
+const durationUs = computed(
+  () => props.item.sourceDurationUs || props.item.sourceRange.durationUs || 0,
+);
 
 // Chunking logic (similar to video thumbnails but for waveform rendering)
 const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas

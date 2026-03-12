@@ -1,4 +1,5 @@
-import { Text, TextStyle } from 'pixi.js';
+import type { Text } from 'pixi.js';
+import { TextStyle } from 'pixi.js';
 import type { CompositorClip } from '../types';
 import { areTextClipStylesEqual } from '../types';
 

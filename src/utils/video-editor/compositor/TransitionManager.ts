@@ -1,9 +1,4 @@
-import {
-  Filter,
-  Sprite,
-  RenderTexture,
-  type Renderer as PixiRenderer,
-} from 'pixi.js';
+import type { Filter, RenderTexture, Sprite, type Renderer as PixiRenderer } from 'pixi.js';
 import {
   getTransitionManifest,
   normalizeTransitionParams,
@@ -14,7 +9,11 @@ import type { CompositorClip } from './types';
 export interface TransitionManagerContext {
   renderer: PixiRenderer;
   previewEffectsEnabled: boolean;
-  renderClipToTexture: (clip: CompositorClip, texture: RenderTexture, timeUs: number) => Promise<boolean>;
+  renderClipToTexture: (
+    clip: CompositorClip,
+    texture: RenderTexture,
+    timeUs: number,
+  ) => Promise<boolean>;
 }
 
 export class TransitionManager {
@@ -23,7 +22,7 @@ export class TransitionManager {
   public async applyShaderTransitions(
     activeClips: CompositorClip[],
     timeUs: number,
-    context: TransitionManagerContext
+    context: TransitionManagerContext,
   ) {
     for (const clip of activeClips) {
       if (!clip.transitionIn && !clip.transitionOut) continue;
@@ -44,7 +43,11 @@ export class TransitionManager {
     }
   }
 
-  public getActiveTransitionState(clip: CompositorClip, timeUs: number, context: TransitionManagerContext) {
+  public getActiveTransitionState(
+    clip: CompositorClip,
+    timeUs: number,
+    context: TransitionManagerContext,
+  ) {
     const transitionIn = clip.transitionIn;
     const transitionOut = clip.transitionOut;
 
@@ -84,7 +87,7 @@ export class TransitionManager {
   }
 
   private ensureUsableTransitionFilter(clip: CompositorClip, manifest: any): Filter | null {
-    let currentFilter = clip.transitionFilter;
+    const currentFilter = clip.transitionFilter;
     if (this.isTransitionFilterUsable(currentFilter)) {
       return currentFilter;
     }
@@ -102,7 +105,9 @@ export class TransitionManager {
     if (clip.transitionFilter) {
       try {
         clip.transitionFilter.destroy();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     const filter = manifest.createFilter();
@@ -118,12 +123,16 @@ export class TransitionManager {
 
   public computeTransitionOpacity(clip: CompositorClip, timeUs: number): number {
     // Logic from VideoCompositor.computeTransitionOpacity
-    return 1.0; 
+    return 1.0;
   }
 
   public clear() {
     for (const filter of this.transitionFilters.values()) {
-      try { filter.destroy(); } catch { /* ignore */ }
+      try {
+        filter.destroy();
+      } catch {
+        /* ignore */
+      }
     }
     this.transitionFilters.clear();
   }
