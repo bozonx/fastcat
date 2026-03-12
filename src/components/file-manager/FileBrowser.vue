@@ -171,6 +171,29 @@ const isMarqueeSelecting = ref(false);
 const marqueeStart = ref<{ x: number; y: number } | null>(null);
 const marqueeCurrent = ref<{ x: number; y: number } | null>(null);
 
+function scrollToEntryPath(path: string) {
+  const container = rootContainer.value;
+  if (!container) return false;
+
+  const targetNode = container.querySelector<HTMLElement>(`[data-entry-path="${CSS.escape(path)}"]`);
+  if (!targetNode) return false;
+
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = targetNode.getBoundingClientRect();
+  const targetTop = targetRect.top - containerRect.top + container.scrollTop;
+  const targetBottom = targetTop + targetRect.height;
+  const visibleTop = container.scrollTop;
+  const visibleBottom = visibleTop + container.clientHeight;
+
+  if (targetTop < visibleTop) {
+    container.scrollTop = Math.max(targetTop - 8, 0);
+  } else if (targetBottom > visibleBottom) {
+    container.scrollTop = Math.max(targetBottom - container.clientHeight + 8, 0);
+  }
+
+  return true;
+}
+
 function getPointInScrollContainer(
   e: PointerEvent,
   container: HTMLElement,
@@ -1061,19 +1084,8 @@ watch(
       const targetParentPath = entry.path.split('/').slice(0, -1).join('/');
       if (targetParentPath === selectedFolderPath) {
         requestAnimationFrame(() => {
-          const container = rootContainer.value;
-          if (!container || !pendingScrollToEntryPath.value) return;
-
-          const targetNode = container.querySelector<HTMLElement>(
-            `[data-entry-path="${CSS.escape(pendingScrollToEntryPath.value)}"]`,
-          );
-          if (!targetNode) return;
-
-          targetNode.scrollIntoView({
-            block: 'nearest',
-            inline: 'nearest',
-            behavior: 'auto',
-          });
+          if (!pendingScrollToEntryPath.value) return;
+          if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
           pendingScrollToEntryPath.value = null;
         });
       }
@@ -1264,19 +1276,8 @@ watch(
     if (targetParentPath !== selectedFolderPath) return;
 
     requestAnimationFrame(() => {
-      const container = rootContainer.value;
-      if (!container || !pendingScrollToEntryPath.value) return;
-
-      const targetNode = container.querySelector<HTMLElement>(
-        `[data-entry-path="${CSS.escape(pendingScrollToEntryPath.value)}"]`,
-      );
-      if (!targetNode) return;
-
-      targetNode.scrollIntoView({
-        block: 'nearest',
-        inline: 'nearest',
-        behavior: 'auto',
-      });
+      if (!pendingScrollToEntryPath.value) return;
+      if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
       pendingScrollToEntryPath.value = null;
     });
   },
@@ -1317,19 +1318,8 @@ watch(
     if (!pendingScrollToEntryPath.value) return;
 
     requestAnimationFrame(() => {
-      const container = rootContainer.value;
-      if (!container || !pendingScrollToEntryPath.value) return;
-
-      const targetNode = container.querySelector<HTMLElement>(
-        `[data-entry-path="${CSS.escape(pendingScrollToEntryPath.value)}"]`,
-      );
-      if (!targetNode) return;
-
-      targetNode.scrollIntoView({
-        block: 'nearest',
-        inline: 'nearest',
-        behavior: 'auto',
-      });
+      if (!pendingScrollToEntryPath.value) return;
+      if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
       pendingScrollToEntryPath.value = null;
     });
   },
