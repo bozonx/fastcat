@@ -188,7 +188,8 @@ const emit = defineEmits<{
       | 'createOtioVersion'
       | 'convertFile'
       | 'uploadRemote'
-      | 'transcribe',
+      | 'transcribe'
+      | 'extractAudio',
     entry: FsEntry,
   ): void;
   (e: 'commitRename', entry: FsEntry, newName: string): void;

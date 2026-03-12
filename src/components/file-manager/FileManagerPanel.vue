@@ -18,6 +18,7 @@ import { getMediaTypeFromFilename, getMimeTypeFromFilename, isOpenableProjectFil
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
@@ -42,6 +43,7 @@ const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const fileConversion = useFileConversion();
+const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabs();
 const runtimeConfig = useRuntimeConfig();
 
@@ -126,7 +128,8 @@ type FileAction =
   | 'openAsPanelSound'
   | 'openAsProjectTab'
   | 'uploadRemote'
-  | 'transcribe';
+  | 'transcribe'
+  | 'extractAudio';
 
 function isTranscribableMediaFile(entry: FsEntry): boolean {
   if (entry.kind !== 'file' || entry.source === 'remote') return false;
@@ -210,6 +213,12 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     }
     if (['createProxy', 'cancelProxy', 'deleteProxy'].includes(action)) {
       onFileActionBase(action as any, entry);
+      return;
+    }
+    if (action === 'extractAudio') {
+      for (const e of entry) {
+        if (e.kind === 'file') void extractAudio(e);
+      }
       return;
     }
     return;
@@ -302,6 +311,8 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
     }
   } else if (action === 'transcribe') {
     openTranscriptionModal(entry);
+  } else if (action === 'extractAudio') {
+    if (entry.kind === 'file') void extractAudio(entry);
   } else {
     onFileActionBase(action as FileActionBase, entry);
   }
