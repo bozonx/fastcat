@@ -11,7 +11,9 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-const clipItem = computed(() => props.item.kind === 'clip' ? props.item as TimelineClipItem : null);
+const clipItem = computed(() =>
+  props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
+);
 </script>
 
 <template>
@@ -22,7 +24,10 @@ const clipItem = computed(() => props.item.kind === 'clip' ? props.item as Timel
       class="absolute inset-0 flex flex-col items-center justify-center z-30 bg-red-600/20"
     >
       <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-white mb-1" />
-      <span v-if="clipWidthPx > 60" class="text-[10px] font-bold uppercase tracking-wider text-white">
+      <span
+        v-if="clipWidthPx > 60"
+        class="text-[10px] font-bold uppercase tracking-wider text-white"
+      >
         {{ t('granVideoEditor.timeline.noMedia', 'No media') }}
       </span>
     </div>

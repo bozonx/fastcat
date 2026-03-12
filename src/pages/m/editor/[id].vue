@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { watch, onMounted } from 'vue';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
@@ -68,12 +67,15 @@ onMounted(() => {
   };
 
   if (workspaceStore.isInitializing) {
-    const unwatch = watch(() => workspaceStore.isInitializing, async (isInit) => {
-      if (!isInit) {
-        unwatch();
-        await initProject();
-      }
-    });
+    const unwatch = watch(
+      () => workspaceStore.isInitializing,
+      async (isInit) => {
+        if (!isInit) {
+          unwatch();
+          await initProject();
+        }
+      },
+    );
   } else {
     void initProject();
   }
@@ -164,19 +166,31 @@ async function handleBack() {
           <p class="text-sm font-semibold">Failed to open project</p>
           <p class="mt-2 text-xs text-red-200/80">{{ projectOpenError }}</p>
         </div>
-        <UButton color="neutral" variant="soft" icon="lucide:arrow-left" label="Back" @click="handleBack" />
+        <UButton
+          color="neutral"
+          variant="soft"
+          icon="lucide:arrow-left"
+          label="Back"
+          @click="handleBack"
+        />
       </div>
 
       <div v-else-if="activeTab === 'files'" class="h-full">
         <MobileFileBrowser />
       </div>
 
-      <div v-else-if="activeTab === 'edit'" class="flex h-full flex-col overflow-hidden bg-slate-950">
+      <div
+        v-else-if="activeTab === 'edit'"
+        class="flex h-full flex-col overflow-hidden bg-slate-950"
+      >
         <MobileMonitorContainer mode="edit" />
         <MobileTimeline />
       </div>
 
-      <div v-else-if="activeTab === 'sound'" class="flex h-full flex-col overflow-hidden bg-slate-950">
+      <div
+        v-else-if="activeTab === 'sound'"
+        class="flex h-full flex-col overflow-hidden bg-slate-950"
+      >
         <MobileMonitorContainer mode="sound" />
         <MobileAudioMixer />
       </div>
@@ -187,7 +201,10 @@ async function handleBack() {
     </main>
 
     <!-- Bottom Navigation Bar -->
-    <nav v-if="showBottomNav" class="shrink-0 border-t border-slate-800 bg-slate-950/95 pb-safe backdrop-blur">
+    <nav
+      v-if="showBottomNav"
+      class="shrink-0 border-t border-slate-800 bg-slate-950/95 pb-safe backdrop-blur"
+    >
       <div class="grid h-16 grid-cols-4 items-center gap-1 px-2">
         <button
           v-for="item in navItems"

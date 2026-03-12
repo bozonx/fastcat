@@ -71,12 +71,16 @@ function formatPan(value: number): string {
 
 function updateTrackGain(trackId: string, rawValue: number | string) {
   const numeric = Number(rawValue);
-  timelineStore.updateTrackProperties(trackId, { audioGain: Math.max(0, Math.min(2, numeric / 100)) });
+  timelineStore.updateTrackProperties(trackId, {
+    audioGain: Math.max(0, Math.min(2, numeric / 100)),
+  });
 }
 
 function updateTrackPan(trackId: string, rawValue: number | string) {
   const numeric = Number(rawValue);
-  timelineStore.updateTrackProperties(trackId, { audioBalance: Math.max(-1, Math.min(1, numeric / 100)) });
+  timelineStore.updateTrackProperties(trackId, {
+    audioBalance: Math.max(-1, Math.min(1, numeric / 100)),
+  });
 }
 
 function toggleTrackMute(trackId: string) {
@@ -116,7 +120,9 @@ function handleTrackPanInput(trackId: string, event: Event) {
       <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ t('granVideoEditor.audioMixer.title', 'Mixer') }}</p>
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">
+              {{ t('granVideoEditor.audioMixer.title', 'Mixer') }}
+            </p>
             <h2 class="mt-1 text-base font-semibold text-white">Master output</h2>
           </div>
           <UButton
@@ -133,14 +139,14 @@ function handleTrackPanInput(trackId: string, event: Event) {
             <span>Level</span>
             <span class="font-medium text-slate-200">{{ masterVolume }}%</span>
           </div>
-          <input 
-            :value="masterVolume" 
-            @input="updateMasterVolume" 
-            type="range" 
-            min="0" 
-            max="200" 
-            step="1" 
-            class="w-full accent-primary-500" 
+          <input
+            :value="masterVolume"
+            type="range"
+            min="0"
+            max="200"
+            step="1"
+            class="w-full accent-primary-500"
+            @input="updateMasterVolume"
           />
           <div class="flex items-center justify-between text-[11px] text-slate-500">
             <span>Peak</span>
@@ -160,7 +166,10 @@ function handleTrackPanInput(trackId: string, event: Event) {
           </div>
         </div>
 
-        <div v-if="trackCards.length === 0" class="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-4 py-8 text-center text-sm text-slate-500">
+        <div
+          v-if="trackCards.length === 0"
+          class="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-4 py-8 text-center text-sm text-slate-500"
+        >
           No tracks with audio yet.
         </div>
 
@@ -199,7 +208,9 @@ function handleTrackPanInput(trackId: string, event: Event) {
               <div class="space-y-2">
                 <div class="flex items-center justify-between text-xs text-slate-400">
                   <span>Volume</span>
-                  <span class="font-medium text-slate-200">{{ Math.round(track.gain * 100) }}%</span>
+                  <span class="font-medium text-slate-200"
+                    >{{ Math.round(track.gain * 100) }}%</span
+                  >
                 </div>
                 <input
                   :value="Math.round(track.gain * 100)"

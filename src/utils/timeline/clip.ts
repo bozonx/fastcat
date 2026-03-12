@@ -223,14 +223,20 @@ export function getFadeLinePattern(
   });
 }
 
-export function getPrevClipForItem(track: TimelineTrack, item: TimelineTrackItem): TimelineClipItem | null {
+export function getPrevClipForItem(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+): TimelineClipItem | null {
   const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
   const idx = clips.findIndex((c) => c.id === item.id);
   if (idx <= 0) return null;
   return clips[idx - 1] ?? null;
 }
 
-export function getNextClipForItem(track: TimelineTrack, item: TimelineTrackItem): TimelineClipItem | null {
+export function getNextClipForItem(
+  track: TimelineTrack,
+  item: TimelineTrackItem,
+): TimelineClipItem | null {
   const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
   const idx = clips.findIndex((c) => c.id === item.id);
   if (idx < 0 || idx >= clips.length - 1) return null;
@@ -266,9 +272,7 @@ export function getOverlayGuideOffsetPx(
   if (transition.mode !== 'transition') return null;
 
   const adjacent =
-    edge === 'in'
-      ? getPrevClipForItem(track, clipItem)
-      : getNextClipForItem(track, clipItem);
+    edge === 'in' ? getPrevClipForItem(track, clipItem) : getNextClipForItem(track, clipItem);
   if (!adjacent) return null;
 
   const handleUs = edge === 'in' ? getClipTailHandleUs(adjacent) : getClipHeadHandleUs(adjacent);

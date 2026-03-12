@@ -33,7 +33,9 @@ function toggleClipSnapMode() {
 </script>
 
 <template>
-  <div class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5">
+  <div
+    class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+  >
     <UTooltip :text="t('granVideoEditor.timeline.properties.title', 'Timeline properties')">
       <UButton
         size="xs"
@@ -44,10 +46,12 @@ function toggleClipSnapMode() {
       />
     </UTooltip>
 
-    <UTooltip 
-      :text="settingsStore.clipSnapMode === 'clips' 
-        ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips') 
-        : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')"
+    <UTooltip
+      :text="
+        settingsStore.clipSnapMode === 'clips'
+          ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
+          : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
+      "
     >
       <UButton
         size="xs"
@@ -62,12 +66,12 @@ function toggleClipSnapMode() {
       <UTooltip :text="t('granVideoEditor.timeline.trim', 'Trim')">
         <UiSplitDropdownButton
           size="xs"
-          variant="ghost"
-          color="neutral"
+          :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
+          :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
           icon="i-heroicons-scissors"
-          :ariaLabel="t('granVideoEditor.timeline.trim', 'Trim')"
+          :aria-label="t('granVideoEditor.timeline.trim', 'Trim')"
           :items="trimMenuItems"
-          @click="timelineStore.splitClipsAtPlayhead()"
+          @click="timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive"
         />
       </UTooltip>
 

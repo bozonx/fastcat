@@ -14,10 +14,7 @@ import {
   pxToTimeUs,
   type TimelineZoomAnchor,
 } from '~/utils/timeline/geometry';
-import {
-  timelineZoomPositionToScale,
-  timelineZoomScaleToPosition,
-} from '~/utils/zoom';
+import { timelineZoomPositionToScale, timelineZoomScaleToPosition } from '~/utils/zoom';
 
 import TimelineTracks from './TimelineTracks.vue';
 import TimelineRuler from './TimelineRuler.vue';
@@ -127,7 +124,7 @@ function onTouchMove(e: TouchEvent) {
     e.preventDefault();
     const currentDistance = getDistance(e.touches);
     if (initialDistance === 0) return;
-    
+
     const initialScale = timelineZoomPositionToScale(initialZoomPosition);
     const scaleRatio = currentDistance / initialDistance;
     const nextScale = initialScale * scaleRatio;
@@ -140,8 +137,11 @@ function onTouchMove(e: TouchEvent) {
       const viewportX = midpointX - rect.left;
       const anchorPx = el.scrollLeft + viewportX;
       const anchorTimeUs = pxToTimeUs(anchorPx, initialZoomPosition);
-      
-      applyZoomWithAnchor({ nextZoom: nextZoomPosition, anchor: { anchorTimeUs, anchorViewportX: viewportX } });
+
+      applyZoomWithAnchor({
+        nextZoom: nextZoomPosition,
+        anchor: { anchorTimeUs, anchorViewportX: viewportX },
+      });
     }
   }
 }
@@ -213,7 +213,7 @@ watch(
     el.scrollLeft = nextScrollLeft;
     scrollLeftRef.value = nextScrollLeft;
   },
-  { flush: 'post' }
+  { flush: 'post' },
 );
 
 async function onClipAction(payload: {
@@ -254,9 +254,12 @@ async function onClipAction(payload: {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden" @pointerdown="focusStore.setMainFocus('timeline')">
+  <div
+    class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
+    @pointerdown="focusStore.setMainFocus('timeline')"
+  >
     <MobileTimelineToolbar />
-    
+
     <div
       ref="scrollEl"
       class="flex-1 w-full overflow-auto relative overscroll-none touch-pan-x touch-pan-y no-scrollbar"
@@ -267,7 +270,9 @@ async function onClipAction(payload: {
       @click="onTimelineClick"
     >
       <div class="relative min-w-max h-full">
-        <div class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm">
+        <div
+          class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm"
+        >
           <TimelineRuler
             class="touch-none"
             :scroll-el="scrollEl"
@@ -308,7 +313,10 @@ async function onClipAction(payload: {
             class="absolute top-0 -translate-x-[50%] w-6 h-6 flex items-center justify-center pointer-events-auto touch-none"
             @pointerdown.stop.prevent="startPlayheadDrag"
           >
-            <div class="w-4 h-4 bg-red-500 shadow-sm rounded-b-sm" style="clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);"></div>
+            <div
+              class="w-4 h-4 bg-red-500 shadow-sm rounded-b-sm"
+              style="clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)"
+            ></div>
           </div>
         </div>
       </div>

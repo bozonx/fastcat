@@ -181,12 +181,15 @@ onMounted(async () => {
   };
 
   if (workspaceStore.isInitializing) {
-    const unwatch = watch(() => workspaceStore.isInitializing, async (isInit) => {
-      if (!isInit) {
-        unwatch();
-        await initProject();
-      }
-    });
+    const unwatch = watch(
+      () => workspaceStore.isInitializing,
+      async (isInit) => {
+        if (!isInit) {
+          unwatch();
+          await initProject();
+        }
+      },
+    );
   } else {
     await initProject();
   }

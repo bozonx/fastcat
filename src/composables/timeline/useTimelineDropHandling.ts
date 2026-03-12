@@ -36,12 +36,12 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
 
   async function handleFileDrop(files: File[], trackId: string, startUs: number) {
     if (files.length === 0) return;
-    
+
     try {
-      // Use handleFiles from fileManager but that uploads only. 
+      // Use handleFiles from fileManager but that uploads only.
       await fileManager.handleFiles(files);
-      
-      // We don't have the final paths here easily. 
+
+      // We don't have the final paths here easily.
       // The old handleFileDrop implementation in Timeline.vue was more complex.
       // For now, let's just trigger a legacy refresh or hope the user drag-drops from the project browser instead of OS.
       void timelineMediaUsageStore.refreshUsage();
@@ -57,7 +57,11 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
   async function handleLibraryDrop(data: string, trackId: string, startUs: number) {
     try {
       const payload = JSON.parse(data);
-      const items = Array.isArray(payload?.items) ? payload.items : (Array.isArray(payload) ? payload : [payload]);
+      const items = Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(payload)
+          ? payload
+          : [payload];
       let currentStartUs = startUs;
       let addedCount = 0;
 
@@ -119,9 +123,10 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         toast.add({
           color: 'green',
           title: t('granVideoEditor.timeline.clipAdded'),
-          description: addedCount === 1 
-            ? t('granVideoEditor.timeline.oneClipAdded')
-            : t('granVideoEditor.timeline.multipleClipsAdded', { count: addedCount }),
+          description:
+            addedCount === 1
+              ? t('granVideoEditor.timeline.oneClipAdded')
+              : t('granVideoEditor.timeline.multipleClipsAdded', { count: addedCount }),
         });
         void timelineMediaUsageStore.refreshUsage();
       }

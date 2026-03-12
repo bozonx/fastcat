@@ -32,7 +32,8 @@ async function loadDiagnostics() {
 
   try {
     diagnostics.value = await gatherVideoDiagnostics({
-      createCanvas: () => document.createElement('canvas') as unknown as { getContext: (name: string) => unknown },
+      createCanvas: () =>
+        document.createElement('canvas') as unknown as { getContext: (name: string) => unknown },
       probe: {
         audioBitrate: 128_000,
         audioChannels: 2,
@@ -94,9 +95,7 @@ function resetDefaults() {
         >
           {{ diagnostics.summary.label }}
         </div>
-        <div
-          class="text-sm text-ui-text-muted"
-        >
+        <div class="text-sm text-ui-text-muted">
           {{
             t(
               'videoEditor.settings.video.accelerationDiagnosticsHelp',
@@ -107,7 +106,12 @@ function resetDefaults() {
       </div>
 
       <div v-else-if="isLoadingDiagnostics" class="text-sm text-ui-text-muted">
-        {{ t('videoEditor.settings.video.loadingDiagnostics', 'Collecting browser media diagnostics…') }}
+        {{
+          t(
+            'videoEditor.settings.video.loadingDiagnostics',
+            'Collecting browser media diagnostics…',
+          )
+        }}
       </div>
 
       <div v-else class="text-sm text-ui-text-muted">
@@ -143,14 +147,18 @@ function resetDefaults() {
             </div>
           </div>
 
-          <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+          <div
+            class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+          >
             <div
               v-for="item in section.items"
               :key="`${section.title}-${item.label}`"
               class="flex items-start justify-between gap-4 px-3 py-2.5"
             >
               <span class="text-sm text-ui-text-muted">{{ item.label }}</span>
-              <span class="text-sm text-right text-ui-text font-medium break-all">{{ item.value }}</span>
+              <span class="text-sm text-right text-ui-text font-medium break-all">{{
+                item.value
+              }}</span>
             </div>
           </div>
         </div>

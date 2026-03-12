@@ -29,7 +29,9 @@ const isOpen = computed({
 });
 
 const showNegativeSpeedAudioWarning = computed(() => props.speed < 0 && props.hasAudio);
-const showLowSpeedWarning = computed(() => Math.abs(props.speed) > 0 && Math.abs(props.speed) < 0.1);
+const showLowSpeedWarning = computed(
+  () => Math.abs(props.speed) > 0 && Math.abs(props.speed) < 0.1,
+);
 </script>
 
 <template>

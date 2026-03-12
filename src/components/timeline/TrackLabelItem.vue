@@ -25,14 +25,17 @@ const timelineStore = useTimelineStore();
 const renameValue = ref(props.track.name);
 const renameInput = ref<HTMLInputElement | null>(null);
 
-watch(() => props.isRenaming, async (val) => {
-  if (val) {
-    renameValue.value = props.track.name;
-    await nextTick();
-    renameInput.value?.focus();
-    renameInput.value?.select();
-  }
-});
+watch(
+  () => props.isRenaming,
+  async (val) => {
+    if (val) {
+      renameValue.value = props.track.name;
+      await nextTick();
+      renameInput.value?.focus();
+      renameInput.value?.select();
+    }
+  },
+);
 
 function confirmRename() {
   const next = renameValue.value.trim();
@@ -71,11 +74,15 @@ function toggleAudioSolo(e: MouseEvent) {
     @contextmenu="emit('select')"
   >
     <!-- Track Drag Handle (Left) -->
-    <div class="w-1 h-2/3 rounded-full bg-ui-border opacity-0 group-hover:opacity-100 transition-opacity mr-1" />
+    <div
+      class="w-1 h-2/3 rounded-full bg-ui-border opacity-0 group-hover:opacity-100 transition-opacity mr-1"
+    />
 
     <div
       class="flex-1 min-w-0 px-1 py-0.5 rounded border border-transparent transition-colors"
-      :class="[isRenaming ? 'bg-ui-bg-elevated border-ui-border-accent' : 'hover:border-ui-border/50']"
+      :class="[
+        isRenaming ? 'bg-ui-bg-elevated border-ui-border-accent' : 'hover:border-ui-border/50',
+      ]"
       @click.stop="emit('select')"
     >
       <input
@@ -90,7 +97,9 @@ function toggleAudioSolo(e: MouseEvent) {
       <span v-else class="truncate block" :title="track.name">{{ track.name }}</span>
     </div>
 
-    <div class="ml-auto flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+    <div
+      class="ml-auto flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity"
+    >
       <UButton
         v-if="track.kind === 'video'"
         size="xs"

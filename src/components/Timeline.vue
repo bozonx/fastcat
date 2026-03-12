@@ -198,10 +198,19 @@ const onDrop = async (e: DragEvent, trackId: string) => {
   const startUs = getDropPosition(e);
   if (startUs === null) return;
 
-  const libraryItemData = e.dataTransfer?.getData('gran-item');
+  const libraryItemData =
+    e.dataTransfer?.getData('gran-item') || e.dataTransfer?.getData('application/json');
   if (libraryItemData) {
-    await handleLibraryDrop(libraryItemData, trackId, startUs);
-    return;
+    try {
+      const parsed = JSON.parse(libraryItemData);
+      // Only handle if it's our known internal drag objects
+      if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
+        await handleLibraryDrop(libraryItemData, trackId, startUs);
+        return;
+      }
+    } catch {
+      // ignore JSON parse errors and fall through
+    }
   }
 
   const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
