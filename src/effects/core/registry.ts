@@ -5,7 +5,7 @@ export type EffectType = string;
 
 export type EffectTarget = 'video' | 'audio';
 
-export type AudioEffectCategory = 'basic' | 'voice';
+export type AudioEffectCategory = 'basic' | 'artistic';
 
 export interface AudioEffectContext {
   audioContext: BaseAudioContext;

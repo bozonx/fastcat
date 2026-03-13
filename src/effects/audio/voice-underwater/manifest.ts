@@ -12,7 +12,7 @@ export const voiceUnderwaterManifest: AudioEffectManifest<VoiceUnderwaterParams>
   description: 'Heavy low-pass filtering for submerged and flashback scenes',
   icon: 'i-heroicons-beaker',
   target: 'audio',
-  category: 'voice',
+  category: 'artistic',
   defaultValues: {
     wet: 1,
     cutoff: 360,

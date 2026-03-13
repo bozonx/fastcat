@@ -33,8 +33,8 @@ const basicEffects = computed(() =>
     (effect) => !effect.isCustom && (effect.category ?? 'basic') === 'basic',
   ),
 );
-const voiceEffects = computed(() =>
-  availableEffects.value.filter((effect) => !effect.isCustom && effect.category === 'voice'),
+const artisticEffects = computed(() =>
+  availableEffects.value.filter((effect) => !effect.isCustom && effect.category === 'artistic'),
 );
 const customEffects = computed(() => availableEffects.value.filter((effect) => effect.isCustom));
 
@@ -253,13 +253,13 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
             </div>
           </div>
 
-          <div v-if="hasEffects(voiceEffects)">
+          <div v-if="hasEffects(artisticEffects)">
             <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-              {{ t('granVideoEditor.effects.groups.voice', 'Голос') }}
+              {{ t('granVideoEditor.effects.groups.artistic', 'Художественные') }}
             </h4>
             <div class="grid grid-cols-1 gap-2">
               <div
-                v-for="manifest in voiceEffects"
+                v-for="manifest in artisticEffects"
                 :key="manifest.type"
                 class="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated cursor-pointer transition-colors"
                 @click="handleAddEffect(manifest.type)"

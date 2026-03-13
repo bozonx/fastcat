@@ -32,7 +32,7 @@ export const voiceRadioManifest: AudioEffectManifest<VoiceRadioParams> = {
   description: 'Narrow mid-range voice with band-pass filtering and distortion',
   icon: 'i-heroicons-megaphone',
   target: 'audio',
-  category: 'voice',
+  category: 'artistic',
   defaultValues: {
     wet: 1,
     lowCut: 500,
