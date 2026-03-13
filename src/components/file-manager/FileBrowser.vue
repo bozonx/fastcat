@@ -1695,21 +1695,27 @@ async function submitTranscription() {
     const mediaType = getMediaTypeFromFilename(entry.name);
     const entryMimeType = (entry as ExtendedFsEntry).mimeType;
     const file = await projectStore.getFileByPath(entry.path);
-    if (!file) throw new Error('Failed to access file');
-    const result = await transcribeProjectAudioFile({
+    const fileType = file?.type || entryMimeType || '';
+
+    if (!file) throw new Error('Failed to access file for transcription');
+
+    const request: SttTranscriptionRequest = {
       file,
       filePath: entry.path,
       fileName: entry.name,
-      fileType: typeof entryMimeType === 'string' ? entryMimeType : '',
+      fileType,
       language: sttTranscriptionLanguage.value,
       fastcatPublicadorBaseUrl:
         typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
           ? runtimeConfig.public.fastcatPublicadorBaseUrl
           : '',
-      projectId: projectStore.currentProjectId,
+      projectId: projectStore.currentProjectId!,
       userSettings: workspaceStore.userSettings,
-      workspaceHandle: workspaceStore.workspaceHandle,
-    });
+      workspaceHandle: workspaceStore.workspaceHandle!,
+      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
+    };
+
+    const result = await transcribeProjectAudioFile(request);
 
     sttTranscriptionModalOpen.value = false;
 
