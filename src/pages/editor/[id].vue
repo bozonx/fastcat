@@ -498,7 +498,7 @@ watch(
 );
 
 function onVerticalSplitResize(event: any, colId: string, view: 'cut' | 'sound' = 'cut') {
-  const panes = event?.panes ?? event;
+  const panes = Array.isArray(event) ? event : event?.panes;
   if (Array.isArray(panes)) {
     const newSizes = panes.map((p: any) => p.size);
     if (view === 'cut') {
@@ -587,7 +587,7 @@ function getVerticalSize(
                 :key="`${col.id}-${col.panels.map((panel) => panel.id).join('|')}`"
                 horizontal
                 class="editor-splitpanes"
-                @resized="(e: any) => onVerticalSplitResize(e, col.id)"
+                @resized="onVerticalSplitResize($event, col.id)"
               >
                 <Pane
                   v-for="(panel, rowIndex) in col.panels"
@@ -824,7 +824,7 @@ function getVerticalSize(
                     :key="`${col.id}-${col.panels.map((panel) => panel.id).join('|')}`"
                     horizontal
                     class="editor-splitpanes"
-                    @resized="(e: any) => onVerticalSplitResize(e, col.id, 'sound')"
+                    @resized="onVerticalSplitResize($event, col.id, 'sound')"
                   >
                     <Pane
                       v-for="(panel, rowIndex) in col.panels"
