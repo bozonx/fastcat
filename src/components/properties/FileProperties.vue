@@ -428,6 +428,31 @@ const {
       />
     </PropertySection>
 
+    <!-- Usage in timelines -->
+    <div
+      v-if="timelinesUsingSelectedFile.length > 0"
+      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
+    >
+      <div
+        class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
+      >
+        {{ t('fastcat.preview.usedInTimelines', 'Used in timelines') }}
+      </div>
+      <div class="flex flex-wrap gap-1 mt-1">
+        <UButton
+          v-for="usage in timelinesUsingSelectedFile"
+          :key="usage.timelinePath"
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-clock"
+          @click="openTimelineFromUsage(usage.timelinePath)"
+        >
+          {{ usage.timelineName.replace('.otio', '') }}
+        </UButton>
+      </div>
+    </div>
+
     <div
       v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
       class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
@@ -638,30 +663,6 @@ const {
       <PropertyRow v-if="isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
     </PropertySection>
 
-    <!-- Usage in timelines -->
-    <div
-      v-if="timelinesUsingSelectedFile.length > 0"
-      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border"
-    >
-      <div
-        class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
-      >
-        {{ t('fastcat.preview.usedInTimelines', 'Used in timelines') }}
-      </div>
-      <div class="flex flex-wrap gap-1 mt-1">
-        <UButton
-          v-for="usage in timelinesUsingSelectedFile"
-          :key="usage.timelinePath"
-          size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-clock"
-          @click="openTimelineFromUsage(usage.timelinePath)"
-        >
-          {{ usage.timelineName.replace('.otio', '') }}
-        </UButton>
-      </div>
-    </div>
 
     <PropertySection
       v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"
