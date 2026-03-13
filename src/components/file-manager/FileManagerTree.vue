@@ -24,10 +24,7 @@ import {
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
-import {
-  isGeneratingProxyInDirectory,
-  folderHasVideos,
-} from '~/utils/fsEntryUtils';
+import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fsEntryUtils';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -151,7 +148,8 @@ function getEntryIconClass(entry: FsEntry): string {
   if (VIDEO_EXTENSIONS.includes(ext)) return 'text-violet-400/90';
   if (AUDIO_EXTENSIONS.includes(ext)) return 'text-emerald-400/90';
   if (IMAGE_EXTENSIONS.includes(ext)) return 'text-sky-400/90';
-  if (TIMELINE_EXTENSIONS.includes(ext) || TEXT_EXTENSIONS.includes(ext)) return 'text-amber-400/90';
+  if (TIMELINE_EXTENSIONS.includes(ext) || TEXT_EXTENSIONS.includes(ext))
+    return 'text-amber-400/90';
   return 'text-ui-text-muted';
 }
 

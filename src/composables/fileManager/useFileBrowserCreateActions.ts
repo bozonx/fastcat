@@ -48,7 +48,11 @@ export function useFileBrowserCreateActions({
     }
     const existingInFolder = await readDirectory(entry.path);
     const existingNames = existingInFolder.map((e) => e.name);
-    const createdFileName = await createMarkdownCommand({ vfs, dirPath: entry.path, existingNames });
+    const createdFileName = await createMarkdownCommand({
+      vfs,
+      dirPath: entry.path,
+      existingNames,
+    });
     await reloadDirectory(entry.path || '');
     uiStore.notifyFileManagerUpdate();
     await loadFolderContent();

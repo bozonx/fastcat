@@ -7,6 +7,7 @@ import type { RemoteFsEntry } from '../../../../src/utils/remote-vfs';
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: () => 'video',
   isOpenableProjectFileName: () => false,
+  VIDEO_EXTENSIONS: ['mp4', 'mov', 'avi', 'mkv', 'webm'],
 }));
 
 vi.mock('~/stores/proxy.store', () => ({

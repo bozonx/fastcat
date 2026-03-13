@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useFileBrowserCreateActions } from '../../../../src/composables/fileManager/useFileBrowserCreateActions';
+import type { FsEntry } from '../../../../src/types/fs';
+
 const { createTimelineCommand, createMarkdownCommand } = vi.hoisted(() => ({
   createTimelineCommand: vi.fn(),
   createMarkdownCommand: vi.fn(),
@@ -20,9 +23,6 @@ vi.mock('~/file-manager/application/fileManagerCommands', () => ({
   createTimelineCommand,
   createMarkdownCommand,
 }));
-
-import { useFileBrowserCreateActions } from '../../../../src/composables/fileManager/useFileBrowserCreateActions';
-import type { FsEntry } from '../../../../src/types/fs';
 
 describe('useFileBrowserCreateActions', () => {
   beforeEach(() => {

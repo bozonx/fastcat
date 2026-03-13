@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { useFileManagerPanelBootstrap } from '../../../../src/composables/fileManager/useFileManagerPanelBootstrap';
+
 const projectStore = { currentProjectName: 'Demo Project' };
 const selectionStore = { selectFsEntry: vi.fn() };
 const uiStore = {
@@ -18,8 +20,6 @@ vi.mock('~/stores/selection.store', () => ({
 vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => uiStore,
 }));
-
-import { useFileManagerPanelBootstrap } from '../../../../src/composables/fileManager/useFileManagerPanelBootstrap';
 
 describe('useFileManagerPanelBootstrap', () => {
   beforeEach(() => {

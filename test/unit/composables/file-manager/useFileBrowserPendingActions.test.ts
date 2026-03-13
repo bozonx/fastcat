@@ -1,36 +1,45 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, ref } from 'vue';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref, reactive, effectScope, type EffectScope } from 'vue';
 
-const uiStore = {
+import { useFileBrowserPendingActions } from '../../../../src/composables/fileManager/useFileBrowserPendingActions';
+
+const uiStore = reactive({
   pendingFsEntryRename: null as any,
   pendingFsEntryCreateTimeline: null as any,
   pendingFsEntryCreateMarkdown: null as any,
   pendingRemoteDownloadRequest: null as any,
-};
+});
 
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 
-import { useFileBrowserPendingActions } from '../../../../src/composables/fileManager/useFileBrowserPendingActions';
-
 describe('useFileBrowserPendingActions', () => {
+  let scope: EffectScope;
+
   beforeEach(() => {
     uiStore.pendingFsEntryRename = null;
     uiStore.pendingFsEntryCreateTimeline = null;
     uiStore.pendingFsEntryCreateMarkdown = null;
     uiStore.pendingRemoteDownloadRequest = null;
     vi.clearAllMocks();
+    scope = effectScope();
+  });
+
+  afterEach(() => {
+    scope.stop();
   });
 
   it('triggers rename if entry is in current folder and clears state', async () => {
     const startRename = vi.fn();
     const folderEntries = ref([{ path: 'test.mp4' }]);
-    
-    useFileBrowserPendingActions({
-      folderEntries: folderEntries as any,
-      startRename,
-      createTimelineInDirectory: vi.fn(),
-      createMarkdownInDirectory: vi.fn(),
-      handlePendingRemoteDownloadRequest: vi.fn(),
+
+    scope.run(() => {
+      useFileBrowserPendingActions({
+        folderEntries: folderEntries as any,
+        startRename,
+        createTimelineInDirectory: vi.fn(),
+        createMarkdownInDirectory: vi.fn(),
+        handlePendingRemoteDownloadRequest: vi.fn(),
+      });
     });
 
     uiStore.pendingFsEntryRename = { path: 'test.mp4' };
@@ -43,13 +52,15 @@ describe('useFileBrowserPendingActions', () => {
   it('ignores rename if entry is not in current folder', async () => {
     const startRename = vi.fn();
     const folderEntries = ref([{ path: 'other.mp4' }]);
-    
-    useFileBrowserPendingActions({
-      folderEntries: folderEntries as any,
-      startRename,
-      createTimelineInDirectory: vi.fn(),
-      createMarkdownInDirectory: vi.fn(),
-      handlePendingRemoteDownloadRequest: vi.fn(),
+
+    scope.run(() => {
+      useFileBrowserPendingActions({
+        folderEntries: folderEntries as any,
+        startRename,
+        createTimelineInDirectory: vi.fn(),
+        createMarkdownInDirectory: vi.fn(),
+        handlePendingRemoteDownloadRequest: vi.fn(),
+      });
     });
 
     uiStore.pendingFsEntryRename = { path: 'test.mp4' };
@@ -62,12 +73,14 @@ describe('useFileBrowserPendingActions', () => {
 
   it('handles remote download request and clears state', async () => {
     const handlePendingRemoteDownloadRequest = vi.fn().mockResolvedValue(undefined);
-    useFileBrowserPendingActions({
-      folderEntries: ref([]),
-      startRename: vi.fn(),
-      createTimelineInDirectory: vi.fn(),
-      createMarkdownInDirectory: vi.fn(),
-      handlePendingRemoteDownloadRequest,
+    scope.run(() => {
+      useFileBrowserPendingActions({
+        folderEntries: ref([]),
+        startRename: vi.fn(),
+        createTimelineInDirectory: vi.fn(),
+        createMarkdownInDirectory: vi.fn(),
+        handlePendingRemoteDownloadRequest,
+      });
     });
 
     uiStore.pendingRemoteDownloadRequest = { fileId: '123' };

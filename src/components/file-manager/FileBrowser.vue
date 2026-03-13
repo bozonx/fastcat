@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
-import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -14,7 +13,10 @@ import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
 import { useFileBrowserMarquee } from '~/composables/fileManager/useFileBrowserMarquee';
-import { useFileBrowserEntries, type ExtendedFsEntry } from '~/composables/fileManager/useFileBrowserEntries';
+import {
+  useFileBrowserEntries,
+  type ExtendedFsEntry,
+} from '~/composables/fileManager/useFileBrowserEntries';
 import { useFileBrowserRemote } from '~/composables/fileManager/useFileBrowserRemote';
 import { useFileBrowserNavigation } from '~/composables/fileManager/useFileBrowserNavigation';
 import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
@@ -25,12 +27,10 @@ import { useFileBrowserCreateActions } from '~/composables/fileManager/useFileBr
 import { useFileBrowserInteraction } from '~/composables/fileManager/useFileBrowserInteraction';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
-import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
 import {
   isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
   folderHasVideos,
 } from '~/utils/fsEntryUtils';
-import { isRemoteFsEntry } from '~/utils/remote-vfs';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
 import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar.vue';
@@ -45,7 +45,6 @@ const props = defineProps<{
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
@@ -198,7 +197,6 @@ const {
   loadRemoteFolderContent,
   loadRemoteParentFolders,
   openRemoteExchangeModal,
-  toggleRemoteMode,
   performRemoteDownload,
   cancelRemoteTransfer,
   onBrowserEntryDragStart,
@@ -235,7 +233,6 @@ const {
   navigateBack,
   navigateUp,
   navigateToFolder,
-  navigateToRoot,
   tryScrollToPendingEntry,
 } = navigation;
 
@@ -279,8 +276,12 @@ const {
     const projectName = projectStore.currentProjectName;
     if (projectName) uiStore.setFileTreePathExpanded(projectName, path, expanded);
   },
-  onAfterRename: () => { void loadFolderContent(); },
-  onAfterDelete: () => { void loadFolderContent(); },
+  onAfterRename: () => {
+    void loadFolderContent();
+  },
+  onAfterDelete: () => {
+    void loadFolderContent();
+  },
 });
 
 // --- File actions dispatcher ---
@@ -353,8 +354,13 @@ function focusBrowserPanel() {
   focusStore.setPanelFocus('filesBrowser');
 }
 
-const { marqueeStyle, preventClickClear, onMarqueePointerDown, onMarqueePointerMove, onMarqueePointerUp } =
-  useFileBrowserMarquee({ rootContainer, sortedEntries, onFocusPanel: focusBrowserPanel });
+const {
+  marqueeStyle,
+  preventClickClear,
+  onMarqueePointerDown,
+  onMarqueePointerMove,
+  onMarqueePointerUp,
+} = useFileBrowserMarquee({ rootContainer, sortedEntries, onFocusPanel: focusBrowserPanel });
 
 function handleContainerClick() {
   focusBrowserPanel();
@@ -446,21 +452,16 @@ async function refreshFileTree() {
 
 // --- Entry interaction ---
 
-const {
-  handleEntryClick,
-  handleEntryDoubleClick,
-  handleEntryEnter,
-  handleSort,
-  onResizeStart,
-} = useFileBrowserInteraction({
-  isRemoteMode,
-  remoteCurrentFolder,
-  sortedEntries,
-  loadFolderContent,
-  loadParentFolders,
-  setSelectedFsEntry,
-  onFileAction,
-});
+const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, onResizeStart } =
+  useFileBrowserInteraction({
+    isRemoteMode,
+    remoteCurrentFolder,
+    sortedEntries,
+    loadFolderContent,
+    loadParentFolders,
+    setSelectedFsEntry,
+    onFileAction,
+  });
 
 async function onDirectoryUploadChange(e: Event) {
   const input = e.target as HTMLInputElement;

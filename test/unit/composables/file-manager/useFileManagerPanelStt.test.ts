@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useFileManagerPanelStt } from '../../../../src/composables/fileManager/useFileManagerPanelStt';
+import type { FsEntry } from '../../../../src/types/fs';
+
 const { transcribeProjectAudioFile } = vi.hoisted(() => ({
   transcribeProjectAudioFile: vi.fn(),
 }));
@@ -34,9 +37,6 @@ vi.mock('~/utils/external-integrations', () => ({
 vi.mock('~/utils/stt', () => ({
   transcribeProjectAudioFile,
 }));
-
-import { useFileManagerPanelStt } from '../../../../src/composables/fileManager/useFileManagerPanelStt';
-import type { FsEntry } from '../../../../src/types/fs';
 
 describe('useFileManagerPanelStt', () => {
   beforeEach(() => {

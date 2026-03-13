@@ -53,7 +53,7 @@ describe('useFileManager', () => {
         kind: 'file',
         handle: {} as unknown as FileSystemFileHandle,
       }),
-    ).toBe('i-heroicons-rectangle-stack');
+    ).toBe('i-heroicons-queue-list');
     expect(
       getFileIcon({
         name: 'unknown.txt',

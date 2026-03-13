@@ -1,20 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, reactive, effectScope, type EffectScope } from 'vue';
 
-const uiStore = {
+import { useFileManagerPanelPendingActions } from '../../../../src/composables/fileManager/useFileManagerPanelPendingActions';
+
+const uiStore = reactive({
   pendingFsEntryDelete: null as any,
   pendingFsEntryRename: null as any,
   pendingFsEntryCreateFolder: null as any,
   pendingFsEntryCreateTimeline: null as any,
   pendingFsEntryCreateMarkdown: null as any,
   pendingOtioCreateVersion: null as any,
-};
+});
 
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 
-import { useFileManagerPanelPendingActions } from '../../../../src/composables/fileManager/useFileManagerPanelPendingActions';
-
 describe('useFileManagerPanelPendingActions', () => {
+  let scope: EffectScope;
+
   beforeEach(() => {
     uiStore.pendingFsEntryDelete = null;
     uiStore.pendingFsEntryRename = null;
@@ -23,17 +25,24 @@ describe('useFileManagerPanelPendingActions', () => {
     uiStore.pendingFsEntryCreateMarkdown = null;
     uiStore.pendingOtioCreateVersion = null;
     vi.clearAllMocks();
+    scope = effectScope();
+  });
+
+  afterEach(() => {
+    scope.stop();
   });
 
   it('triggers delete confirm modal and clears state', async () => {
     const openDeleteConfirmModal = vi.fn();
-    useFileManagerPanelPendingActions({
-      openDeleteConfirmModal,
-      startRename: vi.fn(),
-      onCreateFolder: vi.fn(),
-      createTimelineInDirectory: vi.fn(),
-      createMarkdownInDirectory: vi.fn(),
-      createOtioVersion: vi.fn(),
+    scope.run(() => {
+      useFileManagerPanelPendingActions({
+        openDeleteConfirmModal,
+        startRename: vi.fn(),
+        onCreateFolder: vi.fn(),
+        createTimelineInDirectory: vi.fn(),
+        createMarkdownInDirectory: vi.fn(),
+        createOtioVersion: vi.fn(),
+      });
     });
 
     const entries = [{ kind: 'file', name: 'test.mp4', path: 'test.mp4' }];
@@ -46,13 +55,15 @@ describe('useFileManagerPanelPendingActions', () => {
 
   it('triggers create timeline, waits for promise, and clears state', async () => {
     const createTimelineInDirectory = vi.fn().mockResolvedValue(undefined);
-    useFileManagerPanelPendingActions({
-      openDeleteConfirmModal: vi.fn(),
-      startRename: vi.fn(),
-      onCreateFolder: vi.fn(),
-      createTimelineInDirectory,
-      createMarkdownInDirectory: vi.fn(),
-      createOtioVersion: vi.fn(),
+    scope.run(() => {
+      useFileManagerPanelPendingActions({
+        openDeleteConfirmModal: vi.fn(),
+        startRename: vi.fn(),
+        onCreateFolder: vi.fn(),
+        createTimelineInDirectory,
+        createMarkdownInDirectory: vi.fn(),
+        createOtioVersion: vi.fn(),
+      });
     });
 
     const entry = { kind: 'directory', name: 'dir', path: 'dir' };
@@ -66,13 +77,15 @@ describe('useFileManagerPanelPendingActions', () => {
 
   it('ignores create timeline if entry is not directory', async () => {
     const createTimelineInDirectory = vi.fn();
-    useFileManagerPanelPendingActions({
-      openDeleteConfirmModal: vi.fn(),
-      startRename: vi.fn(),
-      onCreateFolder: vi.fn(),
-      createTimelineInDirectory,
-      createMarkdownInDirectory: vi.fn(),
-      createOtioVersion: vi.fn(),
+    scope.run(() => {
+      useFileManagerPanelPendingActions({
+        openDeleteConfirmModal: vi.fn(),
+        startRename: vi.fn(),
+        onCreateFolder: vi.fn(),
+        createTimelineInDirectory,
+        createMarkdownInDirectory: vi.fn(),
+        createOtioVersion: vi.fn(),
+      });
     });
 
     const entry = { kind: 'file', name: 'test.txt', path: 'test.txt' };

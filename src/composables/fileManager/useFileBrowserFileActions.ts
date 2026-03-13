@@ -3,7 +3,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
-import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import type { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
