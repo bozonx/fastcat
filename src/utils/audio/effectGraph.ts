@@ -65,15 +65,28 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
       }
     });
 
-    const dryGainNode = audioContext.createGain();
-    dryGainNode.gain.value = 1 - normalizeWet(effect.wet);
-
-    const wetGainNode = audioContext.createGain();
-    wetGainNode.gain.value = normalizeWet(effect.wet);
-
-    const outputGainNode = audioContext.createGain();
     const effectInput = isAudioEffectNodeGraph(effectNode) ? effectNode.input : effectNode;
     const effectOutput = isAudioEffectNodeGraph(effectNode) ? effectNode.output : effectNode;
+
+    // Some effects (like EQ) handle wet/dry internally or don't support partial wet well
+    if (manifest.disableGlobalWet) {
+      currentNode.connect(effectInput);
+      currentNode = effectOutput;
+      continue;
+    }
+
+    const wet = normalizeWet(effect.wet);
+    // Equal-power crossfade
+    const dryGain = Math.cos(wet * 0.5 * Math.PI);
+    const wetGain = Math.cos((1.0 - wet) * 0.5 * Math.PI);
+
+    const dryGainNode = audioContext.createGain();
+    dryGainNode.gain.value = dryGain;
+
+    const wetGainNode = audioContext.createGain();
+    wetGainNode.gain.value = wetGain;
+
+    const outputGainNode = audioContext.createGain();
 
     currentNode.connect(dryGainNode);
     dryGainNode.connect(outputGainNode);

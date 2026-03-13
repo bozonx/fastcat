@@ -42,6 +42,7 @@ export const distortionManifest: AudioEffectManifest<DistortionParams> = {
   description: 'Waveshaping distortion',
   icon: 'i-heroicons-bolt',
   target: 'audio',
+  disableGlobalWet: true, // We will handle wet inside if we want, or just leave it 100% wet
   defaultValues: {
     wet: 1,
     distortion: 0.4,

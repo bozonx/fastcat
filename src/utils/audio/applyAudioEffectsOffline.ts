@@ -45,26 +45,35 @@ export async function applyAudioEffects({
   const enabledEffects = effects.filter((e) => e.enabled && e.target === 'audio');
   if (enabledEffects.length === 0 || buffer.duration <= 0) return buffer;
 
-  const planes: Float32Array[] = [];
-  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
-    planes.push(new Float32Array(buffer.getChannelData(c)));
-  }
+  try {
+    const planes: Float32Array[] = [];
+    for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+      planes.push(new Float32Array(buffer.getChannelData(c)));
+    }
 
-  const result = await applyEffectsThroughOfflineContext({
-    planes,
-    sampleRate: buffer.sampleRate,
-    frames: buffer.length,
-    channels: buffer.numberOfChannels,
-    effects: enabledEffects,
-  });
+    const result = await applyEffectsThroughOfflineContext({
+      planes,
+      sampleRate: buffer.sampleRate,
+      frames: buffer.length,
+      channels: buffer.numberOfChannels,
+      effects: enabledEffects,
+    });
 
-  const tmpCtx = new OfflineAudioContext(buffer.numberOfChannels, result.frames, buffer.sampleRate);
-  const out = tmpCtx.createBuffer(buffer.numberOfChannels, result.frames, buffer.sampleRate);
-  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
-    const plane = result.planes[c];
-    if (plane) out.copyToChannel(new Float32Array(plane), c, 0);
+    const tmpCtx = new OfflineAudioContext(
+      buffer.numberOfChannels,
+      result.frames,
+      buffer.sampleRate,
+    );
+    const out = tmpCtx.createBuffer(buffer.numberOfChannels, result.frames, buffer.sampleRate);
+    for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+      const plane = result.planes[c];
+      if (plane) out.copyToChannel(new Float32Array(plane), c, 0);
+    }
+    return out;
+  } catch (err) {
+    console.warn('[applyAudioEffects] Failed to apply effects, using raw audio', err);
+    return buffer;
   }
-  return out;
 }
 
 /**
@@ -113,10 +122,13 @@ async function applyEffectsThroughOfflineContext({
     return { planes, frames };
   }
 
-  const offlineCtx = new OfflineCtx(channels, frames, sampleRate);
-  const buffer = offlineCtx.createBuffer(channels, frames, sampleRate);
+  // Prevent NotSupportedError in some browsers by limiting channels
+  const safeChannels = Math.min(channels, 8);
 
-  for (let c = 0; c < channels; c += 1) {
+  const offlineCtx = new OfflineCtx(safeChannels, frames, sampleRate);
+  const buffer = offlineCtx.createBuffer(safeChannels, frames, sampleRate);
+
+  for (let c = 0; c < safeChannels; c += 1) {
     const plane = planes[c];
     if (!plane) continue;
     buffer.copyToChannel(new Float32Array(plane), c, 0);
@@ -139,7 +151,7 @@ async function applyEffectsThroughOfflineContext({
   destroy();
 
   const currentPlanes: Float32Array[] = [];
-  for (let c = 0; c < channels; c += 1) {
+  for (let c = 0; c < safeChannels; c += 1) {
     currentPlanes.push(new Float32Array(rendered.getChannelData(c)));
   }
 
