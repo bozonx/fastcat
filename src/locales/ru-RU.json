@@ -702,7 +702,8 @@
       "noProjectsFound": "Проекты не найдены",
       "recentProjects": "Недавние проекты",
       "openLastProject": "Открыть последний проект",
-      "renameProject": "Переименовать проект"
+      "renameProject": "Переименовать проект",
+      "recent": "Недавно открыто"
     },
     "preview": {
       "unsupported": "Формат не поддерживается",

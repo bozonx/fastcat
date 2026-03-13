@@ -44,9 +44,21 @@ const projectPresetOptions = computed(() =>
 
 // Список последних проектов для Hero-секции и списка
 const recentProjects = computed(() => workspaceStore.recentProjects);
-const lastProject = computed(() => recentProjects.value[0]);
 
 const getRecentInfo = (name: string) => recentProjects.value.find((p) => p.projectName === name);
+
+// Умная сортировка: сначала недавние (по дате), потом остальные (по алфавиту)
+const smartSortedProjects = computed(() => {
+  const recentNames = recentProjects.value.map((p) => p.projectName);
+  const others = filteredProjects.value
+    .filter((p) => !recentNames.includes(p))
+    .sort((a, b) => a.localeCompare(b));
+
+  return [
+    ...recentProjects.value.filter((p) => filteredProjects.value.includes(p.projectName)),
+    ...others.map((p) => ({ projectName: p, projectId: undefined, lastTimelinePath: undefined })),
+  ];
+});
 </script>
 
 <template>
@@ -88,93 +100,26 @@ const getRecentInfo = (name: string) => recentProjects.value.find((p) => p.proje
       </UButton>
     </div>
 
-    <!-- Last Project Suggestion -->
-    <div
-      v-if="lastProject && workspaceStore.projects.includes(lastProject.projectName)"
-      class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-xl animate-in fade-in slide-in-from-top-2 duration-500"
-    >
-      <div class="aspect-video relative shrink-0">
-        <ProjectThumbnail
-          :project-id="lastProject.projectId"
-          :project-relative-path="lastProject.lastTimelinePath"
-          :project-name="lastProject.projectName"
-        />
-        <div class="absolute inset-0 bg-linear-to-t from-slate-950/80 to-transparent" />
-        <div class="absolute bottom-4 left-4 right-4">
-          <span class="text-primary-400 text-[10px] font-bold uppercase tracking-widest">{{
-            t('fastcat.projects.continueWorking')
-          }}</span>
-          <h2 class="text-xl font-bold text-white truncate">{{ lastProject.projectName }}</h2>
-        </div>
-      </div>
-      <div class="p-4">
-        <UButton
-          block
-          color="primary"
-          icon="lucide:play"
-          @click="handleOpenProject(lastProject.projectName)"
-        >
-          {{ t('fastcat.projects.openLast') }}
-        </UButton>
-      </div>
-    </div>
-    
-    <!-- Recent Projects List (Horizontal Scroll) -->
-    <div v-if="recentProjects.length > 1" class="space-y-3">
-      <h3 class="font-medium text-slate-400 text-sm px-1">
-        {{ t('fastcat.projects.recentProjects') }}
-      </h3>
-      <div class="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-        <div
-          v-for="project in recentProjects.slice(1, 6)"
-          :key="project.projectId"
-          class="flex-none w-48 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden active:bg-slate-800 transition-colors"
-          @click="handleOpenProject(project.projectName)"
-        >
-          <div class="aspect-video relative">
-            <ProjectThumbnail
-              :project-id="project.projectId"
-              :project-relative-path="project.lastTimelinePath"
-              :project-name="project.projectName"
-            />
-          </div>
-          <div class="p-2">
-            <h4 class="font-medium text-xs text-slate-200 truncate">{{ project.projectName }}</h4>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Create Project -->
-    <div
-      class="bg-slate-900 rounded-xl p-5 border border-slate-800 shadow-xl flex items-center justify-between active:bg-slate-800 transition-colors"
-      @click="startCreateProject"
-    >
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-primary-500/10 flex items-center justify-center">
-          <UIcon name="i-heroicons-plus" class="w-5 h-5 text-primary-400" />
-        </div>
-        <h3 class="font-medium text-slate-200">
-          {{ t('fastcat.projects.newProject') }}
-        </h3>
-      </div>
-      <UIcon name="i-heroicons-chevron-right" class="w-5 h-5 text-slate-600" />
-    </div>
-
-    <div v-if="workspaceStore.error" class="text-red-400 text-sm">
-      {{ workspaceStore.error }}
-    </div>
-
     <!-- Project List -->
     <div class="space-y-4 flex-1 pb-10">
-      <div class="flex items-center justify-between px-1">
-        <h3 class="font-medium text-slate-400">
-          {{ t('fastcat.projects.recentProjects') }}
-          <span
-            class="text-xs font-normal tabular-nums bg-slate-800 px-2 py-0.5 rounded-full ml-1"
-            >{{ workspaceStore.projects.length }}</span
-          >
-        </h3>
+      <!-- Create Project -->
+      <div
+        class="bg-slate-900 rounded-xl p-5 border border-slate-800 shadow-xl flex items-center justify-between active:bg-slate-800 transition-colors"
+        @click="startCreateProject"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-primary-500/10 flex items-center justify-center">
+            <UIcon name="i-heroicons-plus" class="w-5 h-5 text-primary-400" />
+          </div>
+          <h3 class="font-medium text-slate-200">
+            {{ t('fastcat.projects.newProject') }}
+          </h3>
+        </div>
+        <UIcon name="i-heroicons-chevron-right" class="w-5 h-5 text-slate-600" />
+      </div>
+
+      <div v-if="workspaceStore.error" class="text-red-400 text-sm">
+        {{ workspaceStore.error }}
       </div>
 
       <!-- Search -->
@@ -184,35 +129,30 @@ const getRecentInfo = (name: string) => recentProjects.value.find((p) => p.proje
         class="mb-2"
       />
 
-      <div v-if="filteredProjects.length > 0" class="grid grid-cols-1 gap-3">
+      <div v-if="filteredProjects.length > 0" class="flex flex-col gap-3">
         <div
-          v-for="project in filteredProjects"
-          :key="project"
-          class="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col active:bg-slate-800 active:scale-[0.98] transition-all shadow-sm"
-          @click="isRenaming === project ? null : handleOpenProject(project)"
+          v-for="project in smartSortedProjects"
+          :key="project.projectName"
+          class="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex items-center active:bg-slate-800 active:scale-[0.98] transition-all shadow-sm"
+          @click="isRenaming === project.projectName ? null : handleOpenProject(project.projectName)"
         >
-          <div class="aspect-video relative shrink-0">
+          <div class="w-24 aspect-video relative shrink-0">
             <ProjectThumbnail
-              :project-id="getRecentInfo(project)?.projectId"
-              :project-relative-path="getRecentInfo(project)?.lastTimelinePath"
-              :project-name="project"
+              :project-id="project.projectId"
+              :project-relative-path="project.lastTimelinePath"
+              :project-name="project.projectName"
             />
           </div>
 
-          <div class="p-4 flex items-center justify-between">
-            <div class="flex items-center gap-3 overflow-hidden flex-1">
-              <div
-                class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0"
-              >
-                <UIcon name="i-heroicons-film" class="w-4 h-4 text-blue-400" />
-              </div>
-              <div v-if="isRenaming === project" class="flex-1 flex gap-2">
+          <div class="px-4 py-3 flex items-center justify-between flex-1 min-w-0">
+            <div class="flex flex-col min-w-0">
+              <div v-if="isRenaming === project.projectName" class="flex gap-2">
                 <UInput
                   v-model="renameValue"
                   size="sm"
-                  class="flex-1"
+                  class="w-32"
                   autofocus
-                  @keyup.enter="renameProject(project)"
+                  @keyup.enter="renameProject(project.projectName)"
                   @keyup.esc="isRenaming = null"
                   @click.stop
                 />
@@ -220,23 +160,26 @@ const getRecentInfo = (name: string) => recentProjects.value.find((p) => p.proje
                   size="xs"
                   color="primary"
                   icon="lucide:check"
-                  @click.stop="renameProject(project)"
+                  @click.stop="renameProject(project.projectName)"
                 />
               </div>
-              <span v-else class="font-medium text-slate-200 truncate">{{ project }}</span>
+              <span v-else class="font-medium text-slate-200 truncate">{{ project.projectName }}</span>
+              <span v-if="project.projectId" class="text-[10px] text-slate-500">
+                {{ t('fastcat.projects.recent') }}
+              </span>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 shrink-0">
               <UButton
-                v-if="isRenaming !== project"
+                v-if="isRenaming !== project.projectName"
                 size="sm"
                 variant="ghost"
                 color="neutral"
                 icon="lucide:edit-2"
-                @click.stop="startRename(project)"
+                @click.stop="startRename(project.projectName)"
               />
               <Icon
-                v-if="isRenaming !== project"
+                v-if="isRenaming !== project.projectName"
                 name="lucide:chevron-right"
                 class="w-5 h-5 text-slate-600 shrink-0"
               />
