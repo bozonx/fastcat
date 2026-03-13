@@ -4,62 +4,40 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import type { FsEntry } from '~/types/fs';
-import { formatBytes } from '~/utils/format';
-import {
-  getMediaTypeFromFilename,
-  getMimeTypeFromFilename,
-  isOpenableProjectFileName,
-} from '~/utils/media-types';
-
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
+import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
+import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
+import { useFileBrowserMarquee } from '~/composables/fileManager/useFileBrowserMarquee';
+import { useFileBrowserEntries, type ExtendedFsEntry } from '~/composables/fileManager/useFileBrowserEntries';
+import { useFileBrowserRemote } from '~/composables/fileManager/useFileBrowserRemote';
+import { useFileBrowserNavigation } from '~/composables/fileManager/useFileBrowserNavigation';
+import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
+import { useFileBrowserFileActions } from '~/composables/fileManager/useFileBrowserFileActions';
+import {
+  createTimelineCommand,
+  createMarkdownCommand,
+} from '~/file-manager/application/fileManagerCommands';
+import type { FsEntry } from '~/types/fs';
+import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import { isRemoteFsEntry } from '~/utils/remote-vfs';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
 import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar.vue';
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
-import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
-import {
-  useDraggedFile,
-  INTERNAL_DRAG_TYPE,
-  REMOTE_FILE_DRAG_TYPE,
-} from '~/composables/useDraggedFile';
-import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import {
-  createTimelineCommand,
-  createMarkdownCommand,
-} from '~/file-manager/application/fileManagerCommands';
-import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
-import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
-import { useFileConversion } from '~/composables/fileManager/useFileConversion';
-import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
-import { useFocusStore } from '~/stores/focus.store';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import {
-  downloadRemoteFile,
-  fetchRemoteVfsList,
-  getRemoteFileDownloadUrl,
-  isRemoteFsEntry,
-  type RemoteFsEntry,
-  toRemoteFsEntry,
-} from '~/utils/remote-vfs';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
-import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
-import { transcribeProjectAudioFile } from '~/utils/stt';
 import AppModal from '~/components/ui/AppModal.vue';
-import {
-  stripWorkspaceCommonPathPrefix,
-  WORKSPACE_COMMON_DIR_NAME,
-  WORKSPACE_COMMON_PATH_PREFIX,
-} from '~/utils/workspace-common';
 
-import PQueue from 'p-queue';
+const props = defineProps<{
+  isFilesPage?: boolean;
+}>();
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
@@ -67,47 +45,11 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
-const fileManager = useFileManager();
 const proxyStore = useProxyStore();
 const workspaceStore = useWorkspaceStore();
-const { addFileTab, setActiveTab } = useProjectTabs();
-const runtimeConfig = useRuntimeConfig();
-const toast = useToast();
+const { t } = useI18n();
 
-const fileConversion = useFileConversion();
-const { extractAudio } = useAudioExtraction();
-const {
-  isModalOpen: conversionModalOpen,
-  videoFormat: conversionVideoFormat,
-  videoCodec: conversionVideoCodec,
-  videoBitrateMbps: conversionVideoBitrateMbps,
-  excludeAudio: conversionExcludeAudio,
-  audioCodec: conversionAudioCodec,
-  audioBitrateKbps: conversionAudioBitrateKbps,
-  bitrateMode: conversionBitrateMode,
-  keyframeIntervalSec: conversionKeyframeIntervalSec,
-  audioOnlyFormat: conversionAudioOnlyFormat,
-  audioOnlyCodec: conversionAudioOnlyCodec,
-  audioOnlyBitrateKbps: conversionAudioOnlyBitrateKbps,
-  audioChannels: conversionAudioChannels,
-  audioSampleRate: conversionAudioSampleRate,
-  imageQuality: conversionImageQuality,
-  imageWidth: conversionImageWidth,
-  imageHeight: conversionImageHeight,
-  isImageResolutionLinked: conversionIsImageResolutionLinked,
-  imageAspectRatio: conversionImageAspectRatio,
-  mediaType: conversionMediaType,
-  targetEntry: conversionTargetEntry,
-  originalAudioSampleRate: conversionOriginalAudioSampleRate,
-  isConverting: conversionIsConverting,
-  conversionProgress: conversionProgress,
-  conversionError: conversionError,
-  conversionPhase: conversionPhase,
-} = fileConversion;
-
-const props = defineProps<{
-  isFilesPage?: boolean;
-}>();
+const fileManager = useFileManager();
 const {
   readDirectory,
   loadProjectDirectory,
@@ -121,9 +63,92 @@ const {
   reloadDirectory,
   vfs,
 } = fileManager;
-const { t } = useI18n();
 
+const fileConversion = useFileConversion();
+
+// --- STT ---
+const stt = useFileBrowserStt();
+const {
+  sttTranscriptionModalOpen,
+  sttTranscriptionLanguage,
+  sttTranscriptionError,
+  sttTranscribing,
+  sttTranscriptionEntry,
+  isTranscribableMediaFile,
+  openTranscriptionModal,
+  submitTranscription,
+} = stt;
+
+// --- State (shared between components) ---
+const isRemoteMode = ref(false);
+const remoteCurrentFolder = ref<RemoteFsEntry | null>(null);
+
+// --- Entries (folderEntries, sortedEntries, sizes, stats) ---
+const entries = useFileBrowserEntries({ isRemoteMode, vfs });
+const {
+  folderEntries,
+  folderSizes,
+  folderSizesLoading,
+  sortedEntries,
+  videoThumbnails,
+  stats,
+  calculateFolderSize,
+  supplementEntries,
+  cleanupObjectUrls,
+} = entries;
+
+// --- Scroll helper (used by navigation) ---
+const rootContainer = ref<HTMLElement | null>(null);
+const pendingScrollToEntryPath = ref<string | null>(null);
+
+function scrollToEntryPath(path: string): boolean {
+  const container = rootContainer.value;
+  if (!container) return false;
+  const targetNode = container.querySelector<HTMLElement>(
+    `[data-entry-path="${CSS.escape(path)}"]`,
+  );
+  if (!targetNode) return false;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = targetNode.getBoundingClientRect();
+  const targetTop = targetRect.top - containerRect.top + container.scrollTop;
+  const targetBottom = targetTop + targetRect.height;
+  const visibleTop = container.scrollTop;
+  const visibleBottom = visibleTop + container.clientHeight;
+  if (targetTop < visibleTop) {
+    container.scrollTop = Math.max(targetTop - 8, 0);
+  } else if (targetBottom > visibleBottom) {
+    container.scrollTop = Math.max(targetBottom - container.clientHeight + 8, 0);
+  }
+  return true;
+}
+
+// --- setSelectedFsEntry (shared between remote & navigation) ---
+function setSelectedFsEntry(entry: FsEntry | null) {
+  if (!entry) {
+    uiStore.selectedFsEntry = null;
+    selectionStore.clearSelection();
+    return;
+  }
+  uiStore.selectedFsEntry = {
+    kind: entry.kind,
+    name: entry.name,
+    path: entry.path,
+    parentPath: entry.parentPath,
+    lastModified: entry.lastModified,
+    size: entry.size,
+    source: entry.source ?? 'local',
+    remoteId: entry.remoteId,
+    remotePath: entry.remotePath,
+    remoteData: entry.remoteData,
+  };
+  selectionStore.selectFsEntry(entry);
+}
+
+// --- DragAndDrop (needs loadFolderContent forward-ref) ---
 const skipNextUpdateReload = ref(false);
+
+// Forward ref — assigned after navigation is created
+let _loadFolderContent: () => Promise<void> = async () => {};
 
 const {
   isDragOverPanel,
@@ -145,298 +170,87 @@ const {
   resolveEntryByPath,
   handleFiles,
   moveEntry,
-  loadFolderContent,
+  loadFolderContent: () => _loadFolderContent(),
   notifyFileManagerUpdate: () => {
     skipNextUpdateReload.value = true;
     uiStore.notifyFileManagerUpdate();
   },
 });
 
-const rootContainer = ref<HTMLElement | null>(null);
-const pendingScrollToEntryPath = ref<string | null>(null);
-
-const isMarqueeSelecting = ref(false);
-const marqueeStart = ref<{ x: number; y: number } | null>(null);
-const marqueeCurrent = ref<{ x: number; y: number } | null>(null);
-
-function scrollToEntryPath(path: string) {
-  const container = rootContainer.value;
-  if (!container) return false;
-
-  const targetNode = container.querySelector<HTMLElement>(
-    `[data-entry-path="${CSS.escape(path)}"]`,
-  );
-  if (!targetNode) return false;
-
-  const containerRect = container.getBoundingClientRect();
-  const targetRect = targetNode.getBoundingClientRect();
-  const targetTop = targetRect.top - containerRect.top + container.scrollTop;
-  const targetBottom = targetTop + targetRect.height;
-  const visibleTop = container.scrollTop;
-  const visibleBottom = visibleTop + container.clientHeight;
-
-  if (targetTop < visibleTop) {
-    container.scrollTop = Math.max(targetTop - 8, 0);
-  } else if (targetBottom > visibleBottom) {
-    container.scrollTop = Math.max(targetBottom - container.clientHeight + 8, 0);
-  }
-
-  return true;
-}
-
-function getPointInScrollContainer(
-  e: PointerEvent,
-  container: HTMLElement,
-): { x: number; y: number } {
-  const rect = container.getBoundingClientRect();
-  return {
-    x: e.clientX - rect.left + container.scrollLeft,
-    y: e.clientY - rect.top + container.scrollTop,
-  };
-}
-
-const marqueeRect = computed(() => {
-  if (!isMarqueeSelecting.value || !marqueeStart.value || !marqueeCurrent.value) return null;
-  const x1 = marqueeStart.value.x;
-  const y1 = marqueeStart.value.y;
-  const x2 = marqueeCurrent.value.x;
-  const y2 = marqueeCurrent.value.y;
-  const left = Math.min(x1, x2);
-  const top = Math.min(y1, y2);
-  const width = Math.abs(x1 - x2);
-  const height = Math.abs(y1 - y2);
-  return { left, top, width, height };
+// --- Remote ---
+const remote = useFileBrowserRemote({
+  isRemoteMode,
+  remoteCurrentFolder,
+  folderEntries,
+  loadFolderContent: () => _loadFolderContent(),
+  loadParentFolders: () => navigation.loadParentFolders(),
+  navigateToRoot: () => navigation.navigateToRoot(),
+  setSelectedFsEntry,
+  onEntryDragStart,
+  onEntryDragEnd,
+  onEntryDragOver,
+  onEntryDragLeave,
+  onEntryDrop,
+  onRootDragOver,
+  onRootDragLeave,
+  onRootDrop,
+  handleFiles,
 });
+const {
+  remoteTransferOpen,
+  remoteTransferProgress,
+  remoteTransferPhase,
+  remoteTransferFileName,
+  isRemoteAvailable,
+  buildRemoteDirectoryEntry,
+  loadRemoteFolderContent,
+  loadRemoteParentFolders,
+  openRemoteExchangeModal,
+  toggleRemoteMode,
+  performRemoteDownload,
+  cancelRemoteTransfer,
+  onBrowserEntryDragStart,
+  onBrowserEntryDragEnd,
+  onBrowserEntryDragOver,
+  onBrowserEntryDragLeave,
+  onBrowserEntryDrop,
+  onBrowserRootDragOver,
+  onBrowserRootDragLeave,
+  onBrowserRootDrop,
+} = remote;
 
-const marqueeStyle = computed(() => {
-  const r = marqueeRect.value;
-  if (!r) return null;
-  return {
-    left: `${r.left}px`,
-    top: `${r.top}px`,
-    width: `${r.width}px`,
-    height: `${r.height}px`,
-  };
+// --- Navigation ---
+const navigation = useFileBrowserNavigation({
+  rootContainer,
+  isRemoteMode,
+  remoteCurrentFolder,
+  folderEntries,
+  supplementEntries,
+  cleanupObjectUrls,
+  buildRemoteDirectoryEntry,
+  loadRemoteFolderContent,
+  loadRemoteParentFolders,
+  calculateFolderSize,
+  pendingScrollToEntryPath,
+  scrollToEntryPath,
+  vfs,
+  readDirectory,
 });
+const {
+  parentFolders,
+  loadFolderContent,
+  loadParentFolders,
+  navigateBack,
+  navigateUp,
+  navigateToFolder,
+  navigateToRoot,
+  tryScrollToPendingEntry,
+} = navigation;
 
-function rectsIntersect(
-  a: { left: number; top: number; right: number; bottom: number },
-  b: { left: number; top: number; right: number; bottom: number },
-): boolean {
-  return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
-}
+// Resolve forward refs
+_loadFolderContent = loadFolderContent;
 
-function selectEntriesInMarquee() {
-  const container = rootContainer.value;
-  const r = marqueeRect.value;
-  if (!container || !r) return;
-
-  const selRect = {
-    left: r.left,
-    top: r.top,
-    right: r.left + r.width,
-    bottom: r.top + r.height,
-  };
-
-  const nodes = Array.from(container.querySelectorAll<HTMLElement>('[data-entry-path]'));
-  const byPath = new Map<string, FsEntry>();
-  for (const e of sortedEntries.value) {
-    if (e.path) byPath.set(e.path, e);
-  }
-
-  const selected: FsEntry[] = [];
-  const containerRect = container.getBoundingClientRect();
-
-  for (const el of nodes) {
-    const path = el.dataset.entryPath;
-    if (!path) continue;
-
-    const entry = byPath.get(path);
-    if (!entry) continue;
-
-    const elRect = el.getBoundingClientRect();
-    const left = elRect.left - containerRect.left + container.scrollLeft;
-    const top = elRect.top - containerRect.top + container.scrollTop;
-    const rect = {
-      left,
-      top,
-      right: left + elRect.width,
-      bottom: top + elRect.height,
-    };
-
-    if (rectsIntersect(selRect, rect)) {
-      selected.push(entry);
-    }
-  }
-
-  selectionStore.selectFsEntries(selected);
-}
-
-function onMarqueePointerDown(e: PointerEvent) {
-  if (e.button !== 0) return;
-  const container = rootContainer.value;
-  if (!container) return;
-
-  focusBrowserPanel();
-
-  const target = e.target as HTMLElement | null;
-  if (target?.tagName === 'INPUT') return;
-  if (target?.closest?.('[data-entry-path]')) return;
-
-  const point = getPointInScrollContainer(e, container);
-  isMarqueeSelecting.value = true;
-  marqueeStart.value = point;
-  marqueeCurrent.value = point;
-
-  try {
-    container.setPointerCapture(e.pointerId);
-  } catch {
-    // ignore
-  }
-}
-
-function onMarqueePointerMove(e: PointerEvent) {
-  if (!isMarqueeSelecting.value) return;
-  const container = rootContainer.value;
-  if (!container) return;
-
-  marqueeCurrent.value = getPointInScrollContainer(e, container);
-  selectEntriesInMarquee();
-}
-
-const preventClickClear = ref(false);
-
-function focusBrowserPanel() {
-  focusStore.setPanelFocus('filesBrowser');
-}
-
-function handleContainerClick() {
-  focusBrowserPanel();
-  if (preventClickClear.value) return;
-  selectionStore.clearSelection();
-}
-
-function onMarqueePointerUp(e: PointerEvent) {
-  if (!isMarqueeSelecting.value) return;
-  const container = rootContainer.value;
-  if (container) {
-    try {
-      container.releasePointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-  }
-
-  const r = marqueeRect.value;
-  if (r && (r.width > 3 || r.height > 3)) {
-    preventClickClear.value = true;
-    setTimeout(() => {
-      preventClickClear.value = false;
-    }, 0);
-  }
-
-  isMarqueeSelecting.value = false;
-  marqueeStart.value = null;
-  marqueeCurrent.value = null;
-}
-
-function onContainerKeyDown(e: KeyboardEvent) {
-  const container = rootContainer.value;
-  if (!container) return;
-
-  // We only want to handle keys if focus is within our container
-  // and not inside an input field (e.g. InlineNameEditor)
-  const activeEl = document.activeElement as HTMLElement;
-  if (activeEl?.tagName === 'INPUT') return;
-
-  const items = Array.from(container.querySelectorAll<HTMLElement>('[tabindex="0"]'));
-
-  if (items.length === 0) return;
-
-  const currentIndex = items.indexOf(activeEl);
-
-  if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-    e.preventDefault();
-
-    if (currentIndex === -1) {
-      items[0]?.focus();
-      return;
-    }
-
-    let nextIndex = currentIndex;
-    const isGrid = filesPageStore.viewMode === 'grid';
-
-    if (e.key === 'ArrowRight') {
-      nextIndex = Math.min(currentIndex + 1, items.length - 1);
-    } else if (e.key === 'ArrowLeft') {
-      nextIndex = Math.max(currentIndex - 1, 0);
-    } else if (e.key === 'ArrowDown') {
-      if (isGrid && items[0]) {
-        // Find columns count by looking at items in the first row
-        const firstTop = items[0].offsetTop;
-        let cols = 0;
-        while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
-        cols = cols || 1;
-        nextIndex = Math.min(currentIndex + cols, items.length - 1);
-      } else {
-        nextIndex = Math.min(currentIndex + 1, items.length - 1);
-      }
-    } else if (e.key === 'ArrowUp') {
-      if (isGrid && items[0]) {
-        const firstTop = items[0].offsetTop;
-        let cols = 0;
-        while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
-        cols = cols || 1;
-        nextIndex = Math.max(currentIndex - cols, 0);
-      } else {
-        nextIndex = Math.max(currentIndex - 1, 0);
-      }
-    }
-
-    if (nextIndex !== currentIndex) {
-      const item = items[nextIndex];
-      if (item) {
-        item.focus();
-      }
-    }
-  }
-}
-
-const folderEntries = ref<FsEntry[]>([]);
-const parentFolders = ref<FsEntry[]>([]);
-const isRemoteMode = ref(false);
-const remoteCurrentFolder = ref<RemoteFsEntry | null>(null);
-const lastLocalFolder = ref<FsEntry | null>(null);
-const remoteTransferOpen = ref(false);
-const remoteTransferProgress = ref(0);
-const remoteTransferPhase = ref('');
-const remoteTransferFileName = ref('');
-const remoteTransferAbortController = ref<AbortController | null>(null);
-
-const remoteFilesConfig = computed(() =>
-  resolveExternalServiceConfig({
-    service: 'files',
-    integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl:
-      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.fastcatPublicadorBaseUrl
-        : '',
-  }),
-);
-
-const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
-
-const sttConfig = computed(() =>
-  resolveExternalServiceConfig({
-    service: 'stt',
-    integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl:
-      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.fastcatPublicadorBaseUrl
-        : '',
-  }),
-);
-
+// --- File manager actions (CRUD, rename, delete) ---
 const {
   isDeleteConfirmModalOpen,
   editingEntryPath,
@@ -464,377 +278,175 @@ const {
     const projectName = projectStore.currentProjectName;
     if (projectName) uiStore.setFileTreePathExpanded(projectName, path, expanded);
   },
-  onAfterRename: () => {
-    void loadFolderContent();
-  },
-  onAfterDelete: () => {
-    void loadFolderContent();
-  },
+  onAfterRename: () => { void loadFolderContent(); },
+  onAfterDelete: () => { void loadFolderContent(); },
 });
 
-function handleBatchAction(action: string, entries: FsEntry[]): boolean {
-  const delegated = ['delete', 'createProxy', 'cancelProxy', 'deleteProxy'] as const;
-  if ((delegated as readonly string[]).includes(action)) {
-    onFileActionBase(action as (typeof delegated)[number], entries);
-    return true;
-  }
-  if (action === 'extractAudio') {
-    for (const e of entries) {
-      if (e.kind === 'file') void extractAudio(e);
+// --- File actions dispatcher ---
+const { onFileAction } = useFileBrowserFileActions({
+  folderEntries,
+  loadFolderContent,
+  onFileActionBase,
+  fileConversion,
+  openTranscriptionModal,
+  vfs,
+});
+
+// --- Proxy helpers ---
+function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  const dirPath = entry.path;
+  for (const p of proxyStore.generatingProxies) {
+    if (!dirPath) {
+      if (!p.includes('/')) return true;
+    } else {
+      if (p.startsWith(`${dirPath}/`)) {
+        const rel = p.slice(dirPath.length + 1);
+        if (!rel.includes('/')) return true;
+      }
     }
-    return true;
   }
   return false;
 }
 
-async function handleSingleFileAction(action: string, entry: FsEntry): Promise<void> {
-  if (action === 'createProxyForFolder') {
-    if (entry.kind !== 'directory' || entry.path === undefined) return;
-    const dirHandle = await projectStore.getDirectoryHandleByPath(entry.path);
-    if (!dirHandle) return;
-    void proxyStore.generateProxiesForFolder({ dirHandle, dirPath: entry.path });
-    return;
-  }
+function folderHasVideos(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  const children = Array.isArray(entry.children) ? entry.children : [];
+  return children.some((child) => {
+    if (child.kind !== 'file') return false;
+    const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
+    return ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
+  });
+}
 
-  if (action === 'cancelProxyForFolder') {
-    if (entry.kind !== 'directory' || entry.path === undefined) return;
-    for (const p of proxyStore.generatingProxies) {
-      if (p.startsWith(`${entry.path}/`)) {
-        const rel = p.slice(entry.path.length + 1);
-        if (!rel.includes('/')) void proxyStore.cancelProxyGeneration(p);
+function isVideo(entry: FsEntry): boolean {
+  return entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'video';
+}
+
+// --- Context menu ---
+const { getContextMenuItems } = useFileContextMenu(
+  {
+    isGeneratingProxyInDirectory,
+    folderHasVideos,
+    isOpenableMediaFile: (entry: FsEntry) =>
+      entry.kind === 'file' && isOpenableProjectFileName(entry.name),
+    isConvertibleMediaFile: (entry: FsEntry) => {
+      if (entry.kind !== 'file') return false;
+      const type = getMediaTypeFromFilename(entry.name);
+      return type === 'video' || type === 'audio' || type === 'image';
+    },
+    isTranscribableMediaFile,
+    isVideo,
+    getEntryMeta: (entry: FsEntry) => ({
+      hasProxy: entry.path ? fileManager.mediaCache.hasProxy(entry.path) : false,
+      generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,
+    }),
+    isFilesPage: props.isFilesPage,
+    getSelectedEntries: () => {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager') {
+        if (selected.kind === 'multiple') return selected.entries;
+        if ('entry' in selected) return [selected.entry];
       }
+      return [];
+    },
+  },
+  (action: ContextMenuFileAction, entry: FsEntry | FsEntry[]) => onFileAction(action, entry),
+);
+
+const emptySpaceContextMenuItems = computed(() => {
+  if (isRemoteMode.value) return [];
+  const selected = selectionStore.selectedEntity;
+  if (
+    selected?.source === 'fileManager' &&
+    selected.kind === 'multiple' &&
+    selected.entries.length > 1
+  ) {
+    const first = selected.entries[0];
+    if (!first) return [];
+    return getContextMenuItems(first);
+  }
+  if (!filesPageStore.selectedFolder) return [];
+  return getContextMenuItems(filesPageStore.selectedFolder);
+});
+
+// --- Marquee selection ---
+function focusBrowserPanel() {
+  focusStore.setPanelFocus('filesBrowser');
+}
+
+const { marqueeStyle, preventClickClear, onMarqueePointerDown, onMarqueePointerMove, onMarqueePointerUp } =
+  useFileBrowserMarquee({ rootContainer, sortedEntries, onFocusPanel: focusBrowserPanel });
+
+function handleContainerClick() {
+  focusBrowserPanel();
+  if (preventClickClear.value) return;
+  selectionStore.clearSelection();
+}
+
+// --- Keyboard navigation ---
+function onContainerKeyDown(e: KeyboardEvent) {
+  const container = rootContainer.value;
+  if (!container) return;
+  const activeEl = document.activeElement as HTMLElement;
+  if (activeEl?.tagName === 'INPUT') return;
+
+  const items = Array.from(container.querySelectorAll<HTMLElement>('[tabindex="0"]'));
+  if (items.length === 0) return;
+  const currentIndex = items.indexOf(activeEl);
+
+  if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  e.preventDefault();
+
+  if (currentIndex === -1) {
+    items[0]?.focus();
+    return;
+  }
+
+  let nextIndex = currentIndex;
+  const isGrid = filesPageStore.viewMode === 'grid';
+
+  if (e.key === 'ArrowRight') {
+    nextIndex = Math.min(currentIndex + 1, items.length - 1);
+  } else if (e.key === 'ArrowLeft') {
+    nextIndex = Math.max(currentIndex - 1, 0);
+  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    let cols = 1;
+    if (isGrid && items[0]) {
+      const firstTop = items[0].offsetTop;
+      cols = 0;
+      while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
+      cols = cols || 1;
     }
-    return;
+    nextIndex =
+      e.key === 'ArrowDown'
+        ? Math.min(currentIndex + cols, items.length - 1)
+        : Math.max(currentIndex - cols, 0);
   }
 
-  if (action === 'openAsPanelCut' || action === 'openAsPanelSound') {
-    if (entry.kind !== 'file' || !isOpenableProjectFileName(entry.name)) return;
-    const panelTarget = action === 'openAsPanelCut' ? 'cut' : 'sound';
-    if (action === 'openAsPanelCut') projectStore.goToCut();
-    else projectStore.goToSound();
-
-    const type = getMediaTypeFromFilename(entry.name);
-    if (type === 'text') {
-      void (async () => {
-        try {
-          const file = await vfs.readFile(entry.path);
-          const content = await file.text();
-          projectStore.addTextPanel(entry.path, content, entry.name, undefined, undefined, panelTarget);
-        } catch {
-          projectStore.addTextPanel(entry.path, '', entry.name, undefined, undefined, panelTarget);
-        }
-      })();
-    } else if (type === 'video' || type === 'audio' || type === 'image') {
-      projectStore.addMediaPanel(entry, type, entry.name, undefined, undefined, panelTarget);
-    }
-    return;
-  }
-
-  if (action === 'openAsProjectTab') {
-    if (entry.kind !== 'file' || !entry.path || !isOpenableProjectFileName(entry.name)) return;
-    const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
-    setActiveTab(tabId);
-    return;
-  }
-
-  if (action === 'createFolder') {
-    const existingNames = folderEntries.value.map((e) => e.name);
-    await onFileActionBase('createFolder', entry, () => existingNames);
-    await loadFolderContent();
-    return;
-  }
-
-  if (action === 'createTimeline') {
-    if (entry.kind === 'directory') uiStore.pendingFsEntryCreateTimeline = entry;
-    return;
-  }
-
-  if (action === 'createMarkdown') {
-    if (entry.kind === 'directory') uiStore.pendingFsEntryCreateMarkdown = entry;
-    return;
-  }
-
-  if (action === 'convertFile') {
-    if (entry.kind === 'file') fileConversion.openConversionModal(entry);
-    return;
-  }
-
-  if (action === 'uploadRemote') {
-    if (entry.kind === 'file' && entry.source !== 'remote') {
-      uiStore.remoteExchangeLocalEntry = entry;
-      uiStore.remoteExchangeModalOpen = true;
-    }
-    return;
-  }
-
-  if (action === 'transcribe') {
-    openTranscriptionModal(entry);
-    return;
-  }
-
-  if (action === 'extractAudio') {
-    if (entry.kind === 'file') void extractAudio(entry);
-    return;
-  }
-
-  const delegated = ['delete', 'rename', 'createProxy', 'cancelProxy', 'deleteProxy', 'upload'] as const;
-  if ((delegated as readonly string[]).includes(action)) {
-    onFileActionBase(action as (typeof delegated)[number], entry);
-  }
+  if (nextIndex !== currentIndex) items[nextIndex]?.focus();
 }
 
-async function onFileAction(action: string, entry: FsEntry | FsEntry[]): Promise<void> {
-  if (Array.isArray(entry)) {
-    handleBatchAction(action, entry);
-    return;
-  }
-  await handleSingleFileAction(action, entry);
-}
+// --- Grid size ---
+const GRID_SIZES = [80, 100, 130, 160, 200];
+const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
+const currentGridSizeName = computed(() => {
+  const index = GRID_SIZES.indexOf(filesPageStore.gridCardSize);
+  return GRID_SIZE_NAMES[index] || 'm';
+});
 
-async function refreshFileTree() {
-  if (isRemoteMode.value) {
-    await loadFolderContent();
-    return;
-  }
-  folderSizes.value = {};
-  await loadProjectDirectory({ fullRefresh: true } as any);
-}
+// --- Column resize ---
+const resizingColumn = ref<string | null>(null);
+const resizeStartX = ref(0);
+const resizeStartWidth = ref(0);
 
-function buildRemoteDirectoryEntry(path: string): RemoteFsEntry {
-  const normalizedPath = path || '/';
-  const name =
-    normalizedPath === '/'
-      ? 'Remote'
-      : normalizedPath.split('/').filter(Boolean).at(-1) || 'Remote';
-  const remoteData: RemoteVfsEntry = {
-    id: normalizedPath,
-    name,
-    path: normalizedPath,
-    type: 'directory',
-  };
+onUnmounted(() => {
+  cleanupObjectUrls();
+  document.removeEventListener('mousemove', onResizeMove);
+  document.removeEventListener('mouseup', onResizeEnd);
+});
 
-  return {
-    name,
-    kind: 'directory',
-    path: normalizedPath,
-    source: 'remote',
-    remoteId: normalizedPath,
-    remotePath: normalizedPath,
-    remoteType: 'directory',
-    remoteData,
-    mimeType: 'folder',
-    size: 0,
-  };
-}
-
-function setSelectedFsEntry(entry: FsEntry | null) {
-  if (!entry) {
-    uiStore.selectedFsEntry = null;
-    selectionStore.clearSelection();
-    return;
-  }
-
-  uiStore.selectedFsEntry = {
-    kind: entry.kind,
-    name: entry.name,
-    path: entry.path,
-    parentPath: entry.parentPath,
-    lastModified: entry.lastModified,
-    size: entry.size,
-    source: entry.source ?? 'local',
-    remoteId: entry.remoteId,
-    remotePath: entry.remotePath,
-    remoteData: entry.remoteData,
-  };
-  selectionStore.selectFsEntry(entry);
-}
-
-function openRemoteExchangeModal() {
-  uiStore.remoteExchangeModalOpen = true;
-}
-
-async function toggleRemoteMode() {
-  if (!isRemoteAvailable.value) return;
-
-  if (!isRemoteMode.value) {
-    lastLocalFolder.value = filesPageStore.selectedFolder;
-    isRemoteMode.value = true;
-    remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
-    await loadFolderContent();
-    await loadParentFolders();
-    setSelectedFsEntry(remoteCurrentFolder.value);
-    return;
-  }
-
-  isRemoteMode.value = false;
-  remoteCurrentFolder.value = null;
-  await loadParentFolders();
-  if (lastLocalFolder.value) {
-    filesPageStore.selectFolder(lastLocalFolder.value);
-  } else {
-    await navigateToRoot();
-  }
-}
-
-function onBrowserEntryDragStart(e: DragEvent, entry: FsEntry) {
-  if (isRemoteMode.value && isRemoteFsEntry(entry)) {
-    if (entry.kind !== 'file' || !e.dataTransfer) return;
-
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(entry));
-    e.dataTransfer.setData(INTERNAL_DRAG_TYPE, '1');
-
-    const data: DraggedFileData = {
-      name: entry.name,
-      kind: 'file',
-      path: entry.remotePath,
-    };
-    useDraggedFile().setDraggedFile(data);
-    e.dataTransfer.setData('application/json', JSON.stringify(data));
-    return;
-  }
-
-  onEntryDragStart(e, entry);
-}
-
-function onBrowserEntryDragEnd() {
-  useDraggedFile().clearDraggedFile();
-  onEntryDragEnd();
-}
-
-function onBrowserEntryDragOver(e: DragEvent, entry: FsEntry) {
-  if (isRemoteMode.value) return;
-  onEntryDragOver(e, entry);
-}
-
-function onBrowserEntryDragLeave(e: DragEvent, entry: FsEntry) {
-  if (isRemoteMode.value) return;
-  onEntryDragLeave(e, entry);
-}
-
-async function onBrowserEntryDrop(e: DragEvent, entry: FsEntry) {
-  if (isRemoteMode.value) return;
-  await onEntryDrop(e, entry);
-}
-
-function onBrowserRootDragOver(e: DragEvent) {
-  if (isRemoteMode.value) return;
-  onRootDragOver(e);
-}
-
-function onBrowserRootDragLeave(e: DragEvent) {
-  if (isRemoteMode.value) return;
-  onRootDragLeave(e);
-}
-
-async function onBrowserRootDrop(e: DragEvent) {
-  if (isRemoteMode.value) return;
-  await onRootDrop(e);
-}
-
-async function performRemoteDownload(params: { entry: RemoteFsEntry; targetDirPath: string }) {
-  const config = remoteFilesConfig.value;
-  if (!config) return;
-  if (params.entry.kind !== 'file') return;
-
-  const remoteFile = params.entry.remoteData as RemoteVfsFileEntry;
-  const downloadUrl = getRemoteFileDownloadUrl({
-    baseUrl: config.baseUrl,
-    entry: remoteFile,
-  });
-
-  if (!downloadUrl) {
-    throw new Error('Remote file download URL is missing');
-  }
-
-  const controller = new AbortController();
-  remoteTransferAbortController.value = controller;
-  remoteTransferFileName.value = params.entry.name;
-  remoteTransferProgress.value = 0;
-  remoteTransferPhase.value = t('videoEditor.fileManager.actions.downloadFiles', 'Download files');
-  remoteTransferOpen.value = true;
-
-  try {
-    const blob = await downloadRemoteFile({
-      url: downloadUrl,
-      signal: controller.signal,
-      onProgress: (progress) => {
-        remoteTransferProgress.value = progress;
-      },
-    });
-
-    const file = new File([blob], params.entry.name, {
-      type: blob.type || params.entry.mimeType || 'application/octet-stream',
-    });
-
-    remoteTransferPhase.value = t('videoEditor.fileManager.actions.uploadFiles', 'Upload files');
-    await handleFiles([file], params.targetDirPath);
-    uiStore.notifyFileManagerUpdate();
-    await loadFolderContent();
-  } finally {
-    remoteTransferAbortController.value = null;
-    remoteTransferOpen.value = false;
-    remoteTransferProgress.value = 0;
-    remoteTransferPhase.value = '';
-    remoteTransferFileName.value = '';
-  }
-}
-
-function cancelRemoteTransfer() {
-  remoteTransferAbortController.value?.abort();
-}
-
-async function createTimelineInDirectory(entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-
-  const existingInFolder = await readDirectory(entry.path);
-  const existingNames = existingInFolder.map((e) => e.name);
-
-  const createdPath = await createTimelineCommand({
-    vfs,
-    timelinesDirName: entry.path || undefined,
-    existingNames,
-  });
-
-  await reloadDirectory(entry.path || '');
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
-
-  const createdEntry = findEntryByPath(createdPath);
-  if (createdEntry) {
-    selectionStore.selectFsEntry(createdEntry);
-  }
-}
-
-async function createMarkdownInDirectory(entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-
-  if (entry.path) {
-    const projectName = projectStore.currentProjectName;
-    if (projectName) {
-      uiStore.setFileTreePathExpanded(projectName, entry.path, true);
-    }
-  }
-
-  const existingInFolder = await readDirectory(entry.path);
-  const existingNames = existingInFolder.map((e) => e.name);
-
-  const createdFileName = await createMarkdownCommand({
-    vfs,
-    dirPath: entry.path,
-    existingNames,
-  });
-
-  await reloadDirectory(entry.path || '');
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
-
-  const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
-  const createdEntry = findEntryByPath(createdPath);
-  if (createdEntry) {
-    selectionStore.selectFsEntry(createdEntry);
-  }
-}
+// --- Watches that remain in component ---
 
 watch(
   () => uiStore.pendingFsEntryRename,
@@ -875,405 +487,15 @@ watch(
   },
 );
 
-function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  const dirPath = entry.path;
-  for (const p of proxyStore.generatingProxies) {
-    if (!dirPath) {
-      if (!p.includes('/')) return true;
-    } else {
-      if (p.startsWith(`${dirPath}/`)) {
-        const rel = p.slice(dirPath.length + 1);
-        if (!rel.includes('/')) return true;
-      }
-    }
-  }
-  return false;
-}
-
-function folderHasVideos(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  const children = Array.isArray(entry.children) ? entry.children : [];
-  return children.some((child) => {
-    if (child.kind !== 'file') return false;
-    const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
-    return ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
-  });
-}
-
-function isVideo(entry: FsEntry): boolean {
-  if (entry.kind !== 'file') return false;
-  return getMediaTypeFromFilename(entry.name) === 'video';
-}
-
-function isTranscribableMediaFile(entry: FsEntry): boolean {
-  if (entry.kind !== 'file' || entry.source === 'remote') return false;
-
-  const type = getMediaTypeFromFilename(entry.name);
-
-  return (
-    (type === 'audio' || type === 'video') &&
-    Boolean(sttConfig.value) &&
-    Boolean(workspaceStore.workspaceHandle) &&
-    Boolean(projectStore.currentProjectId) &&
-    Boolean(entry.path)
-  );
-}
-
-const sttTranscriptionModalOpen = ref(false);
-const sttTranscriptionLanguage = ref('');
-const sttTranscriptionError = ref('');
-const sttTranscribing = ref(false);
-const sttTranscriptionEntry = ref<FsEntry | null>(null);
-
-const { getContextMenuItems } = useFileContextMenu(
-  {
-    isGeneratingProxyInDirectory,
-    folderHasVideos,
-    isOpenableMediaFile: (entry: FsEntry) => {
-      if (entry.kind !== 'file') return false;
-      return isOpenableProjectFileName(entry.name);
-    },
-    isConvertibleMediaFile: (entry: FsEntry) => {
-      if (entry.kind !== 'file') return false;
-      const type = getMediaTypeFromFilename(entry.name);
-      return type === 'video' || type === 'audio' || type === 'image';
-    },
-    isTranscribableMediaFile,
-    isVideo,
-    getEntryMeta: (entry: FsEntry) => ({
-      hasProxy: entry.path ? fileManager.mediaCache.hasProxy(entry.path) : false,
-      generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,
-    }),
-    isFilesPage: props.isFilesPage,
-    getSelectedEntries: () => {
-      const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager') {
-        if (selected.kind === 'multiple') return selected.entries;
-        if ('entry' in selected) return [selected.entry];
-      }
-      return [];
-    },
-  },
-  (action: ContextMenuFileAction, entry: FsEntry | FsEntry[]) => onFileAction(action, entry),
-);
-
-const emptySpaceContextMenuItems = computed(() => {
-  if (isRemoteMode.value) return [];
-
-  const selected = selectionStore.selectedEntity;
-  if (
-    selected?.source === 'fileManager' &&
-    selected.kind === 'multiple' &&
-    selected.entries.length > 1
-  ) {
-    const first = selected.entries[0];
-    if (!first) return [];
-    return getContextMenuItems(first);
-  }
-  if (!filesPageStore.selectedFolder) return [];
-  return getContextMenuItems(filesPageStore.selectedFolder);
-});
-
-const GRID_SIZES = [80, 100, 130, 160, 200];
-const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
-
-const currentGridSizeName = computed(() => {
-  const index = GRID_SIZES.indexOf(filesPageStore.gridCardSize);
-  return GRID_SIZE_NAMES[index] || 'm';
-});
-
-const resizingColumn = ref<string | null>(null);
-const resizeStartX = ref(0);
-const resizeStartWidth = ref(0);
-
-const folderSizes = ref<Record<string, number>>({});
-const folderSizesLoading = ref<Record<string, boolean>>({});
-
-const sizeCalcQueue = new PQueue({ concurrency: 5 });
-
-async function calculateFolderSize(path: string, handle?: FileSystemDirectoryHandle) {
-  if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
-
-  folderSizesLoading.value[path] = true;
-  await sizeCalcQueue.add(async () => {
-    try {
-      const resolvedHandle = handle ?? (await projectStore.getDirectoryHandleByPath(path));
-      if (!resolvedHandle) return;
-      let totalSize = 0;
-
-      async function calc(dirHandle: FileSystemDirectoryHandle) {
-        // @ts-expect-error Types for FileSystemDirectoryHandle values iterator may be incomplete
-        for await (const entry of dirHandle.values()) {
-          if (entry.kind === 'file') {
-            try {
-              const file = await entry.getFile();
-              totalSize += file.size;
-            } catch {
-              // skip
-            }
-          } else if (entry.kind === 'directory') {
-            await calc(entry);
-          }
-        }
-      }
-
-      await calc(resolvedHandle);
-      folderSizes.value[path] = totalSize;
-    } catch (error) {
-      console.error('Failed to calculate folder size:', error);
-    } finally {
-      folderSizesLoading.value[path] = false;
-    }
-  });
-}
-
-// Calculate size for selected entity (details view)
-watch(
-  () => uiStore.selectedFsEntry,
-  (entry) => {
-    if (isRemoteMode.value) {
-      if (entry?.kind === 'file' && entry.path) {
-        pendingScrollToEntryPath.value = entry.path;
-      }
-      return;
-    }
-
-    if (entry && entry.kind === 'directory' && entry.path) {
-      void calculateFolderSize(entry.path);
-    }
-
-    if (entry?.kind === 'file' && entry.path) {
-      pendingScrollToEntryPath.value = entry.path;
-
-      // If we are already in the correct folder, scroll immediately
-      const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
-      const targetParentPath = entry.path.split('/').slice(0, -1).join('/');
-      if (targetParentPath === selectedFolderPath) {
-        requestAnimationFrame(() => {
-          if (!pendingScrollToEntryPath.value) return;
-          if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
-          pendingScrollToEntryPath.value = null;
-        });
-      }
-    }
-  },
-  { immediate: true },
-);
-
-// Trigger sizes for directories in list view (one by one)
-watch(
-  () => [folderEntries.value, filesPageStore.viewMode],
-  () => {
-    if (isRemoteMode.value) return;
-
-    if (filesPageStore.viewMode === 'list' && folderEntries.value.length > 0) {
-      for (const entry of folderEntries.value) {
-        if (
-          entry.kind === 'directory' &&
-          entry.path &&
-          folderSizes.value[entry.path] === undefined &&
-          !folderSizesLoading.value[entry.path]
-        ) {
-          void calculateFolderSize(entry.path);
-        }
-      }
-    }
-  },
-  { immediate: true },
-);
-
-async function loadFolderContent() {
-  // Preserve scroll position when a scroll-to-entry is pending
-  const savedScrollTop = pendingScrollToEntryPath.value
-    ? (rootContainer.value?.scrollTop ?? null)
-    : null;
-
-  if (isRemoteMode.value) {
-    if (!remoteCurrentFolder.value || !remoteFilesConfig.value) {
-      folderEntries.value = [];
-      return;
-    }
-
-    try {
-      const response = await fetchRemoteVfsList({
-        config: remoteFilesConfig.value,
-        path: remoteCurrentFolder.value.remotePath || '/',
-      });
-      cleanupObjectUrls();
-      folderEntries.value = response.items.map((entry) => toRemoteFsEntry(entry));
-    } catch (error) {
-      console.error('Failed to load remote folder content:', error);
-      folderEntries.value = [];
-      toast.add({
-        color: 'error',
-        title: t('common.error', 'Error'),
-        description: error instanceof Error ? error.message : 'Failed to load remote folder',
-      });
-    }
-    return;
-  }
-
-  if (!filesPageStore.selectedFolder) {
-    cleanupObjectUrls();
-    folderEntries.value = [];
-    return;
-  }
-
-  try {
-    const path = filesPageStore.selectedFolder.path || '';
-    let entries = await readDirectory(path);
-    if (!path) {
-      const commonMetadata = await vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
-      if (commonMetadata?.kind === 'directory') {
-        const commonEntry: FsEntry = {
-          kind: 'directory',
-          name: WORKSPACE_COMMON_DIR_NAME,
-          path: WORKSPACE_COMMON_PATH_PREFIX,
-        };
-        entries = [
-          commonEntry,
-          ...entries.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
-        ];
-      }
-    }
-    // readDirectory already filters hidden files based on deps.showHiddenFiles(),
-    // but just to be sure we also filter it here if needed.
-    const filteredEntries = entries.filter(
-      (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
-    );
-    cleanupObjectUrls();
-    folderEntries.value = await supplementEntries(filteredEntries);
-  } catch (error) {
-    console.error('Failed to load folder content:', error);
-    cleanupObjectUrls();
-    folderEntries.value = [];
-  }
-
-  // Restore scroll position after re-render so pending scroll-to-entry works correctly
-  if (savedScrollTop !== null) {
-    await nextTick();
-    if (rootContainer.value && pendingScrollToEntryPath.value) {
-      rootContainer.value.scrollTop = savedScrollTop;
-    }
-  }
-}
-
-function cleanupObjectUrls() {
-  for (const entry of folderEntries.value as ExtendedFsEntry[]) {
-    if (entry.objectUrl) {
-      URL.revokeObjectURL(entry.objectUrl);
-    }
-  }
-}
-
-onUnmounted(() => {
-  cleanupObjectUrls();
-  document.removeEventListener('mousemove', onResizeMove);
-  document.removeEventListener('mouseup', onResizeEnd);
-});
-
-async function loadParentFolders() {
-  parentFolders.value = [];
-
-  if (isRemoteMode.value) {
-    const currentPath = remoteCurrentFolder.value?.remotePath || '/';
-    const parts = currentPath.split('/').filter(Boolean);
-    let accum = '';
-
-    for (const part of parts) {
-      accum = `${accum}/${part}`;
-      parentFolders.value.push(buildRemoteDirectoryEntry(accum));
-    }
-    return;
-  }
-
-  const selectedFolderPath = filesPageStore.selectedFolder?.path;
-  if (!selectedFolderPath) return;
-
-  if (selectedFolderPath === WORKSPACE_COMMON_PATH_PREFIX) {
-    parentFolders.value.push({
-      kind: 'directory',
-      name: WORKSPACE_COMMON_DIR_NAME,
-      path: WORKSPACE_COMMON_PATH_PREFIX,
-    });
-    return;
-  }
-
-  if (selectedFolderPath.startsWith(`${WORKSPACE_COMMON_PATH_PREFIX}/`)) {
-    let currentPath = WORKSPACE_COMMON_PATH_PREFIX;
-    parentFolders.value.push({
-      kind: 'directory',
-      name: WORKSPACE_COMMON_DIR_NAME,
-      path: WORKSPACE_COMMON_PATH_PREFIX,
-    });
-
-    const pathParts = stripWorkspaceCommonPathPrefix(selectedFolderPath).split('/').filter(Boolean);
-    for (const part of pathParts) {
-      currentPath = `${currentPath}/${part}`;
-      parentFolders.value.push({
-        kind: 'directory',
-        name: part,
-        path: currentPath,
-      });
-    }
-    return;
-  }
-
-  const pathParts = selectedFolderPath.split('/').filter(Boolean);
-  let currentPath = '';
-
-  for (const part of pathParts) {
-    currentPath = currentPath ? `${currentPath}/${part}` : part;
-    parentFolders.value.push({
-      kind: 'directory',
-      name: part,
-      path: currentPath,
-    });
-  }
-}
-
-watch(
-  () => uiStore.showHiddenFiles,
-  async () => {
-    await loadFolderContent();
-  },
-);
-
-watch(
-  () => filesPageStore.selectedFolder,
-  async () => {
-    if (isRemoteMode.value) return;
-    await loadFolderContent();
-    await loadParentFolders();
-
-    if (!pendingScrollToEntryPath.value) return;
-
-    const targetPath = pendingScrollToEntryPath.value;
-    const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
-    const targetParentPath = targetPath.split('/').slice(0, -1).join('/');
-
-    if (targetParentPath !== selectedFolderPath) return;
-
-    await nextTick();
-    requestAnimationFrame(() => {
-      if (!pendingScrollToEntryPath.value) return;
-      if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
-      pendingScrollToEntryPath.value = null;
-    });
-  },
-  { immediate: true },
-);
-
 watch(
   () => uiStore.pendingRemoteDownloadRequest,
   async (request) => {
     if (!request) return;
-
     try {
       await performRemoteDownload(request);
     } catch (error) {
       if ((error as Error | undefined)?.name !== 'AbortError') {
+        const toast = useToast();
         toast.add({
           color: 'error',
           title: t('common.error', 'Error'),
@@ -1293,123 +515,60 @@ watch(
       skipNextUpdateReload.value = false;
       return;
     }
-
-    // only reload the current view content, not the whole tree
     await loadFolderContent();
-
     if (!pendingScrollToEntryPath.value) return;
-
     await nextTick();
-    requestAnimationFrame(() => {
-      if (!pendingScrollToEntryPath.value) return;
-      if (!scrollToEntryPath(pendingScrollToEntryPath.value)) return;
-      pendingScrollToEntryPath.value = null;
-    });
+    tryScrollToPendingEntry();
   },
 );
 
-interface ExtendedFsEntry extends FsEntry {
-  size?: number;
-  mimeType?: string;
-  created?: number;
-  objectUrl?: string;
-}
+// --- Create timeline / markdown in directory ---
 
-const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
-
-async function supplementEntries(entries: FsEntry[]): Promise<ExtendedFsEntry[]> {
-  const supplements = await Promise.all(
-    entries.map(async (entry) => {
-      if (entry.kind === 'file') {
-        try {
-          const file = await vfs.getFile(entry.path);
-          if (!file) {
-            return { ...entry, size: 0, mimeType: 'unknown' };
-          }
-          const objectUrl = await createPreviewUrl(entry.name, file);
-          return {
-            ...entry,
-            size: file.size,
-            mimeType: getMimeTypeFromFilename(entry.name),
-            lastModified: file.lastModified,
-            created: file.lastModified,
-            objectUrl,
-          };
-        } catch {
-          return { ...entry, size: 0, mimeType: 'unknown' };
-        }
-      }
-      return { ...entry, size: 0, mimeType: 'folder' };
-    }),
-  );
-  return supplements;
-}
-
-async function createPreviewUrl(name: string, file: File): Promise<string | undefined> {
-  const ext = name.split('.').pop()?.toLowerCase();
-  if (!ext || !SUPPORTED_IMAGE_EXTS.includes(ext)) return undefined;
-  try {
-    return URL.createObjectURL(file);
-  } catch {
-    return undefined;
-  }
-}
-
-const sortedEntries = computed(() => {
-  const arr = [...folderEntries.value] as ExtendedFsEntry[];
-
-  // Separate folders and files
-  const folders = arr.filter((e) => e.kind === 'directory');
-  const files = arr.filter((e) => e.kind === 'file');
-
-  const { field, order } = filesPageStore.sortOption;
-  const modifier = order === 'asc' ? 1 : -1;
-
-  const compare = (a: any, b: any) => {
-    if (a === b) return 0;
-    return a > b ? modifier : -modifier;
-  };
-
-  folders.sort((a, b) => compare(a.name.toLowerCase(), b.name.toLowerCase()));
-
-  files.sort((a, b) => {
-    switch (field) {
-      case 'name':
-        return compare(a.name.toLowerCase(), b.name.toLowerCase());
-      case 'type':
-        return compare(a.mimeType || '', b.mimeType || '');
-      case 'size':
-        return compare(a.size || 0, b.size || 0);
-      case 'modified':
-        return compare(a.lastModified || 0, b.lastModified || 0);
-      case 'created':
-        return compare(a.created || 0, b.created || 0);
-      default:
-        return 0;
-    }
+async function createTimelineInDirectory(entry: FsEntry) {
+  if (entry.kind !== 'directory') return;
+  const existingInFolder = await readDirectory(entry.path);
+  const existingNames = existingInFolder.map((e) => e.name);
+  const createdPath = await createTimelineCommand({
+    vfs,
+    timelinesDirName: entry.path || undefined,
+    existingNames,
   });
+  await reloadDirectory(entry.path || '');
+  uiStore.notifyFileManagerUpdate();
+  await loadFolderContent();
+  const createdEntry = findEntryByPath(createdPath);
+  if (createdEntry) selectionStore.selectFsEntry(createdEntry);
+}
 
-  return [...folders, ...files];
-});
-
-const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries);
-
-const stats = computed(() => {
-  let totalSize = 0;
-  let fileCount = 0;
-
-  for (const entry of folderEntries.value as ExtendedFsEntry[]) {
-    if (entry.kind === 'file') {
-      totalSize += entry.size || 0;
-      fileCount++;
-    }
+async function createMarkdownInDirectory(entry: FsEntry) {
+  if (entry.kind !== 'directory') return;
+  if (entry.path) {
+    const projectName = projectStore.currentProjectName;
+    if (projectName) uiStore.setFileTreePathExpanded(projectName, entry.path, true);
   }
+  const existingInFolder = await readDirectory(entry.path);
+  const existingNames = existingInFolder.map((e) => e.name);
+  const createdFileName = await createMarkdownCommand({ vfs, dirPath: entry.path, existingNames });
+  await reloadDirectory(entry.path || '');
+  uiStore.notifyFileManagerUpdate();
+  await loadFolderContent();
+  const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
+  const createdEntry = findEntryByPath(createdPath);
+  if (createdEntry) selectionStore.selectFsEntry(createdEntry);
+}
 
-  return {
-    totalSize: formatBytes(totalSize),
-    fileCount,
-  };
-});
+// --- Refresh ---
+
+async function refreshFileTree() {
+  if (isRemoteMode.value) {
+    await loadFolderContent();
+    return;
+  }
+  folderSizes.value = {};
+  await loadProjectDirectory({ fullRefresh: true } as any);
+}
+
+// --- Entry interaction ---
 
 function handleEntryClick(event: MouseEvent, entry: FsEntry) {
   if (isRemoteMode.value) {
@@ -1522,69 +681,6 @@ function handleSort(field: FileSortField) {
   }
 }
 
-function navigateToFolder(index: number) {
-  const targetFolder = parentFolders.value[index];
-  if (targetFolder) {
-    if (isRemoteMode.value && isRemoteFsEntry(targetFolder)) {
-      remoteCurrentFolder.value = targetFolder;
-      void loadFolderContent();
-      void loadParentFolders();
-      setSelectedFsEntry(targetFolder);
-      return;
-    }
-
-    filesPageStore.selectFolder(targetFolder);
-  }
-}
-
-function navigateToParentByIndex(parentIndex: number): void {
-  const target = parentFolders.value[parentIndex];
-  if (!target) return;
-
-  if (isRemoteMode.value && isRemoteFsEntry(target)) {
-    remoteCurrentFolder.value = target as RemoteFsEntry;
-    void loadFolderContent();
-    void loadParentFolders();
-    setSelectedFsEntry(target as RemoteFsEntry);
-    return;
-  }
-
-  filesPageStore.selectFolder(target as FsEntry);
-}
-
-function navigateBack(): void {
-  if (parentFolders.value.length > 1) {
-    navigateToParentByIndex(parentFolders.value.length - 2);
-  } else {
-    void navigateToRoot();
-  }
-}
-
-function navigateUp(): void {
-  if (parentFolders.value.length > 1) {
-    navigateToParentByIndex(parentFolders.value.length - 2);
-  } else if (parentFolders.value.length === 1) {
-    void navigateToRoot();
-  }
-}
-
-async function navigateToRoot() {
-  if (isRemoteMode.value) {
-    remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
-    await loadFolderContent();
-    await loadParentFolders();
-    setSelectedFsEntry(remoteCurrentFolder.value);
-    return;
-  }
-
-  const rootEntry: FsEntry = {
-    kind: 'directory',
-    name: projectStore.currentProjectName || '',
-    path: '',
-  };
-  filesPageStore.selectFolder(rootEntry);
-}
-
 function onResizeStart(e: MouseEvent, column: string) {
   resizingColumn.value = column;
   resizeStartX.value = e.clientX;
@@ -1628,73 +724,6 @@ async function onDirectoryUploadChange(e: Event) {
 }
 
 // Panel drop handled by useFileBrowserDragAndDrop
-
-function openTranscriptionModal(entry: FsEntry) {
-  sttTranscriptionLanguage.value = '';
-  sttTranscriptionError.value = '';
-  sttTranscriptionModalOpen.value = true;
-  sttTranscriptionEntry.value = entry;
-}
-
-async function submitTranscription() {
-  const entry = sttTranscriptionEntry.value;
-
-  if (
-    !entry ||
-    entry.kind !== 'file' ||
-    !workspaceStore.workspaceHandle ||
-    !projectStore.currentProjectId
-  ) {
-    return;
-  }
-
-  sttTranscribing.value = true;
-  sttTranscriptionError.value = '';
-
-  try {
-    const mediaType = getMediaTypeFromFilename(entry.name);
-    const entryMimeType = (entry as ExtendedFsEntry).mimeType;
-    const file = await projectStore.getFileByPath(entry.path);
-    const fileType = file?.type || entryMimeType || '';
-
-    if (!file) throw new Error('Failed to access file for transcription');
-
-    const request: SttTranscriptionRequest = {
-      file,
-      filePath: entry.path,
-      fileName: entry.name,
-      fileType,
-      language: sttTranscriptionLanguage.value,
-      fastcatPublicadorBaseUrl:
-        typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-          ? runtimeConfig.public.fastcatPublicadorBaseUrl
-          : '',
-      projectId: projectStore.currentProjectId!,
-      userSettings: workspaceStore.userSettings,
-      workspaceHandle: workspaceStore.workspaceHandle!,
-      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-    };
-
-    const result = await transcribeProjectAudioFile(request);
-
-    sttTranscriptionModalOpen.value = false;
-
-    toast.add({
-      title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
-      description: result.cached
-        ? 'Cached transcription was loaded from vardata.'
-        : mediaType === 'video'
-          ? 'Video audio track was transcribed and saved to vardata cache.'
-          : 'Transcription was saved to vardata cache.',
-      color: 'success',
-    });
-  } catch (error: unknown) {
-    sttTranscriptionError.value =
-      error instanceof Error ? error.message : 'Failed to transcribe media';
-  } finally {
-    sttTranscribing.value = false;
-  }
-}
 </script>
 
 <template>
