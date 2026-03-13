@@ -47,7 +47,6 @@ export interface FastCatProjectSettings {
   };
   timelines: {
     openPaths: string[];
-    lastOpenedPath: string | null;
   };
   transitions: {
     defaultDurationUs: number;
@@ -93,7 +92,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
   },
   timelines: {
     openPaths: [],
-    lastOpenedPath: null,
   },
   transitions: {
     defaultDurationUs: 2_000_000,
@@ -145,7 +143,6 @@ export function createDefaultProjectSettings(
     monitor: { ...DEFAULT_PROJECT_SETTINGS.monitor },
     timelines: {
       openPaths: [],
-      lastOpenedPath: null,
     },
     transitions: {
       defaultDurationUs: DEFAULT_PROJECT_SETTINGS.transitions.defaultDurationUs,
@@ -311,10 +308,8 @@ export function normalizeProjectSettings(
     },
     timelines: {
       openPaths: Array.isArray(input.timelines?.openPaths)
-        ? input.timelines.openPaths.filter((p: any) => typeof p === 'string')
+        ? input.timelines.openPaths.filter((p: any) => typeof p === 'string').map(String)
         : [],
-      lastOpenedPath:
-        typeof input.timelines?.lastOpenedPath === 'string' ? input.timelines.lastOpenedPath : null,
     },
     transitions: {
       defaultDurationUs:

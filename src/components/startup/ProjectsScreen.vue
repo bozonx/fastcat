@@ -4,6 +4,7 @@ import { useProjectManagement } from '~/composables/project/useProjectManagement
 import SearchInput from '~/components/ui/SearchInput.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -31,9 +32,11 @@ const projectPresetOptions = computed(() =>
   })),
 );
 
-// Локальная копия последнего проекта для отображения "Continue Working"
-// так как в родительском компоненте мы его удаляем из глобального стора
-const suggestedProject = computed(() => workspaceStore.lastProjectName);
+// Список последних проектов для Hero-секции и списка
+const recentProjects = computed(() => workspaceStore.recentProjects);
+const lastProject = computed(() => recentProjects.value[0]);
+
+const getRecentInfo = (name: string) => recentProjects.value.find((p) => p.projectName === name);
 </script>
 
 <template>
@@ -74,23 +77,63 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
 
       <!-- Last Project Hero Section -->
       <div
-        v-if="suggestedProject && workspaceStore.projects.includes(suggestedProject)"
-        class="bg-linear-to-r from-primary-950/80 to-primary-900/40 border border-primary-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-primary-500/10"
+        v-if="lastProject && workspaceStore.projects.includes(lastProject.projectName)"
+        class="bg-linear-to-r from-primary-950/80 to-primary-900/40 border border-primary-500/30 rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-2xl shadow-primary-500/10"
       >
-        <div class="space-y-2">
-          <span class="text-primary-400 text-xs font-bold uppercase tracking-widest">
-            {{ t('fastcat.projects.continueWorking') }}
-          </span>
-          <h2 class="text-3xl font-bold text-ui-text">{{ suggestedProject }}</h2>
+        <div class="w-full md:w-1/3 aspect-video shrink-0">
+          <ProjectThumbnail
+            :project-id="lastProject.projectId"
+            :project-relative-path="lastProject.lastTimelinePath"
+            :project-name="lastProject.projectName"
+          />
         </div>
-        <UButton
-          size="xl"
-          color="primary"
-          class="px-8 shadow-lg shadow-primary-500/20"
-          icon="i-heroicons-play"
-          :label="t('fastcat.projects.openLast')"
-          @click="handleOpenProject(suggestedProject!)"
-        />
+        <div class="p-8 flex flex-col justify-center flex-1 gap-6">
+          <div class="space-y-2">
+            <span class="text-primary-400 text-xs font-bold uppercase tracking-widest">
+              {{ t('fastcat.projects.continueWorking') }}
+            </span>
+            <h2 class="text-3xl font-bold text-ui-text">{{ lastProject.projectName }}</h2>
+          </div>
+          <div>
+            <UButton
+              size="xl"
+              color="primary"
+              class="px-8 shadow-lg shadow-primary-500/20"
+              icon="i-heroicons-play"
+              :label="t('fastcat.projects.openLast')"
+              @click="handleOpenProject(lastProject.projectName)"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Projects List (Horizontal/Scrollable) -->
+      <div v-if="recentProjects.length > 1" class="space-y-4">
+        <h3 class="font-medium text-ui-text-muted uppercase text-xs tracking-wider">
+          {{ t('fastcat.projects.recentProjects') }}
+        </h3>
+        <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+          <div
+            v-for="project in recentProjects.slice(1, 6)"
+            :key="project.projectId"
+            class="flex-none w-64 bg-ui-bg-elevated border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 transition-all cursor-pointer group"
+            @click="handleOpenProject(project.projectName)"
+          >
+            <div class="aspect-video">
+              <ProjectThumbnail
+                :project-id="project.projectId"
+                :project-relative-path="project.lastTimelinePath"
+                :project-name="project.projectName"
+              />
+            </div>
+            <div class="p-3">
+              <h4 class="font-medium text-sm text-ui-text truncate">{{ project.projectName }}</h4>
+              <p class="text-[10px] text-ui-text-muted mt-1">
+                {{ new Date(project.updatedAt).toLocaleDateString() }}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="flex flex-col gap-4">
@@ -128,72 +171,82 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
           <div
             v-for="project in filteredProjects"
             :key="project"
-            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg"
+            class="bg-ui-bg-elevated border border-ui-border rounded-xl flex flex-col hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg overflow-hidden"
             @click="isRenaming === project ? null : handleOpenProject(project)"
           >
-            <div class="flex items-center justify-between gap-3 mb-4 overflow-hidden">
-              <div class="flex items-center gap-3 overflow-hidden">
-                <div
-                  class="w-10 h-10 rounded-lg bg-ui-bg-accent flex items-center justify-center group-hover:bg-primary-500/10 transition-colors"
-                >
-                  <UIcon
-                    name="i-heroicons-film"
-                    class="w-5 h-5 text-ui-text-muted group-hover:text-primary-400 transition-colors"
-                  />
-                </div>
-                <div v-if="isRenaming === project" class="flex-1">
-                  <UInput
-                    v-model="renameValue"
-                    size="sm"
-                    autofocus
-                    @keyup.enter="renameProject(project)"
-                    @keyup.esc="isRenaming = null"
-                    @click.stop
-                  />
-                </div>
-                <h3
-                  v-else
-                  class="font-medium text-ui-text truncate group-hover:text-primary-300 transition-colors"
-                >
-                  {{ project }}
-                </h3>
-              </div>
+            <div class="aspect-video relative shrink-0">
+              <ProjectThumbnail
+                :project-id="getRecentInfo(project)?.projectId"
+                :project-relative-path="getRecentInfo(project)?.lastTimelinePath"
+                :project-name="project"
+              />
             </div>
 
-            <div class="mt-auto flex justify-between items-center pt-4">
-              <UButton
-                v-if="isRenaming !== project"
-                size="sm"
-                variant="ghost"
-                color="neutral"
-                icon="lucide:edit-2"
-                class="opacity-0 group-hover:opacity-100 transition-opacity"
-                @click.stop="startRename(project)"
-              />
-              <div v-else class="flex gap-1 ml-auto">
-                <UButton
-                  size="xs"
-                  color="neutral"
-                  icon="lucide:x"
-                  @click.stop="isRenaming = null"
-                />
-                <UButton
-                  size="xs"
-                  color="primary"
-                  icon="lucide:check"
-                  @click.stop="renameProject(project)"
-                />
+            <div class="p-4 flex flex-col flex-1">
+              <div class="flex items-center justify-between gap-3 mb-4 overflow-hidden">
+                <div class="flex items-center gap-3 overflow-hidden">
+                  <div
+                    class="w-8 h-8 rounded-lg bg-ui-bg-accent flex items-center justify-center group-hover:bg-primary-500/10 transition-colors"
+                  >
+                    <UIcon
+                      name="i-heroicons-film"
+                      class="w-4 h-4 text-ui-text-muted group-hover:text-primary-400 transition-colors"
+                    />
+                  </div>
+                  <div v-if="isRenaming === project" class="flex-1">
+                    <UInput
+                      v-model="renameValue"
+                      size="sm"
+                      autofocus
+                      @keyup.enter="renameProject(project)"
+                      @keyup.esc="isRenaming = null"
+                      @click.stop
+                    />
+                  </div>
+                  <h3
+                    v-else
+                    class="font-medium text-ui-text truncate group-hover:text-primary-300 transition-colors"
+                  >
+                    {{ project }}
+                  </h3>
+                </div>
               </div>
 
-              <UButton
-                v-if="isRenaming !== project"
-                size="sm"
-                variant="ghost"
-                color="primary"
-                icon="i-heroicons-arrow-right"
-                class="opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0 ml-auto"
-                :label="t('common.open')"
-              />
+              <div class="mt-auto flex justify-between items-center pt-4">
+                <UButton
+                  v-if="isRenaming !== project"
+                  size="sm"
+                  variant="ghost"
+                  color="neutral"
+                  icon="lucide:edit-2"
+                  class="opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click.stop="startRename(project)"
+                />
+                <div v-else class="flex gap-1 ml-auto">
+                  <UButton
+                    size="xs"
+                    color="neutral"
+                    icon="lucide:x"
+                    @click.stop="isRenaming = null"
+                  />
+                  <UButton
+                    size="xs"
+                    color="primary"
+                    icon="lucide:check"
+                    @click.stop="renameProject(project)"
+                  />
+                </div>
+
+                <UButton
+                  v-if="isRenaming !== project"
+                  size="sm"
+                  variant="ghost"
+                  color="primary"
+                  icon="i-heroicons-arrow-right"
+                  class="opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0 ml-auto"
+                  :label="t('common.open')"
+                />
+              </div>
             </div>
           </div>
         </div>
