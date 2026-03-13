@@ -36,8 +36,8 @@ const customAudioEffects = computed(() => {
 const basicAudioEffects = computed(() =>
   standardAudioEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'),
 );
-const voiceAudioEffects = computed(() =>
-  standardAudioEffects.value.filter((effect) => effect.category === 'voice'),
+const artisticAudioEffects = computed(() =>
+  standardAudioEffects.value.filter((effect) => effect.category === 'artistic'),
 );
 const transitions = computed(() => getAllTransitionManifests());
 
@@ -459,13 +459,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
 
-            <div v-if="hasAudioEffects(voiceAudioEffects)">
+            <div v-if="hasAudioEffects(artisticAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('granVideoEditor.effects.groups.voice', 'Голос') }}
+                {{ t('granVideoEditor.effects.groups.artistic', 'Художественные') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
                 <div
-                  v-for="effect in voiceAudioEffects"
+                  v-for="effect in artisticAudioEffects"
                   :key="effect.type"
                   class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
                   :class="
