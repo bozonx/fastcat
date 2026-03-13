@@ -10,7 +10,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEditorDynamicPanels } from '~/composables/editor/useEditorDynamicPanels';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { computed, watch, onMounted, onUnmounted } from 'vue';
+import { computed } from 'vue';
+import { useEventListener, until } from '@vueuse/core';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import {
@@ -192,50 +193,33 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   void navigateToParentFolder();
 }
 
+useEventListener(window, 'keydown', onGlobalKeyDown, { capture: true });
+
 onMounted(async () => {
-  window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
   const projectId = route.params.id as string;
   if (!projectId) {
     router.push('/');
     return;
   }
 
-  const initProject = async () => {
-    if (!workspaceStore.workspaceHandle) {
-      router.push('/');
-      return;
-    }
-    const { openProject } = useProjectActions();
-    await openProject(decodeURIComponent(projectId));
-  };
-
   if (workspaceStore.isInitializing) {
-    const unwatch = watch(
-      () => workspaceStore.isInitializing,
-      async (isInit) => {
-        if (!isInit) {
-          unwatch();
-          await initProject();
-        }
-      },
-    );
-  } else {
-    await initProject();
+    await until(() => workspaceStore.isInitializing).toBe(false);
   }
-});
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
+  if (!workspaceStore.workspaceHandle) {
+    router.push('/');
+    return;
+  }
+
+  const { openProject } = useProjectActions();
+  await openProject(decodeURIComponent(projectId));
 });
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {
-  if (
-    Array.isArray(event?.panes) &&
-    event.panes.length >= 2 &&
-    typeof event.panes[1]?.size === 'number'
-  ) {
-    const timelinePaneSize = event.panes[1].size;
-    projectStore.timelineHeight = timelinePaneSize;
+  if (!Array.isArray(event?.panes) || event.panes.length < 2) return;
+  const lastPane = event.panes[event.panes.length - 1];
+  if (typeof lastPane?.size === 'number') {
+    projectStore.timelineHeight = lastPane.size;
   }
 }
 </script>
