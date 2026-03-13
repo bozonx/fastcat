@@ -346,7 +346,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         fps: 25,
       });
 
-      const { buildVideoWorkerPayloadFromTracks } = await import('./useTimelineExport');
+      const { buildVideoWorkerPayloadFromTracks } = await import('./export');
 
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: nestedDoc.tracks,

@@ -13,7 +13,7 @@ import type { PreviewRenderOptions } from '~/utils/video-editor/worker-rpc';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
-} from '~/composables/timeline/useTimelineExport';
+} from '~/composables/timeline/export';
 
 import type { WorkerTimelineClip } from './types';
 
@@ -574,8 +574,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     } catch (e: any) {
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
-        loadError.value =
-          e.message || t('fastcat.monitor.loadError', 'Error loading timeline');
+        loadError.value = e.message || t('fastcat.monitor.loadError', 'Error loading timeline');
       }
     } finally {
       if (requestId === buildRequestId) {
