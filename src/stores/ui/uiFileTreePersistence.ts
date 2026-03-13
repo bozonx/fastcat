@@ -11,22 +11,22 @@ interface PersistedFileTreeState {
   expandedPaths: string[];
 }
 
-function getFileTreeStorageKey(projectName: string): string {
-  return `fastcat:file-tree:${projectName}`;
+function getFileTreeStorageKey(projectId: string): string {
+  return `fastcat:ui:file-tree:${projectId}`;
 }
 
 export interface UiFileTreePersistenceModule {
   fileTreeExpandedPaths: Ref<Record<string, true>>;
-  restoreFileTreeStateOnce: (projectName: string) => void;
-  hasPersistedFileTreeState: (projectName: string) => boolean;
+  restoreFileTreeStateOnce: (projectId: string) => void;
+  hasPersistedFileTreeState: (projectId: string) => boolean;
   isFileTreePathExpanded: (path: string) => boolean;
-  setFileTreePathExpanded: (projectName: string, path: string, expanded: boolean) => void;
+  setFileTreePathExpanded: (projectId: string, path: string, expanded: boolean) => void;
 }
 
 export function createUiFileTreePersistenceModule(deps: {
   fileTreeExpandedPaths: Ref<Record<string, true>>;
 }) {
-  const currentFileTreeProjectName = ref<string | null>(null);
+  const currentFileTreeProjectId = ref<string | null>(null);
   let persistFileTreeTimeout: number | null = null;
   let fileTreeRevision = 0;
   let savedFileTreeRevision = 0;
@@ -48,14 +48,14 @@ export function createUiFileTreePersistenceModule(deps: {
     savedFileTreeRevision = fileTreeRevision;
   }
 
-  function restoreFileTreeStateOnce(projectName: string) {
+  function restoreFileTreeStateOnce(projectId: string) {
     if (typeof window === 'undefined') return;
-    if (currentFileTreeProjectName.value === projectName) return;
+    if (currentFileTreeProjectId.value === projectId) return;
 
-    currentFileTreeProjectName.value = projectName;
+    currentFileTreeProjectId.value = projectId;
 
     const parsed = readLocalStorageJson<PersistedFileTreeState>(
-      getFileTreeStorageKey(projectName),
+      getFileTreeStorageKey(projectId),
       {
         expandedPaths: [],
       },
@@ -71,18 +71,18 @@ export function createUiFileTreePersistenceModule(deps: {
     markFileTreeAsCleanForCurrentRevision();
   }
 
-  function hasPersistedFileTreeState(projectName: string): boolean {
-    return hasLocalStorageKey(getFileTreeStorageKey(projectName));
+  function hasPersistedFileTreeState(projectId: string): boolean {
+    return hasLocalStorageKey(getFileTreeStorageKey(projectId));
   }
 
-  async function persistFileTreeNow(projectName: string) {
+  async function persistFileTreeNow(projectId: string) {
     if (savedFileTreeRevision >= fileTreeRevision) return;
 
     const revisionToSave = fileTreeRevision;
 
     try {
       const expandedPaths = Object.keys(deps.fileTreeExpandedPaths.value);
-      writeLocalStorageJson(getFileTreeStorageKey(projectName), { expandedPaths });
+      writeLocalStorageJson(getFileTreeStorageKey(projectId), { expandedPaths });
 
       if (savedFileTreeRevision < revisionToSave) {
         savedFileTreeRevision = revisionToSave;
@@ -93,28 +93,28 @@ export function createUiFileTreePersistenceModule(deps: {
     }
   }
 
-  async function enqueueFileTreeSave(projectName: string) {
+  async function enqueueFileTreeSave(projectId: string) {
     await fileTreeSaveQueue.add(async () => {
-      await persistFileTreeNow(projectName);
+      await persistFileTreeNow(projectId);
     });
   }
 
-  async function requestFileTreeSave(projectName: string, options?: { immediate?: boolean }) {
-    if (options?.immediate) {
+  async function requestFileTreeSave(projectId: string, options?: { immediate?: boolean }) {
+    if (options?.immediate || typeof window === 'undefined') {
       clearPersistFileTreeTimeout();
-      await enqueueFileTreeSave(projectName);
+      await enqueueFileTreeSave(projectId);
       return;
     }
 
     if (typeof window === 'undefined') {
-      await enqueueFileTreeSave(projectName);
+      await enqueueFileTreeSave(projectId);
       return;
     }
 
     clearPersistFileTreeTimeout();
     persistFileTreeTimeout = window.setTimeout(() => {
       persistFileTreeTimeout = null;
-      void enqueueFileTreeSave(projectName);
+      void enqueueFileTreeSave(projectId);
     }, 500);
   }
 
@@ -122,14 +122,14 @@ export function createUiFileTreePersistenceModule(deps: {
     return Boolean(deps.fileTreeExpandedPaths.value[path]);
   }
 
-  function setFileTreePathExpanded(projectName: string, path: string, expanded: boolean) {
+  function setFileTreePathExpanded(projectId: string, path: string, expanded: boolean) {
     if (!path) return;
 
     if (expanded) {
       if (deps.fileTreeExpandedPaths.value[path]) return;
       deps.fileTreeExpandedPaths.value = { ...deps.fileTreeExpandedPaths.value, [path]: true };
       markFileTreeAsDirty();
-      void requestFileTreeSave(projectName);
+      void requestFileTreeSave(projectId);
       return;
     }
 
@@ -145,7 +145,7 @@ export function createUiFileTreePersistenceModule(deps: {
 
     deps.fileTreeExpandedPaths.value = next;
     markFileTreeAsDirty();
-    void requestFileTreeSave(projectName);
+    void requestFileTreeSave(projectId);
   }
 
   return {

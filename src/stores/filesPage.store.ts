@@ -20,13 +20,13 @@ export const useFilesPageStore = defineStore('filesPage', () => {
 
   const selectedFolder = ref<FsEntry | null>(null);
 
-  const viewMode = ref<FileViewMode>(readLocalStorageJson(`${STORAGE_KEY}-viewMode`, 'grid'));
+  const viewMode = ref<FileViewMode>(readLocalStorageJson(`${STORAGE_KEY}:viewMode`, 'grid'));
   const sortOption = ref<FileSortOption>(
-    readLocalStorageJson(`${STORAGE_KEY}-sortOption`, { field: 'name', order: 'asc' }),
+    readLocalStorageJson(`${STORAGE_KEY}:sortOption`, { field: 'name', order: 'asc' }),
   );
-  const gridCardSize = ref<number>(readLocalStorageJson(`${STORAGE_KEY}-gridCardSize`, 120));
+  const gridCardSize = ref<number>(readLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, 120));
   const columnWidths = ref<Record<string, number>>(
-    readLocalStorageJson(`${STORAGE_KEY}-columnWidths`, {
+    readLocalStorageJson(`${STORAGE_KEY}:columnWidths`, {
       name: 200,
       type: 100,
       size: 80,
@@ -36,12 +36,12 @@ export const useFilesPageStore = defineStore('filesPage', () => {
   );
 
   // Persist settings to localStorage
-  watch(viewMode, (val) => writeLocalStorageJson(`${STORAGE_KEY}-viewMode`, val));
-  watch(sortOption, (val) => writeLocalStorageJson(`${STORAGE_KEY}-sortOption`, val), {
+  watch(viewMode, (val) => writeLocalStorageJson(`${STORAGE_KEY}:viewMode`, val));
+  watch(sortOption, (val) => writeLocalStorageJson(`${STORAGE_KEY}:sortOption`, val), {
     deep: true,
   });
-  watch(gridCardSize, (val) => writeLocalStorageJson(`${STORAGE_KEY}-gridCardSize`, val));
-  watch(columnWidths, (val) => writeLocalStorageJson(`${STORAGE_KEY}-columnWidths`, val), {
+  watch(gridCardSize, (val) => writeLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, val));
+  watch(columnWidths, (val) => writeLocalStorageJson(`${STORAGE_KEY}:columnWidths`, val), {
     deep: true,
   });
 

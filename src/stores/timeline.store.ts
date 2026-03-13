@@ -91,6 +91,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(50);
+  const trackHeights = ref<Record<string, number>>({});
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
@@ -479,6 +480,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTime,
     duration,
     masterGain,
+    timelineZoom,
+    trackHeights,
     audioMuted,
 
     isTimelineDirty,
@@ -930,6 +933,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     renamingTrackId,
     selectedTransition,
     isTrimModeActive,
+    trackHeights,
     loadTimeline,
     saveTimeline,
     requestTimelineSave,
@@ -977,6 +981,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     moveItemToTrack,
     extractAudioToTrack,
     returnAudioToVideo,
+    markTimelineAsDirty,
+    markTimelineAsCleanForCurrentRevision,
     resetTimelineState,
     undoTimeline,
     redoTimeline,

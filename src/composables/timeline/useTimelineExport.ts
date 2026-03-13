@@ -1089,17 +1089,6 @@ export function useTimelineExport() {
       ]);
 
       videoCodecSupport.value = videoSupport;
-
-      if (typeof window !== 'undefined') {
-        const stored = window.localStorage.getItem('fastcat-audio-codec-support');
-        if (stored) {
-          try {
-            audioCodec.value = 'aac';
-          } catch (e) {
-            console.error('Failed to load stored audio codec support', e);
-          }
-        }
-      }
     } finally {
       isLoadingCodecSupport.value = false;
     }

@@ -26,12 +26,12 @@ export const usePresetsStore = defineStore('presets', () => {
   // Load from localStorage
   function load() {
     try {
-      const presetsJson = localStorage.getItem('fastcat-custom-presets');
+      const presetsJson = localStorage.getItem('fastcat:presets:custom');
       if (presetsJson) {
         customPresets.value = JSON.parse(presetsJson);
       }
 
-      const collapsedJson = localStorage.getItem('fastcat-presets-collapsed');
+      const collapsedJson = localStorage.getItem('fastcat:presets:collapsed');
       if (collapsedJson) {
         const state = JSON.parse(collapsedJson);
         effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
@@ -51,7 +51,7 @@ export const usePresetsStore = defineStore('presets', () => {
 
   // Save to localStorage
   function savePresets() {
-    localStorage.setItem('fastcat-custom-presets', JSON.stringify(customPresets.value));
+    localStorage.setItem('fastcat:presets:custom', JSON.stringify(customPresets.value));
   }
 
   watch(
@@ -65,7 +65,7 @@ export const usePresetsStore = defineStore('presets', () => {
     ],
     () => {
       localStorage.setItem(
-        'fastcat-presets-collapsed',
+        'fastcat:presets:collapsed',
         JSON.stringify({
           effectsStandardCollapsed: effectsStandardCollapsed.value,
           effectsCustomCollapsed: effectsCustomCollapsed.value,

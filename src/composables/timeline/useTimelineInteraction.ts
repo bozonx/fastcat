@@ -1,7 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import type { TimelineTrack, TimelineMarker } from '~/timeline/types';
+import type { TimelineTrack, TimelineMarker, TimelineMoveItemPayload } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -193,7 +193,8 @@ export function useTimelineInteraction(
     }
   }
 
-  function startMoveItem(e: PointerEvent, trackId: string, itemId: string, startUs: number) {
+  function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
+    const { trackId, itemId, startUs } = payload;
     if (!canEditClipContent.value) return;
     if (e.button !== 0) return;
     e.stopPropagation();
