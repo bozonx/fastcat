@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
@@ -20,12 +19,19 @@ import { useFileBrowserRemote } from '~/composables/fileManager/useFileBrowserRe
 import { useFileBrowserNavigation } from '~/composables/fileManager/useFileBrowserNavigation';
 import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
 import { useFileBrowserFileActions } from '~/composables/fileManager/useFileBrowserFileActions';
+import { useFocusableListNavigation } from '~/composables/fileManager/useFocusableListNavigation';
+import { useFileBrowserPendingActions } from '~/composables/fileManager/useFileBrowserPendingActions';
 import {
   createTimelineCommand,
   createMarkdownCommand,
 } from '~/file-manager/application/fileManagerCommands';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
+import {
+  isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
+  folderHasVideos,
+} from '~/utils/fsEntryUtils';
 import { isRemoteFsEntry } from '~/utils/remote-vfs';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
@@ -45,7 +51,6 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
-const workspaceStore = useWorkspaceStore();
 const { t } = useI18n();
 
 const fileManager = useFileManager();
@@ -107,17 +112,7 @@ function scrollToEntryPath(path: string): boolean {
     `[data-entry-path="${CSS.escape(path)}"]`,
   );
   if (!targetNode) return false;
-  const containerRect = container.getBoundingClientRect();
-  const targetRect = targetNode.getBoundingClientRect();
-  const targetTop = targetRect.top - containerRect.top + container.scrollTop;
-  const targetBottom = targetTop + targetRect.height;
-  const visibleTop = container.scrollTop;
-  const visibleBottom = visibleTop + container.clientHeight;
-  if (targetTop < visibleTop) {
-    container.scrollTop = Math.max(targetTop - 8, 0);
-  } else if (targetBottom > visibleBottom) {
-    container.scrollTop = Math.max(targetBottom - container.clientHeight + 8, 0);
-  }
+  targetNode.scrollIntoView({ block: 'nearest' });
   return true;
 }
 
@@ -291,41 +286,18 @@ const { onFileAction } = useFileBrowserFileActions({
   vfs,
 });
 
-// --- Proxy helpers ---
-function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  const dirPath = entry.path;
-  for (const p of proxyStore.generatingProxies) {
-    if (!dirPath) {
-      if (!p.includes('/')) return true;
-    } else {
-      if (p.startsWith(`${dirPath}/`)) {
-        const rel = p.slice(dirPath.length + 1);
-        if (!rel.includes('/')) return true;
-      }
-    }
-  }
-  return false;
-}
-
-function folderHasVideos(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  const children = Array.isArray(entry.children) ? entry.children : [];
-  return children.some((child) => {
-    if (child.kind !== 'file') return false;
-    const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
-    return ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
-  });
-}
-
 function isVideo(entry: FsEntry): boolean {
   return entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'video';
+}
+
+function isDirectoryGeneratingProxy(entry: FsEntry): boolean {
+  return hasGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);
 }
 
 // --- Context menu ---
 const { getContextMenuItems } = useFileContextMenu(
   {
-    isGeneratingProxyInDirectory,
+    isGeneratingProxyInDirectory: isDirectoryGeneratingProxy,
     folderHasVideos,
     isOpenableMediaFile: (entry: FsEntry) =>
       entry.kind === 'file' && isOpenableProjectFileName(entry.name),
@@ -384,47 +356,19 @@ function handleContainerClick() {
 }
 
 // --- Keyboard navigation ---
-function onContainerKeyDown(e: KeyboardEvent) {
-  const container = rootContainer.value;
-  if (!container) return;
-  const activeEl = document.activeElement as HTMLElement;
-  if (activeEl?.tagName === 'INPUT') return;
-
-  const items = Array.from(container.querySelectorAll<HTMLElement>('[tabindex="0"]'));
-  if (items.length === 0) return;
-  const currentIndex = items.indexOf(activeEl);
-
-  if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-  e.preventDefault();
-
-  if (currentIndex === -1) {
-    items[0]?.focus();
-    return;
-  }
-
-  let nextIndex = currentIndex;
-  const isGrid = filesPageStore.viewMode === 'grid';
-
-  if (e.key === 'ArrowRight') {
-    nextIndex = Math.min(currentIndex + 1, items.length - 1);
-  } else if (e.key === 'ArrowLeft') {
-    nextIndex = Math.max(currentIndex - 1, 0);
-  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    let cols = 1;
-    if (isGrid && items[0]) {
-      const firstTop = items[0].offsetTop;
-      cols = 0;
-      while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
-      cols = cols || 1;
-    }
-    nextIndex =
-      e.key === 'ArrowDown'
-        ? Math.min(currentIndex + cols, items.length - 1)
-        : Math.max(currentIndex - cols, 0);
-  }
-
-  if (nextIndex !== currentIndex) items[nextIndex]?.focus();
-}
+const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({
+  containerRef: rootContainer,
+  horizontal: true,
+  getColumnCount: () => {
+    if (filesPageStore.viewMode !== 'grid' || !rootContainer.value) return 1;
+    const items = Array.from(rootContainer.value.querySelectorAll<HTMLElement>('[tabindex="0"]'));
+    if (items.length === 0) return 1;
+    const firstTop = items[0]?.offsetTop;
+    let cols = 0;
+    while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
+    return cols || 1;
+  },
+});
 
 // --- Grid size ---
 const GRID_SIZES = [80, 100, 130, 160, 200];
@@ -445,50 +389,13 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', onResizeEnd);
 });
 
-// --- Watches that remain in component ---
-
-watch(
-  () => uiStore.pendingFsEntryRename,
-  (value) => {
-    const entry = value as FsEntry | null;
-    if (!entry) return;
-    const inCurrentFolder = folderEntries.value.some((e) => e.path === entry.path);
-    if (inCurrentFolder) {
-      startRename(entry);
-      uiStore.pendingFsEntryRename = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingFsEntryCreateTimeline,
-  async (value) => {
-    const entry = value as FsEntry | null;
-    if (!entry || entry.kind !== 'directory') return;
-    try {
-      await createTimelineInDirectory(entry);
-    } finally {
-      uiStore.pendingFsEntryCreateTimeline = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingFsEntryCreateMarkdown,
-  async (value) => {
-    const entry = value as FsEntry | null;
-    if (!entry || entry.kind !== 'directory') return;
-    try {
-      await createMarkdownInDirectory(entry);
-    } finally {
-      uiStore.pendingFsEntryCreateMarkdown = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingRemoteDownloadRequest,
-  async (request) => {
+useFileBrowserPendingActions({
+  folderEntries,
+  startRename,
+  createTimelineInDirectory,
+  createMarkdownInDirectory,
+  handlePendingRemoteDownloadRequest: async () => {
+    const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;
     try {
       await performRemoteDownload(request);
@@ -501,11 +408,9 @@ watch(
           description: error instanceof Error ? error.message : 'Remote download failed',
         });
       }
-    } finally {
-      uiStore.pendingRemoteDownloadRequest = null;
     }
   },
-);
+});
 
 watch(
   () => uiStore.fileManagerUpdateCounter,
@@ -569,66 +474,18 @@ async function refreshFileTree() {
 
 // --- Entry interaction ---
 
+const { handleEntryClick: handleSelectionClick } = useFileManagerSelection({
+  getVisibleEntries: () => sortedEntries.value,
+  enforceSameLevel: false,
+  onSingleSelect: (entry) => filesPageStore.selectFile(entry),
+});
+
 function handleEntryClick(event: MouseEvent, entry: FsEntry) {
   if (isRemoteMode.value) {
     setSelectedFsEntry(entry);
     return;
   }
-
-  const isL1 = isLayer1Active(event, workspaceStore.userSettings);
-  const isL2 = isLayer2Active(event, workspaceStore.userSettings);
-
-  if (isL2) {
-    // Toggle selection
-    const selected = selectionStore.selectedEntity;
-    if (selected && selected.source === 'fileManager') {
-      let currentEntries: FsEntry[] = [];
-      if (selected.kind === 'multiple') {
-        currentEntries = [...selected.entries];
-      } else if (selected.kind === 'file' || selected.kind === 'directory') {
-        currentEntries = [selected.entry];
-      }
-
-      const existingIndex = currentEntries.findIndex((e) => e.path === entry.path);
-      if (existingIndex >= 0) {
-        currentEntries.splice(existingIndex, 1);
-        selectionStore.selectFsEntries(currentEntries);
-      } else {
-        selectionStore.selectFsEntries([...currentEntries, entry]);
-      }
-    } else {
-      selectionStore.selectFsEntry(entry);
-    }
-  } else if (isL1) {
-    // Range selection
-    const selected = selectionStore.selectedEntity;
-    if (selected && selected.source === 'fileManager') {
-      const visibleEntries = sortedEntries.value;
-      const targetIndex = visibleEntries.findIndex((e) => e.path === entry.path);
-
-      let lastSelectedIndex = -1;
-      if (selected.kind === 'multiple' && selected.entries.length > 0) {
-        const lastSelected = selected.entries[selected.entries.length - 1];
-        lastSelectedIndex = visibleEntries.findIndex((e) => e.path === lastSelected?.path);
-      } else if ('path' in selected) {
-        lastSelectedIndex = visibleEntries.findIndex((e) => e.path === selected.path);
-      }
-
-      if (lastSelectedIndex >= 0 && targetIndex >= 0) {
-        const start = Math.min(lastSelectedIndex, targetIndex);
-        const end = Math.max(lastSelectedIndex, targetIndex);
-        const range = visibleEntries.slice(start, end + 1);
-        selectionStore.selectFsEntries(range);
-      } else {
-        selectionStore.selectFsEntry(entry);
-      }
-    } else {
-      selectionStore.selectFsEntry(entry);
-    }
-  } else {
-    // Normal single selection
-    filesPageStore.selectFile(entry);
-  }
+  handleSelectionClick(event, entry);
 }
 
 function handleEntryDoubleClick(entry: FsEntry) {
@@ -811,7 +668,7 @@ async function onDirectoryUploadChange(e: Event) {
             :editing-entry-path="editingEntryPath"
             :folder-entries-names="folderEntries.map((e) => e.name)"
             :get-context-menu-items="getContextMenuItems"
-            :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
+            :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
             @root-drag-over="onBrowserRootDragOver"
             @root-drag-leave="onBrowserRootDragLeave"
@@ -840,7 +697,7 @@ async function onDirectoryUploadChange(e: Event) {
             :editing-entry-path="editingEntryPath"
             :folder-entries-names="folderEntries.map((e) => e.name)"
             :get-context-menu-items="getContextMenuItems"
-            :is-generating-proxy-in-directory="isGeneratingProxyInDirectory"
+            :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
             @root-drag-over="onBrowserRootDragOver"
             @root-drag-leave="onBrowserRootDragLeave"

@@ -4,27 +4,24 @@ import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFocusableListNavigation } from '~/composables/fileManager/useFocusableListNavigation';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
-const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
-const workspaceStore = useWorkspaceStore();
 const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -38,19 +35,7 @@ function scrollToSelectedEntry(path: string): boolean {
   );
   if (!targetNode) return false;
 
-  const containerRect = container.getBoundingClientRect();
-  const targetRect = targetNode.getBoundingClientRect();
-  const targetTop = targetRect.top - containerRect.top + container.scrollTop;
-  const targetBottom = targetTop + targetRect.height;
-  const visibleTop = container.scrollTop;
-  const visibleBottom = visibleTop + container.clientHeight;
-
-  if (targetTop < visibleTop) {
-    container.scrollTop = Math.max(targetTop - 8, 0);
-  } else if (targetBottom > visibleBottom) {
-    container.scrollTop = Math.max(targetBottom - container.clientHeight + 8, 0);
-  }
-
+  targetNode.scrollIntoView({ block: 'nearest' });
   return true;
 }
 
@@ -70,45 +55,9 @@ watch(
   },
 );
 
-function onContainerKeyDown(e: KeyboardEvent) {
-  const container = scrollEl.value;
-  if (!container) return;
-
-  const activeEl = document.activeElement as HTMLElement;
-  if (activeEl?.tagName === 'INPUT') return;
-
-  const items = Array.from(container.querySelectorAll<HTMLElement>('[tabindex="0"]'));
-  if (items.length === 0) return;
-
-  const currentIndex = items.indexOf(activeEl);
-
-  if (['ArrowDown', 'ArrowUp'].includes(e.key)) {
-    e.preventDefault();
-
-    if (currentIndex === -1) {
-      items[0]?.focus();
-      return;
-    }
-
-    let nextIndex = currentIndex;
-
-    if (e.key === 'ArrowDown') {
-      nextIndex = Math.min(currentIndex + 1, items.length - 1);
-    } else if (e.key === 'ArrowUp') {
-      nextIndex = Math.max(currentIndex - 1, 0);
-    }
-
-    if (nextIndex !== currentIndex) {
-      const el = items[nextIndex];
-      if (el) el.focus();
-    }
-  } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-    // Optional: Left/Right to expand/collapse
-    // For now we just let the component handle standard enter/space if we want, but left/right could also trigger the chevron click.
-    // The node needs a way to expose toggle, which we emit. But we can't easily emit toggle from here without knowing the entry.
-    // We can leave left/right alone for now or handle it.
-  }
-}
+const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({
+  containerRef: scrollEl,
+});
 
 const {
   onDragOver: autoScrollDragOver,
@@ -289,14 +238,7 @@ function selectProjectRoot() {
     path: '',
   };
 
-  uiStore.selectedFsEntry = {
-    kind: 'directory',
-    name,
-    path: '',
-  };
-
-  selectionStore.selectFsEntry(rootEntry);
-  emit('select', rootEntry);
+  selectSingle(rootEntry);
 }
 
 function getVisibleEntries(entries: FsEntry[]): FsEntry[] {
@@ -310,134 +252,27 @@ function getVisibleEntries(entries: FsEntry[]): FsEntry[] {
   return list;
 }
 
+const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerSelection({
+  getVisibleEntries: () => getVisibleEntries(props.rootEntries),
+  onSingleSelect: (entry) => emit('select', entry),
+});
+
 async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
   if (event && !props.isFilesPage) {
-    const isL1 = isLayer1Active(event, workspaceStore.userSettings);
-    const isL2 = isLayer2Active(event, workspaceStore.userSettings);
-
-    if (isL2) {
-      const selected = selectionStore.selectedEntity;
-      if (selected && selected.source === 'fileManager') {
-        let currentEntries: FsEntry[] = [];
-        if (selected.kind === 'multiple') {
-          currentEntries = [...selected.entries];
-        } else if (selected.kind === 'file' || selected.kind === 'directory') {
-          currentEntries = [selected.entry];
-        }
-
-        const existingIndex = currentEntries.findIndex((e) => e.path === entry.path);
-        if (existingIndex >= 0) {
-          currentEntries.splice(existingIndex, 1);
-          selectionStore.selectFsEntries(currentEntries);
-        } else {
-          // Enforce same level rule
-          if (currentEntries.length > 0) {
-            const firstParentPath = currentEntries[0]?.path
-              ? currentEntries[0].path.split('/').slice(0, -1).join('/')
-              : '';
-            const entryParentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
-            if (firstParentPath === entryParentPath) {
-              selectionStore.selectFsEntries([...currentEntries, entry]);
-            } else {
-              selectionStore.selectFsEntry(entry);
-              uiStore.selectedFsEntry = {
-                kind: entry.kind,
-                name: entry.name,
-                path: entry.path,
-                parentPath: entry.parentPath,
-                lastModified: entry.lastModified,
-                size: entry.size,
-              };
-            }
-          } else {
-            selectionStore.selectFsEntries([entry]);
-          }
-        }
-      } else {
-        selectionStore.selectFsEntry(entry);
-        uiStore.selectedFsEntry = {
-          kind: entry.kind,
-          name: entry.name,
-          path: entry.path,
-          parentPath: entry.parentPath,
-          lastModified: entry.lastModified,
-          size: entry.size,
-        };
-      }
-      return;
-    } else if (isL1) {
-      const selected = selectionStore.selectedEntity;
-      if (selected && selected.source === 'fileManager') {
-        const visibleEntries = getVisibleEntries(props.rootEntries);
-        const targetIndex = visibleEntries.findIndex((e) => e.path === entry.path);
-
-        let lastSelectedIndex = -1;
-        if (selected.kind === 'multiple' && selected.entries.length > 0) {
-          const lastSelected = selected.entries[selected.entries.length - 1];
-          lastSelectedIndex = visibleEntries.findIndex((e) => e.path === lastSelected?.path);
-        } else if ('path' in selected) {
-          lastSelectedIndex = visibleEntries.findIndex((e) => e.path === selected.path);
-        }
-
-        if (lastSelectedIndex >= 0 && targetIndex >= 0) {
-          const start = Math.min(lastSelectedIndex, targetIndex);
-          const end = Math.max(lastSelectedIndex, targetIndex);
-          let range = visibleEntries.slice(start, end + 1);
-
-          // Enforce same level rule
-          const entryParentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
-          range = range.filter((e) => {
-            const eParentPath = e.path ? e.path.split('/').slice(0, -1).join('/') : '';
-            return eParentPath === entryParentPath;
-          });
-
-          selectionStore.selectFsEntries(range);
-        } else {
-          selectionStore.selectFsEntry(entry);
-          uiStore.selectedFsEntry = {
-            kind: entry.kind,
-            name: entry.name,
-            path: entry.path,
-            parentPath: entry.parentPath,
-            lastModified: entry.lastModified,
-            size: entry.size,
-          };
-        }
-      } else {
-        selectionStore.selectFsEntry(entry);
-        uiStore.selectedFsEntry = {
-          kind: entry.kind,
-          name: entry.name,
-          path: entry.path,
-          parentPath: entry.parentPath,
-          lastModified: entry.lastModified,
-          size: entry.size,
-        };
-      }
-      return;
+    handleSelectionClick(event, entry);
+    if (entry.kind === 'file') focusStore.setTempFocus('left');
+    if (entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
+      await loadTimeline(entry.path);
     }
+    return;
   }
 
-  uiStore.selectedFsEntry = {
-    kind: entry.kind,
-    name: entry.name,
-    path: entry.path,
-    parentPath: entry.parentPath,
-    lastModified: entry.lastModified,
-    size: entry.size,
-  };
+  selectSingle(entry);
 
-  selectionStore.selectFsEntry(entry);
-  emit('select', entry);
-
-  if (entry.kind === 'file') {
-    focusStore.setTempFocus('left');
+  if (entry.kind === 'file') focusStore.setTempFocus('left');
+  if (entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
+    await loadTimeline(entry.path);
   }
-
-  if (entry.kind !== 'file') return;
-  if (!entry.path?.toLowerCase().endsWith('.otio')) return;
-
-  await loadTimeline(entry.path);
 }
 </script>
 

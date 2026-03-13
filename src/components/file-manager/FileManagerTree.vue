@@ -13,10 +13,22 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
-import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import {
+  getMediaTypeFromFilename,
+  isOpenableProjectFileName,
+  VIDEO_EXTENSIONS,
+  AUDIO_EXTENSIONS,
+  IMAGE_EXTENSIONS,
+  TEXT_EXTENSIONS,
+  TIMELINE_EXTENSIONS,
+} from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
+import {
+  isGeneratingProxyInDirectory,
+  folderHasVideos,
+} from '~/utils/fsEntryUtils';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -99,30 +111,13 @@ const emit = defineEmits<{
 
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
-
-function isGeneratingProxyInDirectory(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  const dirPath = entry.path;
-  for (const p of proxyStore.generatingProxies) {
-    if (!dirPath) {
-      if (!p.includes('/')) return true;
-    } else {
-      if (p.startsWith(`${dirPath}/`)) {
-        const rel = p.slice(dirPath.length + 1);
-        if (!rel.includes('/')) return true;
-      }
-    }
-  }
-  return false;
-}
+const selectionStore = useSelectionStore();
 
 const isDragOver = ref<string | null>(null);
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
 }
-
-const selectionStore = useSelectionStore();
 
 function isSelected(entry: FsEntry): boolean {
   if (props.isFilesPage) {
@@ -143,17 +138,21 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
   return entry.kind === 'directory' && isWorkspaceCommonPath(entry.path);
 }
 
+function getEntryMeta(entry: FsEntry) {
+  return ctx.getEntryMeta(entry);
+}
+
 function getEntryIconClass(entry: FsEntry): string {
   if (isDotEntry(entry)) return 'opacity-30';
-  if (isGeneratingProxyInDirectory(entry)) return 'text-amber-400/90';
+  if (isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)) return 'text-amber-400/90';
   if (isWorkspaceCommonRoot(entry)) return 'text-violet-400';
   if (entry.kind === 'directory') return 'text-ui-text-muted/80';
 
   const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'text-violet-400/90';
-  if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) return 'text-emerald-400/90';
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext)) return 'text-sky-400/90';
-  if (['otio', 'txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) return 'text-amber-400/90';
+  if (VIDEO_EXTENSIONS.includes(ext)) return 'text-violet-400/90';
+  if (AUDIO_EXTENSIONS.includes(ext)) return 'text-emerald-400/90';
+  if (IMAGE_EXTENSIONS.includes(ext)) return 'text-sky-400/90';
+  if (TIMELINE_EXTENSIONS.includes(ext) || TEXT_EXTENSIONS.includes(ext)) return 'text-amber-400/90';
   return 'text-ui-text-muted';
 }
 
@@ -201,7 +200,6 @@ function onCaretClick(e: MouseEvent, entry: FsEntry) {
 function onDragStart(e: DragEvent, entry: FsEntry) {
   if (!entry.path) return;
 
-  const selectionStore = useSelectionStore();
   const selected = selectionStore.selectedEntity;
 
   let entriesToMove: FsEntry[] = [entry];
@@ -347,21 +345,10 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   });
 }
 
-function folderHasVideos(entry: FsEntry): boolean {
-  if (entry.kind !== 'directory') return false;
-  if (!entry.children) return false;
-  return entry.children.some((child) => {
-    if (child.kind === 'file') {
-      const ext = child.name.split('.').pop()?.toLowerCase() ?? '';
-      return ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
-    }
-    return false;
-  });
-}
-
 const { getContextMenuItems } = useFileContextMenu(
   {
-    isGeneratingProxyInDirectory,
+    isGeneratingProxyInDirectory: (entry) =>
+      isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies),
     folderHasVideos,
     isOpenableMediaFile,
     isConvertibleMediaFile,
@@ -437,16 +424,16 @@ const { getContextMenuItems } = useFileContextMenu(
               <div
                 class="h-4 flex items-center justify-center"
                 :class="[
-                  ctx.getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
+                  getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
                 ]"
               >
                 <div
-                  v-if="ctx.getEntryMeta(entry).generatingProxy"
+                  v-if="getEntryMeta(entry).generatingProxy"
                   class="w-4 h-4 shrink-0 relative flex items-center justify-center"
-                  :title="`${ctx.getEntryMeta(entry).proxyProgress ?? 0}%`"
+                  :title="`${getEntryMeta(entry).proxyProgress ?? 0}%`"
                 >
                   <ProgressSpinner
-                    :progress="ctx.getEntryMeta(entry).proxyProgress ?? 0"
+                    :progress="getEntryMeta(entry).proxyProgress ?? 0"
                     size="sm"
                   />
                 </div>
@@ -456,7 +443,7 @@ const { getContextMenuItems } = useFileContextMenu(
                   class="w-4 h-4 shrink-0 transition-colors"
                   :class="[
                     getEntryIconClass(entry),
-                    ctx.getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
+                    getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
                   ]"
                 />
               </div>
@@ -480,10 +467,11 @@ const { getContextMenuItems } = useFileContextMenu(
                   : 'text-ui-text group-hover:text-ui-text',
                 isWorkspaceCommonRoot(entry) ? 'text-violet-300 group-hover:text-violet-200' : '',
                 isDotEntry(entry) ? 'opacity-30' : '',
-                ctx.getEntryMeta(entry).hasProxy && !ctx.getEntryMeta(entry).generatingProxy
+                getEntryMeta(entry).hasProxy && !getEntryMeta(entry).generatingProxy
                   ? 'text-(--color-success)!'
                   : '',
-                ctx.getEntryMeta(entry).generatingProxy || isGeneratingProxyInDirectory(entry)
+                getEntryMeta(entry).generatingProxy ||
+                isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)
                   ? 'text-amber-400!'
                   : '',
               ]"
