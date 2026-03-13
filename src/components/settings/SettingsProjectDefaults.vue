@@ -12,7 +12,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-const isResetConfirmOpen = ref(false);
+
 
 const presetOptions = computed(() =>
   workspaceStore.userSettings.projectPresets.items.map((preset) => ({
@@ -25,10 +25,7 @@ const selectedPreset = computed(() =>
   resolveProjectPreset(workspaceStore.userSettings.projectPresets),
 );
 
-function resetDefaults() {
-  workspaceStore.userSettings.projectPresets = createDefaultProjectPresets();
-  isResetConfirmOpen.value = false;
-}
+
 
 function addPreset() {
   const basePreset = selectedPreset.value;
@@ -63,23 +60,7 @@ function removePreset() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <UiConfirmModal
-      v-model:open="isResetConfirmOpen"
-      :title="
-        t('videoEditor.settings.resetProjectDefaultSettingsConfirmTitle', 'Reset project defaults?')
-      "
-      :description="
-        t(
-          'videoEditor.settings.resetProjectDefaultSettingsConfirmDesc',
-          'This will restore all project default settings to their default values.',
-        )
-      "
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
-      color="warning"
-      icon="i-heroicons-exclamation-triangle"
-      @confirm="resetDefaults"
-    />
+
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
@@ -97,9 +78,6 @@ function removePreset() {
           @click="removePreset"
         >
           {{ t('common.delete', 'Delete') }}
-        </UButton>
-        <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-          {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
         </UButton>
       </div>
     </div>

@@ -114,7 +114,7 @@ watch(
               variant="ghost"
               color="neutral"
               class="justify-start"
-              :label="t('videoEditor.settings.userProject', 'Project defaults')"
+              :label="t('videoEditor.settings.userProject', 'Project presets')"
               :disabled="activeSection === 'user.project'"
               @click="activeSection = 'user.project'"
             />
@@ -122,7 +122,7 @@ watch(
               variant="ghost"
               color="neutral"
               class="justify-start"
-              :label="t('videoEditor.settings.userExport', 'Export defaults')"
+              :label="t('videoEditor.settings.userExport', 'Export presets')"
               :disabled="activeSection === 'user.export'"
               @click="activeSection = 'user.export'"
             />

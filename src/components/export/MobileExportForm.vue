@@ -6,7 +6,7 @@ import {
   sanitizeBaseName,
   resolveExportCodecs,
   getExt,
-} from '~/composables/timeline/useTimelineExport';
+} from '~/composables/timeline/export';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();

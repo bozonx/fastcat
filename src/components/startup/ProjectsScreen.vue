@@ -5,10 +5,12 @@ import SearchInput from '~/components/ui/SearchInput.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
+import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isAdvancedOpen = ref(false);
+const isSettingsOpen = ref(false);
 
 const {
   searchQuery,
@@ -64,6 +66,14 @@ const smartSortedProjects = computed(() => {
           </p>
         </div>
         <div class="flex gap-2">
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-cog-6-tooth"
+            :label="t('videoEditor.settings.title', 'Settings')"
+            @click="isSettingsOpen = true"
+          />
           <UButton
             size="sm"
             variant="ghost"
@@ -286,4 +296,6 @@ const smartSortedProjects = computed(() => {
       </div>
     </template>
   </AppModal>
+
+  <EditorSettingsModal v-model:open="isSettingsOpen" />
 </template>
