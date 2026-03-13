@@ -53,6 +53,7 @@ import { LayoutApplier } from './compositor/LayoutApplier';
 import { VideoRenderer } from './compositor/renderers/VideoRenderer';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
+import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
 import { buildPrevClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
 
 export class VideoCompositor {
@@ -94,6 +95,12 @@ export class VideoCompositor {
   private videoRenderer = new VideoRenderer();
   private textRenderer = new TextRenderer();
   private shapeRenderer = new ShapeRenderer();
+  private canvasFallbackRenderer = new CanvasFallbackRenderer({
+    width: this.width,
+    height: this.height,
+    layoutApplier: this.layoutApplier,
+    clipPreferBitmapFallback: this.clipPreferBitmapFallback,
+  });
 
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
@@ -348,6 +355,12 @@ export class VideoCompositor {
     this.height = height;
     this.contextLost = false;
     this.layoutApplier = new LayoutApplier({ width: this.width, height: this.height });
+    this.canvasFallbackRenderer = new CanvasFallbackRenderer({
+      width: this.width,
+      height: this.height,
+      layoutApplier: this.layoutApplier,
+      clipPreferBitmapFallback: this.clipPreferBitmapFallback,
+    });
 
     if (typeof window === 'undefined') {
       DOMAdapter.set(WebWorkerAdapter);
@@ -1509,7 +1522,7 @@ export class VideoCompositor {
         }
 
         if (clip.clipKind === 'hud') {
-          this.drawHudClip(clip);
+          this.canvasFallbackRenderer.drawHudClip(clip);
           clip.sprite.visible = true;
           continue;
         }
@@ -2348,147 +2361,7 @@ export class VideoCompositor {
     }
 
     // Fallback: draw into 2D canvas and upload.
-    await this.drawSampleToCanvas(sample, clip);
-  }
-
-  private drawHudClip(clip: CompositorClip) {
-    if (clip.clipKind !== 'hud') return;
-    if (!clip.canvas || !clip.ctx) return;
-
-    const ctx = clip.ctx;
-    const canvas = clip.canvas;
-
-    const targetW = Math.max(1, Math.round(this.width));
-    const targetH = Math.max(1, Math.round(this.height));
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
-      try {
-        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
-          (clip.sprite.texture.source as any).resize(targetW, targetH);
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Default fallback simple rendering for "media_frame"
-    const type = clip.hudType ?? 'media_frame';
-
-    if (type === 'media_frame') {
-      const padding = Math.min(canvas.width, canvas.height) * 0.05;
-
-      // Draw background if available
-      const bgState = clip.hudMediaStates?.background;
-      if (bgState && bgState.bitmap) {
-        // Draw background filling the whole canvas (or fitting it)
-        ctx.drawImage(bgState.bitmap, 0, 0, canvas.width, canvas.height);
-      } else {
-        // Fallback default background
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-
-      // Draw content if available inside the frame
-      const contentState = clip.hudMediaStates?.content;
-      if (contentState && contentState.bitmap) {
-        // Example: scale content to fit inside padding
-        const cw = canvas.width - padding * 2;
-        const ch = canvas.height - padding * 2;
-
-        ctx.drawImage(contentState.bitmap, padding, padding, cw, ch);
-
-        // Draw a neat frame around it
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(padding, padding, cw, ch);
-      } else {
-        // Fallback placeholder content
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(padding, padding, canvas.width - padding * 2, canvas.height - padding * 2);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = 'bold 48px sans-serif';
-        ctx.fillText('NO CONTENT', canvas.width / 2, canvas.height / 2);
-      }
-    }
-
-    try {
-      (clip.sprite.texture.source as any)?.update?.();
-    } catch {
-      // ignore
-    }
-  }
-
-  private async drawSampleToCanvas(sample: any, clip: CompositorClip) {
-    this.ensureCanvasFallback(clip);
-    const ctx = clip.ctx;
-    const canvas = clip.canvas;
-    if (!ctx || !canvas) return;
-
-    let imageSource: any;
-    try {
-      imageSource =
-        typeof sample.toCanvasImageSource === 'function' ? sample.toCanvasImageSource() : sample;
-      const frameW = Math.max(1, Math.round(imageSource?.displayWidth ?? imageSource?.width ?? 1));
-      const frameH = Math.max(
-        1,
-        Math.round(imageSource?.displayHeight ?? imageSource?.height ?? 1),
-      );
-
-      if (canvas.width !== frameW || canvas.height !== frameH) {
-        canvas.width = frameW;
-        canvas.height = frameH;
-        if (typeof clip.sprite.texture.source.resize === 'function') {
-          clip.sprite.texture.source.resize(frameW, frameH);
-        }
-      }
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const preferBitmap = this.clipPreferBitmapFallback.get(clip.itemId) === true;
-
-      try {
-        if (preferBitmap) {
-          throw new Error('Prefer createImageBitmap fallback');
-        }
-        ctx.drawImage(imageSource, 0, 0, frameW, frameH);
-        this.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-        clip.sprite.texture.source.update();
-        return;
-      } catch (err) {
-        this.clipPreferBitmapFallback.set(clip.itemId, true);
-        console.warn('[VideoCompositor] drawImage failed, trying createImageBitmap fallback:', err);
-        try {
-          const bmp = await createImageBitmap(imageSource);
-          ctx.drawImage(bmp, 0, 0, frameW, frameH);
-          this.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-          clip.sprite.texture.source.update();
-          bmp.close();
-          return;
-        } catch (innerErr) {
-          console.error('[VideoCompositor] Fallback createImageBitmap failed:', innerErr);
-          throw innerErr;
-        }
-      }
-    } catch (err) {
-      console.error('[VideoCompositor] drawSampleToCanvas failed to draw image:', err);
-    }
-
-    if (typeof sample.draw === 'function') {
-      try {
-        sample.draw(ctx, 0, 0, canvas.width, canvas.height);
-        clip.sprite.texture.source.update();
-      } catch (err) {
-        console.error('[VideoCompositor] sample.draw failed:', err);
-      }
-      return;
-    }
+    await this.canvasFallbackRenderer.drawSampleToCanvas(sample, clip);
   }
 
   clearClips() {
