@@ -69,7 +69,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                   class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border transition-colors"
                   :class="[
                     isConflicting(cmd.id, combo)
-                      ? 'border-warning-400 text-warning-700 bg-warning-50/80'
+                      ? 'border-error-500/50 bg-error-500/10'
                       : isComboCustom(cmd.id, combo)
                         ? 'border-yellow-500/50 bg-yellow-500/10'
                         : 'border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80',
@@ -87,7 +87,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                     class="text-[10px] font-mono font-medium select-none"
                     :class="[
                       isConflicting(cmd.id, combo)
-                        ? 'text-warning-700'
+                        ? 'text-error-600 dark:text-error-400'
                         : isComboCustom(cmd.id, combo)
                           ? 'text-yellow-600 dark:text-yellow-400'
                           : 'text-ui-text-muted',

@@ -45,7 +45,7 @@ defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor,
     @pointerup="stopPan"
     @pointercancel="stopPan"
     @wheel="onViewportWheel"
-    @dblclick="resetZoom"
+    @dblclick="resetView"
   >
     <div class="absolute inset-0">
       <!-- Transformed workspace: pan + zoom applied here -->

@@ -15,7 +15,7 @@ import {
   sanitizeBaseName,
   resolveExportCodecs,
   getExt,
-} from '~/composables/timeline/useTimelineExport';
+} from '~/composables/timeline/export';
 
 const emit = defineEmits<{
   exported: [];

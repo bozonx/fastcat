@@ -6,6 +6,7 @@ import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
+import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
 
 definePageMeta({
   layout: 'mobile',
@@ -34,6 +35,7 @@ const {
 } = useProjectManagement({ isMobile: true });
 
 const isAdvancedOpen = ref(false);
+const isSettingsOpen = ref(false);
 
 const projectPresetOptions = computed(() =>
   workspaceStore.userSettings.projectPresets.items.map((preset) => ({
@@ -69,6 +71,13 @@ const smartSortedProjects = computed(() => {
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-white">{{ t('fastcat.projects.title') }}</h1>
       <div class="flex gap-1">
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-cog-6-tooth"
+          @click="isSettingsOpen = true"
+        />
         <UButton
           size="sm"
           variant="ghost"
@@ -281,4 +290,6 @@ const smartSortedProjects = computed(() => {
       </div>
     </template>
   </AppModal>
+
+  <EditorSettingsModal v-model:open="isSettingsOpen" />
 </template>
