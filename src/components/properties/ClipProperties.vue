@@ -30,9 +30,11 @@ import ClipTransitionsSection from '~/components/properties/clip/ClipTransitions
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
+import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import { useClipTextProperties } from '~/composables/properties/useClipTextProperties';
+import { useClipShapeProperties } from '~/composables/properties/useClipShapeProperties';
+import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
 import { formatAudioChannels } from '~/utils/audio';
-import { sanitizeFps } from '~/timeline/commands/utils';
-import { getHudManifest } from '~/hud/registry';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -71,191 +73,33 @@ const blendModeOptions: Array<{ value: TimelineBlendMode; label: string }> = [
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
 
-const isFreePosition = computed(() => {
-  const doc = timelineStore.timelineDoc;
-  if (!doc) return false;
-  const fps = sanitizeFps(doc.timebase?.fps);
-
-  const startFrame = (props.clip.timelineRange.startUs * fps) / 1_000_000;
-  const durFrame = (props.clip.timelineRange.durationUs * fps) / 1_000_000;
-
-  const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
-  const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
-
-  return !isStartQuantized || !isDurationQuantized;
+const {
+  isFreePosition,
+  hasLockedLinkedAudio,
+  isLockedLinkedAudioClip,
+  isInLinkedGroup,
+  handleDeleteClip,
+  handleUnlinkAudio,
+  handleQuantizeClip,
+  handleRemoveFromGroup,
+  toggleAudioWaveformMode,
+  toggleShowWaveform,
+  toggleShowThumbnails,
+  handleRenameClip,
+  handleSelectInFileManager,
+} = useClipPropertiesActions({
+  clip: clipRef,
+  trackKind: clipTrackKind,
+  timelineStore,
+  projectStore,
+  uiStore,
+  editorViewStore,
+  filesPageStore,
+  selectionStore,
+  focusStore,
+  fileManager,
+  setActiveTab,
 });
-
-const hasLockedLinkedAudio = computed(() => {
-  const doc = timelineStore.timelineDoc;
-  if (!doc) return false;
-  if (clipTrackKind.value !== 'video') return false;
-  return doc.tracks
-    .filter((t) => t.kind === 'audio')
-    .some((t) =>
-      t.items.some(
-        (it) =>
-          it.kind === 'clip' &&
-          Boolean((it as any).linkedVideoClipId) &&
-          Boolean((it as any).lockToLinkedVideo) &&
-          String((it as any).linkedVideoClipId) === props.clip.id,
-      ),
-    );
-});
-
-const isLockedLinkedAudioClip = computed(() => {
-  if (clipTrackKind.value !== 'audio') return false;
-  return (
-    Boolean((props.clip as any).linkedVideoClipId) && Boolean((props.clip as any).lockToLinkedVideo)
-  );
-});
-
-const isInLinkedGroup = computed(
-  () => typeof props.clip.linkedGroupId === 'string' && props.clip.linkedGroupId.trim().length > 0,
-);
-
-function handleDeleteClip() {
-  timelineStore.deleteSelectedItems(props.clip.trackId);
-}
-
-function handleUnlinkAudio() {
-  const doc = timelineStore.timelineDoc;
-  if (!doc) return;
-
-  if (isLockedLinkedAudioClip.value) {
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-      linkedVideoClipId: undefined,
-      lockToLinkedVideo: false,
-    } as any);
-    return;
-  }
-
-  if (clipTrackKind.value === 'video') {
-    const cmds = doc.tracks
-      .filter((t) => t.kind === 'audio')
-      .flatMap((t) => t.items)
-      .filter(
-        (it): it is import('~/timeline/types').TimelineClipItem =>
-          it.kind === 'clip' &&
-          Boolean((it as any).linkedVideoClipId) &&
-          Boolean((it as any).lockToLinkedVideo) &&
-          String((it as any).linkedVideoClipId) === props.clip.id,
-      )
-      .map((a) => ({
-        type: 'update_clip_properties' as const,
-        trackId: a.trackId,
-        itemId: a.id,
-        properties: {
-          linkedVideoClipId: undefined,
-          lockToLinkedVideo: false,
-        } as any,
-      }));
-    if (cmds.length === 0) return;
-    timelineStore.batchApplyTimeline(cmds as any);
-  }
-}
-
-function handleQuantizeClip() {
-  timelineStore.applyTimeline({
-    type: 'trim_item',
-    trackId: props.clip.trackId,
-    itemId: props.clip.id,
-    edge: 'end',
-    deltaUs: 0,
-    quantizeToFrames: true,
-  });
-}
-
-function handleRemoveFromGroup() {
-  if (!isInLinkedGroup.value) return;
-
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    linkedGroupId: undefined,
-  } as any);
-}
-
-function toggleAudioWaveformMode() {
-  const current =
-    (props.clip as import('~/timeline/types').TimelineClipItem).audioWaveformMode || 'half';
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    audioWaveformMode: current === 'half' ? 'full' : 'half',
-  });
-}
-
-function toggleShowWaveform() {
-  const current =
-    (props.clip as import('~/timeline/types').TimelineClipItem).showWaveform !== false;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    showWaveform: !current,
-  });
-}
-
-function toggleShowThumbnails() {
-  const current =
-    (props.clip as import('~/timeline/types').TimelineClipItem).showThumbnails !== false;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    showThumbnails: !current,
-  });
-}
-
-function handleRenameClip(newName: string) {
-  if (newName.trim()) {
-    timelineStore.renameItem(props.clip.trackId, props.clip.id, newName.trim());
-  }
-}
-
-async function handleSelectInFileManager() {
-  if (props.clip.clipType !== 'media' || !props.clip.source?.path) return;
-  const path = props.clip.source.path;
-  const parentPath = path.split('/').slice(0, -1).join('/');
-
-  if (projectStore.currentView === 'cut' || projectStore.currentView === 'sound') {
-    setActiveTab('files');
-  } else {
-    editorViewStore.goToFiles();
-  }
-
-  await fileManager.loadProjectDirectory();
-
-  const parts = path.split('/').filter(Boolean);
-  let currentPath = '';
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    const p = parts[i];
-    if (!p) continue;
-    currentPath = currentPath ? `${currentPath}/${p}` : p;
-    const dirEntry = fileManager.findEntryByPath(currentPath);
-    if (dirEntry && dirEntry.kind === 'directory' && !dirEntry.expanded) {
-      await fileManager.toggleDirectory(dirEntry);
-    }
-  }
-
-  const entry = fileManager.findEntryByPath(path);
-  if (!entry) return;
-
-  // Set selectedFsEntry before selectFolder so that loadFolderContent
-  // triggered by the selectedFolder watcher already sees the pending scroll path
-  uiStore.selectedFsEntry = {
-    kind: entry.kind,
-    name: entry.name,
-    path: entry.path,
-    parentPath: entry.parentPath,
-    lastModified: entry.lastModified,
-    size: entry.size,
-    source: entry.source,
-    remoteId: entry.remoteId,
-    remotePath: entry.remotePath,
-    remoteData: entry.remoteData,
-  };
-  selectionStore.selectFsEntry(entry);
-
-  if (parentPath) {
-    const parentEntry = fileManager.findEntryByPath(parentPath);
-    if (parentEntry && parentEntry.kind === 'directory') {
-      filesPageStore.selectFolder(parentEntry);
-    }
-  }
-
-  focusStore.setTempFocus('left');
-}
 
 const mediaMeta = computed(() => {
   if (props.clip.clipType !== 'media' || !props.clip.source?.path) return null;
@@ -344,109 +188,26 @@ function handleUpdateBackgroundColor(val: string | undefined) {
   });
 }
 
-function handleUpdateText(val: string | undefined) {
-  if (props.clip.clipType !== 'text') return;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    text: typeof val === 'string' ? val : '',
-  });
-}
-
-function handleUpdateTextStyle(patch: Partial<import('~/timeline/types').TextClipStyle>) {
-  if (props.clip.clipType !== 'text') return;
-  const curr = ((props.clip as any).style ?? {}) as import('~/timeline/types').TextClipStyle;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    style: {
-      ...curr,
-      ...patch,
-    },
-  });
-}
-
-function handleUpdateShapeType(val: import('~/timeline/types').ShapeType) {
-  if (props.clip.clipType !== 'shape') return;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    shapeType: val,
-  });
-}
-
-function handleUpdateFillColor(val: string) {
-  if (props.clip.clipType !== 'shape') return;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    fillColor: val,
-  });
-}
-
-function handleUpdateStrokeColor(val: string) {
-  if (props.clip.clipType !== 'shape') return;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    strokeColor: val,
-  });
-}
-
-function handleUpdateStrokeWidth(val: number) {
-  if (props.clip.clipType !== 'shape') return;
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    strokeWidth: val,
-  });
-}
-
-function handleUpdateShapeConfig(configUpdate: Partial<import('~/timeline/types').ShapeConfig>) {
-  if (props.clip.clipType !== 'shape') return;
-  const currentConfig =
-    (props.clip as import('~/timeline/types').TimelineShapeClipItem).shapeConfig || {};
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    shapeConfig: { ...currentConfig, ...configUpdate },
-  } as any);
-}
-
-function handleUpdateHudBackgroundPath(path: string | undefined) {
-  if (props.clip.clipType !== 'hud') return;
-  const current = (props.clip as import('~/timeline/types').TimelineHudClipItem).background || {};
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    background: {
-      ...current,
-      source: path ? { path } : undefined,
-    },
-  });
-}
-
-function handleUpdateHudContentPath(path: string | undefined) {
-  if (props.clip.clipType !== 'hud') return;
-  const current = (props.clip as import('~/timeline/types').TimelineHudClipItem).content || {};
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    content: {
-      ...current,
-      source: path ? { path } : undefined,
-    },
-  });
-}
-
-const hudManifest = computed(() =>
-  props.clip.clipType === 'hud' ? getHudManifest(props.clip.hudType) : undefined,
-);
-
-const hudControlValues = computed<Record<string, any>>(() => {
-  if (props.clip.clipType !== 'hud') return {};
-
-  return {
-    hudType: props.clip.hudType,
-    backgroundSourcePath: props.clip.background?.source?.path,
-    contentSourcePath: props.clip.content?.source?.path,
-  };
+const { handleUpdateText, handleUpdateTextStyle } = useClipTextProperties({
+  clip: clipRef,
+  timelineStore,
 });
 
-function handleUpdateHudControl(key: string, value: any) {
-  if (props.clip.clipType !== 'hud') return;
+const {
+  handleUpdateShapeType,
+  handleUpdateFillColor,
+  handleUpdateStrokeColor,
+  handleUpdateStrokeWidth,
+  handleUpdateShapeConfig,
+} = useClipShapeProperties({
+  clip: clipRef,
+  timelineStore,
+});
 
-  if (key === 'backgroundSourcePath') {
-    handleUpdateHudBackgroundPath(typeof value === 'string' && value.trim() ? value : undefined);
-    return;
-  }
-
-  if (key === 'contentSourcePath') {
-    handleUpdateHudContentPath(typeof value === 'string' && value.trim() ? value : undefined);
-  }
-}
+const { hudManifest, hudControlValues, handleUpdateHudControl } = useClipHudProperties({
+  clip: clipRef,
+  timelineStore,
+});
 
 const {
   anchorPresetOptions,
