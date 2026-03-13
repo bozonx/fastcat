@@ -9,7 +9,6 @@ export interface GranVideoEditorProjectSettings {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
-    audioChannels: 'stereo' | 'mono';
     sampleRate: number;
     audioDeclickDurationUs: number;
   };
@@ -60,7 +59,6 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     orientation: 'landscape',
     aspectRatio: '16:9',
     isCustomResolution: false,
-    audioChannels: 'stereo',
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
   },
@@ -114,7 +112,6 @@ function getProjectSettingsFromUserDefaults(
       orientation: userSettings.projectDefaults.orientation,
       aspectRatio: userSettings.projectDefaults.aspectRatio,
       isCustomResolution: userSettings.projectDefaults.isCustomResolution,
-      audioChannels: userSettings.projectDefaults.audioChannels,
       sampleRate: userSettings.projectDefaults.sampleRate,
       audioDeclickDurationUs: userSettings.projectDefaults.audioDeclickDurationUs,
     },
@@ -185,7 +182,6 @@ export function normalizeProjectSettings(
   const audioSampleRateRaw = Number(encodingInput.audioSampleRate);
   const format = encodingInput.format;
 
-  const audioChannels = projectInput.audioChannels === 'mono' ? 'mono' : 'stereo';
   const sampleRateRaw = Number(projectInput.sampleRate);
   const sampleRate =
     Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
@@ -254,7 +250,6 @@ export function normalizeProjectSettings(
         projectInput.isCustomResolution !== undefined && !isWidthHeightCustom
           ? Boolean(projectInput.isCustomResolution)
           : preset.isCustomResolution,
-      audioChannels,
       sampleRate,
       audioDeclickDurationUs,
     },

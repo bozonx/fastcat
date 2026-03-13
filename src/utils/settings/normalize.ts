@@ -1,9 +1,15 @@
 import { DEFAULT_USER_SETTINGS, DEFAULT_WORKSPACE_SETTINGS } from './defaults';
-import type { GranVideoEditorUserSettings, GranVideoEditorWorkspaceSettings } from './defaults';
+import type {
+  FastCatAppSettings,
+  GranVideoEditorUserSettings,
+  GranVideoEditorWorkspaceSettings,
+} from './defaults';
+import { STORAGE_ROOT_IDS } from '../storage-roots';
 import { TIMELINE_WHEEL_ACTIONS, MONITOR_WHEEL_ACTIONS, MIDDLE_CLICK_ACTIONS } from '~/utils/mouse';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import { normalizeHotkeyCombo } from '../hotkeys/hotkeyUtils';
 import {
+  createDefaultAppSettings,
   getResolutionPreset,
   createDefaultUserSettings,
   createDefaultWorkspaceSettings,
@@ -14,6 +20,10 @@ function normalizeUrlValue(value: unknown): string {
 }
 
 function normalizeTokenValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeStoragePathValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
@@ -162,8 +172,6 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       ? Boolean((projectInputRec as Record<string, unknown>).isCustomResolution)
       : preset.isCustomResolution;
 
-  const audioChannels =
-    (projectInputRec as Record<string, unknown>).audioChannels === 'mono' ? 'mono' : 'stereo';
   const sampleRateRaw = Number((projectInputRec as Record<string, unknown>).sampleRate);
   const sampleRate =
     Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
@@ -400,7 +408,6 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       orientation,
       aspectRatio,
       isCustomResolution,
-      audioChannels,
       sampleRate,
       audioDeclickDurationUs:
         Number.isFinite(Number(projectInputRec.audioDeclickDurationUs)) &&
@@ -492,31 +499,49 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   };
 }
 
-export function normalizeWorkspaceSettings(raw: unknown): GranVideoEditorWorkspaceSettings {
+export function normalizeAppSettings(raw: unknown): FastCatAppSettings {
   if (!raw || typeof raw !== 'object') {
-    return createDefaultWorkspaceSettings();
+    return createDefaultAppSettings();
   }
 
   const input = raw as Record<string, unknown>;
+  const pathsInput =
+    input.paths && typeof input.paths === 'object'
+      ? (input.paths as Record<string, unknown>)
+      : ({} as Record<string, unknown>);
 
   const proxyStorageLimitBytes = Number(input.proxyStorageLimitBytes);
   const cacheStorageLimitBytes = Number(input.cacheStorageLimitBytes);
   const thumbnailsStorageLimitBytes = Number(input.thumbnailsStorageLimitBytes);
 
   const MAX_LIMIT_BYTES = 1024 * 1024 * 1024 * 1024;
+  const defaultSettings = createDefaultAppSettings();
+  const placementMode =
+    pathsInput.placementMode === 'portable' ? 'portable' : defaultSettings.paths.placementMode;
 
   return {
+    paths: {
+      contentRootPath: normalizeStoragePathValue(pathsInput.contentRootPath),
+      dataRootPath: normalizeStoragePathValue(pathsInput.dataRootPath),
+      tempRootPath: normalizeStoragePathValue(pathsInput.tempRootPath),
+      proxiesRootPath: normalizeStoragePathValue(pathsInput.proxiesRootPath),
+      placementMode,
+    },
     proxyStorageLimitBytes:
       Number.isFinite(proxyStorageLimitBytes) && proxyStorageLimitBytes > 0
         ? Math.round(Math.min(MAX_LIMIT_BYTES, proxyStorageLimitBytes))
-        : DEFAULT_WORKSPACE_SETTINGS.proxyStorageLimitBytes,
+        : defaultSettings.proxyStorageLimitBytes,
     cacheStorageLimitBytes:
       Number.isFinite(cacheStorageLimitBytes) && cacheStorageLimitBytes > 0
         ? Math.round(Math.min(MAX_LIMIT_BYTES, cacheStorageLimitBytes))
-        : DEFAULT_WORKSPACE_SETTINGS.cacheStorageLimitBytes,
+        : defaultSettings.cacheStorageLimitBytes,
     thumbnailsStorageLimitBytes:
       Number.isFinite(thumbnailsStorageLimitBytes) && thumbnailsStorageLimitBytes > 0
         ? Math.round(Math.min(MAX_LIMIT_BYTES, thumbnailsStorageLimitBytes))
-        : DEFAULT_WORKSPACE_SETTINGS.thumbnailsStorageLimitBytes,
+        : defaultSettings.thumbnailsStorageLimitBytes,
   };
+}
+
+export function normalizeWorkspaceSettings(raw: unknown): GranVideoEditorWorkspaceSettings {
+  return normalizeAppSettings(raw);
 }

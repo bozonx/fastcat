@@ -34,21 +34,28 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
   const lastProjectName = ref<string | null>(
-    readLocalStorageString('gran-editor-last-opened-project'),
+    readLocalStorageString('fastcat-last-opened-project') ??
+      readLocalStorageString('gran-editor-last-opened-project'),
   );
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {
     userSettings,
+    appSettings,
     workspaceSettings,
     isSavingUserSettings,
     userSettingsSaveError,
+    isSavingAppSettings,
+    appSettingsSaveError,
     isSavingWorkspaceSettings,
     workspaceSettingsSaveError,
     batchUpdateUserSettings,
+    batchUpdateAppSettings,
     batchUpdateWorkspaceSettings,
+    loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,
     loadUserSettingsFromDisk,
+    saveAppSettingsToDisk,
     saveWorkspaceSettingsToDisk,
     saveUserSettingsToDisk,
     flushSettingsSaves,
@@ -68,8 +75,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(lastProjectName, (v) => {
     if (typeof window === 'undefined') return;
     try {
-      if (v === null) window.localStorage.removeItem('gran-editor-last-opened-project');
-      else window.localStorage.setItem('gran-editor-last-opened-project', v);
+      if (v === null) {
+        window.localStorage.removeItem('fastcat-last-opened-project');
+        window.localStorage.removeItem('gran-editor-last-opened-project');
+      } else {
+        window.localStorage.setItem('fastcat-last-opened-project', v);
+        window.localStorage.removeItem('gran-editor-last-opened-project');
+      }
     } catch {
       // ignore
     }
@@ -99,9 +111,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     await loadProjects();
-    await loadWorkspaceSettingsFromDisk();
+    await loadAppSettingsFromDisk();
     await loadUserSettingsFromDisk();
-    await saveWorkspaceSettingsToDisk();
+    await saveAppSettingsToDisk();
     await saveUserSettingsToDisk();
   }
 
@@ -114,8 +126,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error,
     isInitializing,
     loadProjects,
+    loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,
     loadUserSettingsFromDisk,
+    saveAppSettingsToDisk,
     saveWorkspaceSettingsToDisk,
     saveUserSettingsToDisk,
     resetSettingsState,
@@ -160,12 +174,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     workspaceProviderId,
     lastProjectName: skipHydrate(lastProjectName),
     userSettings: skipHydrate(userSettings),
+    appSettings: skipHydrate(appSettings),
     workspaceSettings: skipHydrate(workspaceSettings),
     isSavingUserSettings,
     userSettingsSaveError,
+    isSavingAppSettings,
+    appSettingsSaveError,
     isSavingWorkspaceSettings,
     workspaceSettingsSaveError,
     batchUpdateUserSettings,
+    batchUpdateAppSettings,
     batchUpdateWorkspaceSettings,
     flushSettingsSaves,
     init,

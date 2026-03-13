@@ -1,5 +1,6 @@
 import { STORAGE_LIMITS } from '../constants';
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
+import type { StoragePathRegistry } from '../storage-roots';
 
 export interface GranPublicadorIntegrationSettings {
   enabled: boolean;
@@ -88,7 +89,6 @@ export interface GranVideoEditorUserSettings {
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
-    audioChannels: 'stereo' | 'mono';
     sampleRate: number;
     audioDeclickDurationUs: number;
     defaultAudioFadeCurve: 'linear' | 'logarithmic';
@@ -203,11 +203,14 @@ export interface GranVideoEditorUserSettings {
   };
 }
 
-export interface GranVideoEditorWorkspaceSettings {
+export interface FastCatAppSettings {
+  paths: StoragePathRegistry;
   proxyStorageLimitBytes: number;
   cacheStorageLimitBytes: number;
   thumbnailsStorageLimitBytes: number;
 }
+
+export type GranVideoEditorWorkspaceSettings = FastCatAppSettings;
 
 export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   locale: 'en-US',
@@ -240,7 +243,6 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     orientation: 'landscape',
     aspectRatio: '16:9',
     isCustomResolution: false,
-    audioChannels: 'stereo',
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
     defaultAudioFadeCurve: 'logarithmic',
@@ -319,8 +321,17 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
   },
 };
 
-export const DEFAULT_WORKSPACE_SETTINGS: GranVideoEditorWorkspaceSettings = {
+export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
+  paths: {
+    contentRootPath: '',
+    dataRootPath: '',
+    tempRootPath: '',
+    proxiesRootPath: '',
+    placementMode: 'system-default',
+  },
   proxyStorageLimitBytes: STORAGE_LIMITS.PROXY_BYTES,
   cacheStorageLimitBytes: STORAGE_LIMITS.CACHE_BYTES,
   thumbnailsStorageLimitBytes: STORAGE_LIMITS.THUMBNAILS_BYTES,
 };
+
+export const DEFAULT_WORKSPACE_SETTINGS: GranVideoEditorWorkspaceSettings = DEFAULT_APP_SETTINGS;

@@ -51,6 +51,7 @@ pnpm tauri:build
 - Desktop mode uses Tauri 2 with `@tauri-apps/plugin-fs` for file system access.
 - File streaming in desktop mode uses `tauri-plugin-fs-stream` and `tauri-plugin-fs-stream-api`.
 - The desktop VFS adapter stores its local app-managed data in `BaseDirectory.AppData`.
+- FastCat stores global `user.settings.json` and `app.settings.json` in the OS-recommended Tauri `BaseDirectory.AppConfig` location.
 - Tauri capabilities are scoped to `$APPDATA/**/*` for the file manager and stream APIs.
 
 ## Architecture
@@ -68,8 +69,15 @@ pnpm tauri:build
 
 ## Workspace data
 
-The editor stores temporary/generated files inside the selected workspace folder under `vardata/`.
-It also keeps a shared workspace-level content library in `common/`.
+FastCat uses a split storage model:
+
+- `projects/` and `common/` are persistent user-owned content
+- temporary/generated workspace data remains inside `vardata/`
+- proxy media can be configured separately through **Application settings → Storage**
+- desktop path overrides for content/data/temp/proxies are stored in `app.settings.json`
+
+In OPFS and portable-style workspace modes, config files are stored in the workspace under `.fastcat-config/`.
+Legacy `.gran-workspace/*` files are still read for migration.
 
 Each project has a stable `projectId` stored in `projects/<projectName>/.gran/project.meta.json`.
 This ID is used as the folder key for project-scoped temporary data.
@@ -91,7 +99,7 @@ Shared library behavior:
 
 You can clear temporary files from the UI:
 
-- **Workspace settings → Storage → Clear temporary files** — deletes `vardata/`
+- **Application settings → Storage → Clear temporary files** — deletes `vardata/`
 - **Project settings → Storage → Clear temporary files** — deletes `vardata/projects/<projectId>`
 
 ## External integrations
@@ -134,8 +142,9 @@ If a manual Files or STT service explicitly overrides Gran, the related scope is
 Notes:
 
 - `GPAN_PUBLICADOR_BASE_URL` defines the Gran Publicador instance URL for connect flow and API resolution
-- Gran connect app name is fixed globally and is not editable in user settings
-- user integration settings are stored in `.gran-workspace/user.settings.json`
+- FastCat connect app name is fixed globally and is not editable in user settings
+- desktop user/app settings are stored in the OS app config directory
+- OPFS and portable workspace settings are stored in `.fastcat-config/user.settings.json` and `.fastcat-config/app.settings.json`
 - manual STT `baseUrl` may point to the service root, `/api/v1`, `/api/v1/external/stt`, or the full `/api/v1/transcribe/stream` endpoint
 - Gran STT streaming uses `POST /api/v1/external/api/v1/transcribe/stream`
 

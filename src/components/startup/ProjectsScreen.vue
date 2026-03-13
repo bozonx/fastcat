@@ -2,17 +2,22 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
 import SearchInput from '~/components/ui/SearchInput.vue';
+import AppModal from '~/components/ui/AppModal.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const isAdvancedOpen = ref(false);
 
 const {
   searchQuery,
-  newProjectName,
   isRenaming,
   renameValue,
+  isCreateModalOpen,
+  projectCreationSettings,
   filteredProjects,
   createNewProject,
+  startCreateProject,
   handleOpenProject,
   renameProject,
   startRename,
@@ -98,25 +103,17 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <!-- Create New Project Card -->
           <div
-            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col gap-4 shadow-xl"
+            class="bg-ui-bg-elevated border border-ui-border rounded-xl p-6 flex flex-col items-center justify-center gap-4 shadow-xl hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group"
+            @click="startCreateProject"
           >
+            <div
+              class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors"
+            >
+              <UIcon name="i-heroicons-plus" class="w-6 h-6 text-primary-400" />
+            </div>
             <h3 class="font-medium text-ui-text">
               {{ t('granVideoEditor.projects.newProject') }}
             </h3>
-            <UInput
-              v-model="newProjectName"
-              :placeholder="t('granVideoEditor.projects.projectNamePlaceholder')"
-              @keyup.enter="createNewProject"
-            />
-            <UButton
-              color="primary"
-              variant="soft"
-              class="justify-center mt-auto"
-              :loading="workspaceStore.isLoading"
-              :disabled="!newProjectName.trim()"
-              :label="t('common.create')"
-              @click="createNewProject"
-            />
           </div>
 
           <!-- Existing Projects -->
@@ -195,4 +192,71 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
       </div>
     </div>
   </div>
+
+  <AppModal
+    v-model:open="isCreateModalOpen"
+    :title="t('granVideoEditor.projects.newProject')"
+    :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
+  >
+    <div class="space-y-6">
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-ui-text">
+          {{ t('granVideoEditor.projects.projectNamePlaceholder') }}
+        </label>
+        <UInput
+          v-model="projectCreationSettings.name"
+          :placeholder="t('granVideoEditor.projects.projectNamePlaceholder')"
+          autofocus
+          @keyup.enter="createNewProject"
+        />
+      </div>
+
+      <UCollapsible>
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="p-0 hover:bg-transparent"
+          :icon="
+            isAdvancedOpen ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
+          "
+          :label="t('videoEditor.projectSettings.advanced', 'Advanced Settings')"
+          @click="isAdvancedOpen = !isAdvancedOpen"
+        />
+
+        <template #content>
+          <div class="pt-4 border-t border-ui-border mt-2">
+            <MediaResolutionSettings
+              v-model:width="projectCreationSettings.width"
+              v-model:height="projectCreationSettings.height"
+              v-model:fps="projectCreationSettings.fps"
+              v-model:resolution-format="projectCreationSettings.resolutionFormat"
+              v-model:orientation="projectCreationSettings.orientation"
+              v-model:aspect-ratio="projectCreationSettings.aspectRatio"
+              v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
+              v-model:sample-rate="projectCreationSettings.sampleRate"
+            />
+          </div>
+        </template>
+      </UCollapsible>
+    </div>
+
+    <template #footer>
+      <div class="flex justify-end gap-3 w-full">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          :label="t('common.cancel')"
+          @click="isCreateModalOpen = false"
+        />
+        <UButton
+          color="primary"
+          :disabled="!projectCreationSettings.name.trim()"
+          :loading="workspaceStore.isLoading"
+          :label="t('common.create')"
+          @click="createNewProject"
+        />
+      </div>
+    </template>
+  </AppModal>
 </template>

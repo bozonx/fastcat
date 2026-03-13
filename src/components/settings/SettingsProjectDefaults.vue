@@ -53,7 +53,6 @@ function resetDefaults() {
       v-model:orientation="workspaceStore.userSettings.projectDefaults.orientation"
       v-model:aspect-ratio="workspaceStore.userSettings.projectDefaults.aspectRatio"
       v-model:is-custom-resolution="workspaceStore.userSettings.projectDefaults.isCustomResolution"
-      v-model:audio-channels="workspaceStore.userSettings.projectDefaults.audioChannels"
       v-model:sample-rate="workspaceStore.userSettings.projectDefaults.sampleRate"
       :disabled="false"
     />

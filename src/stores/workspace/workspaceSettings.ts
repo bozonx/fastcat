@@ -3,10 +3,13 @@ import PQueue from 'p-queue';
 import { useDebounceFn } from '@vueuse/core';
 
 import {
+  type FastCatAppSettings,
   type GranVideoEditorUserSettings,
   type GranVideoEditorWorkspaceSettings,
+  createDefaultAppSettings,
   createDefaultUserSettings,
   createDefaultWorkspaceSettings,
+  normalizeAppSettings,
   normalizeUserSettings,
   normalizeWorkspaceSettings,
 } from '~/utils/settings';
@@ -21,10 +24,13 @@ function getErrorMessage(e: unknown, fallback: string): string {
 
 export interface WorkspaceSettingsModule {
   userSettings: Ref<GranVideoEditorUserSettings>;
+  appSettings: Ref<FastCatAppSettings>;
   workspaceSettings: Ref<GranVideoEditorWorkspaceSettings>;
 
   isSavingUserSettings: Ref<boolean>;
   userSettingsSaveError: Ref<string | null>;
+  isSavingAppSettings: Ref<boolean>;
+  appSettingsSaveError: Ref<string | null>;
   isSavingWorkspaceSettings: Ref<boolean>;
   workspaceSettingsSaveError: Ref<string | null>;
 
@@ -32,14 +38,20 @@ export interface WorkspaceSettingsModule {
     updater: (draft: GranVideoEditorUserSettings) => void,
     options?: { immediate?: boolean },
   ) => Promise<void>;
+  batchUpdateAppSettings: (
+    updater: (draft: FastCatAppSettings) => void,
+    options?: { immediate?: boolean },
+  ) => Promise<void>;
   batchUpdateWorkspaceSettings: (
     updater: (draft: GranVideoEditorWorkspaceSettings) => void,
     options?: { immediate?: boolean },
   ) => Promise<void>;
 
+  loadAppSettingsFromDisk: () => Promise<void>;
   loadWorkspaceSettingsFromDisk: () => Promise<void>;
   loadUserSettingsFromDisk: () => Promise<void>;
 
+  saveAppSettingsToDisk: () => Promise<void>;
   saveWorkspaceSettingsToDisk: () => Promise<void>;
   saveUserSettingsToDisk: () => Promise<void>;
 
@@ -52,7 +64,8 @@ export function createWorkspaceSettingsModule(params: {
   settingsRepo: Ref<WorkspaceSettingsRepository | null>;
 }): WorkspaceSettingsModule {
   const userSettings = ref<GranVideoEditorUserSettings>(createDefaultUserSettings());
-  const workspaceSettings = ref<GranVideoEditorWorkspaceSettings>(createDefaultWorkspaceSettings());
+  const appSettings = ref<FastCatAppSettings>(createDefaultAppSettings());
+  const workspaceSettings = appSettings as Ref<GranVideoEditorWorkspaceSettings>;
 
   const isSavingUserSettings = ref(false);
   const userSettingsSaveError = ref<string | null>(null);
@@ -64,22 +77,22 @@ export function createWorkspaceSettingsModule(params: {
   let savedUserSettingsRevision = 0;
   const userSettingsSaveQueue = new PQueue({ concurrency: 1 });
 
-  const isSavingWorkspaceSettings = ref(false);
-  const workspaceSettingsSaveError = ref<string | null>(null);
-  const isBatchUpdatingWorkspaceSettings = ref(false);
-  const debouncedEnqueueWorkspaceSettingsSave = useDebounceFn(async () => {
-    await enqueueWorkspaceSettingsSave();
+  const isSavingAppSettings = ref(false);
+  const appSettingsSaveError = ref<string | null>(null);
+  const isBatchUpdatingAppSettings = ref(false);
+  const debouncedEnqueueAppSettingsSave = useDebounceFn(async () => {
+    await enqueueAppSettingsSave();
   }, 500);
-  let workspaceSettingsRevision = 0;
-  let savedWorkspaceSettingsRevision = 0;
-  const workspaceSettingsSaveQueue = new PQueue({ concurrency: 1 });
+  let appSettingsRevision = 0;
+  let savedAppSettingsRevision = 0;
+  const appSettingsSaveQueue = new PQueue({ concurrency: 1 });
 
   function markUserSettingsAsDirty() {
     userSettingsRevision += 1;
   }
 
-  function markWorkspaceSettingsAsDirty() {
-    workspaceSettingsRevision += 1;
+  function markAppSettingsAsDirty() {
+    appSettingsRevision += 1;
   }
 
   async function persistUserSettingsNow() {
@@ -143,79 +156,93 @@ export function createWorkspaceSettingsModule(params: {
     await requestUserSettingsSave(options);
   }
 
-  async function persistWorkspaceSettingsNow() {
+  async function persistAppSettingsNow() {
     if (!params.settingsRepo.value) return;
-    if (savedWorkspaceSettingsRevision >= workspaceSettingsRevision) return;
+    if (savedAppSettingsRevision >= appSettingsRevision) return;
 
-    isSavingWorkspaceSettings.value = true;
-    workspaceSettingsSaveError.value = null;
-    const revisionToSave = workspaceSettingsRevision;
+    isSavingAppSettings.value = true;
+    appSettingsSaveError.value = null;
+    const revisionToSave = appSettingsRevision;
 
     try {
-      await params.settingsRepo.value.saveWorkspaceSettings(workspaceSettings.value);
+      await params.settingsRepo.value.saveAppSettings(appSettings.value);
 
-      if (savedWorkspaceSettingsRevision < revisionToSave) {
-        savedWorkspaceSettingsRevision = revisionToSave;
+      if (savedAppSettingsRevision < revisionToSave) {
+        savedAppSettingsRevision = revisionToSave;
       }
     } catch (e) {
-      workspaceSettingsSaveError.value = getErrorMessage(e, 'Failed to save workspace settings');
-      console.warn('Failed to save workspace settings', e);
+      appSettingsSaveError.value = getErrorMessage(e, 'Failed to save app settings');
+      console.warn('Failed to save app settings', e);
     } finally {
-      isSavingWorkspaceSettings.value = false;
+      isSavingAppSettings.value = false;
     }
   }
 
-  async function enqueueWorkspaceSettingsSave() {
-    await workspaceSettingsSaveQueue.add(async () => {
-      await persistWorkspaceSettingsNow();
+  async function enqueueAppSettingsSave() {
+    await appSettingsSaveQueue.add(async () => {
+      await persistAppSettingsNow();
     });
   }
 
-  async function requestWorkspaceSettingsSave(options?: { immediate?: boolean }) {
+  async function requestAppSettingsSave(options?: { immediate?: boolean }) {
     if (options?.immediate || typeof window === 'undefined') {
-      await enqueueWorkspaceSettingsSave();
+      await enqueueAppSettingsSave();
       return;
     }
-    await debouncedEnqueueWorkspaceSettingsSave();
+    await debouncedEnqueueAppSettingsSave();
   }
 
   watch(
-    workspaceSettings,
+    appSettings,
     () => {
-      if (isBatchUpdatingWorkspaceSettings.value) return;
-      markWorkspaceSettingsAsDirty();
-      void requestWorkspaceSettingsSave();
+      if (isBatchUpdatingAppSettings.value) return;
+      markAppSettingsAsDirty();
+      void requestAppSettingsSave();
     },
     { deep: true },
   );
+
+  async function batchUpdateAppSettings(
+    updater: (draft: FastCatAppSettings) => void,
+    options?: { immediate?: boolean },
+  ) {
+    isBatchUpdatingAppSettings.value = true;
+    try {
+      updater(appSettings.value);
+    } finally {
+      isBatchUpdatingAppSettings.value = false;
+    }
+
+    markAppSettingsAsDirty();
+    await requestAppSettingsSave(options);
+  }
 
   async function batchUpdateWorkspaceSettings(
     updater: (draft: GranVideoEditorWorkspaceSettings) => void,
     options?: { immediate?: boolean },
   ) {
-    isBatchUpdatingWorkspaceSettings.value = true;
-    try {
-      updater(workspaceSettings.value);
-    } finally {
-      isBatchUpdatingWorkspaceSettings.value = false;
-    }
-
-    markWorkspaceSettingsAsDirty();
-    await requestWorkspaceSettingsSave(options);
+    await batchUpdateAppSettings(
+      (draft) => updater(draft as GranVideoEditorWorkspaceSettings),
+      options,
+    );
   }
 
-  async function loadWorkspaceSettingsFromDisk() {
+  async function loadAppSettingsFromDisk() {
     if (!params.settingsRepo.value) return;
 
     try {
-      const raw = await params.settingsRepo.value.loadWorkspaceSettings();
-      workspaceSettings.value = normalizeWorkspaceSettings(raw);
+      const raw = await params.settingsRepo.value.loadAppSettings();
+      appSettings.value = normalizeAppSettings(raw);
     } catch {
-      workspaceSettings.value = normalizeWorkspaceSettings(null);
+      appSettings.value = normalizeAppSettings(null);
     } finally {
-      workspaceSettingsRevision = 0;
-      savedWorkspaceSettingsRevision = 0;
+      appSettingsRevision = 0;
+      savedAppSettingsRevision = 0;
     }
+  }
+
+  async function loadWorkspaceSettingsFromDisk() {
+    await loadAppSettingsFromDisk();
   }
 
   async function loadUserSettingsFromDisk() {
@@ -232,8 +259,12 @@ export function createWorkspaceSettingsModule(params: {
     }
   }
 
+  async function saveAppSettingsToDisk() {
+    await requestAppSettingsSave({ immediate: true });
+  }
+
   async function saveWorkspaceSettingsToDisk() {
-    await requestWorkspaceSettingsSave({ immediate: true });
+    await requestAppSettingsSave({ immediate: true });
   }
 
   async function saveUserSettingsToDisk() {
@@ -241,39 +272,45 @@ export function createWorkspaceSettingsModule(params: {
   }
 
   async function flushSettingsSaves() {
-    await Promise.all([saveUserSettingsToDisk(), saveWorkspaceSettingsToDisk()]);
+    await Promise.all([saveUserSettingsToDisk(), saveAppSettingsToDisk()]);
   }
 
   function resetSettingsState() {
     userSettings.value = createDefaultUserSettings();
-    workspaceSettings.value = createDefaultWorkspaceSettings();
+    appSettings.value = createDefaultAppSettings();
 
     userSettingsRevision = 0;
     savedUserSettingsRevision = 0;
-    workspaceSettingsRevision = 0;
-    savedWorkspaceSettingsRevision = 0;
+    appSettingsRevision = 0;
+    savedAppSettingsRevision = 0;
 
     isSavingUserSettings.value = false;
     userSettingsSaveError.value = null;
-    isSavingWorkspaceSettings.value = false;
-    workspaceSettingsSaveError.value = null;
+    isSavingAppSettings.value = false;
+    appSettingsSaveError.value = null;
   }
 
   return {
     userSettings,
+    appSettings,
     workspaceSettings,
 
     isSavingUserSettings,
     userSettingsSaveError,
-    isSavingWorkspaceSettings,
-    workspaceSettingsSaveError,
+    isSavingAppSettings,
+    appSettingsSaveError,
+    isSavingWorkspaceSettings: isSavingAppSettings,
+    workspaceSettingsSaveError: appSettingsSaveError,
 
     batchUpdateUserSettings,
+    batchUpdateAppSettings,
     batchUpdateWorkspaceSettings,
 
+    loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,
     loadUserSettingsFromDisk,
 
+    saveAppSettingsToDisk,
     saveWorkspaceSettingsToDisk,
     saveUserSettingsToDisk,
 

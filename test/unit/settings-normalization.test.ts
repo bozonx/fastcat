@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { normalizeUserSettings, normalizeWorkspaceSettings } from '../../src/utils/settings';
+import {
+  normalizeAppSettings,
+  normalizeUserSettings,
+  normalizeWorkspaceSettings,
+} from '../../src/utils/settings';
 import { DEFAULT_HOTKEYS } from '../../src/utils/hotkeys/defaultHotkeys';
 
 describe('settings normalization', () => {
@@ -67,16 +71,38 @@ describe('settings normalization', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Escape']);
   });
 
-  it('normalizes workspace limits', () => {
-    const normalized = normalizeWorkspaceSettings({
+  it('normalizes app settings paths and limits', () => {
+    const normalized = normalizeAppSettings({
+      paths: {
+        contentRootPath: '  /mnt/content  ',
+        dataRootPath: '  /mnt/data  ',
+        tempRootPath: '  /mnt/temp  ',
+        proxiesRootPath: '  /mnt/proxies  ',
+        placementMode: 'portable',
+      },
       proxyStorageLimitBytes: '123',
       cacheStorageLimitBytes: 0,
       thumbnailsStorageLimitBytes: 42,
     });
 
+    expect(normalized.paths.contentRootPath).toBe('/mnt/content');
+    expect(normalized.paths.dataRootPath).toBe('/mnt/data');
+    expect(normalized.paths.tempRootPath).toBe('/mnt/temp');
+    expect(normalized.paths.proxiesRootPath).toBe('/mnt/proxies');
+    expect(normalized.paths.placementMode).toBe('portable');
     expect(normalized.proxyStorageLimitBytes).toBe(123);
     expect(normalized.cacheStorageLimitBytes).toBe(2 * 1024 * 1024 * 1024);
     expect(normalized.thumbnailsStorageLimitBytes).toBe(42);
+  });
+
+  it('keeps workspace normalization as a legacy alias for app settings', () => {
+    const normalized = normalizeWorkspaceSettings({
+      paths: {
+        contentRootPath: '/workspace',
+      },
+    });
+
+    expect(normalized.paths.contentRootPath).toBe('/workspace');
   });
 
   it('normalizes integration settings', () => {

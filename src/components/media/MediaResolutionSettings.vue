@@ -11,7 +11,6 @@ const props = withDefaults(
     orientation: 'landscape' | 'portrait';
     aspectRatio: string;
     isCustomResolution: boolean;
-    audioChannels?: 'stereo' | 'mono';
     sampleRate?: number;
     disabled?: boolean;
     showAudioSettings?: boolean;
@@ -32,7 +31,6 @@ const emit = defineEmits<{
   'update:orientation': [value: 'landscape' | 'portrait'];
   'update:aspectRatio': [value: string];
   'update:isCustomResolution': [value: boolean];
-  'update:audioChannels': [value: 'stereo' | 'mono'];
   'update:sampleRate': [value: number];
 }>();
 
@@ -46,10 +44,7 @@ const formatOptions = [
   { value: '4k', label: t('videoEditor.resolution.preset.4k', '4K (UHD)') },
 ];
 
-const audioChannelsOptions = [
-  { value: 'stereo', label: t('videoEditor.audio.stereo', 'Stereo') },
-  { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
-];
+
 
 const sampleRateOptions = [
   { value: 44100, label: '44.1 kHz' },
@@ -126,10 +121,7 @@ const localFps = computed({
   set: (val) => emit('update:fps', val),
 });
 
-const localAudioChannels = computed({
-  get: () => props.audioChannels ?? 'stereo',
-  set: (val) => emit('update:audioChannels', val),
-});
+
 
 const localSampleRate = computed({
   get: () => props.sampleRate ?? 48000,
@@ -306,20 +298,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         {{ t('videoEditor.audio.audioSettings', 'Audio settings') }}
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.audio.channels', 'Channels') }}
-          </label>
-          <UiAppButtonGroup
-            v-model="localAudioChannels"
-            :options="audioChannelsOptions as any"
-            :disabled="disabled"
-            class="w-full"
-          />
-        </div>
-
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2 flex-1">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
           </label>
@@ -333,7 +312,6 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             label-key="label"
           />
         </div>
-      </div>
     </template>
   </div>
 </template>

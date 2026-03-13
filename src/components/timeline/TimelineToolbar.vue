@@ -69,7 +69,8 @@ function toggleClipSnapMode() {
           :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
           :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
           icon="i-heroicons-scissors"
-          :aria-label="t('granVideoEditor.timeline.trim', 'Trim')"
+          :aria-label="undefined"
+          :ariaLabel="t('granVideoEditor.timeline.trim', 'Trim')"
           :items="trimMenuItems"
           @click="timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive"
         />

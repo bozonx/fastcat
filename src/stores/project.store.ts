@@ -126,7 +126,19 @@ export const useProjectStore = defineStore('project', () => {
     await projectSettingsStore.saveProjectSettings();
   }
 
-  async function createProject(name: string) {
+  async function createProject(
+    name: string,
+    options?: {
+      width?: number;
+      height?: number;
+      fps?: number;
+      resolutionFormat?: string;
+      orientation?: 'landscape' | 'portrait';
+      aspectRatio?: string;
+      isCustomResolution?: boolean;
+      sampleRate?: number;
+    },
+  ) {
     if (!workspaceStore.projectsHandle) {
       workspaceStore.error = 'Workspace not initialized';
       return;
@@ -187,6 +199,23 @@ export const useProjectStore = defineStore('project', () => {
       currentFileName.value = initialTimeline;
 
       const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
+
+      if (options) {
+        if (options.width !== undefined) initialSettings.project.width = options.width;
+        if (options.height !== undefined) initialSettings.project.height = options.height;
+        if (options.fps !== undefined) initialSettings.project.fps = options.fps;
+        if (options.resolutionFormat !== undefined)
+          initialSettings.project.resolutionFormat = options.resolutionFormat;
+        if (options.orientation !== undefined)
+          initialSettings.project.orientation = options.orientation;
+        if (options.aspectRatio !== undefined)
+          initialSettings.project.aspectRatio = options.aspectRatio;
+        if (options.isCustomResolution !== undefined)
+          initialSettings.project.isCustomResolution = options.isCustomResolution;
+        if (options.sampleRate !== undefined)
+          initialSettings.project.sampleRate = options.sampleRate;
+      }
+
       initialSettings.timelines.openPaths = [initialTimeline];
       initialSettings.timelines.lastOpenedPath = initialTimeline;
       projectSettings.value = initialSettings;
