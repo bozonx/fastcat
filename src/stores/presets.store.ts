@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import { getVideoEffectManifest, registerEffect } from '~/effects';
+import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
 
 export interface CustomPreset {
@@ -20,6 +20,8 @@ export const usePresetsStore = defineStore('presets', () => {
   const effectsCustomCollapsed = ref(false);
   const transitionsStandardCollapsed = ref(false);
   const transitionsCustomCollapsed = ref(false);
+  const audioStandardCollapsed = ref(false);
+  const audioCustomCollapsed = ref(false);
 
   // Load from localStorage
   function load() {
@@ -36,6 +38,8 @@ export const usePresetsStore = defineStore('presets', () => {
         effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
         transitionsStandardCollapsed.value = !!state.transitionsStandardCollapsed;
         transitionsCustomCollapsed.value = !!state.transitionsCustomCollapsed;
+        audioStandardCollapsed.value = !!state.audioStandardCollapsed;
+        audioCustomCollapsed.value = !!state.audioCustomCollapsed;
       }
 
       // Register custom presets
@@ -56,6 +60,8 @@ export const usePresetsStore = defineStore('presets', () => {
       effectsCustomCollapsed,
       transitionsStandardCollapsed,
       transitionsCustomCollapsed,
+      audioStandardCollapsed,
+      audioCustomCollapsed,
     ],
     () => {
       localStorage.setItem(
@@ -65,6 +71,8 @@ export const usePresetsStore = defineStore('presets', () => {
           effectsCustomCollapsed: effectsCustomCollapsed.value,
           transitionsStandardCollapsed: transitionsStandardCollapsed.value,
           transitionsCustomCollapsed: transitionsCustomCollapsed.value,
+          audioStandardCollapsed: audioStandardCollapsed.value,
+          audioCustomCollapsed: audioCustomCollapsed.value,
         }),
       );
     },
@@ -72,20 +80,35 @@ export const usePresetsStore = defineStore('presets', () => {
 
   function registerPresetManifest(preset: CustomPreset) {
     if (preset.category === 'effect') {
-      if ((preset.effectTarget ?? 'video') !== 'video') return;
+      const target = preset.effectTarget ?? 'video';
 
-      const baseManifest = getVideoEffectManifest(preset.baseType);
-      if (!baseManifest) return;
+      if (target === 'video') {
+        const baseManifest = getVideoEffectManifest(preset.baseType);
+        if (!baseManifest) return;
 
-      registerEffect({
-        ...baseManifest,
-        type: preset.id,
-        name: preset.name,
-        target: 'video',
-        isCustom: true,
-        baseType: preset.baseType,
-        defaultValues: { ...baseManifest.defaultValues, ...preset.params },
-      });
+        registerEffect({
+          ...baseManifest,
+          type: preset.id,
+          name: preset.name,
+          target: 'video',
+          isCustom: true,
+          baseType: preset.baseType,
+          defaultValues: { ...baseManifest.defaultValues, ...preset.params },
+        });
+      } else if (target === 'audio') {
+        const baseManifest = getAudioEffectManifest(preset.baseType);
+        if (!baseManifest) return;
+
+        registerEffect({
+          ...baseManifest,
+          type: preset.id,
+          name: preset.name,
+          target: 'audio',
+          isCustom: true,
+          baseType: preset.baseType,
+          defaultValues: { ...baseManifest.defaultValues, ...preset.params },
+        });
+      }
     } else if (preset.category === 'transition') {
       const baseManifest = getTransitionManifest(preset.baseType);
       if (!baseManifest) return;
@@ -106,13 +129,14 @@ export const usePresetsStore = defineStore('presets', () => {
     baseType: string,
     name: string,
     params: Record<string, any>,
+    effectTarget?: 'video' | 'audio',
   ) {
     const newPreset: CustomPreset = {
       id: `custom_${category}_${Date.now()}`,
       baseType,
       name,
       category,
-      effectTarget: category === 'effect' ? 'video' : undefined,
+      effectTarget: category === 'effect' ? (effectTarget ?? 'video') : undefined,
       params,
       order: customPresets.value.filter((p) => p.category === category).length,
     };
@@ -161,6 +185,8 @@ export const usePresetsStore = defineStore('presets', () => {
     effectsCustomCollapsed,
     transitionsStandardCollapsed,
     transitionsCustomCollapsed,
+    audioStandardCollapsed,
+    audioCustomCollapsed,
     load,
     saveAsPreset,
     updatePreset,

@@ -75,6 +75,26 @@ export interface TextParamControl extends BaseParamControl {
   placeholder?: string;
 }
 
+export interface ActionParamControl extends BaseParamControl {
+  kind: 'action';
+  key: string;
+  action: 'open-settings' | string;
+  buttonLabel?: string;
+  buttonLabelKey?: string;
+  icon?: string;
+}
+
+export interface ArrayParamControl extends BaseParamControl {
+  kind: 'array';
+  key: string;
+  itemTemplate: ParamControl[];
+  defaultItem: Record<string, any>;
+  addLabel?: string;
+  addLabelKey?: string;
+  emptyLabel?: string;
+  emptyLabelKey?: string;
+}
+
 export type ParamControl =
   | SliderParamControl
   | NumberParamControl
@@ -84,4 +104,6 @@ export type ParamControl =
   | ColorParamControl
   | FileParamControl
   | RowParamControl
-  | TextParamControl;
+  | TextParamControl
+  | ActionParamControl
+  | ArrayParamControl;

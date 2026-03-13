@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { getVideoEffectManifest } from '~/effects';
+import { getEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 
@@ -11,7 +11,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 
-const manifest = computed(() => getVideoEffectManifest(props.effectType));
+const manifest = computed(() => getEffectManifest(props.effectType));
 
 const params = ref<Record<string, any>>({});
 const isSaveModalOpen = ref(false);
@@ -20,7 +20,7 @@ const newPresetName = ref('');
 watch(
   () => props.effectType,
   (type) => {
-    const man = getVideoEffectManifest(type);
+    const man = getEffectManifest(type);
     if (man) {
       params.value = JSON.parse(JSON.stringify(man.defaultValues || {}));
     } else {
@@ -38,7 +38,8 @@ function handleSavePreset() {
   if (!manifest.value || !newPresetName.value.trim()) return;
 
   const baseType = manifest.value.baseType || manifest.value.type;
-  presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), params.value);
+  const target = manifest.value.target ?? 'video';
+  presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), params.value, target);
 
   isSaveModalOpen.value = false;
   newPresetName.value = '';
