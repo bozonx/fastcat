@@ -62,7 +62,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error,
     lastProjectName,
   });
-  const { loadProjects, clearVardata, clearProjectVardata, deleteProject } = projectsModule;
+  const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject } =
+    projectsModule;
 
   watch(lastProjectName, (v) => {
     if (typeof window === 'undefined') return;
@@ -176,5 +177,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     clearVardata,
     clearProjectVardata,
     deleteProject,
+    renameProject,
   };
 });
