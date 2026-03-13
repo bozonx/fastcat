@@ -1,2 +1,0 @@
-sed -i -e "s/export type TimelineCommand =/export interface MoveItemsCommand {\n  type: 'move_items';\n  moves: {\n    fromTrackId: string;\n    toTrackId: string;\n    itemId: string;\n    startUs: number;\n  }[];\n  quantizeToFrames?: boolean;\n}\n\nexport type TimelineCommand =/" src/timeline/commands.ts
-sed -i -e "s/  | MoveItemToTrackCommand/  | MoveItemToTrackCommand\n  | MoveItemsCommand/" src/timeline/commands.ts
