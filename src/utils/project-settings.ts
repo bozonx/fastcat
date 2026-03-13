@@ -9,6 +9,7 @@ interface ProjectSettingsUserDefaultsInput {
 }
 
 export interface FastCatProjectSettings {
+  version: number;
   project: {
     width: number;
     height: number;
@@ -59,6 +60,7 @@ export interface FastCatProjectSettings {
 }
 
 export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
+  version: 1,
   project: {
     width: 1920,
     height: 1080,
@@ -154,6 +156,7 @@ export function createDefaultProjectSettings(
   const base = getProjectSettingsFromUserDefaults(userSettings);
   return {
     ...base,
+    version: 1,
     monitor: { ...DEFAULT_PROJECT_SETTINGS.monitor },
     timelines: {
       openPaths: [],
@@ -232,6 +235,7 @@ export function normalizeProjectSettings(
       };
 
   return {
+    version: Number(input.version) || 1,
     project: {
       width: finalWidth,
       height: finalHeight,

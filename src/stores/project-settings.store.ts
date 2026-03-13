@@ -8,7 +8,9 @@ import {
   type FastCatProjectSettings,
 } from '~/utils/project-settings';
 import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
+import { createProjectUiRepository, type ProjectUiRepository } from '~/repositories/project-ui.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import type { ProjectMeta } from '~/repositories/project-meta.repository';
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;
@@ -19,6 +21,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const workspaceStore = useWorkspaceStore();
 
   const projectSettingsRepo = ref<ProjectSettingsRepo | null>(null);
+  const projectUiRepo = ref<ProjectUiRepository | null>(null);
 
   const projectSettings = ref<FastCatProjectSettings>(
     createDefaultProjectSettings(workspaceStore.userSettings),
@@ -29,6 +32,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const getProjectDirHandle = ref<(() => Promise<FileSystemDirectoryHandle | null>) | null>(null);
   const getCurrentProjectName = ref<(() => string | null) | null>(null);
   const getIsReadOnly = ref<(() => boolean) | null>(null);
+  const getProjectMeta = ref<(() => ProjectMeta | null) | null>(null);
+  const saveProjectMeta = ref<((updates: Partial<ProjectMeta>) => Promise<void>) | null>(null);
 
   const autoSave = createAutoSave({
     doSave: async () => {
@@ -40,10 +45,20 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       isSavingProjectSettings.value = true;
       try {
         await ensureRepo();
-        const repo: ProjectSettingsRepo | null = projectSettingsRepo.value;
-        if (!repo) return false;
+        
+        // Save technical settings
+        if (projectSettingsRepo.value) {
+          await projectSettingsRepo.value.save(projectSettings.value);
+        }
 
-        await (repo as unknown as ProjectSettingsRepo).save(projectSettings.value);
+        // Save UI session settings
+        if (projectUiRepo.value) {
+          await projectUiRepo.value.save({
+            version: 1,
+            monitor: projectSettings.value.monitor,
+            timelines: projectSettings.value.timelines,
+          });
+        }
       } finally {
         isSavingProjectSettings.value = false;
       }
@@ -60,14 +75,19 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       }
     },
   });
+
   function setContext(input: {
     getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
     getCurrentProjectName: () => string | null;
     getIsReadOnly: () => boolean;
+    getProjectMeta: () => ProjectMeta | null;
+    saveProjectMeta: (updates: Partial<ProjectMeta>) => Promise<void>;
   }) {
     getProjectDirHandle.value = input.getProjectDirHandle;
     getCurrentProjectName.value = input.getCurrentProjectName;
     getIsReadOnly.value = input.getIsReadOnly;
+    getProjectMeta.value = input.getProjectMeta;
+    saveProjectMeta.value = input.saveProjectMeta;
   }
 
   function closeProjectSettings() {
@@ -75,6 +95,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     isLoadingProjectSettings.value = false;
     isSavingProjectSettings.value = false;
     projectSettingsRepo.value = null;
+    projectUiRepo.value = null;
 
     projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
   }
@@ -87,29 +108,66 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     autoSave.markCleanForCurrentRevision();
   }
 
-  async function ensureRepo(): Promise<ProjectSettingsRepo | null> {
-    if (projectSettingsRepo.value) return projectSettingsRepo.value;
+  async function ensureRepo(): Promise<void> {
+    if (projectSettingsRepo.value && projectUiRepo.value) return;
 
     const dir = await getProjectDirHandle.value?.();
-    projectSettingsRepo.value = dir ? createProjectSettingsRepository({ projectDir: dir }) : null;
-    return projectSettingsRepo.value;
+    if (dir) {
+      if (!projectSettingsRepo.value) {
+        projectSettingsRepo.value = createProjectSettingsRepository({ projectDir: dir });
+      }
+      if (!projectUiRepo.value) {
+        projectUiRepo.value = createProjectUiRepository({ projectDir: dir });
+      }
+    }
   }
 
   async function loadProjectSettings() {
     isLoadingProjectSettings.value = true;
 
     projectSettingsRepo.value = null;
+    projectUiRepo.value = null;
     await ensureRepo();
 
     try {
-      const repo: ProjectSettingsRepo | null = projectSettingsRepo.value;
-      if (!repo) {
-        projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
-        return;
+      const settings = createDefaultProjectSettings(workspaceStore.userSettings);
+      
+      // Load technical settings
+      if (projectSettingsRepo.value) {
+        const repo = projectSettingsRepo.value as ProjectSettingsRepo;
+        const raw = await repo.load();
+        if (raw) {
+          const normalized = normalizeProjectSettings(raw, workspaceStore.userSettings);
+          Object.assign(settings, normalized);
+
+          // MIGRATION: Move metadata to project.meta.json if present in settings.json
+          const legacyMeta = (raw as any)?.exportDefaults?.encoding?.metadata;
+          const currentMeta = getProjectMeta.value?.();
+          if (legacyMeta && currentMeta) {
+            const hasLegacyContent = legacyMeta.title || legacyMeta.author || legacyMeta.tags;
+            // Only migrate if destination is relatively empty (initial load after rename or old project)
+            if (hasLegacyContent && !currentMeta.title && !currentMeta.author) {
+              await saveProjectMeta.value?.({
+                title: legacyMeta.title || currentMeta.title,
+                author: legacyMeta.author || currentMeta.author,
+                tags: typeof legacyMeta.tags === 'string' ? legacyMeta.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : currentMeta.tags,
+              });
+            }
+          }
+        }
       }
 
-      const raw = await (repo as unknown as ProjectSettingsRepo).load();
-      projectSettings.value = normalizeProjectSettings(raw, workspaceStore.userSettings);
+      // Load UI session settings
+      if (projectUiRepo.value) {
+        const repo = projectUiRepo.value as ProjectUiRepository;
+        const uiRaw = await repo.load();
+        if (uiRaw) {
+          if (uiRaw.monitor) settings.monitor = { ...settings.monitor, ...uiRaw.monitor };
+          if (uiRaw.timelines) settings.timelines = { ...settings.timelines, ...uiRaw.timelines };
+        }
+      }
+
+      projectSettings.value = settings;
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name === 'NotFoundError') {
         projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
@@ -137,14 +195,20 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     projectDir: FileSystemDirectoryHandle;
   }) {
     projectSettingsRepo.value = createProjectSettingsRepository({ projectDir: options.projectDir });
+    projectUiRepo.value = createProjectUiRepository({ projectDir: options.projectDir });
 
     const initial = createDefaultProjectSettings(workspaceStore.userSettings);
     projectSettings.value = initial;
 
     try {
       await projectSettingsRepo.value.save(projectSettings.value);
+      await projectUiRepo.value.save({
+        version: 1,
+        monitor: initial.monitor,
+        timelines: initial.timelines,
+      });
     } catch (e) {
-      console.warn('Failed to create project settings file', e);
+      console.warn('Failed to create project settings/ui files', e);
     }
 
     autoSave.reset();
