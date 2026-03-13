@@ -250,6 +250,52 @@ export interface TimelineGapItem {
 
 export type TimelineTrackItem = TimelineClipItem | TimelineGapItem;
 
+export interface TimelineTransitionSelection {
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+}
+
+export interface TimelineClipActionPayload {
+  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
+  trackId: string;
+  itemId: string;
+  videoItemId?: string;
+}
+
+export interface TimelineOpenSpeedModalPayload {
+  trackId: string;
+  itemId: string;
+  speed: number;
+}
+
+export interface TimelineMoveItemPayload {
+  trackId: string;
+  itemId: string;
+  startUs: number;
+}
+
+export interface TimelineTrimItemPayload {
+  trackId: string;
+  itemId: string;
+  edge: 'start' | 'end';
+  startUs: number;
+}
+
+export interface TimelineResizeVolumePayload {
+  trackId: string;
+  itemId: string;
+  gain: number;
+  trackHeight: number;
+}
+
+export interface TimelineResizeFadePayload {
+  trackId: string;
+  itemId: string;
+  edge: 'in' | 'out';
+  durationUs: number;
+}
+
 export interface TimelineTrack {
   id: string;
   kind: TrackKind;

@@ -79,6 +79,39 @@ const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes
 
 const { findEntryByPath } = useFileManager();
 
+function selectRootFolder() {
+  filesPageStore.selectFolder({
+    kind: 'directory',
+    name: projectStore.currentProjectName || '',
+    path: '',
+  });
+}
+
+function selectWorkspaceCommonFolder() {
+  filesPageStore.selectFolder({
+    kind: 'directory',
+    name: WORKSPACE_COMMON_DIR_NAME,
+    path: WORKSPACE_COMMON_PATH_PREFIX,
+  });
+}
+
+function selectFolderByPath(path: string) {
+  if (!path) {
+    selectRootFolder();
+    return;
+  }
+
+  if (path === WORKSPACE_COMMON_PATH_PREFIX) {
+    selectWorkspaceCommonFolder();
+    return;
+  }
+
+  const entry = findEntryByPath(path);
+  if (entry && entry.kind === 'directory') {
+    filesPageStore.selectFolder(entry);
+  }
+}
+
 async function navigateToParentFolder() {
   const folder = filesPageStore.selectedFolder;
   if (!folder) return;
@@ -87,28 +120,7 @@ async function navigateToParentFolder() {
   if (!currentPath) return;
 
   const parentPath = getWorkspacePathParent(currentPath);
-  if (!parentPath) {
-    filesPageStore.selectFolder({
-      kind: 'directory',
-      name: projectStore.currentProjectName || '',
-      path: '',
-    });
-    return;
-  }
-
-  if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
-    filesPageStore.selectFolder({
-      kind: 'directory',
-      name: WORKSPACE_COMMON_DIR_NAME,
-      path: WORKSPACE_COMMON_PATH_PREFIX,
-    });
-    return;
-  }
-
-  const parentEntry = findEntryByPath(parentPath);
-  if (parentEntry && parentEntry.kind === 'directory') {
-    filesPageStore.selectFolder(parentEntry);
-  }
+  selectFolderByPath(parentPath);
 }
 
 const {
@@ -134,6 +146,27 @@ const {
 
 function isDynamicPanelFocused(panelId: string) {
   return focusStore.isPanelFocused(getDynamicPanelFocusId(panelId));
+}
+
+function getDynamicPanelVerticalSize(
+  colId: string,
+  rowIndex: number,
+  totalRows: number,
+  view?: 'cut' | 'sound',
+) {
+  return getVerticalSize({ colId, rowIndex, totalRows, view });
+}
+
+function onDynamicPanelDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound') {
+  onDrop({ event, targetPanelId, view });
+}
+
+function onDynamicPanelVerticalResize(
+  event: { panes?: Array<{ size: number }> } | Array<{ size: number }>,
+  colId: string,
+  view: 'cut' | 'sound',
+) {
+  onVerticalSplitResize({ event, colId, view });
 }
 
 function onGlobalKeyDown(e: KeyboardEvent) {
@@ -243,15 +276,15 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
             :drop-position="dropPosition"
-            :get-vertical-size="getVerticalSize"
+            :get-vertical-size="getDynamicPanelVerticalSize"
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
             @top-resize="onTopSplitResize"
-            @vertical-resize="onVerticalSplitResize"
+            @vertical-resize="onDynamicPanelVerticalResize"
             @drag-start="onDragStart"
             @drag-over="onDragOver"
             @drag-leave="onDragLeave"
-            @drop="onDrop"
+            @drop="onDynamicPanelDrop"
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
@@ -266,16 +299,16 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
             :drop-position="dropPosition"
-            :get-vertical-size="getVerticalSize"
+            :get-vertical-size="getDynamicPanelVerticalSize"
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
             @resized="onSoundResize"
             @top-resize="onSoundTopSplitResize"
-            @vertical-resize="onVerticalSplitResize"
+            @vertical-resize="onDynamicPanelVerticalResize"
             @drag-start="onDragStart"
             @drag-over="onDragOver"
             @drag-leave="onDragLeave"
-            @drop="onDrop"
+            @drop="onDynamicPanelDrop"
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"

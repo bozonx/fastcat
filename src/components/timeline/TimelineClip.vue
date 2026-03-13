@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineTrackItem,
+  TimelineClipItem,
+  TimelineClipActionPayload,
+  TimelineMoveItemPayload,
+  TimelineOpenSpeedModalPayload,
+  TimelineResizeFadePayload,
+  TimelineResizeVolumePayload,
+  TimelineTransitionSelection,
+  TimelineTrimItemPayload,
+} from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -47,44 +58,15 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
-  (e: 'startMoveItem', event: PointerEvent, trackId: string, itemId: string, startUs: number): void;
-  (
-    e: 'startTrimItem',
-    event: PointerEvent,
-    payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
-  ): void;
-  (
-    e: 'startResizeVolume',
-    event: PointerEvent,
-    trackId: string,
-    itemId: string,
-    gain: number,
-    height: number,
-  ): void;
-  (
-    e: 'startResizeFade',
-    event: PointerEvent,
-    trackId: string,
-    itemId: string,
-    edge: 'in' | 'out',
-    durationUs: number,
-  ): void;
-  (
-    e: 'startResizeTransition',
-    event: PointerEvent,
-    trackId: string,
-    itemId: string,
-    edge: 'in' | 'out',
-    durationUs: number,
-  ): void;
-  (
-    e: 'selectTransition',
-    event: MouseEvent | PointerEvent,
-    payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
-  ): void;
-  (e: 'clipAction', payload: any): void;
-  (e: 'openSpeedModal', payload: { trackId: string; itemId: string; speed: number }): void;
-  (e: 'resetVolume', trackId: string, itemId: string): void;
+  (e: 'startMoveItem', event: PointerEvent, payload: TimelineMoveItemPayload): void;
+  (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
+  (e: 'startResizeVolume', event: PointerEvent, payload: TimelineResizeVolumePayload): void;
+  (e: 'startResizeFade', event: PointerEvent, payload: TimelineResizeFadePayload): void;
+  (e: 'startResizeTransition', event: PointerEvent, payload: TimelineResizeFadePayload): void;
+  (e: 'selectTransition', event: MouseEvent | PointerEvent, payload: TimelineTransitionSelection): void;
+  (e: 'clipAction', payload: TimelineClipActionPayload): void;
+  (e: 'openSpeedModal', payload: TimelineOpenSpeedModalPayload): void;
+  (e: 'resetVolume', payload: { trackId: string; itemId: string }): void;
 }>();
 
 const { t } = useI18n();
@@ -117,7 +99,11 @@ function onClipPointerdown(e: PointerEvent) {
     if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
       didStartClipDrag = true;
       window.removeEventListener('pointermove', onMove);
-      emit('startMoveItem', e, props.track.id, props.item.id, props.item.timelineRange.startUs);
+      emit('startMoveItem', e, {
+        trackId: props.track.id,
+        itemId: props.item.id,
+        startUs: props.item.timelineRange.startUs,
+      });
     }
   };
   const onUp = () => window.removeEventListener('pointermove', onMove);
@@ -404,7 +390,12 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         @select="(e, payload) => emit('selectTransition', e, payload)"
         @resize="
           (e, payload) =>
-            emit('startResizeTransition', e, track.id, item.id, payload.edge, payload.durationUs)
+            emit('startResizeTransition', e, {
+              trackId: track.id,
+              itemId: item.id,
+              edge: payload.edge,
+              durationUs: payload.durationUs,
+            })
         "
       />
 
@@ -422,12 +413,23 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         :is-mobile="isMobile"
         @start-resize-fade="
           (e, payload) =>
-            emit('startResizeFade', e, track.id, item.id, payload.edge, payload.durationUs)
+            emit('startResizeFade', e, {
+              trackId: track.id,
+              itemId: item.id,
+              edge: payload.edge,
+              durationUs: payload.durationUs,
+            })
         "
         @start-resize-volume="
-          (e, gain) => emit('startResizeVolume', e, track.id, item.id, gain, trackHeight)
+          (e, gain) =>
+            emit('startResizeVolume', e, {
+              trackId: track.id,
+              itemId: item.id,
+              gain,
+              trackHeight,
+            })
         "
-        @reset-volume="emit('resetVolume', track.id, item.id)"
+        @reset-volume="emit('resetVolume', { trackId: track.id, itemId: item.id })"
       />
 
       <!-- Content Area (Thumbnails / Waveform) -->

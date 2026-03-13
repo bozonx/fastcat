@@ -1,7 +1,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { FILE_MANAGER_THUMBNAILS, TIMELINE_MANAGER_THUMBNAILS } from '~/utils/constants';
-import { getResolvedProjectThumbnailsSegments } from '~/utils/storage-topology';
+import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 
 export interface FileThumbnailTask {
   id: string; // usually clip hash
@@ -27,18 +27,19 @@ export function getFileThumbnailHash(input: {
   return hashString(`file:${input.projectId}:${input.projectRelativePath}`);
 }
 
-function getThumbnailDirSegments(input: {
+async function ensureThumbnailDir(input: {
   projectId: string;
   dirName: string;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
-}): string[] {
-  return [
-    ...getResolvedProjectThumbnailsSegments(
-      input.workspaceStore.resolvedStorageTopology,
-      input.projectId,
-    ),
-    input.dirName,
-  ];
+  create?: boolean;
+}): Promise<FileSystemDirectoryHandle> {
+  return (await ensureResolvedProjectTempDir({
+    workspaceHandle: input.workspaceStore.workspaceHandle!,
+    topology: input.workspaceStore.resolvedStorageTopology,
+    projectId: input.projectId,
+    leafSegments: ['thumbnails', input.dirName],
+    create: input.create,
+  })) as FileSystemDirectoryHandle;
 }
 
 class FileThumbnailGenerator {
@@ -125,12 +126,11 @@ class FileThumbnailGenerator {
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
 
-      const parts = getThumbnailDirSegments({ projectId: task.projectId, dirName, workspaceStore });
-
-      let dir = workspaceStore.workspaceHandle;
-      for (const segment of parts) {
-        dir = await dir.getDirectoryHandle(segment);
-      }
+      const dir = await ensureThumbnailDir({
+        projectId: task.projectId,
+        dirName,
+        workspaceStore,
+      });
 
       const fileName = `${task.id}.webp`;
       const fileHandle = await dir.getFileHandle(fileName);
@@ -233,17 +233,12 @@ class FileThumbnailGenerator {
       };
 
       const ensureTargetDir = async () => {
-        const parts = getThumbnailDirSegments({
+        return await ensureThumbnailDir({
           projectId: task.projectId,
           dirName: FILE_MANAGER_THUMBNAILS.DIR_NAME,
           workspaceStore,
+          create: true,
         });
-
-        let dir = workspaceStore.workspaceHandle!;
-        for (const segment of parts) {
-          dir = await dir.getDirectoryHandle(segment, { create: true });
-        }
-        return dir;
       };
 
       const ensureSourceUrl = async () => {
@@ -366,12 +361,12 @@ class FileThumbnailGenerator {
       ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
       : FILE_MANAGER_THUMBNAILS.DIR_NAME;
 
-    const parts = getThumbnailDirSegments({ projectId: input.projectId, dirName, workspaceStore });
-
-    let dir = workspaceStore.workspaceHandle;
-    for (const segment of parts) {
-      dir = await dir.getDirectoryHandle(segment, { create: true });
-    }
+    const dir = await ensureThumbnailDir({
+      projectId: input.projectId,
+      dirName,
+      workspaceStore,
+      create: true,
+    });
 
     const fileName = `${hash}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
@@ -418,16 +413,11 @@ class FileThumbnailGenerator {
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
 
-      const parts = getThumbnailDirSegments({
+      const dir = await ensureThumbnailDir({
         projectId: input.projectId,
         dirName,
         workspaceStore,
       });
-
-      let dir = workspaceStore.workspaceHandle;
-      for (const segment of parts) {
-        dir = await dir.getDirectoryHandle(segment);
-      }
 
       await dir.removeEntry(`${hash}.webp`);
     } catch (e: any) {
@@ -442,14 +432,12 @@ class FileThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const parts = getResolvedProjectThumbnailsSegments(
-        workspaceStore.resolvedStorageTopology,
+      const dir = await ensureResolvedProjectTempDir({
+        workspaceHandle: workspaceStore.workspaceHandle,
+        topology: workspaceStore.resolvedStorageTopology,
         projectId,
-      );
-      let dir = workspaceStore.workspaceHandle;
-      for (const segment of parts) {
-        dir = await dir.getDirectoryHandle(segment);
-      }
+        leafSegments: ['thumbnails'],
+      });
 
       try {
         await dir.removeEntry(FILE_MANAGER_THUMBNAILS.DIR_NAME, { recursive: true });

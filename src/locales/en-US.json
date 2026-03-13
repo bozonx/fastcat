@@ -224,6 +224,18 @@
       "resetStorageSettingsConfirmDesc": "This will restore all storage limits to their default values.",
       "resetVideoSettingsConfirmTitle": "Reset video settings?",
       "resetVideoSettingsConfirmDesc": "This will restore all video performance settings to their default values.",
+      "storageMode": "Storage mode",
+      "storageModeHelp": "Choose between OS default folders and portable workspace-local storage.",
+      "storageModeSystemDefault": "System default",
+      "storageModePortable": "Workspace portable",
+      "workspaceFolder": "Workspace folder",
+      "workspaceFolderNotSelected": "Workspace folder is not selected",
+      "selectWorkspaceFolder": "Choose folder",
+      "ephemeralTmpRootPath": "Ephemeral tmp path",
+      "ephemeralTmpRootPathHelp": "Short-lived temporary job files. Leave empty to use the system temporary directory.",
+      "portableEphemeralTmpRootPathHelp": "Portable mode stores project cache inside workspace. Leave this empty to keep short-lived job files in the system temporary directory.",
+      "browserEphemeralTmpRootPathHelp": "Leave empty to use the runtime temporary location when supported. Browser workspaces always keep rebuildable cache inside the selected workspace folder.",
+      "storagePathEnvironmentHint": "Browser workspace mode stores projects, shared files and rebuildable cache inside the selected workspace folder. Only the workspace folder and ephemeral tmp override are configurable here.",
       "mouseTrackHeaders": "Track Headers"
     },
     "projectSettings": {

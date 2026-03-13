@@ -1,8 +1,6 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
-import {
-  getResolvedProjectCacheSegments,
-  type ResolvedStorageTopology,
-} from '~/utils/storage-topology';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { getProjectCacheSegments } from '~/utils/vardata-paths';
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
@@ -38,17 +36,6 @@ function normalizeDimension(value: number): number {
   return Math.max(1, rounded);
 }
 
-function getVectorImageRootSegments(input: {
-  projectId: string;
-  resolvedStorageTopology?: ResolvedStorageTopology;
-}): string[] {
-  const baseSegments = input.resolvedStorageTopology
-    ? getResolvedProjectCacheSegments(input.resolvedStorageTopology, input.projectId)
-    : getProjectCacheSegments(input.projectId);
-
-  return [...baseSegments, 'vector_image'];
-}
-
 function getVectorImageSourceDirName(projectRelativePath: string): string {
   return hashString(projectRelativePath);
 }
@@ -74,6 +61,28 @@ async function ensureDirectory(
   return dir;
 }
 
+async function ensureVectorImageCacheRoot(input: {
+  projectId: string;
+  workspaceHandle: FileSystemDirectoryHandle;
+  resolvedStorageTopology?: ResolvedStorageTopology;
+  create?: boolean;
+}): Promise<FileSystemDirectoryHandle> {
+  if (input.resolvedStorageTopology) {
+    return (await ensureResolvedProjectTempDir({
+      workspaceHandle: input.workspaceHandle,
+      topology: input.resolvedStorageTopology,
+      projectId: input.projectId,
+      leafSegments: ['frame-cache', 'vector_image'],
+      create: input.create,
+    })) as FileSystemDirectoryHandle;
+  }
+
+  return await (input.create ? ensureDirectory : getDirectory)(input.workspaceHandle, [
+    ...getProjectCacheSegments(input.projectId),
+    'vector_image',
+  ]);
+}
+
 async function getDirectory(
   root: FileSystemDirectoryHandle,
   segments: string[],
@@ -92,11 +101,13 @@ export async function ensureVectorImageRaster(
   const height = normalizeDimension(params.height);
   const sourceFile = await params.sourceFileHandle.getFile();
 
-  const sourceDir = await ensureDirectory(params.workspaceHandle, [
-    ...getVectorImageRootSegments({
-      projectId: params.projectId,
-      resolvedStorageTopology: params.resolvedStorageTopology,
-    }),
+  const cacheRoot = await ensureVectorImageCacheRoot({
+    projectId: params.projectId,
+    workspaceHandle: params.workspaceHandle,
+    resolvedStorageTopology: params.resolvedStorageTopology,
+    create: true,
+  });
+  const sourceDir = await ensureDirectory(cacheRoot, [
     getVectorImageSourceDirName(params.projectRelativePath),
   ]);
   const fileName = getVectorImageRasterFileName({ sourceFile, width, height });
@@ -126,13 +137,11 @@ export async function ensureVectorImageRaster(
 
 export async function clearVectorImageRaster(params: ClearVectorImageRasterParams): Promise<void> {
   try {
-    const cacheRoot = await getDirectory(
-      params.workspaceHandle,
-      getVectorImageRootSegments({
-        projectId: params.projectId,
-        resolvedStorageTopology: params.resolvedStorageTopology,
-      }),
-    );
+    const cacheRoot = await ensureVectorImageCacheRoot({
+      projectId: params.projectId,
+      workspaceHandle: params.workspaceHandle,
+      resolvedStorageTopology: params.resolvedStorageTopology,
+    });
     await cacheRoot.removeEntry(getVectorImageSourceDirName(params.projectRelativePath), {
       recursive: true,
     });

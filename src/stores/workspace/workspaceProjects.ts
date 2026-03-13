@@ -1,7 +1,8 @@
 import type { Ref } from 'vue';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
-import { getResolvedProjectTempSegments, toStoragePathSegments } from '~/utils/storage-topology';
+import { toStoragePathSegments } from '~/utils/storage-topology';
+import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
 
 function getErrorMessage(e: unknown, fallback: string): string {
   if (!e || typeof e !== 'object') return fallback;
@@ -79,15 +80,16 @@ export function createWorkspaceProjectsModule(params: {
   }
 
   async function clearProjectVardata(projectId: string) {
-    const parts = getResolvedProjectTempSegments(params.resolvedStorageTopology.value, projectId);
     try {
-      let currentDir = params.workspaceHandle.value;
-      for (const segment of parts.slice(0, -1)) {
-        if (!currentDir) return;
-        currentDir = await currentDir.getDirectoryHandle(segment);
-      }
-      if (!currentDir) return;
-      await currentDir.removeEntry(parts.at(-1)!, { recursive: true });
+      const tempRootDir = await resolveStorageRootHandle({
+        workspaceHandle: params.workspaceHandle.value!,
+        rootPath: params.resolvedStorageTopology.value.tempRoot,
+      });
+      const projectsDir = await ensureDirectoryChain({
+        baseDir: tempRootDir,
+        segments: [workspaceTopology.tempProjectsDirName],
+      });
+      await projectsDir.removeEntry(projectId, { recursive: true });
     } catch {
       // ignore
     }
@@ -98,18 +100,16 @@ export function createWorkspaceProjectsModule(params: {
 
     try {
       if (projectId) {
-        const parts = getResolvedProjectTempSegments(
-          params.resolvedStorageTopology.value,
-          projectId,
-        );
         try {
-          let currentDir = params.workspaceHandle.value;
-          for (const segment of parts.slice(0, -1)) {
-            if (!currentDir) return;
-            currentDir = await currentDir.getDirectoryHandle(segment);
-          }
-          if (!currentDir) return;
-          await currentDir.removeEntry(parts.at(-1)!, { recursive: true });
+          const tempRootDir = await resolveStorageRootHandle({
+            workspaceHandle: params.workspaceHandle.value!,
+            rootPath: params.resolvedStorageTopology.value.tempRoot,
+          });
+          const projectsDir = await ensureDirectoryChain({
+            baseDir: tempRootDir,
+            segments: [workspaceTopology.tempProjectsDirName],
+          });
+          await projectsDir.removeEntry(projectId, { recursive: true });
         } catch {
           // ignore
         }

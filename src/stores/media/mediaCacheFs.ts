@@ -1,8 +1,5 @@
-import {
-  getResolvedProjectCacheSegments,
-  getResolvedProjectWaveformsSegments,
-  type ResolvedStorageTopology,
-} from '~/utils/storage-topology';
+import { type ResolvedStorageTopology } from '~/utils/storage-topology';
+import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 
 export interface MediaCacheFsModule {
   getCacheFileName: (projectRelativePath: string) => string;
@@ -26,12 +23,13 @@ export function createMediaCacheFsModule(deps: {
     const projectId = deps.getProjectId();
     if (!workspaceHandle || !projectId) return null;
 
-    const parts = getResolvedProjectCacheSegments(deps.getResolvedStorageTopology(), projectId);
-    let dir = workspaceHandle;
-    for (const segment of parts) {
-      dir = await dir.getDirectoryHandle(segment, { create: true });
-    }
-    return dir;
+    return (await ensureResolvedProjectTempDir({
+      workspaceHandle,
+      topology: deps.getResolvedStorageTopology(),
+      projectId,
+      leafSegments: ['frame-cache'],
+      create: true,
+    })) as FileSystemDirectoryHandle;
   }
 
   async function ensureFilesMetaDir(): Promise<FileSystemDirectoryHandle | null> {
@@ -45,12 +43,13 @@ export function createMediaCacheFsModule(deps: {
     const projectId = deps.getProjectId();
     if (!workspaceHandle || !projectId) return null;
 
-    const parts = getResolvedProjectWaveformsSegments(deps.getResolvedStorageTopology(), projectId);
-    let dir = workspaceHandle;
-    for (const segment of parts) {
-      dir = await dir.getDirectoryHandle(segment, { create: true });
-    }
-    return dir;
+    return (await ensureResolvedProjectTempDir({
+      workspaceHandle,
+      topology: deps.getResolvedStorageTopology(),
+      projectId,
+      leafSegments: ['waveforms'],
+      create: true,
+    })) as FileSystemDirectoryHandle;
   }
 
   async function removeCacheFiles(projectRelativePath: string): Promise<void> {

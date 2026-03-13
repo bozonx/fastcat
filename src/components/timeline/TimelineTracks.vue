@@ -4,7 +4,14 @@ import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useMediaStore } from '~/stores/media.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type {
+  TimelineClipActionPayload,
+  TimelineClipItem,
+  TimelineMoveItemPayload,
+  TimelineOpenSpeedModalPayload,
+  TimelineTrack,
+  TimelineTrimItemPayload,
+} from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
@@ -40,14 +47,10 @@ const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
   (e: 'dragover', event: DragEvent, trackId: string): void;
   (e: 'dragleave', event: DragEvent, trackId: string): void;
-  (e: 'startMoveItem', event: PointerEvent, trackId: string, itemId: string, startUs: number): void;
+  (e: 'startMoveItem', event: PointerEvent, payload: TimelineMoveItemPayload): void;
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
-  (e: 'clipAction', payload: any): void;
-  (
-    e: 'startTrimItem',
-    event: PointerEvent,
-    payload: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
-  ): void;
+  (e: 'clipAction', payload: TimelineClipActionPayload): void;
+  (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
 }>();
 
 const DEFAULT_TRACK_HEIGHT = 40;
@@ -82,7 +85,7 @@ const speedModal = ref<{ open: boolean; trackId: string; itemId: string; speed: 
   null,
 );
 
-function openSpeedModal(trackId: string, itemId: string, currentSpeed: any) {
+function openSpeedModal(trackId: string, itemId: string, currentSpeed: number | null | undefined) {
   speedModal.value = {
     open: true,
     trackId,
@@ -104,12 +107,16 @@ const speedModalTargetHasAudio = computed(() => {
   if (!speedModal.value) return false;
   const track = props.tracks.find((t) => t.id === speedModal.value!.trackId);
   const clip = track?.items.find(
-    (it) => it.id === speedModal.value!.itemId && it.kind === 'clip',
-  ) as any;
+    (it): it is TimelineClipItem => it.id === speedModal.value!.itemId && it.kind === 'clip',
+  );
   if (!clip || (track?.kind === 'video' && clip.audioFromVideoDisabled)) return false;
   if (track?.kind === 'audio') return true;
   return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
 });
+
+const movePreviewItem = computed(() =>
+  props.tracks.flatMap((track) => track.items).find((item) => item.id === props.movePreview?.itemId),
+);
 
 function selectTransition(
   e: MouseEvent | PointerEvent,
@@ -205,13 +212,10 @@ function selectTransition(
         class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
         :style="{
           left: `${timeUsToPx(movePreview.startUs, timelineStore.timelineZoom)}px`,
-          width: `${Math.max(2, timeUsToPx(props.tracks.flatMap((t) => t.items).find((it) => it.id === movePreview?.itemId)?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
+          width: `${Math.max(2, timeUsToPx(movePreviewItem?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
         }"
       >
-        <span class="truncate">{{
-          (props.tracks.flatMap((t) => t.items).find((it) => it.id === movePreview?.itemId) as any)
-            ?.name
-        }}</span>
+        <span class="truncate">{{ movePreviewItem && 'name' in movePreviewItem ? movePreviewItem.name : '' }}</span>
       </div>
 
       <template v-for="item in track.items" :key="item.id">
@@ -233,15 +237,15 @@ function selectTransition(
           :selected-transition="selectedTransition"
           :resize-volume="resizeVolume"
           @select-item="(ev, id) => emit('selectItem', ev, id)"
-          @start-move-item="(ev, tId, id, sUs) => emit('startMoveItem', ev, tId, id, sUs)"
+          @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
           @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
           @start-resize-volume="startResizeVolume"
           @start-resize-fade="startResizeFade"
           @start-resize-transition="startResizeTransition"
           @select-transition="selectTransition"
           @clip-action="(p) => emit('clipAction', p)"
-          @open-speed-modal="(p) => openSpeedModal(track.id, p.itemId, p.speed)"
-          @reset-volume="(tId, id) => timelineStore.updateClipProperties(tId, id, { audioGain: 1 })"
+          @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)"
+          @reset-volume="(payload) => timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })"
         />
       </template>
     </div>

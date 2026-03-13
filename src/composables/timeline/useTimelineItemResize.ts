@@ -3,7 +3,13 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineClipItem,
+  ClipTransition,
+  TimelineResizeFadePayload,
+  TimelineResizeVolumePayload,
+} from '~/timeline/types';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
@@ -62,22 +68,16 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     trackHeight: number;
   } | null>(null);
 
-  function startResizeVolume(
-    e: PointerEvent,
-    trackId: string,
-    itemId: string,
-    currentVolume: number,
-    clipHeight: number,
-  ) {
+  function startResizeVolume(e: PointerEvent, payload: TimelineResizeVolumePayload) {
     if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
     resizeVolume.value = {
-      trackId,
-      itemId,
+      trackId: payload.trackId,
+      itemId: payload.itemId,
       startY: e.clientY,
-      startGain: currentVolume,
-      trackHeight: clipHeight,
+      startGain: payload.gain,
+      trackHeight: payload.trackHeight,
     };
 
     clearActivePointerListeners();
@@ -89,7 +89,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       let newVol = resizeVolume.value.startGain + deltaVol;
       newVol = Math.max(0, Math.min(2, newVol));
 
-      timelineStore.updateClipProperties(trackId, itemId, {
+      timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
         audioGain: newVol,
         audioMuted: false,
       });
@@ -105,7 +105,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
     function onKeyDown(ev: KeyboardEvent) {
       if (ev.key === 'Escape' && resizeVolume.value) {
-        timelineStore.updateClipProperties(trackId, itemId, {
+        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           audioGain: resizeVolume.value.startGain,
         });
         resizeVolume.value = null;
@@ -121,22 +121,16 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     window.addEventListener('keydown', onKeyDown);
   }
 
-  function startResizeFade(
-    e: PointerEvent,
-    trackId: string,
-    itemId: string,
-    edge: 'in' | 'out',
-    currentFadeUs: number,
-  ) {
+  function startResizeFade(e: PointerEvent, payload: TimelineResizeFadePayload) {
     if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
     resizeFade.value = {
-      trackId,
-      itemId,
-      edge,
+      trackId: payload.trackId,
+      itemId: payload.itemId,
+      edge: payload.edge,
       startX: e.clientX,
-      startFadeUs: currentFadeUs,
+      startFadeUs: payload.durationUs,
     };
 
     clearActivePointerListeners();
@@ -144,28 +138,30 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     function onPointerMove(ev: PointerEvent) {
       if (!resizeFade.value) return;
       const dx = ev.clientX - resizeFade.value.startX;
-      const sign = edge === 'in' ? 1 : -1;
+      const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
 
       const tracks = tracksRef();
-      const track = tracks.find((t) => t.id === trackId);
-      const item = track?.items.find((i) => i.id === itemId);
+      const track = tracks.find((t) => t.id === payload.trackId);
+      const item = track?.items.find((i) => i.id === payload.itemId);
       if (!item || item.kind !== 'clip') return;
 
       const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
       const oppFadeUs = Math.max(
         0,
         Math.round(
-          edge === 'in' ? ((item as any).audioFadeOutUs ?? 0) : ((item as any).audioFadeInUs ?? 0),
+          payload.edge === 'in'
+            ? ((item as any).audioFadeOutUs ?? 0)
+            : ((item as any).audioFadeInUs ?? 0),
         ),
       );
       const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
       let newFadeUs = resizeFade.value.startFadeUs + deltaUs;
       newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
 
-      const propName = edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
-      timelineStore.updateClipProperties(trackId, itemId, {
+      const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+      timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
         [propName]: Math.round(newFadeUs),
       });
     }
@@ -180,8 +176,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
     function onKeyDown(ev: KeyboardEvent) {
       if (ev.key === 'Escape' && resizeFade.value) {
-        const propName = edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
-        timelineStore.updateClipProperties(trackId, itemId, {
+        const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           [propName]: resizeFade.value.startFadeUs,
         });
         resizeFade.value = null;
@@ -340,22 +336,16 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     return Math.max(0, Math.round(handleLimitUs));
   }
 
-  function startResizeTransition(
-    e: PointerEvent,
-    trackId: string,
-    itemId: string,
-    edge: 'in' | 'out',
-    currentDurationUs: number,
-  ) {
+  function startResizeTransition(e: PointerEvent, payload: TimelineResizeFadePayload) {
     if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
     resizeTransition.value = {
-      trackId,
-      itemId,
-      edge,
+      trackId: payload.trackId,
+      itemId: payload.itemId,
+      edge: payload.edge,
       startX: e.clientX,
-      startDurationUs: currentDurationUs,
+      startDurationUs: payload.durationUs,
     };
 
     clearActivePointerListeners();
@@ -363,26 +353,26 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     function onPointerMove(ev: PointerEvent) {
       if (!resizeTransition.value) return;
       const dx = ev.clientX - resizeTransition.value.startX;
-      const sign = edge === 'in' ? 1 : -1;
+      const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
       const minUs = 100_000;
 
       const tracks = tracksRef();
-      const track = tracks.find((t) => t.id === trackId);
-      const item = track?.items.find((i) => i.id === itemId);
+      const track = tracks.find((t) => t.id === payload.trackId);
+      const item = track?.items.find((i) => i.id === payload.itemId);
       if (!item || item.kind !== 'clip') return;
 
       const current =
-        edge === 'in'
+        payload.edge === 'in'
           ? (item as TimelineClipItem).transitionIn
           : (item as TimelineClipItem).transitionOut;
       if (!current) return;
 
       const maxUsRaw = computeMaxResizableTransitionDurationUs({
-        trackId,
-        itemId,
-        edge,
+        trackId: payload.trackId,
+        itemId: payload.itemId,
+        edge: payload.edge,
         currentTransition: current,
       });
 
@@ -390,7 +380,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       const oppositeTransitionUs = Math.max(
         0,
         Math.round(
-          edge === 'in'
+          payload.edge === 'in'
             ? ((item as TimelineClipItem).transitionOut?.durationUs ?? 0)
             : ((item as TimelineClipItem).transitionIn?.durationUs ?? 0),
         ),
@@ -408,11 +398,12 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
             1e6,
         );
         const handleSnapUs = computeTransitionHandleSnapDurationUs({
-          trackId,
-          itemId,
-          edge,
+          trackId: payload.trackId,
+          itemId: payload.itemId,
+          edge: payload.edge,
           currentTransition: current,
-          rawDurationUs: newDurationUs,
+          desiredDurationUs: newDurationUs,
+          thresholdUs,
         });
         if (handleSnapUs !== null) {
           const snap = pickBestSnapCandidateUs({
@@ -426,12 +417,18 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
       if (maxUsRaw <= 0 && newDurationUs <= 0) return;
 
-      timelineStore.updateClipTransition(trackId, itemId, {
-        [edge === 'in' ? 'transitionIn' : 'transitionOut']: {
-          ...current,
-          durationUs: Math.round(newDurationUs),
-        },
-      });
+      const transitionPatch =
+        payload.edge === 'in'
+          ? {
+              transitionIn: { ...current, durationUs: Math.round(newDurationUs) } as ClipTransition,
+            }
+          : {
+              transitionOut: {
+                ...current,
+                durationUs: Math.round(newDurationUs),
+              } as ClipTransition,
+            };
+      timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
     }
 
     function onPointerUp() {
@@ -445,17 +442,26 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     function onKeyDown(ev: KeyboardEvent) {
       if (ev.key === 'Escape' && resizeTransition.value) {
         const tracks = tracksRef();
-        const track = tracks.find((t) => t.id === trackId);
-        const item = track?.items.find((i) => i.id === itemId);
+        const track = tracks.find((t) => t.id === payload.trackId);
+        const item = track?.items.find((i) => i.id === payload.itemId);
         if (item && item.kind === 'clip') {
-          const current = edge === 'in' ? item.transitionIn : item.transitionOut;
+          const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
           if (current) {
-            timelineStore.updateClipTransition(trackId, itemId, {
-              [edge === 'in' ? 'transitionIn' : 'transitionOut']: {
-                ...current,
-                durationUs: resizeTransition.value.startDurationUs,
-              },
-            });
+            const transitionPatch =
+              payload.edge === 'in'
+                ? {
+                    transitionIn: {
+                      ...current,
+                      durationUs: resizeTransition.value.startDurationUs,
+                    } as ClipTransition,
+                  }
+                : {
+                    transitionOut: {
+                      ...current,
+                      durationUs: resizeTransition.value.startDurationUs,
+                    } as ClipTransition,
+                  };
+            timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
           }
         }
         resizeTransition.value = null;
