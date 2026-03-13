@@ -217,6 +217,7 @@ export function useMonitorTimeline() {
         audioFadeOutCurve: item.audioFadeOutCurve,
         transitionIn: item.transitionIn,
         transitionOut: item.transitionOut,
+        effects: (item.effects ?? []).filter((effect) => effect?.target === 'audio'),
         source: {
           path: item.source.path,
         },

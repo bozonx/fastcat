@@ -1,4 +1,6 @@
 import { registerEffect } from './core/registry';
+import { reverbManifest } from './audio/reverb/manifest';
+import { distortionManifest } from './audio/distortion/manifest';
 import { colorAdjustmentManifest } from './video/color-adjustment/manifest';
 import { blurManifest } from './video/blur/manifest';
 import { colorMatrixManifest } from './video/color-matrix/manifest';
@@ -21,6 +23,8 @@ import { dotManifest } from './video/dot/manifest';
 import { dropShadowManifest } from './video/drop-shadow/manifest';
 
 export function initEffects() {
+  registerEffect(reverbManifest);
+  registerEffect(distortionManifest);
   registerEffect(colorAdjustmentManifest);
   registerEffect(blurManifest);
   registerEffect(colorMatrixManifest);
@@ -65,3 +69,5 @@ export * from './video/cross-hatch/manifest';
 export * from './video/crt/manifest';
 export * from './video/dot/manifest';
 export * from './video/drop-shadow/manifest';
+export * from './audio/reverb/manifest';
+export * from './audio/distortion/manifest';

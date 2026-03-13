@@ -8,8 +8,10 @@ import {
   type AudioFadeCurve,
   type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
+import { applyAudioEffects } from '~/utils/audio/applyAudioEffects';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
+import type { AudioClipEffect } from '~/timeline/types';
 
 const logger = createDevLogger('AudioEngine');
 
@@ -34,6 +36,15 @@ export interface AudioEngineClip {
   audioDeclickDurationUs?: number;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
+  audioEffects?: AudioClipEffect[];
+}
+
+function hashAudioEffects(effects: AudioClipEffect[] | undefined): string {
+  if (!effects || effects.length === 0) return '';
+  return effects
+    .filter((e) => e.enabled && e.target === 'audio')
+    .map((e) => JSON.stringify(e))
+    .join('|');
 }
 
 export class AudioEngine {
@@ -232,8 +243,9 @@ export class AudioEngine {
     for (const clip of clips) {
       const sourceKey = clip.sourcePath;
       if (!sourceKey) continue;
-      if (this.decodedCache.has(sourceKey)) continue;
-      void this.ensureDecoded(sourceKey, clip.fileHandle);
+      const cacheKey = sourceKey + '\x00' + hashAudioEffects(clip.audioEffects);
+      if (this.decodedCache.has(cacheKey)) continue;
+      void this.ensureDecoded(sourceKey, clip.fileHandle, clip.audioEffects);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
@@ -253,7 +265,8 @@ export class AudioEngine {
   private cleanupCache() {
     const activePaths = new Set(this.currentClips.map((c) => c.sourcePath).filter(Boolean));
     for (const key of this.decodedCache.keys()) {
-      if (!activePaths.has(key)) {
+      const sourcePath = key.split('\x00')[0] ?? key;
+      if (!activePaths.has(sourcePath)) {
         this.decodedCache.delete(key);
       }
     }
@@ -289,12 +302,18 @@ export class AudioEngine {
     };
   }
 
-  private async ensureDecoded(sourceKey: string, fileHandle: FileSystemFileHandle) {
-    const existing = this.decodeInFlight.get(sourceKey);
+  private async ensureDecoded(
+    sourceKey: string,
+    fileHandle: FileSystemFileHandle,
+    audioEffects?: AudioClipEffect[],
+  ) {
+    const cacheKey = sourceKey + '\x00' + hashAudioEffects(audioEffects);
+
+    const existing = this.decodeInFlight.get(cacheKey);
     if (existing) return existing;
 
-    if (this.decodedCache.has(sourceKey)) {
-      const cached = this.decodedCache.get(sourceKey);
+    if (this.decodedCache.has(cacheKey)) {
+      const cached = this.decodedCache.get(cacheKey);
       // null means decode failed previously, not in-progress
       return cached ?? null;
     }
@@ -331,7 +350,7 @@ export class AudioEngine {
           return null;
         }
 
-        const audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
+        let audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
         for (let ch = 0; ch < numChannels; ch += 1) {
           const buf = decoded.channelBuffers[ch];
           if (!buf) continue;
@@ -339,24 +358,35 @@ export class AudioEngine {
           audioBuffer.copyToChannel(data, ch, 0);
         }
 
+        const enabledEffects = (audioEffects ?? []).filter(
+          (e) => e.enabled && e.target === 'audio',
+        );
+        if (enabledEffects.length > 0) {
+          try {
+            audioBuffer = await applyAudioEffects({ buffer: audioBuffer, effects: enabledEffects });
+          } catch (err) {
+            console.warn('[AudioEngine] Failed to apply audio effects, using raw buffer', err);
+          }
+        }
+
         logger.info(
           `Successfully decoded ${sourceKey}: ${numChannels}ch, ${sampleRate}Hz, ${frames} frames`,
         );
-        this.decodedCache.set(sourceKey, audioBuffer);
+        this.decodedCache.set(cacheKey, audioBuffer);
         return audioBuffer;
       } catch (err) {
         const name = (err as any)?.name;
         if (name !== 'NoAudioTrackError' && name !== 'UnsupportedFormatError') {
           console.warn('[AudioEngine] Failed to decode audio', err);
         }
-        this.decodedCache.set(sourceKey, null);
+        this.decodedCache.set(cacheKey, null);
         return null;
       } finally {
-        this.decodeInFlight.delete(sourceKey);
+        this.decodeInFlight.delete(cacheKey);
       }
     });
 
-    this.decodeInFlight.set(sourceKey, task);
+    this.decodeInFlight.set(cacheKey, task);
     return task;
   }
 
@@ -517,13 +547,15 @@ export class AudioEngine {
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return;
 
-    let buffer = this.decodedCache.get(sourceKey) ?? null;
+    const cacheKey = sourceKey + '\x00' + hashAudioEffects(clip.audioEffects);
+
+    let buffer = this.decodedCache.get(cacheKey) ?? null;
     if (!buffer) {
-      const inFlight = this.decodeInFlight.get(sourceKey);
+      const inFlight = this.decodeInFlight.get(cacheKey);
       if (inFlight) {
         buffer = await inFlight;
       } else {
-        buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
+        buffer = await this.ensureDecoded(sourceKey, clip.fileHandle, clip.audioEffects);
       }
     }
     if (!buffer) return;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
-import { getAllVideoEffectManifests, getEffectManifest } from '~/effects';
+import { getAllVideoEffectManifests, getAllAudioEffectManifests, getEffectManifest } from '~/effects';
 import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -13,6 +13,7 @@ const presetsStore = usePresetsStore();
 const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 
 const videoEffects = computed(() => getAllVideoEffectManifests());
+const audioEffects = computed(() => getAllAudioEffectManifests());
 const transitions = computed(() => getAllTransitionManifests());
 
 const standardEffects = computed(() => videoEffects.value.filter((e) => !e.isCustom));
@@ -376,14 +377,38 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
       </div>
 
       <!-- Audio Effects -->
-      <div
-        v-show="activeTab === 'audio'"
-        class="flex flex-col items-center justify-center h-full min-h-50 text-ui-text-disabled py-8 text-center"
-      >
-        <UIcon name="i-heroicons-musical-note" class="w-10 h-10 mb-3" />
-        <p class="text-sm italic">
-          {{ t('common.noData', '(coming soon)') }}
-        </p>
+      <div v-show="activeTab === 'audio'" class="flex flex-col gap-4 pb-4">
+        <div class="grid grid-cols-1 gap-2">
+          <div
+            v-for="effect in audioEffects"
+            :key="effect.type"
+            class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
+            :class="
+              selectionStore.selectedEntity?.source === 'project' &&
+              selectionStore.selectedEntity.kind === 'effect' &&
+              selectionStore.selectedEntity.effectType === effect.type
+                ? 'border-primary bg-primary/10'
+                : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+            "
+            draggable="true"
+            @dragstart="handleDragStart($event, effect.type, 'effect')"
+            @click="selectEffect(effect.type)"
+          >
+            <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
+            <div class="flex-1 min-w-0">
+              <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
+              <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
+                {{ effect.description }}
+              </p>
+            </div>
+          </div>
+          <div
+            v-if="audioEffects.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
+            {{ t('common.noData') }}
+          </div>
+        </div>
       </div>
     </div>
   </div>

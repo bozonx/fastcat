@@ -36,6 +36,8 @@ export function extractAudioToTrack(
   );
   if (existingLinked) return { next: doc };
 
+  const audioEffectsFromVideo = (item.effects ?? []).filter((e) => e?.target === 'audio');
+
   const audioClip: TimelineClipItem = {
     kind: 'clip',
     id: nextItemId(audioTrack.id, 'clip'),
@@ -49,21 +51,23 @@ export function extractAudioToTrack(
     linkedGroupId: String((item as any).linkedGroupId ?? item.id),
     linkedVideoClipId: item.id,
     lockToLinkedVideo: true,
+    effects: audioEffectsFromVideo.length > 0 ? [...audioEffectsFromVideo] : undefined,
   };
 
   const nextTracks = doc.tracks.map((t) => {
     if (t.id === videoTrack.id) {
       return {
         ...t,
-        items: t.items.map((it) =>
-          it.id === item.id && it.kind === 'clip'
-            ? {
-                ...it,
-                audioFromVideoDisabled: true,
-                linkedGroupId: String((it as any).linkedGroupId ?? it.id),
-              }
-            : it,
-        ),
+        items: t.items.map((it) => {
+          if (it.id !== item.id || it.kind !== 'clip') return it;
+          const videoOnlyEffects = (it.effects ?? []).filter((e) => e?.target !== 'audio');
+          return {
+            ...it,
+            audioFromVideoDisabled: true,
+            linkedGroupId: String((it as any).linkedGroupId ?? it.id),
+            effects: videoOnlyEffects.length > 0 ? videoOnlyEffects : undefined,
+          };
+        }),
       };
     }
     if (t.id === audioTrack.id) {
@@ -94,6 +98,8 @@ export function returnAudioToVideo(
     );
   if (!linkedAudio || linkedAudio.kind !== 'clip') return { next: doc };
 
+  const audioEffectsToReturn = (linkedAudio.effects ?? []).filter((e) => e?.target === 'audio');
+
   const nextTracks = doc.tracks.map((t) => {
     if (t.kind === 'audio') {
       const nextItems = t.items.filter((it) => it.id !== linkedAudio.id);
@@ -102,11 +108,16 @@ export function returnAudioToVideo(
     if (t.kind === 'video') {
       return {
         ...t,
-        items: t.items.map((it) =>
-          it.kind === 'clip' && it.id === cmd.videoItemId
-            ? { ...it, audioFromVideoDisabled: false }
-            : it,
-        ),
+        items: t.items.map((it) => {
+          if (it.kind !== 'clip' || it.id !== cmd.videoItemId) return it;
+          const existingVideoEffects = (it.effects ?? []).filter((e) => e?.target !== 'audio');
+          const mergedEffects = [...existingVideoEffects, ...audioEffectsToReturn];
+          return {
+            ...it,
+            audioFromVideoDisabled: false,
+            effects: mergedEffects.length > 0 ? mergedEffects : undefined,
+          };
+        }),
       };
     }
     return t;

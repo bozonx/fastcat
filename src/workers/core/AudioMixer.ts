@@ -8,6 +8,10 @@ import {
   type AudioFadeCurve,
   type AudioTransitionEnvelope,
 } from '../../utils/audio/envelope';
+import {
+  applyAudioEffectsOffline,
+  type AudioEffectData,
+} from '../../utils/audio/applyAudioEffectsOffline';
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
 
@@ -138,6 +142,7 @@ export interface PreparedClip {
   audioFadeOutS: number;
   audioFadeInCurve: AudioFadeCurve;
   audioFadeOutCurve: AudioFadeCurve;
+  audioEffects: AudioEffectData[];
 }
 
 interface MediabunnyInput {
@@ -193,6 +198,7 @@ interface AudioClipData {
     transitionIn?: AudioTransitionEnvelope | null;
     transitionOut?: AudioTransitionEnvelope | null;
   };
+  effects?: AudioEffectData[];
 }
 
 export interface AudioMixerPrepareParams {
@@ -410,6 +416,7 @@ export class AudioMixer {
           audioFadeOutS,
           audioFadeInCurve: fadeInCurve,
           audioFadeOutCurve: fadeOutCurve,
+          audioEffects: (clipData.effects ?? []).filter((effect) => effect?.target === 'audio'),
         });
       } catch (err) {
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
@@ -561,6 +568,18 @@ export class AudioMixer {
               await reportExportWarning(
                 '[Worker Export] Audio clip channel mismatch; normalizing channel layout.',
               );
+            }
+
+            if (clip.audioEffects.length > 0) {
+              const processed = await applyAudioEffectsOffline({
+                planes: normalizedPlanes,
+                sampleRate,
+                frames: normalizedFrames,
+                channels: numberOfChannels,
+                effects: clip.audioEffects,
+              });
+              normalizedPlanes = processed.planes;
+              normalizedFrames = processed.frames;
             }
 
             // Precompute gains to avoid per-sample function calls
