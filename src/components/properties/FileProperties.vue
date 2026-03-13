@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -9,7 +9,6 @@ import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/forma
 import {
   VIDEO_EXTENSIONS,
   getMediaTypeFromFilename,
-  getMimeTypeFromFilename,
   isOpenableProjectFileName,
 } from '~/utils/media-types';
 import { formatAudioChannels } from '~/utils/audio';
@@ -22,6 +21,7 @@ import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUs
 import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 import { useFilePropertiesActions } from '~/composables/properties/useFilePropertiesActions';
+import { useFilePropertiesTranscription } from '~/composables/properties/useFilePropertiesTranscription';
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
@@ -31,8 +31,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import AppModal from '~/components/ui/AppModal.vue';
 import type { FsEntry } from '~/types/fs';
-import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
-import { transcribeProjectAudioFile } from '~/utils/stt';
 
 const props = defineProps<{
   selectedFsEntry: FsEntry;
@@ -62,13 +60,6 @@ const runtimeConfig = useRuntimeConfig();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
-const isTranscriptionModalOpen = ref(false);
-const transcriptionLanguage = ref('');
-const isTranscribingAudio = ref(false);
-const transcriptionError = ref('');
-const latestTranscriptionText = ref('');
-const latestTranscriptionCacheKey = ref('');
-const latestTranscriptionWasCached = ref(false);
 
 const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
@@ -194,25 +185,6 @@ async function copyToClipboard(text: string) {
   }
 }
 
-function extractTranscriptionText(payload: unknown): string {
-  if (!payload || typeof payload !== 'object') return '';
-
-  const data = payload as Record<string, unknown>;
-  for (const key of ['text', 'formattedText', 'transcript']) {
-    const value = data[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  const result = data.result;
-  if (result && typeof result === 'object') {
-    return extractTranscriptionText(result);
-  }
-
-  return '';
-}
-
 function openAsProjectTab() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'file' || !entry.path) return;
@@ -266,19 +238,6 @@ const isGeneratingProxyForFile = computed(() => {
 
 const isAudioFile = computed(() => mediaType.value === 'audio');
 
-const canTranscribeMedia = computed(() => {
-  const entry = props.selectedFsEntry;
-  return (
-    entry?.kind === 'file' &&
-    entry?.source !== 'remote' &&
-    (isAudioFile.value || isVideoFile.value) &&
-    Boolean(sttConfig.value) &&
-    Boolean(workspaceStore.workspaceHandle) &&
-    Boolean(projectStore.currentProjectId) &&
-    Boolean(entry.path)
-  );
-});
-
 const hasExistingProxyForFile = computed(() => {
   if (!showVideoProxyActions.value) return false;
   return proxyStore.existingProxies.has(selectedPath.value!);
@@ -287,39 +246,6 @@ const hasExistingProxyForFile = computed(() => {
 const canConvertFile = computed(() => {
   return mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
 });
-
-async function loadCachedTranscription() {
-  const selectedEntry = props.selectedFsEntry;
-  if (
-    !selectedEntry ||
-    selectedEntry.kind !== 'file' ||
-    !projectStore.currentProjectId ||
-    !workspaceStore.workspaceHandle ||
-    !(isAudioFile.value || isVideoFile.value)
-  ) {
-    latestTranscriptionText.value = '';
-    latestTranscriptionCacheKey.value = '';
-    latestTranscriptionWasCached.value = false;
-    return;
-  }
-
-  try {
-    const repository = createTranscriptionCacheRepository({
-      workspaceDir: workspaceStore.workspaceHandle,
-      topology: workspaceStore.resolvedStorageTopology,
-      projectId: projectStore.currentProjectId,
-    });
-    const records = await repository.list();
-    const record = records.find((item) => item.sourcePath === selectedEntry.path);
-    latestTranscriptionText.value = record ? extractTranscriptionText(record.response) : '';
-    latestTranscriptionCacheKey.value = record?.key ?? '';
-    latestTranscriptionWasCached.value = Boolean(record);
-  } catch {
-    latestTranscriptionText.value = '';
-    latestTranscriptionCacheKey.value = '';
-    latestTranscriptionWasCached.value = false;
-  }
-}
 
 function onRename() {
   const entry = props.selectedFsEntry;
@@ -369,11 +295,34 @@ function openRemoteUploadPicker() {
   uiStore.remoteExchangeModalOpen = true;
 }
 
-function openTranscriptionModal() {
-  if (!canTranscribeMedia.value) return;
-  transcriptionError.value = '';
-  isTranscriptionModalOpen.value = true;
-}
+const {
+  canTranscribeMedia,
+  isTranscriptionModalOpen,
+  transcriptionLanguage,
+  isTranscribingAudio,
+  transcriptionError,
+  latestTranscriptionText,
+  latestTranscriptionCacheKey,
+  latestTranscriptionWasCached,
+  openTranscriptionModal,
+  submitAudioTranscription,
+} = useFilePropertiesTranscription({
+  selectedFsEntry: selectedFsEntryRef,
+  isAudioFile,
+  isVideoFile,
+  sttConfig,
+  workspaceHandle: computed(() => workspaceStore.workspaceHandle),
+  currentProjectId: computed(() => projectStore.currentProjectId),
+  resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
+  userSettings: computed(() => workspaceStore.userSettings),
+  fastcatPublicadorBaseUrl: computed(() =>
+    typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+      ? runtimeConfig.public.fastcatPublicadorBaseUrl
+      : '',
+  ),
+  getFileByPath: (path) => projectStore.getFileByPath(path),
+  toast,
+});
 
 const {
   directoryPrimaryActions,
@@ -421,75 +370,6 @@ const {
   },
   extractAudio: () => extractAudio(props.selectedFsEntry),
 });
-
-async function submitAudioTranscription() {
-  const selectedEntry = props.selectedFsEntry;
-  if (
-    !selectedEntry ||
-    selectedEntry.kind !== 'file' ||
-    !workspaceStore.workspaceHandle ||
-    !projectStore.currentProjectId
-  ) {
-    return;
-  }
-
-  isTranscribingAudio.value = true;
-  transcriptionError.value = '';
-
-  try {
-    const file = await projectStore.getFileByPath(selectedEntry.path);
-    if (!file) throw new Error('Failed to access file');
-    const result = await transcribeProjectAudioFile({
-      file,
-      filePath: selectedEntry.path,
-      fileName: selectedEntry.name,
-      fileType: getMimeTypeFromFilename(selectedEntry.name),
-      language: transcriptionLanguage.value,
-      fastcatPublicadorBaseUrl:
-        typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-          ? runtimeConfig.public.fastcatPublicadorBaseUrl
-          : '',
-      projectId: projectStore.currentProjectId,
-      userSettings: workspaceStore.userSettings,
-      workspaceHandle: workspaceStore.workspaceHandle,
-      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-    });
-
-    latestTranscriptionText.value = extractTranscriptionText(result.record.response);
-    latestTranscriptionCacheKey.value = result.cacheKey;
-    latestTranscriptionWasCached.value = result.cached;
-    isTranscriptionModalOpen.value = false;
-
-    toast.add({
-      title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
-      description: result.cached
-        ? 'Cached transcription was loaded from vardata.'
-        : 'Transcription was saved to vardata cache.',
-      color: 'success',
-    });
-  } catch (error: unknown) {
-    transcriptionError.value =
-      error instanceof Error ? error.message : 'Failed to transcribe audio';
-  } finally {
-    isTranscribingAudio.value = false;
-  }
-}
-
-watch(
-  () => props.selectedFsEntry?.path,
-  async () => {
-    transcriptionLanguage.value = '';
-    transcriptionError.value = '';
-    latestTranscriptionText.value = '';
-    latestTranscriptionCacheKey.value = '';
-    latestTranscriptionWasCached.value = false;
-    isTranscriptionModalOpen.value = false;
-    isTranscribingAudio.value = false;
-
-    await loadCachedTranscription();
-  },
-  { immediate: true },
-);
 </script>
 
 <template>

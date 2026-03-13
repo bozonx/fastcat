@@ -13,6 +13,9 @@ import {
   truncateRulerTooltip,
   useTimelineRulerPresentation,
 } from '~/composables/timeline/useTimelineRulerPresentation';
+import { useTimelineRulerMenus } from '~/composables/timeline/useTimelineRulerMenus';
+import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRulerMarkerDrag';
+import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
 
 const { t } = useI18n();
 
@@ -21,9 +24,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'pointerdown', event: PointerEvent): void;
-  (e: 'start-playhead-drag', event: PointerEvent): void;
-  (e: 'start-pan', event: PointerEvent): void;
+  (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
   (e: 'dblclick-ruler', timeUs: number): void;
 }>();
@@ -56,36 +57,6 @@ function scheduleDraw() {
     drawRafId = null;
     draw();
   });
-}
-
-let activeMarkerPointerMove: ((e: PointerEvent) => void) | null = null;
-let activeMarkerPointerUp: ((e?: PointerEvent) => void) | null = null;
-
-type SelectionDragPart = 'move' | 'left' | 'right';
-
-let activeSelectionPointerMove: ((e: PointerEvent) => void) | null = null;
-let activeSelectionPointerUp: ((e?: PointerEvent) => void) | null = null;
-
-function clearMarkerPointerListeners() {
-  if (activeMarkerPointerMove) {
-    window.removeEventListener('pointermove', activeMarkerPointerMove);
-    activeMarkerPointerMove = null;
-  }
-  if (activeMarkerPointerUp) {
-    window.removeEventListener('pointerup', activeMarkerPointerUp as any);
-    activeMarkerPointerUp = null;
-  }
-}
-
-function clearSelectionPointerListeners() {
-  if (activeSelectionPointerMove) {
-    window.removeEventListener('pointermove', activeSelectionPointerMove);
-    activeSelectionPointerMove = null;
-  }
-  if (activeSelectionPointerUp) {
-    window.removeEventListener('pointerup', activeSelectionPointerUp as any);
-    activeSelectionPointerUp = null;
-  }
 }
 
 onMounted(() => {
@@ -170,209 +141,33 @@ function selectSelectionRange() {
   selectionStore.selectTimelineSelectionRange();
 }
 
-const draggedMarkerId = ref<string | null>(null);
-const draggedMarkerPart = ref<'left' | 'right'>('left');
-const markerDragStartX = ref(0);
-const markerDragStartUs = ref(0);
-const markerDragStartDurationUs = ref(0);
-
-const isDraggingSelectionRange = ref(false);
-const selectionDragPart = ref<SelectionDragPart>('move');
-const selectionDragStartX = ref(0);
-const selectionDragStartStartUs = ref(0);
-const selectionDragStartEndUs = ref(0);
-const suppressNextRulerClick = ref(false);
-const isCreatingSelectionRange = ref(false);
-const selectionCreateStartUs = ref(0);
-
 const contextClickTimeUs = ref(0);
 
 function onContextMenuOpenChange(val: boolean) {
   if (!val) contextClickTimeUs.value = 0;
 }
 
-function onMarkerContextMenu(e: MouseEvent, markerId: string) {
-  e.preventDefault();
-  selectMarker(markerId);
-}
+const { clearMarkerPointerListeners, onMarkerPointerDown } = useTimelineRulerMarkerDrag({
+  markers,
+  zoom,
+  selectMarker,
+  updateMarker: timelineStore.updateMarker,
+});
 
-function onMarkerPointerDown(e: PointerEvent, markerId: string, part: 'left' | 'right' = 'left') {
-  if (e.button !== 0) return;
-  e.stopPropagation();
-  selectMarker(markerId);
-
-  const m = markers.value.find((x) => x.id === markerId);
-  if (!m) return;
-
-  draggedMarkerId.value = markerId;
-  draggedMarkerPart.value = part;
-  markerDragStartX.value = e.clientX;
-  markerDragStartUs.value = m.timeUs;
-  markerDragStartDurationUs.value = m.durationUs ?? 0;
-
-  clearMarkerPointerListeners();
-  activeMarkerPointerMove = onWindowPointerMove;
-  activeMarkerPointerUp = onWindowPointerUp;
-  window.addEventListener('pointermove', onWindowPointerMove);
-  window.addEventListener('pointerup', onWindowPointerUp);
-}
-
-function onWindowPointerMove(e: PointerEvent) {
-  if (!draggedMarkerId.value) return;
-
-  const dx = e.clientX - markerDragStartX.value;
-  const currentZoom = zoom.value;
-
-  if (draggedMarkerPart.value === 'left') {
-    const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
-    const newPx = Math.max(0, startPx + dx);
-    const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
-
-    // If it's a zone, adjusting left should keep the right edge fixed by changing duration
-    const m = markers.value.find((x) => x.id === draggedMarkerId.value);
-    if (m && m.durationUs !== undefined) {
-      const endUs = markerDragStartUs.value + markerDragStartDurationUs.value;
-      if (newUs < endUs) {
-        timelineStore.updateMarker(draggedMarkerId.value, {
-          timeUs: newUs,
-          durationUs: endUs - newUs,
-        });
-      }
-    } else {
-      timelineStore.updateMarker(draggedMarkerId.value, { timeUs: newUs });
-    }
-  } else if (draggedMarkerPart.value === 'right') {
-    const durationPx = timeUsToPx(markerDragStartDurationUs.value, currentZoom);
-    const newDurationPx = Math.max(10, durationPx + dx); // min width 10px
-    const newDurationUs = pxToTimeUs(newDurationPx, currentZoom);
-
-    timelineStore.updateMarker(draggedMarkerId.value, { durationUs: newDurationUs });
-  }
-}
-
-function onWindowPointerUp() {
-  draggedMarkerId.value = null;
-  clearMarkerPointerListeners();
-}
-
-function updateSelectionRangeFromDrag(clientX: number) {
-  const range = selectionRange.value;
-  if (!range) return;
-
-  const dx = clientX - selectionDragStartX.value;
-  const deltaUs = pxToTimeUs(Math.abs(dx), zoom.value) * (dx < 0 ? -1 : 1);
-  const minDurationUs = Math.max(1, pxToTimeUs(6, zoom.value));
-
-  if (selectionDragPart.value === 'move') {
-    const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
-    const nextStartUs = Math.max(0, Math.round(selectionDragStartStartUs.value + deltaUs));
-    timelineStore.updateSelectionRange({
-      startUs: nextStartUs,
-      endUs: nextStartUs + durationUs,
-    });
-    return;
-  }
-
-  if (selectionDragPart.value === 'left') {
-    const maxStartUs = selectionDragStartEndUs.value - minDurationUs;
-    const nextStartUs = Math.max(
-      0,
-      Math.min(maxStartUs, Math.round(selectionDragStartStartUs.value + deltaUs)),
-    );
-    timelineStore.updateSelectionRange({
-      startUs: nextStartUs,
-      endUs: selectionDragStartEndUs.value,
-    });
-    return;
-  }
-
-  const nextEndUs = Math.max(
-    selectionDragStartStartUs.value + minDurationUs,
-    Math.round(selectionDragStartEndUs.value + deltaUs),
-  );
-  timelineStore.updateSelectionRange({
-    startUs: selectionDragStartStartUs.value,
-    endUs: nextEndUs,
-  });
-}
-
-function onSelectionPointerMove(e: PointerEvent) {
-  if (!isDraggingSelectionRange.value) return;
-  suppressNextRulerClick.value = true;
-  updateSelectionRangeFromDrag(e.clientX);
-}
-
-function onSelectionPointerUp() {
-  isDraggingSelectionRange.value = false;
-  window.setTimeout(() => {
-    suppressNextRulerClick.value = false;
-  }, 0);
-  clearSelectionPointerListeners();
-}
-
-function startSelectionRangeDrag(e: PointerEvent, part: SelectionDragPart) {
-  if (e.button !== 0 || !selectionRange.value) return;
-  e.stopPropagation();
-  e.preventDefault();
-
-  selectSelectionRange();
-  isDraggingSelectionRange.value = true;
-  selectionDragPart.value = part;
-  selectionDragStartX.value = e.clientX;
-  selectionDragStartStartUs.value = selectionRange.value.startUs;
-  selectionDragStartEndUs.value = selectionRange.value.endUs;
-  suppressNextRulerClick.value = part !== 'move';
-
-  clearSelectionPointerListeners();
-  activeSelectionPointerMove = onSelectionPointerMove;
-  activeSelectionPointerUp = onSelectionPointerUp;
-  window.addEventListener('pointermove', onSelectionPointerMove);
-  window.addEventListener('pointerup', onSelectionPointerUp);
-}
-
-function onSelectionCreatePointerMove(e: PointerEvent) {
-  if (!isCreatingSelectionRange.value) return;
-
-  suppressNextRulerClick.value = true;
-  const currentUs = getTimeUsFromMouseEvent(e as unknown as MouseEvent);
-  const startUs = Math.min(selectionCreateStartUs.value, currentUs);
-  const endUs = Math.max(selectionCreateStartUs.value, currentUs);
-
-  timelineStore.createSelectionRange({
-    startUs,
-    endUs: Math.max(startUs + 1, endUs),
-  });
-}
-
-function onSelectionCreatePointerUp() {
-  isCreatingSelectionRange.value = false;
-  clearSelectionPointerListeners();
-  window.setTimeout(() => {
-    suppressNextRulerClick.value = false;
-  }, 0);
-}
-
-function startSelectionRangeCreate(e: PointerEvent) {
-  if (e.button !== 0) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-
-  const timeUs = getTimeUsFromMouseEvent(e as unknown as MouseEvent);
-  selectionCreateStartUs.value = timeUs;
-  isCreatingSelectionRange.value = true;
-
-  timelineStore.createSelectionRange({
-    startUs: timeUs,
-    endUs: timeUs + 1,
-  });
-
-  clearSelectionPointerListeners();
-  activeSelectionPointerMove = onSelectionCreatePointerMove;
-  activeSelectionPointerUp = onSelectionCreatePointerUp;
-  window.addEventListener('pointermove', onSelectionCreatePointerMove);
-  window.addEventListener('pointerup', onSelectionCreatePointerUp);
-}
+const {
+  clearSelectionPointerListeners,
+  isDraggingSelectionRange,
+  startSelectionRangeCreate,
+  startSelectionRangeDrag,
+  suppressNextRulerClick,
+} = useTimelineRulerSelectionDrag({
+  selectionRange,
+  zoom,
+  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
+  selectSelectionRange,
+  updateSelectionRange: timelineStore.updateSelectionRange,
+  createSelectionRange: timelineStore.createSelectionRange,
+});
 
 const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadStyle } =
   useTimelineRulerPresentation({
@@ -384,6 +179,18 @@ const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadS
     markers,
     selectionRange,
   });
+
+const {
+  rulerContextMenuItems,
+  getZoneMarkerMenuItems,
+  getMarkerMenuItems,
+  selectionRangeMenuItems,
+} = useTimelineRulerMenus({
+  t,
+  timelineStore,
+  selectMarker,
+  deleteMarker,
+});
 
 function draw() {
   const canvas = canvasRef.value;
@@ -576,103 +383,6 @@ function onRulerWheel(e: WheelEvent) {
   e.preventDefault();
   emit('wheel', e);
 }
-
-const rulerContextMenuItems = computed(() => [
-  [
-    {
-      label: t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
-      icon: 'i-heroicons-bookmark',
-      onSelect: () => {
-        timelineStore.addMarkerAtPlayhead();
-        const latest = timelineStore.getMarkers().at(-1);
-        if (latest) selectMarker(latest.id);
-      },
-    },
-    {
-      label: t('fastcat.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
-      icon: 'i-heroicons-arrows-right-left',
-      onSelect: () => {
-        timelineStore.addZoneMarkerAtPlayhead();
-        const latest = timelineStore.getMarkers().at(-1);
-        if (latest) selectMarker(latest.id);
-      },
-    },
-    {
-      label: t('fastcat.timeline.createSelectionArea', 'Create selection area'),
-      icon: 'i-heroicons-rectangle-group',
-      onSelect: () => {
-        timelineStore.createSelectionRangeAtPlayhead();
-      },
-    },
-  ],
-]);
-
-function getZoneMarkerMenuItems(markerId: string) {
-  return [
-    [
-      {
-        label: t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker'),
-        icon: 'i-heroicons-arrows-pointing-in',
-        onSelect: () => timelineStore.convertZoneToMarker(markerId),
-      },
-      {
-        label: t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area'),
-        icon: 'i-heroicons-rectangle-group',
-        onSelect: () => timelineStore.convertMarkerToSelectionRange(markerId),
-      },
-      {
-        label: t('fastcat.timeline.createSelectionFromZone', 'Create selection area'),
-        icon: 'i-heroicons-sparkles',
-        onSelect: () => timelineStore.createSelectionRangeFromMarker(markerId),
-      },
-      {
-        label: t('fastcat.timeline.deleteMarker', 'Delete marker'),
-        icon: 'i-heroicons-trash',
-        color: 'red' as const,
-        onSelect: () => deleteMarker(markerId),
-      },
-    ],
-  ];
-}
-
-function getMarkerMenuItems(markerId: string) {
-  return [
-    [
-      {
-        label: t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
-        icon: 'i-heroicons-arrows-pointing-out',
-        onSelect: () => timelineStore.convertMarkerToZone(markerId),
-      },
-      {
-        label: t('fastcat.timeline.deleteMarker', 'Delete marker'),
-        icon: 'i-heroicons-trash',
-        color: 'red' as const,
-        onSelect: () => deleteMarker(markerId),
-      },
-    ],
-  ];
-}
-
-const selectionRangeMenuItems = computed(() => [
-  [
-    {
-      label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
-      icon: 'i-heroicons-bookmark-square',
-      onSelect: () => timelineStore.convertSelectionRangeToMarker(),
-    },
-    {
-      label: t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
-      icon: 'i-heroicons-scissors',
-      onSelect: () => timelineStore.rippleTrimSelectionRange(),
-    },
-    {
-      label: t('common.delete', 'Delete'),
-      icon: 'i-heroicons-trash',
-      color: 'red' as const,
-      onSelect: () => timelineStore.removeSelectionRange(),
-    },
-  ],
-]);
 </script>
 
 <template>

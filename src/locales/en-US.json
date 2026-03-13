@@ -643,7 +643,8 @@
       "noProjectsFound": "No projects found",
       "recentProjects": "Recent Projects",
       "openLastProject": "Open Last Project",
-      "renameProject": "Rename Project"
+      "renameProject": "Rename Project",
+      "recent": "Recently opened"
     },
     "preview": {
       "unsupported": "Unsupported file format",
