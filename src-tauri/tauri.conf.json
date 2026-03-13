@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "gran-video-editor",
+  "productName": "FastCat",
   "version": "0.1.0",
-  "identifier": "com.bozonx.gran-video-editor",
+  "identifier": "com.bozonx.fastcat",
   "build": {
     "frontendDist": "../.output/public",
     "devUrl": "http://localhost:3000",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Gran Video Editor",
+        "title": "FastCat",
         "width": 800,
         "height": 600,
         "resizable": true,

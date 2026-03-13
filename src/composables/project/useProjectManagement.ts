@@ -8,9 +8,21 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const router = useRouter();
 
   const searchQuery = ref('');
-  const newProjectName = ref('');
   const isRenaming = ref<string | null>(null);
   const renameValue = ref('');
+
+  const isCreateModalOpen = ref(false);
+  const projectCreationSettings = ref({
+    name: '',
+    width: workspaceStore.userSettings.projectDefaults.width,
+    height: workspaceStore.userSettings.projectDefaults.height,
+    fps: workspaceStore.userSettings.projectDefaults.fps,
+    resolutionFormat: workspaceStore.userSettings.projectDefaults.resolutionFormat,
+    orientation: workspaceStore.userSettings.projectDefaults.orientation,
+    aspectRatio: workspaceStore.userSettings.projectDefaults.aspectRatio,
+    isCustomResolution: workspaceStore.userSettings.projectDefaults.isCustomResolution,
+    sampleRate: workspaceStore.userSettings.projectDefaults.sampleRate,
+  });
 
   const filteredProjects = computed(() => {
     if (!searchQuery.value.trim()) {
@@ -21,13 +33,41 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   });
 
   async function createNewProject() {
-    if (!newProjectName.value.trim()) return;
-    const name = newProjectName.value.trim();
-    await projectStore.createProject(name);
+    const name = projectCreationSettings.value.name.trim();
+    if (!name) return;
+
+    await projectStore.createProject(name, {
+      width: projectCreationSettings.value.width,
+      height: projectCreationSettings.value.height,
+      fps: projectCreationSettings.value.fps,
+      resolutionFormat: projectCreationSettings.value.resolutionFormat,
+      orientation: projectCreationSettings.value.orientation,
+      aspectRatio: projectCreationSettings.value.aspectRatio,
+      isCustomResolution: projectCreationSettings.value.isCustomResolution,
+      sampleRate: projectCreationSettings.value.sampleRate,
+    });
+
     if (workspaceStore.userSettings.openLastProjectOnStart) {
       handleOpenProject(name);
     }
-    newProjectName.value = '';
+
+    isCreateModalOpen.value = false;
+    projectCreationSettings.value.name = '';
+  }
+
+  function startCreateProject() {
+    projectCreationSettings.value = {
+      name: '',
+      width: workspaceStore.userSettings.projectDefaults.width,
+      height: workspaceStore.userSettings.projectDefaults.height,
+      fps: workspaceStore.userSettings.projectDefaults.fps,
+      resolutionFormat: workspaceStore.userSettings.projectDefaults.resolutionFormat,
+      orientation: workspaceStore.userSettings.projectDefaults.orientation,
+      aspectRatio: workspaceStore.userSettings.projectDefaults.aspectRatio,
+      isCustomResolution: workspaceStore.userSettings.projectDefaults.isCustomResolution,
+      sampleRate: workspaceStore.userSettings.projectDefaults.sampleRate,
+    };
+    isCreateModalOpen.value = true;
   }
 
   function handleOpenProject(project: string) {
@@ -61,11 +101,13 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   return {
     searchQuery,
-    newProjectName,
     isRenaming,
     renameValue,
+    isCreateModalOpen,
+    projectCreationSettings,
     filteredProjects,
     createNewProject,
+    startCreateProject,
     handleOpenProject,
     renameProject,
     startRename,

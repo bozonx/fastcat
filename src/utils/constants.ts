@@ -6,7 +6,7 @@ export const FILES_DIR_NAME = '_files';
 export const EXPORT_DIR_NAME = '_export';
 export const TIMELINES_DIR_NAME = '_timelines';
 
-export const GRAN_PUBLICADOR_APP_NAME = 'Gran Video Editor';
+export const GRAN_PUBLICADOR_APP_NAME = 'FastCat';
 
 export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB
 

@@ -65,6 +65,7 @@ describe('workspace-settings.repository', () => {
     const repo = createWorkspaceSettingsRepository({ workspaceDir: root as any });
 
     expect(await repo.loadUserSettings()).toBeNull();
+    expect(await repo.loadAppSettings()).toBeNull();
     expect(await repo.loadWorkspaceSettings()).toBeNull();
   });
 

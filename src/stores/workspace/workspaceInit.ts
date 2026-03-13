@@ -15,8 +15,10 @@ export interface WorkspaceInitDeps {
   isInitializing: Ref<boolean>;
 
   loadProjects: () => Promise<void>;
+  loadAppSettingsFromDisk: () => Promise<void>;
   loadWorkspaceSettingsFromDisk: () => Promise<void>;
   loadUserSettingsFromDisk: () => Promise<void>;
+  saveAppSettingsToDisk: () => Promise<void>;
   saveWorkspaceSettingsToDisk: () => Promise<void>;
   saveUserSettingsToDisk: () => Promise<void>;
   resetSettingsState: () => void;
@@ -66,9 +68,9 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     }
 
     await deps.loadProjects();
-    await deps.loadWorkspaceSettingsFromDisk();
+    await deps.loadAppSettingsFromDisk();
     await deps.loadUserSettingsFromDisk();
-    await deps.saveWorkspaceSettingsToDisk();
+    await deps.saveAppSettingsToDisk();
     await deps.saveUserSettingsToDisk();
   }
 

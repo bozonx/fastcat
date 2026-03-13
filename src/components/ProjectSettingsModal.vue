@@ -192,7 +192,6 @@ async function resetToDefaults() {
           v-model:orientation="projectStore.projectSettings.project.orientation"
           v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
           v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
-          v-model:audio-channels="projectStore.projectSettings.project.audioChannels"
           v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
         />
       </div>

@@ -1,6 +1,7 @@
 import {
   DEFAULT_USER_SETTINGS,
-  DEFAULT_WORKSPACE_SETTINGS,
+  DEFAULT_APP_SETTINGS,
+  type FastCatAppSettings,
   type GranVideoEditorUserSettings,
   type GranVideoEditorWorkspaceSettings,
 } from './defaults';
@@ -45,7 +46,6 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
     orientation: preset.orientation as 'landscape' | 'portrait',
     aspectRatio: preset.aspectRatio,
     isCustomResolution: preset.isCustomResolution,
-    audioChannels: DEFAULT_USER_SETTINGS.projectDefaults.audioChannels,
     sampleRate: DEFAULT_USER_SETTINGS.projectDefaults.sampleRate,
     audioDeclickDurationUs: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
     defaultAudioFadeCurve: DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
@@ -89,8 +89,15 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
   };
 }
 
-export function createDefaultWorkspaceSettings(): GranVideoEditorWorkspaceSettings {
+export function createDefaultAppSettings(): FastCatAppSettings {
   return {
-    ...DEFAULT_WORKSPACE_SETTINGS,
+    ...DEFAULT_APP_SETTINGS,
+    paths: {
+      ...DEFAULT_APP_SETTINGS.paths,
+    },
   };
+}
+
+export function createDefaultWorkspaceSettings(): GranVideoEditorWorkspaceSettings {
+  return createDefaultAppSettings();
 }
