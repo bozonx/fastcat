@@ -316,11 +316,11 @@ function resolveStableItemId(input: {
   });
 }
 
-function safeGranMetadata(raw: any): any {
+function safeFastCatMetadata(raw: any): any {
   if (!raw || typeof raw !== 'object') return {};
-  const gran = (raw as any).gran;
-  if (!gran || typeof gran !== 'object') return {};
-  return gran;
+  const fastcat = (raw as any).fastcat;
+  if (!fastcat || typeof fastcat !== 'object') return {};
+  return fastcat;
 }
 
 function isOtioPath(value: unknown): value is string {
@@ -331,7 +331,7 @@ function isOtioPath(value: unknown): value is string {
 // Effects serialization helpers
 // ---------------------------------------------------------------------------
 
-/** Serialize ClipEffect[] to standard OTIO Effect.1 array. Editor-specific params go to metadata.gran. */
+/** Serialize ClipEffect[] to standard OTIO Effect.1 array. Editor-specific params go to metadata.fastcat. */
 function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[] | undefined {
   if (!Array.isArray(effects) || effects.length === 0) return undefined;
   return effects.map((e) => ({
@@ -340,7 +340,7 @@ function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[] | und
     effect_name: e.type,
     enabled: e.enabled !== false,
     metadata: {
-      gran: {
+      fastcat: {
         id: e.id,
         type: e.type,
         target: e.target,
@@ -359,21 +359,21 @@ function parseEffects(raw: any[]): ClipEffect[] {
   for (const e of raw) {
     if (!e || typeof e !== 'object') continue;
     if (e.OTIO_SCHEMA !== 'Effect.1') continue;
-    const granMeta = safeGranMetadata(e.metadata);
-    const id = coerceId(granMeta?.id ?? e.name, '');
+    const fastcatMeta = safeFastCatMetadata(e.metadata);
+    const id = coerceId(fastcatMeta?.id ?? e.name, '');
     const type =
-      typeof granMeta?.type === 'string'
-        ? granMeta.type
+      typeof fastcatMeta?.type === 'string'
+        ? fastcatMeta.type
         : typeof e.effect_name === 'string'
           ? e.effect_name
           : '';
     if (!id || !type) continue;
-    const params = granMeta?.params && typeof granMeta.params === 'object' ? granMeta.params : {};
+    const params = fastcatMeta?.params && typeof fastcatMeta.params === 'object' ? fastcatMeta.params : {};
     result.push({
       id,
       type,
       enabled: e.enabled !== false,
-      target: granMeta?.target,
+      target: fastcatMeta?.target,
       ...params,
     });
   }
@@ -420,7 +420,7 @@ function serializeMarker(marker: TimelineMarker, fps?: number): OtioMarker {
     comment: marker.text,
     marked_range: toTimeRange({ startUs: marker.timeUs, durationUs: marker.durationUs ?? 0 }, fps),
     metadata: {
-      gran: {
+      fastcat: {
         id: marker.id,
         color: marker.color,
       },
@@ -435,9 +435,9 @@ function parseOtioMarkers(raw: any): TimelineMarker[] {
   for (const m of raw) {
     if (!m || typeof m !== 'object') continue;
     if (m.OTIO_SCHEMA !== 'Marker.2' && m.OTIO_SCHEMA !== 'Marker.1') continue;
-    const granMeta = safeGranMetadata(m.metadata);
+    const fastcatMeta = safeFastCatMetadata(m.metadata);
     const range = fromTimeRange(m.marked_range);
-    const id = coerceId(granMeta?.id, '');
+    const id = coerceId(fastcatMeta?.id, '');
     if (!id) continue;
     const text =
       typeof m.comment === 'string' && m.comment.length > 0
@@ -445,8 +445,8 @@ function parseOtioMarkers(raw: any): TimelineMarker[] {
         : typeof m.name === 'string'
           ? m.name
           : '';
-    // Use editor-specific color from gran if present; ignore canonical OTIO color enum string.
-    const color = typeof granMeta?.color === 'string' ? granMeta.color : undefined;
+    // Use editor-specific color from fastcat if present; ignore canonical OTIO color enum string.
+    const color = typeof fastcatMeta?.color === 'string' ? fastcatMeta.color : undefined;
     const durationUs = range.durationUs > 0 ? range.durationUs : undefined;
     result.push({ id, timeUs: Math.max(0, range.startUs), durationUs, text, color });
   }
@@ -464,13 +464,13 @@ function parseOtioMarkers(raw: any): TimelineMarker[] {
  */
 function transitionTypeToOtio(type: string): string {
   if (type === 'dissolve') return 'SMPTE_Dissolve';
-  return `gran:${type}`;
+  return `fastcat:${type}`;
 }
 
 /** Reverse: OTIO transition_type → our type. */
 function transitionTypeFromOtio(otioType: string): string {
   if (otioType === 'SMPTE_Dissolve') return 'dissolve';
-  if (otioType.startsWith('gran:')) return otioType.slice(5);
+  if (otioType.startsWith('fastcat:')) return otioType.slice(5);
   return otioType;
 }
 
@@ -490,7 +490,7 @@ function buildOtioTransition(
     out_offset: toRationalTime(transition.durationUs - halfUs, fps),
     parameters: transition.params ?? {},
     metadata: {
-      gran: {
+      fastcat: {
         type: transition.type,
         durationUs: transition.durationUs,
         mode: transition.mode,
@@ -509,21 +509,21 @@ function parseOtioTransition(t: any): import('./types').ClipTransition | null {
   const outUs = fromRationalTimeUs(t.out_offset);
   const durationUs = inUs + outUs;
   if (durationUs <= 0) return null;
-  const granMeta = safeGranMetadata(t.metadata);
-  const type = granMeta?.type ?? transitionTypeFromOtio(t.transition_type ?? '');
+  const fastcatMeta = safeFastCatMetadata(t.metadata);
+  const type = fastcatMeta?.type ?? transitionTypeFromOtio(t.transition_type ?? '');
   if (!type) return null;
   return {
     type,
-    durationUs: granMeta?.durationUs ?? durationUs,
-    mode: normalizeTransitionMode(granMeta?.mode),
-    curve: normalizeTransitionCurve(granMeta?.curve),
+    durationUs: fastcatMeta?.durationUs ?? durationUs,
+    mode: normalizeTransitionMode(fastcatMeta?.mode),
+    curve: normalizeTransitionCurve(fastcatMeta?.curve),
     params:
-      granMeta?.params && typeof granMeta.params === 'object'
-        ? (granMeta.params as Record<string, unknown>)
+      fastcatMeta?.params && typeof fastcatMeta.params === 'object'
+        ? (fastcatMeta.params as Record<string, unknown>)
         : Object.keys(t.parameters ?? {}).length > 0
           ? (t.parameters as Record<string, unknown>)
           : undefined,
-    isOverridden: granMeta?.isOverridden !== undefined ? Boolean(granMeta.isOverridden) : undefined,
+    isOverridden: fastcatMeta?.isOverridden !== undefined ? Boolean(fastcatMeta.isOverridden) : undefined,
   };
 }
 
@@ -569,9 +569,9 @@ function parseClipItem(input: {
       ? fromTimeRange(ref.available_range)
       : null;
 
-  const granMeta = safeGranMetadata(otio.metadata);
+  const fastcatMeta = safeFastCatMetadata(otio.metadata);
 
-  const clipTypeRaw = granMeta?.clipType;
+  const clipTypeRaw = fastcatMeta?.clipType;
   const clipType =
     clipTypeRaw === 'background' ||
     clipTypeRaw === 'adjustment' ||
@@ -587,7 +587,7 @@ function parseClipItem(input: {
 
   const timelineStartUs = fallbackStartUs;
 
-  const sourceDurationUsFromMeta = Math.max(0, Math.round(Number(granMeta?.sourceDurationUs ?? 0)));
+  const sourceDurationUsFromMeta = Math.max(0, Math.round(Number(fastcatMeta?.sourceDurationUs ?? 0)));
   const sourceDurationUs =
     sourceDurationUsFromMeta > 0
       ? sourceDurationUsFromMeta
@@ -603,16 +603,16 @@ function parseClipItem(input: {
       timelineStartUs,
       name,
     }),
-    metadata: granMeta,
+    metadata: fastcatMeta,
     occupiedIds,
   });
 
-  // Effects: standard OTIO effects take priority; merge with gran-only effects if needed.
+  // Effects: standard OTIO effects take priority; merge with fastcat-only effects if needed.
   const otioEffects =
     Array.isArray(otio.effects) && otio.effects.length > 0
       ? parseEffects(otio.effects)
-      : Array.isArray(granMeta?.effects)
-        ? (granMeta.effects as ClipEffect[])
+      : Array.isArray(fastcatMeta?.effects)
+        ? (fastcatMeta.effects as ClipEffect[])
         : undefined;
 
   const base = {
@@ -622,81 +622,81 @@ function parseClipItem(input: {
     trackId,
     name,
     disabled: otio.enabled === false ? true : undefined,
-    locked: granMeta?.locked !== undefined ? Boolean(granMeta.locked) : undefined,
+    locked: fastcatMeta?.locked !== undefined ? Boolean(fastcatMeta.locked) : undefined,
     sourceDurationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
     speed:
-      typeof granMeta?.speed === 'number' && Number.isFinite(granMeta.speed)
-        ? Math.max(-10, Math.min(10, Number(granMeta.speed)))
+      typeof fastcatMeta?.speed === 'number' && Number.isFinite(fastcatMeta.speed)
+        ? Math.max(-10, Math.min(10, Number(fastcatMeta.speed)))
         : undefined,
     audioGain:
-      typeof granMeta?.audioGain === 'number' && Number.isFinite(granMeta.audioGain)
-        ? Math.max(0, Math.min(10, Number(granMeta.audioGain)))
+      typeof fastcatMeta?.audioGain === 'number' && Number.isFinite(fastcatMeta.audioGain)
+        ? Math.max(0, Math.min(10, Number(fastcatMeta.audioGain)))
         : undefined,
     audioBalance:
-      typeof granMeta?.audioBalance === 'number' && Number.isFinite(granMeta.audioBalance)
-        ? Math.max(-1, Math.min(1, Number(granMeta.audioBalance)))
+      typeof fastcatMeta?.audioBalance === 'number' && Number.isFinite(fastcatMeta.audioBalance)
+        ? Math.max(-1, Math.min(1, Number(fastcatMeta.audioBalance)))
         : undefined,
     audioFadeInUs:
-      typeof granMeta?.audioFadeInUs === 'number' && Number.isFinite(granMeta.audioFadeInUs)
-        ? Math.max(0, Math.round(granMeta.audioFadeInUs))
+      typeof fastcatMeta?.audioFadeInUs === 'number' && Number.isFinite(fastcatMeta.audioFadeInUs)
+        ? Math.max(0, Math.round(fastcatMeta.audioFadeInUs))
         : undefined,
     audioFadeOutUs:
-      typeof granMeta?.audioFadeOutUs === 'number' && Number.isFinite(granMeta.audioFadeOutUs)
-        ? Math.max(0, Math.round(granMeta.audioFadeOutUs))
+      typeof fastcatMeta?.audioFadeOutUs === 'number' && Number.isFinite(fastcatMeta.audioFadeOutUs)
+        ? Math.max(0, Math.round(fastcatMeta.audioFadeOutUs))
         : undefined,
     audioFadeInCurve:
-      granMeta?.audioFadeInCurve === 'linear' || granMeta?.audioFadeInCurve === 'logarithmic'
-        ? granMeta.audioFadeInCurve
+      fastcatMeta?.audioFadeInCurve === 'linear' || fastcatMeta?.audioFadeInCurve === 'logarithmic'
+        ? fastcatMeta.audioFadeInCurve
         : undefined,
     audioFadeOutCurve:
-      granMeta?.audioFadeOutCurve === 'linear' || granMeta?.audioFadeOutCurve === 'logarithmic'
-        ? granMeta.audioFadeOutCurve
+      fastcatMeta?.audioFadeOutCurve === 'linear' || fastcatMeta?.audioFadeOutCurve === 'logarithmic'
+        ? fastcatMeta.audioFadeOutCurve
         : undefined,
-    audioMuted: granMeta?.audioMuted !== undefined ? Boolean(granMeta.audioMuted) : undefined,
+    audioMuted: fastcatMeta?.audioMuted !== undefined ? Boolean(fastcatMeta.audioMuted) : undefined,
     audioWaveformMode:
-      granMeta?.audioWaveformMode === 'half' || granMeta?.audioWaveformMode === 'full'
-        ? granMeta.audioWaveformMode
+      fastcatMeta?.audioWaveformMode === 'half' || fastcatMeta?.audioWaveformMode === 'full'
+        ? fastcatMeta.audioWaveformMode
         : undefined,
-    showWaveform: granMeta?.showWaveform !== undefined ? Boolean(granMeta.showWaveform) : undefined,
-    audioFromVideoDisabled: Boolean(granMeta?.audioFromVideoDisabled),
+    showWaveform: fastcatMeta?.showWaveform !== undefined ? Boolean(fastcatMeta.showWaveform) : undefined,
+    audioFromVideoDisabled: Boolean(fastcatMeta?.audioFromVideoDisabled),
     freezeFrameSourceUs:
       clipType === 'media' &&
-      typeof granMeta?.freezeFrameSourceUs === 'number' &&
-      Number.isFinite(granMeta.freezeFrameSourceUs)
-        ? Math.max(0, Math.round(granMeta.freezeFrameSourceUs))
+      typeof fastcatMeta?.freezeFrameSourceUs === 'number' &&
+      Number.isFinite(fastcatMeta.freezeFrameSourceUs)
+        ? Math.max(0, Math.round(fastcatMeta.freezeFrameSourceUs))
         : undefined,
     opacity:
-      typeof granMeta?.opacity === 'number' && Number.isFinite(granMeta.opacity)
-        ? Math.max(0, Math.min(1, granMeta.opacity))
+      typeof fastcatMeta?.opacity === 'number' && Number.isFinite(fastcatMeta.opacity)
+        ? Math.max(0, Math.min(1, fastcatMeta.opacity))
         : undefined,
-    blendMode: coerceBlendMode(granMeta?.blendMode),
+    blendMode: coerceBlendMode(fastcatMeta?.blendMode),
     effects: otioEffects,
     // Transitions come from adjacent Transition.1 nodes (passed in from track parser),
-    // falling back to metadata.gran for backward compat with external OTIO that has no gran transitions.
-    transitionIn: transitionIn ?? parseGranTransition(granMeta?.transitionIn),
-    transitionOut: transitionOut ?? parseGranTransition(granMeta?.transitionOut),
+    // falling back to metadata.fastcat for backward compat with external OTIO that has no fastcat transitions.
+    transitionIn: transitionIn ?? parseFastCatTransition(fastcatMeta?.transitionIn),
+    transitionOut: transitionOut ?? parseFastCatTransition(fastcatMeta?.transitionOut),
     linkedGroupId:
-      typeof granMeta?.linkedGroupId === 'string' && granMeta.linkedGroupId.trim().length > 0
-        ? granMeta.linkedGroupId
+      typeof fastcatMeta?.linkedGroupId === 'string' && fastcatMeta.linkedGroupId.trim().length > 0
+        ? fastcatMeta.linkedGroupId
         : undefined,
     linkedVideoClipId:
-      typeof granMeta?.linkedVideoClipId === 'string' &&
-      granMeta.linkedVideoClipId.trim().length > 0
-        ? granMeta.linkedVideoClipId
+      typeof fastcatMeta?.linkedVideoClipId === 'string' &&
+      fastcatMeta.linkedVideoClipId.trim().length > 0
+        ? fastcatMeta.linkedVideoClipId
         : undefined,
     lockToLinkedVideo:
-      granMeta?.lockToLinkedVideo !== undefined ? Boolean(granMeta.lockToLinkedVideo) : undefined,
-    isImage: granMeta?.isImage !== undefined ? Boolean(granMeta.isImage) : undefined,
-    transform: coerceTransform(granMeta?.transform),
+      fastcatMeta?.lockToLinkedVideo !== undefined ? Boolean(fastcatMeta.lockToLinkedVideo) : undefined,
+    isImage: fastcatMeta?.isImage !== undefined ? Boolean(fastcatMeta.isImage) : undefined,
+    transform: coerceTransform(fastcatMeta?.transform),
   };
 
   if (clipType === 'background') {
     return {
       ...base,
       clipType: 'background',
-      backgroundColor: sanitizeTimelineColor(granMeta?.backgroundColor, '#000000'),
+      backgroundColor: sanitizeTimelineColor(fastcatMeta?.backgroundColor, '#000000'),
     };
   }
 
@@ -705,9 +705,9 @@ function parseClipItem(input: {
   }
 
   if (clipType === 'text') {
-    const text = typeof granMeta?.text === 'string' ? granMeta.text : 'Text';
+    const text = typeof fastcatMeta?.text === 'string' ? fastcatMeta.text : 'Text';
     const style =
-      granMeta?.style && typeof granMeta.style === 'object' ? granMeta.style : undefined;
+      fastcatMeta?.style && typeof fastcatMeta.style === 'object' ? fastcatMeta.style : undefined;
     return {
       ...base,
       clipType: 'text',
@@ -721,14 +721,14 @@ function parseClipItem(input: {
 
   if (clipType === 'shape') {
     const shapeType =
-      granMeta?.shapeType === 'square' ||
-      granMeta?.shapeType === 'circle' ||
-      granMeta?.shapeType === 'triangle' ||
-      granMeta?.shapeType === 'star' ||
-      granMeta?.shapeType === 'cloud' ||
-      granMeta?.shapeType === 'speech_bubble' ||
-      granMeta?.shapeType === 'bang'
-        ? granMeta.shapeType
+      fastcatMeta?.shapeType === 'square' ||
+      fastcatMeta?.shapeType === 'circle' ||
+      fastcatMeta?.shapeType === 'triangle' ||
+      fastcatMeta?.shapeType === 'star' ||
+      fastcatMeta?.shapeType === 'cloud' ||
+      fastcatMeta?.shapeType === 'speech_bubble' ||
+      fastcatMeta?.shapeType === 'bang'
+        ? fastcatMeta.shapeType
         : 'square';
 
     return {
@@ -739,20 +739,20 @@ function parseClipItem(input: {
       sourceRange,
       shapeType,
       fillColor:
-        typeof granMeta?.fillColor === 'string' && granMeta.fillColor.trim().length > 0
-          ? granMeta.fillColor
+        typeof fastcatMeta?.fillColor === 'string' && fastcatMeta.fillColor.trim().length > 0
+          ? fastcatMeta.fillColor
           : '#ffffff',
       strokeColor:
-        typeof granMeta?.strokeColor === 'string' && granMeta.strokeColor.trim().length > 0
-          ? granMeta.strokeColor
+        typeof fastcatMeta?.strokeColor === 'string' && fastcatMeta.strokeColor.trim().length > 0
+          ? fastcatMeta.strokeColor
           : '#000000',
       strokeWidth:
-        typeof granMeta?.strokeWidth === 'number' && Number.isFinite(granMeta.strokeWidth)
-          ? Math.max(0, Number(granMeta.strokeWidth))
+        typeof fastcatMeta?.strokeWidth === 'number' && Number.isFinite(fastcatMeta.strokeWidth)
+          ? Math.max(0, Number(fastcatMeta.strokeWidth))
           : 0,
       shapeConfig:
-        granMeta?.shapeConfig && typeof granMeta.shapeConfig === 'object'
-          ? granMeta.shapeConfig
+        fastcatMeta?.shapeConfig && typeof fastcatMeta.shapeConfig === 'object'
+          ? fastcatMeta.shapeConfig
           : undefined,
     };
   }
@@ -761,13 +761,13 @@ function parseClipItem(input: {
     return {
       ...base,
       clipType: 'hud',
-      hudType: granMeta?.hudType === 'media_frame' ? granMeta.hudType : 'media_frame',
+      hudType: fastcatMeta?.hudType === 'media_frame' ? fastcatMeta.hudType : 'media_frame',
       background:
-        granMeta?.background && typeof granMeta.background === 'object'
-          ? granMeta.background
+        fastcatMeta?.background && typeof fastcatMeta.background === 'object'
+          ? fastcatMeta.background
           : undefined,
       content:
-        granMeta?.content && typeof granMeta.content === 'object' ? granMeta.content : undefined,
+        fastcatMeta?.content && typeof fastcatMeta.content === 'object' ? fastcatMeta.content : undefined,
     };
   }
 
@@ -778,8 +778,8 @@ function parseClipItem(input: {
   return { ...base, clipType: 'media', source: { path } };
 }
 
-/** Parse legacy gran-metadata transition object (for round-trip safety). */
-function parseGranTransition(raw: any): import('./types').ClipTransition | undefined {
+/** Parse legacy fastcat-metadata transition object (for round-trip safety). */
+function parseFastCatTransition(raw: any): import('./types').ClipTransition | undefined {
   if (!raw || typeof raw.type !== 'string' || typeof raw.durationUs !== 'number') return undefined;
   return {
     type: raw.type,
@@ -803,7 +803,7 @@ function parseGapItem(input: {
 }): TimelineGapItem {
   const { trackId, otio, index, occupiedIds, fallbackStartUs } = input;
   const range = fromTimeRange(otio.source_range);
-  const granMeta = safeGranMetadata(otio.metadata);
+  const fastcatMeta = safeFastCatMetadata(otio.metadata);
   const timelineStartUs = fallbackStartUs;
   const id = resolveStableItemId({
     prefix: 'gap',
@@ -813,7 +813,7 @@ function parseGapItem(input: {
       timelineStartUs,
       index,
     }),
-    metadata: granMeta,
+    metadata: fastcatMeta,
     occupiedIds,
   });
 
@@ -846,7 +846,7 @@ export function createDefaultTimelineDocument(params: {
       { id: 'a2', kind: 'audio', name: 'Audio 2', audioMuted: false, audioSolo: false, items: [] },
     ],
     metadata: {
-      gran: {
+      fastcat: {
         version: 1,
         docId: params.id,
         timebase: { fps: params.fps },
@@ -888,7 +888,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           OTIO_SCHEMA: 'Gap.1',
           name: 'gap',
           source_range: toTimeRange({ startUs: 0, durationUs: startUs - cursorUs }, fps),
-          metadata: { gran: { id: `gap_${t.id}_${cursorUs}` } },
+          metadata: { fastcat: { id: `gap_${t.id}_${cursorUs}` } },
         });
         cursorUs = startUs;
       }
@@ -898,7 +898,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           OTIO_SCHEMA: 'Gap.1',
           name: 'gap',
           source_range: toTimeRange({ startUs: 0, durationUs }, fps),
-          metadata: { gran: { id: item.id } },
+          metadata: { fastcat: { id: item.id } },
         });
         cursorUs += durationUs;
         continue;
@@ -932,7 +932,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         source_range: toTimeRange(item.sourceRange, fps),
         effects: serializeEffects(item.effects),
         metadata: {
-          gran: {
+          fastcat: {
             id: item.id,
             clipType: item.clipType,
             locked: item.locked ? true : undefined,
@@ -990,7 +990,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       children,
       effects: serializeEffects(t.effects),
       metadata: {
-        gran: {
+        fastcat: {
           id: t.id,
           kind: t.kind,
           videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
@@ -1005,9 +1005,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
     };
   });
 
-  const granMeta = doc.metadata?.gran;
-  const markers = Array.isArray(granMeta?.markers)
-    ? [...(granMeta.markers as TimelineMarker[])]
+  const fastcatMeta = doc.metadata?.fastcat;
+  const markers = Array.isArray(fastcatMeta?.markers)
+    ? [...(fastcatMeta.markers as TimelineMarker[])]
         .sort((a, b) => a.timeUs - b.timeUs)
         .map((m) => serializeMarker(m, fps))
     : [];
@@ -1022,16 +1022,16 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
     },
     markers,
     metadata: {
-      gran: {
+      fastcat: {
         version: 1,
         docId: doc.id,
         timebase: doc.timebase,
-        selectionRange: coerceSelectionRange(granMeta?.selectionRange),
-        snapThresholdPx: granMeta?.snapThresholdPx,
-        playheadUs: granMeta?.playheadUs,
-        masterGain: granMeta?.masterGain,
-        masterMuted: granMeta?.masterMuted,
-        masterEffects: Array.isArray(granMeta?.masterEffects) ? granMeta.masterEffects : undefined,
+        selectionRange: coerceSelectionRange(fastcatMeta?.selectionRange),
+        snapThresholdPx: fastcatMeta?.snapThresholdPx,
+        playheadUs: fastcatMeta?.playheadUs,
+        masterGain: fastcatMeta?.masterGain,
+        masterMuted: fastcatMeta?.masterMuted,
+        masterEffects: Array.isArray(fastcatMeta?.masterEffects) ? fastcatMeta.masterEffects : undefined,
       },
     },
   };
@@ -1062,26 +1062,26 @@ export function parseTimelineFromOtio(
     });
   }
 
-  const granMeta = (parsed.metadata as any)?.gran;
-  const timebase = assertTimelineTimebase(granMeta?.timebase ?? { fps: fallback.fps });
+  const fastcatMeta = (parsed.metadata as any)?.fastcat;
+  const timebase = assertTimelineTimebase(fastcatMeta?.timebase ?? { fps: fallback.fps });
 
   const stackChildren = Array.isArray((parsed.tracks as any)?.children)
     ? (parsed.tracks as any).children
     : [];
 
   const tracks: TimelineTrack[] = stackChildren.map((otioTrack: OtioTrack, trackIndex: number) => {
-    const trackGranMeta = safeGranMetadata(otioTrack.metadata);
+    const trackFastCatMeta = safeFastCatMetadata(otioTrack.metadata);
 
     const id = coerceId(
-      trackGranMeta?.id,
+      trackFastCatMeta?.id,
       `${otioTrack.kind === 'Audio' ? 'a' : 'v'}${trackIndex + 1}`,
     );
     const kind =
-      trackGranMeta?.kind === 'audio' || trackGranMeta?.kind === 'video'
-        ? trackGranMeta.kind
+      trackFastCatMeta?.kind === 'audio' || trackFastCatMeta?.kind === 'video'
+        ? trackFastCatMeta.kind
         : trackKindFromOtioKind(otioTrack.kind);
     const name = coerceName(
-      trackGranMeta?.name ?? otioTrack.name,
+      trackFastCatMeta?.name ?? otioTrack.name,
       kind === 'audio' ? `Audio ${trackIndex + 1}` : `Video ${trackIndex + 1}`,
     );
 
@@ -1151,29 +1151,29 @@ export function parseTimelineFromOtio(
 
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const videoHidden = kind === 'video' ? Boolean(trackGranMeta?.videoHidden) : undefined;
+    const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta?.videoHidden) : undefined;
     const opacity =
-      typeof trackGranMeta?.opacity === 'number' && Number.isFinite(trackGranMeta.opacity)
-        ? Math.max(0, Math.min(1, Number(trackGranMeta.opacity)))
+      typeof trackFastCatMeta?.opacity === 'number' && Number.isFinite(trackFastCatMeta.opacity)
+        ? Math.max(0, Math.min(1, Number(trackFastCatMeta.opacity)))
         : undefined;
-    const blendMode = coerceBlendMode(trackGranMeta?.blendMode);
-    const audioMuted = Boolean(trackGranMeta?.audioMuted);
-    const audioSolo = Boolean(trackGranMeta?.audioSolo);
+    const blendMode = coerceBlendMode(trackFastCatMeta?.blendMode);
+    const audioMuted = Boolean(trackFastCatMeta?.audioMuted);
+    const audioSolo = Boolean(trackFastCatMeta?.audioSolo);
     const audioGain =
-      typeof trackGranMeta?.audioGain === 'number' && Number.isFinite(trackGranMeta.audioGain)
-        ? Math.max(0, Math.min(10, Number(trackGranMeta.audioGain)))
+      typeof trackFastCatMeta?.audioGain === 'number' && Number.isFinite(trackFastCatMeta.audioGain)
+        ? Math.max(0, Math.min(10, Number(trackFastCatMeta.audioGain)))
         : undefined;
     const audioBalance =
-      typeof trackGranMeta?.audioBalance === 'number' && Number.isFinite(trackGranMeta.audioBalance)
-        ? Math.max(-1, Math.min(1, Number(trackGranMeta.audioBalance)))
+      typeof trackFastCatMeta?.audioBalance === 'number' && Number.isFinite(trackFastCatMeta.audioBalance)
+        ? Math.max(-1, Math.min(1, Number(trackFastCatMeta.audioBalance)))
         : undefined;
 
-    // Track effects: prefer OTIO standard, fallback to gran metadata.
+    // Track effects: prefer OTIO standard, fallback to fastcat metadata.
     const effects =
       Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
         ? parseEffects(otioTrack.effects)
-        : Array.isArray(trackGranMeta?.effects)
-          ? (trackGranMeta.effects as ClipEffect[])
+        : Array.isArray(trackFastCatMeta?.effects)
+          ? (trackFastCatMeta.effects as ClipEffect[])
           : undefined;
 
     // Track-level markers (e.g. from an external OTIO).
@@ -1199,34 +1199,34 @@ export function parseTimelineFromOtio(
     };
   });
 
-  const docId = coerceId(granMeta?.docId, fallback.id);
-  const version = typeof granMeta?.version === 'number' ? granMeta.version : 0;
+  const docId = coerceId(fastcatMeta?.docId, fallback.id);
+  const version = typeof fastcatMeta?.version === 'number' ? fastcatMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
 
-  // Markers: prefer standard OTIO markers on Timeline, fallback to gran metadata for old files.
+  // Markers: prefer standard OTIO markers on Timeline, fallback to fastcat metadata for old files.
   const markers =
     Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
       ? parseOtioMarkers(parsed.markers as any[])
-      : Array.isArray(granMeta?.markers)
-        ? parseOtioMarkers(granMeta.markers)
+      : Array.isArray(fastcatMeta?.markers)
+        ? parseOtioMarkers(fastcatMeta.markers)
         : [];
 
-  const selectionRange = coerceSelectionRange(granMeta?.selectionRange);
+  const selectionRange = coerceSelectionRange(fastcatMeta?.selectionRange);
   const playheadUs =
-    typeof granMeta?.playheadUs === 'number' && Number.isFinite(granMeta.playheadUs)
-      ? Math.max(0, Math.round(granMeta.playheadUs))
+    typeof fastcatMeta?.playheadUs === 'number' && Number.isFinite(fastcatMeta.playheadUs)
+      ? Math.max(0, Math.round(fastcatMeta.playheadUs))
       : undefined;
   const snapThresholdPx =
-    typeof granMeta?.snapThresholdPx === 'number' && Number.isFinite(granMeta.snapThresholdPx)
-      ? Math.max(1, Math.round(granMeta.snapThresholdPx))
+    typeof fastcatMeta?.snapThresholdPx === 'number' && Number.isFinite(fastcatMeta.snapThresholdPx)
+      ? Math.max(1, Math.round(fastcatMeta.snapThresholdPx))
       : undefined;
 
   if (tracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
     base.metadata = {
       ...(base.metadata ?? {}),
-      gran: {
-        ...(base.metadata?.gran ?? {}),
+      fastcat: {
+        ...(base.metadata?.fastcat ?? {}),
         version,
         docId,
         timebase,
@@ -1246,7 +1246,7 @@ export function parseTimelineFromOtio(
     timebase,
     tracks,
     metadata: {
-      gran: {
+      fastcat: {
         version,
         docId,
         timebase,

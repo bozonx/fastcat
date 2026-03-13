@@ -15,12 +15,12 @@ const emit = defineEmits<{
 const trimMenuItems = [
   [
     {
-      label: t('granVideoEditor.timeline.rippleTrimLeft', 'Ripple trim left'),
+      label: t('fastcat.timeline.rippleTrimLeft', 'Ripple trim left'),
       icon: 'i-heroicons-arrow-left',
       onSelect: () => timelineStore.rippleTrimLeft(),
     },
     {
-      label: t('granVideoEditor.timeline.rippleTrimRight', 'Ripple trim right'),
+      label: t('fastcat.timeline.rippleTrimRight', 'Ripple trim right'),
       icon: 'i-heroicons-arrow-right',
       onSelect: () => timelineStore.rippleTrimRight(),
     },
@@ -36,7 +36,7 @@ function toggleClipSnapMode() {
   <div
     class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
   >
-    <UTooltip :text="t('granVideoEditor.timeline.properties.title', 'Timeline properties')">
+    <UTooltip :text="t('fastcat.timeline.properties.title', 'Timeline properties')">
       <UButton
         size="xs"
         variant="ghost"
@@ -49,8 +49,8 @@ function toggleClipSnapMode() {
     <UTooltip
       :text="
         settingsStore.clipSnapMode === 'clips'
-          ? t('granVideoEditor.timeline.clipSnapOn', 'Snap to clips')
-          : t('granVideoEditor.timeline.clipSnapOff', 'No clip snapping')
+          ? t('fastcat.timeline.clipSnapOn', 'Snap to clips')
+          : t('fastcat.timeline.clipSnapOff', 'No clip snapping')
       "
     >
       <UButton
@@ -63,14 +63,14 @@ function toggleClipSnapMode() {
     </UTooltip>
 
     <div class="ml-auto flex items-center gap-0.5">
-      <UTooltip :text="t('granVideoEditor.timeline.trim', 'Trim')">
+      <UTooltip :text="t('fastcat.timeline.trim', 'Trim')">
         <UiSplitDropdownButton
           size="xs"
           :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
           :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
           icon="i-heroicons-scissors"
           :aria-label="undefined"
-          :ariaLabel="t('granVideoEditor.timeline.trim', 'Trim')"
+          :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
           :items="trimMenuItems"
           @click="timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive"
         />

@@ -195,7 +195,7 @@ export function useMonitorTimeline() {
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: audioTracks.value,
       videoTracks: videoTracks.value,
-      masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+      masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
     });
 
     for (const item of effectiveItems) {
@@ -309,7 +309,7 @@ export function useMonitorTimeline() {
     const trackById = new Map<string, TimelineTrack>(videoTracks.map((t) => [t.id, t]));
 
     const masterVideoEffects = (
-      timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []
+      timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []
     ).filter((effect) => effect?.target !== 'audio');
     if (masterVideoEffects.length > 0) {
       hash = mixHash(hash, hashString(JSON.stringify(masterVideoEffects)));
@@ -398,13 +398,13 @@ export function useMonitorTimeline() {
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
-      masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+      masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
     });
 
     let hash = mixHash(2166136261, effectiveItems.length);
     hash = mixHash(hash, hasSolo ? 1 : 0);
     const masterAudioEffects = (
-      timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []
+      timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []
     ).filter((effect) => effect?.target === 'audio');
     if (masterAudioEffects.length > 0) {
       hash = mixHash(hash, hashString(JSON.stringify(masterAudioEffects)));
@@ -460,7 +460,7 @@ export function useMonitorTimeline() {
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
-      masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+      masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
     });
 
     let hash = mixHash(2166136261, effectiveItems.length);

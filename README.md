@@ -1,6 +1,6 @@
-# Gran Video Editor
+# FastCat
 
-Standalone video editor project extracted from Gran Publicador.
+Standalone video editor project extracted from FastCat Publicador.
 
 ## Features
 
@@ -10,11 +10,11 @@ Standalone video editor project extracted from Gran Publicador.
 - Audio clip effects with live preview and export support (`Reverb`, `Distortion`)
 - Focus-aware panel hotkeys with routing to the currently active editor panel
 - File system access API integration for local file editing
-- Gran Publicador integration settings with connect flow and manual API override support
-- Remote file browser mode backed by Gran Publicador VFS in the middle file manager panel
+- FastCat Publicador integration settings with connect flow and manual API override support
+- Remote file browser mode backed by FastCat Publicador VFS in the middle file manager panel
 - Remote-to-local download by drag-and-drop from remote files into the local folder tree
 - Local-to-remote upload action with remote folder picker and cancelable transfer progress modal
-- External service health checks for Gran Publicador, Files API and STT API
+- External service health checks for FastCat Publicador, Files API and STT API
 - OTIO (OpenTimelineIO) support for timeline serialization
 - High-performance rendering with Web Workers
 
@@ -78,9 +78,9 @@ FastCat uses a split storage model:
 - logical paths can be configured through **Application settings → Storage**
 
 In OPFS and portable-style workspace modes, config files are stored in the workspace under `.fastcat-config/`.
-Legacy `.gran-workspace/*` files are still read for migration.
+Legacy `.fastcat-workspace/*` files are still read for migration.
 
-Each project has a stable `projectId` stored in `projects/<projectName>/.gran/project.meta.json`.
+Each project has a stable `projectId` stored in `projects/<projectName>/.fastcat/project.meta.json`.
 This ID is used as the folder key for project-scoped temporary data.
 
 Layout:
@@ -110,7 +110,7 @@ Editor settings now include an **Integrations** section for external services.
 
 Supported configuration modes:
 
-- **Gran Publicador** via connect flow or manual bearer token
+- **FastCat Publicador** via connect flow or manual bearer token
 - **Manual Files API** with `baseUrl` and bearer token
 - **Manual STT API** with `baseUrl` (bearer token is optional)
 
@@ -118,37 +118,37 @@ Current implementation scope:
 
 - settings and provider resolution
 - connect flow token capture via `?token=...`
-- auto-connect URL generation from `GPAN_PUBLICADOR_BASE_URL`
+- auto-connect URL generation from `FCPAN_PUBLICADOR_BASE_URL`
 - connect app name from a global constant
 - connect flow `scopes` generation based on active Files/STT overrides
 - provider override rules for `Files API` and `STT API`
-- `GET /api/v1/external/health` checks for Gran Publicador and resolved manual services
+- `GET /api/v1/external/health` checks for FastCat Publicador and resolved manual services
 - audio file transcription from the properties panel via `POST .../api/v1/transcribe/stream`
 - shared STT request settings: `provider`, `models`, `restorePunctuation`, `formatText`, `includeWords`
 - transcription cache in `vardata/projects/<projectId>/cache/transcriptions`
 
 Provider priority rules:
 
-- if Gran Publicador is enabled and has a token, it is the default source
-- manual `Files API` or `STT API` can override Gran independently
-- if Gran is not configured, manual services work standalone
+- if FastCat Publicador is enabled and has a token, it is the default source
+- manual `Files API` or `STT API` can override FastCat independently
+- if FastCat is not configured, manual services work standalone
 
-Requested Gran scopes:
+Requested FastCat scopes:
 
 - `vfs:read`
 - `stt:transcribe`
 
-The editor requests only scopes that still need to be served by Gran Publicador.
-If a manual Files or STT service explicitly overrides Gran, the related scope is omitted from the connect flow.
+The editor requests only scopes that still need to be served by FastCat Publicador.
+If a manual Files or STT service explicitly overrides FastCat, the related scope is omitted from the connect flow.
 
 Notes:
 
-- `GPAN_PUBLICADOR_BASE_URL` defines the Gran Publicador instance URL for connect flow and API resolution
+- `FCPAN_PUBLICADOR_BASE_URL` defines the FastCat Publicador instance URL for connect flow and API resolution
 - FastCat connect app name is fixed globally and is not editable in user settings
 - desktop user/app settings are stored in the OS app config directory
 - OPFS and portable workspace settings are stored in `.fastcat-config/user.settings.json` and `.fastcat-config/app.settings.json`
 - manual STT `baseUrl` may point to the service root, `/api/v1`, `/api/v1/external/stt`, or the full `/api/v1/transcribe/stream` endpoint
-- Gran STT streaming uses `POST /api/v1/external/api/v1/transcribe/stream`
+- FastCat STT streaming uses `POST /api/v1/external/api/v1/transcribe/stream`
 
 ### Audio transcription
 

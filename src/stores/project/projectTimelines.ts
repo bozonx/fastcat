@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
-import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
+import type { FastCatProjectSettings } from '~/utils/project-settings';
 
 export interface ProjectTimelinesModule {
   openTimelineFile: (path: string) => Promise<void>;
@@ -13,7 +13,7 @@ export function createProjectTimelinesModule(params: {
   currentProjectName: Ref<string | null>;
   currentTimelinePath: Ref<string | null>;
   currentFileName: Ref<string | null>;
-  projectSettings: Ref<GranVideoEditorProjectSettings>;
+  projectSettings: Ref<FastCatProjectSettings>;
   toProjectRelativePath: (path: string) => string;
   setWorkspaceError: (message: string | null) => void;
 }) {

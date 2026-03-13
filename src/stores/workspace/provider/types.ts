@@ -1,4 +1,4 @@
-import type { DirectoryHandleLike } from '~/repositories/gran-fs';
+import type { DirectoryHandleLike } from '~/repositories/fastcat-fs';
 
 export interface WorkspaceProvider {
   id: string;

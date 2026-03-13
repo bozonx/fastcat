@@ -187,7 +187,7 @@ interface AudioClipData {
   audioDeclickDurationUs?: number;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
-  gran?: {
+  fastcat?: {
     audioGain?: number;
     audioBalance?: number;
     audioFadeInUs?: number;
@@ -308,14 +308,14 @@ export class AudioMixer {
           ),
         ),
         clip: {
-          audioFadeInUs: clipData.audioFadeInUs ?? clipData.gran?.audioFadeInUs,
-          audioFadeOutUs: clipData.audioFadeOutUs ?? clipData.gran?.audioFadeOutUs,
-          audioFadeInCurve: clipData.audioFadeInCurve ?? clipData.gran?.audioFadeInCurve,
-          audioFadeOutCurve: clipData.audioFadeOutCurve ?? clipData.gran?.audioFadeOutCurve,
+          audioFadeInUs: clipData.audioFadeInUs ?? clipData.fastcat?.audioFadeInUs,
+          audioFadeOutUs: clipData.audioFadeOutUs ?? clipData.fastcat?.audioFadeOutUs,
+          audioFadeInCurve: clipData.audioFadeInCurve ?? clipData.fastcat?.audioFadeInCurve,
+          audioFadeOutCurve: clipData.audioFadeOutCurve ?? clipData.fastcat?.audioFadeOutCurve,
           audioDeclickDurationUs:
-            clipData.audioDeclickDurationUs ?? clipData.gran?.audioDeclickDurationUs,
-          transitionIn: clipData.transitionIn ?? clipData.gran?.transitionIn,
-          transitionOut: clipData.transitionOut ?? clipData.gran?.transitionOut,
+            clipData.audioDeclickDurationUs ?? clipData.fastcat?.audioDeclickDurationUs,
+          transitionIn: clipData.transitionIn ?? clipData.fastcat?.transitionIn,
+          transitionOut: clipData.transitionOut ?? clipData.fastcat?.transitionOut,
         },
         previousClip,
         nextClip,
@@ -343,7 +343,7 @@ export class AudioMixer {
       let effectiveClipStartS = clipStartS;
       let effectiveOffsetS = rawOffsetS;
 
-      const transitionOut = clipData.transitionOut ?? clipData.gran?.transitionOut;
+      const transitionOut = clipData.transitionOut ?? clipData.fastcat?.transitionOut;
       if (
         transitionOut?.durationUs &&
         Number(transitionOut.durationUs) > 0 &&
@@ -353,7 +353,7 @@ export class AudioMixer {
         playDurationS += outExtensionS;
       }
 
-      const transitionIn = clipData.transitionIn ?? clipData.gran?.transitionIn;
+      const transitionIn = clipData.transitionIn ?? clipData.fastcat?.transitionIn;
       if (
         transitionIn?.durationUs &&
         Number(transitionIn.durationUs) > 0 &&
@@ -367,9 +367,9 @@ export class AudioMixer {
 
       if (playDurationS <= 0) continue;
 
-      const audioGain = normalizeGain(clipData.audioGain ?? clipData.gran?.audioGain, 1);
+      const audioGain = normalizeGain(clipData.audioGain ?? clipData.fastcat?.audioGain, 1);
       const audioBalance = normalizeBalance(
-        clipData.audioBalance ?? clipData.gran?.audioBalance,
+        clipData.audioBalance ?? clipData.fastcat?.audioBalance,
         0,
       );
 

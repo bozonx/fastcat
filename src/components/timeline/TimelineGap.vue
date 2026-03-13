@@ -51,7 +51,7 @@ function onPointerdown(e: PointerEvent) {
     :items="[
       [
         {
-          label: t('granVideoEditor.timeline.delete'),
+          label: t('fastcat.timeline.delete'),
           icon: 'i-heroicons-trash',
           onSelect: onDelete,
         },

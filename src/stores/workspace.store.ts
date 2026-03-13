@@ -36,7 +36,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isInitializing = ref(true);
   const lastProjectName = ref<string | null>(
     readLocalStorageString('fastcat-last-opened-project') ??
-      readLocalStorageString('gran-editor-last-opened-project'),
+      readLocalStorageString('fastcat-editor-last-opened-project'),
   );
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
@@ -83,10 +83,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       if (v === null) {
         window.localStorage.removeItem('fastcat-last-opened-project');
-        window.localStorage.removeItem('gran-editor-last-opened-project');
+        window.localStorage.removeItem('fastcat-editor-last-opened-project');
       } else {
         window.localStorage.setItem('fastcat-last-opened-project', v);
-        window.localStorage.removeItem('gran-editor-last-opened-project');
+        window.localStorage.removeItem('fastcat-editor-last-opened-project');
       }
     } catch {
       // ignore

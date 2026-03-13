@@ -49,7 +49,7 @@ const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | nu
 const scrollLeftRef = ref(0);
 const scrollbarHeight = ref(0);
 
-const trackHeights = useLocalStorage<Record<string, number>>('gran-editor-track-heights-v1', {});
+const trackHeights = useLocalStorage<Record<string, number>>('fastcat-editor-track-heights-v1', {});
 const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
 const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersistedSplitpanes(
   timelineSplitKey.value,
@@ -241,7 +241,7 @@ const onDrop = async (e: DragEvent, trackId: string) => {
     timelineSettingsStore.overlapMode === 'pseudo';
 
   const libraryItemData =
-    e.dataTransfer?.getData('gran-item') || e.dataTransfer?.getData('application/json');
+    e.dataTransfer?.getData('fastcat-item') || e.dataTransfer?.getData('application/json');
   if (libraryItemData) {
     try {
       const parsed = JSON.parse(libraryItemData);

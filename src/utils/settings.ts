@@ -1,9 +1,9 @@
 export {
   type ExternalIntegrationsSettings,
   type FastCatAppSettings,
-  type GranVideoEditorUserSettings,
-  type GranVideoEditorWorkspaceSettings,
-  type GranPublicadorIntegrationSettings,
+  type FastCatUserSettings,
+  type FastCatWorkspaceSettings,
+  type FastCatPublicadorIntegrationSettings,
   type ManualExternalApiSettings,
   type SttIntegrationSettings,
   DEFAULT_APP_SETTINGS,

@@ -18,7 +18,7 @@ const generatedGroupId = () =>
   `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 const selectedCountLabel = computed(() => {
-  return (t as any)('granVideoEditor.timeline.selectedClipsCount', '{count} clips selected', {
+  return (t as any)('fastcat.timeline.selectedClipsCount', '{count} clips selected', {
     count: props.items.length,
   }) as string;
 });
@@ -353,7 +353,7 @@ function handleQuantizeSelected() {
 
 <template>
   <div class="flex flex-col gap-4 w-full">
-    <PropertySection :title="t('granVideoEditor.timeline.multipleSelection', 'Multiple Selection')">
+    <PropertySection :title="t('fastcat.timeline.multipleSelection', 'Multiple Selection')">
       <div class="px-3 pb-3 flex flex-col gap-2">
         <span class="text-sm text-ui-text-muted">
           {{ selectedCountLabel }}
@@ -387,8 +387,8 @@ function handleQuantizeSelected() {
           :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
           :label="
             allDisabled
-              ? t('granVideoEditor.timeline.enableClips', 'Enable clips')
-              : t('granVideoEditor.timeline.disableClips', 'Disable clips')
+              ? t('fastcat.timeline.enableClips', 'Enable clips')
+              : t('fastcat.timeline.disableClips', 'Disable clips')
           "
           @click="toggleDisabled"
         />
@@ -399,7 +399,7 @@ function handleQuantizeSelected() {
           color="neutral"
           variant="soft"
           icon="i-heroicons-link"
-          :label="t('granVideoEditor.timeline.groupClips', 'Group clips')"
+          :label="t('fastcat.timeline.groupClips', 'Group clips')"
           @click="handleGroupSelected"
         />
 
@@ -409,7 +409,7 @@ function handleQuantizeSelected() {
           color="neutral"
           variant="soft"
           icon="i-heroicons-link-slash"
-          :label="t('granVideoEditor.timeline.ungroupClips', 'Ungroup clips')"
+          :label="t('fastcat.timeline.ungroupClips', 'Ungroup clips')"
           @click="handleUngroupSelected"
         />
 
@@ -419,7 +419,7 @@ function handleQuantizeSelected() {
           color="neutral"
           variant="soft"
           icon="i-heroicons-squares-2x2"
-          :label="t('granVideoEditor.timeline.quantize', 'Quantize to frames')"
+          :label="t('fastcat.timeline.quantize', 'Quantize to frames')"
           @click="handleQuantizeSelected"
         />
 
@@ -429,7 +429,7 @@ function handleQuantizeSelected() {
           color="neutral"
           variant="soft"
           icon="i-heroicons-link-slash"
-          :label="t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio')"
+          :label="t('fastcat.timeline.unlinkAudio', 'Unlink audio')"
           @click="handleUnlinkSelected"
         />
 
@@ -441,8 +441,8 @@ function handleQuantizeSelected() {
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
             :label="
               allMuted
-                ? t('granVideoEditor.timeline.unmuteClips', 'Unmute clips')
-                : t('granVideoEditor.timeline.muteClips', 'Mute clips')
+                ? t('fastcat.timeline.unmuteClips', 'Unmute clips')
+                : t('fastcat.timeline.muteClips', 'Mute clips')
             "
             @click="toggleMuted"
           />
@@ -454,8 +454,8 @@ function handleQuantizeSelected() {
             icon="i-heroicons-chart-bar"
             :label="
               allWaveformHalf
-                ? t('granVideoEditor.timeline.waveformFull', 'Waveform: Full')
-                : t('granVideoEditor.timeline.waveformHalf', 'Waveform: Half')
+                ? t('fastcat.timeline.waveformFull', 'Waveform: Full')
+                : t('fastcat.timeline.waveformHalf', 'Waveform: Half')
             "
             @click="toggleWaveformMode"
           />
@@ -469,8 +469,8 @@ function handleQuantizeSelected() {
             :icon="allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
             :label="
               allShowWaveform
-                ? t('granVideoEditor.timeline.hideWaveform', 'Hide Waveform')
-                : t('granVideoEditor.timeline.showWaveform', 'Show Waveform')
+                ? t('fastcat.timeline.hideWaveform', 'Hide Waveform')
+                : t('fastcat.timeline.showWaveform', 'Show Waveform')
             "
             @click="toggleShowWaveform"
           />

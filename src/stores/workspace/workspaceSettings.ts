@@ -4,8 +4,8 @@ import { useDebounceFn } from '@vueuse/core';
 
 import {
   type FastCatAppSettings,
-  type GranVideoEditorUserSettings,
-  type GranVideoEditorWorkspaceSettings,
+  type FastCatUserSettings,
+  type FastCatWorkspaceSettings,
   createDefaultAppSettings,
   createDefaultUserSettings,
   createDefaultWorkspaceSettings,
@@ -23,9 +23,9 @@ function getErrorMessage(e: unknown, fallback: string): string {
 }
 
 export interface WorkspaceSettingsModule {
-  userSettings: Ref<GranVideoEditorUserSettings>;
+  userSettings: Ref<FastCatUserSettings>;
   appSettings: Ref<FastCatAppSettings>;
-  workspaceSettings: Ref<GranVideoEditorWorkspaceSettings>;
+  workspaceSettings: Ref<FastCatWorkspaceSettings>;
 
   isSavingUserSettings: Ref<boolean>;
   userSettingsSaveError: Ref<string | null>;
@@ -35,7 +35,7 @@ export interface WorkspaceSettingsModule {
   workspaceSettingsSaveError: Ref<string | null>;
 
   batchUpdateUserSettings: (
-    updater: (draft: GranVideoEditorUserSettings) => void,
+    updater: (draft: FastCatUserSettings) => void,
     options?: { immediate?: boolean },
   ) => Promise<void>;
   batchUpdateAppSettings: (
@@ -43,7 +43,7 @@ export interface WorkspaceSettingsModule {
     options?: { immediate?: boolean },
   ) => Promise<void>;
   batchUpdateWorkspaceSettings: (
-    updater: (draft: GranVideoEditorWorkspaceSettings) => void,
+    updater: (draft: FastCatWorkspaceSettings) => void,
     options?: { immediate?: boolean },
   ) => Promise<void>;
 
@@ -63,9 +63,9 @@ export interface WorkspaceSettingsModule {
 export function createWorkspaceSettingsModule(params: {
   settingsRepo: Ref<WorkspaceSettingsRepository | null>;
 }): WorkspaceSettingsModule {
-  const userSettings = ref<GranVideoEditorUserSettings>(createDefaultUserSettings());
+  const userSettings = ref<FastCatUserSettings>(createDefaultUserSettings());
   const appSettings = ref<FastCatAppSettings>(createDefaultAppSettings());
-  const workspaceSettings = appSettings as Ref<GranVideoEditorWorkspaceSettings>;
+  const workspaceSettings = appSettings as Ref<FastCatWorkspaceSettings>;
 
   const isSavingUserSettings = ref(false);
   const userSettingsSaveError = ref<string | null>(null);
@@ -142,7 +142,7 @@ export function createWorkspaceSettingsModule(params: {
   );
 
   async function batchUpdateUserSettings(
-    updater: (draft: GranVideoEditorUserSettings) => void,
+    updater: (draft: FastCatUserSettings) => void,
     options?: { immediate?: boolean },
   ) {
     isBatchUpdatingUserSettings.value = true;
@@ -218,11 +218,11 @@ export function createWorkspaceSettingsModule(params: {
   }
 
   async function batchUpdateWorkspaceSettings(
-    updater: (draft: GranVideoEditorWorkspaceSettings) => void,
+    updater: (draft: FastCatWorkspaceSettings) => void,
     options?: { immediate?: boolean },
   ) {
     await batchUpdateAppSettings(
-      (draft) => updater(draft as GranVideoEditorWorkspaceSettings),
+      (draft) => updater(draft as FastCatWorkspaceSettings),
       options,
     );
   }

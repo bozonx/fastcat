@@ -10,11 +10,11 @@ export interface DraggedFileData {
 
 const draggedFile = ref<DraggedFileData | null>(null);
 
-export const INTERNAL_DRAG_TYPE = 'application/gran-internal-file';
+export const INTERNAL_DRAG_TYPE = 'application/fastcat-internal-file';
 
-export const FILE_MANAGER_MOVE_DRAG_TYPE = 'application/gran-file-manager-move';
+export const FILE_MANAGER_MOVE_DRAG_TYPE = 'application/fastcat-file-manager-move';
 
-export const REMOTE_FILE_DRAG_TYPE = 'application/gran-remote-file';
+export const REMOTE_FILE_DRAG_TYPE = 'application/fastcat-remote-file';
 
 export function useDraggedFile() {
   function setDraggedFile(data: DraggedFileData) {

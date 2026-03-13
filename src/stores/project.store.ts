@@ -164,7 +164,7 @@ export const useProjectStore = defineStore('project', () => {
       await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
 
       try {
-        await projectDir.getDirectoryHandle('.gran', { create: true });
+        await projectDir.getDirectoryHandle('.fastcat', { create: true });
         await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectDir });
       } catch (e) {
         console.warn('Failed to create project settings file', e);

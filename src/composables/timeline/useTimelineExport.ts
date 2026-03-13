@@ -1091,7 +1091,7 @@ export function useTimelineExport() {
       videoCodecSupport.value = videoSupport;
 
       if (typeof window !== 'undefined') {
-        const stored = window.localStorage.getItem('gran-audio-codec-support');
+        const stored = window.localStorage.getItem('fastcat-audio-codec-support');
         if (stored) {
           try {
             audioCodec.value = 'aac';
@@ -1120,7 +1120,7 @@ export function useTimelineExport() {
       tracks: doc?.tracks ?? [],
       projectStore,
       workspaceStore,
-      masterEffects: doc?.metadata?.gran?.masterEffects,
+      masterEffects: doc?.metadata?.fastcat?.masterEffects,
     });
 
     const croppedVideoClips = exportRangeUs
@@ -1132,13 +1132,13 @@ export function useTimelineExport() {
     const videoPayload = buildVideoWorkerPayload({
       clips: croppedVideoClips,
       tracks: builtVideo.tracks,
-      masterEffects: doc?.metadata?.gran?.masterEffects,
+      masterEffects: doc?.metadata?.fastcat?.masterEffects,
     });
 
     const effectiveAudioItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
-      masterEffects: doc?.metadata?.gran?.masterEffects,
+      masterEffects: doc?.metadata?.fastcat?.masterEffects,
     });
 
     const masterGain = timelineStore.masterGain;

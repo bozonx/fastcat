@@ -31,11 +31,11 @@ const { t } = useI18n();
 
 const fadeCurveOptions = [
   {
-    label: t('granVideoEditor.clip.audioFade.curve.linear', 'Linear'),
+    label: t('fastcat.clip.audioFade.curve.linear', 'Linear'),
     value: 'linear',
   },
   {
-    label: t('granVideoEditor.clip.audioFade.curve.logarithmic', 'Logarithmic'),
+    label: t('fastcat.clip.audioFade.curve.logarithmic', 'Logarithmic'),
     value: 'logarithmic',
   },
 ];
@@ -52,13 +52,13 @@ const fadeCurveOptions = [
     <div
       class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
     >
-      {{ t('granVideoEditor.clip.audioFade.title', 'Audio fades') }}
+      {{ t('fastcat.clip.audioFade.title', 'Audio fades') }}
     </div>
 
     <div v-if="props.canEditAudioGain" class="space-y-1.5">
       <div class="flex items-center justify-between">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.audio.volume', 'Volume')
+          t('fastcat.clip.audio.volume', 'Volume')
         }}</span>
         <span class="text-xs font-mono text-ui-text-muted">{{ props.audioGain.toFixed(3) }}x</span>
       </div>
@@ -76,7 +76,7 @@ const fadeCurveOptions = [
     <div v-if="props.canEditAudioBalance" class="space-y-1.5">
       <div class="flex items-center justify-between">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.audio.balance', 'Balance')
+          t('fastcat.clip.audio.balance', 'Balance')
         }}</span>
         <span class="text-xs font-mono text-ui-text-muted">{{
           props.audioBalance.toFixed(2)
@@ -95,7 +95,7 @@ const fadeCurveOptions = [
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.audioFade.in', 'Fade in')
+          t('fastcat.clip.audioFade.in', 'Fade in')
         }}</span>
         <WheelNumberInput
           :model-value="props.audioFadeInSec"
@@ -116,7 +116,7 @@ const fadeCurveOptions = [
       </div>
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.audioFade.out', 'Fade out')
+          t('fastcat.clip.audioFade.out', 'Fade out')
         }}</span>
         <WheelNumberInput
           :model-value="props.audioFadeOutSec"

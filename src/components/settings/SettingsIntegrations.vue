@@ -2,12 +2,12 @@
 import { computed, reactive, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
-import { GRAN_PUBLICADOR_APP_NAME } from '~/utils/constants';
+import { FASTCAT_PUBLICADOR_APP_NAME } from '~/utils/constants';
 import {
-  getGranPublicadorConnectUrl,
-  getGranPublicadorHealthUrl,
+  getFastCatPublicadorConnectUrl,
+  getFastCatPublicadorHealthUrl,
   resolveExternalIntegrations,
-  resolveGranConnectScopes,
+  resolveFastCatConnectScopes,
   resolveExternalServiceConfig,
   runExternalHealthCheck,
 } from '~/utils/external-integrations';
@@ -37,13 +37,13 @@ const sttModelsText = computed({
   },
 });
 
-const granPublicadorBaseUrl = computed(() => {
-  const value = runtimeConfig.public.gpanPublicadorBaseUrl;
+const fastcatPublicadorBaseUrl = computed(() => {
+  const value = runtimeConfig.public.fastcatPublicadorBaseUrl;
   return typeof value === 'string' ? value.trim() : '';
 });
 
-const healthStates = reactive<Record<'gran' | 'files' | 'stt', HealthState>>({
-  gran: { loading: false, status: 'idle', message: '' },
+const healthStates = reactive<Record<'fastcat' | 'files' | 'stt', HealthState>>({
+  fastcat: { loading: false, status: 'idle', message: '' },
   files: { loading: false, status: 'idle', message: '' },
   stt: { loading: false, status: 'idle', message: '' },
 });
@@ -52,7 +52,7 @@ const integrations = computed(() => workspaceStore.userSettings.integrations);
 const resolvedServices = computed(() =>
   resolveExternalIntegrations({
     userSettings: workspaceStore.userSettings,
-    granPublicadorBaseUrl: granPublicadorBaseUrl.value,
+    fastcatPublicadorBaseUrl: fastcatPublicadorBaseUrl.value,
   }),
 );
 
@@ -61,38 +61,38 @@ const redirectUri = computed(() => {
   return `${window.location.origin}${route.path}`;
 });
 
-const granConnectUrl = computed(() =>
-  getGranPublicadorConnectUrl({
-    baseUrl: granPublicadorBaseUrl.value,
-    name: GRAN_PUBLICADOR_APP_NAME,
+const fastcatConnectUrl = computed(() =>
+  getFastCatPublicadorConnectUrl({
+    baseUrl: fastcatPublicadorBaseUrl.value,
+    name: FASTCAT_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
-    scopes: resolveGranConnectScopes({ integrations: integrations.value }),
+    scopes: resolveFastCatConnectScopes({ integrations: integrations.value }),
   }),
 );
 
-const granConnectScopesLabel = computed(() =>
-  resolveGranConnectScopes({ integrations: integrations.value }).join(', '),
+const fastcatConnectScopesLabel = computed(() =>
+  resolveFastCatConnectScopes({ integrations: integrations.value }).join(', '),
 );
 
 const filesSourceLabel = computed(() => {
   const resolved = resolvedServices.value.files;
   if (!resolved) return t('videoEditor.settings.integrationInactive', 'Not configured');
-  return resolved.source === 'gran_publicador'
-    ? t('videoEditor.settings.integrationSourceGran', 'Gran Publicador')
+  return resolved.source === 'fastcat_publicador'
+    ? t('videoEditor.settings.integrationSourceFastCat', 'FastCat Publicador')
     : t('videoEditor.settings.integrationSourceManual', 'Manual API');
 });
 
 const sttSourceLabel = computed(() => {
   const resolved = resolvedServices.value.stt;
   if (!resolved) return t('videoEditor.settings.integrationInactive', 'Not configured');
-  return resolved.source === 'gran_publicador'
-    ? t('videoEditor.settings.integrationSourceGran', 'Gran Publicador')
+  return resolved.source === 'fastcat_publicador'
+    ? t('videoEditor.settings.integrationSourceFastCat', 'FastCat Publicador')
     : t('videoEditor.settings.integrationSourceManual', 'Manual API');
 });
 
 function resetDefaults() {
   workspaceStore.userSettings.integrations = {
-    granPublicador: { ...DEFAULT_USER_SETTINGS.integrations.granPublicador },
+    fastcatPublicador: { ...DEFAULT_USER_SETTINGS.integrations.fastcatPublicador },
     manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },
     manualSttApi: { ...DEFAULT_USER_SETTINGS.integrations.manualSttApi },
     stt: {
@@ -110,16 +110,16 @@ function resetDefaults() {
   isResetConfirmOpen.value = false;
 }
 
-function disconnectGran() {
-  workspaceStore.userSettings.integrations.granPublicador.enabled = false;
-  workspaceStore.userSettings.integrations.granPublicador.bearerToken = '';
-  healthStates.gran.status = 'idle';
-  healthStates.gran.message = '';
+function disconnectFastCat() {
+  workspaceStore.userSettings.integrations.fastcatPublicador.enabled = false;
+  workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken = '';
+  healthStates.fastcat.status = 'idle';
+  healthStates.fastcat.message = '';
 }
 
-function startGranConnect() {
-  if (!granConnectUrl.value) return;
-  window.location.assign(granConnectUrl.value);
+function startFastCatConnect() {
+  if (!fastcatConnectUrl.value) return;
+  window.location.assign(fastcatConnectUrl.value);
 }
 
 watch(
@@ -127,12 +127,12 @@ watch(
   async (token) => {
     if (typeof token !== 'string' || token.trim().length === 0) return;
 
-    workspaceStore.userSettings.integrations.granPublicador.bearerToken = token.trim();
-    workspaceStore.userSettings.integrations.granPublicador.enabled = true;
-    healthStates.gran.status = 'success';
-    healthStates.gran.message = t(
+    workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken = token.trim();
+    workspaceStore.userSettings.integrations.fastcatPublicador.enabled = true;
+    healthStates.fastcat.status = 'success';
+    healthStates.fastcat.message = t(
       'videoEditor.settings.integrationTokenReceived',
-      'Token received from Gran Publicador connect flow.',
+      'Token received from FastCat Publicador connect flow.',
     );
 
     const nextQuery = { ...route.query };
@@ -149,35 +149,35 @@ function getHealthTone(status: HealthState['status']) {
   return 'text-ui-text-muted';
 }
 
-async function runGranHealth() {
-  const gran = integrations.value.granPublicador;
-  const healthUrl = getGranPublicadorHealthUrl(granPublicadorBaseUrl.value);
+async function runFastCatHealth() {
+  const fastcat = integrations.value.fastcatPublicador;
+  const healthUrl = getFastCatPublicadorHealthUrl(fastcatPublicadorBaseUrl.value);
 
-  if (!healthUrl || !gran.bearerToken.trim()) {
-    healthStates.gran.status = 'error';
-    healthStates.gran.message = t(
+  if (!healthUrl || !fastcat.bearerToken.trim()) {
+    healthStates.fastcat.status = 'error';
+    healthStates.fastcat.message = t(
       'videoEditor.settings.integrationHealthMissingConfig',
-      'Set Gran base URL in env and bearer token first.',
+      'Set FastCat base URL in env and bearer token first.',
     );
     return;
   }
 
-  healthStates.gran.loading = true;
-  healthStates.gran.status = 'idle';
-  healthStates.gran.message = '';
+  healthStates.fastcat.loading = true;
+  healthStates.fastcat.status = 'idle';
+  healthStates.fastcat.message = '';
 
   try {
     const result = await runExternalHealthCheck({
       url: healthUrl,
-      bearerToken: gran.bearerToken,
+      bearerToken: fastcat.bearerToken,
     });
-    healthStates.gran.status = 'success';
-    healthStates.gran.message = `${t('videoEditor.settings.integrationHealthOk', 'OK')} (${result.status})`;
+    healthStates.fastcat.status = 'success';
+    healthStates.fastcat.message = `${t('videoEditor.settings.integrationHealthOk', 'OK')} (${result.status})`;
   } catch (error: unknown) {
-    healthStates.gran.status = 'error';
-    healthStates.gran.message = error instanceof Error ? error.message : 'Health check failed';
+    healthStates.fastcat.status = 'error';
+    healthStates.fastcat.message = error instanceof Error ? error.message : 'Health check failed';
   } finally {
-    healthStates.gran.loading = false;
+    healthStates.fastcat.loading = false;
   }
 }
 
@@ -185,7 +185,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
   const resolved = resolveExternalServiceConfig({
     service: kind,
     integrations: integrations.value,
-    granPublicadorBaseUrl: granPublicadorBaseUrl.value,
+    fastcatPublicadorBaseUrl: fastcatPublicadorBaseUrl.value,
   });
   const state = healthStates[kind];
 
@@ -250,18 +250,18 @@ async function runServiceHealth(kind: 'files' | 'stt') {
     <div class="rounded-lg border border-ui-border p-4 flex flex-col gap-4">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <div class="text-sm font-medium text-ui-text">Gran Publicador</div>
+          <div class="text-sm font-medium text-ui-text">FastCat Publicador</div>
           <div class="text-xs text-ui-text-muted mt-1">
             {{
               t(
-                'videoEditor.settings.granIntegrationHint',
-                'Connect via Gran Publicador connect flow using the global GPAN_PUBLICADOR_BASE_URL or set token manually for the external API.',
+                'videoEditor.settings.fastcatIntegrationHint',
+                'Connect via FastCat Publicador connect flow using the global FASTCAT_PUBLICADOR_BASE_URL or set token manually for the external API.',
               )
             }}
           </div>
         </div>
         <label class="flex items-center gap-2 shrink-0 cursor-pointer">
-          <UCheckbox v-model="workspaceStore.userSettings.integrations.granPublicador.enabled" />
+          <UCheckbox v-model="workspaceStore.userSettings.integrations.fastcatPublicador.enabled" />
           <span class="text-sm text-ui-text">
             {{ t('common.enabled', 'Enabled') }}
           </span>
@@ -269,22 +269,22 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </div>
 
       <div class="text-xs text-ui-text-muted">
-        GPAN_PUBLICADOR_BASE_URL: {{ granPublicadorBaseUrl || '—' }}
+        FASTCAT_PUBLICADOR_BASE_URL: {{ fastcatPublicadorBaseUrl || '—' }}
       </div>
 
       <div class="text-xs text-ui-text-muted">
         {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}:
-        {{ granConnectScopesLabel }}
+        {{ fastcatConnectScopesLabel }}
       </div>
 
       <div class="text-xs text-ui-text-muted">
         {{ t('videoEditor.settings.integrationConnectName', 'Connect app name') }}:
-        {{ GRAN_PUBLICADOR_APP_NAME }}
+        {{ FASTCAT_PUBLICADOR_APP_NAME }}
       </div>
 
       <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
         <UInput
-          v-model="workspaceStore.userSettings.integrations.granPublicador.bearerToken"
+          v-model="workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken"
           class="w-full"
           type="password"
           autocomplete="off"
@@ -296,27 +296,27 @@ async function runServiceHealth(kind: 'files' | 'stt') {
         <UButton
           color="primary"
           variant="solid"
-          :disabled="!granConnectUrl"
-          @click="startGranConnect"
+          :disabled="!fastcatConnectUrl"
+          @click="startFastCatConnect"
         >
           {{ t('videoEditor.settings.integrationAutoConnect', 'Auto connect') }}
         </UButton>
         <UButton
           color="neutral"
           variant="soft"
-          :loading="healthStates.gran.loading"
-          @click="runGranHealth"
+          :loading="healthStates.fastcat.loading"
+          @click="runFastCatHealth"
         >
           {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
         </UButton>
-        <UButton color="neutral" variant="ghost" @click="disconnectGran">
+        <UButton color="neutral" variant="ghost" @click="disconnectFastCat">
           {{ t('videoEditor.settings.integrationDisconnect', 'Disconnect') }}
         </UButton>
       </div>
 
-      <div class="text-xs" :class="getHealthTone(healthStates.gran.status)">
+      <div class="text-xs" :class="getHealthTone(healthStates.fastcat.status)">
         {{
-          healthStates.gran.message ||
+          healthStates.fastcat.message ||
           t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check')
         }}
       </div>
@@ -332,7 +332,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
             {{
               t(
                 'videoEditor.settings.integrationFilesHint',
-                'Manual file API can work standalone or override Gran Publicador for file access. Health uses /api/v1/external/health.',
+                'Manual file API can work standalone or override FastCat Publicador for file access. Health uses /api/v1/external/health.',
               )
             }}
           </div>
@@ -349,12 +349,12 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </label>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <UCheckbox v-model="workspaceStore.userSettings.integrations.manualFilesApi.overrideGran" />
+        <UCheckbox v-model="workspaceStore.userSettings.integrations.manualFilesApi.overrideFastCat" />
         <span class="text-sm text-ui-text">
           {{
             t(
-              'videoEditor.settings.integrationOverrideGran',
-              'Override Gran Publicador for this service',
+              'videoEditor.settings.integrationOverrideFastCat',
+              'Override FastCat Publicador for this service',
             )
           }}
         </span>
@@ -407,7 +407,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
             {{
               t(
                 'videoEditor.settings.integrationSttHint',
-                'Manual STT API can work standalone or override Gran Publicador for speech recognition. Health uses /api/v1/external/health.',
+                'Manual STT API can work standalone or override FastCat Publicador for speech recognition. Health uses /api/v1/external/health.',
               )
             }}
           </div>
@@ -424,12 +424,12 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </label>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <UCheckbox v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideGran" />
+        <UCheckbox v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat" />
         <span class="text-sm text-ui-text">
           {{
             t(
-              'videoEditor.settings.integrationOverrideGran',
-              'Override Gran Publicador for this service',
+              'videoEditor.settings.integrationOverrideFastCat',
+              'Override FastCat Publicador for this service',
             )
           }}
         </span>
@@ -506,7 +506,7 @@ async function runServiceHealth(kind: 'files' | 'stt') {
     </div>
 
     <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
     </div>
   </div>
 </template>

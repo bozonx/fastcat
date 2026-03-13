@@ -168,8 +168,8 @@
       "cacheLimitHelp": "Total limit for cached data in this workspace",
       "thumbnailsLimit": "Thumbnails storage limit (GB)",
       "thumbnailsLimitHelp": "Total limit for generated thumbnails in this workspace",
-      "userSavedNote": "Saved to .gran/user.settings.json",
-      "workspaceSavedNote": "Saved to .gran/workspace.settings.json",
+      "userSavedNote": "Saved to .fastcat/user.settings.json",
+      "workspaceSavedNote": "Saved to .fastcat/workspace.settings.json",
       "proxyAudioBitrate": "Proxy audio bitrate (kbps)",
       "proxyCopyOpusAudio": "Copy Opus audio directly without re-encoding",
       "proxyInfo": "Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.",
@@ -228,7 +228,7 @@
     },
     "projectSettings": {
       "title": "Project Settings",
-      "note": "Settings are saved to .gran/project.settings.json",
+      "note": "Settings are saved to .fastcat/project.settings.json",
       "resolutionAndFps": "Resolution & FPS",
       "export": "Export defaults",
       "deleteProject": "Delete Project",
@@ -391,7 +391,7 @@
       },
       "remote": {
         "exchange": "Authentication token",
-        "exchangeDescription": "Enter the token from the Gran platform to access your remote files."
+        "exchangeDescription": "Enter the token from the FastCat platform to access your remote files."
       },
       "extractAudio": {
         "success": "Audio extracted successfully",
@@ -529,7 +529,7 @@
       "original": "Original Audio"
     }
   },
-  "granVideoEditor": {
+  "fastcat": {
     "effects": {
       "tabs": {
         "video": "Video",
@@ -902,7 +902,7 @@
     }
   },
   "navigation": {
-    "granVideoEditor": "Video Editor",
+    "fastcat": "Video Editor",
     "settings": "Settings"
   },
   "errors": {

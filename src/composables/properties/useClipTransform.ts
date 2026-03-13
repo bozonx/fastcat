@@ -75,24 +75,24 @@ export function useClipTransform(options: UseClipTransformOptions) {
   const { t } = useI18n();
 
   const anchorPresetOptions = computed(() => [
-    { value: 'center', label: t('granVideoEditor.clip.transform.anchorPreset.center', 'Center') },
+    { value: 'center', label: t('fastcat.clip.transform.anchorPreset.center', 'Center') },
     {
       value: 'topLeft',
-      label: t('granVideoEditor.clip.transform.anchorPreset.topLeft', 'Top Left'),
+      label: t('fastcat.clip.transform.anchorPreset.topLeft', 'Top Left'),
     },
     {
       value: 'topRight',
-      label: t('granVideoEditor.clip.transform.anchorPreset.topRight', 'Top Right'),
+      label: t('fastcat.clip.transform.anchorPreset.topRight', 'Top Right'),
     },
     {
       value: 'bottomLeft',
-      label: t('granVideoEditor.clip.transform.anchorPreset.bottomLeft', 'Bottom Left'),
+      label: t('fastcat.clip.transform.anchorPreset.bottomLeft', 'Bottom Left'),
     },
     {
       value: 'bottomRight',
-      label: t('granVideoEditor.clip.transform.anchorPreset.bottomRight', 'Bottom Right'),
+      label: t('fastcat.clip.transform.anchorPreset.bottomRight', 'Bottom Right'),
     },
-    { value: 'custom', label: t('granVideoEditor.clip.transform.anchorPreset.custom', 'Custom') },
+    { value: 'custom', label: t('fastcat.clip.transform.anchorPreset.custom', 'Custom') },
   ]);
 
   function updateSelectedClipTransform(patch: Partial<ClipTransform>) {

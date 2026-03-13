@@ -597,7 +597,7 @@ describe('TimelineStore', () => {
             },
           ],
         },
-        metadata: { gran: { docId: 'nested', timebase: { fps: 25 } } },
+        metadata: { fastcat: { docId: 'nested', timebase: { fps: 25 } } },
       },
       null,
       2,
@@ -688,7 +688,7 @@ describe('TimelineStore', () => {
                     duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
                   },
                   metadata: {
-                    gran: {
+                    fastcat: {
                       clipType: 'media',
                       sourceDurationUs: 2000000,
                       audioFromVideoDisabled: true,
@@ -699,7 +699,7 @@ describe('TimelineStore', () => {
             },
           ],
         },
-        metadata: { gran: { docId: 'nested-video-only', timebase: { fps: 25 } } },
+        metadata: { fastcat: { docId: 'nested-video-only', timebase: { fps: 25 } } },
       },
       null,
       2,
@@ -731,7 +731,7 @@ describe('TimelineStore', () => {
                     duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
                   },
                   metadata: {
-                    gran: {
+                    fastcat: {
                       clipType: 'media',
                       sourceDurationUs: 2000000,
                     },
@@ -741,7 +741,7 @@ describe('TimelineStore', () => {
             },
           ],
         },
-        metadata: { gran: { docId: 'nested-av', timebase: { fps: 25 } } },
+        metadata: { fastcat: { docId: 'nested-av', timebase: { fps: 25 } } },
       },
       null,
       2,
@@ -843,7 +843,7 @@ describe('TimelineStore', () => {
                     duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
                   },
                   metadata: {
-                    gran: {
+                    fastcat: {
                       clipType: 'timeline',
                       sourceDurationUs: 2000000,
                     },
@@ -853,7 +853,7 @@ describe('TimelineStore', () => {
             },
           ],
         },
-        metadata: { gran: { docId: 'nested-backref', timebase: { fps: 25 } } },
+        metadata: { fastcat: { docId: 'nested-backref', timebase: { fps: 25 } } },
       },
       null,
       2,

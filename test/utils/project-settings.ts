@@ -1,16 +1,16 @@
 import {
   createDefaultProjectSettings,
-  type GranVideoEditorProjectSettings,
+  type FastCatProjectSettings,
 } from '../../src/utils/project-settings';
 
-import type { GranVideoEditorUserSettings } from '../../src/utils/settings';
+import type { FastCatUserSettings } from '../../src/utils/settings';
 
 import { deepMerge } from './merge';
 import { buildUserSettings } from './settings';
 
 export interface BuildProjectSettingsOptions {
-  userSettings?: Partial<GranVideoEditorUserSettings>;
-  projectSettings?: Partial<GranVideoEditorProjectSettings>;
+  userSettings?: Partial<FastCatUserSettings>;
+  projectSettings?: Partial<FastCatProjectSettings>;
 }
 
 export function buildProjectSettings(options?: BuildProjectSettingsOptions) {

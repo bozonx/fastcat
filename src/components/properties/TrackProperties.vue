@@ -143,7 +143,7 @@ function confirmDeleteTrack() {
 
 <template>
   <div class="w-full flex flex-col gap-2">
-    <PropertySection :title="t('granVideoEditor.track.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.track.actions', 'Actions')">
       <div class="flex gap-2 w-full flex-wrap">
         <UButton
           size="xs"
@@ -174,7 +174,7 @@ function confirmDeleteTrack() {
           class="w-full justify-center"
           @click="isGenerateCaptionsOpen = true"
         >
-          {{ t('granVideoEditor.captions.generate', 'Generate captions') }}
+          {{ t('fastcat.captions.generate', 'Generate captions') }}
         </UButton>
       </div>
     </PropertySection>
@@ -186,12 +186,12 @@ function confirmDeleteTrack() {
       <div
         class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
       >
-        {{ t('granVideoEditor.track.video.title', 'Track compositing') }}
+        {{ t('fastcat.track.video.title', 'Track compositing') }}
       </div>
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.track.blendMode', 'Blend mode')
+          t('fastcat.track.blendMode', 'Blend mode')
         }}</span>
         <USelectMenu
           :model-value="trackBlendMode"
@@ -206,7 +206,7 @@ function confirmDeleteTrack() {
       <div class="space-y-1.5">
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.track.opacity', 'Opacity')
+            t('fastcat.track.opacity', 'Opacity')
           }}</span>
           <span class="text-xs font-mono text-ui-text-muted"
             >{{ Math.round(trackOpacity * 100) }}%</span
@@ -230,13 +230,13 @@ function confirmDeleteTrack() {
       <div
         class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
       >
-        {{ t('granVideoEditor.track.audio.title', 'Track audio') }}
+        {{ t('fastcat.track.audio.title', 'Track audio') }}
       </div>
 
       <div class="space-y-1.5">
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.track.audio.volume', 'Volume')
+            t('fastcat.track.audio.volume', 'Volume')
           }}</span>
           <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioGain.toFixed(3) }}x</span>
         </div>
@@ -254,7 +254,7 @@ function confirmDeleteTrack() {
       <div class="space-y-1.5">
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.track.audio.balance', 'Balance')
+            t('fastcat.track.audio.balance', 'Balance')
           }}</span>
           <span class="text-xs font-mono text-ui-text-muted">{{
             trackAudioBalance.toFixed(2)
@@ -274,9 +274,9 @@ function confirmDeleteTrack() {
     <EffectsEditor
       v-if="track.kind === 'video'"
       :effects="trackVideoEffects"
-      :title="t('granVideoEditor.effects.trackTitle', 'Track effects')"
-      :add-label="t('granVideoEditor.effects.add', 'Add')"
-      :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
+      :title="t('fastcat.effects.trackTitle', 'Track effects')"
+      :add-label="t('fastcat.effects.add', 'Add')"
+      :empty-label="t('fastcat.effects.empty', 'No effects')"
       @update:effects="handleUpdateTrackEffects"
     />
 
@@ -288,9 +288,9 @@ function confirmDeleteTrack() {
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"
-      :title="t('granVideoEditor.timeline.deleteTrack', 'Delete track')"
+      :title="t('fastcat.timeline.deleteTrack', 'Delete track')"
       :description="
-        t('granVideoEditor.timeline.deleteTrackConfirm', 'This track contains clips. Delete it?')
+        t('fastcat.timeline.deleteTrackConfirm', 'This track contains clips. Delete it?')
       "
       color="error"
       :confirm-text="t('common.delete', 'Delete')"

@@ -230,7 +230,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     {
       key: 'scale',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramScale',
+      labelKey: 'fastcat.timeline.transition.paramScale',
       min: 1.1,
       max: 10.0,
       step: 0.1,
@@ -238,7 +238,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     {
       key: 'blur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlur',
+      labelKey: 'fastcat.timeline.transition.paramBlur',
       min: 0,
       max: 100,
       step: 1,
@@ -246,27 +246,27 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     {
       key: 'blurQuality',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlurQuality',
+      labelKey: 'fastcat.timeline.transition.paramBlurQuality',
       options: [
-        { value: 'low', labelKey: 'granVideoEditor.timeline.transition.blurQualityLow' },
-        { value: 'medium', labelKey: 'granVideoEditor.timeline.transition.blurQualityMedium' },
-        { value: 'high', labelKey: 'granVideoEditor.timeline.transition.blurQualityHigh' },
-        { value: 'ultra', labelKey: 'granVideoEditor.timeline.transition.blurQualityUltra' },
+        { value: 'low', labelKey: 'fastcat.timeline.transition.blurQualityLow' },
+        { value: 'medium', labelKey: 'fastcat.timeline.transition.blurQualityMedium' },
+        { value: 'high', labelKey: 'fastcat.timeline.transition.blurQualityHigh' },
+        { value: 'ultra', labelKey: 'fastcat.timeline.transition.blurQualityUltra' },
       ],
     },
     {
       key: 'brightnessMode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
+      labelKey: 'fastcat.timeline.transition.paramBrightnessMode',
       options: [
-        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.brightnessModeNormal' },
-        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.brightnessModeBloom' },
+        { value: 'normal', labelKey: 'fastcat.timeline.transition.brightnessModeNormal' },
+        { value: 'bloom', labelKey: 'fastcat.timeline.transition.brightnessModeBloom' },
       ],
     },
     {
       key: 'brightness',
       kind: 'slider',
-      labelKey: 'granVideoEditor.timeline.transition.paramBrightness',
+      labelKey: 'fastcat.timeline.transition.paramBrightness',
       min: 0,
       max: 5,
       step: 0.1,
@@ -274,7 +274,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     {
       key: 'fromRotation',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramFromRotation',
+      labelKey: 'fastcat.timeline.transition.paramFromRotation',
       min: -360,
       max: 360,
       step: 1,
@@ -282,7 +282,7 @@ export const zoomManifest: TransitionManifest<ZoomParams> = {
     {
       key: 'toRotation',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramToRotation',
+      labelKey: 'fastcat.timeline.transition.paramToRotation',
       min: -360,
       max: 360,
       step: 1,

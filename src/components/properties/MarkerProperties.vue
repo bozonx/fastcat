@@ -107,7 +107,7 @@ function handleCreateSelectionRange() {
 
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection :title="t('granVideoEditor.marker.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.marker.actions', 'Actions')">
       <div class="flex gap-2 w-full">
         <UButton
           size="xs"
@@ -119,8 +119,8 @@ function handleCreateSelectionRange() {
         >
           {{
             isZone
-              ? t('granVideoEditor.timeline.convertZoneToMarker', 'Convert to normal marker')
-              : t('granVideoEditor.timeline.convertMarkerToZone', 'Convert to zone marker')
+              ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
+              : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker')
           }}
         </UButton>
         <UButton
@@ -143,7 +143,7 @@ function handleCreateSelectionRange() {
         class="w-full justify-center mt-2"
         @click="handleConvertToSelectionRange"
       >
-        {{ t('granVideoEditor.timeline.convertZoneToSelection', 'Convert to selection area') }}
+        {{ t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area') }}
       </UButton>
       <UButton
         v-if="isZone"
@@ -154,14 +154,14 @@ function handleCreateSelectionRange() {
         class="w-full justify-center mt-2"
         @click="handleCreateSelectionRange"
       >
-        {{ t('granVideoEditor.timeline.createSelectionFromZone', 'Create selection area') }}
+        {{ t('fastcat.timeline.createSelectionFromZone', 'Create selection area') }}
       </UButton>
     </PropertySection>
 
-    <PropertySection :title="t('granVideoEditor.marker.info', 'Marker Info')">
+    <PropertySection :title="t('fastcat.marker.info', 'Marker Info')">
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.marker.text', 'Text')
+          t('fastcat.marker.text', 'Text')
         }}</span>
         <UTextarea
           :model-value="marker.text"

@@ -29,7 +29,7 @@ const firstMedia = computed(() => remoteFile.value?.media?.[0] ?? null);
   <div class="w-full flex flex-col gap-4">
     <PropertySection :title="t('videoEditor.fileManager.actions.title', 'Actions')">
       <div class="text-xs text-ui-text-muted">
-        {{ t('videoEditor.settings.integrationSourceGran', 'Gran Publicador') }}
+        {{ t('videoEditor.settings.integrationSourceFastCat', 'FastCat Publicador') }}
       </div>
     </PropertySection>
 

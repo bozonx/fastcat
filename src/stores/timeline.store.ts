@@ -217,7 +217,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   });
 
   function getSelectionRange(): TimelineSelectionRange | null {
-    const range = timelineDoc.value?.metadata?.gran?.selectionRange;
+    const range = timelineDoc.value?.metadata?.fastcat?.selectionRange;
     if (!range) return null;
     if (!Number.isFinite(range.startUs) || !Number.isFinite(range.endUs)) return null;
 
@@ -233,11 +233,11 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   function updateSelectionRange(range: TimelineSelectionRange | null) {
-    const currentGran = timelineDoc.value?.metadata?.gran ?? {};
+    const currentFastCat = timelineDoc.value?.metadata?.fastcat ?? {};
     applyTimeline({
       type: 'update_timeline_properties',
       properties: {
-        ...currentGran,
+        ...currentFastCat,
         selectionRange: range
           ? {
               startUs: Math.max(0, Math.round(range.startUs)),
@@ -502,7 +502,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   });
 
   watch(
-    () => timelineDoc.value?.metadata?.gran?.masterMuted,
+    () => timelineDoc.value?.metadata?.fastcat?.masterMuted,
     (next) => {
       if (timelineDoc.value) {
         audioMuted.value = Boolean(next);

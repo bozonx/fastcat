@@ -66,9 +66,9 @@ describe('project-meta.repository', () => {
   it('returns null on invalid data', async () => {
     const projectDir: any = createDirMock();
 
-    await projectDir.getDirectoryHandle('.gran', { create: true });
-    const granDir = await projectDir.getDirectoryHandle('.gran', { create: true });
-    const metaFile = await granDir.getFileHandle('project.meta.json', { create: true });
+    await projectDir.getDirectoryHandle('.fastcat', { create: true });
+    const fastcatDir = await projectDir.getDirectoryHandle('.fastcat', { create: true });
+    const metaFile = await fastcatDir.getFileHandle('project.meta.json', { create: true });
     const writable = await metaFile.createWritable();
     await writable.write('{"id": 123}');
     await writable.close();

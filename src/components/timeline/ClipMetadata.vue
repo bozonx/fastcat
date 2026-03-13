@@ -28,7 +28,7 @@ const clipItem = computed(() =>
         v-if="clipWidthPx > 60"
         class="text-[10px] font-bold uppercase tracking-wider text-white"
       >
-        {{ t('granVideoEditor.timeline.noMedia', 'No media') }}
+        {{ t('fastcat.timeline.noMedia', 'No media') }}
       </span>
     </div>
 

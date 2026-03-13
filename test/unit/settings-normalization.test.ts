@@ -102,7 +102,7 @@ describe('settings normalization', () => {
   it('normalizes integration settings', () => {
     const normalized = normalizeUserSettings({
       integrations: {
-        granPublicador: {
+        fastcatPublicador: {
           enabled: true,
           bearerToken: '  gp_token  ',
         },
@@ -110,13 +110,13 @@ describe('settings normalization', () => {
           enabled: true,
           baseUrl: 'https://files.example.com/api/',
           bearerToken: ' files-token ',
-          overrideGran: 1,
+          overrideFastCat: 1,
         },
         manualSttApi: {
           enabled: false,
           baseUrl: 'https://stt.example.com/',
           bearerToken: ' stt-token ',
-          overrideGran: 0,
+          overrideFastCat: 0,
         },
         stt: {
           provider: ' assemblyai ',
@@ -128,18 +128,18 @@ describe('settings normalization', () => {
       },
     });
 
-    expect(normalized.integrations.granPublicador.enabled).toBe(true);
-    expect(normalized.integrations.granPublicador.bearerToken).toBe('gp_token');
+    expect(normalized.integrations.fastcatPublicador.enabled).toBe(true);
+    expect(normalized.integrations.fastcatPublicador.bearerToken).toBe('gp_token');
 
     expect(normalized.integrations.manualFilesApi.enabled).toBe(true);
     expect(normalized.integrations.manualFilesApi.baseUrl).toBe('https://files.example.com/api');
     expect(normalized.integrations.manualFilesApi.bearerToken).toBe('files-token');
-    expect(normalized.integrations.manualFilesApi.overrideGran).toBe(true);
+    expect(normalized.integrations.manualFilesApi.overrideFastCat).toBe(true);
 
     expect(normalized.integrations.manualSttApi.enabled).toBe(false);
     expect(normalized.integrations.manualSttApi.baseUrl).toBe('https://stt.example.com');
     expect(normalized.integrations.manualSttApi.bearerToken).toBe('stt-token');
-    expect(normalized.integrations.manualSttApi.overrideGran).toBe(false);
+    expect(normalized.integrations.manualSttApi.overrideFastCat).toBe(false);
 
     expect(normalized.integrations.stt.provider).toBe('assemblyai');
     expect(normalized.integrations.stt.models).toEqual(['universal-3-pro', 'universal-2']);

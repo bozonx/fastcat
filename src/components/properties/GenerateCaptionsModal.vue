@@ -48,9 +48,9 @@ async function generateCaptions() {
 
     toast.add({
       color: 'success',
-      title: t('granVideoEditor.captions.generated', 'Captions generated'),
+      title: t('fastcat.captions.generated', 'Captions generated'),
       description: t(
-        'granVideoEditor.captions.generatedDescription',
+        'fastcat.captions.generatedDescription',
         `${result.addedCount} text clips were created from ${result.sourceCount} source files`,
       ),
     });
@@ -80,10 +80,10 @@ watch(
 <template>
   <AppModal
     v-model:open="isOpen"
-    :title="t('granVideoEditor.captions.modalTitle', 'Generate captions')"
+    :title="t('fastcat.captions.modalTitle', 'Generate captions')"
     :description="
       t(
-        'granVideoEditor.captions.modalDescription',
+        'fastcat.captions.modalDescription',
         'Create text clips from transcription cache of active audio and video clips across the timeline.',
       )
     "
@@ -93,7 +93,7 @@ watch(
       <div class="text-xs text-ui-text-muted bg-ui-bg-elevated rounded border border-ui-border p-3">
         {{
           t(
-            'granVideoEditor.captions.timelineWideDescription',
+            'fastcat.captions.timelineWideDescription',
             'The editor will scan all active audio and video media clips on non-muted, visible tracks, load their existing transcription cache, account for trims, and keep only the top visible source on overlaps.',
           )
         }}
@@ -102,7 +102,7 @@ watch(
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('granVideoEditor.captions.maxWordsPerClip', 'Max words per clip') }}
+            {{ t('fastcat.captions.maxWordsPerClip', 'Max words per clip') }}
           </span>
           <UInput
             :model-value="String(settings.maxWordsPerClip)"
@@ -115,7 +115,7 @@ watch(
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('granVideoEditor.captions.maxDurationMs', 'Max clip duration, ms') }}
+            {{ t('fastcat.captions.maxDurationMs', 'Max clip duration, ms') }}
           </span>
           <UInput
             :model-value="String(settings.maxDurationMs)"
@@ -128,7 +128,7 @@ watch(
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('granVideoEditor.captions.silenceGapMs', 'Split on silence gap, ms') }}
+            {{ t('fastcat.captions.silenceGapMs', 'Split on silence gap, ms') }}
           </span>
           <UInput
             :model-value="String(settings.silenceGapMs)"
@@ -142,7 +142,7 @@ watch(
         <div class="flex items-end">
           <UCheckbox
             :model-value="settings.splitOnPunctuation"
-            :label="t('granVideoEditor.captions.splitOnPunctuation', 'Split on punctuation')"
+            :label="t('fastcat.captions.splitOnPunctuation', 'Split on punctuation')"
             @update:model-value="(value) => (settings.splitOnPunctuation = Boolean(value))"
           />
         </div>
@@ -155,7 +155,7 @@ watch(
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
         <UButton color="primary" :loading="isGenerating" @click="generateCaptions">
-          {{ t('granVideoEditor.captions.generate', 'Generate captions') }}
+          {{ t('fastcat.captions.generate', 'Generate captions') }}
         </UButton>
       </div>
     </template>

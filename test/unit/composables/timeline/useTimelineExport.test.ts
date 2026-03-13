@@ -452,7 +452,7 @@ describe('useTimelineExport pure functions', () => {
     const nestedOtio = JSON.stringify({
       OTIO_SCHEMA: 'Timeline.1',
       name: 'nested',
-      metadata: { gran: { timebase: { fps: 25 } } },
+      metadata: { fastcat: { timebase: { fps: 25 } } },
       tracks: {
         OTIO_SCHEMA: 'Stack.1',
         name: 'tracks',
@@ -474,7 +474,7 @@ describe('useTimelineExport pure functions', () => {
                   start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
                   duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
                 },
-                metadata: { gran: { clipType: 'media', sourceDurationUs: 1000000 } },
+                metadata: { fastcat: { clipType: 'media', sourceDurationUs: 1000000 } },
               },
             ],
           },
@@ -527,7 +527,7 @@ describe('useTimelineExport pure functions', () => {
     const nestedOtio = JSON.stringify({
       OTIO_SCHEMA: 'Timeline.1',
       name: 'nested',
-      metadata: { gran: { timebase: { fps: 25 } } },
+      metadata: { fastcat: { timebase: { fps: 25 } } },
       tracks: {
         OTIO_SCHEMA: 'Stack.1',
         name: 'tracks',
@@ -536,7 +536,7 @@ describe('useTimelineExport pure functions', () => {
             OTIO_SCHEMA: 'Track.1',
             name: 'NestedV1',
             kind: 'Video',
-            metadata: { gran: { opacity: 0.4, blendMode: 'screen' } },
+            metadata: { fastcat: { opacity: 0.4, blendMode: 'screen' } },
             children: [
               {
                 OTIO_SCHEMA: 'Clip.1',
@@ -550,7 +550,7 @@ describe('useTimelineExport pure functions', () => {
                   start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
                   duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
                 },
-                metadata: { gran: { clipType: 'media', sourceDurationUs: 1000000 } },
+                metadata: { fastcat: { clipType: 'media', sourceDurationUs: 1000000 } },
               },
             ],
           },
@@ -616,7 +616,7 @@ describe('useTimelineExport pure functions', () => {
     const nestedOtio = JSON.stringify({
       OTIO_SCHEMA: 'Timeline.1',
       name: 'nested',
-      metadata: { gran: { timebase: { fps: 25 } } },
+      metadata: { fastcat: { timebase: { fps: 25 } } },
       tracks: {
         OTIO_SCHEMA: 'Stack.1',
         name: 'tracks',
@@ -639,7 +639,7 @@ describe('useTimelineExport pure functions', () => {
                   duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
                 },
                 metadata: {
-                  gran: {
+                  fastcat: {
                     clipType: 'media',
                     sourceDurationUs: 1000000,
                     audioGain: 2,

@@ -63,10 +63,10 @@ describe('remote-vfs utils', () => {
 
     expect(
       getRemoteFileDownloadUrl({
-        baseUrl: 'https://gran.example.com/api/v1/external/vfs',
+        baseUrl: 'https://fastcat.example.com/api/v1/external/vfs',
         entry: remoteFile,
       }),
-    ).toBe('https://gran.example.com/uploads/clip.mp4');
+    ).toBe('https://fastcat.example.com/uploads/clip.mp4');
   });
 
   it('returns original absolute media url unchanged', () => {
@@ -86,7 +86,7 @@ describe('remote-vfs utils', () => {
 
     expect(
       getRemoteFileDownloadUrl({
-        baseUrl: 'https://gran.example.com/api/v1/external/vfs',
+        baseUrl: 'https://fastcat.example.com/api/v1/external/vfs',
         entry: remoteFile,
       }),
     ).toBe('https://cdn.example.com/uploads/clip.mp4');

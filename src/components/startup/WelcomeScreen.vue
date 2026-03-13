@@ -23,18 +23,18 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
       <h1
         class="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary-300 to-primary-200"
       >
-        Gran Video Editor
+        FastCat Video Editor
       </h1>
 
       <p class="text-ui-text-muted">
         {{
           isTauriWorkspace
             ? t(
-                'granVideoEditor.welcome.selectTauriWorkspace',
-                'Select a workspace folder on your computer. Gran Video Editor will store projects, source media, proxies, and cache in this folder.',
+                'fastcat.welcome.selectTauriWorkspace',
+                'Select a workspace folder on your computer. FastCat Video Editor will store projects, source media, proxies, and cache in this folder.',
               )
             : t(
-                'granVideoEditor.welcome.selectWebWorkspace',
+                'fastcat.welcome.selectWebWorkspace',
                 'Select a workspace folder on your computer. Your browser will ask for access to store project files, media proxies, and cache.',
               )
         }}
@@ -54,7 +54,7 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
         color="primary"
         icon="i-heroicons-folder-open"
         class="w-full justify-center transition-all hover:scale-[1.02]"
-        :label="t('granVideoEditor.welcome.openWorkspace', 'Select Workspace Folder')"
+        :label="t('fastcat.welcome.openWorkspace', 'Select Workspace Folder')"
         :loading="workspaceStore.isLoading"
         :disabled="workspaceStore.isLoading"
         @click="workspaceStore.openWorkspace"
@@ -62,7 +62,7 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
       <div v-else class="text-orange-400 text-sm">
         {{
           t(
-            'granVideoEditor.fileManager.unsupported',
+            'fastcat.fileManager.unsupported',
             'Workspace selection is not supported in this environment',
           )
         }}

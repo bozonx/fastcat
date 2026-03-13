@@ -7,17 +7,17 @@ export type DirectoryHandleLike = Pick<
   values?: () => AsyncIterable<FileSystemHandle>;
 };
 
-export async function ensureGranFileHandle(input: {
+export async function ensureFastCatFileHandle(input: {
   baseDir: DirectoryHandleLike;
   filename: string;
   create: boolean;
   folderName?: string;
 }): Promise<FileHandleLike | null> {
   try {
-    const granDir = await input.baseDir.getDirectoryHandle(input.folderName ?? '.gran', {
+    const fastcatDir = await input.baseDir.getDirectoryHandle(input.folderName ?? '.fastcat', {
       create: input.create,
     });
-    return await granDir.getFileHandle(input.filename, { create: input.create });
+    return await fastcatDir.getFileHandle(input.filename, { create: input.create });
   } catch {
     return null;
   }

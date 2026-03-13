@@ -1,4 +1,4 @@
-import type { GranVideoEditorUserSettings } from '../settings/defaults';
+import type { FastCatUserSettings } from '../settings/defaults';
 import type { HotkeyCombo } from './defaultHotkeys';
 import { isLayer1Active, isLayer2Active } from './layerUtils';
 
@@ -100,7 +100,7 @@ export function normalizeHotkeyCombo(combo: HotkeyCombo): HotkeyCombo | null {
 
 export function hotkeyFromKeyboardEvent(
   e: KeyboardEvent,
-  settings?: GranVideoEditorUserSettings,
+  settings?: FastCatUserSettings,
 ): HotkeyCombo | null {
   const useCode =
     e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Numpad');

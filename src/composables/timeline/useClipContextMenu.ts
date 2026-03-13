@@ -6,7 +6,7 @@ import type {
   TimelineDocument,
   ClipTransition,
 } from '~/timeline/types';
-import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
+import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type {
   TimelineCommand,
   UpdateClipPropertiesCommand,
@@ -20,7 +20,7 @@ interface UseClipContextMenuOptions {
   item: Ref<TimelineTrackItem>;
   canEditClipContent: Ref<boolean>;
   timelineDoc: Ref<TimelineDocument | null>;
-  projectSettings: Ref<GranVideoEditorProjectSettings>;
+  projectSettings: Ref<FastCatProjectSettings>;
   selectedItemIds: Ref<string[]>;
   applyTimelineCommand: (cmd: TimelineCommand) => void;
   batchApplyTimeline: (cmds: TimelineCommand[]) => void;
@@ -178,8 +178,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       mainGroup.push({
         label: allDisabled
-          ? options.t('granVideoEditor.timeline.enableClips', 'Enable clips')
-          : options.t('granVideoEditor.timeline.disableClips', 'Disable clips'),
+          ? options.t('fastcat.timeline.enableClips', 'Enable clips')
+          : options.t('fastcat.timeline.disableClips', 'Disable clips'),
         icon: allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
         onSelect: async () => {
           const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -196,8 +196,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       if (hasAudioOrVideoWithAudio) {
         mainGroup.push({
           label: allMuted
-            ? options.t('granVideoEditor.timeline.unmuteClips', 'Unmute clips')
-            : options.t('granVideoEditor.timeline.muteClips', 'Mute clips'),
+            ? options.t('fastcat.timeline.unmuteClips', 'Unmute clips')
+            : options.t('fastcat.timeline.muteClips', 'Mute clips'),
           icon: allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
           onSelect: async () => {
             const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -213,8 +213,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
         mainGroup.push({
           label: allWaveformHalf
-            ? options.t('granVideoEditor.timeline.waveformFull', 'Waveform: Full')
-            : options.t('granVideoEditor.timeline.waveformHalf', 'Waveform: Half'),
+            ? options.t('fastcat.timeline.waveformFull', 'Waveform: Full')
+            : options.t('fastcat.timeline.waveformHalf', 'Waveform: Half'),
           icon: 'i-heroicons-chart-bar',
           onSelect: async () => {
             const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -233,7 +233,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (hasFreeClip) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.quantize', 'Quantize to frames'),
+          label: options.t('fastcat.timeline.quantize', 'Quantize to frames'),
           icon: 'i-heroicons-squares-2x2',
           onSelect: async () => {
             const doc = options.timelineDoc.value;
@@ -265,7 +265,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (hasLockedLinks) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio'),
+          label: options.t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
           icon: 'i-heroicons-link-slash',
           onSelect: async () => {
             const doc = options.timelineDoc.value;
@@ -309,8 +309,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       if (hasVideo) {
         mainGroup.push({
           label: allShowWaveform
-            ? options.t('granVideoEditor.timeline.hideWaveform', 'Hide Waveform')
-            : options.t('granVideoEditor.timeline.showWaveform', 'Show Waveform'),
+            ? options.t('fastcat.timeline.hideWaveform', 'Hide Waveform')
+            : options.t('fastcat.timeline.showWaveform', 'Show Waveform'),
           icon: allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
           onSelect: async () => {
             const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -326,8 +326,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
         mainGroup.push({
           label: allShowThumbnails
-            ? options.t('granVideoEditor.timeline.hideThumbnails', 'Hide Thumbnails')
-            : options.t('granVideoEditor.timeline.showThumbnails', 'Show Thumbnails'),
+            ? options.t('fastcat.timeline.hideThumbnails', 'Hide Thumbnails')
+            : options.t('fastcat.timeline.showThumbnails', 'Show Thumbnails'),
           icon: 'i-heroicons-photo',
           onSelect: async () => {
             const cmds = itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -344,7 +344,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       const actionGroup = [
         {
-          label: options.t('granVideoEditor.timeline.delete', 'Delete'),
+          label: options.t('fastcat.timeline.delete', 'Delete'),
           icon: 'i-heroicons-trash',
           onSelect: () => {
             options.clearSelection();
@@ -365,7 +365,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       return [
         [
           {
-            label: options.t('granVideoEditor.timeline.delete', 'Delete'),
+            label: options.t('fastcat.timeline.delete', 'Delete'),
             icon: 'i-heroicons-trash',
             onSelect: () => {
               options.applyTimelineCommand({
@@ -413,8 +413,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       mainGroup.push({
         label: clipItem.disabled
-          ? options.t('granVideoEditor.timeline.enableClip', 'Enable clip')
-          : options.t('granVideoEditor.timeline.disableClip', 'Disable clip'),
+          ? options.t('fastcat.timeline.enableClip', 'Enable clip')
+          : options.t('fastcat.timeline.disableClip', 'Disable clip'),
         icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
         onSelect: async () => {
           options.updateClipProperties(track.id, clipItem.id, {
@@ -431,8 +431,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       if (hasAudio) {
         mainGroup.push({
           label: clipItem.audioMuted
-            ? options.t('granVideoEditor.timeline.unmuteClip', 'Unmute')
-            : options.t('granVideoEditor.timeline.muteClip', 'Mute'),
+            ? options.t('fastcat.timeline.unmuteClip', 'Unmute')
+            : options.t('fastcat.timeline.muteClip', 'Mute'),
           icon: clipItem.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
           onSelect: async () => {
             options.updateClipProperties(track.id, clipItem.id, {
@@ -446,8 +446,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         mainGroup.push({
           label:
             currentMode === 'half'
-              ? options.t('granVideoEditor.timeline.waveformFull', 'Full waveform')
-              : options.t('granVideoEditor.timeline.waveformHalf', 'Half waveform'),
+              ? options.t('fastcat.timeline.waveformFull', 'Full waveform')
+              : options.t('fastcat.timeline.waveformHalf', 'Half waveform'),
           icon: 'i-heroicons-chart-bar',
           onSelect: async () => {
             options.updateClipProperties(track.id, clipItem.id, {
@@ -460,7 +460,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (isFree && !clipItem.locked) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.quantize', 'Quantize to frames'),
+          label: options.t('fastcat.timeline.quantize', 'Quantize to frames'),
           icon: 'i-heroicons-squares-2x2',
           onSelect: async () => {
             options.applyTimelineCommand({
@@ -478,7 +478,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (isLockedAudioClip) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.unlinkAudio', 'Unlink from video'),
+          label: options.t('fastcat.timeline.unlinkAudio', 'Unlink from video'),
           icon: 'i-heroicons-link-slash',
           onSelect: async () => {
             options.updateClipProperties(track.id, clipItem.id, {
@@ -490,7 +490,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         });
       } else if (linkedAudioForThisVideo.length > 0) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio'),
+          label: options.t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
           icon: 'i-heroicons-link-slash',
           onSelect: async () => {
             const cmds = linkedAudioForThisVideo.map((a) => ({
@@ -510,8 +510,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       mainGroup.push({
         label: clipItem.locked
-          ? options.t('granVideoEditor.timeline.unlockClip', 'Unlock clip')
-          : options.t('granVideoEditor.timeline.lockClip', 'Lock clip'),
+          ? options.t('fastcat.timeline.unlockClip', 'Unlock clip')
+          : options.t('fastcat.timeline.lockClip', 'Lock clip'),
         icon: clipItem.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
         onSelect: async () => {
           options.updateClipProperties(track.id, clipItem.id, {
@@ -525,8 +525,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         mainGroup.push({
           label:
             clipItem.showThumbnails === false
-              ? options.t('granVideoEditor.timeline.showThumbnails', 'Show thumbnails')
-              : options.t('granVideoEditor.timeline.hideThumbnails', 'Hide thumbnails'),
+              ? options.t('fastcat.timeline.showThumbnails', 'Show thumbnails')
+              : options.t('fastcat.timeline.hideThumbnails', 'Hide thumbnails'),
           icon: 'i-heroicons-photo',
           onSelect: async () => {
             options.updateClipProperties(track.id, clipItem.id, {
@@ -540,7 +540,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
       const currentSpeed = clipItem.speed ?? 1;
 
       mainGroup.push({
-        label: `${options.t('granVideoEditor.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)})`,
+        label: `${options.t('fastcat.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)})`,
         icon: 'i-heroicons-forward',
         onSelect: () =>
           options.emitOpenSpeedModal({
@@ -556,7 +556,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         !(clipItem as any).audioFromVideoDisabled;
       if (canExtract) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.extractAudio', 'Extract audio to audio track'),
+          label: options.t('fastcat.timeline.extractAudio', 'Extract audio to audio track'),
           icon: 'i-heroicons-musical-note',
           onSelect: () =>
             options.emitClipAction({
@@ -589,7 +589,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (hasReturnFromVideoClip) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
+          label: options.t('fastcat.timeline.returnAudio', 'Return audio to video clip'),
           icon: 'i-heroicons-arrow-uturn-left',
           onSelect: () =>
             options.emitClipAction({
@@ -600,7 +600,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
         });
       } else if (hasReturnFromLockedAudioClip) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.returnAudio', 'Return audio to video clip'),
+          label: options.t('fastcat.timeline.returnAudio', 'Return audio to video clip'),
           icon: 'i-heroicons-arrow-uturn-left',
           onSelect: () =>
             options.emitClipAction({
@@ -617,7 +617,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (isMediaVideoClip && !hasFreezeFrame) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.freezeFrame', 'Freeze frame'),
+          label: options.t('fastcat.timeline.freezeFrame', 'Freeze frame'),
           icon: 'i-heroicons-pause-circle',
           onSelect: () =>
             options.emitClipAction({
@@ -630,7 +630,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       if (isMediaVideoClip && hasFreezeFrame) {
         mainGroup.push({
-          label: options.t('granVideoEditor.timeline.resetFreezeFrame', 'Reset freeze frame'),
+          label: options.t('fastcat.timeline.resetFreezeFrame', 'Reset freeze frame'),
           icon: 'i-heroicons-play-circle',
           onSelect: () =>
             options.emitClipAction({
@@ -645,7 +645,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     const actionGroup: { label: string; icon: string; onSelect: () => void; disabled?: boolean }[] =
       [
         {
-          label: options.t('granVideoEditor.timeline.delete', 'Delete'),
+          label: options.t('fastcat.timeline.delete', 'Delete'),
           icon: 'i-heroicons-trash',
           disabled: item.kind === 'clip' && Boolean((item as TimelineClipItem).locked),
           onSelect: () => {
@@ -685,8 +685,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       transitionGroup.push({
         label: hasIn
-          ? options.t('granVideoEditor.timeline.removeTransitionIn')
-          : options.t('granVideoEditor.timeline.addTransitionIn'),
+          ? options.t('fastcat.timeline.removeTransitionIn')
+          : options.t('fastcat.timeline.addTransitionIn'),
         icon: hasIn ? 'i-heroicons-x-circle' : 'i-heroicons-arrow-left-end-on-rectangle',
         onSelect: () => {
           if (hasIn) {
@@ -708,8 +708,8 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       transitionGroup.push({
         label: hasOut
-          ? options.t('granVideoEditor.timeline.removeTransitionOut')
-          : options.t('granVideoEditor.timeline.addTransitionOut'),
+          ? options.t('fastcat.timeline.removeTransitionOut')
+          : options.t('fastcat.timeline.addTransitionOut'),
         icon: hasOut ? 'i-heroicons-x-circle' : 'i-heroicons-arrow-right-end-on-rectangle',
         onSelect: () => {
           if (hasOut) {

@@ -278,7 +278,7 @@ export interface TimelineSelectionRange {
   endUs: number;
 }
 
-export interface TimelineGranMetadata {
+export interface TimelineFastCatMetadata {
   version?: number;
   docId?: string;
   timebase?: TimelineTimebase;
@@ -292,7 +292,7 @@ export interface TimelineGranMetadata {
 }
 
 export interface TimelineMetadata {
-  gran?: TimelineGranMetadata;
+  fastcat?: TimelineFastCatMetadata;
   [key: string]: unknown;
 }
 

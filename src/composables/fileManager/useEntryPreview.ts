@@ -36,7 +36,7 @@ function computeTimelineSummary(doc: TimelineDocument) {
     0,
   );
   const version =
-    typeof doc.metadata?.gran?.version === 'number' ? doc.metadata.gran.version : null;
+    typeof doc.metadata?.fastcat?.version === 'number' ? doc.metadata.fastcat.version : null;
   return { durationUs, videoTracks, audioTracks, clips, version };
 }
 

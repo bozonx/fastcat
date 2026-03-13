@@ -183,7 +183,7 @@ const mediaStyle = computed(() => ({
 const contextMenuItems = computed(() => [
   [
     {
-      label: t('granVideoEditor.preview.resetZoom', 'Reset Zoom & Pan'),
+      label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => reset(),
       click: () => reset(),
@@ -283,7 +283,7 @@ watch(
   (trigger) => {
     if (!shouldHandlePreviewPlaybackEvent() || !trigger.timestamp) return;
 
-    onCustomZoom(new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }));
+    onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: trigger.dir, target: 'preview' } }));
   },
   { deep: true },
 );
@@ -370,7 +370,7 @@ onUnmounted(() => {
           <div
             class="mt-4 text-[10px] sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium"
           >
-            {{ t('granVideoEditor.preview.audioTrack', 'Audio Track') }}
+            {{ t('fastcat.preview.audioTrack', 'Audio Track') }}
           </div>
         </div>
       </div>

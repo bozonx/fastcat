@@ -188,53 +188,53 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
     {
       key: 'action',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramAction',
+      labelKey: 'fastcat.timeline.transition.paramAction',
       options: [
         {
           value: 'fall',
-          labelKey: 'granVideoEditor.timeline.transition.actionFall',
+          labelKey: 'fastcat.timeline.transition.actionFall',
         },
         {
           value: 'rise',
-          labelKey: 'granVideoEditor.timeline.transition.actionRise',
+          labelKey: 'fastcat.timeline.transition.actionRise',
         },
       ],
     },
     {
       key: 'direction',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
+      labelKey: 'fastcat.timeline.transition.paramDirection',
       options: [
         {
           value: 'down',
-          labelKey: 'granVideoEditor.timeline.transition.directionDown',
+          labelKey: 'fastcat.timeline.transition.directionDown',
         },
         {
           value: 'up',
-          labelKey: 'granVideoEditor.timeline.transition.directionUp',
+          labelKey: 'fastcat.timeline.transition.directionUp',
         },
         {
           value: 'left',
-          labelKey: 'granVideoEditor.timeline.transition.directionLeft',
+          labelKey: 'fastcat.timeline.transition.directionLeft',
         },
         {
           value: 'right',
-          labelKey: 'granVideoEditor.timeline.transition.directionRight',
+          labelKey: 'fastcat.timeline.transition.directionRight',
         },
       ],
     },
     {
       key: 'depthDirection',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramDepthDirection',
+      labelKey: 'fastcat.timeline.transition.paramDepthDirection',
       options: [
         {
           value: 'backward',
-          labelKey: 'granVideoEditor.timeline.transition.depthDirectionBackward',
+          labelKey: 'fastcat.timeline.transition.depthDirectionBackward',
         },
         {
           value: 'forward',
-          labelKey: 'granVideoEditor.timeline.transition.depthDirectionForward',
+          labelKey: 'fastcat.timeline.transition.depthDirectionForward',
         },
       ],
     },

@@ -1,5 +1,5 @@
 import { getProjectTranscriptionsSegments } from '~/utils/vardata-paths';
-import { readJsonFromFileHandle, writeJsonToFileHandle, type DirectoryHandleLike } from './gran-fs';
+import { readJsonFromFileHandle, writeJsonToFileHandle, type DirectoryHandleLike } from './fastcat-fs';
 
 export interface TranscriptionCacheRecord {
   key: string;

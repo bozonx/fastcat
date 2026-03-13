@@ -78,7 +78,7 @@ const customTransitions = computed(() => {
 
 function handleDragStart(event: DragEvent, type: string, category: 'effect' | 'transition') {
   if (!event.dataTransfer) return;
-  event.dataTransfer.setData(`gran-${category}`, type);
+  event.dataTransfer.setData(`fastcat-${category}`, type);
   event.dataTransfer.effectAllowed = 'copy';
 }
 
@@ -116,7 +116,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         "
         @click="activeTab = 'video'"
       >
-        {{ t('granVideoEditor.effects.tabs.video', 'Video') }}
+        {{ t('fastcat.effects.tabs.video', 'Video') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -127,7 +127,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         "
         @click="activeTab = 'transitions'"
       >
-        {{ t('granVideoEditor.effects.tabs.transitions', 'Transitions') }}
+        {{ t('fastcat.effects.tabs.transitions', 'Transitions') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -138,7 +138,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         "
         @click="activeTab = 'audio'"
       >
-        {{ t('granVideoEditor.effects.tabs.audio', 'Audio') }}
+        {{ t('fastcat.effects.tabs.audio', 'Audio') }}
       </button>
     </div>
 
@@ -149,7 +149,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         <!-- Standard Effects -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
-          :title="t('granVideoEditor.effects.groups.standard')"
+          :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
             <EffectCard
@@ -177,7 +177,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         <!-- Custom Effects -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
-          :title="t('granVideoEditor.effects.groups.custom')"
+          :title="t('fastcat.effects.groups.custom')"
         >
           <VueDraggable
             :model-value="customEffects"
@@ -225,7 +225,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         <!-- Standard Transitions -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.transitionsStandardCollapsed"
-          :title="t('granVideoEditor.effects.groups.standard')"
+          :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
             <div
@@ -260,7 +260,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         <!-- Custom Transitions -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.transitionsCustomCollapsed"
-          :title="t('granVideoEditor.effects.groups.custom')"
+          :title="t('fastcat.effects.groups.custom')"
         >
           <VueDraggable
             :model-value="customTransitions"
@@ -322,12 +322,12 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         <!-- Standard Audio Effects -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.audioStandardCollapsed"
-          :title="t('granVideoEditor.effects.groups.standard')"
+          :title="t('fastcat.effects.groups.standard')"
         >
           <div class="flex flex-col gap-4">
             <div v-if="hasAudioEffects(basicAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
+                {{ t('fastcat.effects.groups.standard', 'Standard') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
                 <EffectCard
@@ -348,7 +348,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
 
             <div v-if="hasAudioEffects(artisticAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('granVideoEditor.effects.groups.artistic', 'Художественные') }}
+                {{ t('fastcat.effects.groups.artistic', 'Художественные') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
                 <EffectCard
@@ -379,7 +379,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         <!-- Custom Audio Effects -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.audioCustomCollapsed"
-          :title="t('granVideoEditor.effects.groups.custom')"
+          :title="t('fastcat.effects.groups.custom')"
         >
           <VueDraggable
             :model-value="customAudioEffects"

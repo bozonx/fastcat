@@ -1,5 +1,5 @@
 import type { WorkspaceProvider } from './types';
-import type { DirectoryHandleLike } from '~/repositories/gran-fs';
+import type { DirectoryHandleLike } from '~/repositories/fastcat-fs';
 import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
 import { open } from '@tauri-apps/plugin-dialog';
 import { exists } from '@tauri-apps/plugin-fs';

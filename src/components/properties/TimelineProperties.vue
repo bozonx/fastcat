@@ -28,7 +28,7 @@ const snapThresholdPx = computed({
 });
 
 const masterGain = computed({
-  get: () => timelineStore.timelineDoc?.metadata?.gran?.masterGain ?? 1,
+  get: () => timelineStore.timelineDoc?.metadata?.fastcat?.masterGain ?? 1,
   set: (val: number) => {
     timelineStore.applyTimeline({
       type: 'update_master_gain',
@@ -38,19 +38,19 @@ const masterGain = computed({
 });
 
 const masterEffects = computed(() =>
-  (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
+  (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []).filter(
     (effect): effect is VideoClipEffect => effect?.target !== 'audio',
   ),
 );
 
 const masterAudioEffects = computed(() =>
-  (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
+  (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []).filter(
     (effect): effect is AudioClipEffect => effect?.target === 'audio',
   ),
 );
 
 const masterMuted = computed({
-  get: () => Boolean(timelineStore.timelineDoc?.metadata?.gran?.masterMuted),
+  get: () => Boolean(timelineStore.timelineDoc?.metadata?.fastcat?.masterMuted),
   set: (muted: boolean) => {
     timelineStore.setMasterMuted(muted);
   },
@@ -105,7 +105,7 @@ function handleAddAudioTrack() {
 <template>
   <div class="w-full flex flex-col gap-3">
     <!-- Actions -->
-    <PropertySection :title="t('granVideoEditor.timeline.properties.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.timeline.properties.actions', 'Actions')">
       <div class="grid grid-cols-2 gap-2 w-full mt-1">
         <UButton
           size="xs"
@@ -115,7 +115,7 @@ function handleAddAudioTrack() {
           class="justify-start"
           @click="handleAddVideoTrack"
         >
-          {{ t('granVideoEditor.timeline.addVideoTrack', 'Add video track') }}
+          {{ t('fastcat.timeline.addVideoTrack', 'Add video track') }}
         </UButton>
         <UButton
           size="xs"
@@ -125,7 +125,7 @@ function handleAddAudioTrack() {
           class="justify-start"
           @click="handleAddAudioTrack"
         >
-          {{ t('granVideoEditor.timeline.addAudioTrack', 'Add audio track') }}
+          {{ t('fastcat.timeline.addAudioTrack', 'Add audio track') }}
         </UButton>
       </div>
 
@@ -133,7 +133,7 @@ function handleAddAudioTrack() {
         <div class="border-b border-ui-border pb-2 mb-1">
           <div class="flex items-center justify-between gap-2 mb-2">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.timeline.properties.zoom', 'Zoom')
+              t('fastcat.timeline.properties.zoom', 'Zoom')
             }}</span>
           </div>
           <div class="flex items-center gap-2">
@@ -155,7 +155,7 @@ function handleAddAudioTrack() {
 
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.timeline.properties.snapToFrames', 'Snap to frames')
+            t('fastcat.timeline.properties.snapToFrames', 'Snap to frames')
           }}</span>
           <USwitch
             size="sm"
@@ -165,7 +165,7 @@ function handleAddAudioTrack() {
         </div>
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.timeline.properties.snapToClips', 'Snap to clips')
+            t('fastcat.timeline.properties.snapToClips', 'Snap to clips')
           }}</span>
           <USwitch
             size="sm"
@@ -175,7 +175,7 @@ function handleAddAudioTrack() {
         </div>
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.timeline.properties.overlapMode', 'Pseudo-overlap')
+            t('fastcat.timeline.properties.overlapMode', 'Pseudo-overlap')
           }}</span>
           <USwitch
             size="sm"
@@ -217,7 +217,7 @@ function handleAddAudioTrack() {
     <div class="relative">
       <EffectsEditor
         :effects="masterEffects"
-        :title="t('granVideoEditor.effects.masterTitle', 'Master effects')"
+        :title="t('fastcat.effects.masterTitle', 'Master effects')"
         @update:effects="handleUpdateMasterEffects"
       />
       <div
@@ -225,7 +225,7 @@ function handleAddAudioTrack() {
         class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <div class="text-[10px] text-primary-400 font-medium uppercase tracking-wider">
-          {{ t('granVideoEditor.effects.dropHint', 'Drop effect here') }}
+          {{ t('fastcat.effects.dropHint', 'Drop effect here') }}
         </div>
       </div>
     </div>
@@ -237,7 +237,7 @@ function handleAddAudioTrack() {
 
     <!-- Master Volume -->
     <PropertySection
-      :title="t('granVideoEditor.timeline.properties.masterVolume', 'Master Volume')"
+      :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')"
     >
       <div class="space-y-1.5 mt-1">
         <div class="flex items-center justify-between">

@@ -12,7 +12,7 @@ interface PersistedFileTreeState {
 }
 
 function getFileTreeStorageKey(projectName: string): string {
-  return `gran-video-editor:file-tree:${projectName}`;
+  return `fastcat:file-tree:${projectName}`;
 }
 
 export interface UiFileTreePersistenceModule {

@@ -43,7 +43,7 @@ function makeDoc(): TimelineDocument {
       },
     ],
     metadata: {
-      gran: {
+      fastcat: {
         docId: 'doc1',
         timebase: { fps: 30 },
         markers: [
@@ -68,12 +68,12 @@ describe('timeline/otioSerializer: transitions', () => {
 
     const tIn = trackChildren[0];
     expect(tIn.transition_type).toBe('SMPTE_Dissolve');
-    expect(tIn.metadata.gran.type).toBe('dissolve');
-    expect(tIn.metadata.gran.durationUs).toBe(300_000);
+    expect(tIn.metadata.fastcat.type).toBe('dissolve');
+    expect(tIn.metadata.fastcat.durationUs).toBe(300_000);
 
     const tOut = trackChildren[2];
     expect(tOut.transition_type).toBe('SMPTE_Dissolve');
-    expect(tOut.metadata.gran.durationUs).toBe(500_000);
+    expect(tOut.metadata.fastcat.durationUs).toBe(500_000);
   });
 
   it('serializes and deserializes transitionIn and transitionOut', () => {
@@ -112,11 +112,11 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(raw.markers).toHaveLength(2);
     expect(raw.markers[0].OTIO_SCHEMA).toBe('Marker.2');
     // sorted by time ascending
-    expect(raw.markers[0].metadata.gran.id).toBe('m2');
-    expect(raw.markers[1].metadata.gran.id).toBe('m1');
+    expect(raw.markers[0].metadata.fastcat.id).toBe('m2');
+    expect(raw.markers[1].metadata.fastcat.id).toBe('m1');
 
-    // gran metadata should NOT contain markers array
-    expect(raw.metadata.gran.markers).toBeUndefined();
+    // fastcat metadata should NOT contain markers array
+    expect(raw.metadata.fastcat.markers).toBeUndefined();
   });
 
   it('parses markers from Timeline.markers', () => {
@@ -124,7 +124,7 @@ describe('timeline/otioSerializer: transitions', () => {
     const serialized = serializeTimelineToOtio(doc);
     const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
 
-    const markers = parsed.metadata?.gran?.markers as any[];
+    const markers = parsed.metadata?.fastcat?.markers as any[];
     expect(markers).toHaveLength(2);
     expect(markers[0].id).toBe('m2');
     expect(markers[0].timeUs).toBe(500_000);
@@ -133,13 +133,13 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(markers[1].timeUs).toBe(1_000_000);
   });
 
-  it('falls back to gran.markers when Timeline.markers is absent (old format)', () => {
+  it('falls back to fastcat.markers when Timeline.markers is absent (old format)', () => {
     const raw = {
       OTIO_SCHEMA: 'Timeline.1',
       name: 'Old',
       tracks: { OTIO_SCHEMA: 'Stack.1', name: 'tracks', children: [] },
       metadata: {
-        gran: {
+        fastcat: {
           docId: 'old1',
           timebase: { fps: 25 },
           markers: [
@@ -153,15 +153,15 @@ describe('timeline/otioSerializer: transitions', () => {
                 start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 2_000_000, rate: 1_000_000 },
                 duration: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1_000_000 },
               },
-              metadata: { gran: { id: 'old-m1', color: 'red' } },
+              metadata: { fastcat: { id: 'old-m1', color: 'red' } },
             },
           ],
         },
       },
     };
     const parsed = parseTimelineFromOtio(JSON.stringify(raw), { id: 'old1', name: 'Old', fps: 25 });
-    expect(parsed.metadata?.gran?.markers).toHaveLength(1);
-    expect((parsed.metadata?.gran?.markers as any)[0].id).toBe('old-m1');
+    expect(parsed.metadata?.fastcat?.markers).toHaveLength(1);
+    expect((parsed.metadata?.fastcat?.markers as any)[0].id).toBe('old-m1');
   });
 
   it('preserves transition params, mode and curve through OTIO round-trip', () => {
@@ -223,7 +223,7 @@ describe('timeline/otioSerializer: transitions', () => {
     });
   });
 
-  it('normalizes invalid transition modes on parse via gran metadata', () => {
+  it('normalizes invalid transition modes on parse via fastcat metadata', () => {
     const doc: TimelineDocument = {
       ...makeDoc(),
       tracks: [
@@ -255,21 +255,21 @@ describe('timeline/otioSerializer: transitions', () => {
     const clipNode = serialized.tracks.children[0].children.find(
       (c: any) => c.OTIO_SCHEMA === 'Clip.1',
     );
-    clipNode.metadata.gran.transitionIn = {
+    clipNode.metadata.fastcat.transitionIn = {
       type: 'clock',
       durationUs: 300_000,
       mode: 'invalid_mode',
     };
-    clipNode.metadata.gran.transitionOut = {
+    clipNode.metadata.fastcat.transitionOut = {
       type: 'wipe',
       durationUs: 500_000,
       mode: 'also_invalid',
     };
-    // Also corrupt the Transition.1 nodes' gran mode to confirm gran wins
+    // Also corrupt the Transition.1 nodes' fastcat mode to confirm fastcat wins
     const tIn = serialized.tracks.children[0].children.find(
       (c: any) => c.OTIO_SCHEMA === 'Transition.1' && c.name.includes('_in'),
     );
-    if (tIn) tIn.metadata.gran.mode = 'invalid_mode';
+    if (tIn) tIn.metadata.fastcat.mode = 'invalid_mode';
 
     const parsed = parseTimelineFromOtio(JSON.stringify(serialized), {
       id: 'doc1',
@@ -315,7 +315,7 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.transitionOut).toBeUndefined();
   });
 
-  it('imports Transition.1 from external OTIO without gran metadata', () => {
+  it('imports Transition.1 from external OTIO without fastcat metadata', () => {
     const raw = {
       OTIO_SCHEMA: 'Timeline.1',
       name: 'External',
@@ -364,11 +364,11 @@ describe('timeline/otioSerializer: transitions', () => {
                 },
               },
             ],
-            metadata: { gran: { id: 'v1' } },
+            metadata: { fastcat: { id: 'v1' } },
           },
         ],
       },
-      metadata: { gran: { docId: 'ext1', timebase: { fps: 24 } } },
+      metadata: { fastcat: { docId: 'ext1', timebase: { fps: 24 } } },
     };
 
     const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
@@ -426,7 +426,7 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clipNode.effects[0].OTIO_SCHEMA).toBe('Effect.1');
     expect(clipNode.effects[0].effect_name).toBe('blur');
     expect(clipNode.effects[0].enabled).toBe(true);
-    expect(clipNode.effects[0].metadata.gran.params.radius).toBe(10);
+    expect(clipNode.effects[0].metadata.fastcat.params.radius).toBe(10);
     expect(clipNode.effects[1].enabled).toBe(false);
   });
 
@@ -536,14 +536,14 @@ describe('timeline/otioSerializer: transitions', () => {
                   start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 24 },
                   duration: { OTIO_SCHEMA: 'RationalTime.1', value: 24, rate: 24 },
                 },
-                metadata: { gran: { id: 'c1', clipType: 'media' } },
+                metadata: { fastcat: { id: 'c1', clipType: 'media' } },
               },
             ],
-            metadata: { gran: { id: 'v1' } },
+            metadata: { fastcat: { id: 'v1' } },
           },
         ],
       },
-      metadata: { gran: { docId: 'ext1', timebase: { fps: 24 } } },
+      metadata: { fastcat: { docId: 'ext1', timebase: { fps: 24 } } },
     };
 
     const parsed = parseTimelineFromOtio(JSON.stringify(raw), { id: 'ext1', name: 'Ext', fps: 24 });
@@ -626,7 +626,7 @@ describe('timeline/otioSerializer: transitions', () => {
     expect(clip.audioFadeOutUs).toBe(250_000);
   });
 
-  it('infers nested timeline clip from .otio target_url without gran clipType', () => {
+  it('infers nested timeline clip from .otio target_url without fastcat clipType', () => {
     const parsed = parseTimelineFromOtio(
       JSON.stringify({
         OTIO_SCHEMA: 'Timeline.1',
@@ -656,13 +656,13 @@ describe('timeline/otioSerializer: transitions', () => {
                     },
                     duration: { OTIO_SCHEMA: 'RationalTime.1', value: 4_000_000, rate: 1_000_000 },
                   },
-                  metadata: { gran: { sourceDurationUs: 9_000_000 } },
+                  metadata: { fastcat: { sourceDurationUs: 9_000_000 } },
                 },
               ],
             },
           ],
         },
-        metadata: { gran: { docId: 'imported-doc', timebase: { fps: 25 } } },
+        metadata: { fastcat: { docId: 'imported-doc', timebase: { fps: 25 } } },
       }),
       { id: 'doc1', name: 'Imported', fps: 25 },
     );
@@ -681,12 +681,12 @@ describe('timeline/otioSerializer: transitions', () => {
       name: 'NTSC',
       timebase: { fps: 29.97 },
       tracks: [],
-      metadata: { gran: { docId: 'doc-ntsc', timebase: { fps: 29.97 } } },
+      metadata: { fastcat: { docId: 'doc-ntsc', timebase: { fps: 29.97 } } },
     };
 
     const serialized = serializeTimelineToOtio(doc);
     const raw = JSON.parse(serialized);
-    expect(raw.metadata.gran.timebase.fps).toBe(29.97);
+    expect(raw.metadata.fastcat.timebase.fps).toBe(29.97);
 
     const parsed = parseTimelineFromOtio(serialized, { id: 'doc-ntsc', name: 'NTSC', fps: 29.97 });
     expect(parsed.timebase.fps).toBe(29.97);

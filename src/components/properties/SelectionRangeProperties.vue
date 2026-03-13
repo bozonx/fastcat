@@ -58,7 +58,7 @@ function handleDelete() {
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection :title="t('granVideoEditor.selectionRange.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.selectionRange.actions', 'Actions')">
       <div class="grid grid-cols-1 gap-2 w-full">
         <UButton
           size="xs"
@@ -68,7 +68,7 @@ function handleDelete() {
           class="justify-center"
           @click="handleConvertToMarker"
         >
-          {{ t('granVideoEditor.timeline.convertSelectionToZoneMarker', 'Convert to zone marker') }}
+          {{ t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker') }}
         </UButton>
         <UButton
           size="xs"
@@ -78,7 +78,7 @@ function handleDelete() {
           class="justify-center"
           @click="handleRippleTrim"
         >
-          {{ t('granVideoEditor.timeline.rippleTrimSelection', 'Ripple trim selection') }}
+          {{ t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection') }}
         </UButton>
         <UButton
           size="xs"
@@ -93,7 +93,7 @@ function handleDelete() {
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('granVideoEditor.selectionRange.info', 'Selection Range')">
+    <PropertySection :title="t('fastcat.selectionRange.info', 'Selection Range')">
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
         <TimecodeInput

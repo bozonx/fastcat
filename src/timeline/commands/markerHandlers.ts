@@ -7,7 +7,7 @@ import type {
 } from '../commands';
 
 function getMarkers(doc: TimelineDocument): TimelineMarker[] {
-  const raw = (doc as any)?.metadata?.gran?.markers;
+  const raw = (doc as any)?.metadata?.fastcat?.markers;
   return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
 }
 
@@ -16,8 +16,8 @@ function withMarkers(doc: TimelineDocument, markers: TimelineMarker[]): Timeline
     ...doc,
     metadata: {
       ...(doc.metadata ?? {}),
-      gran: {
-        ...(doc.metadata?.gran ?? {}),
+      fastcat: {
+        ...(doc.metadata?.fastcat ?? {}),
         docId: doc.id,
         timebase: doc.timebase,
         markers,

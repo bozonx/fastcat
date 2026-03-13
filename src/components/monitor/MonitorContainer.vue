@@ -302,19 +302,19 @@ const contextMenuItems = computed(() => {
   return [
     [
       {
-        label: t('granVideoEditor.preview.resetZoom', 'Reset Zoom & Pan'),
+        label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
         icon: 'i-heroicons-arrow-path',
         onSelect: () => viewportRef.value?.resetView(),
       },
       {
         label: showGrid.value
-          ? t('granVideoEditor.monitor.hideGrid', 'Hide grid')
-          : t('granVideoEditor.monitor.showGrid', 'Show grid'),
+          ? t('fastcat.monitor.hideGrid', 'Hide grid')
+          : t('fastcat.monitor.showGrid', 'Show grid'),
         icon: showGrid.value ? 'i-heroicons-check' : 'i-heroicons-squares-2x2',
         onSelect: toggleGrid,
       },
       {
-        label: t('granVideoEditor.monitor.snapshot', 'Create snapshot'),
+        label: t('fastcat.monitor.snapshot', 'Create snapshot'),
         icon: 'i-heroicons-camera',
         onSelect: createStopFrameSnapshot,
         disabled: isSavingStopFrame.value || isLoading.value || Boolean(loadError.value),
@@ -322,7 +322,7 @@ const contextMenuItems = computed(() => {
     ],
     [
       {
-        label: t('granVideoEditor.monitor.toolbarTop', 'Панель сверху'),
+        label: t('fastcat.monitor.toolbarTop', 'Панель сверху'),
         icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           if (projectStore.projectSettings.monitor) {
@@ -331,7 +331,7 @@ const contextMenuItems = computed(() => {
         },
       },
       {
-        label: t('granVideoEditor.monitor.toolbarRight', 'Панель справа'),
+        label: t('fastcat.monitor.toolbarRight', 'Панель справа'),
         icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           if (projectStore.projectSettings.monitor) {
@@ -340,7 +340,7 @@ const contextMenuItems = computed(() => {
         },
       },
       {
-        label: t('granVideoEditor.monitor.toolbarBottom', 'Панель снизу'),
+        label: t('fastcat.monitor.toolbarBottom', 'Панель снизу'),
         icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           if (projectStore.projectSettings.monitor) {
@@ -349,7 +349,7 @@ const contextMenuItems = computed(() => {
         },
       },
       {
-        label: t('granVideoEditor.monitor.toolbarLeft', 'Панель слева'),
+        label: t('fastcat.monitor.toolbarLeft', 'Панель слева'),
         icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           if (projectStore.projectSettings.monitor) {
@@ -474,7 +474,7 @@ const emit = defineEmits<{
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
           <UTooltip
-            :text="t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead')"
+            :text="t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead')"
           >
             <UButton
               size="2xs"
@@ -485,7 +485,7 @@ const emit = defineEmits<{
             />
           </UTooltip>
 
-          <UTooltip :text="t('granVideoEditor.monitor.center', 'Center')">
+          <UTooltip :text="t('fastcat.monitor.center', 'Center')">
             <UButton
               size="2xs"
               color="neutral"
@@ -495,7 +495,7 @@ const emit = defineEmits<{
             />
           </UTooltip>
 
-          <UTooltip :text="t('granVideoEditor.monitor.resetZoom', 'Reset zoom')">
+          <UTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
             <UButton
               size="xs"
               color="neutral"
@@ -506,7 +506,7 @@ const emit = defineEmits<{
             />
           </UTooltip>
 
-          <UTooltip :text="t('granVideoEditor.monitor.useProxy', 'Use proxy')">
+          <UTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
             <UButton
               v-if="projectStore.projectSettings.monitor"
               size="xs"
@@ -520,8 +520,8 @@ const emit = defineEmits<{
           <UTooltip
             :text="
               previewEffectsEnabled
-                ? t('granVideoEditor.monitor.previewWithEffects', 'Preview with effects')
-                : t('granVideoEditor.monitor.previewWithoutEffects', 'Preview without effects')
+                ? t('fastcat.monitor.previewWithEffects', 'Preview with effects')
+                : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')
             "
           >
             <UButton
@@ -531,8 +531,8 @@ const emit = defineEmits<{
               :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
               :label="
                 previewEffectsEnabled
-                  ? t('granVideoEditor.monitor.withEffects', 'With effects')
-                  : t('granVideoEditor.monitor.withoutEffects', 'Without effects')
+                  ? t('fastcat.monitor.withEffects', 'With effects')
+                  : t('fastcat.monitor.withoutEffects', 'Without effects')
               "
               @click="togglePreviewEffects"
             />
@@ -564,7 +564,7 @@ const emit = defineEmits<{
                   v-if="(modelValue as any)?.isProject"
                   name="i-heroicons-star-20-solid"
                   class="w-3 h-3 text-primary-500 shrink-0"
-                  :title="t('granVideoEditor.monitor.projectResolutionHint')"
+                  :title="t('fastcat.monitor.projectResolutionHint')"
                 />
                 <span v-else class="w-3 h-3 shrink-0"></span>
               </template>
@@ -588,7 +588,7 @@ const emit = defineEmits<{
                   "
                   name="i-heroicons-star-20-solid"
                   class="w-3 h-3 text-primary-500 shrink-0"
-                  :title="t('granVideoEditor.monitor.projectResolutionHint')"
+                  :title="t('fastcat.monitor.projectResolutionHint')"
                 />
               </template>
             </USelectMenu>
@@ -610,7 +610,7 @@ const emit = defineEmits<{
             color="neutral"
             variant="ghost"
             icon="i-heroicons-arrows-pointing-out"
-            :title="t('granVideoEditor.monitor.fullscreen', 'Fullscreen')"
+            :title="t('fastcat.monitor.fullscreen', 'Fullscreen')"
             @click="projectStore.goToFullscreen()"
           />
         </div>
@@ -620,7 +620,7 @@ const emit = defineEmits<{
           variant="ghost"
           color="neutral"
           icon="i-heroicons-arrow-uturn-left"
-          :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
+          :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
           :disabled="!canInteractPlayback"
           @click="rewindToStart"
         />
@@ -630,7 +630,7 @@ const emit = defineEmits<{
           variant="ghost"
           color="neutral"
           icon="i-heroicons-backward"
-          :aria-label="t('granVideoEditor.monitor.playBackward', 'Play backward')"
+          :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
           :disabled="!canInteractPlayback"
           @click="
             setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
@@ -643,7 +643,7 @@ const emit = defineEmits<{
           variant="solid"
           color="primary"
           :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
-          :aria-label="t('granVideoEditor.monitor.play', 'Play')"
+          :aria-label="t('fastcat.monitor.play', 'Play')"
           :disabled="!canInteractPlayback"
           @click="
             setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })

@@ -58,7 +58,7 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): s
   const needS = tr.durationUs / 1e6;
   const clipDurS = item.timelineRange.durationUs / 1e6;
   if (clipDurS < needS) {
-    return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+    return t('fastcat.timeline.transition.errorClipTooShort', {
       need: needS.toFixed(2),
       have: clipDurS.toFixed(2),
     });
@@ -68,18 +68,18 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): s
     const prev = getPrevClipForItem(track, item);
     if (!prev)
       return t(
-        'granVideoEditor.timeline.transition.errorNoPreviousClip',
+        'fastcat.timeline.transition.errorNoPreviousClip',
         'No previous clip found for transition',
       );
     const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
     const gapUs = item.timelineRange.startUs - prevEndUs;
     if (gapUs > 1_000)
-      return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
+      return t('fastcat.timeline.transition.errorGapBetweenClips', {
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
     const prevTailHandleUs = getClipTailHandleUs(prev);
     if (Number.isFinite(prevTailHandleUs) && prevTailHandleUs < tr.durationUs - 1_000) {
-      return t('granVideoEditor.timeline.transition.errorPrevHandleTooShort', {
+      return t('fastcat.timeline.transition.errorPrevHandleTooShort', {
         needSeconds: needS.toFixed(2),
         haveSeconds: Math.max(0, prevTailHandleUs / 1e6).toFixed(2),
       });
@@ -99,7 +99,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
   const clipDurS = item.timelineRange.durationUs / 1e6;
   const needS = tr.durationUs / 1e6;
   if (clipDurS < needS) {
-    return t('granVideoEditor.timeline.transition.errorClipTooShort', {
+    return t('fastcat.timeline.transition.errorClipTooShort', {
       need: needS.toFixed(2),
       have: clipDurS.toFixed(2),
     });
@@ -109,18 +109,18 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
     const next = getNextClipForItem(track, item);
     if (!next)
       return t(
-        'granVideoEditor.timeline.transition.errorNoNextClip',
+        'fastcat.timeline.transition.errorNoNextClip',
         'No next clip found for transition',
       );
     const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
     if (gapUs > 1_000)
-      return t('granVideoEditor.timeline.transition.errorGapBetweenClips', {
+      return t('fastcat.timeline.transition.errorGapBetweenClips', {
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
     const nextHeadHandleUs = getClipHeadHandleUs(next);
     if (Number.isFinite(nextHeadHandleUs) && nextHeadHandleUs < tr.durationUs - 1_000)
-      return t('granVideoEditor.timeline.transition.errorNextHandleTooShort', {
+      return t('fastcat.timeline.transition.errorNextHandleTooShort', {
         needSeconds: needS.toFixed(2),
         haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
       });

@@ -152,16 +152,16 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
     {
       key: 'mode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramMode',
+      labelKey: 'fastcat.timeline.transition.paramMode',
       options: [
-        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.modeBloom' },
-        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.modeNormal' },
+        { value: 'bloom', labelKey: 'fastcat.timeline.transition.modeBloom' },
+        { value: 'normal', labelKey: 'fastcat.timeline.transition.modeNormal' },
       ],
     },
     {
       key: 'brightness',
       kind: 'slider',
-      labelKey: 'granVideoEditor.timeline.transition.paramBrightness',
+      labelKey: 'fastcat.timeline.transition.paramBrightness',
       min: 0.1,
       max: 5.0,
       step: 0.1,
@@ -169,7 +169,7 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
     {
       key: 'blurLevel',
       kind: 'slider',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlur',
+      labelKey: 'fastcat.timeline.transition.paramBlur',
       min: 0.0,
       max: 3.0,
       step: 0.1,

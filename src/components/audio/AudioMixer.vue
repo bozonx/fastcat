@@ -61,7 +61,7 @@ function focusTrack(trackId: string) {
   >
     <div class="px-4 py-2 border-b border-ui-border bg-ui-bg-elevated shrink-0">
       <h3 class="font-medium text-sm text-ui-text">
-        {{ t('granVideoEditor.audioMixer.title', 'Микшер') }}
+        {{ t('fastcat.audioMixer.title', 'Микшер') }}
       </h3>
     </div>
 

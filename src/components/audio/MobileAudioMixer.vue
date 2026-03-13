@@ -121,7 +121,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
         <div class="flex items-start justify-between gap-3">
           <div>
             <p class="text-xs uppercase tracking-[0.18em] text-slate-500">
-              {{ t('granVideoEditor.audioMixer.title', 'Mixer') }}
+              {{ t('fastcat.audioMixer.title', 'Mixer') }}
             </p>
             <h2 class="mt-1 text-base font-semibold text-white">Master output</h2>
           </div>

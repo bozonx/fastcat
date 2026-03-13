@@ -188,7 +188,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
 
     if (
       !types.includes('application/json') &&
-      !types.includes('gran-item') &&
+      !types.includes('fastcat-item') &&
       !types.includes('Files')
     ) {
       clearDragPreview();
@@ -349,11 +349,11 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         await timelineStore.requestTimelineSave({ immediate: true });
         toast.add({
           color: 'green',
-          title: t('granVideoEditor.timeline.clipAdded'),
+          title: t('fastcat.timeline.clipAdded'),
           description:
             addedCount === 1
-              ? t('granVideoEditor.timeline.oneClipAdded')
-              : t('granVideoEditor.timeline.multipleClipsAdded', { count: addedCount }),
+              ? t('fastcat.timeline.oneClipAdded')
+              : t('fastcat.timeline.multipleClipsAdded', { count: addedCount }),
         });
         void timelineMediaUsageStore.refreshUsage();
       }

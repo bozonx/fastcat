@@ -43,7 +43,7 @@ function hasEffects(effects: AudioEffectManifest<any>[]) {
 }
 
 function onDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('gran-effect')) {
+  if (e.dataTransfer?.types.includes('fastcat-effect')) {
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
@@ -51,7 +51,7 @@ function onDragOver(e: DragEvent) {
 }
 
 function onDrop(e: DragEvent) {
-  const effectType = e.dataTransfer?.getData('gran-effect');
+  const effectType = e.dataTransfer?.getData('fastcat-effect');
   if (!effectType) return;
   e.preventDefault();
   e.stopPropagation();
@@ -140,7 +140,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
   >
     <div class="flex items-center justify-between">
       <span class="font-medium text-ui-text">
-        {{ t('granVideoEditor.effects.audioTitle', 'Audio effects') }}
+        {{ t('fastcat.effects.audioTitle', 'Audio effects') }}
       </span>
       <UButton
         size="xs"
@@ -149,12 +149,12 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         icon="i-heroicons-plus"
         @click="isSelectModalOpen = true"
       >
-        {{ t('granVideoEditor.effects.add', 'Add') }}
+        {{ t('fastcat.effects.add', 'Add') }}
       </UButton>
     </div>
 
     <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
-      {{ t('granVideoEditor.effects.empty', 'No effects') }}
+      {{ t('fastcat.effects.empty', 'No effects') }}
     </div>
 
     <VueDraggable
@@ -190,7 +190,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
               variant="ghost"
               color="primary"
               icon="i-heroicons-bookmark"
-              :title="t('granVideoEditor.effects.saveAsPreset', 'Save as preset')"
+              :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
               @click="openSaveModal(effect.id)"
             />
             <UButton
@@ -234,14 +234,14 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
     <UModal
       v-model:open="isSaveModalOpen"
-      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
             <UInput
               v-model="newPresetName"
-              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
               @keyup.enter="handleSavePreset"
             />

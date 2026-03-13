@@ -5,14 +5,14 @@ import { createAutoSave } from '~/utils/autoSave';
 import {
   createDefaultProjectSettings,
   normalizeProjectSettings,
-  type GranVideoEditorProjectSettings,
+  type FastCatProjectSettings,
 } from '~/utils/project-settings';
 import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;
-  save(data: GranVideoEditorProjectSettings): Promise<void>;
+  save(data: FastCatProjectSettings): Promise<void>;
 }
 
 export const useProjectSettingsStore = defineStore('projectSettings', () => {
@@ -20,7 +20,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
   const projectSettingsRepo = ref<ProjectSettingsRepo | null>(null);
 
-  const projectSettings = ref<GranVideoEditorProjectSettings>(
+  const projectSettings = ref<FastCatProjectSettings>(
     createDefaultProjectSettings(workspaceStore.userSettings),
   );
   const isLoadingProjectSettings = ref(false);

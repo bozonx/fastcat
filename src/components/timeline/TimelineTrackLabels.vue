@@ -107,7 +107,7 @@ function getTrackContextMenuItems(track: TimelineTrack) {
   return [
     [
       {
-        label: t(`granVideoEditor.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackAbove`),
+        label: t(`fastcat.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackAbove`),
         icon: kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
         onSelect: () =>
           timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, {
@@ -115,7 +115,7 @@ function getTrackContextMenuItems(track: TimelineTrack) {
           }),
       },
       {
-        label: t(`granVideoEditor.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackBelow`),
+        label: t(`fastcat.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackBelow`),
         icon: kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
         onSelect: () =>
           timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, {
@@ -125,14 +125,14 @@ function getTrackContextMenuItems(track: TimelineTrack) {
     ],
     [
       {
-        label: t('granVideoEditor.timeline.renameTrack'),
+        label: t('fastcat.timeline.renameTrack'),
         icon: 'i-heroicons-pencil',
         onSelect: () => {
           timelineStore.renamingTrackId = track.id;
         },
       },
       {
-        label: t('granVideoEditor.timeline.deleteTrack'),
+        label: t('fastcat.timeline.deleteTrack'),
         icon: 'i-heroicons-trash',
         onSelect: () => requestDeleteTrack(track),
       },
@@ -143,7 +143,7 @@ function getTrackContextMenuItems(track: TimelineTrack) {
 const emptyAreaContextMenuItems = [
   [
     {
-      label: t('granVideoEditor.timeline.addVideoTrack'),
+      label: t('fastcat.timeline.addVideoTrack'),
       icon: 'i-heroicons-video-camera',
       onSelect: () =>
         timelineStore.addTrack(
@@ -152,7 +152,7 @@ const emptyAreaContextMenuItems = [
         ),
     },
     {
-      label: t('granVideoEditor.timeline.addAudioTrack'),
+      label: t('fastcat.timeline.addAudioTrack'),
       icon: 'i-heroicons-musical-note',
       onSelect: () =>
         timelineStore.addTrack(
@@ -165,8 +165,8 @@ const emptyAreaContextMenuItems = [
 
 function addTextClip() {
   timelineStore.addTextClipAtPlayhead({
-    name: t('granVideoEditor.timeline.textClipDefaultName'),
-    text: t('granVideoEditor.timeline.textClipDefaultText'),
+    name: t('fastcat.timeline.textClipDefaultName'),
+    text: t('fastcat.timeline.textClipDefaultText'),
   });
 }
 
@@ -219,10 +219,10 @@ function toggleClipSnapMode() {
     <UiConfirmModal
       v-if="selectedTrack"
       v-model:open="isConfirmDeleteOpen"
-      :title="t('granVideoEditor.timeline.deleteTrackTitle', 'Delete track?')"
+      :title="t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
       :description="
         t(
-          'granVideoEditor.timeline.deleteTrackDescription',
+          'fastcat.timeline.deleteTrackDescription',
           'Track is not empty. This action cannot be undone.',
         )
       "

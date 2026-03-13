@@ -37,13 +37,13 @@ const showLowSpeedWarning = computed(
 <template>
   <AppModal
     v-model:open="isOpen"
-    :title="t('granVideoEditor.timeline.speedModalTitle')"
-    :description="t('granVideoEditor.timeline.speedModalDescription')"
+    :title="t('fastcat.timeline.speedModalTitle')"
+    :description="t('fastcat.timeline.speedModalDescription')"
     :ui="{ content: 'sm:max-w-md' }"
   >
     <div class="flex flex-col gap-3">
       <div class="flex items-center justify-between gap-3">
-        <span class="text-sm text-ui-text">{{ t('granVideoEditor.timeline.speedValue') }}</span>
+        <span class="text-sm text-ui-text">{{ t('fastcat.timeline.speedValue') }}</span>
         <span class="text-sm font-mono text-ui-text-muted">{{ speed.toFixed(2) }}</span>
       </div>
 
@@ -53,16 +53,16 @@ const showLowSpeedWarning = computed(
         v-if="showNegativeSpeedAudioWarning"
         color="warning"
         variant="subtle"
-        :title="t('granVideoEditor.timeline.negativeSpeedAudioUnsupportedTitle')"
-        :description="t('granVideoEditor.timeline.negativeSpeedAudioUnsupportedDescription')"
+        :title="t('fastcat.timeline.negativeSpeedAudioUnsupportedTitle')"
+        :description="t('fastcat.timeline.negativeSpeedAudioUnsupportedDescription')"
       />
 
       <UAlert
         v-if="showLowSpeedWarning"
         color="warning"
         variant="subtle"
-        :title="t('granVideoEditor.timeline.speedTooLowTitle')"
-        :description="t('granVideoEditor.timeline.speedTooLowDescription')"
+        :title="t('fastcat.timeline.speedTooLowTitle')"
+        :description="t('fastcat.timeline.speedTooLowDescription')"
       />
     </div>
 

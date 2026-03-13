@@ -43,7 +43,7 @@ const imageStyle = computed(() => ({
 const contextMenuItems = computed(() => [
   [
     {
-      label: t('granVideoEditor.preview.resetZoom', 'Reset Zoom & Pan'),
+      label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => reset(),
       click: () => reset(),
@@ -78,7 +78,7 @@ watch(
   (trigger) => {
     if (!trigger.timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
 
-    onCustomZoom(new CustomEvent('gran-zoom', { detail: { dir: trigger.dir, target: 'preview' } }));
+    onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: trigger.dir, target: 'preview' } }));
   },
   { deep: true },
 );
