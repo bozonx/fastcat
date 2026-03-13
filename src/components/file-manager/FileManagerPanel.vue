@@ -23,6 +23,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFileManagerPanelPendingActions } from '~/composables/fileManager/useFileManagerPanelPendingActions';
+import { useFileManagerPanelBootstrap } from '~/composables/fileManager/useFileManagerPanelBootstrap';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
@@ -452,27 +453,10 @@ useFileManagerPanelPendingActions({
   createOtioVersion: (entry) => onFileActionBase('createOtioVersion', entry),
 });
 
-watch(
-  () => projectStore.currentProjectName,
-  async (name) => {
-    if (name) {
-      uiStore.restoreFileTreeStateOnce(name);
-    }
-    await loadProjectDirectory();
-
-    if (name) {
-      const rootEntry: FsEntry = {
-        kind: 'directory',
-        name,
-        path: '',
-      };
-      uiStore.selectedFsEntry = rootEntry;
-      selectionStore.selectFsEntry(rootEntry);
-      emit('select', rootEntry);
-    }
-  },
-  { immediate: true },
-);
+useFileManagerPanelBootstrap({
+  loadProjectDirectory,
+  onRootEntrySelected: (entry) => emit('select', entry),
+});
 
 // Sync: refresh the tree when needed
 // (Removed watch on fileManagerUpdateCounter to prevent full tree reloads.

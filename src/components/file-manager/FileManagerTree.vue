@@ -11,8 +11,7 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
   getMediaTypeFromFilename,
   isOpenableProjectFileName,
@@ -154,6 +153,47 @@ function getEntryIconClass(entry: FsEntry): string {
   if (IMAGE_EXTENSIONS.includes(ext)) return 'text-sky-400/90';
   if (TIMELINE_EXTENSIONS.includes(ext) || TEXT_EXTENSIONS.includes(ext)) return 'text-amber-400/90';
   return 'text-ui-text-muted';
+}
+
+interface EntryViewModel {
+  selected: boolean;
+  isDot: boolean;
+  isCommonRoot: boolean;
+  iconClass: string;
+  nameClass: string;
+  meta: ReturnType<typeof ctx.getEntryMeta>;
+  showChevron: boolean;
+}
+
+function getEntryViewModel(entry: FsEntry): EntryViewModel {
+  const meta = getEntryMeta(entry);
+  const selected = isSelected(entry);
+  const isDot = isDotEntry(entry);
+  const isCommonRoot = isWorkspaceCommonRoot(entry);
+  const iconBase = getEntryIconClass(entry);
+  const generatingDir = isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);
+
+  const iconClass = [iconBase, meta.hasProxy ? 'text-(--color-success)!' : '']
+    .filter(Boolean)
+    .join(' ');
+
+  const nameClass = [
+    selected
+      ? 'font-medium text-ui-text group-hover:text-ui-text'
+      : 'text-ui-text group-hover:text-ui-text',
+    isCommonRoot ? 'text-violet-300 group-hover:text-violet-200' : '',
+    isDot ? 'opacity-30' : '',
+    meta.hasProxy && !meta.generatingProxy ? 'text-(--color-success)!' : '',
+    meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const showChevron =
+    entry.kind === 'directory' &&
+    (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
+
+  return { selected, isDot, isCommonRoot, iconClass, nameClass, meta, showChevron };
 }
 
 function isVideo(entry: FsEntry): boolean {
@@ -375,110 +415,27 @@ const { getContextMenuItems } = useFileContextMenu(
       <li v-if="!foldersOnly || entry.kind === 'directory'">
         <!-- Row -->
         <UContextMenu :items="getContextMenuItems(entry)">
-          <div
-            class="flex items-center gap-1.5 py-1 pr-2 rounded cursor-pointer hover:bg-ui-bg-hover transition-colors group min-w-fit"
-            :data-entry-path="entry.path ?? undefined"
-            :style="{ paddingLeft: `${8 + depth * 14}px` }"
-            :class="[
-              isDragOver === entry.path
-                ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
-                : '',
-              isSelected(entry)
-                ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1'
-                : '',
-            ]"
-            :draggable="true"
-            :aria-selected="isSelected(entry)"
-            :aria-expanded="entry.kind === 'directory' ? entry.expanded : undefined"
-            :aria-level="depth + 1"
-            role="treeitem"
-            tabindex="0"
-            @keydown.enter.prevent="onEntryEnter($event, entry)"
-            @keydown.space.prevent="onEntryEnter($event, entry)"
+          <FileManagerTreeRow
+            :entry="entry"
+            :depth="depth"
+            :is-drag-over="isDragOver === entry.path"
+            :editing-entry-path="editingEntryPath"
+            :existing-names="(entries || []).map((e) => e.name)"
+            :file-icon="ctx.getFileIcon(entry)"
+            v-bind="getEntryViewModel(entry)"
+            @click="onEntryClick($event, entry)"
+            @dblclick="emit('action', 'rename', entry)"
+            @keydown-enter="onEntryEnter($event, entry)"
+            @keydown-space="onEntryEnter($event, entry)"
             @dragstart="onDragStart($event, entry)"
             @dragend="onDragEnd()"
-            @dragover.prevent="onDragOverDir($event, entry)"
-            @dragleave.prevent="onDragLeaveDir($event, entry)"
-            @drop.prevent="onDropDir($event, entry)"
-            @click="onEntryClick($event, entry)"
-            @dblclick.stop="emit('action', 'rename', entry)"
-          >
-            <!-- Chevron for directories -->
-            <UIcon
-              v-if="
-                entry.kind === 'directory' &&
-                (!foldersOnly ||
-                  !entry.children ||
-                  entry.children.some((c) => c.kind === 'directory'))
-              "
-              name="i-heroicons-chevron-right"
-              class="w-3.5 h-3.5 text-ui-text-muted shrink-0 transition-transform duration-150"
-              :class="{ 'rotate-90': entry.expanded }"
-              :aria-hidden="true"
-              @click="onCaretClick($event, entry)"
-            />
-            <span v-else class="w-3.5 shrink-0" />
-
-            <!-- File / folder icon -->
-            <div class="w-4 shrink-0 flex items-center justify-center">
-              <div
-                class="h-4 flex items-center justify-center"
-                :class="[
-                  getEntryMeta(entry).isUsedInTimeline ? 'border-b-2 border-red-500' : '',
-                ]"
-              >
-                <div
-                  v-if="getEntryMeta(entry).generatingProxy"
-                  class="w-4 h-4 shrink-0 relative flex items-center justify-center"
-                  :title="`${getEntryMeta(entry).proxyProgress ?? 0}%`"
-                >
-                  <ProgressSpinner
-                    :progress="getEntryMeta(entry).proxyProgress ?? 0"
-                    size="sm"
-                  />
-                </div>
-                <UIcon
-                  v-else
-                  :name="ctx.getFileIcon(entry)"
-                  class="w-4 h-4 shrink-0 transition-colors"
-                  :class="[
-                    getEntryIconClass(entry),
-                    getEntryMeta(entry).hasProxy ? 'text-(--color-success)!' : '',
-                  ]"
-                />
-              </div>
-            </div>
-
-            <!-- Name -->
-            <InlineNameEditor
-              v-if="editingEntryPath === entry.path"
-              :initial-name="entry.name"
-              :is-folder="entry.kind === 'directory'"
-              :existing-names="(entries || []).map((e) => e.name)"
-              @save="(name) => emit('commitRename', entry, name)"
-              @cancel="emit('stopRename')"
-            />
-            <span
-              v-else
-              class="text-sm truncate transition-colors"
-              :class="[
-                isSelected(entry)
-                  ? 'font-medium text-ui-text group-hover:text-ui-text'
-                  : 'text-ui-text group-hover:text-ui-text',
-                isWorkspaceCommonRoot(entry) ? 'text-violet-300 group-hover:text-violet-200' : '',
-                isDotEntry(entry) ? 'opacity-30' : '',
-                getEntryMeta(entry).hasProxy && !getEntryMeta(entry).generatingProxy
-                  ? 'text-(--color-success)!'
-                  : '',
-                getEntryMeta(entry).generatingProxy ||
-                isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)
-                  ? 'text-amber-400!'
-                  : '',
-              ]"
-            >
-              {{ entry.name }}
-            </span>
-          </div>
+            @dragover="onDragOverDir($event, entry)"
+            @dragleave="onDragLeaveDir($event, entry)"
+            @drop="onDropDir($event, entry)"
+            @caret-click="onCaretClick($event, entry)"
+            @commit-rename="(name) => emit('commitRename', entry, name)"
+            @stop-rename="emit('stopRename')"
+          />
         </UContextMenu>
 
         <!-- Children -->
