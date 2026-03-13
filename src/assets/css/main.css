@@ -12,6 +12,32 @@
   --color-ui-text: var(--ui-text);
   --color-ui-text-muted: var(--ui-text-muted);
   --color-ui-text-disabled: var(--ui-text-disabled);
+
+  /* Clip Colors */
+  --color-clip-text: var(--clip-text);
+  --color-clip-video-bg: var(--clip-video-bg);
+  --color-clip-video-border: var(--clip-video-border);
+  --color-clip-video-bg-hover: var(--clip-video-bg-hover);
+
+  --color-clip-audio-bg: var(--clip-audio-bg);
+  --color-clip-audio-border: var(--clip-audio-border);
+  --color-clip-audio-bg-hover: var(--clip-audio-bg-hover);
+
+  --color-clip-background-bg: var(--clip-background-bg);
+  --color-clip-background-border: var(--clip-background-border);
+  --color-clip-background-bg-hover: var(--clip-background-bg-hover);
+
+  --color-clip-adjustment-bg: var(--clip-adjustment-bg);
+  --color-clip-adjustment-border: var(--clip-adjustment-border);
+  --color-clip-adjustment-bg-hover: var(--clip-adjustment-bg-hover);
+
+  --color-clip-text-bg: var(--clip-text-bg);
+  --color-clip-text-border: var(--clip-text-border);
+  --color-clip-text-bg-hover: var(--clip-text-bg-hover);
+
+  --color-overlay-bg: var(--overlay-bg);
+  --color-media-bg: var(--media-bg);
+  --color-selection-ring: var(--selection-ring);
 }
 
 /* Scrollbars */
