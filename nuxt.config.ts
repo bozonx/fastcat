@@ -8,6 +8,7 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@pinia/nuxt',
     '@nuxtjs/i18n',
+    '@nuxtjs/device',
     '@nuxt/eslint',
     ...(process.env.NODE_ENV === 'test' ? [] : ['@nuxtjs/color-mode']),
   ],
