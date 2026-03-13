@@ -5,6 +5,7 @@ import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import { getAllAudioEffectManifests, getAudioEffectManifest } from '~/effects';
 import type { AudioEffectManifest } from '~/effects';
 import type { AudioClipEffect } from '~/timeline/types';
+import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
   effects?: AudioClipEffect[];
@@ -15,14 +16,25 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const presetsStore = usePresetsStore();
 
 const isSelectModalOpen = ref(false);
+const isSaveModalOpen = ref(false);
+const newPresetName = ref('');
+const savingEffectId = ref<string | null>(null);
 
 const safeEffects = computed(() => props.effects ?? []);
 
 const availableEffects = computed(() => getAllAudioEffectManifests());
-const basicEffects = computed(() => availableEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'));
-const voiceEffects = computed(() => availableEffects.value.filter((effect) => effect.category === 'voice'));
+const basicEffects = computed(() =>
+  availableEffects.value.filter(
+    (effect) => !effect.isCustom && (effect.category ?? 'basic') === 'basic',
+  ),
+);
+const voiceEffects = computed(() =>
+  availableEffects.value.filter((effect) => !effect.isCustom && effect.category === 'voice'),
+);
+const customEffects = computed(() => availableEffects.value.filter((effect) => effect.isCustom));
 
 function hasEffects(effects: AudioEffectManifest<any>[]) {
   return effects.length > 0;
@@ -73,6 +85,34 @@ function handleUpdateEffect(effectId: string, updates: Partial<AudioClipEffect>)
 
 function handleRemoveEffect(effectId: string) {
   setEffects(safeEffects.value.filter((e) => e.id !== effectId));
+}
+
+function handleSavePreset() {
+  if (!savingEffectId.value || !newPresetName.value.trim()) return;
+
+  const effect = safeEffects.value.find((e) => e.id === savingEffectId.value);
+  if (!effect) return;
+
+  const manifest = getAudioEffectManifest(effect.type);
+  if (!manifest) return;
+
+  const baseType = manifest.baseType || manifest.type;
+  const paramsToSave = { ...effect };
+  delete (paramsToSave as any).id;
+  delete (paramsToSave as any).type;
+  delete (paramsToSave as any).enabled;
+  delete (paramsToSave as any).target;
+
+  presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), paramsToSave, 'audio');
+
+  isSaveModalOpen.value = false;
+  newPresetName.value = '';
+  savingEffectId.value = null;
+}
+
+function openSaveModal(effectId: string) {
+  savingEffectId.value = effectId;
+  isSaveModalOpen.value = true;
 }
 
 function handleUpdateEffectValue(effectId: string, key: string, value: unknown) {
@@ -136,13 +176,23 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
               {{ getAudioEffectManifest(effect.type)?.name || effect.type }}
             </span>
           </div>
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="red"
-            icon="i-heroicons-trash"
-            @click="handleRemoveEffect(effect.id)"
-          />
+          <div class="flex items-center gap-1">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="primary"
+              icon="i-heroicons-bookmark"
+              :title="t('granVideoEditor.effects.saveAsPreset', 'Save as preset')"
+              @click="openSaveModal(effect.id)"
+            />
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="red"
+              icon="i-heroicons-trash"
+              @click="handleRemoveEffect(effect.id)"
+            />
+          </div>
         </div>
 
         <div class="space-y-3 pl-6">
@@ -156,6 +206,8 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
       </div>
     </VueDraggable>
 
+    <SelectEffectModal v-model:open="isSelectModalOpen" @select="handleAddEffect" />
+
     <UModal
       v-model:open="isSelectModalOpen"
       :title="t('granVideoEditor.effects.addAudioEffect', 'Add audio effect')"
@@ -164,7 +216,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         <div class="space-y-4">
           <div>
             <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-              {{ t('granVideoEditor.effects.groups.standard', 'Основные') }}
+              {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
             </h4>
             <div v-if="hasEffects(basicEffects)" class="grid grid-cols-1 gap-2">
               <div
@@ -183,13 +235,34 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
             </div>
           </div>
 
-          <div>
+          <div v-if="hasEffects(voiceEffects)">
             <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
               {{ t('granVideoEditor.effects.groups.voice', 'Голос') }}
             </h4>
-            <div v-if="hasEffects(voiceEffects)" class="grid grid-cols-1 gap-2">
+            <div class="grid grid-cols-1 gap-2">
               <div
                 v-for="manifest in voiceEffects"
+                :key="manifest.type"
+                class="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated cursor-pointer transition-colors"
+                @click="handleAddEffect(manifest.type)"
+              >
+                <UIcon :name="manifest.icon" class="w-8 h-8 text-primary shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <h4 class="text-sm font-medium text-ui-text">{{ manifest.name }}</h4>
+                  <p class="text-xs text-ui-text-muted mt-1">{{ manifest.description }}</p>
+                </div>
+                <UIcon name="i-heroicons-plus-circle" class="w-5 h-5 text-ui-text-muted" />
+              </div>
+            </div>
+          </div>
+
+          <div v-if="hasEffects(customEffects)">
+            <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+              {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
+            </h4>
+            <div class="grid grid-cols-1 gap-2">
+              <div
+                v-for="manifest in customEffects"
                 :key="manifest.type"
                 class="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated cursor-pointer transition-colors"
                 @click="handleAddEffect(manifest.type)"
@@ -210,6 +283,32 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
           <UButton color="neutral" variant="ghost" @click="isSelectModalOpen = false">
             {{ t('common.cancel', 'Cancel') }}
           </UButton>
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="isSaveModalOpen"
+      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+    >
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <UFormField :label="t('common.name', 'Name')">
+            <UInput
+              v-model="newPresetName"
+              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              autofocus
+              @keyup.enter="handleSavePreset"
+            />
+          </UFormField>
+          <div class="flex justify-end gap-2">
+            <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+              {{ t('common.cancel', 'Cancel') }}
+            </UButton>
+            <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
+              {{ t('common.save', 'Save') }}
+            </UButton>
+          </div>
         </div>
       </template>
     </UModal>
