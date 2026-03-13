@@ -583,7 +583,12 @@
       "openLast": "Open Project",
       "newProject": "New Project",
       "projectNamePlaceholder": "Project Name",
-      "mobileView": "Project management is not best experienced on small screens. Please use a desktop browser."
+      "mobileView": "Project management is not best experienced on small screens. Please use a desktop browser.",
+      "searchPlaceholder": "Search projects...",
+      "noProjectsFound": "No projects found",
+      "recentProjects": "Recent Projects",
+      "openLastProject": "Open Last Project",
+      "renameProject": "Rename Project"
     },
     "preview": {
       "unsupported": "Unsupported file format",

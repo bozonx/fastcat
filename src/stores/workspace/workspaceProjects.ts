@@ -17,6 +17,7 @@ export interface WorkspaceProjectsModule {
   clearVardata: () => Promise<void>;
   clearProjectVardata: (projectId: string) => Promise<void>;
   deleteProject: (name: string, projectId?: string) => Promise<void>;
+  renameProject: (oldName: string, newName: string) => Promise<void>;
 }
 
 export function createWorkspaceProjectsModule(params: {
@@ -110,10 +111,36 @@ export function createWorkspaceProjectsModule(params: {
     }
   }
 
+  async function renameProject(oldName: string, newName: string) {
+    if (!params.projectsHandle.value) return;
+    if (oldName === newName) return;
+
+    try {
+      const oldHandle = await params.projectsHandle.value.getDirectoryHandle(oldName);
+      // modern File System Access API supports move()
+      if (typeof (oldHandle as any).move === 'function') {
+        await (oldHandle as any).move(newName);
+      } else {
+        // Fallback or error
+        throw new Error('Directory move is not supported in this browser');
+      }
+
+      await loadProjects();
+
+      if (params.lastProjectName.value === oldName) {
+        params.lastProjectName.value = newName;
+      }
+    } catch (e: unknown) {
+      params.error.value = getErrorMessage(e, 'Failed to rename project');
+      throw e;
+    }
+  }
+
   return {
     loadProjects,
     clearVardata,
     clearProjectVardata,
     deleteProject,
+    renameProject,
   };
 }
