@@ -774,8 +774,8 @@ const selectionRangeMenuItems = computed(() => [
         :style="{ ...playheadStyle, willChange: 'transform' }"
       >
         <div
-          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-t-0 border-b-[10px] border-l-transparent border-r-transparent"
-          :style="{ borderBottomColor: 'var(--color-primary-500, #3b82f6)' }"
+          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-0 border-t-[10px] border-l-transparent border-r-transparent"
+          :style="{ borderTopColor: 'var(--color-primary-500, #3b82f6)' }"
         />
         <div
           class="absolute left-0 bottom-0 -translate-x-1/2 w-px h-px"

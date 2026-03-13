@@ -142,9 +142,5 @@ function resetDefaults() {
         @click="isClearWorkspaceVardataConfirmOpen = true"
       />
     </div>
-
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.workspaceSavedNote', 'Saved to .gran/workspace.settings.json') }}
-    </div>
   </div>
 </template>

@@ -11,9 +11,12 @@ import {
   DRAG_ACTIONS,
   SHIFT_CLICK_ACTIONS,
 } from '~/utils/mouse';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+const isResetConfirmOpen = ref(false);
 
 const rulerWheelOptions = computed(() => {
   const labels: Record<string, string> = {
@@ -114,16 +117,28 @@ function resetDefaults() {
   workspaceStore.userSettings.mouse.timeline = { ...DEFAULT_USER_SETTINGS.mouse.timeline };
   workspaceStore.userSettings.mouse.trackHeaders = { ...DEFAULT_USER_SETTINGS.mouse.trackHeaders };
   workspaceStore.userSettings.mouse.monitor = { ...DEFAULT_USER_SETTINGS.mouse.monitor };
+  isResetConfirmOpen.value = false;
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
+    <UiConfirmModal
+      v-model:open="isResetConfirmOpen"
+      :title="t('videoEditor.settings.resetMouseSettingsConfirmTitle', 'Reset mouse settings?')"
+      :description="t('videoEditor.settings.resetMouseSettingsConfirmDesc', 'This will restore all mouse actions to their default values.')"
+      :confirm-text="t('videoEditor.settings.resetMouseSettingsConfirmAction', 'Reset')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="resetDefaults"
+    />
+
     <div class="flex items-center justify-between gap-3 px-1">
       <div class="text-sm font-semibold text-ui-text">
         {{ t('videoEditor.settings.userMouse', 'Mouse') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
+      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>

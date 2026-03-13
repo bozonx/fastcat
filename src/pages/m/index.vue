@@ -45,7 +45,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
           color="neutral"
           icon="lucide:monitor"
           to="/?mode=desktop"
-          :label="t('granVideoEditor.projects.mobileView').split('.')[0]"
+          :label="t('granVideoEditor.projects.switchToDesktop')"
         />
         <UButton
           size="sm"

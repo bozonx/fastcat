@@ -160,12 +160,6 @@ async function resetToDefaults() {
     />
 
     <div class="space-y-6">
-      <div class="text-xs text-ui-text-muted">
-        {{
-          t('videoEditor.projectSettings.note', 'Settings are saved to .gran/project.settings.json')
-        }}
-      </div>
-
       <!-- Resolution & FPS Settings -->
       <div class="space-y-4">
         <h3 class="text-lg font-semibold text-ui-text">
