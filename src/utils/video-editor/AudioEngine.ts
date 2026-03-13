@@ -8,7 +8,7 @@ import {
   type AudioFadeCurve,
   type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
-import { getAudioEffectManifest, isAudioEffectNodeGraph } from '~/effects/core/registry';
+import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import type { AudioClipEffect } from '~/timeline/types';
@@ -44,6 +44,7 @@ export class AudioEngine {
   private decodedCache = new Map<string, AudioBuffer | null>();
   private decodeInFlight = new Map<string, Promise<AudioBuffer | null>>();
   private activeNodes = new Set<AudioBufferSourceNode>();
+  private activeCleanups = new Map<AudioBufferSourceNode, () => void>();
   private masterGain: GainNode | null = null;
   private monitorGain: GainNode | null = null;
   private isPlaying = false;
@@ -641,48 +642,11 @@ export class AudioEngine {
       sourceOutput = panner;
     }
 
-    // Build effects graph
-    const enabledEffects = (clip.audioEffects ?? []).filter(
-      (e) => e.enabled && e.target === 'audio',
-    );
-    let effectTailNode = sourceOutput;
-
-    for (const effect of enabledEffects) {
-      const manifest = getAudioEffectManifest(effect.type);
-      if (!manifest || !manifest.createNode) continue;
-
-      const effectNode = manifest.createNode({
-        audioContext: this.ctx,
-        sourceNode: effectTailNode,
-      });
-      if (manifest.updateNode) {
-        manifest.updateNode(effectNode, effect as any, {
-          audioContext: this.ctx,
-          sourceNode: effectTailNode,
-        });
-      }
-
-      const wet =
-        typeof effect.wet === 'number' ? Math.max(0, Math.min(1, effect.wet as number)) : 1;
-
-      const dryGainNode = this.ctx.createGain();
-      dryGainNode.gain.value = 1 - wet;
-      const wetGainNode = this.ctx.createGain();
-      wetGainNode.gain.value = wet;
-
-      const outputGainNode = this.ctx.createGain();
-      const effectInput = isAudioEffectNodeGraph(effectNode) ? effectNode.input : effectNode;
-      const effectOutput = isAudioEffectNodeGraph(effectNode) ? effectNode.output : effectNode;
-
-      effectTailNode.connect(dryGainNode);
-      dryGainNode.connect(outputGainNode);
-
-      effectTailNode.connect(effectInput);
-      effectOutput.connect(wetGainNode);
-      wetGainNode.connect(outputGainNode);
-
-      effectTailNode = outputGainNode;
-    }
+    const { outputNode: effectTailNode, destroy: destroyEffects } = buildAudioEffectGraph({
+      audioContext: this.ctx,
+      sourceNode: sourceOutput,
+      effects: clip.audioEffects ?? [],
+    });
 
     effectTailNode.connect(clipGain);
 
@@ -739,9 +703,15 @@ export class AudioEngine {
     sourceNode.start(playStartS, safeBufferOffsetS, safeDurationToPlayS);
 
     this.activeNodes.add(sourceNode);
+    this.activeCleanups.set(sourceNode, destroyEffects);
 
     sourceNode.onended = () => {
       this.activeNodes.delete(sourceNode);
+      const cleanup = this.activeCleanups.get(sourceNode);
+      if (cleanup) {
+        cleanup();
+        this.activeCleanups.delete(sourceNode);
+      }
     };
   }
 
@@ -753,8 +723,19 @@ export class AudioEngine {
       } catch (e) {
         // ignore errors if already stopped
       }
+
+      const cleanup = this.activeCleanups.get(node);
+      if (cleanup) {
+        try {
+          cleanup();
+        } catch (e) {
+          // ignore cleanup errors
+        }
+        this.activeCleanups.delete(node);
+      }
     }
     this.activeNodes.clear();
+    this.activeCleanups.clear();
   }
 
   destroy() {

@@ -141,4 +141,15 @@ export const phaserManifest: AudioEffectManifest<PhaserParams> = {
     graph.lfo.frequency.value = rate;
     graph.lfoDepth.gain.value = depth;
   },
+  destroyNode(node) {
+    const graph = node as PhaserGraph;
+    try {
+      graph.lfo.stop();
+      graph.lfo.disconnect();
+      graph.feedbackGain.disconnect();
+      graph.filters.forEach((f) => f.disconnect());
+    } catch (err) {
+      // ignore
+    }
+  },
 };

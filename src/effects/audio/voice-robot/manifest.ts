@@ -114,4 +114,15 @@ export const voiceRobotManifest: AudioEffectManifest<VoiceRobotParams> = {
     graph.lfoDepth.gain.value =
       typeof values.depth === 'number' ? Math.max(0, Math.min(0.006, values.depth)) : 0.0018;
   },
+  destroyNode(node) {
+    const graph = node as VoiceRobotGraph;
+    try {
+      graph.lfo.stop();
+      graph.lfo.disconnect();
+      graph.delay.disconnect();
+      graph.feedbackGain.disconnect();
+    } catch (err) {
+      // ignore
+    }
+  },
 };

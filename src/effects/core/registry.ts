@@ -43,6 +43,7 @@ export interface AudioEffectManifest<T = Record<string, any>> extends BaseEffect
   category?: AudioEffectCategory;
   createNode?: (context: AudioEffectContext) => AudioEffectNode;
   updateNode?: (node: AudioEffectNode, values: T, context: AudioEffectContext) => void;
+  destroyNode?: (node: AudioEffectNode, context: AudioEffectContext) => void;
 }
 
 export type EffectManifest<T = Record<string, any>> =

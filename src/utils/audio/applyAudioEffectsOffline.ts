@@ -125,16 +125,18 @@ async function applyEffectsThroughOfflineContext({
   const source = offlineCtx.createBufferSource();
   source.buffer = buffer;
 
-  const currentNode = buildAudioEffectGraph({
+  const { outputNode, destroy } = buildAudioEffectGraph({
     audioContext: offlineCtx,
     sourceNode: source,
     effects,
   });
 
-  currentNode.connect(offlineCtx.destination);
+  outputNode.connect(offlineCtx.destination);
   source.start(0);
 
   const rendered = await offlineCtx.startRendering();
+
+  destroy();
 
   const currentPlanes: Float32Array[] = [];
   for (let c = 0; c < channels; c += 1) {
