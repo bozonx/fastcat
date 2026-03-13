@@ -3,7 +3,7 @@ import {
   type TranscriptionCacheRecord,
 } from '~/repositories/transcription-cache.repository';
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
-import type { GranVideoEditorUserSettings } from '~/utils/settings';
+import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 export interface SttTranscriptionRequest {
@@ -12,9 +12,9 @@ export interface SttTranscriptionRequest {
   fileName: string;
   fileType: string;
   language?: string;
-  granPublicadorBaseUrl: string;
+  fastcatPublicadorBaseUrl: string;
   projectId: string;
-  userSettings: GranVideoEditorUserSettings;
+  userSettings: FastCatUserSettings;
   workspaceHandle: FileSystemDirectoryHandle;
 }
 
@@ -92,7 +92,7 @@ function createRequestHeaders(params: {
   provider: string;
   models: string[];
   bearerToken: string;
-  settings: GranVideoEditorUserSettings['integrations']['stt'];
+  settings: FastCatUserSettings['integrations']['stt'];
   contentType?: string;
 }): Headers {
   const headers = new Headers();
@@ -130,11 +130,11 @@ export async function transcribeProjectAudioFile(
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,
-    granPublicadorBaseUrl: input.granPublicadorBaseUrl,
+    fastcatPublicadorBaseUrl: input.fastcatPublicadorBaseUrl,
   });
   const endpoint = resolveSttStreamUrl({
     userSettings: input.userSettings,
-    granPublicadorBaseUrl: input.granPublicadorBaseUrl,
+    fastcatPublicadorBaseUrl: input.fastcatPublicadorBaseUrl,
   });
 
   if (!resolvedConfig || !endpoint) {

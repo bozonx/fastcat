@@ -1,8 +1,8 @@
 import { DEFAULT_USER_SETTINGS, DEFAULT_WORKSPACE_SETTINGS } from './defaults';
 import type {
   FastCatAppSettings,
-  GranVideoEditorUserSettings,
-  GranVideoEditorWorkspaceSettings,
+  FastCatUserSettings,
+  FastCatWorkspaceSettings,
 } from './defaults';
 import {
   createDefaultExportPresets,
@@ -35,7 +35,7 @@ function normalizeStoragePathValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] {
+function normalizeHotkeys(raw: unknown): FastCatUserSettings['hotkeys'] {
   if (!raw || typeof raw !== 'object') {
     return {
       layer1: DEFAULT_USER_SETTINGS.hotkeys.layer1,
@@ -48,12 +48,12 @@ function normalizeHotkeys(raw: unknown): GranVideoEditorUserSettings['hotkeys'] 
   const layer1 =
     typeof input.layer1 === 'string' &&
     input.layer1 in { [DEFAULT_USER_SETTINGS.hotkeys.layer1]: true }
-      ? (input.layer1 as GranVideoEditorUserSettings['hotkeys']['layer1'])
+      ? (input.layer1 as FastCatUserSettings['hotkeys']['layer1'])
       : DEFAULT_USER_SETTINGS.hotkeys.layer1;
   const layer2 =
     typeof input.layer2 === 'string' &&
     input.layer2 in { [DEFAULT_USER_SETTINGS.hotkeys.layer2]: true }
-      ? (input.layer2 as GranVideoEditorUserSettings['hotkeys']['layer2'])
+      ? (input.layer2 as FastCatUserSettings['hotkeys']['layer2'])
       : DEFAULT_USER_SETTINGS.hotkeys.layer2;
   const bindingsInput = input.bindings;
   if (!bindingsInput || typeof bindingsInput !== 'object') {
@@ -194,7 +194,7 @@ function normalizeExportPresetItem(
   };
 }
 
-export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings {
+export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
   if (!raw || typeof raw !== 'object') {
     return createDefaultUserSettings();
   }
@@ -327,7 +327,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
     (optimizationInput as Record<string, unknown>).videoFrameCacheMb,
   );
   const integrationsInput = (input.integrations ?? {}) as Record<string, unknown>;
-  const granPublicadorInput = (integrationsInput.granPublicador ?? {}) as Record<string, unknown>;
+  const fastcatPublicadorInput = (integrationsInput.fastcatPublicador ?? {}) as Record<string, unknown>;
   const manualFilesApiInput = (integrationsInput.manualFilesApi ?? {}) as Record<string, unknown>;
   const manualSttApiInput = (integrationsInput.manualSttApi ?? {}) as Record<string, unknown>;
   const sttInput = (integrationsInput.stt ?? {}) as Record<string, unknown>;
@@ -347,7 +347,7 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
       : DEFAULT_USER_SETTINGS.timeline.snapThresholdPx;
 
   const rawMouse = (raw as Record<string, unknown>).mouse;
-  const normalizedMouse: GranVideoEditorUserSettings['mouse'] = {
+  const normalizedMouse: FastCatUserSettings['mouse'] = {
     ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
     timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
     trackHeaders: { ...DEFAULT_USER_SETTINGS.mouse.trackHeaders },
@@ -533,21 +533,21 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
           : DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
     },
     integrations: {
-      granPublicador: {
-        enabled: Boolean(granPublicadorInput.enabled),
-        bearerToken: normalizeTokenValue(granPublicadorInput.bearerToken),
+      fastcatPublicador: {
+        enabled: Boolean(fastcatPublicadorInput.enabled),
+        bearerToken: normalizeTokenValue(fastcatPublicadorInput.bearerToken),
       },
       manualFilesApi: {
         enabled: Boolean(manualFilesApiInput.enabled),
         baseUrl: normalizeUrlValue(manualFilesApiInput.baseUrl),
         bearerToken: normalizeTokenValue(manualFilesApiInput.bearerToken),
-        overrideGran: Boolean(manualFilesApiInput.overrideGran),
+        overrideFastCat: Boolean(manualFilesApiInput.overrideFastCat),
       },
       manualSttApi: {
         enabled: Boolean(manualSttApiInput.enabled),
         baseUrl: normalizeUrlValue(manualSttApiInput.baseUrl),
         bearerToken: normalizeTokenValue(manualSttApiInput.bearerToken),
-        overrideGran: Boolean(manualSttApiInput.overrideGran),
+        overrideFastCat: Boolean(manualSttApiInput.overrideFastCat),
       },
       stt: {
         provider:
@@ -610,6 +610,6 @@ export function normalizeAppSettings(raw: unknown): FastCatAppSettings {
   };
 }
 
-export function normalizeWorkspaceSettings(raw: unknown): GranVideoEditorWorkspaceSettings {
+export function normalizeWorkspaceSettings(raw: unknown): FastCatWorkspaceSettings {
   return normalizeAppSettings(raw);
 }

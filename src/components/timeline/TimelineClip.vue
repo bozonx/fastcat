@@ -152,8 +152,8 @@ function onClipClick(e: MouseEvent) {
 // Drag & Drop Handling for Effects/Transitions
 function hasSupportedClipDrop(e: DragEvent) {
   return (
-    e.dataTransfer?.types.includes('gran-effect') ||
-    e.dataTransfer?.types.includes('gran-transition')
+    e.dataTransfer?.types.includes('fastcat-effect') ||
+    e.dataTransfer?.types.includes('fastcat-transition')
   );
 }
 
@@ -175,8 +175,8 @@ function handleDrop(e: DragEvent) {
   isDraggingOver.value = false;
   if (!props.canEditClipContent || !clipItem.value) return;
 
-  const effectType = e.dataTransfer?.getData('gran-effect');
-  const transitionType = e.dataTransfer?.getData('gran-transition');
+  const effectType = e.dataTransfer?.getData('fastcat-effect');
+  const transitionType = e.dataTransfer?.getData('fastcat-transition');
 
   if (effectType) {
     let manifest: any = undefined;

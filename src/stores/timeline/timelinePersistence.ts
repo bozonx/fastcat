@@ -61,8 +61,8 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
         ...doc,
         metadata: {
           ...(doc.metadata ?? {}),
-          gran: {
-            ...(doc.metadata?.gran ?? {}),
+          fastcat: {
+            ...(doc.metadata?.fastcat ?? {}),
             playheadUs: deps.currentTime.value,
             masterGain: deps.masterGain.value,
             ...(deps.audioMuted ? { masterMuted: deps.audioMuted.value } : {}),
@@ -146,22 +146,22 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       deps.timelineDoc.value = parsed;
 
       if (
-        typeof parsed.metadata?.gran?.playheadUs === 'number' &&
-        Number.isFinite(parsed.metadata.gran.playheadUs)
+        typeof parsed.metadata?.fastcat?.playheadUs === 'number' &&
+        Number.isFinite(parsed.metadata.fastcat.playheadUs)
       ) {
-        deps.currentTime.value = parsed.metadata.gran.playheadUs;
+        deps.currentTime.value = parsed.metadata.fastcat.playheadUs;
       }
       if (
-        typeof parsed.metadata?.gran?.masterGain === 'number' &&
-        Number.isFinite(parsed.metadata.gran.masterGain)
+        typeof parsed.metadata?.fastcat?.masterGain === 'number' &&
+        Number.isFinite(parsed.metadata.fastcat.masterGain)
       ) {
-        deps.masterGain.value = parsed.metadata.gran.masterGain;
+        deps.masterGain.value = parsed.metadata.fastcat.masterGain;
       } else {
         deps.masterGain.value = 1;
       }
 
       if (deps.audioMuted) {
-        deps.audioMuted.value = Boolean(parsed.metadata?.gran?.masterMuted);
+        deps.audioMuted.value = Boolean(parsed.metadata?.fastcat?.masterMuted);
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);

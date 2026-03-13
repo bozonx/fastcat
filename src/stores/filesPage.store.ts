@@ -13,7 +13,7 @@ export interface FileSortOption {
   order: SortOrder;
 }
 
-const STORAGE_KEY = 'gran-video-editor:files-page';
+const STORAGE_KEY = 'fastcat:files-page';
 
 export const useFilesPageStore = defineStore('filesPage', () => {
   const selectionStore = useSelectionStore();

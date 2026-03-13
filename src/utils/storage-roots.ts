@@ -1,5 +1,5 @@
 export const FASTCAT_CONFIG_DIR_NAME = '.fastcat-config';
-export const LEGACY_WORKSPACE_CONFIG_DIR_NAME = '.gran-workspace';
+export const LEGACY_WORKSPACE_CONFIG_DIR_NAME = '.fastcat-workspace';
 
 export const FASTCAT_CONTENT_ROOT_DIR_NAME = 'FastCat';
 export const WORKSPACE_TEMP_ROOT_DIR_NAME = 'vardata';

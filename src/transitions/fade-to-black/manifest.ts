@@ -78,7 +78,7 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
     {
       key: 'color',
       kind: 'color',
-      labelKey: 'granVideoEditor.timeline.transition.paramFadeColor',
+      labelKey: 'fastcat.timeline.transition.paramFadeColor',
     },
   ],
   renderMode: 'shader',

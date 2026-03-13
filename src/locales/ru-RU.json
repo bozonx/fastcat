@@ -168,8 +168,8 @@
       "cacheLimitHelp": "Общий лимит для кэшированных данных в этой рабочей области",
       "thumbnailsLimit": "Лимит хранилища миниатюр (ГБ)",
       "thumbnailsLimitHelp": "Общий лимит для сгенерированных миниатюр в этой рабочей области",
-      "userSavedNote": "Сохранено в .gran/user.settings.json",
-      "workspaceSavedNote": "Сохранено в .gran/workspace.settings.json",
+      "userSavedNote": "Сохранено в .fastcat/user.settings.json",
+      "workspaceSavedNote": "Сохранено в .fastcat/workspace.settings.json",
       "proxyAudioBitrate": "Битрейт аудио прокси (кбит/с)",
       "proxyCopyOpusAudio": "Копировать Opus аудио напрямую без перекодирования",
       "proxyInfo": "Прокси-файлы используются для улучшения производительности воспроизведения в редакторе. Они генерируются в формате WebM с видеокодеком VP9 и аудиокодеком Opus.",
@@ -268,9 +268,9 @@
       "integrationHealthCheck": "Проверить соединение",
       "integrationHealthOk": "Соединение установлено",
       "integrationInactive": "Нет активной интеграции",
-      "integrationOverrideGran": "Переопределить настройки Gran",
+      "integrationOverrideFastCat": "Переопределить настройки FastCat",
       "integrationScopes": "Области доступа (Scopes)",
-      "integrationSourceGran": "Gran Publicador",
+      "integrationSourceFastCat": "FastCat Publicador",
       "integrationSourceManual": "Ручной API",
       "integrationStatusWaiting": "Ожидание проверки",
       "integrationSttApi": "API STT",
@@ -286,7 +286,7 @@
     },
     "projectSettings": {
       "title": "Настройки проекта",
-      "note": "Настройки сохраняются в .gran/project.settings.json",
+      "note": "Настройки сохраняются в .fastcat/project.settings.json",
       "resolutionAndFps": "Разрешение и FPS",
       "export": "Экспорт по умолчанию",
       "deleteProject": "Удалить проект",
@@ -449,7 +449,7 @@
       },
       "remote": {
         "exchange": "Токен авторизации",
-        "exchangeDescription": "Введите токен с платформы Gran для доступа к вашим удаленным файлам."
+        "exchangeDescription": "Введите токен с платформы FastCat для доступа к вашим удаленным файлам."
       },
       "extractAudio": {
         "success": "Аудио успешно извлечено",
@@ -587,7 +587,7 @@
       "original": "Оригинальное аудио"
     }
   },
-  "granVideoEditor": {
+  "fastcat": {
     "effects": {
       "tabs": {
         "video": "Видео",
@@ -952,7 +952,7 @@
     }
   },
   "navigation": {
-    "granVideoEditor": "Видеоредактор",
+    "fastcat": "Видеоредактор",
     "settings": "Настройки"
   },
   "errors": {

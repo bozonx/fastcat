@@ -77,7 +77,7 @@ function handleSelect(type: string) {
     :title="
       target === 'video'
         ? t('videoEditor.fileManager.tabs.effects')
-        : t('granVideoEditor.effects.tabs.audio')
+        : t('fastcat.effects.tabs.audio')
     "
   >
     <template #body>
@@ -86,7 +86,7 @@ function handleSelect(type: string) {
         <CollapsibleEffectGroup
           v-if="basicEffects.length > 0"
           v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
-          :title="t('granVideoEditor.effects.groups.standard')"
+          :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
             <EffectCard
@@ -102,7 +102,7 @@ function handleSelect(type: string) {
         <CollapsibleEffectGroup
           v-if="artisticEffects.length > 0"
           v-model:is-collapsed="presetsStore.audioStandardCollapsed"
-          :title="t('granVideoEditor.effects.groups.artistic')"
+          :title="t('fastcat.effects.groups.artistic')"
         >
           <div class="grid grid-cols-1 gap-2">
             <EffectCard
@@ -118,7 +118,7 @@ function handleSelect(type: string) {
         <CollapsibleEffectGroup
           v-if="customEffects.length > 0"
           v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
-          :title="t('granVideoEditor.effects.groups.custom')"
+          :title="t('fastcat.effects.groups.custom')"
         >
           <div class="grid grid-cols-1 gap-2">
             <EffectCard
@@ -131,7 +131,7 @@ function handleSelect(type: string) {
         </CollapsibleEffectGroup>
 
         <div v-if="!hasAnyEffects" class="py-8 text-center text-ui-text-muted italic">
-          {{ t('granVideoEditor.effects.empty') }}
+          {{ t('fastcat.effects.empty') }}
         </div>
       </div>
     </template>

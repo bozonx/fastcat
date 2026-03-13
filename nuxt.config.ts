@@ -43,7 +43,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      gpanPublicadorBaseUrl: process.env.GPAN_PUBLICADOR_BASE_URL || '',
+      fastcatPublicadorBaseUrl: process.env.FASTCAT_PUBLICADOR_BASE_URL || '',
     },
   },
 
@@ -59,7 +59,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Gran Video Editor',
+      title: 'FastCat',
       meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
     },
   },

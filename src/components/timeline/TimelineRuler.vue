@@ -646,7 +646,7 @@ function onRulerWheel(e: WheelEvent) {
 const rulerContextMenuItems = computed(() => [
   [
     {
-      label: t('granVideoEditor.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
+      label: t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
       icon: 'i-heroicons-bookmark',
       onSelect: () => {
         timelineStore.addMarkerAtPlayhead();
@@ -655,7 +655,7 @@ const rulerContextMenuItems = computed(() => [
       },
     },
     {
-      label: t('granVideoEditor.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
+      label: t('fastcat.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
       icon: 'i-heroicons-arrows-right-left',
       onSelect: () => {
         timelineStore.addZoneMarkerAtPlayhead();
@@ -664,7 +664,7 @@ const rulerContextMenuItems = computed(() => [
       },
     },
     {
-      label: t('granVideoEditor.timeline.createSelectionArea', 'Create selection area'),
+      label: t('fastcat.timeline.createSelectionArea', 'Create selection area'),
       icon: 'i-heroicons-rectangle-group',
       onSelect: () => {
         timelineStore.createSelectionRangeAtPlayhead();
@@ -677,22 +677,22 @@ function getZoneMarkerMenuItems(markerId: string) {
   return [
     [
       {
-        label: t('granVideoEditor.timeline.convertZoneToMarker', 'Convert to normal marker'),
+        label: t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker'),
         icon: 'i-heroicons-arrows-pointing-in',
         onSelect: () => timelineStore.convertZoneToMarker(markerId),
       },
       {
-        label: t('granVideoEditor.timeline.convertZoneToSelection', 'Convert to selection area'),
+        label: t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area'),
         icon: 'i-heroicons-rectangle-group',
         onSelect: () => timelineStore.convertMarkerToSelectionRange(markerId),
       },
       {
-        label: t('granVideoEditor.timeline.createSelectionFromZone', 'Create selection area'),
+        label: t('fastcat.timeline.createSelectionFromZone', 'Create selection area'),
         icon: 'i-heroicons-sparkles',
         onSelect: () => timelineStore.createSelectionRangeFromMarker(markerId),
       },
       {
-        label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+        label: t('fastcat.timeline.deleteMarker', 'Delete marker'),
         icon: 'i-heroicons-trash',
         color: 'red' as const,
         onSelect: () => deleteMarker(markerId),
@@ -705,12 +705,12 @@ function getMarkerMenuItems(markerId: string) {
   return [
     [
       {
-        label: t('granVideoEditor.timeline.convertMarkerToZone', 'Convert to zone marker'),
+        label: t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
         icon: 'i-heroicons-arrows-pointing-out',
         onSelect: () => timelineStore.convertMarkerToZone(markerId),
       },
       {
-        label: t('granVideoEditor.timeline.deleteMarker', 'Delete marker'),
+        label: t('fastcat.timeline.deleteMarker', 'Delete marker'),
         icon: 'i-heroicons-trash',
         color: 'red' as const,
         onSelect: () => deleteMarker(markerId),
@@ -722,12 +722,12 @@ function getMarkerMenuItems(markerId: string) {
 const selectionRangeMenuItems = computed(() => [
   [
     {
-      label: t('granVideoEditor.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+      label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
       icon: 'i-heroicons-bookmark-square',
       onSelect: () => timelineStore.convertSelectionRangeToMarker(),
     },
     {
-      label: t('granVideoEditor.timeline.rippleTrimSelection', 'Ripple trim selection'),
+      label: t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
       icon: 'i-heroicons-scissors',
       onSelect: () => timelineStore.rippleTrimSelectionRange(),
     },

@@ -14,7 +14,7 @@ export function createIndexedDbWorkspaceHandleStorage(input: {
   storeName?: string;
   key?: string;
 }): WorkspaceHandleStorage {
-  const dbName = input.dbName ?? 'GranVideoEditor';
+  const dbName = input.dbName ?? 'FastCat';
   const storeName = input.storeName ?? 'handles';
   const key = input.key ?? 'workspace';
 

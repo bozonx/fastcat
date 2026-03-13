@@ -26,23 +26,23 @@ export interface PendingRemoteDownloadRequest {
 
 export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const showHiddenFiles = ref(readLocalStorageJson('gran-video-editor:show-hidden-files', false));
-  const monitorVolume = ref(readLocalStorageJson('gran-video-editor:monitor-volume', 1));
-  const monitorMuted = ref(readLocalStorageJson('gran-video-editor:monitor-muted', false));
+  const showHiddenFiles = ref(readLocalStorageJson('fastcat:show-hidden-files', false));
+  const monitorVolume = ref(readLocalStorageJson('fastcat:monitor-volume', 1));
+  const monitorMuted = ref(readLocalStorageJson('fastcat:monitor-muted', false));
 
   watch(
     () => showHiddenFiles.value,
-    (val) => writeLocalStorageJson('gran-video-editor:show-hidden-files', val),
+    (val) => writeLocalStorageJson('fastcat:show-hidden-files', val),
   );
 
   watch(
     () => monitorVolume.value,
-    (val) => writeLocalStorageJson('gran-video-editor:monitor-volume', val),
+    (val) => writeLocalStorageJson('fastcat:monitor-volume', val),
   );
 
   watch(
     () => monitorMuted.value,
-    (val) => writeLocalStorageJson('gran-video-editor:monitor-muted', val),
+    (val) => writeLocalStorageJson('fastcat:monitor-muted', val),
   );
 
   const isGlobalDragging = ref(false);

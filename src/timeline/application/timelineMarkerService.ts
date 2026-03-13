@@ -28,7 +28,7 @@ export function createTimelineMarkerService(
   deps: TimelineMarkerServiceDeps,
 ): TimelineMarkerService {
   function getMarkers(): TimelineMarker[] {
-    const raw = deps.getDoc()?.metadata?.gran?.markers;
+    const raw = deps.getDoc()?.metadata?.fastcat?.markers;
     return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
   }
 

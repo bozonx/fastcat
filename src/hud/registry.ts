@@ -22,12 +22,12 @@ registerHud({
     {
       kind: 'select',
       key: 'hudType',
-      labelKey: 'granVideoEditor.hudClip.type',
+      labelKey: 'fastcat.hudClip.type',
       disabled: true,
       options: [
         {
           value: 'media_frame',
-          labelKey: 'granVideoEditor.hudClip.types.mediaFrame',
+          labelKey: 'fastcat.hudClip.types.mediaFrame',
         },
       ],
     },
@@ -38,15 +38,15 @@ registerHud({
         {
           kind: 'file',
           key: 'backgroundSourcePath',
-          labelKey: 'granVideoEditor.hudClip.background',
-          emptyLabelKey: 'granVideoEditor.hudClip.emptyLayer',
+          labelKey: 'fastcat.hudClip.background',
+          emptyLabelKey: 'fastcat.hudClip.emptyLayer',
           icon: 'i-heroicons-photo',
         },
         {
           kind: 'file',
           key: 'contentSourcePath',
-          labelKey: 'granVideoEditor.hudClip.content',
-          emptyLabelKey: 'granVideoEditor.hudClip.emptyLayer',
+          labelKey: 'fastcat.hudClip.content',
+          emptyLabelKey: 'fastcat.hudClip.emptyLayer',
           icon: 'i-heroicons-video-camera',
         },
       ],

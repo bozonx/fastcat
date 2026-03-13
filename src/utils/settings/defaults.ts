@@ -3,7 +3,7 @@ import type { StoragePathRegistry } from '../storage-roots';
 import type { UserExportPresetsSettings, UserProjectPresetsSettings } from './presets';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
 
-export interface GranPublicadorIntegrationSettings {
+export interface FastCatPublicadorIntegrationSettings {
   enabled: boolean;
   bearerToken: string;
 }
@@ -12,7 +12,7 @@ export interface ManualExternalApiSettings {
   enabled: boolean;
   baseUrl: string;
   bearerToken: string;
-  overrideGran: boolean;
+  overrideFastCat: boolean;
 }
 
 export interface SttIntegrationSettings {
@@ -28,13 +28,13 @@ export interface VideoSettings {
 }
 
 export interface ExternalIntegrationsSettings {
-  granPublicador: GranPublicadorIntegrationSettings;
+  fastcatPublicador: FastCatPublicadorIntegrationSettings;
   manualFilesApi: ManualExternalApiSettings;
   manualSttApi: ManualExternalApiSettings;
   stt: SttIntegrationSettings;
 }
 
-export interface GranVideoEditorUserSettings {
+export interface FastCatUserSettings {
   locale: 'en-US' | 'ru-RU';
   openLastProjectOnStart: boolean;
   timeline: {
@@ -196,9 +196,9 @@ export interface FastCatAppSettings {
   paths: StoragePathRegistry;
 }
 
-export type GranVideoEditorWorkspaceSettings = FastCatAppSettings;
+export type FastCatWorkspaceSettings = FastCatAppSettings;
 
-export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
+export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   locale: 'en-US',
   openLastProjectOnStart: true,
   timeline: {
@@ -236,7 +236,7 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     defaultAudioFadeCurve: 'logarithmic',
   },
   integrations: {
-    granPublicador: {
+    fastcatPublicador: {
       enabled: false,
       bearerToken: '',
     },
@@ -244,13 +244,13 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
       enabled: false,
       baseUrl: '',
       bearerToken: '',
-      overrideGran: false,
+      overrideFastCat: false,
     },
     manualSttApi: {
       enabled: false,
       baseUrl: '',
       bearerToken: '',
-      overrideGran: false,
+      overrideFastCat: false,
     },
     stt: {
       provider: '',
@@ -305,4 +305,4 @@ export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
   },
 };
 
-export const DEFAULT_WORKSPACE_SETTINGS: GranVideoEditorWorkspaceSettings = DEFAULT_APP_SETTINGS;
+export const DEFAULT_WORKSPACE_SETTINGS: FastCatWorkspaceSettings = DEFAULT_APP_SETTINGS;

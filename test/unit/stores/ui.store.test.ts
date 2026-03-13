@@ -24,7 +24,7 @@ describe('ui.store file tree expanded paths', () => {
 
     vi.runAllTimers();
 
-    const raw = localStorage.getItem('gran-video-editor:file-tree:p');
+    const raw = localStorage.getItem('fastcat:file-tree:p');
     expect(raw).toBeTypeOf('string');
     const parsed = JSON.parse(raw!);
     expect(new Set(parsed.expandedPaths)).toEqual(new Set(['x']));

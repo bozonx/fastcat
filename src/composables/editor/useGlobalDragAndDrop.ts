@@ -18,7 +18,7 @@ export function useGlobalDragAndDrop() {
     if (!types) return;
 
     const typesArr = Array.from(types);
-    if (typesArr.includes('application/gran-internal-file')) return;
+    if (typesArr.includes('application/fastcat-internal-file')) return;
 
     if (typesArr.includes('Files')) {
       e.preventDefault();

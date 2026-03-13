@@ -291,7 +291,7 @@ export interface UpdateMasterEffectsCommand {
 
 export interface UpdateTimelinePropertiesCommand {
   type: 'update_timeline_properties';
-  properties: Partial<import('./types').TimelineGranMetadata>;
+  properties: Partial<import('./types').TimelineFastCatMetadata>;
 }
 
 export interface MoveItemsCommand {
@@ -399,8 +399,8 @@ export function applyTimelineCommand(
           ...doc,
           metadata: {
             ...(doc.metadata ?? {}),
-            gran: {
-              ...(doc.metadata?.gran ?? {}),
+            fastcat: {
+              ...(doc.metadata?.fastcat ?? {}),
               masterGain: cmd.gain,
             },
           },
@@ -412,8 +412,8 @@ export function applyTimelineCommand(
           ...doc,
           metadata: {
             ...(doc.metadata ?? {}),
-            gran: {
-              ...(doc.metadata?.gran ?? {}),
+            fastcat: {
+              ...(doc.metadata?.fastcat ?? {}),
               masterMuted: cmd.muted,
             },
           },
@@ -425,8 +425,8 @@ export function applyTimelineCommand(
           ...doc,
           metadata: {
             ...(doc.metadata ?? {}),
-            gran: {
-              ...(doc.metadata?.gran ?? {}),
+            fastcat: {
+              ...(doc.metadata?.fastcat ?? {}),
               masterEffects: cmd.effects,
             },
           },
@@ -438,8 +438,8 @@ export function applyTimelineCommand(
           ...doc,
           metadata: {
             ...(doc.metadata ?? {}),
-            gran: {
-              ...(doc.metadata?.gran ?? {}),
+            fastcat: {
+              ...(doc.metadata?.fastcat ?? {}),
               ...(cmd.properties ?? {}),
             },
           },

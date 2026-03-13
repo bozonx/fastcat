@@ -99,19 +99,19 @@ export const clockManifest: TransitionManifest<ClockParams> = {
     {
       key: 'direction',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
+      labelKey: 'fastcat.timeline.transition.paramDirection',
       options: [
         {
           value: 'clockwise',
-          labelKey: 'granVideoEditor.timeline.transition.directionClockwise',
+          labelKey: 'fastcat.timeline.transition.directionClockwise',
         },
         {
           value: 'counterclockwise',
-          labelKey: 'granVideoEditor.timeline.transition.directionCounterclockwise',
+          labelKey: 'fastcat.timeline.transition.directionCounterclockwise',
         },
         {
           value: 'symmetric',
-          labelKey: 'granVideoEditor.timeline.transition.directionSymmetric',
+          labelKey: 'fastcat.timeline.transition.directionSymmetric',
         },
       ],
     },

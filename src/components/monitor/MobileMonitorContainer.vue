@@ -267,7 +267,7 @@ watch(
             variant="ghost"
             color="neutral"
             icon="lucide:skip-back"
-            :aria-label="t('granVideoEditor.monitor.rewind', 'Rewind')"
+            :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
             :disabled="!canInteractPlayback"
             @click="rewindToStart"
           />
@@ -276,7 +276,7 @@ watch(
             variant="solid"
             color="primary"
             :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
-            :aria-label="t('granVideoEditor.monitor.play', 'Play')"
+            :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
           />

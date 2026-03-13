@@ -14,7 +14,7 @@ node_modules
 *.log
 
 # Workspace
-.gran
+.fastcat
 workspace.json
 
 # OS files

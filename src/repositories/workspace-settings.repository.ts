@@ -1,23 +1,23 @@
 import type {
   FastCatAppSettings,
-  GranVideoEditorUserSettings,
-  GranVideoEditorWorkspaceSettings,
+  FastCatUserSettings,
+  FastCatWorkspaceSettings,
 } from '~/utils/settings';
 import {
-  ensureGranFileHandle,
+  ensureFastCatFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './gran-fs';
+} from './fastcat-fs';
 import { FASTCAT_CONFIG_DIR_NAME, LEGACY_WORKSPACE_CONFIG_DIR_NAME } from '~/utils/storage-roots';
 
 export interface WorkspaceSettingsRepository {
   loadUserSettings(): Promise<unknown | null>;
-  saveUserSettings(data: GranVideoEditorUserSettings): Promise<void>;
+  saveUserSettings(data: FastCatUserSettings): Promise<void>;
   loadAppSettings(): Promise<unknown | null>;
   saveAppSettings(data: FastCatAppSettings): Promise<void>;
   loadWorkspaceSettings(): Promise<unknown | null>;
-  saveWorkspaceSettings(data: GranVideoEditorWorkspaceSettings): Promise<void>;
+  saveWorkspaceSettings(data: FastCatWorkspaceSettings): Promise<void>;
 }
 
 async function readWorkspaceJson(input: {
@@ -25,7 +25,7 @@ async function readWorkspaceJson(input: {
   filename: string;
   folderName: string;
 }): Promise<unknown | null> {
-  const handle = await ensureGranFileHandle({
+  const handle = await ensureFastCatFileHandle({
     baseDir: input.workspaceDir,
     filename: input.filename,
     create: false,
@@ -41,7 +41,7 @@ async function writeWorkspaceJson(input: {
   folderName: string;
   data: unknown;
 }): Promise<void> {
-  const handle = await ensureGranFileHandle({
+  const handle = await ensureFastCatFileHandle({
     baseDir: input.workspaceDir,
     filename: input.filename,
     create: true,

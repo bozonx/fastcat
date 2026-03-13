@@ -98,19 +98,19 @@ const isAdjacentAvailable = computed(() => {
 const sourceOptions = computed(() => [
   {
     value: 'adjacent',
-    label: t('granVideoEditor.timeline.transition.sourceAdjacentShort'),
-    title: t('granVideoEditor.timeline.transition.sourceAdjacent'),
+    label: t('fastcat.timeline.transition.sourceAdjacentShort'),
+    title: t('fastcat.timeline.transition.sourceAdjacent'),
     disabled: !isAdjacentAvailable.value,
   },
   {
     value: 'background',
-    label: t('granVideoEditor.timeline.transition.sourceBackgroundShort'),
-    title: t('granVideoEditor.timeline.transition.sourceBackground'),
+    label: t('fastcat.timeline.transition.sourceBackgroundShort'),
+    title: t('fastcat.timeline.transition.sourceBackground'),
   },
   {
     value: 'transparent',
-    label: t('granVideoEditor.timeline.transition.sourceTransparentShort'),
-    title: t('granVideoEditor.timeline.transition.sourceTransparent'),
+    label: t('fastcat.timeline.transition.sourceTransparentShort'),
+    title: t('fastcat.timeline.transition.sourceTransparent'),
   },
 ]);
 
@@ -128,7 +128,7 @@ const curveOptions = computed<CurveOption[]>(() => {
   return curves.map((curve) => {
     return {
       value: curve,
-      label: t(`granVideoEditor.timeline.transition.curve${toCurveLabelKey(curve)}`),
+      label: t(`fastcat.timeline.transition.curve${toCurveLabelKey(curve)}`),
       curvePath: getTransitionCurveSinglePath(100, 100, curve),
     };
   });
@@ -209,7 +209,7 @@ function handleSavePreset() {
         <UIcon :name="edgeIcon" class="w-4 h-4 shrink-0 text-primary-400" />
         <span
           >{{ edge === 'in' ? 'IN' : 'OUT' }}
-          {{ t('granVideoEditor.timeline.transition.title') }}</span
+          {{ t('fastcat.timeline.transition.title') }}</span
         >
       </div>
       <div class="flex items-center gap-1">
@@ -219,7 +219,7 @@ function handleSavePreset() {
           variant="ghost"
           size="xs"
           icon="i-heroicons-bookmark"
-          :title="t('granVideoEditor.effects.saveAsPreset', 'Save as preset')"
+          :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
           @click="isSaveModalOpen = true"
         />
         <UButton
@@ -230,8 +230,8 @@ function handleSavePreset() {
           icon="i-heroicons-trash"
           :title="
             edge === 'in'
-              ? t('granVideoEditor.timeline.removeTransitionIn')
-              : t('granVideoEditor.timeline.removeTransitionOut')
+              ? t('fastcat.timeline.removeTransitionIn')
+              : t('fastcat.timeline.removeTransitionOut')
           "
           @click="remove"
         />
@@ -260,7 +260,7 @@ function handleSavePreset() {
     <!-- Duration slider -->
     <div class="flex flex-col gap-1">
       <div class="flex justify-between text-ui-text-muted">
-        <span>{{ t('granVideoEditor.timeline.transition.duration') }}</span>
+        <span>{{ t('fastcat.timeline.transition.duration') }}</span>
       </div>
       <DurationSliderInput
         v-model="durationSec"
@@ -274,13 +274,13 @@ function handleSavePreset() {
 
     <!-- Mode toggle -->
     <div class="flex flex-col gap-1">
-      <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.source') }}</span>
+      <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.source') }}</span>
       <AppButtonGroup v-model="selectedMode" :options="sourceOptions" />
     </div>
 
     <!-- Curve toggle -->
     <div class="flex flex-col gap-1">
-      <span class="text-ui-text-muted">{{ t('granVideoEditor.timeline.transition.curve') }}</span>
+      <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.curve') }}</span>
       <AppButtonGroup v-model="selectedCurve" :options="curveOptions" orientation="vertical" fluid>
         <template #option="{ option }">
           <div class="flex items-center gap-2 w-full min-w-0">
@@ -304,7 +304,7 @@ function handleSavePreset() {
 
     <div v-if="visibleParamFields.length" class="flex flex-col gap-2">
       <div class="text-ui-text-muted">
-        {{ t('granVideoEditor.timeline.transition.parameters') }}
+        {{ t('fastcat.timeline.transition.parameters') }}
       </div>
       <TransitionParamFields
         :fields="visibleParamFields"
@@ -315,14 +315,14 @@ function handleSavePreset() {
 
     <UModal
       v-model:open="isSaveModalOpen"
-      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
             <UInput
               v-model="newPresetName"
-              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
               @keyup.enter="handleSavePreset"
             />

@@ -12,17 +12,17 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const timelineStore = useTimelineStore();
 
   const overlapMode = useLocalStorage<OverlapMode>(
-    'gran-editor-overlap-mode',
+    'fastcat-editor-overlap-mode',
     DEFAULT_SNAP_SETTINGS.overlapMode,
   );
 
   const frameSnapMode = useLocalStorage<FrameSnapMode>(
-    'gran-editor-frame-snap-mode',
+    'fastcat-editor-frame-snap-mode',
     DEFAULT_SNAP_SETTINGS.frameSnapMode,
   );
 
   const clipSnapMode = useLocalStorage<ClipSnapMode>(
-    'gran-editor-clip-snap-mode',
+    'fastcat-editor-clip-snap-mode',
     DEFAULT_SNAP_SETTINGS.clipSnapMode,
   );
 
@@ -39,7 +39,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   }
 
   const snapThresholdPx = computed(() => {
-    const docThreshold = timelineStore.timelineDoc?.metadata?.gran?.snapThresholdPx;
+    const docThreshold = timelineStore.timelineDoc?.metadata?.fastcat?.snapThresholdPx;
     if (typeof docThreshold === 'number' && Number.isFinite(docThreshold) && docThreshold > 0) {
       return Math.round(docThreshold);
     }

@@ -1,14 +1,14 @@
-import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
+import type { FastCatProjectSettings } from '~/utils/project-settings';
 import {
-  ensureGranFileHandle,
+  ensureFastCatFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './gran-fs';
+} from './fastcat-fs';
 
 export interface ProjectSettingsRepository {
   load(): Promise<unknown | null>;
-  save(data: GranVideoEditorProjectSettings): Promise<void>;
+  save(data: FastCatProjectSettings): Promise<void>;
 }
 
 export function createProjectSettingsRepository(input: {
@@ -16,7 +16,7 @@ export function createProjectSettingsRepository(input: {
 }): ProjectSettingsRepository {
   return {
     async load() {
-      const handle = await ensureGranFileHandle({
+      const handle = await ensureFastCatFileHandle({
         baseDir: input.projectDir,
         filename: 'project.settings.json',
         create: false,
@@ -26,7 +26,7 @@ export function createProjectSettingsRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureGranFileHandle({
+      const handle = await ensureFastCatFileHandle({
         baseDir: input.projectDir,
         filename: 'project.settings.json',
         create: true,

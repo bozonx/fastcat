@@ -81,7 +81,7 @@ function onOverlayFolderDrop(files: File[], targetDirPath: string) {
 }
 
 useHead({
-  title: t('navigation.granVideoEditor'),
+  title: t('navigation.fastcat'),
 });
 </script>
 
@@ -134,7 +134,7 @@ useHead({
 </template>
 
 <style>
-/* Custom theme for splitpanes matching Gran Video Editor dark mode */
+/* Custom theme for splitpanes matching FastCat Video Editor dark mode */
 .editor-splitpanes {
   background-color: transparent;
 }

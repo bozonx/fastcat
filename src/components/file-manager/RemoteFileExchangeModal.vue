@@ -46,9 +46,9 @@ const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'files',
     integrations: workspaceStore.userSettings.integrations,
-    granPublicadorBaseUrl:
-      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.gpanPublicadorBaseUrl
+    fastcatPublicadorBaseUrl:
+      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.fastcatPublicadorBaseUrl
         : '',
   }),
 );
@@ -641,7 +641,7 @@ onBeforeUnmount(() => {
               v-if="!selectedEntry"
               class="flex h-full items-center justify-center text-sm text-ui-text-muted"
             >
-              {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
+              {{ t('fastcat.preview.noSelection', 'No item selected') }}
             </div>
 
             <div v-else class="flex flex-col gap-4">

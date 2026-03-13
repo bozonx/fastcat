@@ -1,5 +1,5 @@
 import { pressedKeyCodes } from './pressedKeys';
-import type { GranVideoEditorUserSettings } from '../settings/defaults';
+import type { FastCatUserSettings } from '../settings/defaults';
 
 export type LayerKey =
   | 'Shift'
@@ -29,14 +29,14 @@ export function isLayerActive(
 
 export function isLayer1Active(
   e: KeyboardEvent | MouseEvent | WheelEvent,
-  settings: GranVideoEditorUserSettings,
+  settings: FastCatUserSettings,
 ): boolean {
   return isLayerActive(e, settings.hotkeys.layer1 ?? 'Shift');
 }
 
 export function isLayer2Active(
   e: KeyboardEvent | MouseEvent | WheelEvent,
-  settings: GranVideoEditorUserSettings,
+  settings: FastCatUserSettings,
 ): boolean {
   return isLayerActive(e, settings.hotkeys.layer2 ?? 'Control');
 }

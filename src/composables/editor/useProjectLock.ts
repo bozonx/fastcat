@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-const TAB_ID_SESSION_KEY = 'gran_project_lock_tab_id';
+const TAB_ID_SESSION_KEY = 'fastcat_project_lock_tab_id';
 
 /**
  * Get or create a unique ID for this session (tab)
@@ -22,7 +22,7 @@ export function useProjectLock() {
   let lockReleaseFn: (() => void) | null = null;
 
   function getLockName(projectId: string): string {
-    return `gran-project-lock-${projectId}`;
+    return `fastcat-project-lock-${projectId}`;
   }
 
   /**

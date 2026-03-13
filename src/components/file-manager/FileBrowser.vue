@@ -429,9 +429,9 @@ const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'files',
     integrations: workspaceStore.userSettings.integrations,
-    granPublicadorBaseUrl:
-      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.gpanPublicadorBaseUrl
+    fastcatPublicadorBaseUrl:
+      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.fastcatPublicadorBaseUrl
         : '',
   }),
 );
@@ -442,9 +442,9 @@ const sttConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    granPublicadorBaseUrl:
-      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.gpanPublicadorBaseUrl
+    fastcatPublicadorBaseUrl:
+      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.fastcatPublicadorBaseUrl
         : '',
   }),
 );
@@ -1702,9 +1702,9 @@ async function submitTranscription() {
       fileName: entry.name,
       fileType: typeof entryMimeType === 'string' ? entryMimeType : '',
       language: sttTranscriptionLanguage.value,
-      granPublicadorBaseUrl:
-        typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-          ? runtimeConfig.public.gpanPublicadorBaseUrl
+      fastcatPublicadorBaseUrl:
+        typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+          ? runtimeConfig.public.fastcatPublicadorBaseUrl
           : '',
       projectId: projectStore.currentProjectId,
       userSettings: workspaceStore.userSettings,

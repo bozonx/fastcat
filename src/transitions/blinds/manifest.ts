@@ -199,7 +199,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     {
       key: 'angle',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramAngle',
+      labelKey: 'fastcat.timeline.transition.paramAngle',
       min: -360,
       max: 360,
       step: 1,
@@ -207,7 +207,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     {
       key: 'stripCount',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramStripCount',
+      labelKey: 'fastcat.timeline.transition.paramStripCount',
       min: 2,
       max: 100,
       step: 1,
@@ -215,7 +215,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     {
       key: 'blur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramPostBlur',
+      labelKey: 'fastcat.timeline.transition.paramPostBlur',
       min: 0,
       max: 100,
       step: 1,
@@ -223,18 +223,18 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     {
       key: 'blurQuality',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlurQuality',
+      labelKey: 'fastcat.timeline.transition.paramBlurQuality',
       options: [
-        { value: 'low', labelKey: 'granVideoEditor.timeline.transition.blurQualityLow' },
-        { value: 'medium', labelKey: 'granVideoEditor.timeline.transition.blurQualityMedium' },
-        { value: 'high', labelKey: 'granVideoEditor.timeline.transition.blurQualityHigh' },
-        { value: 'ultra', labelKey: 'granVideoEditor.timeline.transition.blurQualityUltra' },
+        { value: 'low', labelKey: 'fastcat.timeline.transition.blurQualityLow' },
+        { value: 'medium', labelKey: 'fastcat.timeline.transition.blurQualityMedium' },
+        { value: 'high', labelKey: 'fastcat.timeline.transition.blurQualityHigh' },
+        { value: 'ultra', labelKey: 'fastcat.timeline.transition.blurQualityUltra' },
       ],
     },
     {
       key: 'motionBlur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlur',
+      labelKey: 'fastcat.timeline.transition.paramMotionBlur',
       min: 0,
       max: 100,
       step: 1,
@@ -242,25 +242,25 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     {
       key: 'motionBlurMode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramMotionBlurMode',
+      labelKey: 'fastcat.timeline.transition.paramMotionBlurMode',
       options: [
-        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeNormal' },
-        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.motionBlurModeBloom' },
+        { value: 'normal', labelKey: 'fastcat.timeline.transition.motionBlurModeNormal' },
+        { value: 'bloom', labelKey: 'fastcat.timeline.transition.motionBlurModeBloom' },
       ],
     },
     {
       key: 'brightnessMode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramBrightnessMode',
+      labelKey: 'fastcat.timeline.transition.paramBrightnessMode',
       options: [
-        { value: 'normal', labelKey: 'granVideoEditor.timeline.transition.brightnessModeNormal' },
-        { value: 'bloom', labelKey: 'granVideoEditor.timeline.transition.brightnessModeBloom' },
+        { value: 'normal', labelKey: 'fastcat.timeline.transition.brightnessModeNormal' },
+        { value: 'bloom', labelKey: 'fastcat.timeline.transition.brightnessModeBloom' },
       ],
     },
     {
       key: 'brightness',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramBrightness',
+      labelKey: 'fastcat.timeline.transition.paramBrightness',
       min: -10,
       max: 10,
       step: 0.1,
@@ -268,7 +268,7 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
     {
       key: 'bloomThreshold',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramBloomThreshold',
+      labelKey: 'fastcat.timeline.transition.paramBloomThreshold',
       min: 0,
       max: 1,
       step: 0.01,

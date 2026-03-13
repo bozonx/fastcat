@@ -26,9 +26,9 @@ vi.mock('~/stores/selection.store', () => ({
 
 // We mock useDraggedFile to control dragged payload directly, avoiding event dataTransfer complexity
 vi.mock('~/composables/useDraggedFile', () => ({
-  INTERNAL_DRAG_TYPE: 'application/gran-fs-entry',
-  REMOTE_FILE_DRAG_TYPE: 'application/gran-remote-file',
-  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/gran-move',
+  INTERNAL_DRAG_TYPE: 'application/fastcat-fs-entry',
+  REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
+  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-move',
   useDraggedFile: () => ({
     draggedFile: null,
     setDraggedFile: vi.fn(),
@@ -104,9 +104,9 @@ describe('FileManagerTree', () => {
 
     const mockEvent = {
       dataTransfer: {
-        types: ['application/gran-move'],
+        types: ['application/fastcat-move'],
         getData: vi.fn((type) => {
-          if (type === 'application/gran-move') {
+          if (type === 'application/fastcat-move') {
             return JSON.stringify({
               path: '_video/a.mp4',
             });
@@ -162,9 +162,9 @@ describe('FileManagerTree', () => {
 
     const mockEvent = {
       dataTransfer: {
-        types: ['application/gran-remote-file'],
+        types: ['application/fastcat-remote-file'],
         getData: vi.fn((type) => {
-          if (type === 'application/gran-remote-file') {
+          if (type === 'application/fastcat-remote-file') {
             return JSON.stringify({
               ...remoteEntry,
             });

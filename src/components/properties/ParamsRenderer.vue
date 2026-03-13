@@ -98,7 +98,7 @@ function getDisplayFileValue(control: FileParamControl): string {
     return t(control.emptyLabelKey);
   }
 
-  return t('granVideoEditor.hudClip.emptyLayer', 'Drop media here');
+  return t('fastcat.hudClip.emptyLayer', 'Drop media here');
 }
 
 function handleFileDrop(event: DragEvent, control: FileParamControl) {

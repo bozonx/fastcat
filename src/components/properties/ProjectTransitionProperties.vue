@@ -68,7 +68,7 @@ function handleUpdatePreset() {
         @update:param="handleUpdateParam"
       />
       <div v-else class="text-xs text-ui-text-muted text-center py-2">
-        {{ t('granVideoEditor.transitions.noSettings', 'No settings available') }}
+        {{ t('fastcat.transitions.noSettings', 'No settings available') }}
       </div>
     </div>
 
@@ -92,22 +92,22 @@ function handleUpdatePreset() {
       >
         {{
           manifest.isCustom
-            ? t('granVideoEditor.effects.saveAsNew', 'Save as new')
-            : t('granVideoEditor.effects.saveAsPreset', 'Save as preset')
+            ? t('fastcat.effects.saveAsNew', 'Save as new')
+            : t('fastcat.effects.saveAsPreset', 'Save as preset')
         }}
       </UButton>
     </div>
 
     <UModal
       v-model:open="isSaveModalOpen"
-      :title="t('granVideoEditor.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
             <UInput
               v-model="newPresetName"
-              :placeholder="t('granVideoEditor.effects.presetNamePlaceholder', 'My Custom Preset')"
+              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
               @keyup.enter="handleSavePreset"
             />

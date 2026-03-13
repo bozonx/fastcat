@@ -24,8 +24,8 @@ export function isFileTab(tab: AnyProjectTab): tab is ProjectFileTab {
   return 'filePath' in tab;
 }
 
-const STATIC_TABS_ORDER_KEY = 'gran-project-tabs-order';
-const FILE_TABS_KEY = 'gran-project-file-tabs';
+const STATIC_TABS_ORDER_KEY = 'fastcat-project-tabs-order';
+const FILE_TABS_KEY = 'fastcat-project-file-tabs';
 
 const registeredTabs = ref<ProjectTab[]>([]);
 

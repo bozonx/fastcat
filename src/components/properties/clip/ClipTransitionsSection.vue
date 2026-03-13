@@ -35,7 +35,7 @@ const transitionOptions = computed(() =>
     <div
       class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
     >
-      {{ t('granVideoEditor.timeline.transitions', 'Transitions') }}
+      {{ t('fastcat.timeline.transitions', 'Transitions') }}
     </div>
 
     <div class="grid grid-cols-2 gap-2">

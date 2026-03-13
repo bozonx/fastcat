@@ -1,8 +1,8 @@
-import type { ExternalIntegrationsSettings, GranVideoEditorUserSettings } from '~/utils/settings';
+import type { ExternalIntegrationsSettings, FastCatUserSettings } from '~/utils/settings';
 
 export type ExternalServiceKind = 'files' | 'stt';
-export type ExternalServiceSource = 'gran_publicador' | 'manual';
-export type GranIntegrationScope = 'vfs:read' | 'vfs:write' | 'stt:transcribe' | 'llm:chat';
+export type ExternalServiceSource = 'fastcat_publicador' | 'manual';
+export type FastCatIntegrationScope = 'vfs:read' | 'vfs:write' | 'stt:transcribe' | 'llm:chat';
 
 export interface ResolvedExternalServiceConfig {
   source: ExternalServiceSource;
@@ -11,8 +11,8 @@ export interface ResolvedExternalServiceConfig {
   healthUrl: string;
 }
 
-const FILES_SCOPES: GranIntegrationScope[] = ['vfs:read'];
-const STT_SCOPES: GranIntegrationScope[] = ['stt:transcribe'];
+const FILES_SCOPES: FastCatIntegrationScope[] = ['vfs:read'];
+const STT_SCOPES: FastCatIntegrationScope[] = ['stt:transcribe'];
 
 function trimTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, '');
@@ -37,22 +37,22 @@ export function getServiceInstanceBaseUrl(baseUrl: string): string {
   return normalizedBaseUrl.replace(/\/api(?:\/.*)?$/i, '');
 }
 
-export function getGranPublicadorInstanceBaseUrl(baseUrl: string): string {
+export function getFastCatPublicadorInstanceBaseUrl(baseUrl: string): string {
   return getServiceInstanceBaseUrl(baseUrl);
 }
 
-export function getGranPublicadorExternalApiBaseUrl(baseUrl: string): string {
-  const instanceBaseUrl = getGranPublicadorInstanceBaseUrl(baseUrl);
+export function getFastCatPublicadorExternalApiBaseUrl(baseUrl: string): string {
+  const instanceBaseUrl = getFastCatPublicadorInstanceBaseUrl(baseUrl);
   return instanceBaseUrl ? joinUrl(instanceBaseUrl, 'api/v1/external') : '';
 }
 
-export function getGranPublicadorConnectUrl(params: {
+export function getFastCatPublicadorConnectUrl(params: {
   baseUrl: string;
   name: string;
   redirectUri: string;
-  scopes?: GranIntegrationScope[];
+  scopes?: FastCatIntegrationScope[];
 }): string {
-  const instanceBaseUrl = getGranPublicadorInstanceBaseUrl(params.baseUrl);
+  const instanceBaseUrl = getFastCatPublicadorInstanceBaseUrl(params.baseUrl);
   if (!instanceBaseUrl) return '';
 
   const url = new URL(joinUrl(instanceBaseUrl, 'integrations/connect'));
@@ -64,13 +64,13 @@ export function getGranPublicadorConnectUrl(params: {
   return url.toString();
 }
 
-export function getGranPublicadorHealthUrl(baseUrl: string): string {
-  const externalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(baseUrl);
+export function getFastCatPublicadorHealthUrl(baseUrl: string): string {
+  const externalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(baseUrl);
   return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'health') : '';
 }
 
-export function getGranPublicadorSttStreamUrl(baseUrl: string): string {
-  const externalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(baseUrl);
+export function getFastCatPublicadorSttStreamUrl(baseUrl: string): string {
+  const externalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(baseUrl);
   return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'api/v1/transcribe/stream') : '';
 }
 
@@ -104,21 +104,21 @@ export function getManualSttStreamUrl(baseUrl: string): string {
   return joinUrl(normalizedBaseUrl, 'api/v1/transcribe/stream');
 }
 
-export function resolveGranConnectScopes(params: {
+export function resolveFastCatConnectScopes(params: {
   integrations: ExternalIntegrationsSettings;
-}): GranIntegrationScope[] {
-  const scopes = new Set<GranIntegrationScope>();
+}): FastCatIntegrationScope[] {
+  const scopes = new Set<FastCatIntegrationScope>();
 
   if (
     !params.integrations.manualFilesApi.enabled ||
-    !params.integrations.manualFilesApi.overrideGran
+    !params.integrations.manualFilesApi.overrideFastCat
   ) {
     for (const scope of FILES_SCOPES) {
       scopes.add(scope);
     }
   }
 
-  if (!params.integrations.manualSttApi.enabled || !params.integrations.manualSttApi.overrideGran) {
+  if (!params.integrations.manualSttApi.enabled || !params.integrations.manualSttApi.overrideFastCat) {
     for (const scope of STT_SCOPES) {
       scopes.add(scope);
     }
@@ -130,23 +130,23 @@ export function resolveGranConnectScopes(params: {
 export function resolveExternalServiceConfig(params: {
   service: ExternalServiceKind;
   integrations: ExternalIntegrationsSettings;
-  granPublicadorBaseUrl: string;
+  fastcatPublicadorBaseUrl: string;
 }): ResolvedExternalServiceConfig | null {
-  const { integrations, service, granPublicadorBaseUrl } = params;
-  const gran = integrations.granPublicador;
+  const { integrations, service, fastcatPublicadorBaseUrl } = params;
+  const fastcat = integrations.fastcatPublicador;
   const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
   const requiresBearerToken = service === 'files';
 
-  const canUseGran =
-    gran.enabled &&
-    granPublicadorBaseUrl.trim() &&
-    (!requiresBearerToken || Boolean(gran.bearerToken.trim()));
+  const canUseFastCat =
+    fastcat.enabled &&
+    fastcatPublicadorBaseUrl.trim() &&
+    (!requiresBearerToken || Boolean(fastcat.bearerToken.trim()));
   const canUseManual =
     manual.enabled &&
     manual.baseUrl.trim() &&
     (!requiresBearerToken || Boolean(manual.bearerToken.trim()));
 
-  if (canUseManual && (!canUseGran || manual.overrideGran)) {
+  if (canUseManual && (!canUseFastCat || manual.overrideFastCat)) {
     return {
       source: 'manual',
       baseUrl: manual.baseUrl.trim(),
@@ -155,25 +155,25 @@ export function resolveExternalServiceConfig(params: {
     };
   }
 
-  if (!canUseGran) return null;
+  if (!canUseFastCat) return null;
 
-  const granExternalApiBaseUrl = getGranPublicadorExternalApiBaseUrl(granPublicadorBaseUrl);
+  const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(fastcatPublicadorBaseUrl);
   const serviceBaseUrl =
     service === 'files'
-      ? joinUrl(granExternalApiBaseUrl, 'vfs')
-      : joinUrl(granExternalApiBaseUrl, 'stt');
+      ? joinUrl(fastcatExternalApiBaseUrl, 'vfs')
+      : joinUrl(fastcatExternalApiBaseUrl, 'stt');
 
   return {
-    source: 'gran_publicador',
+    source: 'fastcat_publicador',
     baseUrl: serviceBaseUrl,
-    bearerToken: gran.bearerToken.trim(),
-    healthUrl: getGranPublicadorHealthUrl(granPublicadorBaseUrl),
+    bearerToken: fastcat.bearerToken.trim(),
+    healthUrl: getFastCatPublicadorHealthUrl(fastcatPublicadorBaseUrl),
   };
 }
 
 export function resolveExternalIntegrations(params: {
-  userSettings: GranVideoEditorUserSettings;
-  granPublicadorBaseUrl: string;
+  userSettings: FastCatUserSettings;
+  fastcatPublicadorBaseUrl: string;
 }) {
   const { integrations } = params.userSettings;
 
@@ -181,30 +181,30 @@ export function resolveExternalIntegrations(params: {
     files: resolveExternalServiceConfig({
       service: 'files',
       integrations,
-      granPublicadorBaseUrl: params.granPublicadorBaseUrl,
+      fastcatPublicadorBaseUrl: params.fastcatPublicadorBaseUrl,
     }),
     stt: resolveExternalServiceConfig({
       service: 'stt',
       integrations,
-      granPublicadorBaseUrl: params.granPublicadorBaseUrl,
+      fastcatPublicadorBaseUrl: params.fastcatPublicadorBaseUrl,
     }),
   };
 }
 
 export function resolveSttStreamUrl(params: {
-  userSettings: GranVideoEditorUserSettings;
-  granPublicadorBaseUrl: string;
+  userSettings: FastCatUserSettings;
+  fastcatPublicadorBaseUrl: string;
 }): string {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: params.userSettings.integrations,
-    granPublicadorBaseUrl: params.granPublicadorBaseUrl,
+    fastcatPublicadorBaseUrl: params.fastcatPublicadorBaseUrl,
   });
 
   if (!resolved) return '';
 
-  return resolved.source === 'gran_publicador'
-    ? getGranPublicadorSttStreamUrl(params.granPublicadorBaseUrl)
+  return resolved.source === 'fastcat_publicador'
+    ? getFastCatPublicadorSttStreamUrl(params.fastcatPublicadorBaseUrl)
     : getManualSttStreamUrl(resolved.baseUrl);
 }
 

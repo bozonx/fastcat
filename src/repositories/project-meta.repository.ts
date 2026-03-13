@@ -1,9 +1,9 @@
 import {
-  ensureGranFileHandle,
+  ensureFastCatFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './gran-fs';
+} from './fastcat-fs';
 
 export interface ProjectMeta {
   id: string;
@@ -19,7 +19,7 @@ export function createProjectMetaRepository(input: {
 }): ProjectMetaRepository {
   return {
     async load() {
-      const handle = await ensureGranFileHandle({
+      const handle = await ensureFastCatFileHandle({
         baseDir: input.projectDir,
         filename: 'project.meta.json',
         create: false,
@@ -31,7 +31,7 @@ export function createProjectMetaRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureGranFileHandle({
+      const handle = await ensureFastCatFileHandle({
         baseDir: input.projectDir,
         filename: 'project.meta.json',
         create: true,

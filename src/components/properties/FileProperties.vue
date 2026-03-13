@@ -73,9 +73,9 @@ const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'files',
     integrations: workspaceStore.userSettings.integrations,
-    granPublicadorBaseUrl:
-      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.gpanPublicadorBaseUrl
+    fastcatPublicadorBaseUrl:
+      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.fastcatPublicadorBaseUrl
         : '',
   }),
 );
@@ -89,9 +89,9 @@ const sttConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    granPublicadorBaseUrl:
-      typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.gpanPublicadorBaseUrl
+    fastcatPublicadorBaseUrl:
+      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+        ? runtimeConfig.public.fastcatPublicadorBaseUrl
         : '',
   }),
 );
@@ -396,9 +396,9 @@ async function submitAudioTranscription() {
       fileName: selectedEntry.name,
       fileType: getMimeTypeFromFilename(selectedEntry.name),
       language: transcriptionLanguage.value,
-      granPublicadorBaseUrl:
-        typeof runtimeConfig.public.gpanPublicadorBaseUrl === 'string'
-          ? runtimeConfig.public.gpanPublicadorBaseUrl
+      fastcatPublicadorBaseUrl:
+        typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+          ? runtimeConfig.public.fastcatPublicadorBaseUrl
           : '',
       projectId: projectStore.currentProjectId,
       userSettings: workspaceStore.userSettings,
@@ -645,7 +645,7 @@ watch(
           },
           {
             id: 'createOtioVersion',
-            label: t('granVideoEditor.timeline.createVersion', 'Create version'),
+            label: t('fastcat.timeline.createVersion', 'Create version'),
             icon: 'i-heroicons-document-duplicate',
             hidden: !isOtio,
             onClick: () => (uiStore.pendingOtioCreateVersion = props.selectedFsEntry),
@@ -825,7 +825,7 @@ watch(
     >
       <div class="flex flex-col">
         <PropertyRow
-          :label="t('granVideoEditor.timeline.version', 'Version')"
+          :label="t('fastcat.timeline.version', 'Version')"
           :value="timelineDocSummary.version ?? '-'"
         />
         <PropertyRow
@@ -879,7 +879,7 @@ watch(
       <div
         class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
       >
-        {{ t('granVideoEditor.preview.usedInTimelines', 'Used in timelines') }}
+        {{ t('fastcat.preview.usedInTimelines', 'Used in timelines') }}
       </div>
       <div class="flex flex-wrap gap-1 mt-1">
         <UButton

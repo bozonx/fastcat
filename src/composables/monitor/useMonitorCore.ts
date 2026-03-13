@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Ref } from 'vue';
-import type { GranVideoEditorProjectSettings } from '~/utils/project-settings';
+import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type { TimelineDocument } from '~/timeline/types';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -50,7 +50,7 @@ interface TimelineStoreState {
 
 interface MonitorStoreState {
   projectStore: {
-    projectSettings: GranVideoEditorProjectSettings;
+    projectSettings: FastCatProjectSettings;
     getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
     getFileByPath: (path: string) => Promise<File | null>;
   };
@@ -261,7 +261,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
             tracks: timelineStore.timelineDoc?.tracks ?? [],
             projectStore: projectStore as any,
             workspaceStore: workspaceStore as any,
-            masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+            masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
           });
           const flattenedClips = builtVideo.clips;
           const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
@@ -471,7 +471,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         tracks: timelineStore.timelineDoc?.tracks ?? [],
         projectStore: projectStore as any,
         workspaceStore: workspaceStore as any,
-        masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
+        masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
       });
       const flattenedClips = builtVideo.clips;
       const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
@@ -575,7 +575,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
         loadError.value =
-          e.message || t('granVideoEditor.monitor.loadError', 'Error loading timeline');
+          e.message || t('fastcat.monitor.loadError', 'Error loading timeline');
       }
     } finally {
       if (requestId === buildRequestId) {

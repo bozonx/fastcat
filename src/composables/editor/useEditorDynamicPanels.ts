@@ -56,14 +56,14 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   );
 
   const verticalSplitSizesKey = computed(
-    () => `gran-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
+    () => `fastcat-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
   );
   const verticalSplitSizes = ref<Record<string, number[]>>(
     readLocalStorageJson<Record<string, number[]>>(verticalSplitSizesKey.value, {}),
   );
 
   const soundVerticalSplitSizesKey = computed(
-    () => `gran-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
+    () => `fastcat-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
   );
   const soundVerticalSplitSizes = ref<Record<string, number[]>>(
     readLocalStorageJson<Record<string, number[]>>(soundVerticalSplitSizesKey.value, {}),
@@ -134,7 +134,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
     const isDraggingFile =
       event.dataTransfer?.types.includes('application/json') ||
-      event.dataTransfer?.types.includes('application/gran-file-manager-move');
+      event.dataTransfer?.types.includes('application/fastcat-file-manager-move');
     const isDraggingPanel = Boolean(draggingPanelId.value);
     const isDraggingTab =
       event.dataTransfer?.types.includes('static-tab-drag') ||
@@ -258,7 +258,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
     const fileDragData =
       event.dataTransfer?.getData('application/json') ||
-      event.dataTransfer?.getData('application/gran-file-manager-move');
+      event.dataTransfer?.getData('application/fastcat-file-manager-move');
 
     if (fileDragData) {
       try {

@@ -2,8 +2,8 @@ import {
   DEFAULT_USER_SETTINGS,
   DEFAULT_APP_SETTINGS,
   type FastCatAppSettings,
-  type GranVideoEditorUserSettings,
-  type GranVideoEditorWorkspaceSettings,
+  type FastCatUserSettings,
+  type FastCatWorkspaceSettings,
   DEFAULT_WORKSPACE_SETTINGS,
 } from './defaults';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
@@ -34,7 +34,7 @@ export function getResolutionPreset(width: number, height: number) {
   };
 }
 
-export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['projectDefaults'] {
+export function createDefaultProjectDefaults(): FastCatUserSettings['projectDefaults'] {
   return {
     width: DEFAULT_USER_SETTINGS.projectDefaults.width,
     height: DEFAULT_USER_SETTINGS.projectDefaults.height,
@@ -49,7 +49,7 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
   };
 }
 
-export function createDefaultUserSettings(): GranVideoEditorUserSettings {
+export function createDefaultUserSettings(): FastCatUserSettings {
   const projectPresets = createDefaultProjectPresets();
   const exportPresets = createDefaultExportPresets();
 
@@ -78,7 +78,7 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
     projectDefaults: createDefaultProjectDefaults(),
     video: { ...DEFAULT_USER_SETTINGS.video },
     integrations: {
-      granPublicador: { ...DEFAULT_USER_SETTINGS.integrations.granPublicador },
+      fastcatPublicador: { ...DEFAULT_USER_SETTINGS.integrations.fastcatPublicador },
       manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },
       manualSttApi: { ...DEFAULT_USER_SETTINGS.integrations.manualSttApi },
       stt: {
@@ -104,6 +104,6 @@ export function createDefaultAppSettings(): FastCatAppSettings {
   };
 }
 
-export function createDefaultWorkspaceSettings(): GranVideoEditorWorkspaceSettings {
+export function createDefaultWorkspaceSettings(): FastCatWorkspaceSettings {
   return createDefaultAppSettings();
 }

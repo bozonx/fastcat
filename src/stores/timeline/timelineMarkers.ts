@@ -18,7 +18,7 @@ export interface TimelineMarkersApi {
 
 export function createTimelineMarkers(deps: TimelineMarkersDeps): TimelineMarkersApi {
   function getMarkers(): TimelineMarker[] {
-    const raw = (deps.timelineDoc.value as any)?.metadata?.gran?.markers;
+    const raw = (deps.timelineDoc.value as any)?.metadata?.fastcat?.markers;
     return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
   }
 

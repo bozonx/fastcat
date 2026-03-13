@@ -42,7 +42,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-ui-text">
-            {{ t('granVideoEditor.projects.title') }}
+            {{ t('fastcat.projects.title') }}
           </h1>
           <p class="text-ui-text-muted text-sm mt-1">
             Workspace: {{ workspaceStore.workspaceHandle?.name }}
@@ -55,14 +55,14 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
             color="primary"
             icon="lucide:smartphone"
             to="/m"
-            :label="t('granVideoEditor.projects.switchToMobile')"
+            :label="t('fastcat.projects.switchToMobile')"
           />
           <UButton
             size="sm"
             variant="ghost"
             color="neutral"
             icon="i-heroicons-arrow-left-on-rectangle"
-            :label="t('granVideoEditor.projects.changeWorkspace')"
+            :label="t('fastcat.projects.changeWorkspace')"
             @click="workspaceStore.resetWorkspace"
           />
         </div>
@@ -79,7 +79,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
       >
         <div class="space-y-2">
           <span class="text-primary-400 text-xs font-bold uppercase tracking-widest">
-            {{ t('granVideoEditor.projects.continueWorking') }}
+            {{ t('fastcat.projects.continueWorking') }}
           </span>
           <h2 class="text-3xl font-bold text-ui-text">{{ suggestedProject }}</h2>
         </div>
@@ -88,7 +88,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
           color="primary"
           class="px-8 shadow-lg shadow-primary-500/20"
           icon="i-heroicons-play"
-          :label="t('granVideoEditor.projects.openLast')"
+          :label="t('fastcat.projects.openLast')"
           @click="handleOpenProject(suggestedProject!)"
         />
       </div>
@@ -96,14 +96,14 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between">
           <h3 class="font-medium text-ui-text-muted uppercase text-xs tracking-wider">
-            {{ t('granVideoEditor.projects.recentProjects') }} ({{
+            {{ t('fastcat.projects.recentProjects') }} ({{
               workspaceStore.projects.length
             }})
           </h3>
           <div class="w-64">
             <SearchInput
               v-model="searchQuery"
-              :placeholder="t('granVideoEditor.projects.searchPlaceholder')"
+              :placeholder="t('fastcat.projects.searchPlaceholder')"
             />
           </div>
         </div>
@@ -120,7 +120,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
               <UIcon name="i-heroicons-plus" class="w-6 h-6 text-primary-400" />
             </div>
             <h3 class="font-medium text-ui-text">
-              {{ t('granVideoEditor.projects.newProject') }}
+              {{ t('fastcat.projects.newProject') }}
             </h3>
           </div>
 
@@ -203,17 +203,17 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
 
   <AppModal
     v-model:open="isCreateModalOpen"
-    :title="t('granVideoEditor.projects.newProject')"
+    :title="t('fastcat.projects.newProject')"
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <div class="space-y-6">
       <div class="space-y-2">
         <label class="text-sm font-medium text-ui-text">
-          {{ t('granVideoEditor.projects.projectNamePlaceholder') }}
+          {{ t('fastcat.projects.projectNamePlaceholder') }}
         </label>
         <UInput
           v-model="projectCreationSettings.name"
-          :placeholder="t('granVideoEditor.projects.projectNamePlaceholder')"
+          :placeholder="t('fastcat.projects.projectNamePlaceholder')"
           autofocus
           @keyup.enter="createNewProject"
         />
@@ -221,7 +221,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
 
       <div v-if="!projectCreationSettings.isAdvancedSettingsOpen" class="text-xs text-ui-text-muted bg-ui-bg-accent p-3 rounded-lg flex gap-2">
         <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
-        {{ t('granVideoEditor.projects.autoDetectHint', 'Project resolution and framerate will be automatically detected from the first video added to the timeline.') }}
+        {{ t('fastcat.projects.autoDetectHint', 'Project resolution and framerate will be automatically detected from the first video added to the timeline.') }}
       </div>
 
       <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">

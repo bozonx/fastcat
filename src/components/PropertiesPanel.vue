@@ -229,19 +229,19 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'timeline'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
-            {{ t('granVideoEditor.timeline.properties.title', 'Timeline Properties') }}
+            {{ t('fastcat.timeline.properties.title', 'Timeline Properties') }}
           </span>
           <span
             v-else-if="displayMode === 'project-effect'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
-            {{ t('granVideoEditor.effects.title', 'Effect') }}
+            {{ t('fastcat.effects.title', 'Effect') }}
           </span>
           <span
             v-else-if="displayMode === 'project-transition'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
-            {{ t('granVideoEditor.transitions.title', 'Transition') }}
+            {{ t('fastcat.transitions.title', 'Transition') }}
           </span>
         </template>
         <span v-else class="ml-2 text-xs text-ui-text-muted font-mono truncate">
@@ -298,7 +298,7 @@ function onPanelFocusOut() {
             class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
           >
             <p class="text-xs">
-              {{ t('granVideoEditor.preview.noSelection', 'No item selected') }}
+              {{ t('fastcat.preview.noSelection', 'No item selected') }}
             </p>
           </div>
 

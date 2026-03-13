@@ -165,34 +165,34 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     {
       key: 'mode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramBarnDoorMode',
+      labelKey: 'fastcat.timeline.transition.paramBarnDoorMode',
       options: [
-        { value: 'open', labelKey: 'granVideoEditor.timeline.transition.barnDoorModeOpen' },
-        { value: 'close', labelKey: 'granVideoEditor.timeline.transition.barnDoorModeClose' },
+        { value: 'open', labelKey: 'fastcat.timeline.transition.barnDoorModeOpen' },
+        { value: 'close', labelKey: 'fastcat.timeline.transition.barnDoorModeClose' },
       ],
     },
     {
       key: 'edgeMode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeMode',
+      labelKey: 'fastcat.timeline.transition.paramWipeEdgeMode',
       options: [
-        { value: 'gap', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeGap' },
-        { value: 'blur', labelKey: 'granVideoEditor.timeline.transition.wipeEdgeModeBlur' },
+        { value: 'gap', labelKey: 'fastcat.timeline.transition.wipeEdgeModeGap' },
+        { value: 'blur', labelKey: 'fastcat.timeline.transition.wipeEdgeModeBlur' },
       ],
     },
     {
       key: 'blurMode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
+      labelKey: 'fastcat.timeline.transition.paramBlurMode',
       options: [
-        { value: 'scaled', labelKey: 'granVideoEditor.timeline.transition.blurModeScaled' },
-        { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },
+        { value: 'scaled', labelKey: 'fastcat.timeline.transition.blurModeScaled' },
+        { value: 'fixed', labelKey: 'fastcat.timeline.transition.blurModeFixed' },
       ],
     },
     {
       key: 'gap',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramGapSize',
+      labelKey: 'fastcat.timeline.transition.paramGapSize',
       min: 0,
       max: 0.2,
       step: 0.005,
@@ -200,12 +200,12 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     {
       key: 'gapColor',
       kind: 'color',
-      labelKey: 'granVideoEditor.timeline.transition.paramGapColor',
+      labelKey: 'fastcat.timeline.transition.paramGapColor',
     },
     {
       key: 'blur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramWipeEdgeBlur',
+      labelKey: 'fastcat.timeline.transition.paramWipeEdgeBlur',
       min: 0.0001,
       max: 0.2,
       step: 0.005,
@@ -213,7 +213,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     {
       key: 'angle',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramAngle',
+      labelKey: 'fastcat.timeline.transition.paramAngle',
       min: -180,
       max: 180,
       step: 1,

@@ -96,8 +96,8 @@ onBeforeUnmount(() => {
       :icon="monitorMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
       :aria-label="
         monitorMuted
-          ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
-          : t('granVideoEditor.monitor.audioMute', 'Mute')
+          ? t('fastcat.monitor.audioUnmute', 'Unmute')
+          : t('fastcat.monitor.audioMute', 'Mute')
       "
       @click="toggleMute"
     />
@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
       :default-value="1"
       :model-value="monitorMuted ? 0 : monitorVolume"
       slider-class="w-20"
-      :aria-label="t('granVideoEditor.monitor.audioVolume', 'Audio volume')"
+      :aria-label="t('fastcat.monitor.audioVolume', 'Audio volume')"
       @update:model-value="onVolumeUpdate"
     />
 
@@ -131,8 +131,8 @@ onBeforeUnmount(() => {
       :icon="monitorMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
       :aria-label="
         monitorMuted
-          ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
-          : t('granVideoEditor.monitor.audioMute', 'Mute')
+          ? t('fastcat.monitor.audioUnmute', 'Unmute')
+          : t('fastcat.monitor.audioMute', 'Mute')
       "
       class="pointer-events-none"
     />
@@ -171,8 +171,8 @@ onBeforeUnmount(() => {
                 :icon="monitorMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
                 :aria-label="
                   monitorMuted
-                    ? t('granVideoEditor.monitor.audioUnmute', 'Unmute')
-                    : t('granVideoEditor.monitor.audioMute', 'Mute')
+                    ? t('fastcat.monitor.audioUnmute', 'Unmute')
+                    : t('fastcat.monitor.audioMute', 'Mute')
                 "
                 @click="toggleMute"
               />

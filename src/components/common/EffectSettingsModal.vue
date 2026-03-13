@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
 <template>
   <UModal
     v-model:open="isOpen"
-    :title="manifest?.name ?? t('granVideoEditor.effects.settings', 'Settings')"
+    :title="manifest?.name ?? t('fastcat.effects.settings', 'Settings')"
     class="sm:max-w-2xl"
   >
     <template #body>
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
         />
       </div>
       <div v-else class="text-center text-sm text-ui-text-muted py-8">
-        {{ t('granVideoEditor.effects.noSettings', 'No additional settings available.') }}
+        {{ t('fastcat.effects.noSettings', 'No additional settings available.') }}
       </div>
     </template>
     <template #footer>

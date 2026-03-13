@@ -13,13 +13,13 @@ function makeEmptyDoc(): TimelineDocument {
 }
 
 describe('timeline/commands master mute', () => {
-  it('updates metadata.gran.masterMuted', () => {
+  it('updates metadata.fastcat.masterMuted', () => {
     const doc = makeEmptyDoc();
 
     const muted = applyTimelineCommand(doc, { type: 'update_master_muted', muted: true }).next;
-    expect(muted.metadata?.gran?.masterMuted).toBe(true);
+    expect(muted.metadata?.fastcat?.masterMuted).toBe(true);
 
     const unmuted = applyTimelineCommand(muted, { type: 'update_master_muted', muted: false }).next;
-    expect(unmuted.metadata?.gran?.masterMuted).toBe(false);
+    expect(unmuted.metadata?.fastcat?.masterMuted).toBe(false);
   });
 });

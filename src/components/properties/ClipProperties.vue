@@ -645,7 +645,7 @@ defineExpose({
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection :title="t('granVideoEditor.clip.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.clip.actions', 'Actions')">
       <div class="flex gap-2 w-full">
         <UButton
           size="xs"
@@ -678,7 +678,7 @@ defineExpose({
         class="w-full justify-center mt-2"
         @click="handleQuantizeClip"
       >
-        {{ t('granVideoEditor.timeline.quantize', 'Quantize to frames') }}
+        {{ t('fastcat.timeline.quantize', 'Quantize to frames') }}
       </UButton>
 
       <UButton
@@ -690,7 +690,7 @@ defineExpose({
         class="w-full justify-center mt-2"
         @click="handleUnlinkAudio"
       >
-        {{ t('granVideoEditor.timeline.unlinkAudio', 'Unlink audio') }}
+        {{ t('fastcat.timeline.unlinkAudio', 'Unlink audio') }}
       </UButton>
 
       <UButton
@@ -702,7 +702,7 @@ defineExpose({
         class="w-full justify-center mt-2"
         @click="handleRemoveFromGroup"
       >
-        {{ t('granVideoEditor.timeline.removeFromGroup', 'Remove from group') }}
+        {{ t('fastcat.timeline.removeFromGroup', 'Remove from group') }}
       </UButton>
 
       <UButton
@@ -714,7 +714,7 @@ defineExpose({
         class="w-full justify-center mt-2"
         @click="handleSelectInFileManager"
       >
-        {{ t('granVideoEditor.clip.showInFileManager', 'Show in File Manager') }}
+        {{ t('fastcat.clip.showInFileManager', 'Show in File Manager') }}
       </UButton>
 
       <template v-if="canEditAudioGain">
@@ -729,8 +729,8 @@ defineExpose({
         >
           {{
             clip.showWaveform === false
-              ? t('granVideoEditor.clip.showWaveform', 'Show Waveform')
-              : t('granVideoEditor.clip.hideWaveform', 'Hide Waveform')
+              ? t('fastcat.clip.showWaveform', 'Show Waveform')
+              : t('fastcat.clip.hideWaveform', 'Hide Waveform')
           }}
         </UButton>
 
@@ -745,8 +745,8 @@ defineExpose({
         >
           {{
             clip.showThumbnails === false
-              ? t('granVideoEditor.clip.showThumbnails', 'Show Thumbnails')
-              : t('granVideoEditor.clip.hideThumbnails', 'Hide Thumbnails')
+              ? t('fastcat.clip.showThumbnails', 'Show Thumbnails')
+              : t('fastcat.clip.hideThumbnails', 'Hide Thumbnails')
           }}
         </UButton>
 
@@ -761,8 +761,8 @@ defineExpose({
         >
           {{
             (clip.audioWaveformMode || 'half') === 'full'
-              ? t('granVideoEditor.clip.halfWaveform', 'Half Waveform')
-              : t('granVideoEditor.clip.fullWaveform', 'Full Waveform')
+              ? t('fastcat.clip.halfWaveform', 'Half Waveform')
+              : t('fastcat.clip.fullWaveform', 'Full Waveform')
           }}
         </UButton>
       </template>
@@ -792,7 +792,7 @@ defineExpose({
       </template>
     </PropertySection>
 
-    <PropertySection :title="t('granVideoEditor.clip.info', 'Clip Info')">
+    <PropertySection :title="t('fastcat.clip.info', 'Clip Info')">
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.duration', 'Duration') }}</span>
         <TimecodeInput
@@ -832,7 +832,7 @@ defineExpose({
 
     <PropertySection
       v-else-if="clip.clipType === 'text'"
-      :title="t('granVideoEditor.textClip.text', 'Text')"
+      :title="t('fastcat.textClip.text', 'Text')"
     >
       <div class="flex flex-col gap-2">
         <UTextarea
@@ -844,7 +844,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.textClip.fontFamily', 'Font family')
+            t('fastcat.textClip.fontFamily', 'Font family')
           }}</span>
           <USelectMenu
             :model-value="String((clip as any).style?.fontFamily ?? 'sans-serif')"
@@ -872,7 +872,7 @@ defineExpose({
         <div class="grid grid-cols-2 gap-2">
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.textClip.fontSize', 'Font size')
+              t('fastcat.textClip.fontSize', 'Font size')
             }}</span>
             <WheelNumberInput
               :model-value="Number((clip as any).style?.fontSize ?? 64)"
@@ -884,7 +884,7 @@ defineExpose({
           </div>
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.textClip.fontWeight', 'Font weight')
+              t('fastcat.textClip.fontWeight', 'Font weight')
             }}</span>
             <USelectMenu
               :model-value="String((clip as any).style?.fontWeight ?? '700')"
@@ -919,7 +919,7 @@ defineExpose({
           </div>
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.textClip.backgroundColor', 'Background')
+              t('fastcat.textClip.backgroundColor', 'Background')
             }}</span>
             <UColorPicker
               :model-value="String((clip as any).style?.backgroundColor ?? '')"
@@ -934,7 +934,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.textClip.width', 'Text width (0 - auto)')
+            t('fastcat.textClip.width', 'Text width (0 - auto)')
           }}</span>
           <WheelNumberInput
             :model-value="Number((clip as any).style?.width ?? 0)"
@@ -949,7 +949,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.textClip.align', 'Align')
+            t('fastcat.textClip.align', 'Align')
           }}</span>
           <USelectMenu
             :model-value="String((clip as any).style?.align ?? 'center')"
@@ -967,7 +967,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.textClip.verticalAlign', 'Vertical align')
+            t('fastcat.textClip.verticalAlign', 'Vertical align')
           }}</span>
           <USelectMenu
             :model-value="String((clip as any).style?.verticalAlign ?? 'middle')"
@@ -986,7 +986,7 @@ defineExpose({
         <div class="grid grid-cols-2 gap-2">
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.textClip.lineHeight', 'Line height')
+              t('fastcat.textClip.lineHeight', 'Line height')
             }}</span>
             <WheelNumberInput
               :model-value="Number((clip as any).style?.lineHeight ?? 1.2)"
@@ -997,7 +997,7 @@ defineExpose({
           </div>
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{
-              t('granVideoEditor.textClip.letterSpacing', 'Letter spacing')
+              t('fastcat.textClip.letterSpacing', 'Letter spacing')
             }}</span>
             <WheelNumberInput
               :model-value="Number((clip as any).style?.letterSpacing ?? 0)"
@@ -1010,7 +1010,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.textClip.padding', 'Padding')
+            t('fastcat.textClip.padding', 'Padding')
           }}</span>
           <WheelNumberInput
             :model-value="
@@ -1032,28 +1032,28 @@ defineExpose({
 
     <PropertySection
       v-else-if="clip.clipType === 'shape'"
-      :title="t('granVideoEditor.shapeClip.shape', 'Shape')"
+      :title="t('fastcat.shapeClip.shape', 'Shape')"
     >
       <div class="flex flex-col gap-2">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.shapeClip.type', 'Type')
+            t('fastcat.shapeClip.type', 'Type')
           }}</span>
           <USelectMenu
             :model-value="String((clip as any).shapeType ?? 'square')"
             :items="[
-              { value: 'square', label: t('granVideoEditor.shapeClip.types.square', 'Square') },
-              { value: 'circle', label: t('granVideoEditor.shapeClip.types.circle', 'Circle') },
+              { value: 'square', label: t('fastcat.shapeClip.types.square', 'Square') },
+              { value: 'circle', label: t('fastcat.shapeClip.types.circle', 'Circle') },
               {
                 value: 'triangle',
-                label: t('granVideoEditor.shapeClip.types.triangle', 'Triangle'),
+                label: t('fastcat.shapeClip.types.triangle', 'Triangle'),
               },
-              { value: 'star', label: t('granVideoEditor.shapeClip.types.star', 'Star') },
-              { value: 'bang', label: t('granVideoEditor.shapeClip.types.bang', 'Bang') },
-              { value: 'cloud', label: t('granVideoEditor.shapeClip.types.cloud', 'Cloud') },
+              { value: 'star', label: t('fastcat.shapeClip.types.star', 'Star') },
+              { value: 'bang', label: t('fastcat.shapeClip.types.bang', 'Bang') },
+              { value: 'cloud', label: t('fastcat.shapeClip.types.cloud', 'Cloud') },
               {
                 value: 'speech_bubble',
-                label: t('granVideoEditor.shapeClip.types.speechBubble', 'Speech Bubble'),
+                label: t('fastcat.shapeClip.types.speechBubble', 'Speech Bubble'),
               },
             ]"
             value-key="value"
@@ -1065,7 +1065,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.shapeClip.fillColor', 'Fill Color')
+            t('fastcat.shapeClip.fillColor', 'Fill Color')
           }}</span>
           <UColorPicker
             :model-value="String((clip as any).fillColor ?? '#ffffff')"
@@ -1077,7 +1077,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.shapeClip.strokeColor', 'Stroke Color')
+            t('fastcat.shapeClip.strokeColor', 'Stroke Color')
           }}</span>
           <UColorPicker
             :model-value="String((clip as any).strokeColor ?? '#000000')"
@@ -1089,7 +1089,7 @@ defineExpose({
 
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.shapeClip.strokeWidth', 'Stroke Width')
+            t('fastcat.shapeClip.strokeWidth', 'Stroke Width')
           }}</span>
           <WheelNumberInput
             :model-value="Number((clip as any).strokeWidth ?? 0)"
@@ -1308,7 +1308,7 @@ defineExpose({
 
     <PropertySection
       v-else-if="clip.clipType === 'hud'"
-      :title="t('granVideoEditor.hudClip.hud', 'HUD')"
+      :title="t('fastcat.hudClip.hud', 'HUD')"
     >
       <ParamsRenderer
         v-if="hudManifest"
@@ -1336,7 +1336,7 @@ defineExpose({
     >
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.blendMode', 'Blend mode')
+          t('fastcat.clip.blendMode', 'Blend mode')
         }}</span>
         <USelectMenu
           :model-value="clip.blendMode ?? 'normal'"
@@ -1350,7 +1350,7 @@ defineExpose({
 
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">
-          {{ t('granVideoEditor.clip.opacity', 'Opacity') }}
+          {{ t('fastcat.clip.opacity', 'Opacity') }}
         </span>
         <span class="text-xs font-mono text-ui-text-muted"
           >{{ Math.round((clip.opacity ?? 1) * 100) }}%</span
@@ -1369,9 +1369,9 @@ defineExpose({
     <div ref="effectsSectionRef">
       <EffectsEditor
         :effects="clipVideoEffects"
-        :title="t('granVideoEditor.effects.clipTitle', 'Clip effects')"
-        :add-label="t('granVideoEditor.effects.add', 'Add')"
-        :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
+        :title="t('fastcat.effects.clipTitle', 'Clip effects')"
+        :add-label="t('fastcat.effects.add', 'Add')"
+        :empty-label="t('fastcat.effects.empty', 'No effects')"
         @update:effects="handleUpdateClipEffects"
       />
     </div>
@@ -1411,12 +1411,12 @@ defineExpose({
       <div
         class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-2"
       >
-        {{ t('granVideoEditor.clip.transform.title', 'Transform') }}
+        {{ t('fastcat.clip.transform.title', 'Transform') }}
       </div>
 
       <div v-if="canEditReversed" class="flex items-center justify-between">
         <span class="text-sm text-ui-text">{{
-          t('granVideoEditor.clip.reversed', 'Reverse Playback')
+          t('fastcat.clip.reversed', 'Reverse Playback')
         }}</span>
         <USwitch :model-value="isReversed" @update:model-value="toggleReversed" />
       </div>
@@ -1429,7 +1429,7 @@ defineExpose({
             color="neutral"
             variant="ghost"
             class="text-ui-text-muted hover:text-ui-text"
-            :title="t('granVideoEditor.clip.transform.flipHorizontal', 'Flip Horizontal')"
+            :title="t('fastcat.clip.transform.flipHorizontal', 'Flip Horizontal')"
             @click="toggleFlipHorizontal"
           />
           <UButton
@@ -1438,7 +1438,7 @@ defineExpose({
             color="neutral"
             variant="ghost"
             class="text-ui-text-muted hover:text-ui-text"
-            :title="t('granVideoEditor.clip.transform.flipVertical', 'Flip Vertical')"
+            :title="t('fastcat.clip.transform.flipVertical', 'Flip Vertical')"
             @click="toggleFlipVertical"
           />
         </div>
@@ -1448,8 +1448,8 @@ defineExpose({
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
             transformScaleLinked
-              ? t('granVideoEditor.clip.transform.scale', 'Scale (%)')
-              : t('granVideoEditor.clip.transform.scaleX', 'Scale X (%)')
+              ? t('fastcat.clip.transform.scale', 'Scale (%)')
+              : t('fastcat.clip.transform.scaleX', 'Scale X (%)')
           }}</span>
           <WheelNumberInput v-model="transformScaleX" size="sm" :step="1" />
         </div>
@@ -1467,7 +1467,7 @@ defineExpose({
 
         <div v-if="!transformScaleLinked" class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.transform.scaleY', 'Scale Y (%)')
+            t('fastcat.clip.transform.scaleY', 'Scale Y (%)')
           }}</span>
           <WheelNumberInput v-model="transformScaleY" size="sm" :step="1" />
         </div>
@@ -1478,7 +1478,7 @@ defineExpose({
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.transform.rotation', 'Rotation (deg)')
+          t('fastcat.clip.transform.rotation', 'Rotation (deg)')
         }}</span>
         <WheelNumberInput v-model="transformRotationDeg" size="sm" :step="1" />
       </div>
@@ -1486,13 +1486,13 @@ defineExpose({
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.transform.positionX', 'Position X (px)')
+            t('fastcat.clip.transform.positionX', 'Position X (px)')
           }}</span>
           <WheelNumberInput v-model="transformPosX" size="sm" :step="1" />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.transform.positionY', 'Position Y (px)')
+            t('fastcat.clip.transform.positionY', 'Position Y (px)')
           }}</span>
           <WheelNumberInput v-model="transformPosY" size="sm" :step="1" />
         </div>
@@ -1500,7 +1500,7 @@ defineExpose({
 
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('granVideoEditor.clip.transform.anchor', 'Anchor')
+          t('fastcat.clip.transform.anchor', 'Anchor')
         }}</span>
         <USelectMenu
           v-model="transformAnchorPreset"
@@ -1515,13 +1515,13 @@ defineExpose({
       <div v-if="transformAnchorPreset === 'custom'" class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.transform.anchorX', 'Anchor X (0..1)')
+            t('fastcat.clip.transform.anchorX', 'Anchor X (0..1)')
           }}</span>
           <WheelNumberInput v-model="transformAnchorX" size="sm" :step="0.01" />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
-            t('granVideoEditor.clip.transform.anchorY', 'Anchor Y (0..1)')
+            t('fastcat.clip.transform.anchorY', 'Anchor Y (0..1)')
           }}</span>
           <WheelNumberInput v-model="transformAnchorY" size="sm" :step="0.01" />
         </div>
@@ -1531,7 +1531,7 @@ defineExpose({
     <!-- Rename Modal -->
     <RenameModal
       v-model:open="isRenameModalOpen"
-      :title="t('granVideoEditor.preview.renameClip', 'Rename clip')"
+      :title="t('fastcat.preview.renameClip', 'Rename clip')"
       :current-name="clip.name"
       @rename="handleRenameClip"
     />

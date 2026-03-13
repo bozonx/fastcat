@@ -634,7 +634,7 @@ function resetDefaults() {
     </div>
 
     <div class="text-[10px] text-ui-text-muted italic px-1">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
+      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
     </div>
   </div>
 </template>

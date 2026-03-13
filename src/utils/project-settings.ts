@@ -1,14 +1,14 @@
-import type { GranVideoEditorUserSettings } from './settings/defaults';
+import type { FastCatUserSettings } from './settings/defaults';
 import { getResolutionPreset } from './settings/helpers';
 import { resolveExportPreset, resolveProjectPreset } from './settings/presets';
 
 interface ProjectSettingsUserDefaultsInput {
-  projectDefaults: GranVideoEditorUserSettings['projectDefaults'];
-  projectPresets: GranVideoEditorUserSettings['projectPresets'];
-  exportPresets: GranVideoEditorUserSettings['exportPresets'];
+  projectDefaults: FastCatUserSettings['projectDefaults'];
+  projectPresets: FastCatUserSettings['projectPresets'];
+  exportPresets: FastCatUserSettings['exportPresets'];
 }
 
-export interface GranVideoEditorProjectSettings {
+export interface FastCatProjectSettings {
   project: {
     width: number;
     height: number;
@@ -58,7 +58,7 @@ export interface GranVideoEditorProjectSettings {
   };
 }
 
-export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
+export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
   project: {
     width: 1920,
     height: 1080,
@@ -110,7 +110,7 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
 
 function getProjectSettingsFromUserDefaults(
   userSettings: ProjectSettingsUserDefaultsInput,
-): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
+): Pick<FastCatProjectSettings, 'project' | 'exportDefaults'> {
   const projectPreset = resolveProjectPreset(userSettings.projectPresets);
   const exportPreset = resolveExportPreset(userSettings.exportPresets);
 
@@ -150,7 +150,7 @@ function getProjectSettingsFromUserDefaults(
 
 export function createDefaultProjectSettings(
   userSettings: ProjectSettingsUserDefaultsInput,
-): GranVideoEditorProjectSettings {
+): FastCatProjectSettings {
   const base = getProjectSettingsFromUserDefaults(userSettings);
   return {
     ...base,
@@ -168,7 +168,7 @@ export function createDefaultProjectSettings(
 export function normalizeProjectSettings(
   raw: unknown,
   userSettings: ProjectSettingsUserDefaultsInput,
-): GranVideoEditorProjectSettings {
+): FastCatProjectSettings {
   if (!raw || typeof raw !== 'object') {
     return createDefaultProjectSettings(userSettings);
   }

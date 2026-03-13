@@ -302,7 +302,7 @@ export function useFileContextMenu(
     if (isOtioFile) {
       items.push([
         {
-          label: t('granVideoEditor.timeline.createVersion', 'Create version'),
+          label: t('fastcat.timeline.createVersion', 'Create version'),
           icon: 'i-heroicons-document-duplicate',
           onSelect: () => onAction('createOtioVersion', entry),
         },

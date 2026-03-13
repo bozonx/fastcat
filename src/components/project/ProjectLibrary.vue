@@ -57,7 +57,7 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
         "
         @click="activeTab = 'shapes'"
       >
-        {{ t('granVideoEditor.library.tabs.shapes', 'Shapes') }}
+        {{ t('fastcat.library.tabs.shapes', 'Shapes') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -68,7 +68,7 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
         "
         @click="activeTab = 'hud'"
       >
-        {{ t('granVideoEditor.library.tabs.hud', 'HUD') }}
+        {{ t('fastcat.library.tabs.hud', 'HUD') }}
       </button>
     </div>
 
@@ -86,7 +86,7 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
           <UIcon :name="shape.icon" class="w-8 h-8 text-primary shrink-0" />
           <div class="flex-1 min-w-0">
             <h4 class="text-sm font-medium text-ui-text">
-              {{ t(`granVideoEditor.library.shapes.${shape.type}`, shape.name) }}
+              {{ t(`fastcat.library.shapes.${shape.type}`, shape.name) }}
             </h4>
           </div>
         </div>
@@ -104,7 +104,7 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
           <UIcon :name="hud.icon" class="w-8 h-8 text-primary shrink-0" />
           <div class="flex-1 min-w-0">
             <h4 class="text-sm font-medium text-ui-text">
-              {{ t(`granVideoEditor.library.huds.${hud.type}`, hud.name) }}
+              {{ t(`fastcat.library.huds.${hud.type}`, hud.name) }}
             </h4>
           </div>
         </div>

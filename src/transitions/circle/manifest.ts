@@ -145,7 +145,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     {
       key: 'blur',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramCircleBlur',
+      labelKey: 'fastcat.timeline.transition.paramCircleBlur',
       min: 0.0001,
       max: 0.2,
       step: 0.0025,
@@ -153,43 +153,43 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     {
       key: 'blurMode',
       kind: 'button-group',
-      labelKey: 'granVideoEditor.timeline.transition.paramBlurMode',
+      labelKey: 'fastcat.timeline.transition.paramBlurMode',
       options: [
-        { value: 'fixed', labelKey: 'granVideoEditor.timeline.transition.blurModeFixed' },
-        { value: 'scaled', labelKey: 'granVideoEditor.timeline.transition.blurModeScaled' },
+        { value: 'fixed', labelKey: 'fastcat.timeline.transition.blurModeFixed' },
+        { value: 'scaled', labelKey: 'fastcat.timeline.transition.blurModeScaled' },
       ],
     },
     {
       key: 'direction',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramDirection',
+      labelKey: 'fastcat.timeline.transition.paramDirection',
       options: [
         {
           value: 'from-center',
-          labelKey: 'granVideoEditor.timeline.transition.directionFromCenter',
+          labelKey: 'fastcat.timeline.transition.directionFromCenter',
         },
-        { value: 'to-center', labelKey: 'granVideoEditor.timeline.transition.directionToCenter' },
+        { value: 'to-center', labelKey: 'fastcat.timeline.transition.directionToCenter' },
       ],
     },
     {
       key: 'anchor',
       kind: 'select',
-      labelKey: 'granVideoEditor.timeline.transition.paramAnchor',
+      labelKey: 'fastcat.timeline.transition.paramAnchor',
       options: [
-        { value: 'center', labelKey: 'granVideoEditor.timeline.transition.anchorCenter' },
-        { value: 'top-left', labelKey: 'granVideoEditor.timeline.transition.anchorTopLeft' },
-        { value: 'top-right', labelKey: 'granVideoEditor.timeline.transition.anchorTopRight' },
-        { value: 'bottom-left', labelKey: 'granVideoEditor.timeline.transition.anchorBottomLeft' },
+        { value: 'center', labelKey: 'fastcat.timeline.transition.anchorCenter' },
+        { value: 'top-left', labelKey: 'fastcat.timeline.transition.anchorTopLeft' },
+        { value: 'top-right', labelKey: 'fastcat.timeline.transition.anchorTopRight' },
+        { value: 'bottom-left', labelKey: 'fastcat.timeline.transition.anchorBottomLeft' },
         {
           value: 'bottom-right',
-          labelKey: 'granVideoEditor.timeline.transition.anchorBottomRight',
+          labelKey: 'fastcat.timeline.transition.anchorBottomRight',
         },
       ],
     },
     {
       key: 'offsetX',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramOffsetX',
+      labelKey: 'fastcat.timeline.transition.paramOffsetX',
       min: -100,
       max: 100,
       step: 1,
@@ -197,7 +197,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     {
       key: 'offsetY',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramOffsetY',
+      labelKey: 'fastcat.timeline.transition.paramOffsetY',
       min: -100,
       max: 100,
       step: 1,
@@ -205,7 +205,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     {
       key: 'scaleX',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramScaleX',
+      labelKey: 'fastcat.timeline.transition.paramScaleX',
       min: 1,
       max: 1000,
       step: 1,
@@ -213,7 +213,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     {
       key: 'scaleY',
       kind: 'number',
-      labelKey: 'granVideoEditor.timeline.transition.paramScaleY',
+      labelKey: 'fastcat.timeline.transition.paramScaleY',
       min: 1,
       max: 1000,
       step: 1,
@@ -221,7 +221,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     {
       key: 'followScale',
       kind: 'boolean',
-      labelKey: 'granVideoEditor.timeline.transition.paramFollowScale',
+      labelKey: 'fastcat.timeline.transition.paramFollowScale',
     },
   ],
   renderMode: 'shader',
