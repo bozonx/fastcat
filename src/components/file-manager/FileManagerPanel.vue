@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import AppModal from '~/components/ui/AppModal.vue';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
+import FileManagerPanelModals from '~/components/file-manager/FileManagerPanelModals.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
@@ -667,105 +666,20 @@ watch(
     </div>
 
     <!-- Modals -->
-    <UiConfirmModal
-      v-model:open="isDeleteConfirmModalOpen"
-      :title="t('common.delete', 'Delete')"
-      :description="
-        t(
-          'common.confirmDelete',
-          'Are you sure you want to delete this? This action cannot be undone.',
-        )
-      "
-      color="error"
-      icon="i-heroicons-exclamation-triangle"
-      @confirm="handleDeleteConfirm"
-    >
-      <div>
-        <div v-if="deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
-          {{ deleteTargets[0]?.name }}
-        </div>
-        <div v-else-if="deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
-          {{ deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
-        </div>
-        <div
-          v-if="deleteTargets.length === 1 && deleteTargets[0]?.path"
-          class="mt-1 text-xs text-ui-text-muted break-all"
-        >
-          {{
-            deleteTargets[0].kind === 'directory'
-              ? t('common.folder', 'Folder')
-              : t('common.file', 'File')
-          }}
-          ·
-          {{ deleteTargets[0].path }}
-        </div>
-
-        <div
-          v-if="timelinesUsingDeleteTarget.length > 0"
-          class="mt-3 p-2 rounded border border-red-500/40 bg-red-500/10"
-        >
-          <div class="text-xs font-semibold text-red-400">
-            {{ t('videoEditor.fileManager.delete.usedWarning', 'This file is used in timelines:') }}
-          </div>
-          <div class="mt-1 flex flex-col gap-1">
-            <div
-              v-for="tl in timelinesUsingDeleteTarget"
-              :key="tl.timelinePath"
-              class="text-xs text-ui-text break-all"
-            >
-              {{ tl.timelineName }}
-              <span class="text-[10px] text-ui-text-muted">({{ tl.timelinePath }})</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </UiConfirmModal>
-
-    <AppModal
-      v-model:open="sttTranscriptionModalOpen"
-      :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
-      :close-button="!sttTranscribing"
-      :prevent-close="sttTranscribing"
-      :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
-    >
-      <div class="flex flex-col gap-4">
-        <div class="text-sm text-ui-text-muted">
-          {{
-            t(
-              'videoEditor.fileManager.audio.transcriptionHint',
-              'Send the current audio file to the configured STT service. Language is optional.',
-            )
-          }}
-        </div>
-
-        <div v-if="sttTranscriptionEntry" class="text-xs text-ui-text-muted break-all">
-          {{ sttTranscriptionEntry.name }}
-        </div>
-
-        <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
-          <UInput v-model="sttTranscriptionLanguage" :disabled="sttTranscribing" placeholder="en" />
-        </UFormField>
-
-        <div v-if="sttTranscriptionError" class="text-sm text-error-400">
-          {{ sttTranscriptionError }}
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            :disabled="sttTranscribing"
-            @click="sttTranscriptionModalOpen = false"
-          >
-            {{ t('common.cancel', 'Cancel') }}
-          </UButton>
-          <UButton color="primary" :loading="sttTranscribing" @click="submitTranscription">
-            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
-          </UButton>
-        </div>
-      </template>
-    </AppModal>
+    <FileManagerPanelModals
+      :delete-targets="deleteTargets"
+      :timelines-using-delete-target="timelinesUsingDeleteTarget"
+      :is-delete-confirm-modal-open="isDeleteConfirmModalOpen"
+      :stt-transcription-modal-open="sttTranscriptionModalOpen"
+      :stt-transcribing="sttTranscribing"
+      :stt-transcription-error="sttTranscriptionError"
+      :stt-transcription-entry="sttTranscriptionEntry"
+      :stt-transcription-language="sttTranscriptionLanguage"
+      @update:is-delete-confirm-modal-open="isDeleteConfirmModalOpen = $event"
+      @update:stt-transcription-modal-open="sttTranscriptionModalOpen = $event"
+      @update:stt-transcription-language="sttTranscriptionLanguage = $event"
+      @delete-confirm="handleDeleteConfirm"
+      @submit-transcription="submitTranscription"
+    />
   </div>
 </template>
