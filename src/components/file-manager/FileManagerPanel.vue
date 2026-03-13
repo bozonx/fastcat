@@ -22,6 +22,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
+import { useFileManagerPanelPendingActions } from '~/composables/fileManager/useFileManagerPanelPendingActions';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
@@ -440,72 +441,16 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
   emit('select', entry);
 }
 
-// Watchers for global actions (from search or other panels)
-watch(
-  () => uiStore.pendingFsEntryDelete,
-  (value) => {
-    const entries = value;
-    if (entries && entries.length > 0) {
-      openDeleteConfirmModal(entries);
-      uiStore.pendingFsEntryDelete = null;
-    }
+useFileManagerPanelPendingActions({
+  openDeleteConfirmModal,
+  startRename,
+  onCreateFolder: (entry) => onFileAction('createFolder', entry),
+  createTimelineInDirectory,
+  createMarkdownInDirectory: async (entry) => {
+    await onFileAction('createMarkdown', entry);
   },
-);
-
-watch(
-  () => uiStore.pendingFsEntryRename,
-  (value) => {
-    const entry = value;
-    if (entry) {
-      startRename(entry);
-      uiStore.pendingFsEntryRename = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingFsEntryCreateFolder,
-  (value) => {
-    const entry = value;
-    if (entry && entry.kind === 'directory') {
-      onFileAction('createFolder', entry);
-      uiStore.pendingFsEntryCreateFolder = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingFsEntryCreateTimeline,
-  async (value) => {
-    const entry = value;
-    if (entry && entry.kind === 'directory') {
-      await createTimelineInDirectory(entry);
-      uiStore.pendingFsEntryCreateTimeline = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingFsEntryCreateMarkdown,
-  (value) => {
-    const entry = value;
-    if (entry && entry.kind === 'directory') {
-      void onFileAction('createMarkdown', entry);
-      uiStore.pendingFsEntryCreateMarkdown = null;
-    }
-  },
-);
-
-watch(
-  () => uiStore.pendingOtioCreateVersion,
-  (value) => {
-    const entry = value;
-    if (entry && entry.kind === 'file') {
-      void onFileActionBase('createOtioVersion', entry);
-      uiStore.pendingOtioCreateVersion = null;
-    }
-  },
-);
+  createOtioVersion: (entry) => onFileActionBase('createOtioVersion', entry),
+});
 
 watch(
   () => projectStore.currentProjectName,
