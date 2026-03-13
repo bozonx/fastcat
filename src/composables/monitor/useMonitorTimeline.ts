@@ -308,6 +308,13 @@ export function useMonitorTimeline() {
     const videoTracks = docTracks.filter((t) => t.kind === 'video' && !t.videoHidden);
     const trackById = new Map<string, TimelineTrack>(videoTracks.map((t) => [t.id, t]));
 
+    const masterVideoEffects = (
+      timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []
+    ).filter((effect) => effect?.target !== 'audio');
+    if (masterVideoEffects.length > 0) {
+      hash = mixHash(hash, hashString(JSON.stringify(masterVideoEffects)));
+    }
+
     for (const track of videoTracks) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixFloat(hash, track.opacity ?? 1, 1000);
@@ -391,10 +398,17 @@ export function useMonitorTimeline() {
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
+      masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
     });
 
     let hash = mixHash(2166136261, effectiveItems.length);
     hash = mixHash(hash, hasSolo ? 1 : 0);
+    const masterAudioEffects = (
+      timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []
+    ).filter((effect) => effect?.target === 'audio');
+    if (masterAudioEffects.length > 0) {
+      hash = mixHash(hash, hashString(JSON.stringify(masterAudioEffects)));
+    }
     for (const track of [...allAudioTracks, ...allVideoTracks]) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixHash(hash, track.audioMuted ? 1 : 0);
@@ -402,6 +416,13 @@ export function useMonitorTimeline() {
 
       hash = mixFloat(hash, mergeGain((track as any).audioGain, 1) ?? 1, 1000);
       hash = mixFloat(hash, mergeBalance((track as any).audioBalance, 0) ?? 0, 1000);
+
+      const trackAudioEffects = (track.effects ?? []).filter(
+        (effect) => effect?.target === 'audio',
+      );
+      if (trackAudioEffects.length > 0) {
+        hash = mixHash(hash, hashString(JSON.stringify(trackAudioEffects)));
+      }
     }
 
     for (const item of effectiveItems) {
@@ -418,6 +439,13 @@ export function useMonitorTimeline() {
         hash = mixFloat(hash, (item as any).audioBalance ?? 0, 1000);
         hash = mixTime(hash, Math.round(Number((item as any).audioFadeInUs ?? 0)));
         hash = mixTime(hash, Math.round(Number((item as any).audioFadeOutUs ?? 0)));
+
+        const audioEffects = Array.isArray((item as any).effects)
+          ? (item as any).effects.filter((effect: any) => effect?.target === 'audio')
+          : null;
+        if (audioEffects && audioEffects.length > 0) {
+          hash = mixHash(hash, hashString(JSON.stringify(audioEffects)));
+        }
       }
     }
     return hash;
@@ -432,6 +460,7 @@ export function useMonitorTimeline() {
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
+      masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
     });
 
     let hash = mixHash(2166136261, effectiveItems.length);

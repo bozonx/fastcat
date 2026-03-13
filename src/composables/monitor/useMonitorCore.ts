@@ -141,7 +141,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         return structuredClone(value);
       }
     } catch (err) {
-      console.warn('[Monitor] structuredClone failed, using mutable reference:', err);
+      console.warn('[Monitor] structuredClone failed, falling back to JSON.parse:', err);
+    }
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (err) {
+      console.warn('[Monitor] JSON clone failed as well:', err);
     }
     return value;
   }
