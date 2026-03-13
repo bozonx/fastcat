@@ -1,9 +1,7 @@
 import type { Ref } from 'vue';
-import {
-  VARDATA_DIR_NAME,
-  VARDATA_PROJECTS_DIR_NAME,
-  getProjectVardataSegments,
-} from '~/utils/vardata-paths';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
+import { getResolvedProjectTempSegments, toStoragePathSegments } from '~/utils/storage-topology';
 
 function getErrorMessage(e: unknown, fallback: string): string {
   if (!e || typeof e !== 'object') return fallback;
@@ -26,7 +24,10 @@ export function createWorkspaceProjectsModule(params: {
   projects: Ref<string[]>;
   error: Ref<string | null>;
   lastProjectName: Ref<string | null>;
+  resolvedStorageTopology: Ref<ResolvedStorageTopology>;
 }): WorkspaceProjectsModule {
+  const workspaceTopology = getWorkspaceStorageTopology();
+
   async function loadProjects() {
     if (!params.projectsHandle.value) return;
 
@@ -54,29 +55,39 @@ export function createWorkspaceProjectsModule(params: {
 
   async function clearVardata() {
     if (!params.workspaceHandle.value) return;
+    const tempRootSegments = toStoragePathSegments(params.resolvedStorageTopology.value.tempRoot);
+    const tempRootDirName = tempRootSegments[0] ?? workspaceTopology.tempRootDirName;
     try {
-      await params.workspaceHandle.value.removeEntry(VARDATA_DIR_NAME, { recursive: true });
+      await params.workspaceHandle.value.removeEntry(tempRootDirName, {
+        recursive: true,
+      });
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
         console.warn('Failed to clear vardata', e);
       }
     }
     try {
-      const vardataDir = await params.workspaceHandle.value.getDirectoryHandle(VARDATA_DIR_NAME, {
-        create: true,
-      });
-      await vardataDir.getDirectoryHandle(VARDATA_PROJECTS_DIR_NAME, { create: true });
+      let currentDir = params.workspaceHandle.value;
+      for (const segment of tempRootSegments.length > 0
+        ? tempRootSegments
+        : [workspaceTopology.tempRootDirName]) {
+        currentDir = await currentDir.getDirectoryHandle(segment, { create: true });
+      }
     } catch {
       // ignore
     }
   }
 
   async function clearProjectVardata(projectId: string) {
-    const parts = getProjectVardataSegments(projectId);
+    const parts = getResolvedProjectTempSegments(params.resolvedStorageTopology.value, projectId);
     try {
-      const vardataDir = await params.workspaceHandle.value?.getDirectoryHandle(parts[0]!);
-      const projectsDir = await vardataDir?.getDirectoryHandle(parts[1]!);
-      await projectsDir?.removeEntry(parts[2]!, { recursive: true });
+      let currentDir = params.workspaceHandle.value;
+      for (const segment of parts.slice(0, -1)) {
+        if (!currentDir) return;
+        currentDir = await currentDir.getDirectoryHandle(segment);
+      }
+      if (!currentDir) return;
+      await currentDir.removeEntry(parts.at(-1)!, { recursive: true });
     } catch {
       // ignore
     }
@@ -87,11 +98,18 @@ export function createWorkspaceProjectsModule(params: {
 
     try {
       if (projectId) {
-        const parts = getProjectVardataSegments(projectId);
+        const parts = getResolvedProjectTempSegments(
+          params.resolvedStorageTopology.value,
+          projectId,
+        );
         try {
-          const vardataDir = await params.workspaceHandle.value?.getDirectoryHandle(parts[0]!);
-          const projectsDir = await vardataDir?.getDirectoryHandle(parts[1]!);
-          await projectsDir?.removeEntry(parts[2]!, { recursive: true });
+          let currentDir = params.workspaceHandle.value;
+          for (const segment of parts.slice(0, -1)) {
+            if (!currentDir) return;
+            currentDir = await currentDir.getDirectoryHandle(segment);
+          }
+          if (!currentDir) return;
+          await currentDir.removeEntry(parts.at(-1)!, { recursive: true });
         } catch {
           // ignore
         }

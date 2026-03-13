@@ -1,9 +1,9 @@
 import { defineStore, skipHydrate } from 'pinia';
-import { ref, watch } from 'vue';
-import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
-import { WORKSPACE_COMMON_DIR_NAME } from '~/utils/workspace-common';
+import { computed, ref, watch } from 'vue';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
+import { resolveWorkspaceLocalStorageTopology } from '~/utils/storage-topology';
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
@@ -24,6 +24,7 @@ function readLocalStorageString(key: string): string | null {
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceProvider = createWorkspaceProvider();
+  const workspaceTopology = getWorkspaceStorageTopology();
 
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
@@ -62,12 +63,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     resetSettingsState,
   } = settingsModule;
 
+  const resolvedStorageTopology = computed(() =>
+    resolveWorkspaceLocalStorageTopology(appSettings.value.paths),
+  );
+
   const projectsModule = createWorkspaceProjectsModule({
     workspaceHandle,
     projectsHandle,
     projects,
     error,
     lastProjectName,
+    resolvedStorageTopology,
   });
   const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject } =
     projectsModule;
@@ -94,9 +100,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     workspaceHandle.value = handle;
     settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
 
-    const folders = ['projects', WORKSPACE_COMMON_DIR_NAME, VARDATA_DIR_NAME];
+    const folders = [
+      workspaceTopology.projectsDirName,
+      workspaceTopology.commonDirName,
+      workspaceTopology.tempRootDirName,
+    ];
     for (const folder of folders) {
-      if (folder === 'projects') {
+      if (folder === workspaceTopology.projectsDirName) {
         projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });
       } else {
         await handle.getDirectoryHandle(folder, { create: true });
@@ -104,8 +114,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     try {
-      const vardataDir = await handle.getDirectoryHandle(VARDATA_DIR_NAME, { create: true });
-      await vardataDir.getDirectoryHandle(VARDATA_PROJECTS_DIR_NAME, { create: true });
+      const tempRootDir = await handle.getDirectoryHandle(workspaceTopology.tempRootDirName, {
+        create: true,
+      });
+      await tempRootDir.getDirectoryHandle(workspaceTopology.tempProjectsDirName, { create: true });
     } catch {
       // ignore
     }
@@ -175,6 +187,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     lastProjectName: skipHydrate(lastProjectName),
     userSettings: skipHydrate(userSettings),
     appSettings: skipHydrate(appSettings),
+    resolvedStorageTopology: skipHydrate(resolvedStorageTopology),
     workspaceSettings: skipHydrate(workspaceSettings),
     isSavingUserSettings,
     userSettingsSaveError,
