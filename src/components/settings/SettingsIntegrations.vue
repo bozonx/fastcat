@@ -11,6 +11,7 @@ import {
   resolveExternalServiceConfig,
   runExternalHealthCheck,
 } from '~/utils/external-integrations';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 interface HealthState {
   loading: boolean;
@@ -23,6 +24,8 @@ const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
 const runtimeConfig = useRuntimeConfig();
+
+const isResetConfirmOpen = ref(false);
 
 const sttModelsText = computed({
   get: () => workspaceStore.userSettings.integrations.stt.models.join(', '),
@@ -103,6 +106,8 @@ function resetDefaults() {
     state.status = 'idle';
     state.message = '';
   }
+
+  isResetConfirmOpen.value = false;
 }
 
 function disconnectGran() {
@@ -215,11 +220,29 @@ async function runServiceHealth(kind: 'files' | 'stt') {
 
 <template>
   <div class="flex flex-col gap-6">
+    <UiConfirmModal
+      v-model:open="isResetConfirmOpen"
+      :title="
+        t('videoEditor.settings.resetIntegrationsSettingsConfirmTitle', 'Reset integrations?')
+      "
+      :description="
+        t(
+          'videoEditor.settings.resetIntegrationsSettingsConfirmDesc',
+          'This will restore all integration settings to their default values.',
+        )
+      "
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="resetDefaults"
+    />
+
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userIntegrations', 'Integrations') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
+      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>

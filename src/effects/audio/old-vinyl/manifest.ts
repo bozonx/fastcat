@@ -40,28 +40,34 @@ function createNoiseBuffer(context: BaseAudioContext, duration: number): AudioBu
   const bufferSize = context.sampleRate * duration;
   const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
   const output = buffer.getChannelData(0);
-  
-  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-  
+
+  let b0 = 0,
+    b1 = 0,
+    b2 = 0,
+    b3 = 0,
+    b4 = 0,
+    b5 = 0,
+    b6 = 0;
+
   for (let i = 0; i < bufferSize; i++) {
     const white = Math.random() * 2 - 1;
-    
+
     // Pink noise approximation
     b0 = 0.99886 * b0 + white * 0.0555179;
     b1 = 0.99332 * b1 + white * 0.0750759;
-    b2 = 0.96900 * b2 + white * 0.1538520;
-    b3 = 0.86650 * b3 + white * 0.3104856;
-    b4 = 0.55000 * b4 + white * 0.5329522;
-    b5 = -0.7616 * b5 - white * 0.0168980;
-    
+    b2 = 0.969 * b2 + white * 0.153852;
+    b3 = 0.8665 * b3 + white * 0.3104856;
+    b4 = 0.55 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.016898;
+
     // Add occasional crackles
     const crackle = Math.random() > 0.999 ? (Math.random() * 2 - 1) * 2 : 0;
     const pop = Math.random() > 0.9995 ? (Math.random() * 2 - 1) * 5 : 0;
-    
+
     output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11 + crackle + pop;
     b6 = white * 0.115926;
   }
-  
+
   return buffer;
 }
 
@@ -153,7 +159,7 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
     const noiseSource = context.audioContext.createBufferSource();
     noiseSource.buffer = noiseBuffer;
     noiseSource.loop = true;
-    
+
     const noiseGain = context.audioContext.createGain();
     noiseGain.gain.value = 0.1;
     noiseSource.connect(noiseGain);
@@ -170,14 +176,15 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
   },
   updateNode(node, values) {
     const graph = node as OldVinylNodeGraph;
-    
+
     const wear = typeof values.wear === 'number' ? Math.max(0, Math.min(100, values.wear)) : 50;
-    const noiseLevel = typeof values.noiseLevel === 'number' ? Math.max(0, Math.min(100, values.noiseLevel)) : 20;
+    const noiseLevel =
+      typeof values.noiseLevel === 'number' ? Math.max(0, Math.min(100, values.noiseLevel)) : 20;
     const wow = typeof values.wow === 'number' ? Math.max(0, Math.min(100, values.wow)) : 30;
 
     // Bandpass Q tightens with wear
     graph.bandpass.Q.value = 0.5 + (wear / 100) * 1.5;
-    
+
     // Distortion amount scales with wear
     graph.waveshaper.curve = makeDistortionCurve(wear * 0.5);
 
@@ -186,7 +193,7 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
 
     // Wow intensity
     graph.wowGain.gain.value = (wow / 100) * 0.005;
-    
+
     // Slight randomization of wow frequency to simulate uneven motor
     // Only applied if we could easily trigger it, but we can just set base frequency
     graph.wowOscillator.frequency.value = 0.55 + (Math.random() * 0.1 - 0.05);

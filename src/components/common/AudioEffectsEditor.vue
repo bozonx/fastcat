@@ -218,9 +218,15 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     <EffectSettingsModal
       v-if="settingsEffectId"
       :model-value="true"
-      :effect="safeEffects.find(e => e.id === settingsEffectId)"
-      :manifest="getAudioEffectManifest(safeEffects.find(e => e.id === settingsEffectId)?.type ?? '')"
-      @update:model-value="(val) => { if (!val) settingsEffectId = null; }"
+      :effect="safeEffects.find((e) => e.id === settingsEffectId)"
+      :manifest="
+        getAudioEffectManifest(safeEffects.find((e) => e.id === settingsEffectId)?.type ?? '')
+      "
+      @update:model-value="
+        (val) => {
+          if (!val) settingsEffectId = null;
+        }
+      "
       @update:effect="(updates) => handleUpdateEffect(settingsEffectId!, updates)"
     />
 

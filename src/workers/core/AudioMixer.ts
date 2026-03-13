@@ -330,7 +330,7 @@ export class AudioMixer {
           : 1;
       const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
 
-      let baseClipDurationS = Math.max(
+      const baseClipDurationS = Math.max(
         0,
         Math.min(
           usToS(Number(sourceDurationUs)) / speed,

@@ -71,8 +71,8 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                     isConflicting(cmd.id, combo)
                       ? 'border-warning-400 text-warning-700 bg-warning-50/80'
                       : isComboCustom(cmd.id, combo)
-                      ? 'border-yellow-500/50 bg-yellow-500/10'
-                      : 'border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80',
+                        ? 'border-yellow-500/50 bg-yellow-500/10'
+                        : 'border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80',
                   ]"
                   :title="
                     isConflicting(cmd.id, combo)
@@ -89,8 +89,8 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                       isConflicting(cmd.id, combo)
                         ? 'text-warning-700'
                         : isComboCustom(cmd.id, combo)
-                        ? 'text-yellow-600 dark:text-yellow-400'
-                        : 'text-ui-text-muted',
+                          ? 'text-yellow-600 dark:text-yellow-400'
+                          : 'text-ui-text-muted',
                     ]"
                   >
                     {{ combo }}

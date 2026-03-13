@@ -101,23 +101,25 @@ export const envBehindWallManifest: AudioEffectManifest<EnvBehindWallParams> = {
   },
   updateNode(node, values, context) {
     const graph = node as BehindWallNodeGraph;
-    
+
     // Muffling: 0 = 2000Hz (thin wall), 100 = 150Hz (thick wall)
-    const muffling = typeof values.muffling === 'number' ? Math.max(0, Math.min(100, values.muffling)) : 80;
+    const muffling =
+      typeof values.muffling === 'number' ? Math.max(0, Math.min(100, values.muffling)) : 80;
     // Logarithmic scale for frequency
     const minFreq = 150;
     const maxFreq = 2000;
-    const normMuffling = 1 - (muffling / 100);
+    const normMuffling = 1 - muffling / 100;
     const freq = minFreq * Math.pow(maxFreq / minFreq, normMuffling);
     graph.filter.frequency.value = freq;
 
-    // We only update the IR if needed, but for simplicity we can just recreate it 
-    // if roomSize changes significantly. For performance, we'll just set it once 
+    // We only update the IR if needed, but for simplicity we can just recreate it
+    // if roomSize changes significantly. For performance, we'll just set it once
     // in a real scenario, but here we can generate a new one.
-    const roomSize = typeof values.roomSize === 'number' ? Math.max(0, Math.min(100, values.roomSize)) : 50;
+    const roomSize =
+      typeof values.roomSize === 'number' ? Math.max(0, Math.min(100, values.roomSize)) : 50;
     const duration = 0.1 + (roomSize / 100) * 0.9; // 0.1 to 1.0 seconds
     const decay = 10 - (roomSize / 100) * 8; // 10 to 2
-    
+
     // In a real-time system, frequently changing the convolver buffer can cause glitches.
     // For offline rendering, it's fine.
     graph.reverb.buffer = createRoomImpulseResponse(context.audioContext, duration, decay);

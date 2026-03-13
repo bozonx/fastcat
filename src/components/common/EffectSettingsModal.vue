@@ -32,17 +32,19 @@ const effectValues = computed(() => {
 function handleUpdateValue(key: string, value: any) {
   // Support nested paths for array updates like "points.0.gain"
   const keys = key.split('.');
-  
+
   if (keys.length === 1) {
     emit('update:effect', { [key]: value });
     return;
   }
-  
+
   // Create a deep copy of the property
   const rootKey = keys[0];
   if (!rootKey) return;
-  const updates: Record<string, any> = { [rootKey]: JSON.parse(JSON.stringify(effectValues.value[rootKey] ?? {})) };
-  
+  const updates: Record<string, any> = {
+    [rootKey]: JSON.parse(JSON.stringify(effectValues.value[rootKey] ?? {})),
+  };
+
   // Traverse and set
   let current: any = updates[rootKey];
   for (let i = 1; i < keys.length - 1; i++) {
@@ -54,7 +56,7 @@ function handleUpdateValue(key: string, value: any) {
       current = current[k];
     }
   }
-  
+
   const lastKey = keys[keys.length - 1];
   if (lastKey) {
     current[lastKey] = value;
@@ -68,7 +70,11 @@ function handleClose() {
 </script>
 
 <template>
-  <UModal v-model:open="isOpen" :title="manifest?.name ?? t('granVideoEditor.effects.settings', 'Settings')" class="sm:max-w-2xl">
+  <UModal
+    v-model:open="isOpen"
+    :title="manifest?.name ?? t('granVideoEditor.effects.settings', 'Settings')"
+    class="sm:max-w-2xl"
+  >
     <template #body>
       <div v-if="settingsControls.length > 0" class="max-h-[60vh] overflow-y-auto pr-2 space-y-4">
         <ParamsRenderer

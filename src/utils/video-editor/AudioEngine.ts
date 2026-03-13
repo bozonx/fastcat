@@ -334,7 +334,7 @@ export class AudioEngine {
           return null;
         }
 
-        let audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
+        const audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
         for (let ch = 0; ch < numChannels; ch += 1) {
           const buf = decoded.channelBuffers[ch];
           if (!buf) continue;

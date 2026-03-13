@@ -36,6 +36,7 @@ const isOpen = computed({
 
 const isClearProjectVardataConfirmOpen = ref(false);
 const isDeleteProjectConfirmOpen = ref(false);
+const isResetConfirmOpen = ref(false);
 
 async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
@@ -115,6 +116,7 @@ async function resetToDefaults() {
   };
 
   await projectStore.saveProjectSettings();
+  isResetConfirmOpen.value = false;
 }
 </script>
 
@@ -157,6 +159,22 @@ async function resetToDefaults() {
       color="error"
       icon="i-heroicons-trash"
       @confirm="confirmDeleteProject"
+    />
+
+    <UiConfirmModal
+      v-model:open="isResetConfirmOpen"
+      :title="t('videoEditor.projectSettings.resetConfirmTitle', 'Reset to defaults?')"
+      :description="
+        t(
+          'videoEditor.projectSettings.resetConfirmDescription',
+          'This will restore all project settings to the default values from your workspace settings.',
+        )
+      "
+      :confirm-text="t('videoEditor.projectSettings.reset', 'Reset to Defaults')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="resetToDefaults"
     />
 
     <div class="space-y-6">
@@ -292,7 +310,7 @@ async function resetToDefaults() {
           variant="ghost"
           color="neutral"
           :label="t('videoEditor.projectSettings.reset', 'Reset to Defaults')"
-          @click="resetToDefaults"
+          @click="isResetConfirmOpen = true"
         />
         <div class="flex items-center gap-2">
           <UButton

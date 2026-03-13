@@ -39,7 +39,7 @@ export function buildEffectiveAudioClipItems(
       if (!path) continue;
 
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
-      let combinedEffects = [...itemEffects];
+      const combinedEffects = [...itemEffects];
       if (trackAudioEffects.length > 0) combinedEffects.push(...cloneEffects(trackAudioEffects));
       if (masterAudioEffects.length > 0) combinedEffects.push(...cloneEffects(masterAudioEffects));
 
@@ -70,7 +70,7 @@ export function buildEffectiveAudioClipItems(
       if (!path) continue;
 
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
-      let combinedEffects = [...itemEffects];
+      const combinedEffects = [...itemEffects];
       if (trackAudioEffects.length > 0) combinedEffects.push(...cloneEffects(trackAudioEffects));
       if (masterAudioEffects.length > 0) combinedEffects.push(...cloneEffects(masterAudioEffects));
 

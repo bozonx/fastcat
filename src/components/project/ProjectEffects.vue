@@ -157,7 +157,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               :key="effect.type"
               :manifest="effect"
               :is-draggable="true"
-              :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+              :is-selected="
+                selectionStore.selectedEntity?.source === 'project' &&
+                selectionStore.selectedEntity.kind === 'effect' &&
+                selectionStore.selectedEntity.effectType === effect.type
+              "
               @dragstart="handleDragStart($event, effect.type, 'effect')"
               @click="selectEffect(effect.type)"
             />
@@ -185,11 +189,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
             :prevent-on-filter="false"
             @update:model-value="updateCustomEffectsOrder"
           >
-            <div
-              v-for="effect in customEffects"
-              :key="effect.type"
-              class="relative group"
-            >
+            <div v-for="effect in customEffects" :key="effect.type" class="relative group">
               <div
                 class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
               >
@@ -199,7 +199,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 :manifest="effect"
                 :is-draggable="true"
                 class="external-drag"
-                :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+                :is-selected="
+                  selectionStore.selectedEntity?.source === 'project' &&
+                  selectionStore.selectedEntity.kind === 'effect' &&
+                  selectionStore.selectedEntity.effectType === effect.type
+                "
                 :show-action="true"
                 @dragstart="handleDragStart($event, effect.type, 'effect')"
                 @click="selectEffect(effect.type)"
@@ -331,7 +335,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                   :key="effect.type"
                   :manifest="effect"
                   :is-draggable="true"
-                  :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+                  :is-selected="
+                    selectionStore.selectedEntity?.source === 'project' &&
+                    selectionStore.selectedEntity.kind === 'effect' &&
+                    selectionStore.selectedEntity.effectType === effect.type
+                  "
                   @dragstart="handleDragStart($event, effect.type, 'effect')"
                   @click="selectEffect(effect.type)"
                 />
@@ -348,7 +356,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                   :key="effect.type"
                   :manifest="effect"
                   :is-draggable="true"
-                  :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+                  :is-selected="
+                    selectionStore.selectedEntity?.source === 'project' &&
+                    selectionStore.selectedEntity.kind === 'effect' &&
+                    selectionStore.selectedEntity.effectType === effect.type
+                  "
                   @dragstart="handleDragStart($event, effect.type, 'effect')"
                   @click="selectEffect(effect.type)"
                 />
@@ -379,11 +391,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
             :prevent-on-filter="false"
             @update:model-value="updateCustomEffectsOrder"
           >
-            <div
-              v-for="effect in customAudioEffects"
-              :key="effect.type"
-              class="relative group"
-            >
+            <div v-for="effect in customAudioEffects" :key="effect.type" class="relative group">
               <div
                 class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
               >
@@ -393,7 +401,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 :manifest="effect"
                 :is-draggable="true"
                 class="external-drag"
-                :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+                :is-selected="
+                  selectionStore.selectedEntity?.source === 'project' &&
+                  selectionStore.selectedEntity.kind === 'effect' &&
+                  selectionStore.selectedEntity.effectType === effect.type
+                "
                 :show-action="true"
                 @dragstart="handleDragStart($event, effect.type, 'effect')"
                 @click="selectEffect(effect.type)"

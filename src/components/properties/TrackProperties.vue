@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineBlendMode, TimelineTrack, VideoClipEffect, AudioClipEffect } from '~/timeline/types';
+import type {
+  TimelineBlendMode,
+  TimelineTrack,
+  VideoClipEffect,
+  AudioClipEffect,
+} from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
@@ -89,25 +94,31 @@ const trackAudioBalance = computed({
 });
 
 const trackVideoEffects = computed(() =>
-  (props.track.effects ?? []).filter((effect): effect is VideoClipEffect => effect?.target !== 'audio'),
+  (props.track.effects ?? []).filter(
+    (effect): effect is VideoClipEffect => effect?.target !== 'audio',
+  ),
 );
 
 const trackAudioEffects = computed(() =>
-  (props.track.effects ?? []).filter((effect): effect is AudioClipEffect => effect?.target === 'audio'),
+  (props.track.effects ?? []).filter(
+    (effect): effect is AudioClipEffect => effect?.target === 'audio',
+  ),
 );
 
 function handleUpdateTrackEffects(effects: VideoClipEffect[]) {
   const audioEffects = (props.track.effects ?? []).filter(
     (e): e is AudioClipEffect => e?.target === 'audio',
   );
-  timelineStore.updateTrackProperties(props.track.id, { effects: [...effects, ...audioEffects] as any });
+  timelineStore.updateTrackProperties(props.track.id, {
+    effects: [...effects, ...audioEffects] as any,
+  });
 }
 
 function handleUpdateTrackAudioEffects(effects: AudioClipEffect[]) {
-  const videoEffects = (props.track.effects ?? []).filter(
-    (e) => e?.target !== 'audio',
-  );
-  timelineStore.updateTrackProperties(props.track.id, { effects: [...videoEffects, ...effects] as any });
+  const videoEffects = (props.track.effects ?? []).filter((e) => e?.target !== 'audio');
+  timelineStore.updateTrackProperties(props.track.id, {
+    effects: [...videoEffects, ...effects] as any,
+  });
 }
 
 function handleRenameTrack(newName: string) {

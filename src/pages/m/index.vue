@@ -93,7 +93,9 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
 
     <!-- Create Project -->
     <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 shadow-xl">
-      <h3 class="font-medium mb-3 text-slate-300">{{ t('granVideoEditor.projects.newProject') }}</h3>
+      <h3 class="font-medium mb-3 text-slate-300">
+        {{ t('granVideoEditor.projects.newProject') }}
+      </h3>
       <div class="flex gap-2">
         <UInput
           v-model="newProjectName"
@@ -121,19 +123,17 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
       <div class="flex items-center justify-between px-1">
         <h3 class="font-medium text-slate-400">
           {{ t('granVideoEditor.projects.recentProjects') }}
-          <span class="text-xs font-normal tabular-nums bg-slate-800 px-2 py-0.5 rounded-full ml-1">{{
-            workspaceStore.projects.length
-          }}</span>
+          <span
+            class="text-xs font-normal tabular-nums bg-slate-800 px-2 py-0.5 rounded-full ml-1"
+            >{{ workspaceStore.projects.length }}</span
+          >
         </h3>
       </div>
 
       <!-- Search -->
-      <UInput
+      <SearchInput
         v-model="searchQuery"
-        icon="lucide:search"
         :placeholder="t('granVideoEditor.projects.searchPlaceholder')"
-        variant="subtle"
-        size="md"
         class="mb-2"
       />
 

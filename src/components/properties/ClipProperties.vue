@@ -336,9 +336,7 @@ function handleUpdateClipEffects(effects: any[]) {
 }
 
 function handleUpdateClipAudioEffects(effects: AudioClipEffect[]) {
-  const videoEffects = (clipRef.value?.effects ?? []).filter(
-    (e) => e?.target !== 'audio',
-  );
+  const videoEffects = (clipRef.value?.effects ?? []).filter((e) => e?.target !== 'audio');
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     effects: [...videoEffects, ...effects] as any,
   });

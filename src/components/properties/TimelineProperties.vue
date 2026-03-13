@@ -37,18 +37,16 @@ const masterGain = computed({
   },
 });
 
-const masterEffects = computed(
-  () =>
-    (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
-      (effect): effect is VideoClipEffect => effect?.target !== 'audio',
-    ),
+const masterEffects = computed(() =>
+  (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
+    (effect): effect is VideoClipEffect => effect?.target !== 'audio',
+  ),
 );
 
-const masterAudioEffects = computed(
-  () =>
-    (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
-      (effect): effect is AudioClipEffect => effect?.target === 'audio',
-    ),
+const masterAudioEffects = computed(() =>
+  (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
+    (effect): effect is AudioClipEffect => effect?.target === 'audio',
+  ),
 );
 
 const masterMuted = computed({
@@ -231,7 +229,7 @@ function handleAddAudioTrack() {
         </div>
       </div>
     </div>
-    
+
     <AudioEffectsEditor
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"

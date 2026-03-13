@@ -71,7 +71,8 @@ const currentFrameHighlightStyle = computed(() => {
   if (pxPerFrame < 6) return null;
 
   const frameDurationUs = 1_000_000 / fps.value;
-  const currentFrameStartUs = Math.floor(timelineStore.currentTime / frameDurationUs) * frameDurationUs;
+  const currentFrameStartUs =
+    Math.floor(timelineStore.currentTime / frameDurationUs) * frameDurationUs;
   const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
 
   return {

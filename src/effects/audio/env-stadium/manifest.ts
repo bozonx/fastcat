@@ -30,18 +30,18 @@ function createStadiumImpulseResponse(
   const right = impulse.getChannelData(1);
 
   for (let i = 0; i < length; i++) {
-    const n = i / length; 
+    const n = i / length;
     // Exponential decay with some pre-delay/diffusion characteristics
     const env = Math.exp(-n * decay) * (1 - n);
     // Lower density of reflections at the start to simulate large space
-    const density = Math.min(1, n * 5); 
-    
+    const density = Math.min(1, n * 5);
+
     if (Math.random() < density) {
-        left[i] = (Math.random() * 2 - 1) * env;
-        right[i] = (Math.random() * 2 - 1) * env;
+      left[i] = (Math.random() * 2 - 1) * env;
+      right[i] = (Math.random() * 2 - 1) * env;
     } else {
-        left[i] = 0;
-        right[i] = 0;
+      left[i] = 0;
+      right[i] = 0;
     }
   }
 
@@ -96,7 +96,7 @@ export const envStadiumManifest: AudioEffectManifest<EnvStadiumParams> = {
     // Input -> Reverb -> Output
     // Input -> Delay -> Output
     //          Delay <-> FeedbackGain
-    
+
     input.connect(reverb);
     reverb.connect(output);
 
@@ -109,17 +109,17 @@ export const envStadiumManifest: AudioEffectManifest<EnvStadiumParams> = {
   },
   updateNode(node, values, context) {
     const graph = node as StadiumNodeGraph;
-    
+
     const size = typeof values.size === 'number' ? Math.max(0, Math.min(100, values.size)) : 80;
-    
+
     // Scale delay time: 0.1s to 0.6s
     const delayTime = 0.1 + (size / 100) * 0.5;
     graph.delay.delayTime.value = delayTime;
-    
+
     // Scale feedback: 0.2 to 0.6
     graph.feedbackGain.gain.value = 0.2 + (size / 100) * 0.4;
 
-    // We could regenerate the IR for size changes, but for performance 
+    // We could regenerate the IR for size changes, but for performance
     // it's usually better to just rely on the delay changes for "size" feel,
     // or regenerate it only occasionally.
     const duration = 1.0 + (size / 100) * 4.0; // 1s to 5s tail
