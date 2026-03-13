@@ -7,13 +7,15 @@ export interface VoiceRadioParams {
   distortion: number;
 }
 
+type WaveShaperCurve = NonNullable<WaveShaperNode['curve']>;
+
 interface VoiceRadioGraph extends AudioEffectNodeGraph {
   highPass: BiquadFilterNode;
   lowPass: BiquadFilterNode;
   shaper: WaveShaperNode;
 }
 
-function makeRadioCurve(amount: number): Float32Array {
+function makeRadioCurve(amount: number): WaveShaperCurve {
   const samples = 512;
   const curve = new Float32Array(samples);
   const drive = Math.max(0, amount);
@@ -26,13 +28,28 @@ function makeRadioCurve(amount: number): Float32Array {
   return curve;
 }
 
+const radioCurveCache = new Map<number, WaveShaperCurve>();
+
+function getRadioCurve(amount: number): WaveShaperCurve {
+  const normalizedAmount = Math.round(amount * 1000) / 1000;
+  const cachedCurve = radioCurveCache.get(normalizedAmount);
+  if (cachedCurve) {
+    return cachedCurve;
+  }
+
+  const curve = makeRadioCurve(normalizedAmount);
+  radioCurveCache.set(normalizedAmount, curve);
+
+  return curve;
+}
+
 export const voiceRadioManifest: AudioEffectManifest<VoiceRadioParams> = {
   type: 'audio-voice-radio',
   name: 'Radio / Phone / Megaphone',
   description: 'Narrow mid-range voice with band-pass filtering and distortion',
   icon: 'i-heroicons-megaphone',
   target: 'audio',
-  category: 'artistic',
+  category: 'voice',
   defaultValues: {
     wet: 1,
     lowCut: 500,
@@ -112,6 +129,6 @@ export const voiceRadioManifest: AudioEffectManifest<VoiceRadioParams> = {
     graph.highPass.Q.value = 0.8;
     graph.lowPass.frequency.value = Math.max(highCut, lowCut + 100);
     graph.lowPass.Q.value = 1.2;
-    graph.shaper.curve = makeRadioCurve(distortion * 160) as unknown as Float32Array<ArrayBuffer>;
+    graph.shaper.curve = getRadioCurve(distortion * 160);
   },
 };

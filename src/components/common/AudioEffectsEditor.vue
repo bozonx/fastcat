@@ -33,8 +33,10 @@ const basicEffects = computed(() =>
     (effect) => !effect.isCustom && (effect.category ?? 'basic') === 'basic',
   ),
 );
-const artisticEffects = computed(() =>
-  availableEffects.value.filter((effect) => !effect.isCustom && effect.category === 'artistic'),
+const nonBasicEffects = computed(() =>
+  availableEffects.value.filter(
+    (effect) => !effect.isCustom && (effect.category ?? 'basic') !== 'basic',
+  ),
 );
 const customEffects = computed(() => availableEffects.value.filter((effect) => effect.isCustom));
 

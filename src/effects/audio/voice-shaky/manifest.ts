@@ -18,7 +18,7 @@ export const voiceShakyManifest: AudioEffectManifest<VoiceShakyParams> = {
   description: 'Fast tremolo for fear, stress and frozen voice acting',
   icon: 'i-heroicons-bolt-slash',
   target: 'audio',
-  category: 'artistic',
+  category: 'voice',
   defaultValues: {
     wet: 1,
     rate: 9,
