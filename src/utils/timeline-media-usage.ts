@@ -36,6 +36,26 @@ export function computeMediaUsageByTimelineDocs(timelines: TimelineUsageTimeline
           timelineName: tl.timelineName,
         });
       }
+
+      // Check HUD clips for background and content sources
+      for (const item of track.items) {
+        if (item.kind !== 'clip' || item.clipType !== 'hud') continue;
+
+        const hudPaths = [
+          item.background?.source?.path,
+          item.content?.source?.path,
+        ].filter(Boolean) as string[];
+
+        for (const mediaPath of hudPaths) {
+          if (seenInTimeline.has(mediaPath)) continue;
+          seenInTimeline.add(mediaPath);
+
+          (mediaPathToTimelines[mediaPath] ??= []).push({
+            timelinePath: tl.timelinePath,
+            timelineName: tl.timelineName,
+          });
+        }
+      }
     }
   }
 

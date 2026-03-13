@@ -51,6 +51,7 @@ import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { useTimelineSettingsStore } from './timelineSettings.store';
+import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
@@ -62,6 +63,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const uiStore = useUiStore();
   const toast = useToast();
   const { t } = useI18n();
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   const historyDebounce = createTimelineHistoryDebounce({ historyStore });
 
@@ -501,6 +503,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTimelineDurationUs,
     onSaveSuccess: () => {
       uiStore.notifyTimelineSave();
+      void timelineMediaUsageStore.refreshUsage();
     },
   });
 
