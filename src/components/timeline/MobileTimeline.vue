@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
+import type { TimelineClipActionPayload } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useMediaStore } from '~/stores/media.store';
-import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useFocusStore } from '~/stores/focus.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import {
@@ -216,12 +215,7 @@ watch(
   { flush: 'post' },
 );
 
-async function onClipAction(payload: {
-  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
-  trackId: string;
-  itemId: string;
-  videoItemId?: string;
-}) {
+async function onClipAction(payload: TimelineClipActionPayload) {
   try {
     if (payload.action === 'extractAudio') {
       await timelineStore.extractAudioToTrack({
@@ -242,10 +236,10 @@ async function onClipAction(payload: {
       timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
     }
     await timelineStore.requestTimelineSave({ immediate: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     toast.add({
       title: t('common.error', 'Error'),
-      description: String(err?.message ?? err ?? ''),
+      description: err instanceof Error ? err.message : String(err ?? ''),
       icon: 'i-heroicons-exclamation-triangle',
       color: 'error',
     });

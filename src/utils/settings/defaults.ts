@@ -301,6 +301,7 @@ export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
     dataRootPath: '',
     tempRootPath: '',
     proxiesRootPath: '',
+    ephemeralTmpRootPath: '',
     placementMode: 'system-default',
   },
 };

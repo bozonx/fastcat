@@ -17,6 +17,15 @@ interface ExtendedHandle extends FileSystemHandle {
   move?(parent: FileSystemDirectoryHandle, name: string): Promise<void>;
 }
 
+function normalizeWritableData(data: Blob | Uint8Array | string): Blob | Uint8Array | string {
+  if (!(data instanceof Uint8Array)) {
+    return data;
+  }
+
+  const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+  return new Uint8Array(buffer);
+}
+
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
 
@@ -125,7 +134,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
     const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
     const writable = await (fileHandle as ExtendedFileHandle).createWritable();
-    await writable.write(data);
+    await writable.write(normalizeWritableData(data));
     await writable.close();
   }
 

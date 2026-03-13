@@ -11,6 +11,25 @@ interface UseEditorDynamicPanelsOptions {
   currentProjectId: Ref<string | null>;
 }
 
+interface PanelDropInput {
+  event: DragEvent;
+  targetPanelId: string;
+  view?: 'cut' | 'sound';
+}
+
+interface VerticalSplitResizeInput {
+  event: { panes?: Array<{ size: number }> } | Array<{ size: number }>;
+  colId: string;
+  view?: 'cut' | 'sound';
+}
+
+interface GetVerticalSizeInput {
+  colId: string;
+  rowIndex: number;
+  totalRows: number;
+  view?: 'cut' | 'sound';
+}
+
 interface ClosePanelOptions {
   restoreFocus?: boolean;
   view?: 'cut' | 'sound';
@@ -192,7 +211,8 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     }
   }
 
-  function onDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound' = 'cut') {
+  function onDrop(input: PanelDropInput) {
+    const { event, targetPanelId, view = 'cut' } = input;
     event.preventDefault();
 
     const staticTabRaw = event.dataTransfer?.getData('static-tab-drag');
@@ -331,11 +351,8 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     resetDragState();
   }
 
-  function onVerticalSplitResize(
-    event: { panes?: Array<{ size: number }> } | Array<{ size: number }>,
-    colId: string,
-    view: 'cut' | 'sound' = 'cut',
-  ) {
+  function onVerticalSplitResize(input: VerticalSplitResizeInput) {
+    const { event, colId, view = 'cut' } = input;
     const panes = Array.isArray(event) ? event : event?.panes;
     if (!Array.isArray(panes)) {
       return;
@@ -352,12 +369,8 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     writeLocalStorageJson(soundVerticalSplitSizesKey.value, soundVerticalSplitSizes.value);
   }
 
-  function getVerticalSize(
-    colId: string,
-    rowIndex: number,
-    totalRows: number,
-    view: 'cut' | 'sound' = 'cut',
-  ): number | undefined {
+  function getVerticalSize(input: GetVerticalSizeInput): number | undefined {
+    const { colId, rowIndex, totalRows, view = 'cut' } = input;
     const saved =
       view === 'cut' ? verticalSplitSizes.value[colId] : soundVerticalSplitSizes.value[colId];
 

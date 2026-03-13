@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
-import { useLocalStorage, useResizeObserver } from '@vueuse/core';
+import { useDebounceFn, useLocalStorage, useResizeObserver } from '@vueuse/core';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -14,7 +14,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
 import { timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { formatZoomMultiplier, timelineZoomPositionToScale } from '~/utils/zoom';
@@ -85,16 +85,15 @@ const zoomFactor = computed(() =>
   formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom)),
 );
 const isZooming = ref(false);
-let zoomTimeout: number | null = null;
+const hideZoomIndicator = useDebounceFn(() => {
+  isZooming.value = false;
+}, 180);
 
 watch(
   () => timelineStore.timelineZoom,
   () => {
     isZooming.value = true;
-    if (zoomTimeout) clearTimeout(zoomTimeout);
-    zoomTimeout = window.setTimeout(() => {
-      isZooming.value = false;
-    }, 1200);
+    hideZoomIndicator();
   },
 );
 
@@ -205,7 +204,7 @@ function onTimelineWheel(e: WheelEvent) {
   }
 }
 
-async function onClipAction(payload: any) {
+async function onClipAction(payload: TimelineClipActionPayload) {
   try {
     if (payload.action === 'extractAudio') {
       await timelineStore.extractAudioToTrack({
@@ -223,8 +222,12 @@ async function onClipAction(payload: any) {
       timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
     }
     await timelineStore.requestTimelineSave({ immediate: true });
-  } catch (err: any) {
-    toast.add({ title: t('common.error'), description: err.message, color: 'error' });
+  } catch (err: unknown) {
+    toast.add({
+      title: t('common.error'),
+      description: err instanceof Error ? err.message : String(err),
+      color: 'error',
+    });
   }
 }
 
@@ -266,7 +269,6 @@ const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e);
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
   if (e.button === 1) startPan(e);
 };
-const onTimelinePointerDownCapture = () => {};
 const onTimelinePointerMove = onGlobalPointerMove;
 const onTimelinePointerUp = onGlobalPointerUp;
 </script>
@@ -318,7 +320,6 @@ const onTimelinePointerUp = onGlobalPointerUp;
             <div
               ref="scrollEl"
               class="w-full flex-1 overflow-auto relative timeline-scroll-el"
-              @pointerdown.capture="onTimelinePointerDownCapture"
               @click="onTimelineClick"
               @wheel="onTimelineWheel"
               @scroll="onScroll"

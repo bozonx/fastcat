@@ -1,7 +1,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
-import { getResolvedProjectThumbnailsSegments } from '~/utils/storage-topology';
+import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 
 export interface ThumbnailTask {
   id: string; // usually clip hash
@@ -29,19 +29,21 @@ export function getClipThumbnailsHash(input: {
   return hashString(`${input.projectId}:${input.projectRelativePath}`);
 }
 
-function getTimelineThumbnailDirSegments(input: {
+async function ensureTimelineThumbnailDir(input: {
   projectId: string;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   hash?: string;
-}): string[] {
-  const baseSegments = getResolvedProjectThumbnailsSegments(
-    input.workspaceStore.resolvedStorageTopology,
-    input.projectId,
-  );
-
-  return input.hash
-    ? [...baseSegments, TIMELINE_CLIP_THUMBNAILS.DIR_NAME, input.hash]
-    : [...baseSegments, TIMELINE_CLIP_THUMBNAILS.DIR_NAME];
+  create?: boolean;
+}): Promise<FileSystemDirectoryHandle> {
+  return (await ensureResolvedProjectTempDir({
+    workspaceHandle: input.workspaceStore.workspaceHandle!,
+    topology: input.workspaceStore.resolvedStorageTopology,
+    projectId: input.projectId,
+    leafSegments: input.hash
+      ? ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME, input.hash]
+      : ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME],
+    create: input.create,
+  })) as FileSystemDirectoryHandle;
 }
 
 class ThumbnailGenerator {
@@ -131,18 +133,11 @@ class ThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return false;
 
     try {
-      const parts = getTimelineThumbnailDirSegments({
+      const hashDir = await ensureTimelineThumbnailDir({
         projectId: task.projectId,
         workspaceStore,
         hash: task.id,
       });
-
-      let dir = workspaceStore.workspaceHandle;
-      for (const segment of parts) {
-        dir = await dir.getDirectoryHandle(segment);
-      }
-
-      const hashDir = dir;
 
       const urls: string[] = [];
       const totalFrames = Math.ceil(task.duration / TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS);
@@ -290,17 +285,12 @@ class ThumbnailGenerator {
       };
 
       const ensureTargetDir = async () => {
-        const parts = getTimelineThumbnailDirSegments({
+        return await ensureTimelineThumbnailDir({
           projectId: task.projectId,
           workspaceStore,
           hash: task.id,
+          create: true,
         });
-
-        let dir = workspaceStore.workspaceHandle!;
-        for (const segment of parts) {
-          dir = await dir.getDirectoryHandle(segment, { create: true });
-        }
-        return dir;
       };
 
       const ensureSourceUrl = async () => {
@@ -423,15 +413,11 @@ class ThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const parts = [
-        ...getProjectThumbnailsSegments(input.projectId),
-        TIMELINE_CLIP_THUMBNAILS.DIR_NAME,
-      ];
-
-      let dir = workspaceStore.workspaceHandle;
-      for (const segment of parts) {
-        dir = await dir.getDirectoryHandle(segment, { create: true });
-      }
+      const dir = await ensureTimelineThumbnailDir({
+        projectId: input.projectId,
+        workspaceStore,
+        create: true,
+      });
 
       await dir.removeEntry(input.hash, { recursive: true });
     } catch (e: any) {

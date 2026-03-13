@@ -14,6 +14,7 @@ describe('storage topology', () => {
       dataRootPath: '',
       tempRootPath: '',
       proxiesRootPath: '',
+      ephemeralTmpRootPath: '',
       placementMode: 'system-default',
     });
 
@@ -21,7 +22,8 @@ describe('storage topology', () => {
     expect(resolved.commonRoot).toBe('common');
     expect(resolved.dataRoot).toBe('data');
     expect(resolved.tempRoot).toBe('vardata');
-    expect(resolved.proxiesRoot).toBe('vardata/proxies');
+    expect(resolved.proxiesRoot).toBe('');
+    expect(resolved.ephemeralTmpRoot).toBe('');
   });
 
   it('resolves workspace-local topology with custom overrides', () => {
@@ -30,6 +32,7 @@ describe('storage topology', () => {
       dataRootPath: '  custom-data  ',
       tempRootPath: '  custom-temp  ',
       proxiesRootPath: '  custom-proxies  ',
+      ephemeralTmpRootPath: '  custom-ephemeral  ',
       placementMode: 'portable',
     });
 
@@ -38,6 +41,7 @@ describe('storage topology', () => {
     expect(resolved.dataRoot).toBe('custom-data/data');
     expect(resolved.tempRoot).toBe('custom-temp');
     expect(resolved.proxiesRoot).toBe('custom-proxies');
+    expect(resolved.ephemeralTmpRoot).toBe('custom-ephemeral');
   });
 
   it('builds derived runtime segments from resolved topology', () => {
@@ -46,11 +50,13 @@ describe('storage topology', () => {
       dataRootPath: '',
       tempRootPath: 'custom-temp-root',
       proxiesRootPath: 'custom-proxies-root',
+      ephemeralTmpRootPath: 'system-tmp',
       placementMode: 'portable',
     });
 
     expect(getResolvedProjectTempSegments(resolved, 'project-1')).toEqual([
       'custom-temp-root',
+      'projects',
       'project-1',
     ]);
     expect(getResolvedProjectProxiesSegments(resolved, 'project-1')).toEqual([
@@ -59,13 +65,14 @@ describe('storage topology', () => {
     ]);
     expect(getResolvedProjectCacheSegments(resolved, 'project-1')).toEqual([
       'custom-temp-root',
+      'projects',
       'project-1',
-      'cache',
+      'frame-cache',
     ]);
     expect(getResolvedProjectWaveformsSegments(resolved, 'project-1')).toEqual([
       'custom-temp-root',
+      'projects',
       'project-1',
-      'cache',
       'waveforms',
     ]);
   });

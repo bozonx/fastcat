@@ -2,9 +2,10 @@ export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWrita
 
 export type DirectoryHandleLike = Pick<
   FileSystemDirectoryHandle,
-  'getDirectoryHandle' | 'getFileHandle'
+  'getDirectoryHandle' | 'getFileHandle' | 'removeEntry'
 > & {
   values?: () => AsyncIterable<FileSystemHandle>;
+  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 };
 
 export async function ensureFastCatFileHandle(input: {

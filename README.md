@@ -72,12 +72,13 @@ pnpm tauri:build
 FastCat uses a split storage model:
 
 - `projectsRoot` and `commonRoot` are persistent user-owned content (inside `contentRootPath` if overridden)
-- temporary/generated workspace data is stored in `tempRoot` (defaults to `vardata/`)
-- proxy media is stored in `proxiesRoot` (defaults to `vardata/proxies`)
+- rebuildable project-scoped workspace data is stored in `tempRoot` (defaults to `vardata/`)
+- proxy media can use a dedicated `proxiesRoot`; if not configured, proxies fall back to `tempRoot/projects/<projectId>/proxies`
 - libraries and future global data are stored in `dataRoot` (defaults to `data/` under `dataRootPath` or `contentRootPath`)
+- short-lived job files can use `ephemeralTmpRoot`; if empty, the runtime should use the system temporary directory
 - logical paths can be configured through **Application settings → Storage**
 
-In OPFS and portable-style workspace modes, config files are stored in the workspace under `.fastcat-config/`.
+In browser workspace mode and portable-style workspace mode, config files are stored in the workspace under `.fastcat-config/`.
 Legacy `.fastcat-workspace/*` files are still read for migration.
 
 Each project has a stable `projectId` stored in `projects/<projectName>/.fastcat/project.meta.json`.
@@ -87,10 +88,20 @@ Layout:
 
 - `<commonRoot>` — shared workspace library available in every project
 - `<dataRoot>` — future application global data and libraries
+- `<tempRoot>/projects/<projectId>/proxies` — generated proxy media when no dedicated `proxiesRoot` override is configured
+- `<tempRoot>/projects/<projectId>/thumbnails` — generated thumbnails for the project
+- `<tempRoot>/projects/<projectId>/waveforms` — generated audio waveforms for the project
+- `<tempRoot>/projects/<projectId>/frame-cache` — cached metadata, vector rasters and other project-scoped cache data
+- `<tempRoot>/projects/<projectId>/jobs` — persistent job state and recoverable background task files
+- `<tempRoot>/projects/<projectId>/imports` — future import staging files
+- `<tempRoot>/projects/<projectId>/exports-tmp` — future export staging files
 - `<proxiesRoot>/<projectId>` — generated proxy media for the project
-- `<tempRoot>/<projectId>/thumbnails` — generated thumbnails for the project
-- `<tempRoot>/<projectId>/cache` — cached metadata and other project-scoped data
-- `<tempRoot>/<projectId>/cache/transcriptions` — cached STT responses for audio files
+
+Mode-specific behavior:
+
+- **Desktop / system-default** — content/data/temp/proxies can use OS default locations or desktop path overrides
+- **Desktop / portable** — content and rebuildable cache stay inside the selected workspace; only `ephemeralTmpRoot` is configurable separately
+- **Browser workspace** — rebuildable cache stays inside the selected workspace folder; the UI exposes workspace folder selection and optional `ephemeralTmpRoot`
 
 Shared library behavior:
 
@@ -102,7 +113,7 @@ Shared library behavior:
 You can clear temporary files from the UI:
 
 - **Application settings → Storage → Clear temporary files** — deletes `<tempRoot>`
-- **Project settings → Storage → Clear temporary files** — deletes `<tempRoot>/<projectId>`
+- **Project settings → Storage → Clear temporary files** — deletes `<tempRoot>/projects/<projectId>`
 
 ## External integrations
 

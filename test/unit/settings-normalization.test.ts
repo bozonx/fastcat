@@ -78,6 +78,7 @@ describe('settings normalization', () => {
         dataRootPath: '  /mnt/data  ',
         tempRootPath: '  /mnt/temp  ',
         proxiesRootPath: '  /mnt/proxies  ',
+        ephemeralTmpRootPath: '  /mnt/system-tmp  ',
         placementMode: 'portable',
       },
     });
@@ -86,6 +87,7 @@ describe('settings normalization', () => {
     expect(normalized.paths.dataRootPath).toBe('/mnt/data');
     expect(normalized.paths.tempRootPath).toBe('/mnt/temp');
     expect(normalized.paths.proxiesRootPath).toBe('/mnt/proxies');
+    expect(normalized.paths.ephemeralTmpRootPath).toBe('/mnt/system-tmp');
     expect(normalized.paths.placementMode).toBe('portable');
   });
 

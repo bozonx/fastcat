@@ -1,9 +1,16 @@
 import {
   COMMON_ROOT_DIR_NAME,
   DATA_ROOT_DIR_NAME,
+  EXPORTS_TMP_ROOT_DIR_NAME,
+  FRAME_CACHE_ROOT_DIR_NAME,
+  IMPORTS_ROOT_DIR_NAME,
+  JOBS_ROOT_DIR_NAME,
   PROJECTS_ROOT_DIR_NAME,
   PROXIES_ROOT_DIR_NAME,
+  THUMBNAILS_ROOT_DIR_NAME,
+  WAVEFORMS_ROOT_DIR_NAME,
   WORKSPACE_TEMP_ROOT_DIR_NAME,
+  WORKSPACE_TEMP_PROJECTS_DIR_NAME,
   type StoragePathRegistry,
 } from './storage-roots';
 
@@ -13,11 +20,8 @@ export interface ResolvedStorageTopology {
   dataRoot: string;
   tempRoot: string;
   proxiesRoot: string;
+  ephemeralTmpRoot: string;
 }
-
-export const RESOLVED_PROJECT_CACHE_DIR_NAME = 'cache';
-export const RESOLVED_PROJECT_THUMBNAILS_DIR_NAME = 'thumbnails';
-export const RESOLVED_PROJECT_WAVEFORMS_DIR_NAME = 'waveforms';
 
 function trimPath(path: string): string {
   return path.trim().replace(/^\/+|\/+$/g, '');
@@ -39,7 +43,7 @@ export function getResolvedProjectTempSegments(
   topology: ResolvedStorageTopology,
   projectId: string,
 ): string[] {
-  return [...toStoragePathSegments(topology.tempRoot), projectId];
+  return [...toStoragePathSegments(topology.tempRoot), WORKSPACE_TEMP_PROJECTS_DIR_NAME, projectId];
 }
 
 export function getResolvedProjectProxiesSegments(
@@ -47,34 +51,51 @@ export function getResolvedProjectProxiesSegments(
   projectId: string,
 ): string[] {
   const proxiesSegments = toStoragePathSegments(topology.proxiesRoot);
-  return proxiesSegments.length > 0 ? [...proxiesSegments, projectId] : [projectId, 'proxies'];
+  return proxiesSegments.length > 0
+    ? [...proxiesSegments, projectId]
+    : [...getResolvedProjectTempSegments(topology, projectId), PROXIES_ROOT_DIR_NAME];
 }
 
 export function getResolvedProjectCacheSegments(
   topology: ResolvedStorageTopology,
   projectId: string,
 ): string[] {
-  return [...getResolvedProjectTempSegments(topology, projectId), RESOLVED_PROJECT_CACHE_DIR_NAME];
+  return [...getResolvedProjectTempSegments(topology, projectId), FRAME_CACHE_ROOT_DIR_NAME];
 }
 
 export function getResolvedProjectThumbnailsSegments(
   topology: ResolvedStorageTopology,
   projectId: string,
 ): string[] {
-  return [
-    ...getResolvedProjectTempSegments(topology, projectId),
-    RESOLVED_PROJECT_THUMBNAILS_DIR_NAME,
-  ];
+  return [...getResolvedProjectTempSegments(topology, projectId), THUMBNAILS_ROOT_DIR_NAME];
 }
 
 export function getResolvedProjectWaveformsSegments(
   topology: ResolvedStorageTopology,
   projectId: string,
 ): string[] {
-  return [
-    ...getResolvedProjectCacheSegments(topology, projectId),
-    RESOLVED_PROJECT_WAVEFORMS_DIR_NAME,
-  ];
+  return [...getResolvedProjectTempSegments(topology, projectId), WAVEFORMS_ROOT_DIR_NAME];
+}
+
+export function getResolvedProjectJobsSegments(
+  topology: ResolvedStorageTopology,
+  projectId: string,
+): string[] {
+  return [...getResolvedProjectTempSegments(topology, projectId), JOBS_ROOT_DIR_NAME];
+}
+
+export function getResolvedProjectImportsSegments(
+  topology: ResolvedStorageTopology,
+  projectId: string,
+): string[] {
+  return [...getResolvedProjectTempSegments(topology, projectId), IMPORTS_ROOT_DIR_NAME];
+}
+
+export function getResolvedProjectExportsTmpSegments(
+  topology: ResolvedStorageTopology,
+  projectId: string,
+): string[] {
+  return [...getResolvedProjectTempSegments(topology, projectId), EXPORTS_TMP_ROOT_DIR_NAME];
 }
 
 export function resolveWorkspaceLocalStorageTopology(
@@ -84,6 +105,7 @@ export function resolveWorkspaceLocalStorageTopology(
   const dataRootBase = trimPath(paths.dataRootPath);
   const tempRootBase = trimPath(paths.tempRootPath);
   const proxiesRootBase = trimPath(paths.proxiesRootPath);
+  const ephemeralTmpRootBase = trimPath(paths.ephemeralTmpRootPath);
 
   const contentBase = contentRootBase;
   const dataBase = dataRootBase || contentBase;
@@ -94,6 +116,7 @@ export function resolveWorkspaceLocalStorageTopology(
     commonRoot: joinSegments(contentBase, COMMON_ROOT_DIR_NAME),
     dataRoot: joinSegments(dataBase, DATA_ROOT_DIR_NAME),
     tempRoot: tempBase,
-    proxiesRoot: proxiesRootBase || joinSegments(tempBase, PROXIES_ROOT_DIR_NAME),
+    proxiesRoot: proxiesRootBase,
+    ephemeralTmpRoot: ephemeralTmpRootBase,
   };
 }

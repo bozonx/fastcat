@@ -1,9 +1,5 @@
 import { DEFAULT_USER_SETTINGS, DEFAULT_WORKSPACE_SETTINGS } from './defaults';
-import type {
-  FastCatAppSettings,
-  FastCatUserSettings,
-  FastCatWorkspaceSettings,
-} from './defaults';
+import type { FastCatAppSettings, FastCatUserSettings, FastCatWorkspaceSettings } from './defaults';
 import {
   createDefaultExportPresets,
   createDefaultProjectPresets,
@@ -327,7 +323,10 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     (optimizationInput as Record<string, unknown>).videoFrameCacheMb,
   );
   const integrationsInput = (input.integrations ?? {}) as Record<string, unknown>;
-  const fastcatPublicadorInput = (integrationsInput.fastcatPublicador ?? {}) as Record<string, unknown>;
+  const fastcatPublicadorInput = (integrationsInput.fastcatPublicador ?? {}) as Record<
+    string,
+    unknown
+  >;
   const manualFilesApiInput = (integrationsInput.manualFilesApi ?? {}) as Record<string, unknown>;
   const manualSttApiInput = (integrationsInput.manualSttApi ?? {}) as Record<string, unknown>;
   const sttInput = (integrationsInput.stt ?? {}) as Record<string, unknown>;
@@ -605,6 +604,7 @@ export function normalizeAppSettings(raw: unknown): FastCatAppSettings {
       dataRootPath: normalizeStoragePathValue(pathsInput.dataRootPath),
       tempRootPath: normalizeStoragePathValue(pathsInput.tempRootPath),
       proxiesRootPath: normalizeStoragePathValue(pathsInput.proxiesRootPath),
+      ephemeralTmpRootPath: normalizeStoragePathValue(pathsInput.ephemeralTmpRootPath),
       placementMode,
     },
   };

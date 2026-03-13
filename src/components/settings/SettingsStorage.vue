@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
+import type { StoragePlacementMode } from '~/utils/storage-roots';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -10,6 +12,41 @@ const workspaceStore = useWorkspaceStore();
 const isClearWorkspaceVardataConfirmOpen = ref(false);
 
 const isDesktopTauri = computed(() => workspaceStore.workspaceProviderId === 'tauri');
+const isBrowserWorkspaceMode = computed(() => workspaceStore.workspaceProviderId === 'web');
+const isPortableMode = computed(() => workspaceStore.appSettings.paths.placementMode === 'portable');
+const isDesktopSystemMode = computed(() => isDesktopTauri.value && !isPortableMode.value);
+const isDesktopPortableMode = computed(() => isDesktopTauri.value && isPortableMode.value);
+
+const placementModeOptions = computed(() => [
+  {
+    label: t('videoEditor.settings.storageModeSystemDefault', 'System default'),
+    value: 'system-default',
+  },
+  {
+    label: t('videoEditor.settings.storageModePortable', 'Workspace portable'),
+    value: 'portable',
+  },
+]);
+
+const placementMode = computed({
+  get: () => workspaceStore.appSettings.paths.placementMode,
+  set: (value: StoragePlacementMode) => {
+    workspaceStore.appSettings.paths.placementMode = value;
+  },
+});
+
+const workspaceFolderLabel = computed(() => {
+  const handle = workspaceStore.workspaceHandle as (FileSystemDirectoryHandle & { path?: string }) | null;
+  if (!handle) {
+    return t('videoEditor.settings.workspaceFolderNotSelected', 'Workspace folder is not selected');
+  }
+
+  if (typeof handle.path === 'string' && handle.path.trim().length > 0) {
+    return handle.path;
+  }
+
+  return handle.name;
+});
 
 const contentRootPath = computed({
   get: () => workspaceStore.appSettings.paths.contentRootPath,
@@ -39,16 +76,64 @@ const proxiesRootPath = computed({
   },
 });
 
+const ephemeralTmpRootPath = computed({
+  get: () => workspaceStore.appSettings.paths.ephemeralTmpRootPath,
+  set: (v: string) => {
+    workspaceStore.appSettings.paths.ephemeralTmpRootPath = v.trim();
+  },
+});
+
+async function pickWorkspaceFolder() {
+  await workspaceStore.openWorkspace();
+}
+
+async function pickDesktopPath(target: 'content' | 'data' | 'temp' | 'proxies' | 'ephemeralTmp') {
+  if (!isDesktopTauri.value) return;
+
+  const selected = await open({
+    directory: true,
+    multiple: false,
+  });
+
+  const path = Array.isArray(selected) ? selected[0] : selected;
+  if (!path) return;
+
+  if (target === 'content') {
+    contentRootPath.value = path;
+    return;
+  }
+
+  if (target === 'data') {
+    dataRootPath.value = path;
+    return;
+  }
+
+  if (target === 'temp') {
+    tempRootPath.value = path;
+    return;
+  }
+
+  if (target === 'proxies') {
+    proxiesRootPath.value = path;
+    return;
+  }
+
+  ephemeralTmpRootPath.value = path;
+}
+
 async function confirmClearWorkspaceVardata() {
   isClearWorkspaceVardataConfirmOpen.value = false;
   await workspaceStore.clearVardata();
 }
 
 function resetPathDefaults() {
+  workspaceStore.appSettings.paths.placementMode = DEFAULT_APP_SETTINGS.paths.placementMode;
   workspaceStore.appSettings.paths.contentRootPath = DEFAULT_APP_SETTINGS.paths.contentRootPath;
   workspaceStore.appSettings.paths.dataRootPath = DEFAULT_APP_SETTINGS.paths.dataRootPath;
   workspaceStore.appSettings.paths.tempRootPath = DEFAULT_APP_SETTINGS.paths.tempRootPath;
   workspaceStore.appSettings.paths.proxiesRootPath = DEFAULT_APP_SETTINGS.paths.proxiesRootPath;
+  workspaceStore.appSettings.paths.ephemeralTmpRootPath =
+    DEFAULT_APP_SETTINGS.paths.ephemeralTmpRootPath;
 }
 </script>
 
@@ -63,7 +148,42 @@ function resetPathDefaults() {
       </UButton>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <UFormField
+      v-if="isDesktopTauri"
+      :label="t('videoEditor.settings.storageMode', 'Storage mode')"
+      :help="
+        t(
+          'videoEditor.settings.storageModeHelp',
+          'Choose between OS default folders and portable workspace-local storage.',
+        )
+      "
+    >
+      <USelectMenu v-model="placementMode" :items="placementModeOptions" value-key="value" />
+    </UFormField>
+
+    <div
+      v-if="isBrowserWorkspaceMode || isDesktopPortableMode"
+      class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
+    >
+      <div class="flex flex-col gap-1 min-w-0">
+        <div class="text-sm font-medium text-ui-text">
+          {{ t('videoEditor.settings.workspaceFolder', 'Workspace folder') }}
+        </div>
+        <div class="text-xs text-ui-text-muted break-all">
+          {{ workspaceFolderLabel }}
+        </div>
+      </div>
+
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-heroicons-folder-open"
+        :label="t('videoEditor.settings.selectWorkspaceFolder', 'Choose folder')"
+        @click="pickWorkspaceFolder"
+      />
+    </div>
+
+    <div v-if="isDesktopSystemMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <UFormField
         :label="t('videoEditor.settings.contentRootPath', 'Content root path')"
         :help="
@@ -73,7 +193,10 @@ function resetPathDefaults() {
           )
         "
       >
-        <UInput v-model="contentRootPath" :disabled="!isDesktopTauri" class="w-full" />
+        <div class="flex gap-2">
+          <UInput v-model="contentRootPath" class="w-full" />
+          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('content')" />
+        </div>
       </UFormField>
 
       <UFormField
@@ -85,7 +208,10 @@ function resetPathDefaults() {
           )
         "
       >
-        <UInput v-model="dataRootPath" :disabled="!isDesktopTauri" class="w-full" />
+        <div class="flex gap-2">
+          <UInput v-model="dataRootPath" class="w-full" />
+          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('data')" />
+        </div>
       </UFormField>
 
       <UFormField
@@ -97,7 +223,10 @@ function resetPathDefaults() {
           )
         "
       >
-        <UInput v-model="tempRootPath" :disabled="!isDesktopTauri" class="w-full" />
+        <div class="flex gap-2">
+          <UInput v-model="tempRootPath" class="w-full" />
+          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('temp')" />
+        </div>
       </UFormField>
 
       <UFormField
@@ -109,15 +238,64 @@ function resetPathDefaults() {
           )
         "
       >
-        <UInput v-model="proxiesRootPath" :disabled="!isDesktopTauri" class="w-full" />
+        <div class="flex gap-2">
+          <UInput v-model="proxiesRootPath" class="w-full" />
+          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('proxies')" />
+        </div>
+      </UFormField>
+
+      <UFormField
+        :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
+        :help="
+          t(
+            'videoEditor.settings.ephemeralTmpRootPathHelp',
+            'Short-lived temporary job files. Leave empty to use the system temporary directory.',
+          )
+        "
+      >
+        <div class="flex gap-2">
+          <UInput v-model="ephemeralTmpRootPath" class="w-full" />
+          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('ephemeralTmp')" />
+        </div>
       </UFormField>
     </div>
 
-    <div v-if="!isDesktopTauri" class="text-xs text-ui-text-muted rounded border border-ui-border p-3">
+    <div v-if="isDesktopPortableMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <UFormField
+        :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
+        :help="
+          t(
+            'videoEditor.settings.portableEphemeralTmpRootPathHelp',
+            'Portable mode stores project cache inside workspace. Leave this empty to keep short-lived job files in the system temporary directory.',
+          )
+        "
+      >
+        <div class="flex gap-2">
+          <UInput v-model="ephemeralTmpRootPath" class="w-full" />
+          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('ephemeralTmp')" />
+        </div>
+      </UFormField>
+    </div>
+
+    <div v-if="isBrowserWorkspaceMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <UFormField
+        :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
+        :help="
+          t(
+            'videoEditor.settings.browserEphemeralTmpRootPathHelp',
+            'Leave empty to use the runtime temporary location when supported. Browser workspaces always keep rebuildable cache inside the selected workspace folder.',
+          )
+        "
+      >
+        <UInput v-model="ephemeralTmpRootPath" class="w-full" />
+      </UFormField>
+    </div>
+
+    <div v-if="isBrowserWorkspaceMode" class="text-xs text-ui-text-muted rounded border border-ui-border p-3">
       {{
         t(
           'videoEditor.settings.storagePathEnvironmentHint',
-          'Custom path overrides are currently available only in desktop mode. In OPFS and portable modes, FastCat stores config and workspace data inside the selected workspace.',
+          'Browser workspace mode stores projects, shared files and rebuildable cache inside the selected workspace folder. Only the workspace folder and ephemeral tmp override are configurable here.',
         )
       }}
     </div>
@@ -138,7 +316,10 @@ function resetPathDefaults() {
       @confirm="confirmClearWorkspaceVardata"
     />
 
-    <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
+    <div
+      v-if="isBrowserWorkspaceMode || isDesktopPortableMode"
+      class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
+    >
       <div class="flex flex-col gap-1 min-w-0">
         <div class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.settings.clearTempWorkspace', 'Clear temporary files') }}
