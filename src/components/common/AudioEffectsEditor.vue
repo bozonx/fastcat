@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import EffectSettingsModal from '~/components/common/EffectSettingsModal.vue';
+import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
 import { getAllAudioEffectManifests, getAudioEffectManifest } from '~/effects';
 import type { AudioEffectManifest } from '~/effects';
 import type { AudioClipEffect } from '~/timeline/types';
