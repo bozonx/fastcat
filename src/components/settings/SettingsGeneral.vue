@@ -80,9 +80,5 @@ function resetDefaults() {
         </div>
       </div>
     </UFormField>
-
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .gran/user.settings.json') }}
-    </div>
   </div>
 </template>

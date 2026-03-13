@@ -431,24 +431,7 @@ const emit = defineEmits<{
         <!-- Absolute overlays: empty state, loading, error, timecode -->
         <template #default>
           <div
-            v-if="videoItems.length === 0"
-            class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-disabled"
-          >
-            <UIcon name="i-heroicons-play-circle" class="w-16 h-16" />
-            <p class="text-sm">
-              {{ t('granVideoEditor.monitor.empty', 'No clip selected') }}
-            </p>
-          </div>
-
-          <div
-            v-else-if="isLoading"
-            class="absolute inset-0 flex items-center justify-center text-ui-text-muted"
-          >
-            <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin" />
-          </div>
-
-          <div
-            v-else-if="loadError"
+            v-if="loadError"
             class="absolute inset-0 flex items-center justify-center text-red-500"
           >
             {{ loadError }}

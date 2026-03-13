@@ -41,7 +41,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
             color="primary"
             icon="lucide:smartphone"
             to="/m"
-            :label="t('granVideoEditor.projects.mobileView').split('.')[0]"
+            :label="t('granVideoEditor.projects.switchToMobile')"
           />
           <UButton
             size="sm"

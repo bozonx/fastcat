@@ -10,7 +10,7 @@ const props = defineProps<{
   capturingCommandId: HotkeyCommandId | null;
   getCurrentBindings: (cmdId: HotkeyCommandId) => string[];
   isConflicting: (cmdId: HotkeyCommandId, combo: string) => boolean;
-  isCommandCustom: (cmdId: HotkeyCommandId) => boolean;
+  isComboCustom: (cmdId: HotkeyCommandId, combo: string) => boolean;
 }>();
 
 const emit = defineEmits<{
@@ -66,13 +66,14 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                 <div
                   v-for="combo in getCurrentBindings(cmd.id)"
                   :key="combo"
-                  class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80 transition-colors"
-                  :class="{
-                    'border-warning-400 text-warning-700 bg-warning-50/80': isConflicting(
-                      cmd.id,
-                      combo,
-                    ),
-                  }"
+                  class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded border transition-colors"
+                  :class="[
+                    isConflicting(cmd.id, combo)
+                      ? 'border-warning-400 text-warning-700 bg-warning-50/80'
+                      : isComboCustom(cmd.id, combo)
+                      ? 'border-yellow-500/50 bg-yellow-500/10'
+                      : 'border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80',
+                  ]"
                   :title="
                     isConflicting(cmd.id, combo)
                       ? t(
@@ -82,7 +83,16 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                       : undefined
                   "
                 >
-                  <span class="text-[10px] font-mono font-medium text-ui-text-muted select-none">
+                  <span
+                    class="text-[10px] font-mono font-medium select-none"
+                    :class="[
+                      isConflicting(cmd.id, combo)
+                        ? 'text-warning-700'
+                        : isComboCustom(cmd.id, combo)
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-ui-text-muted',
+                    ]"
+                  >
                     {{ combo }}
                   </span>
                   <UButton
@@ -123,20 +133,6 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                         {{ part.text }}
                       </span>
                     </template>
-                  </span>
-                  <span
-                    class="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
-                    :class="
-                      isCommandCustom(cmd.id)
-                        ? 'border-primary-300 text-primary-700 bg-primary-50'
-                        : 'border-ui-border text-ui-text-muted bg-ui-bg'
-                    "
-                  >
-                    {{
-                      isCommandCustom(cmd.id)
-                        ? t('common.custom', 'Custom')
-                        : t('common.default', 'Default')
-                    }}
                   </span>
                 </div>
 

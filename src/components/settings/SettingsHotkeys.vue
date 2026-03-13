@@ -85,8 +85,9 @@ function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
   return DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
 }
 
-function isCommandCustom(cmdId: HotkeyCommandId): boolean {
-  return Array.isArray(workspaceStore.userSettings.hotkeys.bindings[cmdId]);
+function isComboCustom(cmdId: HotkeyCommandId, combo: string): boolean {
+  const defaultBindings = DEFAULT_HOTKEYS.bindings[cmdId] || [];
+  return !defaultBindings.includes(combo);
 }
 
 function setBindings(cmdId: HotkeyCommandId, next: string[]) {
@@ -420,7 +421,7 @@ defineExpose({
         :capturing-command-id="captureTargetCommandId"
         :get-current-bindings="getCurrentBindings"
         :is-conflicting="isConflicting"
-        :is-command-custom="isCommandCustom"
+        :is-combo-custom="isComboCustom"
         @remove="removeBinding"
         @capture="startCapture"
         @reset="resetCommandBindings"
