@@ -84,13 +84,13 @@ const sampleRateOptions = computed(() => {
       </div>
     </div>
     <div class="flex items-center justify-between">
-      <label class="text-xs text-ui-text-muted font-medium cursor-pointer" @click="!props.disabled && (audioReverse = !audioReverse)">
+      <label
+        class="text-xs text-ui-text-muted font-medium cursor-pointer"
+        @click="!props.disabled && (audioReverse = !audioReverse)"
+      >
         {{ t('videoEditor.audio.reverse', 'Reverse audio') }}
       </label>
-      <USwitch
-        v-model="audioReverse"
-        :disabled="props.disabled"
-      />
+      <USwitch v-model="audioReverse" :disabled="props.disabled" />
     </div>
   </div>
 </template>

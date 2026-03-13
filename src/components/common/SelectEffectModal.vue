@@ -61,7 +61,9 @@ const customEffects = computed(() => {
     .filter((m): m is NonNullable<typeof m> => !!m);
 });
 
-const hasAnyEffects = computed(() => allManifests.value.length > 0 || customEffects.value.length > 0);
+const hasAnyEffects = computed(
+  () => allManifests.value.length > 0 || customEffects.value.length > 0,
+);
 
 function handleSelect(type: string) {
   emit('select', type);
@@ -72,7 +74,11 @@ function handleSelect(type: string) {
 <template>
   <UModal
     v-model:open="isOpen"
-    :title="target === 'video' ? t('videoEditor.fileManager.tabs.effects') : t('granVideoEditor.effects.tabs.audio')"
+    :title="
+      target === 'video'
+        ? t('videoEditor.fileManager.tabs.effects')
+        : t('granVideoEditor.effects.tabs.audio')
+    "
   >
     <template #body>
       <div class="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
@@ -138,4 +144,3 @@ function handleSelect(type: string) {
     </template>
   </UModal>
 </template>
-

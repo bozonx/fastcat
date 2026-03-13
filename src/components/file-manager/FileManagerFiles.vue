@@ -33,7 +33,9 @@ function scrollToSelectedEntry(path: string): boolean {
   const container = scrollEl.value;
   if (!container) return false;
 
-  const targetNode = container.querySelector<HTMLElement>(`[data-entry-path="${CSS.escape(path)}"]`);
+  const targetNode = container.querySelector<HTMLElement>(
+    `[data-entry-path="${CSS.escape(path)}"]`,
+  );
   if (!targetNode) return false;
 
   const containerRect = container.getBoundingClientRect();

@@ -62,15 +62,16 @@ export const envMuffledManifest: AudioEffectManifest<EnvMuffledParams> = {
   },
   updateNode(node, values) {
     const graph = node as MuffledNodeGraph;
-    
-    const intensity = typeof values.intensity === 'number' ? Math.max(0, Math.min(100, values.intensity)) : 70;
-    
+
+    const intensity =
+      typeof values.intensity === 'number' ? Math.max(0, Math.min(100, values.intensity)) : 70;
+
     // Intensity: 0 = 5000Hz (barely muffled), 100 = 300Hz (very muffled)
     const minFreq = 300;
     const maxFreq = 5000;
-    const normIntensity = 1 - (intensity / 100);
+    const normIntensity = 1 - intensity / 100;
     const freq = minFreq * Math.pow(maxFreq / minFreq, normIntensity);
-    
+
     graph.lowpass.frequency.value = freq;
   },
 };

@@ -30,7 +30,7 @@ function onDragStart(e: DragEvent) {
       isSelected
         ? 'border-primary bg-primary/10'
         : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated',
-      isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+      isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
     ]"
     :draggable="isDraggable"
     @dragstart="onDragStart"
@@ -59,7 +59,10 @@ function onDragStart(e: DragEvent) {
       </p>
     </div>
     <div v-if="!showAction && !isDraggable" class="shrink-0 flex items-center self-center">
-       <UIcon name="i-heroicons-plus-circle" class="w-5 h-5 text-ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+      <UIcon
+        name="i-heroicons-plus-circle"
+        class="w-5 h-5 text-ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+      />
     </div>
   </div>
 </template>

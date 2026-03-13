@@ -90,7 +90,7 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
     const noiseSource = context.audioContext.createBufferSource();
     noiseSource.buffer = noiseBuffer;
     noiseSource.loop = true;
-    
+
     // Filter the noise to sound more like radio static
     const noiseFilter = context.audioContext.createBiquadFilter();
     noiseFilter.type = 'bandpass';
@@ -115,10 +115,10 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
     // Routing
     input.connect(bandpass);
     bandpass.connect(distortion);
-    
+
     distortion.connect(compressor);
     noiseGain.connect(compressor);
-    
+
     compressor.connect(output);
 
     return { input, output, bandpass, distortion, noiseGain, compressor };
@@ -126,7 +126,7 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
   updateNode(node, values) {
     const graph = node as WalkieTalkieNodeGraph;
     const noise = typeof values.noise === 'number' ? Math.max(0, Math.min(100, values.noise)) : 30;
-    
+
     graph.noiseGain.gain.value = (noise / 100) * 0.15;
   },
 };

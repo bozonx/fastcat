@@ -317,7 +317,9 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
           @click="handleAction(control.action, control.key)"
         >
           {{
-            control.buttonLabelKey ? t(control.buttonLabelKey) : (control.buttonLabel ?? getLabel(control))
+            control.buttonLabelKey
+              ? t(control.buttonLabelKey)
+              : (control.buttonLabel ?? getLabel(control))
           }}
         </UButton>
       </div>
@@ -337,7 +339,10 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
           </UButton>
         </div>
 
-        <div v-if="!Array.isArray(getValue(control.key)) || getValue(control.key).length === 0" class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded">
+        <div
+          v-if="!Array.isArray(getValue(control.key)) || getValue(control.key).length === 0"
+          class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded"
+        >
           {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
         </div>
 
@@ -347,7 +352,9 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
             :key="index"
             class="flex flex-col gap-2 p-3 bg-ui-bg-elevated border border-ui-border rounded relative group"
           >
-            <div class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            <div
+              class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            >
               <UButton
                 icon="i-heroicons-trash"
                 size="2xs"

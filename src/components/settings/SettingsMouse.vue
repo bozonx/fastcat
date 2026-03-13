@@ -126,7 +126,12 @@ function resetDefaults() {
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetMouseSettingsConfirmTitle', 'Reset mouse settings?')"
-      :description="t('videoEditor.settings.resetMouseSettingsConfirmDesc', 'This will restore all mouse actions to their default values.')"
+      :description="
+        t(
+          'videoEditor.settings.resetMouseSettingsConfirmDesc',
+          'This will restore all mouse actions to their default values.',
+        )
+      "
       :confirm-text="t('videoEditor.settings.resetMouseSettingsConfirmAction', 'Reset')"
       :cancel-text="t('common.cancel', 'Cancel')"
       color="warning"

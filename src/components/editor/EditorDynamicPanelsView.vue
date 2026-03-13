@@ -13,7 +13,12 @@ interface Props {
   columns: PanelColumn[];
   layoutKey: string;
   topSizes: number[];
-  getVerticalSize: (colId: string, rowIndex: number, totalRows: number, view?: 'cut' | 'sound') => number | undefined;
+  getVerticalSize: (
+    colId: string,
+    rowIndex: number,
+    totalRows: number,
+    view?: 'cut' | 'sound',
+  ) => number | undefined;
   draggingPanelId: string | null;
   dragOverPanelId: string | null;
   dropPosition: 'left' | 'right' | 'top' | 'bottom' | null;
@@ -25,7 +30,11 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   topResize: [event: SplitResizeEvent];
-  verticalResize: [event: SplitResizeEvent | Array<{ size: number }>, colId: string, view: 'cut' | 'sound'];
+  verticalResize: [
+    event: SplitResizeEvent | Array<{ size: number }>,
+    colId: string,
+    view: 'cut' | 'sound',
+  ];
   dragStart: [event: DragEvent, panelId: string];
   dragOver: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
   dragLeave: [event: DragEvent, panelId: string];
@@ -57,17 +66,23 @@ const emit = defineEmits<{
         <Pane
           v-for="(panel, rowIndex) in col.panels"
           :key="panel.id"
-          :size="getVerticalSize(col.id, rowIndex, col.panels.length, view) ?? 100 / col.panels.length"
+          :size="
+            getVerticalSize(col.id, rowIndex, col.panels.length, view) ?? 100 / col.panels.length
+          "
           min-size="5"
         >
           <div
             class="h-full w-full relative transition-all duration-200"
             :class="{
               'opacity-50': draggingPanelId === panel.id,
-              'border-l-2 border-l-primary-500': dragOverPanelId === panel.id && dropPosition === 'left',
-              'border-r-2 border-r-primary-500': dragOverPanelId === panel.id && dropPosition === 'right',
-              'border-t-2 border-t-primary-500': dragOverPanelId === panel.id && dropPosition === 'top',
-              'border-b-2 border-b-primary-500': dragOverPanelId === panel.id && dropPosition === 'bottom',
+              'border-l-2 border-l-primary-500':
+                dragOverPanelId === panel.id && dropPosition === 'left',
+              'border-r-2 border-r-primary-500':
+                dragOverPanelId === panel.id && dropPosition === 'right',
+              'border-t-2 border-t-primary-500':
+                dragOverPanelId === panel.id && dropPosition === 'top',
+              'border-b-2 border-b-primary-500':
+                dragOverPanelId === panel.id && dropPosition === 'bottom',
               'outline-2 outline-primary-500/60 -outline-offset-2 z-10': isFocused(panel.id),
             }"
             @pointerdown.capture="emit('focus', panel.id)"

@@ -207,6 +207,23 @@
       "hotkeysResetCommandConfirmTitle": "Reset hotkey?",
       "hotkeysResetCommandConfirmDesc": "Are you sure you want to reset the hotkey for this command?",
       "hotkeysResetCommandConfirmAction": "Reset",
+      "resetDefaults": "Reset to defaults",
+      "resetAudioSettingsConfirmTitle": "Reset audio settings?",
+      "resetAudioSettingsConfirmDesc": "This will restore all audio settings to their default values.",
+      "resetExportSettingsConfirmTitle": "Reset export settings?",
+      "resetExportSettingsConfirmDesc": "This will restore all export settings to their default values.",
+      "resetGeneralSettingsConfirmTitle": "Reset general settings?",
+      "resetGeneralSettingsConfirmDesc": "This will restore all general settings to their default values.",
+      "resetIntegrationsSettingsConfirmTitle": "Reset integrations?",
+      "resetIntegrationsSettingsConfirmDesc": "This will restore all integration settings to their default values.",
+      "resetOptimizationSettingsConfirmTitle": "Reset optimization settings?",
+      "resetOptimizationSettingsConfirmDesc": "This will restore all optimization settings to their default values.",
+      "resetProjectDefaultSettingsConfirmTitle": "Reset project defaults?",
+      "resetProjectDefaultSettingsConfirmDesc": "This will restore all project default settings to their default values.",
+      "resetStorageSettingsConfirmTitle": "Reset storage settings?",
+      "resetStorageSettingsConfirmDesc": "This will restore all storage limits to their default values.",
+      "resetVideoSettingsConfirmTitle": "Reset video settings?",
+      "resetVideoSettingsConfirmDesc": "This will restore all video performance settings to their default values.",
       "mouseTrackHeaders": "Track Headers"
     },
     "projectSettings": {
@@ -225,6 +242,8 @@
       "clearTemp": "Clear temporary files",
       "clearTempAction": "Clear",
       "reset": "Reset to Defaults",
+      "resetConfirmTitle": "Reset to defaults?",
+      "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",
       "apply": "Apply Settings"
     },
     "resolution": {

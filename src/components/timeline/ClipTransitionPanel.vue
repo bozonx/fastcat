@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
 import { getAllTransitionManifests } from '~/transitions';
-import type { ClipTransition } from '~/timeline/types';
+import type { ClipTransition, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import type { TransitionCurve, TransitionParamField } from '~/transitions/core/registry';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
-import { getTransitionCurveSinglePath } from '~/utils/timeline/clip';
+import {
+  getTransitionCurveSinglePath,
+  getPrevClipForItem,
+  getNextClipForItem,
+} from '~/utils/timeline/clip';
 import { usePresetsStore } from '~/stores/presets.store';
-
-import { getPrevClipForItem, getNextClipForItem } from '~/utils/timeline/clip';
-import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 
 interface CurveOption {
   value: TransitionCurve;

@@ -14,7 +14,12 @@ interface Props {
   draggingPanelId: string | null;
   dragOverPanelId: string | null;
   dropPosition: 'left' | 'right' | 'top' | 'bottom' | null;
-  getVerticalSize: (colId: string, rowIndex: number, totalRows: number, view?: 'cut' | 'sound') => number | undefined;
+  getVerticalSize: (
+    colId: string,
+    rowIndex: number,
+    totalRows: number,
+    view?: 'cut' | 'sound',
+  ) => number | undefined;
   isFocused: (panelId: string) => boolean;
   getFocusId: (panelId: string) => PanelFocusId;
 }
@@ -23,7 +28,11 @@ defineProps<Props>();
 
 const emit = defineEmits<{
   topResize: [event: SplitResizeEvent];
-  verticalResize: [event: SplitResizeEvent | Array<{ size: number }>, colId: string, view: 'cut' | 'sound'];
+  verticalResize: [
+    event: SplitResizeEvent | Array<{ size: number }>,
+    colId: string,
+    view: 'cut' | 'sound',
+  ];
   dragStart: [event: DragEvent, panelId: string];
   dragOver: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
   dragLeave: [event: DragEvent, panelId: string];

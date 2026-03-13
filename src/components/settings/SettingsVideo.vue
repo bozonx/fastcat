@@ -6,12 +6,14 @@ import {
   type VideoDiagnosticsSnapshot,
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
 const diagnostics = ref<VideoDiagnosticsSnapshot | null>(null);
 const isLoadingDiagnostics = ref(false);
+const isResetConfirmOpen = ref(false);
 
 const statusToneClasses: Record<VideoDiagnosticsStatus['tone'], string> = {
   danger: 'border-red-500/30 bg-red-500/10 text-red-200',
@@ -61,11 +63,28 @@ onMounted(async () => {
 
 function resetDefaults() {
   workspaceStore.userSettings.video = { ...DEFAULT_USER_SETTINGS.video };
+  isResetConfirmOpen.value = false;
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
+    <UiConfirmModal
+      v-model:open="isResetConfirmOpen"
+      :title="t('videoEditor.settings.resetVideoSettingsConfirmTitle', 'Reset video settings?')"
+      :description="
+        t(
+          'videoEditor.settings.resetVideoSettingsConfirmDesc',
+          'This will restore all video performance settings to their default values.',
+        )
+      "
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="resetDefaults"
+    />
+
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.video.performance', 'Performance') }}
@@ -74,7 +93,7 @@ function resetDefaults() {
         <UButton size="xs" color="neutral" variant="ghost" @click="loadDiagnostics">
           {{ t('videoEditor.settings.video.refreshDiagnostics', 'Refresh diagnostics') }}
         </UButton>
-        <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
+        <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
           {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
         </UButton>
       </div>

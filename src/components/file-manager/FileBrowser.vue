@@ -175,7 +175,9 @@ function scrollToEntryPath(path: string) {
   const container = rootContainer.value;
   if (!container) return false;
 
-  const targetNode = container.querySelector<HTMLElement>(`[data-entry-path="${CSS.escape(path)}"]`);
+  const targetNode = container.querySelector<HTMLElement>(
+    `[data-entry-path="${CSS.escape(path)}"]`,
+  );
   if (!targetNode) return false;
 
   const containerRect = container.getBoundingClientRect();
@@ -1078,7 +1080,7 @@ watch(
 
     if (entry?.kind === 'file' && entry.path) {
       pendingScrollToEntryPath.value = entry.path;
-      
+
       // If we are already in the correct folder, scroll immediately
       const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
       const targetParentPath = entry.path.split('/').slice(0, -1).join('/');
@@ -1118,8 +1120,9 @@ watch(
 
 async function loadFolderContent() {
   // Preserve scroll position when a scroll-to-entry is pending
-  const savedScrollTop =
-    pendingScrollToEntryPath.value ? (rootContainer.value?.scrollTop ?? null) : null;
+  const savedScrollTop = pendingScrollToEntryPath.value
+    ? (rootContainer.value?.scrollTop ?? null)
+    : null;
 
   if (isRemoteMode.value) {
     if (!remoteCurrentFolder.value || !remoteFilesConfig.value) {

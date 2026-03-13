@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
+import SearchInput from '~/components/ui/SearchInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -87,11 +88,9 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
             }})
           </h3>
           <div class="w-64">
-            <UInput
+            <SearchInput
               v-model="searchQuery"
-              icon="lucide:search"
               :placeholder="t('granVideoEditor.projects.searchPlaceholder')"
-              size="sm"
             />
           </div>
         </div>

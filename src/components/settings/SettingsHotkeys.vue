@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import type { LayerKey } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import SearchInput from '~/components/ui/SearchInput.vue';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import {
   hotkeyFromKeyboardEvent,
@@ -371,9 +372,8 @@ defineExpose({
     </div>
 
     <div class="px-1">
-      <UInput
+      <SearchInput
         v-model="searchQuery"
-        icon="i-heroicons-magnifying-glass"
         :placeholder="t('common.search', 'Search')"
         :disabled="isCapturingHotkey"
       />

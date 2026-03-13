@@ -62,13 +62,18 @@ const selectedTransition = computed(() => {
 
 const selectedTransitionClip = computed(() => {
   if (!selectedTransition.value) return null;
-  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === selectedTransition.value!.trackId);
+  const track = timelineStore.timelineDoc?.tracks.find(
+    (t) => t.id === selectedTransition.value!.trackId,
+  );
   return track?.items.find((i) => i.id === selectedTransition.value!.itemId) ?? null;
 });
 
 const selectedTransitionTrack = computed(() => {
   if (!selectedTransition.value) return null;
-  return timelineStore.timelineDoc?.tracks.find((t) => t.id === selectedTransition.value!.trackId) ?? null;
+  return (
+    timelineStore.timelineDoc?.tracks.find((t) => t.id === selectedTransition.value!.trackId) ??
+    null
+  );
 });
 
 const selectedTrack = computed<TimelineTrack | null>(() => {

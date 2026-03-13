@@ -10,6 +10,7 @@ import {
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const props = defineProps<{
   isActive: boolean;
@@ -27,6 +28,7 @@ const formatOptions: readonly FormatOption[] = [
 
 const videoCodecSupport = ref<Record<string, boolean>>({});
 const isLoadingCodecSupport = ref(false);
+const isResetConfirmOpen = ref(false);
 
 const videoCodecOptions = computed(() =>
   resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value),
@@ -70,16 +72,33 @@ function resetDefaults() {
   workspaceStore.userSettings.exportDefaults.encoding = {
     ...DEFAULT_USER_SETTINGS.exportDefaults.encoding,
   };
+  isResetConfirmOpen.value = false;
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
+    <UiConfirmModal
+      v-model:open="isResetConfirmOpen"
+      :title="t('videoEditor.settings.resetExportSettingsConfirmTitle', 'Reset export settings?')"
+      :description="
+        t(
+          'videoEditor.settings.resetExportSettingsConfirmDesc',
+          'This will restore all export settings to their default values.',
+        )
+      "
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="resetDefaults"
+    />
+
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userExport', 'Export defaults') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="resetDefaults">
+      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
     </div>

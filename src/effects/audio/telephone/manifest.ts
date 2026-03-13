@@ -94,20 +94,21 @@ export const telephoneManifest: AudioEffectManifest<TelephoneParams> = {
   },
   updateNode(node, values) {
     const graph = node as TelephoneNodeGraph;
-    
-    const quality = typeof values.quality === 'number' ? Math.max(0, Math.min(100, values.quality)) : 50;
+
+    const quality =
+      typeof values.quality === 'number' ? Math.max(0, Math.min(100, values.quality)) : 50;
 
     // Quality affects frequency range and distortion
     // Low quality = narrower range, more distortion
     const hpfFreq = 600 - (quality / 100) * 300; // 600Hz to 300Hz
     const lpfFreq = 2000 + (quality / 100) * 1500; // 2000Hz to 3500Hz
-    
+
     graph.highpass.frequency.value = hpfFreq;
     graph.lowpass.frequency.value = lpfFreq;
 
     const distortionAmount = 30 - (quality / 100) * 25; // 30 to 5
     graph.waveshaper.curve = makeDistortionCurve(distortionAmount);
-    
+
     // Resonance sharpness
     graph.peaking.Q.value = 3 - (quality / 100) * 2; // 3 to 1
   },

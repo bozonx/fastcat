@@ -38,8 +38,16 @@ function onFocus() {
 
 <template>
   <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
-  <MonitorContainer v-else-if="panel.type === 'monitor'" class="h-full" @panel-drag-start="onDragStart" />
-  <PropertiesPanel v-else-if="panel.type === 'properties'" class="h-full" @panel-drag-start="onDragStart" />
+  <MonitorContainer
+    v-else-if="panel.type === 'monitor'"
+    class="h-full"
+    @panel-drag-start="onDragStart"
+  />
+  <PropertiesPanel
+    v-else-if="panel.type === 'properties'"
+    class="h-full"
+    @panel-drag-start="onDragStart"
+  />
   <div
     v-else-if="panel.type === 'media'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative pt-8 border border-ui-border"

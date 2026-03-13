@@ -24,7 +24,7 @@ const {
   conversionProgress,
   conversionError,
   conversionPhase,
-  
+
   videoFormat,
   videoCodec,
   videoBitrateMbps,
@@ -56,7 +56,7 @@ const {
   imageAspectRatio,
 
   startConversion,
-  cancelConversion
+  cancelConversion,
 } = useFileConversion();
 
 const isOpen = computed({

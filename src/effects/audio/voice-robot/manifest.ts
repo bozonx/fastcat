@@ -103,7 +103,9 @@ export const voiceRobotManifest: AudioEffectManifest<VoiceRobotParams> = {
   updateNode(node, values) {
     const graph = node as VoiceRobotGraph;
     graph.delay.delayTime.value =
-      typeof values.delayTime === 'number' ? Math.max(0.0005, Math.min(0.02, values.delayTime)) : 0.004;
+      typeof values.delayTime === 'number'
+        ? Math.max(0.0005, Math.min(0.02, values.delayTime))
+        : 0.004;
     graph.feedbackGain.gain.value =
       typeof values.feedback === 'number' ? Math.max(0, Math.min(0.9, values.feedback)) : 0.25;
     graph.lfo.type = 'triangle';

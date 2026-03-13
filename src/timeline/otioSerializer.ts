@@ -9,8 +9,8 @@ import type {
   TimelineTrack,
   TimelineTrackItem,
   TrackKind,
+  ClipEffect,
 } from './types';
-import type { ClipEffect } from './types';
 import { normalizeTransitionCurve, normalizeTransitionMode } from '~/transitions';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 

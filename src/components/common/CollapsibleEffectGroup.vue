@@ -23,7 +23,9 @@ function toggle() {
         :name="isCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'"
         class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
       />
-      <span class="uppercase text-xs tracking-wider text-ui-text-muted group-hover:text-ui-text transition-colors">
+      <span
+        class="uppercase text-xs tracking-wider text-ui-text-muted group-hover:text-ui-text transition-colors"
+      >
         {{ title }}
       </span>
     </button>
