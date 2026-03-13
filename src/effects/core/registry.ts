@@ -10,6 +10,13 @@ export interface AudioEffectContext {
   sourceNode?: AudioNode;
 }
 
+export interface AudioEffectNodeGraph {
+  input: AudioNode;
+  output: AudioNode;
+}
+
+export type AudioEffectNode = AudioNode | AudioEffectNodeGraph;
+
 export interface BaseEffectManifest<T = Record<string, any>> {
   type: EffectType;
   name: string;
@@ -30,8 +37,8 @@ export interface VideoEffectManifest<T = Record<string, any>> extends BaseEffect
 
 export interface AudioEffectManifest<T = Record<string, any>> extends BaseEffectManifest<T> {
   target: 'audio';
-  createNode?: (context: AudioEffectContext) => AudioNode;
-  updateNode?: (node: AudioNode, values: T, context: AudioEffectContext) => void;
+  createNode?: (context: AudioEffectContext) => AudioEffectNode;
+  updateNode?: (node: AudioEffectNode, values: T, context: AudioEffectContext) => void;
 }
 
 export type EffectManifest<T = Record<string, any>> =
@@ -102,6 +109,10 @@ export function getVideoEffectManifest(type: EffectType): VideoEffectManifest<an
 export function getAudioEffectManifest(type: EffectType): AudioEffectManifest<any> | undefined {
   const manifest = effectsRegistry.get(type);
   return isAudioEffectManifest(manifest) ? manifest : undefined;
+}
+
+export function isAudioEffectNodeGraph(node: AudioEffectNode): node is AudioEffectNodeGraph {
+  return 'input' in node && 'output' in node;
 }
 
 export function getAllEffectManifests(target?: EffectTarget): EffectManifest<any>[] {

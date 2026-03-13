@@ -8,7 +8,7 @@ import {
   type AudioFadeCurve,
   type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
-import { getAudioEffectManifest } from '~/effects/core/registry';
+import { getAudioEffectManifest, isAudioEffectNodeGraph } from '~/effects/core/registry';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import type { AudioClipEffect } from '~/timeline/types';
@@ -671,12 +671,14 @@ export class AudioEngine {
       wetGainNode.gain.value = wet;
 
       const outputGainNode = this.ctx.createGain();
+      const effectInput = isAudioEffectNodeGraph(effectNode) ? effectNode.input : effectNode;
+      const effectOutput = isAudioEffectNodeGraph(effectNode) ? effectNode.output : effectNode;
 
       effectTailNode.connect(dryGainNode);
       dryGainNode.connect(outputGainNode);
 
-      effectTailNode.connect(effectNode);
-      effectNode.connect(wetGainNode);
+      effectTailNode.connect(effectInput);
+      effectOutput.connect(wetGainNode);
       wetGainNode.connect(outputGainNode);
 
       effectTailNode = outputGainNode;

@@ -1,4 +1,4 @@
-import type { AudioEffectManifest, AudioEffectContext } from '../../core/registry';
+import type { AudioEffectManifest, AudioEffectContext, AudioEffectNode } from '../../core/registry';
 
 export interface DistortionParams {
   wet: number;
@@ -63,7 +63,7 @@ export const distortionManifest: AudioEffectManifest<DistortionParams> = {
   createNode(context: AudioEffectContext) {
     return context.audioContext.createWaveShaper();
   },
-  updateNode(node: AudioNode, values: DistortionParams, context: AudioEffectContext) {
+  updateNode(node: AudioEffectNode, values: DistortionParams, context: AudioEffectContext) {
     const shaper = node as WaveShaperNode;
     const distortion =
       typeof values.distortion === 'number' ? Math.max(0, Math.min(1, values.distortion)) : 0.4;
