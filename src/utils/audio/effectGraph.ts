@@ -19,12 +19,18 @@ function normalizeWet(value: unknown): number {
   return typeof value === 'number' ? Math.max(0, Math.min(1, value)) : 1;
 }
 
+export interface BuildAudioEffectGraphResult {
+  outputNode: AudioNode;
+  destroy: () => void;
+}
+
 export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
   audioContext,
   sourceNode,
   effects,
-}: BuildAudioEffectGraphParams<TContext>): AudioNode {
+}: BuildAudioEffectGraphParams<TContext>): BuildAudioEffectGraphResult {
   let currentNode = sourceNode;
+  const cleanups: Array<() => void> = [];
 
   for (const effect of effects) {
     if (!effect.enabled || effect.target !== 'audio') {
@@ -46,6 +52,19 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
       manifest.updateNode(effectNode, effect, effectContext);
     }
 
+    cleanups.push(() => {
+      if (manifest.destroyNode) {
+        try {
+          manifest.destroyNode(effectNode, effectContext);
+        } catch (err) {
+          console.warn(
+            `[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`,
+            err,
+          );
+        }
+      }
+    });
+
     const dryGainNode = audioContext.createGain();
     dryGainNode.gain.value = 1 - normalizeWet(effect.wet);
 
@@ -66,5 +85,12 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
     currentNode = outputGainNode;
   }
 
-  return currentNode;
+  return {
+    outputNode: currentNode,
+    destroy: () => {
+      for (const cleanup of cleanups) {
+        cleanup();
+      }
+    },
+  };
 }

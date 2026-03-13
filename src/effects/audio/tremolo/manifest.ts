@@ -81,4 +81,13 @@ export const tremoloManifest: AudioEffectManifest<TremoloParams> = {
     graph.modulatedGain.gain.value = 1 - depth / 2;
     graph.lfoDepth.gain.value = depth / 2;
   },
+  destroyNode(node) {
+    const graph = node as TremoloGraph;
+    try {
+      graph.lfo.stop();
+      graph.lfo.disconnect();
+    } catch (err) {
+      // ignore
+    }
+  },
 };

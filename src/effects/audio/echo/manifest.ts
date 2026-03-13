@@ -96,4 +96,13 @@ export const echoManifest: AudioEffectManifest<EchoParams> = {
     graph.toneFilter.frequency.value =
       typeof values.tone === 'number' ? Math.max(400, Math.min(12000, values.tone)) : 6000;
   },
+  destroyNode(node) {
+    const graph = node as EchoGraph;
+    try {
+      graph.delay.disconnect();
+      graph.feedbackGain.disconnect();
+    } catch (err) {
+      // ignore
+    }
+  },
 };

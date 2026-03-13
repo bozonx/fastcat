@@ -116,4 +116,15 @@ export const flangerManifest: AudioEffectManifest<FlangerParams> = {
     graph.lfo.frequency.value = rate;
     graph.lfoDepth.gain.value = depth;
   },
+  destroyNode(node) {
+    const graph = node as FlangerGraph;
+    try {
+      graph.lfo.stop();
+      graph.lfo.disconnect();
+      graph.delay.disconnect();
+      graph.feedbackGain.disconnect();
+    } catch (err) {
+      // ignore
+    }
+  },
 };
