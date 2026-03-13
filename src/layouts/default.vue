@@ -103,7 +103,7 @@ useHead({
           @open-project-settings="uiStore.isProjectSettingsOpen = true"
           @open-editor-settings="uiStore.isEditorSettingsOpen = true"
         />
-        <div class="flex-1 min-h-0 overflow-hidden">
+        <div class="flex-1 min-h-0 overflow-y-auto">
           <slot />
         </div>
       </div>
