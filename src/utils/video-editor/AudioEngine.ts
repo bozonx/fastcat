@@ -8,7 +8,7 @@ import {
   type AudioFadeCurve,
   type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
-import { applyAudioEffects } from '~/utils/audio/applyAudioEffectsOffline';
+import { getAudioEffectManifest } from '~/effects/core/registry';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import type { AudioClipEffect } from '~/timeline/types';
@@ -37,14 +37,6 @@ export interface AudioEngineClip {
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
   audioEffects?: AudioClipEffect[];
-}
-
-function hashAudioEffects(effects: AudioClipEffect[] | undefined): string {
-  if (!effects || effects.length === 0) return '';
-  return effects
-    .filter((e) => e.enabled && e.target === 'audio')
-    .map((e) => JSON.stringify(e))
-    .join('|');
 }
 
 export class AudioEngine {
@@ -243,9 +235,8 @@ export class AudioEngine {
     for (const clip of clips) {
       const sourceKey = clip.sourcePath;
       if (!sourceKey) continue;
-      const cacheKey = sourceKey + '\x00' + hashAudioEffects(clip.audioEffects);
-      if (this.decodedCache.has(cacheKey)) continue;
-      void this.ensureDecoded(sourceKey, clip.fileHandle, clip.audioEffects);
+      if (this.decodedCache.has(sourceKey)) continue;
+      void this.ensureDecoded(sourceKey, clip.fileHandle);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
@@ -265,8 +256,7 @@ export class AudioEngine {
   private cleanupCache() {
     const activePaths = new Set(this.currentClips.map((c) => c.sourcePath).filter(Boolean));
     for (const key of this.decodedCache.keys()) {
-      const sourcePath = key.split('\x00')[0] ?? key;
-      if (!activePaths.has(sourcePath)) {
+      if (!activePaths.has(key)) {
         this.decodedCache.delete(key);
       }
     }
@@ -302,18 +292,12 @@ export class AudioEngine {
     };
   }
 
-  private async ensureDecoded(
-    sourceKey: string,
-    fileHandle: FileSystemFileHandle,
-    audioEffects?: AudioClipEffect[],
-  ) {
-    const cacheKey = sourceKey + '\x00' + hashAudioEffects(audioEffects);
-
-    const existing = this.decodeInFlight.get(cacheKey);
+  private async ensureDecoded(sourceKey: string, fileHandle: FileSystemFileHandle) {
+    const existing = this.decodeInFlight.get(sourceKey);
     if (existing) return existing;
 
-    if (this.decodedCache.has(cacheKey)) {
-      const cached = this.decodedCache.get(cacheKey);
+    if (this.decodedCache.has(sourceKey)) {
+      const cached = this.decodedCache.get(sourceKey);
       // null means decode failed previously, not in-progress
       return cached ?? null;
     }
@@ -358,35 +342,24 @@ export class AudioEngine {
           audioBuffer.copyToChannel(data, ch, 0);
         }
 
-        const enabledEffects = (audioEffects ?? []).filter(
-          (e) => e.enabled && e.target === 'audio',
-        );
-        if (enabledEffects.length > 0) {
-          try {
-            audioBuffer = await applyAudioEffects({ buffer: audioBuffer, effects: enabledEffects });
-          } catch (err) {
-            console.warn('[AudioEngine] Failed to apply audio effects, using raw buffer', err);
-          }
-        }
-
         logger.info(
           `Successfully decoded ${sourceKey}: ${numChannels}ch, ${sampleRate}Hz, ${frames} frames`,
         );
-        this.decodedCache.set(cacheKey, audioBuffer);
+        this.decodedCache.set(sourceKey, audioBuffer);
         return audioBuffer;
       } catch (err) {
         const name = (err as any)?.name;
         if (name !== 'NoAudioTrackError' && name !== 'UnsupportedFormatError') {
           console.warn('[AudioEngine] Failed to decode audio', err);
         }
-        this.decodedCache.set(cacheKey, null);
+        this.decodedCache.set(sourceKey, null);
         return null;
       } finally {
-        this.decodeInFlight.delete(cacheKey);
+        this.decodeInFlight.delete(sourceKey);
       }
     });
 
-    this.decodeInFlight.set(cacheKey, task);
+    this.decodeInFlight.set(sourceKey, task);
     return task;
   }
 
@@ -547,15 +520,13 @@ export class AudioEngine {
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return;
 
-    const cacheKey = sourceKey + '\x00' + hashAudioEffects(clip.audioEffects);
-
-    let buffer = this.decodedCache.get(cacheKey) ?? null;
+    let buffer = this.decodedCache.get(sourceKey) ?? null;
     if (!buffer) {
-      const inFlight = this.decodeInFlight.get(cacheKey);
+      const inFlight = this.decodeInFlight.get(sourceKey);
       if (inFlight) {
         buffer = await inFlight;
       } else {
-        buffer = await this.ensureDecoded(sourceKey, clip.fileHandle, clip.audioEffects);
+        buffer = await this.ensureDecoded(sourceKey, clip.fileHandle);
       }
     }
     if (!buffer) return;
@@ -662,14 +633,56 @@ export class AudioEngine {
 
     const anyCtx = this.ctx as any;
     const canPan = typeof anyCtx.createStereoPanner === 'function';
+    let sourceOutput: AudioNode = sourceNode;
     if (canPan) {
       const panner: StereoPannerNode = anyCtx.createStereoPanner();
       panner.pan.value = audioBalance;
       sourceNode.connect(panner);
-      panner.connect(clipGain);
-    } else {
-      sourceNode.connect(clipGain);
+      sourceOutput = panner;
     }
+
+    // Build effects graph
+    const enabledEffects = (clip.audioEffects ?? []).filter(
+      (e) => e.enabled && e.target === 'audio',
+    );
+    let effectTailNode = sourceOutput;
+
+    for (const effect of enabledEffects) {
+      const manifest = getAudioEffectManifest(effect.type);
+      if (!manifest || !manifest.createNode) continue;
+
+      const effectNode = manifest.createNode({
+        audioContext: this.ctx,
+        sourceNode: effectTailNode,
+      });
+      if (manifest.updateNode) {
+        manifest.updateNode(effectNode, effect as any, {
+          audioContext: this.ctx,
+          sourceNode: effectTailNode,
+        });
+      }
+
+      const wet =
+        typeof effect.wet === 'number' ? Math.max(0, Math.min(1, effect.wet as number)) : 1;
+
+      const dryGainNode = this.ctx.createGain();
+      dryGainNode.gain.value = 1 - wet;
+      const wetGainNode = this.ctx.createGain();
+      wetGainNode.gain.value = wet;
+
+      const outputGainNode = this.ctx.createGain();
+
+      effectTailNode.connect(dryGainNode);
+      dryGainNode.connect(outputGainNode);
+
+      effectTailNode.connect(effectNode);
+      effectNode.connect(wetGainNode);
+      wetGainNode.connect(outputGainNode);
+
+      effectTailNode = outputGainNode;
+    }
+
+    effectTailNode.connect(clipGain);
 
     if (clip.trackId) {
       let trackAnalyser = this.analyserNodes.get(clip.trackId);
