@@ -17,7 +17,6 @@ describe('project settings normalization', () => {
           orientation: 'landscape',
           aspectRatio: '16:9',
           isCustomResolution: false,
-          audioChannels: 'stereo',
           sampleRate: 999999,
         },
         exportDefaults: {

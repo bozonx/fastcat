@@ -2,14 +2,12 @@
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
 const isClearWorkspaceVardataConfirmOpen = ref(false);
-const isResetConfirmOpen = ref(false);
 
 const isDesktopTauri = computed(() => workspaceStore.workspaceProviderId === 'tauri');
 
@@ -41,79 +39,27 @@ const proxiesRootPath = computed({
   },
 });
 
-const proxyLimitGb = computed({
-  get: () =>
-    Math.round(workspaceStore.appSettings.proxyStorageLimitBytes / (1024 * 1024 * 1024)),
-  set: (v: number) => {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n <= 0) return;
-    workspaceStore.appSettings.proxyStorageLimitBytes = Math.round(n * 1024 * 1024 * 1024);
-  },
-});
-
-const cacheLimitGb = computed({
-  get: () =>
-    Math.round(workspaceStore.appSettings.cacheStorageLimitBytes / (1024 * 1024 * 1024)),
-  set: (v: number) => {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n <= 0) return;
-    workspaceStore.appSettings.cacheStorageLimitBytes = Math.round(n * 1024 * 1024 * 1024);
-  },
-});
-
-const thumbnailsLimitGb = computed({
-  get: () =>
-    Math.round(workspaceStore.appSettings.thumbnailsStorageLimitBytes / (1024 * 1024 * 1024)),
-  set: (v: number) => {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n <= 0) return;
-    workspaceStore.appSettings.thumbnailsStorageLimitBytes = Math.round(
-      n * 1024 * 1024 * 1024,
-    );
-  },
-});
-
 async function confirmClearWorkspaceVardata() {
   isClearWorkspaceVardataConfirmOpen.value = false;
   await workspaceStore.clearVardata();
 }
 
-function resetDefaults() {
+function resetPathDefaults() {
   workspaceStore.appSettings.paths.contentRootPath = DEFAULT_APP_SETTINGS.paths.contentRootPath;
   workspaceStore.appSettings.paths.dataRootPath = DEFAULT_APP_SETTINGS.paths.dataRootPath;
   workspaceStore.appSettings.paths.tempRootPath = DEFAULT_APP_SETTINGS.paths.tempRootPath;
   workspaceStore.appSettings.paths.proxiesRootPath = DEFAULT_APP_SETTINGS.paths.proxiesRootPath;
-  workspaceStore.appSettings.proxyStorageLimitBytes = DEFAULT_APP_SETTINGS.proxyStorageLimitBytes;
-  workspaceStore.appSettings.cacheStorageLimitBytes = DEFAULT_APP_SETTINGS.cacheStorageLimitBytes;
-  workspaceStore.appSettings.thumbnailsStorageLimitBytes = DEFAULT_APP_SETTINGS.thumbnailsStorageLimitBytes;
-  isResetConfirmOpen.value = false;
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <UiConfirmModal
-      v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.settings.resetStorageSettingsConfirmTitle', 'Reset storage settings?')"
-      :description="
-        t(
-          'videoEditor.settings.resetStorageSettingsConfirmDesc',
-          'This will restore all storage limits to their default values.',
-        )
-      "
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
-      color="warning"
-      icon="i-heroicons-exclamation-triangle"
-      @confirm="resetDefaults"
-    />
-
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+      <UButton size="xs" color="neutral" variant="ghost" @click="resetPathDefaults">
+        {{ t('videoEditor.settings.resetDefaults', 'Reset paths') }}
       </UButton>
     </div>
 
@@ -191,41 +137,6 @@ function resetDefaults() {
       icon="i-heroicons-trash"
       @confirm="confirmClearWorkspaceVardata"
     />
-
-    <div class="grid grid-cols-3 gap-4">
-      <UFormField
-        :label="t('videoEditor.settings.proxyLimit', 'Proxy storage limit (GB)')"
-        :help="
-          t(
-            'videoEditor.settings.proxyLimitHelp',
-            'Total limit for all proxy files in this workspace',
-          )
-        "
-      >
-        <WheelNumberInput v-model="proxyLimitGb" :min="1" :step="1" />
-      </UFormField>
-
-      <UFormField
-        :label="t('videoEditor.settings.cacheLimit', 'Cache storage limit (GB)')"
-        :help="
-          t('videoEditor.settings.cacheLimitHelp', 'Total limit for cached data in this workspace')
-        "
-      >
-        <WheelNumberInput v-model="cacheLimitGb" :min="1" :step="1" />
-      </UFormField>
-
-      <UFormField
-        :label="t('videoEditor.settings.thumbnailsLimit', 'Thumbnails storage limit (GB)')"
-        :help="
-          t(
-            'videoEditor.settings.thumbnailsLimitHelp',
-            'Total limit for generated thumbnails in this workspace',
-          )
-        "
-      >
-        <WheelNumberInput v-model="thumbnailsLimitGb" :min="1" :step="1" />
-      </UFormField>
-    </div>
 
     <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
       <div class="flex flex-col gap-1 min-w-0">
