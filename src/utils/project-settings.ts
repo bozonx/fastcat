@@ -35,6 +35,7 @@ export interface FastCatProjectSettings {
       exportAlpha: boolean;
       metadata: {
         title: string;
+        description: string;
         author: string;
         tags: string;
       };
@@ -86,6 +87,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
       exportAlpha: false,
       metadata: {
         title: '',
+        description: '',
         author: '',
         tags: '',
       },
@@ -142,6 +144,7 @@ function getProjectSettingsFromUserDefaults(
         exportAlpha: exportPreset.exportAlpha,
         metadata: {
           title: '',
+          description: '',
           author: '',
           tags: '',
         },
@@ -300,6 +303,10 @@ export function normalizeProjectSettings(
         metadata: {
           title:
             typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',
+          description:
+            typeof encodingInput.metadata?.description === 'string'
+              ? encodingInput.metadata.description
+              : '',
           author:
             typeof encodingInput.metadata?.author === 'string' ? encodingInput.metadata.author : '',
           tags: typeof encodingInput.metadata?.tags === 'string' ? encodingInput.metadata.tags : '',
