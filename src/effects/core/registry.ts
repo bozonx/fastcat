@@ -41,6 +41,7 @@ export interface VideoEffectManifest<T = Record<string, any>> extends BaseEffect
 export interface AudioEffectManifest<T = Record<string, any>> extends BaseEffectManifest<T> {
   target: 'audio';
   category?: AudioEffectCategory;
+  disableGlobalWet?: boolean; // If true, effectGraph won't apply wet/dry crossfade
   createNode?: (context: AudioEffectContext) => AudioEffectNode;
   updateNode?: (node: AudioEffectNode, values: T, context: AudioEffectContext) => void;
   destroyNode?: (node: AudioEffectNode, context: AudioEffectContext) => void;

@@ -8,6 +8,7 @@ export interface ReverbParams {
 
 type ReverbImpulseBuffer = NonNullable<ConvolverNode['buffer']>;
 
+const MAX_CACHE_SIZE = 10;
 const impulseResponseCache = new Map<string, ReverbImpulseBuffer>();
 
 function normalizeDecay(value: number | undefined): number {
@@ -15,7 +16,7 @@ function normalizeDecay(value: number | undefined): number {
 }
 
 function normalizePreDelay(value: number | undefined): number {
-  return typeof value === 'number' ? Math.max(0, Math.min(0.5, value)) : 0.01;
+  return typeof value === 'number' ? Math.max(0.1, Math.min(0.5, value)) : 0.01;
 }
 
 function generateImpulseResponse(
@@ -54,6 +55,14 @@ function getImpulseResponse(
   }
 
   const buffer = generateImpulseResponse(ctx, decaySeconds, preDelaySeconds);
+
+  if (impulseResponseCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = impulseResponseCache.keys().next().value;
+    if (firstKey !== undefined) {
+      impulseResponseCache.delete(firstKey);
+    }
+  }
+
   impulseResponseCache.set(cacheKey, buffer);
 
   return buffer;

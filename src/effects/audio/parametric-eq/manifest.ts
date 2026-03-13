@@ -40,6 +40,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
   description: 'Professional multi-band parametric equalizer',
   icon: 'i-heroicons-adjustments-vertical',
   target: 'audio',
+  disableGlobalWet: true, // EQ shouldn't be phased by global wet/dry mix
   defaultValues: {
     points: [
       {
