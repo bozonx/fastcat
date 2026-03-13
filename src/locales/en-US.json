@@ -565,6 +565,15 @@
         "custom": "Custom"
       }
     },
+    "audioMixer": {
+      "title": "Mixer",
+      "master": "Master",
+      "main": "MAIN",
+      "video": "Video",
+      "audio": "Audio",
+      "mute": "M",
+      "solo": "S"
+    },
     "clip": {
       "actions": "Actions",
       "info": "Clip Info",

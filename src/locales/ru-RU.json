@@ -623,6 +623,15 @@
         "custom": "Свои"
       }
     },
+    "audioMixer": {
+      "title": "Микшер",
+      "master": "Мастер",
+      "main": "MAIN",
+      "video": "Видео",
+      "audio": "Аудио",
+      "mute": "M",
+      "solo": "S"
+    },
     "clip": {
       "actions": "Действия",
       "info": "Информация о клипе",
