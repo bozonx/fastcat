@@ -4,7 +4,9 @@ import {
   type FastCatAppSettings,
   type GranVideoEditorUserSettings,
   type GranVideoEditorWorkspaceSettings,
+  DEFAULT_WORKSPACE_SETTINGS,
 } from './defaults';
+import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
 
 export function getResolutionPreset(width: number, height: number) {
   const isPortrait = height > width;
@@ -33,19 +35,14 @@ export function getResolutionPreset(width: number, height: number) {
 }
 
 export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['projectDefaults'] {
-  const preset = getResolutionPreset(
-    DEFAULT_USER_SETTINGS.projectDefaults.width,
-    DEFAULT_USER_SETTINGS.projectDefaults.height,
-  );
-
   return {
     width: DEFAULT_USER_SETTINGS.projectDefaults.width,
     height: DEFAULT_USER_SETTINGS.projectDefaults.height,
     fps: DEFAULT_USER_SETTINGS.projectDefaults.fps,
-    resolutionFormat: preset.resolutionFormat,
-    orientation: preset.orientation as 'landscape' | 'portrait',
-    aspectRatio: preset.aspectRatio,
-    isCustomResolution: preset.isCustomResolution,
+    resolutionFormat: DEFAULT_USER_SETTINGS.projectDefaults.resolutionFormat,
+    orientation: DEFAULT_USER_SETTINGS.projectDefaults.orientation,
+    aspectRatio: DEFAULT_USER_SETTINGS.projectDefaults.aspectRatio,
+    isCustomResolution: DEFAULT_USER_SETTINGS.projectDefaults.isCustomResolution,
     sampleRate: DEFAULT_USER_SETTINGS.projectDefaults.sampleRate,
     audioDeclickDurationUs: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
     defaultAudioFadeCurve: DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
@@ -53,6 +50,9 @@ export function createDefaultProjectDefaults(): GranVideoEditorUserSettings['pro
 }
 
 export function createDefaultUserSettings(): GranVideoEditorUserSettings {
+  const projectPresets = createDefaultProjectPresets();
+  const exportPresets = createDefaultExportPresets();
+
   return {
     locale: DEFAULT_USER_SETTINGS.locale,
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
@@ -66,11 +66,17 @@ export function createDefaultUserSettings(): GranVideoEditorUserSettings {
       bindings: {},
     },
     optimization: { ...DEFAULT_USER_SETTINGS.optimization },
+    projectPresets: {
+      selectedPresetId: projectPresets.selectedPresetId,
+      lastUsedPresetId: projectPresets.lastUsedPresetId,
+      items: projectPresets.items.map((preset) => ({ ...preset })),
+    },
+    exportPresets: {
+      selectedPresetId: exportPresets.selectedPresetId,
+      items: exportPresets.items.map((preset) => ({ ...preset })),
+    },
     projectDefaults: createDefaultProjectDefaults(),
     video: { ...DEFAULT_USER_SETTINGS.video },
-    exportDefaults: {
-      encoding: { ...DEFAULT_USER_SETTINGS.exportDefaults.encoding },
-    },
     integrations: {
       granPublicador: { ...DEFAULT_USER_SETTINGS.integrations.granPublicador },
       manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },

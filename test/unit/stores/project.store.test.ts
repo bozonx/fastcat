@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useProjectStore } from '../../../src/stores/project.store';
 import { useWorkspaceStore } from '../../../src/stores/workspace.store';
+import {
+  createDefaultExportPresets,
+  createDefaultProjectPresets,
+} from '../../../src/utils/settings';
 
 vi.mock('../../../src/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
@@ -9,8 +13,9 @@ vi.mock('../../../src/stores/workspace.store', () => ({
     projects: [],
     error: null,
     userSettings: {
-      projectDefaults: {},
-      exportDefaults: { encoding: {} },
+      projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },
+      projectPresets: createDefaultProjectPresets(),
+      exportPresets: createDefaultExportPresets(),
       optimization: { proxyConcurrency: 2 },
     },
     loadProjects: vi.fn(),

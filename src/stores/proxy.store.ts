@@ -22,6 +22,7 @@ export const useProxyStore = defineStore('proxy', () => {
   const fsModule = createProxyFsModule({
     workspaceHandle: computed(() => workspaceStore.workspaceHandle),
     currentProjectId: computed(() => projectStore.currentProjectId),
+    resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
   });
 
   const queueModule = createProxyQueueModule({

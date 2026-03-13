@@ -1,4 +1,8 @@
-import { getProjectCacheSegments, getProjectWaveformsSegments } from '~/utils/vardata-paths';
+import {
+  getResolvedProjectCacheSegments,
+  getResolvedProjectWaveformsSegments,
+  type ResolvedStorageTopology,
+} from '~/utils/storage-topology';
 
 export interface MediaCacheFsModule {
   getCacheFileName: (projectRelativePath: string) => string;
@@ -11,6 +15,7 @@ export interface MediaCacheFsModule {
 export function createMediaCacheFsModule(deps: {
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getProjectId: () => string | null;
+  getResolvedStorageTopology: () => ResolvedStorageTopology;
 }) {
   function getCacheFileName(projectRelativePath: string): string {
     return `${encodeURIComponent(projectRelativePath)}.json`;
@@ -21,7 +26,7 @@ export function createMediaCacheFsModule(deps: {
     const projectId = deps.getProjectId();
     if (!workspaceHandle || !projectId) return null;
 
-    const parts = getProjectCacheSegments(projectId);
+    const parts = getResolvedProjectCacheSegments(deps.getResolvedStorageTopology(), projectId);
     let dir = workspaceHandle;
     for (const segment of parts) {
       dir = await dir.getDirectoryHandle(segment, { create: true });
@@ -40,7 +45,7 @@ export function createMediaCacheFsModule(deps: {
     const projectId = deps.getProjectId();
     if (!workspaceHandle || !projectId) return null;
 
-    const parts = getProjectWaveformsSegments(projectId);
+    const parts = getResolvedProjectWaveformsSegments(deps.getResolvedStorageTopology(), projectId);
     let dir = workspaceHandle;
     for (const segment of parts) {
       dir = await dir.getDirectoryHandle(segment, { create: true });

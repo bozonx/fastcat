@@ -44,8 +44,7 @@ const {
 } = useGlobalDragAndDrop();
 const fileManager = useFileManager();
 
-const isEditorSettingsOpen = ref(false);
-const isProjectSettingsOpen = ref(false);
+// isEditorSettingsOpen and isProjectSettingsOpen are now in uiStore
 const isStartingUp = ref(true);
 
 // Initialize Actions and Hotkeys
@@ -101,8 +100,8 @@ useHead({
       >
         <EditorHeader
           v-if="projectStore.currentProjectName && route.path !== '/'"
-          @open-project-settings="isProjectSettingsOpen = true"
-          @open-editor-settings="isEditorSettingsOpen = true"
+          @open-project-settings="uiStore.isProjectSettingsOpen = true"
+          @open-editor-settings="uiStore.isEditorSettingsOpen = true"
         />
         <div class="flex-1 min-h-0 overflow-hidden">
           <slot />
@@ -118,8 +117,8 @@ useHead({
       </template>
 
       <!-- Modals -->
-      <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
-      <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
+      <EditorSettingsModal v-model:open="uiStore.isEditorSettingsOpen" />
+      <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
       <ProjectLockedModal />
       <FileConversionModal />
 

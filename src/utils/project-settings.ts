@@ -1,4 +1,12 @@
-import { getResolutionPreset, type GranVideoEditorUserSettings } from './settings';
+import type { GranVideoEditorUserSettings } from './settings/defaults';
+import { getResolutionPreset } from './settings/helpers';
+import { resolveExportPreset, resolveProjectPreset } from './settings/presets';
+
+interface ProjectSettingsUserDefaultsInput {
+  projectDefaults: GranVideoEditorUserSettings['projectDefaults'];
+  projectPresets: GranVideoEditorUserSettings['projectPresets'];
+  exportPresets: GranVideoEditorUserSettings['exportPresets'];
+}
 
 export interface GranVideoEditorProjectSettings {
   project: {
@@ -11,6 +19,7 @@ export interface GranVideoEditorProjectSettings {
     isCustomResolution: boolean;
     sampleRate: number;
     audioDeclickDurationUs: number;
+    isAutoSettings: boolean;
   };
   exportDefaults: {
     encoding: {
@@ -20,7 +29,6 @@ export interface GranVideoEditorProjectSettings {
       excludeAudio: boolean;
       audioCodec: 'aac' | 'opus';
       audioBitrateKbps: number;
-      audioSampleRate: number;
       bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
       exportAlpha: boolean;
@@ -61,6 +69,7 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
     isCustomResolution: false,
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
+    isAutoSettings: true,
   },
   exportDefaults: {
     encoding: {
@@ -70,7 +79,6 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
       excludeAudio: false,
       audioCodec: 'aac',
       audioBitrateKbps: 128,
-      audioSampleRate: 48000,
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
@@ -101,32 +109,35 @@ export const DEFAULT_PROJECT_SETTINGS: GranVideoEditorProjectSettings = {
 };
 
 function getProjectSettingsFromUserDefaults(
-  userSettings: Pick<GranVideoEditorUserSettings, 'projectDefaults' | 'exportDefaults'>,
+  userSettings: ProjectSettingsUserDefaultsInput,
 ): Pick<GranVideoEditorProjectSettings, 'project' | 'exportDefaults'> {
+  const projectPreset = resolveProjectPreset(userSettings.projectPresets);
+  const exportPreset = resolveExportPreset(userSettings.exportPresets);
+
   return {
     project: {
-      width: userSettings.projectDefaults.width,
-      height: userSettings.projectDefaults.height,
-      fps: userSettings.projectDefaults.fps,
-      resolutionFormat: userSettings.projectDefaults.resolutionFormat,
-      orientation: userSettings.projectDefaults.orientation,
-      aspectRatio: userSettings.projectDefaults.aspectRatio,
-      isCustomResolution: userSettings.projectDefaults.isCustomResolution,
-      sampleRate: userSettings.projectDefaults.sampleRate,
+      width: projectPreset.width,
+      height: projectPreset.height,
+      fps: projectPreset.fps,
+      resolutionFormat: projectPreset.resolutionFormat,
+      orientation: projectPreset.orientation,
+      aspectRatio: projectPreset.aspectRatio,
+      isCustomResolution: projectPreset.isCustomResolution,
+      sampleRate: projectPreset.sampleRate,
       audioDeclickDurationUs: userSettings.projectDefaults.audioDeclickDurationUs,
+      isAutoSettings: true,
     },
     exportDefaults: {
       encoding: {
-        format: userSettings.exportDefaults.encoding.format,
-        videoCodec: userSettings.exportDefaults.encoding.videoCodec,
-        bitrateMbps: userSettings.exportDefaults.encoding.bitrateMbps,
-        excludeAudio: userSettings.exportDefaults.encoding.excludeAudio,
-        audioCodec: userSettings.exportDefaults.encoding.audioCodec,
-        audioBitrateKbps: userSettings.exportDefaults.encoding.audioBitrateKbps,
-        audioSampleRate: userSettings.exportDefaults.encoding.audioSampleRate,
-        bitrateMode: userSettings.exportDefaults.encoding.bitrateMode,
-        keyframeIntervalSec: userSettings.exportDefaults.encoding.keyframeIntervalSec,
-        exportAlpha: userSettings.exportDefaults.encoding.exportAlpha,
+        format: exportPreset.format,
+        videoCodec: exportPreset.videoCodec,
+        bitrateMbps: exportPreset.bitrateMbps,
+        excludeAudio: exportPreset.excludeAudio,
+        audioCodec: exportPreset.audioCodec,
+        audioBitrateKbps: exportPreset.audioBitrateKbps,
+        bitrateMode: exportPreset.bitrateMode,
+        keyframeIntervalSec: exportPreset.keyframeIntervalSec,
+        exportAlpha: exportPreset.exportAlpha,
         metadata: {
           title: '',
           author: '',
@@ -138,7 +149,7 @@ function getProjectSettingsFromUserDefaults(
 }
 
 export function createDefaultProjectSettings(
-  userSettings: Pick<GranVideoEditorUserSettings, 'projectDefaults' | 'exportDefaults'>,
+  userSettings: ProjectSettingsUserDefaultsInput,
 ): GranVideoEditorProjectSettings {
   const base = getProjectSettingsFromUserDefaults(userSettings);
   return {
@@ -156,7 +167,7 @@ export function createDefaultProjectSettings(
 
 export function normalizeProjectSettings(
   raw: unknown,
-  userSettings: Pick<GranVideoEditorUserSettings, 'projectDefaults' | 'exportDefaults'>,
+  userSettings: ProjectSettingsUserDefaultsInput,
 ): GranVideoEditorProjectSettings {
   if (!raw || typeof raw !== 'object') {
     return createDefaultProjectSettings(userSettings);
@@ -179,7 +190,6 @@ export function normalizeProjectSettings(
 
   const bitrateMbps = Number(encodingInput.bitrateMbps);
   const audioBitrateKbps = Number(encodingInput.audioBitrateKbps);
-  const audioSampleRateRaw = Number(encodingInput.audioSampleRate);
   const format = encodingInput.format;
 
   const sampleRateRaw = Number(projectInput.sampleRate);
@@ -252,6 +262,10 @@ export function normalizeProjectSettings(
           : preset.isCustomResolution,
       sampleRate,
       audioDeclickDurationUs,
+      isAutoSettings:
+        input.project?.isAutoSettings !== undefined
+          ? Boolean(input.project.isAutoSettings)
+          : defaultSettings.project.isAutoSettings,
     },
     exportDefaults: {
       encoding: {
@@ -270,10 +284,6 @@ export function normalizeProjectSettings(
           Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
             ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
             : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
-        audioSampleRate:
-          Number.isFinite(audioSampleRateRaw) && audioSampleRateRaw > 0
-            ? Math.round(Math.min(192000, Math.max(8000, audioSampleRateRaw)))
-            : DEFAULT_PROJECT_SETTINGS.exportDefaults.encoding.audioSampleRate,
         bitrateMode: encodingInput.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyframeIntervalSec: (() => {
           const v = Number(encodingInput.keyframeIntervalSec);

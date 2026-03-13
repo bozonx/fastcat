@@ -375,6 +375,35 @@ export const useTimelineStore = defineStore('timeline', () => {
     getMediaMetadataByPath: (path) => mediaMetadata.value[path] ?? null,
     fetchMediaMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
+    getProjectSettings: () => projectStore.projectSettings,
+    updateProjectSettings: async (settings) => {
+      const { getResolutionPreset } = await import('~/utils/settings/helpers');
+      const preset = getResolutionPreset(settings.width, settings.height);
+
+      Object.assign(projectStore.projectSettings.project, {
+        ...settings,
+        ...preset,
+      });
+      await projectStore.saveProjectSettings();
+    },
+    showFpsWarning: (fileFps, projectFps) => {
+      const { t } = useI18n();
+      const uiStore = useUiStore();
+      const toast = useToast();
+      toast.add({
+        title: t('videoEditor.timeline.fpsMismatch', 'FPS mismatch'),
+        description: t('videoEditor.timeline.fpsMismatchDesc', { fileFps, projectFps }),
+        color: 'warning',
+        actions: [
+          {
+            label: t('videoEditor.projectSettings.title'),
+            onClick: () => {
+              uiStore.isProjectSettingsOpen = true;
+            },
+          },
+        ],
+      });
+    },
     mediaCache: {
       hasProxy: (path: string) => proxyStore.existingProxies.has(path),
       ensureProxy: async (params: {

@@ -1,5 +1,7 @@
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import type { StoragePathRegistry } from '../storage-roots';
+import type { UserExportPresetsSettings, UserProjectPresetsSettings } from './presets';
+import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
 
 export interface GranPublicadorIntegrationSettings {
   enabled: boolean;
@@ -80,6 +82,8 @@ export interface GranVideoEditorUserSettings {
     proxyConcurrency: number;
     videoFrameCacheMb: number;
   };
+  projectPresets: UserProjectPresetsSettings;
+  exportPresets: UserExportPresetsSettings;
   projectDefaults: {
     width: number;
     height: number;
@@ -91,20 +95,6 @@ export interface GranVideoEditorUserSettings {
     sampleRate: number;
     audioDeclickDurationUs: number;
     defaultAudioFadeCurve: 'linear' | 'logarithmic';
-  };
-  exportDefaults: {
-    encoding: {
-      format: 'mp4' | 'webm' | 'mkv';
-      videoCodec: string;
-      bitrateMbps: number;
-      excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus';
-      audioBitrateKbps: number;
-      audioSampleRate: number;
-      bitrateMode: 'constant' | 'variable';
-      keyframeIntervalSec: number;
-      exportAlpha: boolean;
-    };
   };
   integrations: ExternalIntegrationsSettings;
   video: VideoSettings;
@@ -231,6 +221,8 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     proxyConcurrency: 2,
     videoFrameCacheMb: 256,
   },
+  projectPresets: createDefaultProjectPresets(),
+  exportPresets: createDefaultExportPresets(),
   projectDefaults: {
     width: 1920,
     height: 1080,
@@ -242,20 +234,6 @@ export const DEFAULT_USER_SETTINGS: GranVideoEditorUserSettings = {
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
     defaultAudioFadeCurve: 'logarithmic',
-  },
-  exportDefaults: {
-    encoding: {
-      format: 'mp4',
-      videoCodec: 'avc1.640032',
-      bitrateMbps: 5,
-      excludeAudio: false,
-      audioCodec: 'aac',
-      audioBitrateKbps: 128,
-      audioSampleRate: 48000,
-      bitrateMode: 'variable',
-      keyframeIntervalSec: 2,
-      exportAlpha: false,
-    },
   },
   integrations: {
     granPublicador: {

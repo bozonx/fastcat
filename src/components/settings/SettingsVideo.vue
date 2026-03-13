@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import { resolveExportPreset, resolveProjectPreset } from '~/utils/settings';
 import {
   gatherVideoDiagnostics,
   type VideoDiagnosticsSnapshot,
@@ -14,6 +15,13 @@ const workspaceStore = useWorkspaceStore();
 const diagnostics = ref<VideoDiagnosticsSnapshot | null>(null);
 const isLoadingDiagnostics = ref(false);
 const isResetConfirmOpen = ref(false);
+
+const selectedProjectPreset = computed(() =>
+  resolveProjectPreset(workspaceStore.userSettings.projectPresets),
+);
+const selectedExportPreset = computed(() =>
+  resolveExportPreset(workspaceStore.userSettings.exportPresets),
+);
 
 const statusToneClasses: Record<VideoDiagnosticsStatus['tone'], string> = {
   danger: 'border-red-500/30 bg-red-500/10 text-red-200',
@@ -39,15 +47,13 @@ async function loadDiagnostics() {
       probe: {
         audioBitrate: 128_000,
         audioChannels: 2,
-        audioCodec: workspaceStore.userSettings.exportDefaults.encoding.audioCodec,
-        audioSampleRate: workspaceStore.userSettings.exportDefaults.encoding.audioSampleRate,
-        framerate: workspaceStore.userSettings.projectDefaults.fps,
-        height: workspaceStore.userSettings.projectDefaults.height,
-        videoBitrate: Math.round(
-          workspaceStore.userSettings.exportDefaults.encoding.bitrateMbps * 1_000_000,
-        ),
-        videoCodec: workspaceStore.userSettings.exportDefaults.encoding.videoCodec,
-        width: workspaceStore.userSettings.projectDefaults.width,
+        audioCodec: selectedExportPreset.value.audioCodec,
+        audioSampleRate: selectedProjectPreset.value.sampleRate,
+        framerate: selectedProjectPreset.value.fps,
+        height: selectedProjectPreset.value.height,
+        videoBitrate: Math.round(selectedExportPreset.value.bitrateMbps * 1_000_000),
+        videoCodec: selectedExportPreset.value.videoCodec,
+        width: selectedProjectPreset.value.width,
       },
     });
   } catch {

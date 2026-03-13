@@ -1,4 +1,8 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
+import {
+  getResolvedProjectCacheSegments,
+  type ResolvedStorageTopology,
+} from '~/utils/storage-topology';
 import { getProjectCacheSegments } from '~/utils/vardata-paths';
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
@@ -10,12 +14,14 @@ export interface EnsureVectorImageRasterParams {
   height: number;
   sourceFileHandle: FileSystemFileHandle;
   workspaceHandle: FileSystemDirectoryHandle;
+  resolvedStorageTopology?: ResolvedStorageTopology;
 }
 
 export interface ClearVectorImageRasterParams {
   projectId: string;
   projectRelativePath: string;
   workspaceHandle: FileSystemDirectoryHandle;
+  resolvedStorageTopology?: ResolvedStorageTopology;
 }
 
 function hashString(input: string): string {
@@ -32,8 +38,15 @@ function normalizeDimension(value: number): number {
   return Math.max(1, rounded);
 }
 
-function getVectorImageRootSegments(projectId: string): string[] {
-  return [...getProjectCacheSegments(projectId), 'vector_image'];
+function getVectorImageRootSegments(input: {
+  projectId: string;
+  resolvedStorageTopology?: ResolvedStorageTopology;
+}): string[] {
+  const baseSegments = input.resolvedStorageTopology
+    ? getResolvedProjectCacheSegments(input.resolvedStorageTopology, input.projectId)
+    : getProjectCacheSegments(input.projectId);
+
+  return [...baseSegments, 'vector_image'];
 }
 
 function getVectorImageSourceDirName(projectRelativePath: string): string {
@@ -80,7 +93,10 @@ export async function ensureVectorImageRaster(
   const sourceFile = await params.sourceFileHandle.getFile();
 
   const sourceDir = await ensureDirectory(params.workspaceHandle, [
-    ...getVectorImageRootSegments(params.projectId),
+    ...getVectorImageRootSegments({
+      projectId: params.projectId,
+      resolvedStorageTopology: params.resolvedStorageTopology,
+    }),
     getVectorImageSourceDirName(params.projectRelativePath),
   ]);
   const fileName = getVectorImageRasterFileName({ sourceFile, width, height });
@@ -112,7 +128,10 @@ export async function clearVectorImageRaster(params: ClearVectorImageRasterParam
   try {
     const cacheRoot = await getDirectory(
       params.workspaceHandle,
-      getVectorImageRootSegments(params.projectId),
+      getVectorImageRootSegments({
+        projectId: params.projectId,
+        resolvedStorageTopology: params.resolvedStorageTopology,
+      }),
     );
     await cacheRoot.removeEntry(getVectorImageSourceDirName(params.projectRelativePath), {
       recursive: true,

@@ -4,6 +4,14 @@ import type {
   GranVideoEditorUserSettings,
   GranVideoEditorWorkspaceSettings,
 } from './defaults';
+import {
+  createDefaultExportPresets,
+  createDefaultProjectPresets,
+  resolveExportPreset,
+  resolveProjectPreset,
+  type ExportSettingsPreset,
+  type ProjectSettingsPreset,
+} from './presets';
 import { STORAGE_ROOT_IDS } from '../storage-roots';
 import { TIMELINE_WHEEL_ACTIONS, MONITOR_WHEEL_ACTIONS, MIDDLE_CLICK_ACTIONS } from '~/utils/mouse';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '../hotkeys/defaultHotkeys';
@@ -97,6 +105,95 @@ function getExportEncodingInput(raw: unknown): Record<string, unknown> {
   return encoding as Record<string, unknown>;
 }
 
+function normalizeProjectPresetItem(
+  raw: unknown,
+  fallback: ProjectSettingsPreset,
+): ProjectSettingsPreset {
+  const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const width = Number(input.width);
+  const height = Number(input.height);
+  const fps = Number(input.fps);
+  const sampleRateRaw = Number(input.sampleRate);
+  const normalizedWidth = Number.isFinite(width) && width > 0 ? Math.round(width) : fallback.width;
+  const normalizedHeight =
+    Number.isFinite(height) && height > 0 ? Math.round(height) : fallback.height;
+  const preset = getResolutionPreset(normalizedWidth, normalizedHeight);
+  const isWidthHeightCustom =
+    normalizedWidth !== fallback.width || normalizedHeight !== fallback.height;
+
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id.trim() : fallback.id,
+    name:
+      typeof input.name === 'string' && input.name.trim().length > 0
+        ? input.name.trim()
+        : fallback.name,
+    width: normalizedWidth,
+    height: normalizedHeight,
+    fps:
+      Number.isFinite(fps) && fps > 0 ? Math.round(Math.min(240, Math.max(1, fps))) : fallback.fps,
+    resolutionFormat:
+      typeof input.resolutionFormat === 'string' && input.resolutionFormat && !isWidthHeightCustom
+        ? input.resolutionFormat
+        : preset.resolutionFormat,
+    orientation:
+      (input.orientation === 'portrait' || input.orientation === 'landscape') &&
+      !isWidthHeightCustom
+        ? input.orientation
+        : (preset.orientation as 'landscape' | 'portrait'),
+    aspectRatio:
+      typeof input.aspectRatio === 'string' && input.aspectRatio && !isWidthHeightCustom
+        ? input.aspectRatio
+        : preset.aspectRatio,
+    isCustomResolution:
+      input.isCustomResolution !== undefined && !isWidthHeightCustom
+        ? Boolean(input.isCustomResolution)
+        : preset.isCustomResolution,
+    sampleRate:
+      Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
+        ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
+        : fallback.sampleRate,
+  };
+}
+
+function normalizeExportPresetItem(
+  raw: unknown,
+  fallback: ExportSettingsPreset,
+): ExportSettingsPreset {
+  const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const bitrateMbps = Number(input.bitrateMbps);
+  const audioBitrateKbps = Number(input.audioBitrateKbps);
+  const keyframeIntervalSec = Number(input.keyframeIntervalSec);
+
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id.trim() : fallback.id,
+    name:
+      typeof input.name === 'string' && input.name.trim().length > 0
+        ? input.name.trim()
+        : fallback.name,
+    format: input.format === 'webm' || input.format === 'mkv' ? input.format : 'mp4',
+    videoCodec:
+      typeof input.videoCodec === 'string' && input.videoCodec.trim().length > 0
+        ? input.videoCodec
+        : fallback.videoCodec,
+    bitrateMbps:
+      Number.isFinite(bitrateMbps) && bitrateMbps > 0
+        ? Math.min(200, Math.max(0.2, bitrateMbps))
+        : fallback.bitrateMbps,
+    excludeAudio: Boolean(input.excludeAudio),
+    audioCodec: input.audioCodec === 'opus' ? 'opus' : 'aac',
+    audioBitrateKbps:
+      Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
+        ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
+        : fallback.audioBitrateKbps,
+    bitrateMode: input.bitrateMode === 'constant' ? 'constant' : 'variable',
+    keyframeIntervalSec:
+      Number.isFinite(keyframeIntervalSec) && keyframeIntervalSec > 0
+        ? Math.round(Math.min(60, Math.max(1, keyframeIntervalSec)))
+        : fallback.keyframeIntervalSec,
+    exportAlpha: Boolean(input.exportAlpha),
+  };
+}
+
 export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings {
   if (!raw || typeof raw !== 'object') {
     return createDefaultUserSettings();
@@ -122,61 +219,77 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
   const projectInputRec = projectInput as Record<string, unknown>;
   const exportEncodingInputRec = exportEncodingInput as Record<string, unknown>;
 
-  const width = Number(projectInputRec.width);
-  const height = Number(projectInputRec.height);
-  const fps = Number(projectInputRec.fps);
-  const bitrateMbps = Number(exportEncodingInputRec.bitrateMbps);
-  const audioBitrateKbps = Number(exportEncodingInputRec.audioBitrateKbps);
-  const format = exportEncodingInputRec.format;
-  const audioSampleRateRaw = Number(exportEncodingInputRec.audioSampleRate);
-  const audioSampleRate =
-    Number.isFinite(audioSampleRateRaw) && audioSampleRateRaw > 0
-      ? Math.round(Math.min(192000, Math.max(8000, audioSampleRateRaw)))
-      : 48000;
-  const keyframeIntervalSecRaw = Number(exportEncodingInputRec.keyframeIntervalSec);
+  const defaultProjectPresets = createDefaultProjectPresets();
+  const defaultExportPresets = createDefaultExportPresets();
+  const legacyProjectPreset = normalizeProjectPresetItem(
+    {
+      id: defaultProjectPresets.selectedPresetId,
+      name:
+        defaultProjectPresets.items.find(
+          (item) => item.id === defaultProjectPresets.selectedPresetId,
+        )?.name ?? 'Project Preset',
+      ...projectInputRec,
+    },
+    defaultProjectPresets.items[0]!,
+  );
+  const legacyExportPreset = normalizeExportPresetItem(
+    {
+      id: defaultExportPresets.selectedPresetId,
+      name:
+        defaultExportPresets.items.find((item) => item.id === defaultExportPresets.selectedPresetId)
+          ?.name ?? 'Export Preset',
+      ...exportEncodingInputRec,
+    },
+    defaultExportPresets.items[0]!,
+  );
 
-  const normalizedWidth =
-    Number.isFinite(width) && width > 0
-      ? Math.round(width)
-      : DEFAULT_USER_SETTINGS.projectDefaults.width;
-  const normalizedHeight =
-    Number.isFinite(height) && height > 0
-      ? Math.round(height)
-      : DEFAULT_USER_SETTINGS.projectDefaults.height;
+  const rawProjectPresets = input.projectPresets as Record<string, unknown> | undefined;
+  const rawProjectPresetItems = Array.isArray(rawProjectPresets?.items)
+    ? rawProjectPresets.items
+    : null;
+  const projectPresetFallbacks = defaultProjectPresets.items;
+  const normalizedProjectPresetItems = rawProjectPresetItems?.map((item, index) =>
+    normalizeProjectPresetItem(item, projectPresetFallbacks[index] ?? projectPresetFallbacks[0]!),
+  ) ?? [legacyProjectPreset, ...projectPresetFallbacks.slice(1).map((preset) => ({ ...preset }))];
 
-  const preset = getResolutionPreset(normalizedWidth, normalizedHeight);
-  const isWidthHeightCustom =
-    normalizedWidth !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
-    normalizedHeight !== DEFAULT_USER_SETTINGS.projectDefaults.height;
+  const rawExportPresets = input.exportPresets as Record<string, unknown> | undefined;
+  const rawExportPresetItems = Array.isArray(rawExportPresets?.items)
+    ? rawExportPresets.items
+    : null;
+  const exportPresetFallbacks = defaultExportPresets.items;
+  const normalizedExportPresetItems = rawExportPresetItems?.map((item, index) =>
+    normalizeExportPresetItem(item, exportPresetFallbacks[index] ?? exportPresetFallbacks[0]!),
+  ) ?? [legacyExportPreset, ...exportPresetFallbacks.slice(1).map((preset) => ({ ...preset }))];
 
-  const resolutionFormat =
-    typeof projectInputRec.resolutionFormat === 'string' &&
-    projectInputRec.resolutionFormat &&
-    !isWidthHeightCustom
-      ? projectInputRec.resolutionFormat
-      : preset.resolutionFormat;
-  const orientation =
-    (projectInputRec.orientation === 'portrait' || projectInputRec.orientation === 'landscape') &&
-    !isWidthHeightCustom
-      ? projectInputRec.orientation
-      : (preset.orientation as 'landscape' | 'portrait');
-  const aspectRatio =
-    typeof projectInputRec.aspectRatio === 'string' &&
-    projectInputRec.aspectRatio &&
-    !isWidthHeightCustom
-      ? projectInputRec.aspectRatio
-      : preset.aspectRatio;
-  const isCustomResolution =
-    (projectInputRec as Record<string, unknown>).isCustomResolution !== undefined &&
-    !isWidthHeightCustom
-      ? Boolean((projectInputRec as Record<string, unknown>).isCustomResolution)
-      : preset.isCustomResolution;
+  const normalizedProjectPresets = {
+    selectedPresetId:
+      typeof rawProjectPresets?.selectedPresetId === 'string' &&
+      normalizedProjectPresetItems.some(
+        (preset) => preset.id === rawProjectPresets.selectedPresetId,
+      )
+        ? rawProjectPresets.selectedPresetId
+        : normalizedProjectPresetItems[0]!.id,
+    lastUsedPresetId:
+      typeof rawProjectPresets?.lastUsedPresetId === 'string' &&
+      normalizedProjectPresetItems.some(
+        (preset) => preset.id === rawProjectPresets.lastUsedPresetId,
+      )
+        ? rawProjectPresets.lastUsedPresetId
+        : normalizedProjectPresetItems[0]!.id,
+    items: normalizedProjectPresetItems,
+  };
 
-  const sampleRateRaw = Number((projectInputRec as Record<string, unknown>).sampleRate);
-  const sampleRate =
-    Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
-      ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
-      : DEFAULT_USER_SETTINGS.projectDefaults.sampleRate;
+  const normalizedExportPresets = {
+    selectedPresetId:
+      typeof rawExportPresets?.selectedPresetId === 'string' &&
+      normalizedExportPresetItems.some((preset) => preset.id === rawExportPresets.selectedPresetId)
+        ? rawExportPresets.selectedPresetId
+        : normalizedExportPresetItems[0]!.id,
+    items: normalizedExportPresetItems,
+  };
+
+  const selectedProjectPreset = resolveProjectPreset(normalizedProjectPresets);
+  const selectedExportPreset = resolveExportPreset(normalizedExportPresets);
 
   const openLastProjectOnStartRaw = input.openLastProjectOnStart;
   const openBehavior = input.openBehavior;
@@ -397,18 +510,17 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
           ? Math.min(4096, Math.max(0, Math.round(videoFrameCacheMb)))
           : DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb,
     },
+    projectPresets: normalizedProjectPresets,
+    exportPresets: normalizedExportPresets,
     projectDefaults: {
-      width: normalizedWidth,
-      height: normalizedHeight,
-      fps:
-        Number.isFinite(fps) && fps > 0
-          ? Math.round(Math.min(240, Math.max(1, fps)))
-          : DEFAULT_USER_SETTINGS.projectDefaults.fps,
-      resolutionFormat,
-      orientation,
-      aspectRatio,
-      isCustomResolution,
-      sampleRate,
+      width: selectedProjectPreset.width,
+      height: selectedProjectPreset.height,
+      fps: selectedProjectPreset.fps,
+      resolutionFormat: selectedProjectPreset.resolutionFormat,
+      orientation: selectedProjectPreset.orientation,
+      aspectRatio: selectedProjectPreset.aspectRatio,
+      isCustomResolution: selectedProjectPreset.isCustomResolution,
+      sampleRate: selectedProjectPreset.sampleRate,
       audioDeclickDurationUs:
         Number.isFinite(Number(projectInputRec.audioDeclickDurationUs)) &&
         Number(projectInputRec.audioDeclickDurationUs) >= 0
@@ -419,33 +531,6 @@ export function normalizeUserSettings(raw: unknown): GranVideoEditorUserSettings
         projectInputRec.defaultAudioFadeCurve === 'logarithmic'
           ? projectInputRec.defaultAudioFadeCurve
           : DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
-    },
-    exportDefaults: {
-      encoding: {
-        format: format === 'webm' || format === 'mkv' ? format : 'mp4',
-        videoCodec:
-          typeof exportEncodingInputRec.videoCodec === 'string' &&
-          (exportEncodingInputRec.videoCodec as string).trim().length > 0
-            ? exportEncodingInputRec.videoCodec
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.videoCodec,
-        bitrateMbps:
-          Number.isFinite(bitrateMbps) && bitrateMbps > 0
-            ? Math.min(200, Math.max(0.2, bitrateMbps))
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.bitrateMbps,
-        excludeAudio: Boolean(exportEncodingInputRec.excludeAudio),
-        audioCodec: exportEncodingInputRec.audioCodec === 'opus' ? 'opus' : 'aac',
-        audioBitrateKbps:
-          Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
-            ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.audioBitrateKbps,
-        audioSampleRate,
-        bitrateMode: exportEncodingInputRec.bitrateMode === 'constant' ? 'constant' : 'variable',
-        keyframeIntervalSec:
-          Number.isFinite(keyframeIntervalSecRaw) && keyframeIntervalSecRaw > 0
-            ? Math.round(Math.min(60, Math.max(1, keyframeIntervalSecRaw)))
-            : DEFAULT_USER_SETTINGS.exportDefaults.encoding.keyframeIntervalSec,
-        exportAlpha: Boolean(exportEncodingInputRec.exportAlpha),
-      },
     },
     integrations: {
       granPublicador: {

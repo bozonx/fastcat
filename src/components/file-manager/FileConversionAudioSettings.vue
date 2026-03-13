@@ -6,11 +6,13 @@ const props = withDefaults(
     disabled?: boolean;
     originalSampleRate?: number | null;
     allowOriginalSampleRate?: boolean;
+    hideSampleRate?: boolean;
   }>(),
   {
     disabled: false,
     originalSampleRate: null,
     allowOriginalSampleRate: false,
+    hideSampleRate: false,
   },
 );
 
@@ -55,7 +57,7 @@ const sampleRateOptions = computed(() => {
       />
     </div>
 
-    <div class="grid grid-cols-2 gap-3">
+    <div :class="props.hideSampleRate ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'">
       <div class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
@@ -68,7 +70,7 @@ const sampleRateOptions = computed(() => {
         />
       </div>
 
-      <div class="flex flex-col gap-2">
+      <div v-if="!props.hideSampleRate" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
         </label>

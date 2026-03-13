@@ -61,6 +61,8 @@ export const useUiStore = defineStore('ui', () => {
   const remoteExchangeLocalEntry = ref<FsEntry | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
+  const isProjectSettingsOpen = ref(false);
+  const isEditorSettingsOpen = ref(false);
 
   function notifyFileManagerUpdate() {
     fileManagerUpdateCounter.value++;
@@ -178,5 +180,7 @@ export const useUiStore = defineStore('ui', () => {
 
     monitorVolume,
     monitorMuted,
+    isProjectSettingsOpen,
+    isEditorSettingsOpen,
   };
 });

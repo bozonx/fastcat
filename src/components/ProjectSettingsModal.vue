@@ -15,6 +15,7 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
+import { resolveExportPreset, resolveProjectPreset } from '~/utils/settings';
 
 const props = defineProps<{
   open: boolean;
@@ -64,6 +65,20 @@ const videoCodecOptions = computed(() =>
   resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value),
 );
 
+const projectPresetOptions = computed(() =>
+  workspaceStore.userSettings.projectPresets.items.map((preset) => ({
+    value: preset.id,
+    label: preset.name,
+  })),
+);
+
+const exportPresetOptions = computed(() =>
+  workspaceStore.userSettings.exportPresets.items.map((preset) => ({
+    value: preset.id,
+    label: preset.name,
+  })),
+);
+
 async function loadCodecSupport() {
   if (isLoadingCodecSupport.value) return;
   isLoadingCodecSupport.value = true;
@@ -98,7 +113,7 @@ async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
 
   // Reset project resolution and FPS to workspace defaults
-  const pDefaults = workspaceStore.userSettings.projectDefaults;
+  const pDefaults = resolveProjectPreset(workspaceStore.userSettings.projectPresets);
   projectStore.projectSettings.project.width = pDefaults.width;
   projectStore.projectSettings.project.height = pDefaults.height;
   projectStore.projectSettings.project.fps = pDefaults.fps;
@@ -106,17 +121,60 @@ async function resetToDefaults() {
   projectStore.projectSettings.project.orientation = pDefaults.orientation;
   projectStore.projectSettings.project.aspectRatio = pDefaults.aspectRatio;
   projectStore.projectSettings.project.isCustomResolution = pDefaults.isCustomResolution;
-  projectStore.projectSettings.project.audioDeclickDurationUs = pDefaults.audioDeclickDurationUs;
+  projectStore.projectSettings.project.sampleRate = pDefaults.sampleRate;
 
   // Reset export encoding settings to workspace defaults
-  const eDefaults = workspaceStore.userSettings.exportDefaults.encoding;
-  projectStore.projectSettings.exportDefaults.encoding = {
-    ...eDefaults,
-    metadata: { title: '', author: '', tags: '' },
-  };
+  const eDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
+  const exportEncoding = projectStore.projectSettings.exportDefaults.encoding;
+  exportEncoding.format = eDefaults.format;
+  exportEncoding.videoCodec = eDefaults.videoCodec;
+  exportEncoding.bitrateMbps = eDefaults.bitrateMbps;
+  exportEncoding.excludeAudio = eDefaults.excludeAudio;
+  exportEncoding.audioCodec = eDefaults.audioCodec;
+  exportEncoding.audioBitrateKbps = eDefaults.audioBitrateKbps;
+  exportEncoding.bitrateMode = eDefaults.bitrateMode;
+  exportEncoding.keyframeIntervalSec = eDefaults.keyframeIntervalSec;
+  exportEncoding.exportAlpha = eDefaults.exportAlpha;
+  exportEncoding.metadata = { title: '', author: '', tags: '' };
 
   await projectStore.saveProjectSettings();
   isResetConfirmOpen.value = false;
+}
+
+function applyProjectPreset(presetId: string) {
+  if (!projectStore.projectSettings) return;
+
+  const preset =
+    workspaceStore.userSettings.projectPresets.items.find((item) => item.id === presetId) ??
+    resolveProjectPreset(workspaceStore.userSettings.projectPresets);
+
+  projectStore.projectSettings.project.width = preset.width;
+  projectStore.projectSettings.project.height = preset.height;
+  projectStore.projectSettings.project.fps = preset.fps;
+  projectStore.projectSettings.project.resolutionFormat = preset.resolutionFormat;
+  projectStore.projectSettings.project.orientation = preset.orientation;
+  projectStore.projectSettings.project.aspectRatio = preset.aspectRatio;
+  projectStore.projectSettings.project.isCustomResolution = preset.isCustomResolution;
+  projectStore.projectSettings.project.sampleRate = preset.sampleRate;
+}
+
+function applyExportPreset(presetId: string) {
+  if (!projectStore.projectSettings) return;
+
+  const preset =
+    workspaceStore.userSettings.exportPresets.items.find((item) => item.id === presetId) ??
+    resolveExportPreset(workspaceStore.userSettings.exportPresets);
+
+  const exportEncoding = projectStore.projectSettings.exportDefaults.encoding;
+  exportEncoding.format = preset.format;
+  exportEncoding.videoCodec = preset.videoCodec;
+  exportEncoding.bitrateMbps = preset.bitrateMbps;
+  exportEncoding.excludeAudio = preset.excludeAudio;
+  exportEncoding.audioCodec = preset.audioCodec;
+  exportEncoding.audioBitrateKbps = preset.audioBitrateKbps;
+  exportEncoding.bitrateMode = preset.bitrateMode;
+  exportEncoding.keyframeIntervalSec = preset.keyframeIntervalSec;
+  exportEncoding.exportAlpha = preset.exportAlpha;
 }
 </script>
 
@@ -184,6 +242,25 @@ async function resetToDefaults() {
           {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
         </h3>
 
+        <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+          <div class="flex items-center gap-2">
+            <USelectMenu
+              v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
+              :items="projectPresetOptions"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+            />
+            <UButton
+              color="neutral"
+              variant="soft"
+              size="sm"
+              :label="t('common.apply', 'Apply')"
+              @click="applyProjectPreset(workspaceStore.userSettings.projectPresets.selectedPresetId)"
+            />
+          </div>
+        </UFormField>
+
         <MediaResolutionSettings
           v-model:width="projectStore.projectSettings.project.width"
           v-model:height="projectStore.projectSettings.project.height"
@@ -204,6 +281,25 @@ async function resetToDefaults() {
           {{ t('videoEditor.projectSettings.export', 'Export Defaults') }}
         </h3>
 
+        <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+          <div class="flex items-center gap-2">
+            <USelectMenu
+              v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
+              :items="exportPresetOptions"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+            />
+            <UButton
+              color="neutral"
+              variant="soft"
+              size="sm"
+              :label="t('common.apply', 'Apply')"
+              @click="applyExportPreset(workspaceStore.userSettings.exportPresets.selectedPresetId)"
+            />
+          </div>
+        </UFormField>
+
         <MediaEncodingSettings
           v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
           v-model:video-codec="projectStore.projectSettings.exportDefaults.encoding.videoCodec"
@@ -212,9 +308,6 @@ async function resetToDefaults() {
           v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
           v-model:audio-bitrate-kbps="
             projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
-          "
-          v-model:audio-sample-rate="
-            projectStore.projectSettings.exportDefaults.encoding.audioSampleRate
           "
           v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
           v-model:keyframe-interval-sec="
@@ -229,6 +322,8 @@ async function resetToDefaults() {
           "
           v-model:metadata-tags="projectStore.projectSettings.exportDefaults.encoding.metadata.tags"
           :show-audio-advanced="true"
+          :show-builtin-presets="false"
+          :hide-audio-sample-rate="true"
           :show-metadata="true"
           :disabled="false"
           :has-audio="true"
