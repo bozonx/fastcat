@@ -75,71 +75,58 @@ async function writeTauriConfigJson(filename: string, data: unknown): Promise<vo
 export function createWorkspaceSettingsRepository(input: {
   workspaceDir: DirectoryHandleLike;
 }): WorkspaceSettingsRepository {
-  return {
-    async loadUserSettings() {
-      if (isTauriRuntime()) {
-        return await readTauriConfigJson('user.settings.json');
-      }
+  async function loadSettings(filename: string, legacyFilename?: string): Promise<unknown | null> {
+    if (isTauriRuntime()) {
+      return await readTauriConfigJson(filename);
+    }
 
-      const currentConfig = await readWorkspaceJson({
-        workspaceDir: input.workspaceDir,
-        filename: 'user.settings.json',
-        folderName: FASTCAT_CONFIG_DIR_NAME,
-      });
-      if (currentConfig) return currentConfig;
+    const currentConfig = await readWorkspaceJson({
+      workspaceDir: input.workspaceDir,
+      filename,
+      folderName: FASTCAT_CONFIG_DIR_NAME,
+    });
+    if (currentConfig) return currentConfig;
 
+    if (legacyFilename) {
       return await readWorkspaceJson({
         workspaceDir: input.workspaceDir,
-        filename: 'user.settings.json',
+        filename: legacyFilename,
         folderName: LEGACY_WORKSPACE_CONFIG_DIR_NAME,
       });
+    }
+
+    return null;
+  }
+
+  async function saveSettings(filename: string, data: unknown): Promise<void> {
+    if (isTauriRuntime()) {
+      await writeTauriConfigJson(filename, data);
+      return;
+    }
+
+    await writeWorkspaceJson({
+      workspaceDir: input.workspaceDir,
+      filename,
+      folderName: FASTCAT_CONFIG_DIR_NAME,
+      data,
+    });
+  }
+
+  return {
+    async loadUserSettings() {
+      return await loadSettings('user.settings.json', 'user.settings.json');
     },
 
     async saveUserSettings(data) {
-      if (isTauriRuntime()) {
-        await writeTauriConfigJson('user.settings.json', data);
-        return;
-      }
-
-      await writeWorkspaceJson({
-        workspaceDir: input.workspaceDir,
-        filename: 'user.settings.json',
-        folderName: FASTCAT_CONFIG_DIR_NAME,
-        data,
-      });
+      await saveSettings('user.settings.json', data);
     },
 
     async loadAppSettings() {
-      if (isTauriRuntime()) {
-        return await readTauriConfigJson('app.settings.json');
-      }
-
-      const currentConfig = await readWorkspaceJson({
-        workspaceDir: input.workspaceDir,
-        filename: 'app.settings.json',
-        folderName: FASTCAT_CONFIG_DIR_NAME,
-      });
-      if (currentConfig) return currentConfig;
-
-      return await readWorkspaceJson({
-        workspaceDir: input.workspaceDir,
-        filename: 'workspace.settings.json',
-        folderName: LEGACY_WORKSPACE_CONFIG_DIR_NAME,
-      });
+      return await loadSettings('app.settings.json', 'workspace.settings.json');
     },
 
     async saveAppSettings(data) {
-      if (isTauriRuntime()) {
-        await writeTauriConfigJson('app.settings.json', data);
-        return;
-      }
-
-      await writeWorkspaceJson({
-        workspaceDir: input.workspaceDir,
-        filename: 'app.settings.json',
-        folderName: FASTCAT_CONFIG_DIR_NAME,
-        data,
-      });
+      await saveSettings('app.settings.json', data);
     },
 
     async loadWorkspaceSettings() {
