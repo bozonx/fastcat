@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, nextTick, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import DbSlider from './DbSlider.vue';
+import { linearToDb, dbToLinear } from '~/utils/audio';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -17,13 +18,10 @@ const trackName = computed(() => props.track.name || props.track.id);
 const isMuted = computed(() => Boolean(props.track.audioMuted));
 const isSolo = computed(() => Boolean(props.track.audioSolo));
 
-const volume = computed({
-  get: () => {
-    const gain = props.track.audioGain;
-    return typeof gain === 'number' ? gain : 1;
-  },
+const volumeDb = computed({
+  get: () => linearToDb(props.track.audioGain ?? 1),
   set: (val: number) => {
-    timelineStore.updateTrackProperties(props.track.id, { audioGain: val });
+    timelineStore.updateTrackProperties(props.track.id, { audioGain: dbToLinear(val) });
   },
 });
 
@@ -43,6 +41,32 @@ function toggleMute() {
 
 function toggleSolo() {
   timelineStore.toggleTrackAudioSolo(props.track.id);
+}
+
+// Renaming
+const isRenaming = ref(false);
+const renameValue = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
+
+function startRename() {
+  renameValue.value = trackName.value;
+  isRenaming.value = true;
+  nextTick(() => {
+    renameInput.value?.focus();
+    renameInput.value?.select();
+  });
+}
+
+function confirmRename() {
+  const next = renameValue.value.trim();
+  if (next && next !== trackName.value) {
+    timelineStore.renameTrack(props.track.id, next);
+  }
+  isRenaming.value = false;
+}
+
+function cancelRename() {
+  isRenaming.value = false;
 }
 </script>
 
@@ -69,12 +93,16 @@ function toggleSolo() {
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative my-2 min-h-25">
-      <DbSlider v-model="volume" :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb" />
+      <DbSlider v-model="volumeDb" :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb" />
     </div>
 
     <!-- DB Value -->
-    <div class="text-xs font-mono mb-2 text-ui-text cursor-default" @dblclick="volume = 1">
-      {{ volume <= 0.001 ? '-∞' : (20 * Math.log10(volume)).toFixed(1) }} dB
+    <div
+      class="text-xs font-mono mb-2 text-ui-text cursor-default hover:text-primary-400 transition-colors"
+      :title="t('common.actions.reset')"
+      @dblclick="volumeDb = 0"
+    >
+      {{ volumeDb <= -59.9 ? '-∞' : volumeDb.toFixed(1) }} dB
     </div>
 
     <!-- Controls -->
@@ -86,7 +114,7 @@ function toggleSolo() {
         class="w-6 h-6 p-0 justify-center font-bold text-xs"
         @click="toggleMute"
       >
-        M
+        {{ t('fastcat.audioMixer.mute') }}
       </UButton>
       <UButton
         size="xs"
@@ -95,17 +123,30 @@ function toggleSolo() {
         class="w-6 h-6 p-0 justify-center font-bold text-xs"
         @click="toggleSolo"
       >
-        S
+        {{ t('fastcat.audioMixer.solo') }}
       </UButton>
     </div>
 
     <!-- Track Name -->
-    <div class="w-full px-1 text-center bg-ui-bg-elevated py-1 mt-auto">
-      <div class="text-[10px] font-medium text-ui-text truncate" :title="trackName">
+    <div
+      class="w-full px-1 text-center bg-ui-bg-elevated py-1 mt-auto cursor-text border-t border-ui-border rounded-b-lg"
+      @dblclick="startRename"
+    >
+      <div v-if="isRenaming" class="px-1">
+        <input
+          ref="renameInput"
+          v-model="renameValue"
+          class="w-full bg-ui-bg text-[10px] font-medium text-ui-text border border-primary-500 outline-none px-0.5"
+          @keydown.enter="confirmRename"
+          @keydown.esc="cancelRename"
+          @blur="confirmRename"
+        />
+      </div>
+      <div v-else class="text-[10px] font-medium text-ui-text truncate px-0.5" :title="trackName">
         {{ trackName }}
       </div>
       <div class="text-[9px] text-ui-text-muted">
-        {{ track.kind === 'video' ? 'Video' : 'Audio' }}
+        {{ t(`fastcat.audioMixer.${track.kind}`) }}
       </div>
     </div>
   </div>

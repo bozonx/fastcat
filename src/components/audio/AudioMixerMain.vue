@@ -2,14 +2,15 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import DbSlider from './DbSlider.vue';
+import { linearToDb, dbToLinear } from '~/utils/audio';
 
 const timelineStore = useTimelineStore();
 const { t } = useI18n();
 
-const volume = computed({
-  get: () => timelineStore.masterGain,
+const volumeDb = computed({
+  get: () => linearToDb(timelineStore.masterGain),
   set: (val: number) => {
-    timelineStore.setMasterGain(val);
+    timelineStore.setMasterGain(dbToLinear(val));
   },
 });
 
@@ -24,16 +25,22 @@ function toggleMute() {
   <div
     class="flex flex-col items-center w-24 bg-ui-bg-accent border border-primary/30 rounded-lg py-2 shrink-0 h-full"
   >
-    <div class="text-xs font-bold text-primary-400 mb-4 mt-2">MAIN</div>
+    <div class="text-xs font-bold text-primary-400 mb-4 mt-2">
+      {{ t('fastcat.audioMixer.main') }}
+    </div>
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25">
-      <DbSlider v-model="volume" :level-db="timelineStore.audioLevels?.['master']?.peakDb" />
+      <DbSlider v-model="volumeDb" :level-db="timelineStore.audioLevels?.['master']?.peakDb" />
     </div>
 
     <!-- DB Value -->
-    <div class="text-xs font-mono mb-2 text-ui-text cursor-default" @dblclick="volume = 1">
-      {{ volume <= 0.001 ? '-∞' : (20 * Math.log10(volume)).toFixed(1) }} dB
+    <div
+      class="text-xs font-mono mb-2 text-ui-text cursor-default hover:text-primary-400 transition-colors"
+      :title="t('common.actions.reset')"
+      @dblclick="volumeDb = 0"
+    >
+      {{ volumeDb <= -59.9 ? '-∞' : volumeDb.toFixed(1) }} dB
     </div>
 
     <!-- Controls -->
@@ -45,13 +52,15 @@ function toggleMute() {
         class="w-10 h-8 justify-center font-bold"
         @click="toggleMute"
       >
-        M
+        {{ t('fastcat.audioMixer.mute') }}
       </UButton>
     </div>
 
     <!-- Label -->
     <div class="w-full px-1 text-center py-1 mt-auto">
-      <div class="text-[10px] font-bold text-ui-text uppercase">Master</div>
+      <div class="text-[10px] font-bold text-ui-text uppercase">
+        {{ t('fastcat.audioMixer.master') }}
+      </div>
     </div>
   </div>
 </template>
