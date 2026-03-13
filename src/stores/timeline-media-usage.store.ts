@@ -33,10 +33,60 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
   const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
 
-  const mediaPathToTimelines = ref<MediaPathToTimelinesMap>({});
+  const scannedMediaUsage = ref<MediaPathToTimelinesMap>({});
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const lastScanAt = ref<number | null>(null);
+
+  const liveMediaUsage = ref<MediaPathToTimelinesMap>({});
+  const liveTimelinePath = ref<string | null>(null);
+
+  const setLiveUsage = (path: string | null, usage: MediaPathToTimelinesMap) => {
+    liveTimelinePath.value = path;
+    liveMediaUsage.value = usage;
+  };
+
+  const mediaPathToTimelines = computed<MediaPathToTimelinesMap>(() => {
+    const combined: MediaPathToTimelinesMap = { ...scannedMediaUsage.value };
+    const live = liveMediaUsage.value;
+    const currentPath = liveTimelinePath.value;
+
+    // Remove stale disk data for currently opened timeline
+    if (currentPath) {
+      for (const mediaPath in combined) {
+        const refs = combined[mediaPath];
+        if (refs) {
+          combined[mediaPath] = refs.filter((t) => t.timelinePath !== currentPath);
+        }
+      }
+    }
+
+    // Merge live data
+    for (const mediaPath in live) {
+      const liveRefs = live[mediaPath];
+      if (!liveRefs) continue;
+
+      if (!combined[mediaPath]) {
+        combined[mediaPath] = [];
+      }
+      
+      const existingRefs = combined[mediaPath] || [];
+      combined[mediaPath] = [...existingRefs, ...liveRefs];
+      
+      // Keep sorted
+      combined[mediaPath].sort((a, b) => a.timelineName.localeCompare(b.timelineName));
+    }
+
+    // Cleanup empty arrays
+    for (const mediaPath in combined) {
+      const refs = combined[mediaPath];
+      if (!refs || refs.length === 0) {
+        delete combined[mediaPath];
+      }
+    }
+
+    return combined;
+  });
 
   const isReady = computed(() =>
     Boolean(workspaceStore.projectsHandle && projectStore.currentProjectName),
@@ -119,7 +169,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
 
   async function refreshUsage() {
     if (!isReady.value) {
-      mediaPathToTimelines.value = {};
+      scannedMediaUsage.value = {};
       error.value = null;
       lastScanAt.value = null;
       return;
@@ -127,7 +177,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
 
     const projectDir = await getProjectDirHandle();
     if (!projectDir) {
-      mediaPathToTimelines.value = {};
+      scannedMediaUsage.value = {};
       error.value = 'Project directory is not available';
       lastScanAt.value = null;
       return;
@@ -147,11 +197,11 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
         .filter(Boolean)
         .map((t) => t!);
 
-      mediaPathToTimelines.value = computeMediaUsageByTimelineDocs(timelines).mediaPathToTimelines;
+      scannedMediaUsage.value = computeMediaUsageByTimelineDocs(timelines).mediaPathToTimelines;
       lastScanAt.value = Date.now();
     } catch (e: unknown) {
       console.error('[TimelineMediaUsage] Error scanning timelines:', e);
-      mediaPathToTimelines.value = {};
+      scannedMediaUsage.value = {};
       if (e instanceof TimelineScanError) {
         error.value = `Scan failed: ${e.message} (${e.code})`;
       } else {
@@ -169,5 +219,6 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
     error,
     lastScanAt,
     refreshUsage,
+    setLiveUsage,
   };
 });

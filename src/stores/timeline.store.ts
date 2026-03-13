@@ -52,6 +52,7 @@ import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumb
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { useTimelineSettingsStore } from './timelineSettings.store';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
+import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
@@ -104,6 +105,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     itemId: string;
     edge: 'in' | 'out';
   } | null>(null);
+
+  // Sync live usage to the usage store
+  watch(
+    [() => timelineDoc.value, () => projectStore.currentTimelinePath],
+    ([doc, path]) => {
+      if (!doc || !path) {
+        timelineMediaUsageStore.setLiveUsage(null, {});
+        return;
+      }
+      const name = path.split('/').pop() ?? path;
+      const usage = computeMediaUsageByTimelineDocs([
+        { timelinePath: path, timelineDoc: doc, timelineName: name },
+      ]);
+      timelineMediaUsageStore.setLiveUsage(path, usage.mediaPathToTimelines);
+    },
+    { immediate: true, deep: true },
+  );
 
   const isTrimModeActive = ref(false);
 

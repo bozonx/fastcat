@@ -24,7 +24,7 @@ export function computeMediaUsageByTimelineDocs(timelines: TimelineUsageTimeline
     for (const track of tl.timelineDoc.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (item.clipType !== 'media') continue;
+        if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
         const mediaPath = item.source?.path;
         if (!mediaPath) continue;
 
