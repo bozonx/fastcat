@@ -557,6 +557,9 @@
       "empty": "No effects",
       "trackTitle": "Track effects",
       "clipTitle": "Clip effects",
+      "trackAudioTitle": "Audio Track Effects: {name}",
+      "addEffect": "Add effect",
+      "effectsCount": "{count} fx",
       "dropHint": "Drop effects here",
       "masterTitle": "Master effects",
       "groups": {

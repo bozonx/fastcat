@@ -5,6 +5,9 @@ import type { TimelineTrack } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
+import { getAudioEffectManifest } from '~/effects';
+import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
+import TrackAudioEffectsModal from './TrackAudioEffectsModal.vue';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -68,6 +71,43 @@ function confirmRename() {
 function cancelRename() {
   isRenaming.value = false;
 }
+
+// Effects
+const isEffectsModalOpen = ref(false);
+const isSelectEffectModalOpen = ref(false);
+
+const audioEffectsCount = computed(() => {
+  return (props.track.effects ?? []).filter((e) => e?.target === 'audio').length;
+});
+
+function openSelectEffect() {
+  isSelectEffectModalOpen.value = true;
+}
+
+function openEffectsEditor() {
+  isEffectsModalOpen.value = true;
+}
+
+function handleSelectEffect(type: string) {
+  const manifest = getAudioEffectManifest(type);
+  if (!manifest) return;
+
+  const newEffect = {
+    id: `audio_effect_${Date.now()}`,
+    type,
+    enabled: true,
+    target: 'audio',
+    ...(manifest.defaultValues || {}),
+  };
+
+  const currentEffects = props.track.effects ?? [];
+  timelineStore.updateTrackProperties(props.track.id, {
+    effects: [...currentEffects, newEffect] as any,
+  });
+
+  isSelectEffectModalOpen.value = false;
+  isEffectsModalOpen.value = true;
+}
 </script>
 
 <template>
@@ -89,6 +129,31 @@ function cancelRename() {
         :wheel-step-multiplier="5"
         class="w-full"
       />
+    </div>
+
+    <!-- Effects -->
+    <div class="w-full px-1.5 mb-1.5 shrink-0">
+      <div v-if="audioEffectsCount === 0" class="flex justify-center">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-plus-circle"
+          class="w-full h-6 text-[8px] px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
+          @click="openSelectEffect"
+        >
+          {{ t('fastcat.effects.addEffect') }}
+        </UButton>
+      </div>
+      <div
+        v-else
+        class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
+        @click="openEffectsEditor"
+      >
+        <span class="text-[8px] font-bold uppercase truncate px-1">
+          {{ t('fastcat.effects.effectsCount', { count: audioEffectsCount }) }}
+        </span>
+      </div>
     </div>
 
     <!-- Volume Slider (Vertical) -->
@@ -149,5 +214,17 @@ function cancelRename() {
         {{ t(`fastcat.audioMixer.${track.kind}`) }}
       </div>
     </div>
+
+    <!-- Modals -->
+    <SelectEffectModal
+      v-model:open="isSelectEffectModalOpen"
+      target="audio"
+      @select="handleSelectEffect"
+    />
+
+    <TrackAudioEffectsModal
+      v-model:open="isEffectsModalOpen"
+      :track-id="track.id"
+    />
   </div>
 </template>

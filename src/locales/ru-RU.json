@@ -615,6 +615,9 @@
       "empty": "Эффектов нет",
       "trackTitle": "Эффекты дорожки",
       "clipTitle": "Эффекты клипа",
+      "trackAudioTitle": "Эффекты аудио дорожки: {name}",
+      "addEffect": "Добавить эфф.",
+      "effectsCount": "{count} эфф.",
       "dropHint": "Перетащите эффекты сюда",
       "masterTitle": "Мастер-эффекты",
       "groups": {
