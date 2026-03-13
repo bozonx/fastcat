@@ -8,7 +8,7 @@ import {
   type AudioFadeCurve,
   type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
-import { applyAudioEffects } from '~/utils/audio/applyAudioEffects';
+import { applyAudioEffects } from '~/utils/audio/applyAudioEffectsOffline';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import type { AudioClipEffect } from '~/timeline/types';
