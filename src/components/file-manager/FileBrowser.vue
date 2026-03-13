@@ -21,10 +21,8 @@ import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
 import { useFileBrowserFileActions } from '~/composables/fileManager/useFileBrowserFileActions';
 import { useFocusableListNavigation } from '~/composables/fileManager/useFocusableListNavigation';
 import { useFileBrowserPendingActions } from '~/composables/fileManager/useFileBrowserPendingActions';
-import {
-  createTimelineCommand,
-  createMarkdownCommand,
-} from '~/file-manager/application/fileManagerCommands';
+import { useFileBrowserCreateActions } from '~/composables/fileManager/useFileBrowserCreateActions';
+import { useFileBrowserInteraction } from '~/composables/fileManager/useFileBrowserInteraction';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
@@ -244,6 +242,15 @@ const {
 // Resolve forward refs
 _loadFolderContent = loadFolderContent;
 
+// --- Create timeline / markdown in directory ---
+const { createTimelineInDirectory, createMarkdownInDirectory } = useFileBrowserCreateActions({
+  vfs,
+  readDirectory,
+  reloadDirectory,
+  loadFolderContent,
+  findEntryByPath,
+});
+
 // --- File manager actions (CRUD, rename, delete) ---
 const {
   isDeleteConfirmModalOpen,
@@ -426,41 +433,6 @@ watch(
   },
 );
 
-// --- Create timeline / markdown in directory ---
-
-async function createTimelineInDirectory(entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-  const existingInFolder = await readDirectory(entry.path);
-  const existingNames = existingInFolder.map((e) => e.name);
-  const createdPath = await createTimelineCommand({
-    vfs,
-    timelinesDirName: entry.path || undefined,
-    existingNames,
-  });
-  await reloadDirectory(entry.path || '');
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
-  const createdEntry = findEntryByPath(createdPath);
-  if (createdEntry) selectionStore.selectFsEntry(createdEntry);
-}
-
-async function createMarkdownInDirectory(entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-  if (entry.path) {
-    const projectName = projectStore.currentProjectName;
-    if (projectName) uiStore.setFileTreePathExpanded(projectName, entry.path, true);
-  }
-  const existingInFolder = await readDirectory(entry.path);
-  const existingNames = existingInFolder.map((e) => e.name);
-  const createdFileName = await createMarkdownCommand({ vfs, dirPath: entry.path, existingNames });
-  await reloadDirectory(entry.path || '');
-  uiStore.notifyFileManagerUpdate();
-  await loadFolderContent();
-  const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
-  const createdEntry = findEntryByPath(createdPath);
-  if (createdEntry) selectionStore.selectFsEntry(createdEntry);
-}
-
 // --- Refresh ---
 
 async function refreshFileTree() {
@@ -474,92 +446,21 @@ async function refreshFileTree() {
 
 // --- Entry interaction ---
 
-const { handleEntryClick: handleSelectionClick } = useFileManagerSelection({
-  getVisibleEntries: () => sortedEntries.value,
-  enforceSameLevel: false,
-  onSingleSelect: (entry) => filesPageStore.selectFile(entry),
+const {
+  handleEntryClick,
+  handleEntryDoubleClick,
+  handleEntryEnter,
+  handleSort,
+  onResizeStart,
+} = useFileBrowserInteraction({
+  isRemoteMode,
+  remoteCurrentFolder,
+  sortedEntries,
+  loadFolderContent,
+  loadParentFolders,
+  setSelectedFsEntry,
+  onFileAction,
 });
-
-function handleEntryClick(event: MouseEvent, entry: FsEntry) {
-  if (isRemoteMode.value) {
-    setSelectedFsEntry(entry);
-    return;
-  }
-  handleSelectionClick(event, entry);
-}
-
-function handleEntryDoubleClick(entry: FsEntry) {
-  if (isRemoteMode.value) {
-    if (entry.kind === 'directory' && isRemoteFsEntry(entry)) {
-      remoteCurrentFolder.value = entry;
-      void loadFolderContent();
-      void loadParentFolders();
-      setSelectedFsEntry(entry);
-    }
-    return;
-  }
-
-  if (entry.kind === 'directory') {
-    filesPageStore.openFolder(entry);
-  } else {
-    if (entry.name.toLowerCase().endsWith('.otio')) {
-      const entryPath = entry.path;
-      if (!entryPath) return;
-      void (async () => {
-        await projectStore.openTimelineFile(entryPath);
-        await timelineStore.loadTimeline();
-        void timelineStore.loadTimelineMetadata();
-      })();
-    } else {
-      if (!isOpenableProjectFileName(entry.name)) return;
-      onFileAction('openAsProjectTab', entry);
-    }
-  }
-}
-
-function handleEntryEnter(entry: FsEntry) {
-  if (!isRemoteMode.value) {
-    filesPageStore.selectFile(entry);
-  } else {
-    setSelectedFsEntry(entry);
-  }
-  handleEntryDoubleClick(entry);
-}
-
-function handleSort(field: FileSortField) {
-  if (filesPageStore.sortOption.field === field) {
-    filesPageStore.sortOption = {
-      field,
-      order: filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc',
-    };
-  } else {
-    filesPageStore.sortOption = { field, order: 'asc' };
-  }
-}
-
-function onResizeStart(e: MouseEvent, column: string) {
-  resizingColumn.value = column;
-  resizeStartX.value = e.clientX;
-  resizeStartWidth.value = filesPageStore.columnWidths[column] || 100;
-  document.addEventListener('mousemove', onResizeMove);
-  document.addEventListener('mouseup', onResizeEnd);
-}
-
-function onResizeMove(e: MouseEvent) {
-  if (!resizingColumn.value) return;
-  const diff = e.clientX - resizeStartX.value;
-  const newWidth = Math.max(60, resizeStartWidth.value + diff);
-  filesPageStore.setColumnWidth(resizingColumn.value, newWidth);
-}
-
-function onResizeEnd() {
-  resizingColumn.value = null;
-  document.removeEventListener('mousemove', onResizeMove);
-  document.removeEventListener('mouseup', onResizeEnd);
-}
-
-// --- Drag-and-drop within the browser panel ---
-// Logic moved to useFileBrowserDragAndDrop
 
 async function onDirectoryUploadChange(e: Event) {
   const input = e.target as HTMLInputElement;

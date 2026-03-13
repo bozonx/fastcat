@@ -56,10 +56,10 @@ export function useFileManagerPanelActions({
   const selectionStore = useSelectionStore();
   const proxyStore = useProxyStore();
   const uiStore = useUiStore();
+  const toast = useToast();
 
   async function createTimelineInDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
-    const toast = useToast();
     try {
       const createdPath = await createTimelineCommand({
         vfs: vfs as any,

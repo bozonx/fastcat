@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import Knob from '~/components/ui/Knob.vue';
 import type {
   ButtonGroupParamControl,
   FileParamControl,
@@ -184,6 +185,31 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
         />
       </div>
 
+      <div v-else-if="control.kind === 'knob'" class="flex flex-col items-center justify-center gap-1.5 py-1">
+        <Knob
+          :model-value="Number(getValue(control.key) ?? control.defaultValue ?? control.min)"
+          :min="control.min"
+          :max="control.max"
+          :step="control.step"
+          :default-value="control.defaultValue"
+          :disabled="control.disabled"
+          size="md"
+          @update:model-value="(value: number) => updateValue(control.key, value)"
+        />
+        <div class="flex flex-col items-center text-[10px] leading-tight">
+          <span class="text-ui-text-muted text-center">{{ getLabel(control) }}</span>
+          <span class="font-mono text-ui-text">
+            {{
+              control.format
+                ? control.format(
+                    Number(getValue(control.key) ?? control.defaultValue ?? control.min),
+                  )
+                : (getValue(control.key) ?? control.defaultValue ?? control.min)
+            }}
+          </span>
+        </div>
+      </div>
+
       <div v-else-if="control.kind === 'number'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
         <WheelNumberInput
@@ -346,31 +372,39 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
           {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
         </div>
 
-        <div v-else class="flex flex-col gap-2">
+        <div v-else :class="['flex gap-2', control.layout === 'horizontal' ? 'flex-row overflow-x-auto pb-2 snap-x snap-mandatory' : 'flex-col']">
           <div
             v-for="(item, index) in getValue(control.key)"
             :key="index"
-            class="flex flex-col gap-2 p-3 bg-ui-bg-elevated border border-ui-border rounded relative group"
+            class="flex flex-col gap-2 bg-ui-bg-elevated border border-ui-border rounded relative group shrink-0"
+            :class="control.layout === 'horizontal' ? 'w-32 snap-center' : 'p-3'"
           >
             <div
-              class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              class="flex items-center justify-between border-b border-ui-border/50 bg-ui-bg-muted/50 rounded-t"
+              :class="control.layout === 'horizontal' ? 'p-1.5' : 'pb-2 mb-1 -mx-3 -mt-3 px-3 pt-2'"
             >
+              <span class="text-[10px] font-medium text-ui-text-muted uppercase tracking-wider">
+                #{{ index + 1 }}
+              </span>
               <UButton
                 icon="i-heroicons-trash"
                 size="2xs"
                 color="red"
                 variant="ghost"
                 :disabled="control.disabled"
-                @click="handleArrayRemove(control, Number(index))"
+                class="opacity-0 group-hover:opacity-100 transition-opacity"
+                @click="handleArrayRemove(control, index)"
               />
             </div>
-            <ParamsRenderer
-              :controls="control.itemTemplate"
-              :values="item"
-              :size="size"
-              @update:value="(k, v) => handleArrayItemUpdate(control, Number(index), k, v)"
-              @action="(a, k) => handleAction(a, `${control.key}.${index}.${k}`)"
-            />
+            <div :class="['flex flex-col gap-2', control.layout === 'horizontal' ? 'p-2' : '']">
+              <ParamsRenderer
+                :controls="control.itemTemplate"
+                :values="item"
+                :size="size"
+                as-contents
+                @update:value="(key, value) => handleArrayItemUpdate(control, index, key, value)"
+              />
+            </div>
           </div>
         </div>
       </div>
