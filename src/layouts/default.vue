@@ -240,4 +240,18 @@ useHead({
   bottom: -3px;
   width: 100%;
 }
+
+/* Disable pointer events on heavy components during resizing to prevent cursor sticking */
+.splitpanes--resizing video,
+.splitpanes--resizing canvas,
+.splitpanes--resizing iframe,
+.splitpanes--resizing .pointer-events-auto {
+  pointer-events: none !important;
+}
+
+/* Specific fix for our Monitor and Timeline during resize */
+.splitpanes--resizing .monitor-container,
+.splitpanes--resizing .timeline-scroll-el {
+  user-select: none;
+}
 </style>
