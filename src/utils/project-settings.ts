@@ -223,7 +223,7 @@ export function normalizeProjectSettings(
       height: finalHeight,
       fps:
         Number.isFinite(fps) && fps > 0
-          ? Math.round(Math.min(240, Math.max(1, fps)))
+          ? Math.min(240, Math.max(1, fps))
           : defaultSettings.project.fps,
       resolutionFormat:
         typeof projectInput.resolutionFormat === 'string' &&

@@ -26,20 +26,11 @@ import { createTimelineHydration } from '~/stores/timeline/timelineHydration';
 import { createTimelineExternalRefs } from '~/stores/timeline/timelineExternalRefs';
 import { createTimelineHistoryDebounce } from '~/stores/timeline/timelineHistoryDebounce';
 import { createTimelineDispatcher } from '~/stores/timeline/timelineDispatcher';
+import { createTimelineSelectionRange } from '~/stores/timeline/timelineSelectionRange';
+import { createTimelineCaptions } from '~/stores/timeline/timelineCaptions';
+import { createTimelineCommands } from '~/stores/timeline/timelineCommands';
 
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
-import {
-  createDefaultCaptionStylePreset,
-  buildCaptionChunksFromWords,
-  extractTranscriptionWords,
-  type CaptionGenerationSettings,
-  type TimelineCaptionWord,
-} from '~/utils/transcription/captions';
-import {
-  createTranscriptionCacheRepository,
-  type TranscriptionCacheRecord,
-} from '~/repositories/transcription-cache.repository';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -50,7 +41,6 @@ import { useSelectionStore } from './selection.store';
 import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
-import { useTimelineSettingsStore } from './timelineSettings.store';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 
@@ -382,82 +372,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     mediaMetadata,
   });
 
-  const commandService = createTimelineCommandService({
-    getTimelineDoc: () => timelineDoc.value,
-    ensureTimelineDoc: () => {
-      if (!timelineDoc.value) {
-        timelineDoc.value = projectStore.createFallbackTimelineDoc();
-      }
-      return timelineDoc.value;
-    },
-    getCurrentTimelinePath: () => currentTimelinePath.value,
-    getTrackById: (trackId) => timelineDoc.value?.tracks.find((t) => t.id === trackId) ?? null,
-    applyTimeline,
-    getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
-    getFileByPath: (path) => projectStore.getFileByPath(path),
-    getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
-    getMediaMetadataByPath: (path) => mediaMetadata.value[path] ?? null,
-    fetchMediaMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
-    getUserSettings: () => workspaceStore.userSettings,
-    getProjectSettings: () => projectStore.projectSettings,
-    updateProjectSettings: async (settings) => {
-      const { getResolutionPreset } = await import('~/utils/settings/helpers');
-      const preset = getResolutionPreset(settings.width, settings.height);
-
-      Object.assign(projectStore.projectSettings.project, {
-        ...settings,
-        ...preset,
-      });
-      await projectStore.saveProjectSettings();
-    },
-    showFpsWarning: (fileFps, projectFps) => {
-      toast.add({
-        title: t('videoEditor.timeline.fpsMismatch', 'FPS mismatch'),
-        description: t('videoEditor.timeline.fpsMismatchDesc', { fileFps, projectFps }),
-        color: 'warning',
-        actions: [
-          {
-            label: t('videoEditor.projectSettings.title'),
-            onClick: () => {
-              uiStore.isProjectSettingsOpen = true;
-            },
-          },
-        ],
-      });
-    },
-    mediaCache: {
-      hasProxy: (path: string) => proxyStore.existingProxies.has(path),
-      ensureProxy: async (params: {
-        file: File | FileSystemFileHandle;
-        projectRelativePath: string;
-      }) => await proxyStore.generateProxy(params.file, params.projectRelativePath),
-    } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
-    defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
-    defaultImageSourceDurationUs: DEFAULT_IMAGE_DURATION_US,
-    parseTimelineFromOtio,
-    selectTimelineDurationUs,
-  });
-
-  async function moveItemToTrack(input: {
-    fromTrackId: string;
-    toTrackId: string;
-    itemId: string;
-    startUs: number;
-  }) {
-    await commandService.moveItemToTrack(input);
-  }
-
-  async function extractAudioToTrack(input: { videoTrackId: string; videoItemId: string }) {
-    await commandService.extractAudioToTrack({
-      videoTrackId: input.videoTrackId,
-      videoItemId: input.videoItemId,
-    });
-  }
-
-  function returnAudioToVideo(input: { videoItemId: string }) {
-    applyTimeline({ type: 'return_audio_to_video', videoItemId: input.videoItemId });
-  }
-
   function resetTimelineState() {
     persistence.resetPersistenceState();
     timelineDoc.value = null;
@@ -567,46 +481,19 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const { undoTimeline, redoTimeline } = dispatcher;
 
-  async function addClipToTimelineFromPath(
-    input: {
-      trackId: string;
-      name: string;
-      path: string;
-      startUs?: number;
-      pseudo?: boolean;
-    },
-    options?: {
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-      label?: string;
-      skipHistory?: boolean;
-      saveMode?: 'none' | 'debounced' | 'immediate';
-    },
-  ) {
-    return await commandService.addClipToTimelineFromPath(input, options);
-  }
-
-  async function addTimelineClipToTimelineFromPath(
-    input: {
-      trackId: string;
-      name: string;
-      path: string;
-      startUs?: number;
-      pseudo?: boolean;
-    },
-    options?: {
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-      label?: string;
-      skipHistory?: boolean;
-      saveMode?: 'none' | 'debounced' | 'immediate';
-    },
-  ) {
-    if (currentTimelinePath.value && input.path === currentTimelinePath.value) {
-      throw new Error('Cannot insert the currently opened timeline into itself');
-    }
-    return await commandService.addTimelineClipFromPath(input, options);
-  }
+  const commands = createTimelineCommands({
+    timelineDoc,
+    currentTimelinePath,
+    mediaMetadata,
+    applyTimeline,
+    projectStore,
+    mediaStore,
+    workspaceStore,
+    proxyStore,
+    uiStore,
+    toast,
+    t,
+  });
 
   async function loadTimelineMetadata() {
     if (!timelineDoc.value) return;
@@ -629,297 +516,22 @@ export const useTimelineStore = defineStore('timeline', () => {
     await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
   }
 
-  async function listCachedTranscriptions(): Promise<TranscriptionCacheRecord[]> {
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    const projectId = projectStore.currentProjectId;
-    if (!workspaceHandle || !projectId) return [];
+  const selectionRange = createTimelineSelectionRange({
+    timelineDoc,
+    currentTime,
+    applyTimeline,
+    selectionStore,
+    markerService,
+    trimming,
+  });
 
-    const repository = createTranscriptionCacheRepository({
-      workspaceDir: workspaceHandle,
-      topology: workspaceStore.resolvedStorageTopology,
-      projectId,
-    });
-
-    return await repository.list();
-  }
-
-  function isTrackActiveForCaptions(track: TimelineDocument['tracks'][number]): boolean {
-    if (track.kind === 'video' && track.videoHidden) return false;
-    if (track.audioMuted) return false;
-    return true;
-  }
-
-  function isClipActiveForCaptions(
-    item: TimelineDocument['tracks'][number]['items'][number],
-  ): boolean {
-    if (item.kind !== 'clip') return false;
-    if (item.clipType !== 'media') return false;
-    if (item.disabled || item.audioMuted) return false;
-    if (!item.source?.path) return false;
-    return true;
-  }
-
-  function asActiveCaptionMediaClip(item: TimelineTrackItem): TimelineMediaClipItem | null {
-    if (!isClipActiveForCaptions(item)) return null;
-    return item as TimelineMediaClipItem;
-  }
-
-  function findMatchingTranscriptionRecord(params: {
-    records: TranscriptionCacheRecord[];
-    sourcePath: string;
-  }): TranscriptionCacheRecord | null {
-    return params.records.find((record) => record.sourcePath === params.sourcePath) ?? null;
-  }
-
-  function projectClipWordsToTimeline(params: {
-    trackId: string;
-    trackOrder: number;
-    clipId: string;
-    sourceName: string;
-    sourcePath: string;
-    sourceStartUs: number;
-    sourceEndUs: number;
-    timelineStartUs: number;
-    speed: number;
-    words: ReturnType<typeof extractTranscriptionWords>;
-  }): TimelineCaptionWord[] {
-    const result: TimelineCaptionWord[] = [];
-
-    for (const word of params.words) {
-      const wordStartUs = Math.round(word.start * 1000);
-      const wordEndUs = Math.round(word.end * 1000);
-      if (wordEndUs <= params.sourceStartUs || wordStartUs >= params.sourceEndUs) continue;
-
-      const clippedStartUs = Math.max(wordStartUs, params.sourceStartUs);
-      const clippedEndUs = Math.min(wordEndUs, params.sourceEndUs);
-      if (clippedEndUs <= clippedStartUs) continue;
-
-      const relativeStartUs = clippedStartUs - params.sourceStartUs;
-      const relativeEndUs = clippedEndUs - params.sourceStartUs;
-      const timelineStartUs = params.timelineStartUs + Math.round(relativeStartUs / params.speed);
-      const timelineEndUs = params.timelineStartUs + Math.round(relativeEndUs / params.speed);
-      if (timelineEndUs <= timelineStartUs) continue;
-
-      result.push({
-        start: word.start,
-        end: word.end,
-        text: word.text,
-        confidence: word.confidence,
-        timelineStartMs: Math.round(timelineStartUs / 1000),
-        timelineEndMs: Math.round(timelineEndUs / 1000),
-        sourcePath: params.sourcePath,
-        sourceName: params.sourceName,
-        trackId: params.trackId,
-        clipId: params.clipId,
-        trackOrder: params.trackOrder,
-      });
-    }
-
-    return result;
-  }
-
-  function trimWordsByCoveredRanges(params: {
-    words: TimelineCaptionWord[];
-    coveredRanges: Array<{ startMs: number; endMs: number }>;
-  }): TimelineCaptionWord[] {
-    if (params.coveredRanges.length === 0) return params.words;
-
-    const result: TimelineCaptionWord[] = [];
-    for (const word of params.words) {
-      let segments = [{ startMs: word.timelineStartMs, endMs: word.timelineEndMs }];
-
-      for (const covered of params.coveredRanges) {
-        const nextSegments: Array<{ startMs: number; endMs: number }> = [];
-        for (const segment of segments) {
-          if (covered.endMs <= segment.startMs || covered.startMs >= segment.endMs) {
-            nextSegments.push(segment);
-            continue;
-          }
-
-          if (covered.startMs > segment.startMs) {
-            nextSegments.push({ startMs: segment.startMs, endMs: covered.startMs });
-          }
-          if (covered.endMs < segment.endMs) {
-            nextSegments.push({ startMs: covered.endMs, endMs: segment.endMs });
-          }
-        }
-        segments = nextSegments.filter((segment) => segment.endMs > segment.startMs);
-        if (segments.length === 0) break;
-      }
-
-      for (const segment of segments) {
-        result.push({
-          ...word,
-          timelineStartMs: segment.startMs,
-          timelineEndMs: segment.endMs,
-        });
-      }
-    }
-
-    return result;
-  }
-
-  async function collectTimelineCaptionWords(): Promise<TimelineCaptionWord[]> {
-    const doc = timelineDoc.value;
-    if (!doc) {
-      throw new Error('Timeline not loaded');
-    }
-
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    const projectId = projectStore.currentProjectId;
-    if (!workspaceHandle || !projectId) {
-      throw new Error('Project workspace is not available');
-    }
-
-    const repository = createTranscriptionCacheRepository({
-      workspaceDir: workspaceHandle,
-      topology: workspaceStore.resolvedStorageTopology,
-      projectId,
-    });
-    const records = await repository.list();
-
-    const allWords: TimelineCaptionWord[] = [];
-
-    for (const [trackOrder, track] of doc.tracks.entries()) {
-      if (!isTrackActiveForCaptions(track)) continue;
-
-      for (const item of track.items) {
-        const clip = asActiveCaptionMediaClip(item);
-        if (!clip) continue;
-
-        const sourcePath = clip.source.path;
-        const mediaType = getMediaTypeFromFilename(sourcePath);
-        if (mediaType !== 'video' && mediaType !== 'audio') continue;
-
-        const record = findMatchingTranscriptionRecord({ records, sourcePath });
-        if (!record) continue;
-
-        const words = extractTranscriptionWords(record);
-        if (words.length === 0) continue;
-
-        const speedRaw = clip.speed;
-        const speed =
-          typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
-            ? Math.abs(speedRaw)
-            : 1;
-
-        allWords.push(
-          ...projectClipWordsToTimeline({
-            trackId: track.id,
-            trackOrder,
-            clipId: clip.id,
-            sourceName: record.sourceName,
-            sourcePath,
-            sourceStartUs: Math.max(0, Math.round(clip.sourceRange.startUs)),
-            sourceEndUs: Math.max(
-              0,
-              Math.round(clip.sourceRange.startUs + clip.sourceRange.durationUs),
-            ),
-            timelineStartUs: Math.max(0, Math.round(clip.timelineRange.startUs)),
-            speed,
-            words,
-          }),
-        );
-      }
-    }
-
-    if (allWords.length === 0) {
-      throw new Error('No active transcription cache was found for timeline media clips');
-    }
-
-    const visibleWords: TimelineCaptionWord[] = [];
-    const coveredRanges: Array<{ startMs: number; endMs: number }> = [];
-
-    for (const track of doc.tracks) {
-      if (!isTrackActiveForCaptions(track)) continue;
-
-      const trackWords = allWords.filter((word) => word.trackId === track.id);
-      const trimmed = trimWordsByCoveredRanges({ words: trackWords, coveredRanges });
-      visibleWords.push(...trimmed);
-
-      if (track.kind === 'video') {
-        for (const item of track.items) {
-          const clip = asActiveCaptionMediaClip(item);
-          if (!clip) continue;
-          coveredRanges.push({
-            startMs: Math.round(clip.timelineRange.startUs / 1000),
-            endMs: Math.round((clip.timelineRange.startUs + clip.timelineRange.durationUs) / 1000),
-          });
-        }
-      }
-    }
-
-    return visibleWords.sort((a, b) => a.timelineStartMs - b.timelineStartMs);
-  }
-
-  async function generateCaptionsFromTimeline(input: {
-    trackId: string;
-    settings: CaptionGenerationSettings;
-  }) {
-    const doc = timelineDoc.value;
-    if (!doc) {
-      throw new Error('Timeline not loaded');
-    }
-
-    const track = doc.tracks.find((item) => item.id === input.trackId) ?? null;
-    if (!track || track.kind !== 'video') {
-      throw new Error('Captions can only be generated on a video track');
-    }
-    if (track.items.some((item) => item.kind === 'clip')) {
-      throw new Error('Select an empty video track for generated captions');
-    }
-
-    const words = await collectTimelineCaptionWords();
-    const chunks = buildCaptionChunksFromWords({
-      words,
-      settings: input.settings,
-    });
-    const stylePreset = createDefaultCaptionStylePreset();
-
-    const fps = sanitizeFps(doc.timebase?.fps ?? 30);
-    let addedCount = 0;
-    let lastEndUs = 0;
-
-    for (const chunk of chunks) {
-      const rawStartUs = Math.max(lastEndUs, Math.round(chunk.startMs * 1000));
-      const rawDurationUs = Math.max(1_000, Math.round((chunk.endMs - chunk.startMs) * 1000));
-
-      const startUs = quantizeTimeUsToFrames(rawStartUs, fps, 'round');
-      const durationUs = quantizeTimeUsToFrames(rawDurationUs, fps, 'round');
-
-      if (durationUs <= 0) continue;
-
-      clips.addVirtualClipToTrack(
-        {
-          trackId: input.trackId,
-          startUs,
-          clipType: 'text',
-          name: 'Generated captions',
-          durationUs,
-          text: chunk.text,
-          style: stylePreset.textStyle,
-        },
-        {
-          skipHistory: addedCount > 0,
-          saveMode: 'none',
-          historyMode: 'immediate',
-        },
-      );
-      lastEndUs = startUs + durationUs;
-      addedCount += 1;
-    }
-
-    if (addedCount === 0) {
-      throw new Error('No caption clips were generated from transcription cache');
-    }
-
-    await requestTimelineSave({ immediate: true });
-
-    return {
-      addedCount,
-      sourceCount: new Set(words.map((word) => word.sourcePath)).size,
-    };
-  }
+  const captions = createTimelineCaptions({
+    timelineDoc,
+    workspaceStore,
+    projectStore,
+    clips,
+    requestTimelineSave,
+  });
 
   function setTimelineZoomExact(next: number) {
     const parsed = Number(next);
@@ -934,7 +546,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   return {
     timelineDoc,
     getMarkers: markerService.getMarkers,
-    getSelectionRange,
+    getSelectionRange: selectionRange.getSelectionRange,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
@@ -965,43 +577,29 @@ export const useTimelineStore = defineStore('timeline', () => {
         setMasterMuted(false);
       }
     },
-    addClipToTimelineFromPath,
-    addTimelineClipToTimelineFromPath,
-    loadTimelineMetadata,
-    listCachedTranscriptions,
-    generateCaptionsFromTimeline,
-    clearSelection: () => selection.clearSelection(),
-    selectTrack: (trackId: string | null) => selection.selectTrack(trackId),
-    toggleSelection: (itemId: string, options?: { multi?: boolean }) =>
-      selection.toggleSelection(itemId, options),
-    selectTimelineItems: (itemIds: string[]) => selection.selectTimelineItems(itemIds),
-    selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
-      selection.selectTransition(input),
-    ...playback,
-    setTimelineZoomExact,
-    setAudioVolume: (gain: number) => applyTimeline({ type: 'update_master_gain', gain }),
-    setMasterMuted,
+    addClipToTimelineFromPath: commands.addClipToTimelineFromPath,
+    addTimelineClipToTimelineFromPath: commands.addTimelineClipToTimelineFromPath,
     ...tracks,
     ...trimming,
     ...clips,
     addMarkerAtPlayhead: markerService.addMarkerAtPlayhead,
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,
-    createSelectionRangeAtPlayhead,
-    createSelectionRange,
+    createSelectionRangeAtPlayhead: selectionRange.createSelectionRangeAtPlayhead,
+    createSelectionRange: selectionRange.createSelectionRange,
     updateMarker: markerService.updateMarker,
     removeMarker: markerService.removeMarker,
-    updateSelectionRange,
-    removeSelectionRange,
+    updateSelectionRange: selectionRange.updateSelectionRange,
+    removeSelectionRange: selectionRange.removeSelectionRange,
     convertMarkerToZone: markerService.convertMarkerToZone,
     convertZoneToMarker: markerService.convertZoneToMarker,
-    convertMarkerToSelectionRange,
-    createSelectionRangeFromMarker,
-    convertSelectionRangeToMarker,
-    isSelectionRangeSelected,
-    rippleTrimSelectionRange,
-    moveItemToTrack,
-    extractAudioToTrack,
-    returnAudioToVideo,
+    convertMarkerToSelectionRange: selectionRange.convertMarkerToSelectionRange,
+    createSelectionRangeFromMarker: selectionRange.createSelectionRangeFromMarker,
+    convertSelectionRangeToMarker: selectionRange.convertSelectionRangeToMarker,
+    isSelectionRangeSelected: selectionRange.isSelectionRangeSelected,
+    rippleTrimSelectionRange: selectionRange.rippleTrimSelectionRange,
+    moveItemToTrack: commands.moveItemToTrack,
+    extractAudioToTrack: commands.extractAudioToTrack,
+    returnAudioToVideo: commands.returnAudioToVideo,
     markTimelineAsDirty,
     markTimelineAsCleanForCurrentRevision,
     resetTimelineState,
@@ -1010,5 +608,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTimelineProperties: () => selectionStore.selectTimelineProperties(),
     batchApplyTimeline,
     historyStore,
+    setPlaybackSpeed: playback.setPlaybackSpeed,
+    togglePlayback: playback.togglePlayback,
+    goToStart: playback.goToStart,
+    goToEnd: playback.goToEnd,
+    setAudioVolume: playback.setAudioVolume,
+    setTimelineZoom: playback.setTimelineZoom,
+    toggleAudioMuted: playback.toggleAudioMuted,
+    setPlaybackGestureHandler: playback.setPlaybackGestureHandler,
+    loadTimelineMetadata,
+    selectTimelineItems: selection.selectTimelineItems,
+    selectTrack: selection.selectTrack,
+    selectTransition: selection.selectTransition,
+    clearSelection: selection.clearSelection,
+    setTimelineZoomExact,
   };
 });

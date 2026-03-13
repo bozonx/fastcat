@@ -259,7 +259,7 @@ export async function runExport(
     videoSource: any;
     compositor: VideoCompositor;
   }) {
-    const fps = Math.max(1, Math.round(Number(params.fps) || 30));
+    const fps = Math.max(1, Number(params.fps) || 30);
     const totalFrames = Math.ceil(params.durationS * fps);
     const dtUs = Math.floor(1_000_000 / fps);
     const dtS = usToS(dtUs);
@@ -354,7 +354,7 @@ export async function runExport(
       const fullCodecString =
         fallbackCodecString && options.videoCodec ? options.videoCodec : undefined;
       const keyFrameIntervalSec = Number(options.keyframeIntervalSec);
-      const fps = Math.max(1, Math.round(Number(options.fps) || 30));
+      const fps = Math.max(1, Number(options.fps) || 30);
       const keyFrameInterval =
         Number.isFinite(keyFrameIntervalSec) && keyFrameIntervalSec > 0
           ? Math.max(1, Math.round(keyFrameIntervalSec * fps))
