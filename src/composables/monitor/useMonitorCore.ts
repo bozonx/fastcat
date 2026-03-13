@@ -306,6 +306,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
                 audioBalance: (clip as any).audioBalance,
                 audioFadeInUs: (clip as any).audioFadeInUs,
                 audioFadeOutUs: (clip as any).audioFadeOutUs,
+                audioEffects: ((clip as any).effects ?? []).filter(
+                  (e: any) => e?.target === 'audio',
+                ),
               };
             } catch {
               return null;
@@ -517,22 +520,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         audioChannels: projectStore.projectSettings?.project?.audioChannels,
       });
 
-      const audioEngineClipCandidates: Array<{
-        id: string;
-        trackId?: string;
-        sourcePath: string;
-        fileHandle: FileSystemFileHandle;
-        startUs: number;
-        durationUs: number;
-        sourceStartUs: number;
-        sourceRangeDurationUs: number;
-        sourceDurationUs: number;
-        speed?: number;
-        audioGain?: number;
-        audioBalance?: number;
-        audioFadeInUs?: number;
-        audioFadeOutUs?: number;
-      } | null> = await Promise.all(
+      const audioEngineClipCandidates = await Promise.all(
         audioClips.map(async (clip: WorkerTimelineClip) => {
           try {
             const path = clip.source?.path;
@@ -554,6 +542,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
               audioBalance: (clip as any).audioBalance,
               audioFadeInUs: (clip as any).audioFadeInUs,
               audioFadeOutUs: (clip as any).audioFadeOutUs,
+              audioEffects: ((clip as any).effects ?? []).filter((e: any) => e?.target === 'audio'),
             };
           } catch {
             return null;

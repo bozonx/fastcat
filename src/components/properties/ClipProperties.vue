@@ -9,6 +9,7 @@ import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 import type {
+  AudioClipEffect,
   TimelineBlendMode,
   TimelineClipItem,
   TimelineTrack,
@@ -17,6 +18,7 @@ import type {
 } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import RenameModal from '~/components/common/RenameModal.vue';
 import TimecodeInput from '~/components/common/TimecodeInput.vue';
@@ -325,8 +327,20 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string | undefined) {
 }
 
 function handleUpdateClipEffects(effects: any[]) {
+  const audioEffects = (clipRef.value?.effects ?? []).filter(
+    (e): e is AudioClipEffect => e?.target === 'audio',
+  );
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    effects: effects as any,
+    effects: [...effects, ...audioEffects] as any,
+  });
+}
+
+function handleUpdateClipAudioEffects(effects: AudioClipEffect[]) {
+  const videoEffects = (clipRef.value?.effects ?? []).filter(
+    (e) => e?.target !== 'audio',
+  );
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    effects: [...videoEffects, ...effects] as any,
   });
 }
 
@@ -515,6 +529,18 @@ const clipVideoEffects = computed(() =>
     (effect): effect is VideoClipEffect => effect?.target !== 'audio',
   ),
 );
+
+const clipAudioEffects = computed(() =>
+  (clipRef.value?.effects ?? []).filter(
+    (effect): effect is AudioClipEffect => effect?.target === 'audio',
+  ),
+);
+
+const canEditAudioEffects = computed(() => {
+  if (!canEditAudioFades.value) return false;
+  if (!canEditAudioGain.value) return false;
+  return true;
+});
 
 watch(
   () => uiStore.scrollToEffectsTrigger,
@@ -1371,6 +1397,12 @@ defineExpose({
       @update-audio-fade-in-sec="updateAudioFadeInSec"
       @update-audio-fade-out-curve="updateAudioFadeOutCurve"
       @update-audio-fade-out-sec="updateAudioFadeOutSec"
+    />
+
+    <AudioEffectsEditor
+      v-if="canEditAudioEffects"
+      :effects="clipAudioEffects"
+      @update:effects="handleUpdateClipAudioEffects"
     />
 
     <!-- Transform -->

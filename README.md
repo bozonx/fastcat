@@ -7,6 +7,7 @@ Standalone video editor project extracted from Gran Publicador.
 - Timeline editing with multi-track composition
 - SVG images are rasterized to PNG on import for reliable worker rendering
 - Monitor playback with volume/mute controls for audio
+- Audio clip effects with live preview and export support (`Reverb`, `Distortion`)
 - Focus-aware panel hotkeys with routing to the currently active editor panel
 - File system access API integration for local file editing
 - Gran Publicador integration settings with connect flow and manual API override support
@@ -23,6 +24,7 @@ Standalone video editor project extracted from Gran Publicador.
 - [Nuxt UI](https://ui.nuxt.com/)
 - [PixiJS 8](https://pixijs.com/)
 - [Mediabunny](https://github.com/lucasferreira/mediabunny)
+- [Tone.js](https://tonejs.github.io/)
 - [Pinia](https://pinia.vuejs.org/)
 
 ## Setup
