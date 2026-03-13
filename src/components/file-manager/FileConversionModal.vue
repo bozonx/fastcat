@@ -12,62 +12,59 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
-
-const props = defineProps<{
-  open: boolean;
-  mediaType: 'video' | 'audio' | 'image' | 'text' | 'unknown' | 'timeline' | null;
-  fileName: string;
-  originalAudioSampleRate?: number | null;
-  isConverting: boolean;
-  conversionProgress: number;
-  conversionError: string | null;
-  conversionPhase: 'encoding' | 'saving' | null;
-}>();
-
-const emit = defineEmits<{
-  'update:open': [value: boolean];
-  convert: [];
-  cancel: [];
-}>();
+import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const { t } = useI18n();
 
+const {
+  isModalOpen,
+  targetEntry,
+  mediaType,
+  isConverting,
+  conversionProgress,
+  conversionError,
+  conversionPhase,
+  
+  videoFormat,
+  videoCodec,
+  videoBitrateMbps,
+  excludeAudio,
+  audioCodec,
+  audioBitrateKbps,
+  bitrateMode,
+  keyframeIntervalSec,
+  videoWidth,
+  videoHeight,
+  videoFps,
+  resolutionFormat,
+  orientation,
+  aspectRatio,
+  isCustomResolution,
+
+  audioOnlyFormat,
+  audioOnlyCodec,
+  audioOnlyBitrateKbps,
+  audioChannels,
+  audioSampleRate,
+  audioReverse,
+  originalAudioSampleRate,
+
+  imageQuality,
+  imageWidth,
+  imageHeight,
+  isImageResolutionLinked,
+  imageAspectRatio,
+
+  startConversion,
+  cancelConversion
+} = useFileConversion();
+
 const isOpen = computed({
-  get: () => props.open,
-  set: (value) => emit('update:open', value),
+  get: () => isModalOpen.value,
+  set: (value) => {
+    isModalOpen.value = value;
+  },
 });
-
-// Video Settings
-const videoFormat = defineModel<'mp4' | 'webm' | 'mkv'>('videoFormat', { default: 'mp4' });
-const videoCodec = defineModel<string>('videoCodec', { default: 'avc1.640032' });
-const videoBitrateMbps = defineModel<number>('videoBitrateMbps', { default: 5 });
-const excludeAudio = defineModel<boolean>('excludeAudio', { default: false });
-const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
-const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { default: 128 });
-const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
-const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
-const videoWidth = defineModel<number>('videoWidth', { default: 1920 });
-const videoHeight = defineModel<number>('videoHeight', { default: 1080 });
-const videoFps = defineModel<number>('videoFps', { default: 30 });
-const resolutionFormat = defineModel<string>('resolutionFormat', { default: '1080p' });
-const orientation = defineModel<'landscape' | 'portrait'>('orientation', { default: 'landscape' });
-const aspectRatio = defineModel<string>('aspectRatio', { default: '16:9' });
-const isCustomResolution = defineModel<boolean>('isCustomResolution', { default: false });
-
-// Audio Settings
-const audioOnlyFormat = defineModel<'opus' | 'aac'>('audioOnlyFormat', { default: 'opus' });
-const audioOnlyCodec = defineModel<'opus' | 'aac'>('audioOnlyCodec', { default: 'opus' });
-const audioOnlyBitrateKbps = defineModel<number>('audioOnlyBitrateKbps', { default: 128 });
-const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
-const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
-const audioReverse = defineModel<boolean>('audioReverse', { default: false });
-
-// Image Settings
-const imageQuality = defineModel<number>('imageQuality', { default: 80 });
-const imageWidth = defineModel<number>('imageWidth', { default: 0 });
-const imageHeight = defineModel<number>('imageHeight', { default: 0 });
-const isImageResolutionLinked = defineModel<boolean>('isImageResolutionLinked', { default: true });
-const imageAspectRatio = defineModel<number>('imageAspectRatio', { default: 1 });
 
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
@@ -107,25 +104,27 @@ onMounted(() => {
 });
 
 const getPhaseLabel = computed(() => {
-  if (props.conversionPhase === 'encoding')
+  if (conversionPhase.value === 'encoding')
     return t('videoEditor.export.phaseEncoding', 'Encoding');
-  if (props.conversionPhase === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
+  if (conversionPhase.value === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
   return '';
 });
 
+const fileName = computed(() => targetEntry.value?.name ?? '');
+
 const outputFileName = computed(() => {
-  const baseName = props.fileName.replace(/\.[^.]+$/, '');
-  if (props.mediaType === 'video') {
+  const baseName = fileName.value.replace(/\.[^.]+$/, '');
+  if (mediaType.value === 'video') {
     return `${baseName}_converted.${videoFormat.value}`;
   }
-  if (props.mediaType === 'audio') {
+  if (mediaType.value === 'audio') {
     const ext = audioOnlyFormat.value;
     return `${baseName}_converted.${ext}`;
   }
-  if (props.mediaType === 'image') {
+  if (mediaType.value === 'image') {
     return `${baseName}_converted.webp`;
   }
-  return props.fileName;
+  return fileName.value;
 });
 
 watch(audioOnlyFormat, (nextFormat) => {
@@ -152,23 +151,22 @@ function onImageHeightChange(val: number) {
 }
 
 const modalTitle = computed(() => {
-  return props.isConverting ? '' : t('videoEditor.fileManager.convert.title', 'Convert File');
+  return isConverting.value ? '' : t('videoEditor.fileManager.convert.title', 'Convert File');
 });
 </script>
 
 <template>
   <AppModal
     v-model:open="isOpen"
-    :title="modalTitle"
-    :close-button="!isConverting"
-    :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
+    :title="t('videoEditor.export.convertFile', { file: fileName })"
+    class="max-w-3xl"
     :prevent-close="isConverting"
   >
-    <div class="space-y-6">
-      <div class="text-sm text-ui-text-muted">
+    <div class="flex flex-col gap-6">
+      <template v-if="mediaType === 'video'">
         {{ t('videoEditor.fileManager.convert.targetFile', 'Converting:') }}
         <span class="font-mono text-ui-text">{{ fileName }}</span>
-      </div>
+      </template>
 
       <div class="text-sm text-ui-text-muted">
         {{ t('videoEditor.fileManager.convert.outputFile', 'Output:') }}
@@ -195,7 +193,7 @@ const modalTitle = computed(() => {
               {{
                 excludeAudio
                   ? 'None'
-                  : `${audioCodec.toUpperCase()} (${audioBitrateKbps} Kbps, ${audioChannels}, ${audioSampleRate === 0 && props.originalAudioSampleRate ? props.originalAudioSampleRate : audioSampleRate || 'Original'} Hz)`
+                  : `${audioCodec.toUpperCase()} (${audioBitrateKbps} Kbps, ${audioChannels}, ${audioSampleRate === 0 && originalAudioSampleRate ? originalAudioSampleRate : audioSampleRate || 'Original'} Hz)`
               }}
             </div>
           </template>
@@ -208,8 +206,8 @@ const modalTitle = computed(() => {
               <span class="text-ui-text-muted">Audio:</span> {{ audioOnlyBitrateKbps }} Kbps,
               {{ audioChannels }},
               {{
-                audioSampleRate === 0 && props.originalAudioSampleRate
-                  ? props.originalAudioSampleRate
+                audioSampleRate === 0 && originalAudioSampleRate
+                  ? originalAudioSampleRate
                   : audioSampleRate || 'Original'
               }}
               Hz
@@ -232,7 +230,6 @@ const modalTitle = computed(() => {
             <span class="font-medium">{{ getPhaseLabel }}</span>
             <span class="font-mono">{{ Math.round(conversionProgress * 100) }}%</span>
           </div>
-          <UProgress :value="conversionProgress * 100" />
         </div>
       </template>
 
@@ -267,7 +264,7 @@ const modalTitle = computed(() => {
             :has-audio="true"
             :hide-audio-bitrate="true"
             :show-audio-advanced="true"
-            :original-audio-sample-rate="props.originalAudioSampleRate"
+            :original-audio-sample-rate="originalAudioSampleRate"
             :allow-original-audio-sample-rate="true"
             :is-loading-codec-support="isLoadingCodecSupport"
             :format-options="formatOptions"
@@ -292,7 +289,7 @@ const modalTitle = computed(() => {
             v-model:audio-channels="audioChannels"
             v-model:audio-sample-rate="audioSampleRate"
             v-model:audio-reverse="audioReverse"
-            :original-sample-rate="props.originalAudioSampleRate"
+            :original-sample-rate="originalAudioSampleRate"
             :allow-original-sample-rate="true"
             :disabled="isConverting"
           />
@@ -354,27 +351,29 @@ const modalTitle = computed(() => {
     </div>
 
     <template #footer>
-      <div class="flex items-center justify-end gap-2 w-full">
-        <UButton
-          v-if="isConverting"
-          variant="solid"
-          color="error"
-          :label="t('common.cancel', 'Cancel')"
-          @click="emit('cancel')"
-        />
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <template v-if="!isConverting">
+          <UButton variant="ghost" color="neutral" @click="isOpen = false">
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" @click="startConversion">
+            {{ t('videoEditor.export.convert', 'Convert') }}
+          </UButton>
+        </template>
         <template v-else>
-          <UButton
-            variant="ghost"
-            color="neutral"
-            :label="t('common.cancel', 'Cancel')"
-            @click="isOpen = false"
-          />
-          <UButton
-            variant="solid"
-            color="primary"
-            :label="t('videoEditor.fileManager.convert.start', 'Convert')"
-            @click="emit('convert')"
-          />
+          <div v-if="conversionProgress > 0" class="flex-1 flex items-center gap-4">
+            <div class="flex-1 h-2 bg-ui-bg-muted rounded-full overflow-hidden">
+              <div
+                class="h-full bg-primary-500 transition-all duration-200"
+                :style="{ width: `${conversionProgress * 100}%` }"
+              />
+            </div>
+            <span class="text-sm font-medium">{{ Math.round(conversionProgress * 100) }}%</span>
+            <span class="text-sm text-ui-text-muted">{{ getPhaseLabel }}</span>
+          </div>
+          <UButton variant="ghost" color="error" @click="cancelConversion">
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
         </template>
       </div>
     </template>
