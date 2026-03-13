@@ -144,7 +144,9 @@ export function buildVideoWorkerPayload(input: {
 }): WorkerVideoPayloadItem[] {
   const meta =
     Array.isArray(input.masterEffects) && input.masterEffects.length > 0
-      ? ([{ kind: 'meta', masterEffects: input.masterEffects }] satisfies WorkerTimelineMeta[])
+      ? ([
+          { kind: 'meta', masterEffects: cloneEffects(input.masterEffects) },
+        ] satisfies WorkerTimelineMeta[])
       : [];
 
   const tracks: WorkerTimelineTrack[] = (input.tracks ?? []).map((track) => ({

@@ -1,5 +1,6 @@
 import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
+import { cloneEffects } from '~/utils/video-editor/worker-clip-utils';
 
 export interface BuildEffectiveAudioClipItemsParams {
   audioTracks: TimelineTrack[];
@@ -37,10 +38,10 @@ export function buildEffectiveAudioClipItems(
       const path = item.source?.path;
       if (!path) continue;
 
-      const itemEffects = Array.isArray(item.effects) ? item.effects : [];
+      const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
       let combinedEffects = [...itemEffects];
-      if (trackAudioEffects.length > 0) combinedEffects.push(...trackAudioEffects);
-      if (masterAudioEffects.length > 0) combinedEffects.push(...masterAudioEffects);
+      if (trackAudioEffects.length > 0) combinedEffects.push(...cloneEffects(trackAudioEffects));
+      if (masterAudioEffects.length > 0) combinedEffects.push(...cloneEffects(masterAudioEffects));
 
       result.push({
         ...item,
@@ -68,10 +69,10 @@ export function buildEffectiveAudioClipItems(
       const path = item.source?.path;
       if (!path) continue;
 
-      const itemEffects = Array.isArray(item.effects) ? item.effects : [];
+      const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
       let combinedEffects = [...itemEffects];
-      if (trackAudioEffects.length > 0) combinedEffects.push(...trackAudioEffects);
-      if (masterAudioEffects.length > 0) combinedEffects.push(...masterAudioEffects);
+      if (trackAudioEffects.length > 0) combinedEffects.push(...cloneEffects(trackAudioEffects));
+      if (masterAudioEffects.length > 0) combinedEffects.push(...cloneEffects(masterAudioEffects));
 
       result.push({
         ...item,

@@ -9,13 +9,6 @@ import {
 export function cloneEffects<T>(effects: T): T {
   if (effects === null || effects === undefined) return effects;
   try {
-    if (typeof structuredClone === 'function') {
-      return structuredClone(effects);
-    }
-  } catch {
-    // ignore and fallback
-  }
-  try {
     return JSON.parse(JSON.stringify(effects)) as T;
   } catch {
     return effects;
@@ -24,13 +17,6 @@ export function cloneEffects<T>(effects: T): T {
 
 export function clonePlain<T>(value: T): T {
   if (value === null || value === undefined) return value;
-  try {
-    if (typeof structuredClone === 'function') {
-      return structuredClone(value);
-    }
-  } catch {
-    // ignore and fallback
-  }
   try {
     return JSON.parse(JSON.stringify(value)) as T;
   } catch {
