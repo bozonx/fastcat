@@ -5,6 +5,18 @@ interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
+interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
+  removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
+}
+
+interface ExtendedFileHandle extends FileSystemFileHandle {
+  createWritable(options?: unknown): Promise<FileSystemWritableFileStream>;
+}
+
+interface ExtendedHandle extends FileSystemHandle {
+  move?(parent: FileSystemDirectoryHandle, name: string): Promise<void>;
+}
+
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
 
@@ -112,7 +124,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!fileName) throw new Error(`Invalid file name in path: ${path}`);
 
     const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-    const writable = await (fileHandle as any).createWritable();
+    const writable = await (fileHandle as ExtendedFileHandle).createWritable();
     await writable.write(data);
     await writable.close();
   }
@@ -126,7 +138,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!name) return; // root or empty path
 
     try {
-      await (parentHandle as any).removeEntry(name, { recursive });
+      await (parentHandle as ExtendedDirectoryHandle).removeEntry(name, { recursive });
     } catch (e: unknown) {
       if ((e as Error).name !== 'NotFoundError') throw e;
     }
@@ -166,8 +178,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     const targetName = targetParts[targetParts.length - 1];
     if (!targetName) throw new Error(`Invalid target path: ${targetPath}`);
 
-    if ((sourceHandle as any).move) {
-      await (sourceHandle as any).move(targetParentHandle, targetName);
+    if ((sourceHandle as ExtendedHandle).move) {
+      await (sourceHandle as ExtendedHandle).move!(targetParentHandle, targetName);
     } else {
       throw new Error("Moving is not supported by this browser's OPFS implementation");
     }
@@ -228,20 +240,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!fileName) throw new Error(`Invalid file name in path: ${path}`);
 
     const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-    const writable = await (fileHandle as any).createWritable();
-
-    // Convert FileSystemWritableFileStream to a standard WritableStream for compatibility
-    return new WritableStream({
-      write: async (chunk) => {
-        await writable.write(chunk);
-      },
-      close: async () => {
-        await writable.close();
-      },
-      abort: async (err) => {
-        await writable.abort(err);
-      },
-    });
+    return await (fileHandle as ExtendedFileHandle).createWritable();
   }
 
   async writeJson(path: string, data: unknown): Promise<void> {
