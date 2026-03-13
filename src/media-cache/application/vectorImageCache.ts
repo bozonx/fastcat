@@ -1,7 +1,6 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
-import { getProjectCacheSegments } from '~/utils/vardata-paths';
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
 
@@ -77,10 +76,7 @@ async function ensureVectorImageCacheRoot(input: {
     })) as FileSystemDirectoryHandle;
   }
 
-  return await (input.create ? ensureDirectory : getDirectory)(input.workspaceHandle, [
-    ...getProjectCacheSegments(input.projectId),
-    'vector_image',
-  ]);
+  throw new Error('Vector image cache requires resolved storage topology');
 }
 
 async function getDirectory(

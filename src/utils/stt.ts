@@ -6,6 +6,8 @@ import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/exter
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+
 export interface SttTranscriptionRequest {
   file: File | FileSystemFileHandle;
   filePath: string;
@@ -16,6 +18,7 @@ export interface SttTranscriptionRequest {
   projectId: string;
   userSettings: FastCatUserSettings;
   workspaceHandle: FileSystemDirectoryHandle;
+  resolvedStorageTopology: ResolvedStorageTopology;
 }
 
 export interface SttTranscriptionResult {
@@ -162,6 +165,7 @@ export async function transcribeProjectAudioFile(
 
   const cacheRepository = createTranscriptionCacheRepository({
     workspaceDir: input.workspaceHandle,
+    topology: input.resolvedStorageTopology,
     projectId: input.projectId,
   });
   const cachedRecord = await cacheRepository.load(cacheKey);

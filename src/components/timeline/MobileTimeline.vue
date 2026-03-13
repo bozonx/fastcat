@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import type { TimelineClipActionPayload } from '~/timeline/types';
+import type {
+  TimelineClipActionPayload,
+  TimelineMoveItemPayload,
+  TimelineTrimItemPayload,
+} from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -79,6 +83,14 @@ const {
   startMoveItem,
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
+
+function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) {
+  startMoveItem(event, payload.trackId, payload.itemId, payload.startUs);
+}
+
+function onStartTrimItem(event: PointerEvent, payload: TimelineTrimItemPayload) {
+  startTrimItem(event, payload);
+}
 
 function getViewportWidth(): number {
   return scrollEl.value?.clientWidth ?? 0;
@@ -284,8 +296,8 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           :move-preview="movePreview"
           is-mobile
           @select-item="selectItem"
-          @start-move-item="startMoveItem"
-          @start-trim-item="startTrimItem"
+          @start-move-item="onStartMoveItem"
+          @start-trim-item="onStartTrimItem"
           @clip-action="onClipAction"
         />
 

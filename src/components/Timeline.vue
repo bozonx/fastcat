@@ -17,6 +17,7 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
 import { timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
 import { formatZoomMultiplier, timelineZoomPositionToScale } from '~/utils/zoom';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 
@@ -189,18 +190,61 @@ onUnmounted(() => {
 });
 
 function onTimelineWheel(e: WheelEvent) {
-  const isShift = isLayer1Active(e, workspaceStore.userSettings);
-  const isCtrl = e.ctrlKey || e.metaKey;
+  if (!scrollEl.value) return;
 
-  if (isCtrl) {
+  const settings = workspaceStore.userSettings.mouse.timeline;
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
+  const secondary = isSecondaryWheel(e);
+  const action = secondary
+    ? isShift
+      ? settings.wheelSecondaryShift
+      : settings.wheelSecondary
+    : isShift
+      ? settings.wheelShift
+      : settings.wheel;
+
+  if (action === 'none') {
     e.preventDefault();
-    handleZoomWheel(e.deltaY > 0 ? -5 : 5);
     return;
   }
 
-  if (isShift && scrollEl.value) {
+  const delta = getWheelDelta(e);
+
+  if (action === 'scroll_vertical') {
+    if (!isShift && !secondary) return;
     e.preventDefault();
-    scrollEl.value.scrollLeft += e.deltaY;
+    scrollEl.value.scrollTop += delta;
+    return;
+  }
+
+  if (action === 'scroll_horizontal') {
+    if (secondary && !isShift) return;
+    e.preventDefault();
+    scrollEl.value.scrollLeft += delta;
+    return;
+  }
+
+  if (action === 'zoom_horizontal') {
+    e.preventDefault();
+    handleZoomWheel(delta > 0 ? -5 : 5);
+    return;
+  }
+
+  if (action === 'seek_frame') {
+    e.preventDefault();
+    const frameDurationUs = 1_000_000 / fps.value;
+    timelineStore.setCurrentTimeUs(
+      Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * frameDurationUs)),
+    );
+    return;
+  }
+
+  if (action === 'seek_second') {
+    e.preventDefault();
+    timelineStore.setCurrentTimeUs(
+      Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * 1_000_000)),
+    );
+    return;
   }
 }
 

@@ -1,5 +1,10 @@
-import { getProjectTranscriptionsSegments } from '~/utils/vardata-paths';
-import { readJsonFromFileHandle, writeJsonToFileHandle, type DirectoryHandleLike } from './fastcat-fs';
+import {
+  readJsonFromFileHandle,
+  writeJsonToFileHandle,
+  type DirectoryHandleLike,
+} from './fastcat-fs';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 
 export interface TranscriptionCacheRecord {
   key: string;
@@ -48,14 +53,22 @@ function sortRecordsByCreatedAtDesc(
 
 export function createTranscriptionCacheRepository(params: {
   workspaceDir: DirectoryHandleLike;
+  topology: ResolvedStorageTopology;
   projectId: string;
 }): TranscriptionCacheRepository {
   async function getCacheDir(): Promise<DirectoryHandleLike | null> {
     if (!params.projectId.trim()) return null;
-    return await ensureDirectoryChain({
-      baseDir: params.workspaceDir,
-      segments: getProjectTranscriptionsSegments(params.projectId),
-    });
+    try {
+      return await ensureResolvedProjectTempDir({
+        workspaceHandle: params.workspaceDir,
+        topology: params.topology,
+        projectId: params.projectId,
+        leafSegments: ['frame-cache', 'transcriptions'],
+        create: true,
+      });
+    } catch {
+      return null;
+    }
   }
 
   return {

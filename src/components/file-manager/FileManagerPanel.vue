@@ -175,7 +175,7 @@ async function submitTranscription() {
     const mediaType = getMediaTypeFromFilename(entry.name);
     const file = await vfs.getFile(entry.path);
     if (!file) throw new Error('Failed to access file');
-    const result = await transcribeProjectAudioFile({
+    const request: SttTranscriptionRequest = {
       file,
       filePath: entry.path,
       fileName: entry.name,
@@ -185,10 +185,13 @@ async function submitTranscription() {
         typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
           ? runtimeConfig.public.fastcatPublicadorBaseUrl
           : '',
-      projectId: projectStore.currentProjectId,
+      projectId: projectStore.currentProjectId!,
       userSettings: workspaceStore.userSettings,
-      workspaceHandle: workspaceStore.workspaceHandle,
-    });
+      workspaceHandle: workspaceStore.workspaceHandle!,
+      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
+    };
+
+    const result = await transcribeProjectAudioFile(request);
 
     sttTranscriptionModalOpen.value = false;
 

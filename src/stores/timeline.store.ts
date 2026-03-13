@@ -612,6 +612,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     const repository = createTranscriptionCacheRepository({
       workspaceDir: workspaceHandle,
+      topology: workspaceStore.resolvedStorageTopology,
       projectId,
     });
 
@@ -748,6 +749,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     const repository = createTranscriptionCacheRepository({
       workspaceDir: workspaceHandle,
+      topology: workspaceStore.resolvedStorageTopology,
       projectId,
     });
     const records = await repository.list();

@@ -305,6 +305,7 @@ async function loadCachedTranscription() {
   try {
     const repository = createTranscriptionCacheRepository({
       workspaceDir: workspaceStore.workspaceHandle,
+      topology: workspaceStore.resolvedStorageTopology,
       projectId: projectStore.currentProjectId,
     });
     const records = await repository.list();
@@ -403,6 +404,7 @@ async function submitAudioTranscription() {
       projectId: projectStore.currentProjectId,
       userSettings: workspaceStore.userSettings,
       workspaceHandle: workspaceStore.workspaceHandle,
+      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
     });
 
     latestTranscriptionText.value = extractTranscriptionText(result.record.response);
