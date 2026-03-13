@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
-import { useDebounceFn, useLocalStorage, useResizeObserver } from '@vueuse/core';
+import { useDebounceFn, useEventListener, useLocalStorage, useResizeObserver } from '@vueuse/core';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -181,13 +181,7 @@ function onGlobalTimelineClick(e: MouseEvent) {
   }
 }
 
-onMounted(() => {
-  window.addEventListener('click', onGlobalTimelineClick, { capture: true });
-});
-
-onUnmounted(() => {
-  window.removeEventListener('click', onGlobalTimelineClick, { capture: true });
-});
+useEventListener(window, 'click', onGlobalTimelineClick, { capture: true });
 
 function onTimelineWheel(e: WheelEvent) {
   if (!scrollEl.value) return;

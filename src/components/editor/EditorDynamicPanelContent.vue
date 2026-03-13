@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import Project from '~/components/Project.vue';
 import PropertiesPanel from '~/components/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
@@ -6,6 +7,7 @@ import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vu
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
+import EditorPanelHeader from '~/components/editor/EditorPanelHeader.vue';
 import type { DynamicPanel } from '~/stores/editorView.store';
 import type { PanelFocusId } from '~/stores/focus.store';
 
@@ -34,6 +36,19 @@ function onClose() {
 function onFocus() {
   emit('focus', props.panel.id);
 }
+
+const mediaIcon = computed(() => {
+  switch (props.panel.mediaType) {
+    case 'image':
+      return 'i-heroicons-photo';
+    case 'video':
+      return 'i-heroicons-film';
+    case 'audio':
+      return 'i-heroicons-musical-note';
+    default:
+      return 'i-heroicons-document';
+  }
+});
 </script>
 
 <template>
@@ -52,41 +67,13 @@ function onFocus() {
     v-else-if="panel.type === 'media'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative pt-8 border border-ui-border"
   >
-    <div
-      class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
-      draggable="true"
-      @dragstart="onDragStart"
-      @dblclick="onClose"
-    >
-      <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-        <UIcon
-          v-if="panel.mediaType === 'image'"
-          name="i-heroicons-photo"
-          class="w-4 h-4 text-ui-text-muted shrink-0"
-        />
-        <UIcon
-          v-else-if="panel.mediaType === 'video'"
-          name="i-heroicons-film"
-          class="w-4 h-4 text-ui-text-muted shrink-0"
-        />
-        <UIcon
-          v-else-if="panel.mediaType === 'audio'"
-          name="i-heroicons-musical-note"
-          class="w-4 h-4 text-ui-text-muted shrink-0"
-        />
-        <h3 class="font-bold truncate min-w-0" :title="panel.title">
-          {{ panel.title }}
-        </h3>
-      </div>
-      <UButton
-        class="shrink-0"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-x-mark"
-        @click="onClose"
-      />
-    </div>
+    <EditorPanelHeader
+      :title="panel.title || ''"
+      :icon="mediaIcon"
+      :is-absolute="true"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
     <div class="flex-1 overflow-hidden min-h-0 relative" @pointerdown.capture="onFocus">
       <MediaPanelWrapper
         :file-path="panel.filePath || ''"
@@ -99,27 +86,13 @@ function onFocus() {
     v-else-if="panel.type === 'text'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col pt-8 relative border border-ui-border"
   >
-    <div
-      class="absolute top-0 left-0 right-0 flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm z-20 bg-ui-bg-elevated cursor-grab active:cursor-grabbing"
-      draggable="true"
-      @dragstart="onDragStart"
-      @dblclick="onClose"
-    >
-      <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-        <UIcon name="i-heroicons-bars-2" class="w-4 h-4 text-ui-text-muted shrink-0" />
-        <h3 class="font-bold truncate min-w-0" :title="panel.title">
-          {{ panel.title }}
-        </h3>
-      </div>
-      <UButton
-        class="shrink-0"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-x-mark"
-        @click="onClose"
-      />
-    </div>
+    <EditorPanelHeader
+      :title="panel.title || ''"
+      icon="i-heroicons-bars-2"
+      :is-absolute="true"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
     <div class="flex-1 overflow-hidden min-h-0 relative" @pointerdown.capture="onFocus">
       <TextEditor
         class="absolute inset-0 h-full w-full border-none"
@@ -134,27 +107,12 @@ function onFocus() {
     v-else-if="panel.type === 'history'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
-    <div
-      class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
-      draggable="true"
-      @dragstart="onDragStart"
-      @dblclick="onClose"
-    >
-      <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-        <UIcon name="i-heroicons-clock" class="w-4 h-4 text-ui-text-muted shrink-0" />
-        <h3 class="font-bold truncate min-w-0" :title="panel.title || 'History'">
-          {{ panel.title || 'History' }}
-        </h3>
-      </div>
-      <UButton
-        class="shrink-0"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-x-mark"
-        @click="onClose"
-      />
-    </div>
+    <EditorPanelHeader
+      :title="panel.title || 'History'"
+      icon="i-heroicons-clock"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
     <div class="flex-1 overflow-hidden min-h-0">
       <ProjectHistory class="h-full" />
     </div>
@@ -163,27 +121,12 @@ function onFocus() {
     v-else-if="panel.type === 'effects'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
-    <div
-      class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated cursor-grab active:cursor-grabbing shrink-0"
-      draggable="true"
-      @dragstart="onDragStart"
-      @dblclick="onClose"
-    >
-      <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
-        <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-ui-text-muted shrink-0" />
-        <h3 class="font-bold truncate min-w-0" :title="panel.title || 'Effects'">
-          {{ panel.title || 'Effects' }}
-        </h3>
-      </div>
-      <UButton
-        class="shrink-0"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-x-mark"
-        @click="onClose"
-      />
-    </div>
+    <EditorPanelHeader
+      :title="panel.title || 'Effects'"
+      icon="i-heroicons-sparkles"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
     <div class="flex-1 overflow-hidden min-h-0">
       <ProjectEffects class="h-full" />
     </div>

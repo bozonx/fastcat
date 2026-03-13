@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, toRaw, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import {
-  useFilesPageStore,
-  type FileViewMode,
-  type FileSortField,
-  type SortOrder,
-} from '~/stores/filesPage.store';
+import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
 import { useProjectStore } from '~/stores/project.store';
@@ -18,11 +13,9 @@ import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import {
   getMediaTypeFromFilename,
-  getIconForMediaType,
   getMimeTypeFromFilename,
   isOpenableProjectFileName,
 } from '~/utils/media-types';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
@@ -31,15 +24,12 @@ import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
   REMOTE_FILE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import {
   createTimelineCommand,
@@ -77,7 +67,6 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
-const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const fileManager = useFileManager();
 const proxyStore = useProxyStore();
 const workspaceStore = useWorkspaceStore();
@@ -121,7 +110,6 @@ const props = defineProps<{
 }>();
 const {
   readDirectory,
-  getFileIcon,
   loadProjectDirectory,
   createFolder,
   renameEntry,
@@ -484,65 +472,46 @@ const {
   },
 });
 
-async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
-  if (Array.isArray(entry)) {
-    if (action === 'delete') {
-      onFileActionBase('delete', entry);
-      return;
+function handleBatchAction(action: string, entries: FsEntry[]): boolean {
+  const delegated = ['delete', 'createProxy', 'cancelProxy', 'deleteProxy'] as const;
+  if ((delegated as readonly string[]).includes(action)) {
+    onFileActionBase(action as (typeof delegated)[number], entries);
+    return true;
+  }
+  if (action === 'extractAudio') {
+    for (const e of entries) {
+      if (e.kind === 'file') void extractAudio(e);
     }
-    if (action === 'createProxy') {
-      onFileActionBase('createProxy', entry);
-      return;
-    }
-    if (action === 'cancelProxy') {
-      onFileActionBase('cancelProxy', entry);
-      return;
-    }
-    if (action === 'deleteProxy') {
-      onFileActionBase('deleteProxy', entry);
-      return;
-    }
-    if (action === 'extractAudio') {
-      for (const e of entry) {
-        if (e.kind === 'file') {
-          void extractAudio(e);
-        }
+    return true;
+  }
+  return false;
+}
+
+async function handleSingleFileAction(action: string, entry: FsEntry): Promise<void> {
+  if (action === 'createProxyForFolder') {
+    if (entry.kind !== 'directory' || entry.path === undefined) return;
+    const dirHandle = await projectStore.getDirectoryHandleByPath(entry.path);
+    if (!dirHandle) return;
+    void proxyStore.generateProxiesForFolder({ dirHandle, dirPath: entry.path });
+    return;
+  }
+
+  if (action === 'cancelProxyForFolder') {
+    if (entry.kind !== 'directory' || entry.path === undefined) return;
+    for (const p of proxyStore.generatingProxies) {
+      if (p.startsWith(`${entry.path}/`)) {
+        const rel = p.slice(entry.path.length + 1);
+        if (!rel.includes('/')) void proxyStore.cancelProxyGeneration(p);
       }
-      return;
     }
     return;
   }
 
-  if (action === 'createProxyForFolder') {
-    if (entry.kind === 'directory' && entry.path !== undefined) {
-      const dirHandle = await projectStore.getDirectoryHandleByPath(entry.path);
-      if (!dirHandle) return;
-      void proxyStore.generateProxiesForFolder({
-        dirHandle,
-        dirPath: entry.path,
-      });
-    }
-  } else if (action === 'cancelProxyForFolder') {
-    if (entry.kind === 'directory' && entry.path !== undefined) {
-      const generatingProxies = proxyStore.generatingProxies;
-      for (const p of generatingProxies) {
-        if (p.startsWith(`${entry.path}/`)) {
-          const rel = p.slice(entry.path.length + 1);
-          if (!rel.includes('/')) {
-            void proxyStore.cancelProxyGeneration(p);
-          }
-        }
-      }
-    }
-  } else if (action === 'openAsPanelCut' || action === 'openAsPanelSound') {
-    if (entry.kind !== 'file') return;
-    if (!isOpenableProjectFileName(entry.name)) return;
-
-    if (action === 'openAsPanelCut') {
-      projectStore.goToCut();
-    } else {
-      projectStore.goToSound();
-    }
+  if (action === 'openAsPanelCut' || action === 'openAsPanelSound') {
+    if (entry.kind !== 'file' || !isOpenableProjectFileName(entry.name)) return;
+    const panelTarget = action === 'openAsPanelCut' ? 'cut' : 'sound';
+    if (action === 'openAsPanelCut') projectStore.goToCut();
+    else projectStore.goToSound();
 
     const type = getMediaTypeFromFilename(entry.name);
     if (type === 'text') {
@@ -550,80 +519,76 @@ async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
         try {
           const file = await vfs.readFile(entry.path);
           const content = await file.text();
-          projectStore.addTextPanel(
-            entry.path,
-            content,
-            entry.name,
-            undefined,
-            undefined,
-            action === 'openAsPanelCut' ? 'cut' : 'sound',
-          );
+          projectStore.addTextPanel(entry.path, content, entry.name, undefined, undefined, panelTarget);
         } catch {
-          projectStore.addTextPanel(
-            entry.path,
-            '',
-            entry.name,
-            undefined,
-            undefined,
-            action === 'openAsPanelCut' ? 'cut' : 'sound',
-          );
+          projectStore.addTextPanel(entry.path, '', entry.name, undefined, undefined, panelTarget);
         }
       })();
     } else if (type === 'video' || type === 'audio' || type === 'image') {
-      projectStore.addMediaPanel(
-        entry,
-        type,
-        entry.name,
-        undefined,
-        undefined,
-        action === 'openAsPanelCut' ? 'cut' : 'sound',
-      );
+      projectStore.addMediaPanel(entry, type, entry.name, undefined, undefined, panelTarget);
     }
-  } else if (action === 'openAsProjectTab') {
-    if (entry.kind !== 'file' || !entry.path) return;
-    if (!isOpenableProjectFileName(entry.name)) return;
+    return;
+  }
+
+  if (action === 'openAsProjectTab') {
+    if (entry.kind !== 'file' || !entry.path || !isOpenableProjectFileName(entry.name)) return;
     const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
     setActiveTab(tabId);
-  } else if (action === 'createFolder') {
+    return;
+  }
+
+  if (action === 'createFolder') {
     const existingNames = folderEntries.value.map((e) => e.name);
     await onFileActionBase('createFolder', entry, () => existingNames);
     await loadFolderContent();
-  } else if (action === 'createTimeline') {
-    if (entry.kind === 'directory') {
-      uiStore.pendingFsEntryCreateTimeline = entry;
-    }
-  } else if (action === 'createMarkdown') {
-    if (entry.kind === 'directory') {
-      uiStore.pendingFsEntryCreateMarkdown = entry;
-    }
-  } else if (action === 'convertFile') {
-    if (entry.kind === 'file') {
-      fileConversion.openConversionModal(entry);
-    }
-  } else if (action === 'uploadRemote') {
+    return;
+  }
+
+  if (action === 'createTimeline') {
+    if (entry.kind === 'directory') uiStore.pendingFsEntryCreateTimeline = entry;
+    return;
+  }
+
+  if (action === 'createMarkdown') {
+    if (entry.kind === 'directory') uiStore.pendingFsEntryCreateMarkdown = entry;
+    return;
+  }
+
+  if (action === 'convertFile') {
+    if (entry.kind === 'file') fileConversion.openConversionModal(entry);
+    return;
+  }
+
+  if (action === 'uploadRemote') {
     if (entry.kind === 'file' && entry.source !== 'remote') {
       uiStore.remoteExchangeLocalEntry = entry;
       uiStore.remoteExchangeModalOpen = true;
     }
-  } else if (action === 'transcribe') {
-    openTranscriptionModal(entry);
-  } else if (action === 'delete') {
-    onFileActionBase('delete', entry);
-  } else if (action === 'rename') {
-    onFileActionBase('rename', entry);
-  } else if (action === 'createProxy') {
-    onFileActionBase('createProxy', entry);
-  } else if (action === 'cancelProxy') {
-    onFileActionBase('cancelProxy', entry);
-  } else if (action === 'deleteProxy') {
-    onFileActionBase('deleteProxy', entry);
-  } else if (action === 'upload') {
-    onFileActionBase('upload', entry);
-  } else if (action === 'extractAudio') {
-    if (entry.kind === 'file') {
-      void extractAudio(entry);
-    }
+    return;
   }
+
+  if (action === 'transcribe') {
+    openTranscriptionModal(entry);
+    return;
+  }
+
+  if (action === 'extractAudio') {
+    if (entry.kind === 'file') void extractAudio(entry);
+    return;
+  }
+
+  const delegated = ['delete', 'rename', 'createProxy', 'cancelProxy', 'deleteProxy', 'upload'] as const;
+  if ((delegated as readonly string[]).includes(action)) {
+    onFileActionBase(action as (typeof delegated)[number], entry);
+  }
+}
+
+async function onFileAction(action: string, entry: FsEntry | FsEntry[]): Promise<void> {
+  if (Array.isArray(entry)) {
+    handleBatchAction(action, entry);
+    return;
+  }
+  await handleSingleFileAction(action, entry);
 }
 
 async function refreshFileTree() {
@@ -1572,37 +1537,32 @@ function navigateToFolder(index: number) {
   }
 }
 
-function navigateBack() {
-  if (parentFolders.value.length > 1) {
-    const parentIndex = parentFolders.value.length - 2;
-    if (isRemoteMode.value && isRemoteFsEntry(parentFolders.value[parentIndex])) {
-      const target = parentFolders.value[parentIndex] as RemoteFsEntry;
-      remoteCurrentFolder.value = target;
-      void loadFolderContent();
-      void loadParentFolders();
-      setSelectedFsEntry(target);
-      return;
-    }
+function navigateToParentByIndex(parentIndex: number): void {
+  const target = parentFolders.value[parentIndex];
+  if (!target) return;
 
-    filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
+  if (isRemoteMode.value && isRemoteFsEntry(target)) {
+    remoteCurrentFolder.value = target as RemoteFsEntry;
+    void loadFolderContent();
+    void loadParentFolders();
+    setSelectedFsEntry(target as RemoteFsEntry);
+    return;
+  }
+
+  filesPageStore.selectFolder(target as FsEntry);
+}
+
+function navigateBack(): void {
+  if (parentFolders.value.length > 1) {
+    navigateToParentByIndex(parentFolders.value.length - 2);
   } else {
     void navigateToRoot();
   }
 }
 
-function navigateUp() {
+function navigateUp(): void {
   if (parentFolders.value.length > 1) {
-    const parentIndex = parentFolders.value.length - 2;
-    if (isRemoteMode.value && isRemoteFsEntry(parentFolders.value[parentIndex])) {
-      const target = parentFolders.value[parentIndex] as RemoteFsEntry;
-      remoteCurrentFolder.value = target;
-      void loadFolderContent();
-      void loadParentFolders();
-      setSelectedFsEntry(target);
-      return;
-    }
-
-    filesPageStore.selectFolder(parentFolders.value[parentIndex] as FsEntry);
+    navigateToParentByIndex(parentFolders.value.length - 2);
   } else if (parentFolders.value.length === 1) {
     void navigateToRoot();
   }
@@ -1810,13 +1770,7 @@ async function submitTranscription() {
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
           >
             <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
-            <span>
-              {{
-                isRemoteMode
-                  ? t('common.empty', 'Folder is empty')
-                  : t('common.empty', 'Folder is empty')
-              }}
-            </span>
+            <span>{{ t('common.empty', 'Folder is empty') }}</span>
           </div>
 
           <!-- Grid View -->
