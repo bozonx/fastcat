@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { watch, computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
-import { useResizeObserver } from '@vueuse/core';
 import { useSelectionStore } from '~/stores/selection.store';
 import { isSecondaryWheel } from '~/utils/mouse';
 import {
-  formatRulerTime,
   truncateRulerTooltip,
   useTimelineRulerPresentation,
 } from '~/composables/timeline/useTimelineRulerPresentation';
 import { useTimelineRulerMenus } from '~/composables/timeline/useTimelineRulerMenus';
 import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRulerMarkerDrag';
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
+import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 
 const { t } = useI18n();
 
@@ -50,74 +49,26 @@ const majorTickWidth = 1.25;
 const subTickWidth = 0.8;
 // ---------------------------------------------------------
 
-let drawRafId: number | null = null;
-function scheduleDraw() {
-  if (drawRafId !== null) return;
-  drawRafId = requestAnimationFrame(() => {
-    drawRafId = null;
-    draw();
-  });
-}
-
-onMounted(() => {
-  // Theme override removed to favor manual adjustment above
-});
-
-// Always read width from own container to match canvas CSS dimensions exactly.
-// Using scrollEl width causes canvas stretching when a vertical scrollbar is present,
-// because scrollEl.contentRect.width < container CSS width.
-useResizeObserver(containerRef, (entries) => {
-  const entry = entries[0];
-  if (entry) {
-    width.value = entry.contentRect.width;
-    height.value = entry.contentRect.height;
-    scheduleDraw();
-  }
-});
-
-function onScroll() {
-  if (props.scrollEl) {
-    scrollLeft.value = props.scrollEl.scrollLeft;
-    if (drawRafId !== null) {
-      cancelAnimationFrame(drawRafId);
-      drawRafId = null;
-    }
-    draw();
-  }
-}
-
-watch(
-  () => props.scrollEl,
-  (el, oldEl) => {
-    if (oldEl) {
-      oldEl.removeEventListener('scroll', onScroll);
-    }
-    if (el) {
-      el.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
-    }
-  },
-  { immediate: true },
-);
-
-onUnmounted(() => {
-  if (props.scrollEl) {
-    props.scrollEl.removeEventListener('scroll', onScroll);
-  }
-
-  clearMarkerPointerListeners();
-  clearSelectionPointerListeners();
-  if (drawRafId !== null) {
-    cancelAnimationFrame(drawRafId);
-    drawRafId = null;
-  }
-});
-
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
 
-watch([fps, zoom, width, height, scrollLeft], () => {
+const { scheduleDraw } = useTimelineRulerDraw({
+  containerRef,
+  canvasRef,
+  scrollEl: computed(() => props.scrollEl),
+  width,
+  height,
+  scrollLeft,
+  zoom,
+  fps,
+  textColor,
+  tickColor,
+  majorTickWidth,
+  subTickWidth,
+});
+
+watch([fps, zoom], () => {
   scheduleDraw();
 });
 
@@ -147,7 +98,7 @@ function onContextMenuOpenChange(val: boolean) {
   if (!val) contextClickTimeUs.value = 0;
 }
 
-const { clearMarkerPointerListeners, onMarkerPointerDown } = useTimelineRulerMarkerDrag({
+const { onMarkerPointerDown } = useTimelineRulerMarkerDrag({
   markers,
   zoom,
   selectMarker,
@@ -155,7 +106,6 @@ const { clearMarkerPointerListeners, onMarkerPointerDown } = useTimelineRulerMar
 });
 
 const {
-  clearSelectionPointerListeners,
   isDraggingSelectionRange,
   startSelectionRangeCreate,
   startSelectionRangeDrag,
@@ -191,108 +141,6 @@ const {
   selectMarker,
   deleteMarker,
 });
-
-function draw() {
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const dpr = window.devicePixelRatio || 1;
-  const w = width.value;
-  const h = height.value;
-
-  if (w === 0 || h === 0) return;
-
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr, dpr);
-
-  ctx.clearRect(0, 0, w, h);
-
-  const currentZoom = zoom.value;
-  const currentFps = fps.value;
-  const pxPerSec = zoomToPxPerSecond(currentZoom);
-  const pxPerFrame = pxPerSec / currentFps;
-
-  const startPx = scrollLeft.value;
-  const endPx = startPx + w;
-  const startUs = pxToTimeUs(startPx, currentZoom);
-  const endUs = pxToTimeUs(endPx, currentZoom);
-
-  const MIN_DIST_PX = 90;
-  const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
-  let mainStepS = timeStepsS[timeStepsS.length - 1]!;
-  for (const step of timeStepsS) {
-    if (step * pxPerSec >= MIN_DIST_PX) {
-      mainStepS = step;
-      break;
-    }
-  }
-
-  ctx.fillStyle = textColor;
-  ctx.strokeStyle = tickColor;
-  ctx.lineWidth = majorTickWidth;
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-
-  const startS = Math.floor(startUs / 1_000_000 / mainStepS) * mainStepS;
-  const endS = Math.ceil(endUs / 1_000_000);
-
-  ctx.beginPath();
-  for (let s = startS; s <= endS; s += mainStepS) {
-    const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
-
-    if (x >= -50 && x <= w + 50) {
-      ctx.moveTo(x, h - 12);
-      ctx.lineTo(x, h);
-      ctx.fillText(formatRulerTime(s * 1_000_000, currentFps), x, 4);
-    }
-  }
-  ctx.stroke();
-
-  // Draw sub-ticks and frame lines (thinner)
-  ctx.lineWidth = subTickWidth;
-  ctx.beginPath();
-
-  for (let s = startS; s <= endS; s += mainStepS) {
-    if (mainStepS === 1) {
-      let frameStep = 1;
-      if (pxPerFrame < 5) {
-        frameStep = Math.ceil(5 / pxPerFrame);
-      }
-
-      for (let f = 1; f < currentFps; f += frameStep) {
-        const frameX =
-          Math.round(
-            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
-          ) + 0.5;
-        if (frameX >= -50 && frameX <= w + 50) {
-          ctx.moveTo(frameX, h - 5);
-          ctx.lineTo(frameX, h);
-        }
-      }
-    } else {
-      let subStepS = 1;
-      if (mainStepS >= 60) subStepS = 10;
-      else if (mainStepS >= 10) subStepS = 5;
-      else if (mainStepS >= 5) subStepS = 1;
-
-      for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
-        const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
-        if (subX >= -50 && subX <= w + 50) {
-          ctx.moveTo(subX, h - 5);
-          ctx.lineTo(subX, h);
-        }
-      }
-    }
-  }
-  ctx.stroke();
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-}
 
 function getTimeUsFromMouseEvent(e: MouseEvent): number {
   const rect = containerRef.value?.getBoundingClientRect();

@@ -3,6 +3,7 @@ import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { toStoragePathSegments } from '~/utils/storage-topology';
 import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
+import { renameDirectoryFallback } from '~/file-manager/fs/ops';
 
 function getErrorMessage(e: unknown, fallback: string): string {
   if (!e || typeof e !== 'object') return fallback;
@@ -132,6 +133,10 @@ export function createWorkspaceProjectsModule(params: {
   async function renameProject(oldName: string, newName: string) {
     if (!params.projectsHandle.value) return;
     if (oldName === newName) return;
+    if (params.projects.value.includes(newName)) {
+      params.error.value = `Project with name "${newName}" already exists`;
+      return;
+    }
 
     try {
       const oldHandle = await params.projectsHandle.value.getDirectoryHandle(oldName);
@@ -139,8 +144,12 @@ export function createWorkspaceProjectsModule(params: {
       if (typeof (oldHandle as any).move === 'function') {
         await (oldHandle as any).move(newName);
       } else {
-        // Fallback or error
-        throw new Error('Directory move is not supported in this browser');
+        await renameDirectoryFallback({
+          sourceDirHandle: oldHandle,
+          sourceName: oldName,
+          parentDirHandle: params.projectsHandle.value,
+          newName,
+        });
       }
 
       await loadProjects();

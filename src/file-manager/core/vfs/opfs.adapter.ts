@@ -22,7 +22,10 @@ function normalizeWritableData(data: Blob | Uint8Array | string): Blob | Uint8Ar
     return data;
   }
 
-  const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+  // FileSystemWritableFileStream.write doesn't support SharedArrayBuffer.
+  // We must ensure the buffer is a regular ArrayBuffer.
+  const buffer = new ArrayBuffer(data.byteLength);
+  new Uint8Array(buffer).set(data);
   return new Uint8Array(buffer);
 }
 
@@ -134,7 +137,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
     const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
     const writable = await (fileHandle as ExtendedFileHandle).createWritable();
-    await writable.write(normalizeWritableData(data));
+    await writable.write(normalizeWritableData(data) as any);
     await writable.close();
   }
 
@@ -190,7 +193,12 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if ((sourceHandle as ExtendedHandle).move) {
       await (sourceHandle as ExtendedHandle).move!(targetParentHandle, targetName);
     } else {
-      throw new Error("Moving is not supported by this browser's OPFS implementation");
+      if (sourceHandle.kind === 'directory') {
+        await this.copyDirectory(sourcePath, targetPath);
+      } else {
+        await this.copyFile(sourcePath, targetPath);
+      }
+      await this.deleteEntry(sourcePath, true);
     }
   }
 
@@ -249,7 +257,9 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!fileName) throw new Error(`Invalid file name in path: ${path}`);
 
     const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-    return await (fileHandle as ExtendedFileHandle).createWritable();
+    return (await (
+      fileHandle as ExtendedFileHandle
+    ).createWritable()) as unknown as WritableStream<Uint8Array>;
   }
 
   async writeJson(path: string, data: unknown): Promise<void> {
