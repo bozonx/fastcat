@@ -33,12 +33,6 @@ export interface FastCatProjectSettings {
       bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
       exportAlpha: boolean;
-      metadata: {
-        title: string;
-        description: string;
-        author: string;
-        tags: string;
-      };
     };
   };
   monitor: {
@@ -85,12 +79,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
-      metadata: {
-        title: '',
-        description: '',
-        author: '',
-        tags: '',
-      },
     },
   },
   monitor: {
@@ -142,12 +130,6 @@ function getProjectSettingsFromUserDefaults(
         bitrateMode: exportPreset.bitrateMode,
         keyframeIntervalSec: exportPreset.keyframeIntervalSec,
         exportAlpha: exportPreset.exportAlpha,
-        metadata: {
-          title: '',
-          description: '',
-          author: '',
-          tags: '',
-        },
       },
     },
   };
@@ -300,17 +282,6 @@ export function normalizeProjectSettings(
           return Math.round(Math.min(60, Math.max(1, v)));
         })(),
         exportAlpha: Boolean(encodingInput.exportAlpha),
-        metadata: {
-          title:
-            typeof encodingInput.metadata?.title === 'string' ? encodingInput.metadata.title : '',
-          description:
-            typeof encodingInput.metadata?.description === 'string'
-              ? encodingInput.metadata.description
-              : '',
-          author:
-            typeof encodingInput.metadata?.author === 'string' ? encodingInput.metadata.author : '',
-          tags: typeof encodingInput.metadata?.tags === 'string' ? encodingInput.metadata.tags : '',
-        },
       },
     },
     monitor: {

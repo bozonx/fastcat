@@ -53,6 +53,7 @@ export interface ExportOptions {
   exportAlpha?: boolean;
   metadata?: {
     title: string;
+    description: string;
     author: string;
     tags: string;
   };
@@ -905,6 +906,7 @@ export function useTimelineExport() {
   const keyframeIntervalSec = ref<number>(2);
   const exportAlpha = ref<boolean>(false);
   const metadataTitle = ref<string>('');
+  const metadataDescription = ref<string>('');
   const metadataAuthor = ref<string>('');
   const metadataTags = ref<string>('');
 
@@ -1227,6 +1229,7 @@ export function useTimelineExport() {
     keyframeIntervalSec,
     exportAlpha,
     metadataTitle,
+    metadataDescription,
     metadataAuthor,
     metadataTags,
     videoCodecSupport,

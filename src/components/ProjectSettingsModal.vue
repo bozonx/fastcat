@@ -100,15 +100,7 @@ async function applySettings() {
   isOpen.value = false;
 
   await projectStore.saveProjectSettings();
-  
-  // Sync metadata to projectMeta for consistency
-  const meta = projectStore.projectSettings.exportDefaults.encoding.metadata;
-  await projectStore.saveProjectMeta({
-    title: meta.title,
-    description: meta.description,
-    author: meta.author,
-    tags: String(meta.tags || '').split(',').map(t => t.trim()).filter(Boolean)
-  });
+  await projectStore.saveProjectMeta({}); // Just to trigger a save of the reactive state if needed, though they are usually bound
 
   // Show success message
   const toast = useToast();
@@ -144,7 +136,13 @@ async function resetToDefaults() {
   exportEncoding.bitrateMode = eDefaults.bitrateMode;
   exportEncoding.keyframeIntervalSec = eDefaults.keyframeIntervalSec;
   exportEncoding.exportAlpha = eDefaults.exportAlpha;
-  exportEncoding.metadata = { title: '', description: '', author: '', tags: '' };
+
+  await projectStore.saveProjectMeta({
+    title: '',
+    description: '',
+    author: '',
+    tags: [],
+  });
 
   await projectStore.saveProjectSettings();
   isResetConfirmOpen.value = false;
@@ -185,6 +183,17 @@ function applyExportPreset(presetId: string) {
   exportEncoding.keyframeIntervalSec = preset.keyframeIntervalSec;
   exportEncoding.exportAlpha = preset.exportAlpha;
 }
+const metaTagsString = computed({
+  get: () => projectStore.projectMeta?.tags.join(', ') || '',
+  set: (val: string) => {
+    if (projectStore.projectMeta) {
+      projectStore.projectMeta.tags = val
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+  },
+});
 </script>
 
 <template>
@@ -323,16 +332,10 @@ function applyExportPreset(presetId: string) {
             projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
           "
           v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
-          v-model:metadata-title="
-            projectStore.projectSettings.exportDefaults.encoding.metadata.title
-          "
-          v-model:metadata-author="
-            projectStore.projectSettings.exportDefaults.encoding.metadata.author
-          "
-          v-model:metadata-tags="projectStore.projectSettings.exportDefaults.encoding.metadata.tags"
-          v-model:metadata-description="
-            projectStore.projectSettings.exportDefaults.encoding.metadata.description
-          "
+          v-model:metadata-title="projectStore.projectMeta ? projectStore.projectMeta.title : undefined"
+          v-model:metadata-author="projectStore.projectMeta ? projectStore.projectMeta.author : undefined"
+          v-model:metadata-tags="metaTagsString"
+          v-model:metadata-description="projectStore.projectMeta ? projectStore.projectMeta.description : undefined"
           :show-audio-advanced="true"
           :show-builtin-presets="false"
           :hide-audio-sample-rate="true"

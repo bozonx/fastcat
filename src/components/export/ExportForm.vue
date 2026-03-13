@@ -63,6 +63,7 @@ const {
   keyframeIntervalSec,
   exportAlpha,
   metadataTitle,
+  metadataDescription,
   metadataAuthor,
   metadataTags,
   videoCodecSupport,
@@ -128,9 +129,11 @@ watch(
     keyframeIntervalSec.value =
       projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
     exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
-    metadataTitle.value = projectStore.projectSettings.exportDefaults.encoding.metadata.title;
-    metadataAuthor.value = projectStore.projectSettings.exportDefaults.encoding.metadata.author;
-    metadataTags.value = projectStore.projectSettings.exportDefaults.encoding.metadata.tags;
+    exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+    metadataTitle.value = projectStore.projectMeta?.title || '';
+    metadataDescription.value = projectStore.projectMeta?.description || '';
+    metadataAuthor.value = projectStore.projectMeta?.author || '';
+    metadataTags.value = projectStore.projectMeta?.tags.join(', ') || '';
     exportWidth.value = projectStore.projectSettings.project.width;
     exportHeight.value = projectStore.projectSettings.project.height;
     exportFps.value = projectStore.projectSettings.project.fps;
@@ -246,10 +249,15 @@ async function handleConfirm() {
         projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
           keyframeIntervalSec.value;
         projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
-        projectStore.projectSettings.exportDefaults.encoding.metadata.title = metadataTitle.value;
-        projectStore.projectSettings.exportDefaults.encoding.metadata.author = metadataAuthor.value;
-        projectStore.projectSettings.exportDefaults.encoding.metadata.tags = metadataTags.value;
+        
         await projectStore.saveProjectSettings();
+
+        await projectStore.saveProjectMeta({
+          title: metadataTitle.value,
+          description: metadataDescription.value,
+          author: metadataAuthor.value,
+          tags: metadataTags.value.split(',').map(t => t.trim()).filter(Boolean)
+        });
       }
 
       exportPhase.value = 'encoding';
@@ -270,6 +278,7 @@ async function handleConfirm() {
           exportAlpha: exportAlpha.value,
           metadata: {
             title: metadataTitle.value,
+            description: metadataDescription.value,
             author: metadataAuthor.value,
             tags: metadataTags.value,
           },
@@ -430,6 +439,7 @@ async function handleConfirm() {
         v-model:keyframe-interval-sec="keyframeIntervalSec"
         v-model:export-alpha="exportAlpha"
         v-model:metadata-title="metadataTitle"
+        v-model:metadata-description="metadataDescription"
         v-model:metadata-author="metadataAuthor"
         v-model:metadata-tags="metadataTags"
         :show-audio-advanced="true"
