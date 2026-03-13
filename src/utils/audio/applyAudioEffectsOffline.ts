@@ -1,7 +1,8 @@
 /**
- * Worker-compatible audio effects processing via native Web Audio API.
- * Uses OfflineAudioContext and WaveShaperNode/ConvolverNode directly,
- * since Tone.js is not available in Web Workers.
+ * Audio effects processing via native Web Audio API.
+ * Uses OfflineAudioContext so it works both in the main thread (preview)
+ * and in Web Workers (export). This is the single source of truth for all
+ * audio effect rendering — do not add a second implementation.
  */
 
 export interface AudioEffectData {
@@ -10,6 +11,11 @@ export interface AudioEffectData {
   enabled: boolean;
   target?: string;
   [key: string]: unknown;
+}
+
+export interface ApplyAudioEffectsParams {
+  buffer: AudioBuffer;
+  effects: AudioEffectData[];
 }
 
 export interface ApplyAudioEffectsOfflineParams {
@@ -26,7 +32,42 @@ export interface ApplyAudioEffectsOfflineResult {
 }
 
 /**
- * Applies enabled audio effects to raw PCM planes using OfflineAudioContext.
+ * Applies enabled audio effects to an AudioBuffer via OfflineAudioContext.
+ * Used by AudioEngine (preview path, main thread).
+ * Returns a new AudioBuffer with effects applied, or the original if none apply.
+ */
+export async function applyAudioEffects({
+  buffer,
+  effects,
+}: ApplyAudioEffectsParams): Promise<AudioBuffer> {
+  const enabledEffects = effects.filter((e) => e.enabled && e.target === 'audio');
+  if (enabledEffects.length === 0 || buffer.duration <= 0) return buffer;
+
+  const planes: Float32Array[] = [];
+  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+    planes.push(new Float32Array(buffer.getChannelData(c)));
+  }
+
+  const result = await applyEffectsThroughOfflineContext({
+    planes,
+    sampleRate: buffer.sampleRate,
+    frames: buffer.length,
+    channels: buffer.numberOfChannels,
+    effects: enabledEffects,
+  });
+
+  const tmpCtx = new OfflineAudioContext(buffer.numberOfChannels, result.frames, buffer.sampleRate);
+  const out = tmpCtx.createBuffer(buffer.numberOfChannels, result.frames, buffer.sampleRate);
+  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+    const plane = result.planes[c];
+    if (plane) out.copyToChannel(new Float32Array(plane), c, 0);
+  }
+  return out;
+}
+
+/**
+ * Applies enabled audio effects to raw PCM planes via OfflineAudioContext.
+ * Used by AudioMixer (export path, Web Worker).
  * Returns the processed planes. Falls back to original planes on error.
  */
 export async function applyAudioEffectsOffline({
@@ -41,64 +82,80 @@ export async function applyAudioEffectsOffline({
     return { planes, frames };
   }
 
-  const OfflineCtx =
-    globalThis.OfflineAudioContext || (globalThis as any).webkitOfflineAudioContext;
-  if (!OfflineCtx) {
-    return { planes, frames };
-  }
-
   try {
-    let currentPlanes = planes.map((plane) => new Float32Array(plane));
-    let currentFrames = frames;
-
-    for (const effect of enabledEffects) {
-      const offlineCtx = new OfflineCtx(channels, currentFrames, sampleRate);
-      const buffer = offlineCtx.createBuffer(channels, currentFrames, sampleRate);
-
-      for (let c = 0; c < channels; c += 1) {
-        const plane = currentPlanes[c];
-        if (!plane) continue;
-        buffer.copyToChannel(new Float32Array(plane), c, 0);
-      }
-
-      const source = offlineCtx.createBufferSource();
-      source.buffer = buffer;
-
-      const inputGain = offlineCtx.createGain();
-      const outputGain = offlineCtx.createGain();
-      const wet = typeof effect.wet === 'number' ? Math.max(0, Math.min(1, effect.wet)) : 1;
-      const dryGain = offlineCtx.createGain();
-      dryGain.gain.value = 1 - wet;
-      const wetGain = offlineCtx.createGain();
-      wetGain.gain.value = wet;
-
-      source.connect(inputGain);
-      inputGain.connect(dryGain);
-      dryGain.connect(outputGain);
-
-      const effectNode = buildNativeEffectNode(offlineCtx, effect);
-      if (effectNode) {
-        inputGain.connect(effectNode);
-        effectNode.connect(wetGain);
-        wetGain.connect(outputGain);
-      }
-
-      outputGain.connect(offlineCtx.destination);
-      source.start(0);
-
-      const rendered = await offlineCtx.startRendering();
-      currentFrames = rendered.length;
-      currentPlanes = [];
-      for (let c = 0; c < channels; c += 1) {
-        currentPlanes.push(new Float32Array(rendered.getChannelData(c)));
-      }
-    }
-
-    return { planes: currentPlanes, frames: currentFrames };
+    return await applyEffectsThroughOfflineContext({
+      planes,
+      sampleRate,
+      frames,
+      channels,
+      effects: enabledEffects,
+    });
   } catch (err) {
     console.warn('[applyAudioEffectsOffline] Failed to apply effects, using raw audio', err);
     return { planes, frames };
   }
+}
+
+async function applyEffectsThroughOfflineContext({
+  planes,
+  sampleRate,
+  frames,
+  channels,
+  effects,
+}: ApplyAudioEffectsOfflineParams): Promise<ApplyAudioEffectsOfflineResult> {
+  const OfflineCtx =
+    globalThis.OfflineAudioContext ||
+    (globalThis as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext })
+      .webkitOfflineAudioContext;
+  if (!OfflineCtx) {
+    return { planes, frames };
+  }
+
+  let currentPlanes = planes.map((plane) => new Float32Array(plane));
+  let currentFrames = frames;
+
+  for (const effect of effects) {
+    const offlineCtx = new OfflineCtx(channels, currentFrames, sampleRate);
+    const buffer = offlineCtx.createBuffer(channels, currentFrames, sampleRate);
+
+    for (let c = 0; c < channels; c += 1) {
+      const plane = currentPlanes[c];
+      if (!plane) continue;
+      buffer.copyToChannel(new Float32Array(plane), c, 0);
+    }
+
+    const source = offlineCtx.createBufferSource();
+    source.buffer = buffer;
+
+    const wet = typeof effect.wet === 'number' ? Math.max(0, Math.min(1, effect.wet)) : 1;
+    const dryGain = offlineCtx.createGain();
+    dryGain.gain.value = 1 - wet;
+    const wetGain = offlineCtx.createGain();
+    wetGain.gain.value = wet;
+    const outputGain = offlineCtx.createGain();
+
+    source.connect(dryGain);
+    dryGain.connect(outputGain);
+
+    const effectNode = buildNativeEffectNode(offlineCtx, effect);
+    if (effectNode) {
+      source.connect(effectNode);
+      effectNode.connect(wetGain);
+      wetGain.connect(outputGain);
+    }
+
+    outputGain.connect(offlineCtx.destination);
+    source.start(0);
+
+    const rendered = await offlineCtx.startRendering();
+    currentFrames = rendered.length;
+    currentPlanes = [];
+    for (let c = 0; c < channels; c += 1) {
+      currentPlanes.push(new Float32Array(rendered.getChannelData(c)));
+    }
+  }
+
+  return { planes: currentPlanes, frames: currentFrames };
 }
 
 function buildNativeEffectNode(
