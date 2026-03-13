@@ -1,9 +1,22 @@
-import type { AudioEffectManifest } from '../../core/registry';
+import type { AudioEffectManifest, AudioEffectContext } from '../../core/registry';
 
 export interface DistortionParams {
   wet: number;
   distortion: number;
   oversample: '2x' | '4x' | 'none';
+}
+
+function makeDistortionCurve(amount: number): Float32Array {
+  const samples = 256;
+  const curve = new Float32Array(samples);
+  const k = amount;
+
+  for (let i = 0; i < samples; i += 1) {
+    const x = (i * 2) / samples - 1;
+    curve[i] = k > 0 ? ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x)) : x;
+  }
+
+  return curve;
 }
 
 export const distortionManifest: AudioEffectManifest<DistortionParams> = {
@@ -47,4 +60,16 @@ export const distortionManifest: AudioEffectManifest<DistortionParams> = {
       ],
     },
   ],
+  createNode(context: AudioEffectContext) {
+    return context.audioContext.createWaveShaper();
+  },
+  updateNode(node: AudioNode, values: DistortionParams, context: AudioEffectContext) {
+    const shaper = node as WaveShaperNode;
+    const distortion =
+      typeof values.distortion === 'number' ? Math.max(0, Math.min(1, values.distortion)) : 0.4;
+    shaper.curve = makeDistortionCurve(distortion * 400) as unknown as Float32Array<ArrayBuffer>;
+    const oversample: OverSampleType =
+      values.oversample === '4x' ? '4x' : values.oversample === 'none' ? 'none' : '2x';
+    shaper.oversample = oversample;
+  },
 };

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import { getAllAudioEffectManifests, getAudioEffectManifest } from '~/effects';
 import type { AudioClipEffect } from '~/timeline/types';
@@ -54,6 +55,10 @@ function handleRemoveEffect(effectId: string) {
 function handleUpdateEffectValue(effectId: string, key: string, value: unknown) {
   handleUpdateEffect(effectId, { [key]: value } as Partial<AudioClipEffect>);
 }
+
+function onUpdateOrder(newEffects: AudioClipEffect[]) {
+  setEffects(newEffects);
+}
 </script>
 
 <template>
@@ -77,7 +82,13 @@ function handleUpdateEffectValue(effectId: string, key: string, value: unknown) 
       {{ t('granVideoEditor.effects.empty', 'No effects') }}
     </div>
 
-    <div class="space-y-2">
+    <VueDraggable
+      class="space-y-2"
+      :model-value="safeEffects"
+      handle=".drag-handle"
+      :animation="150"
+      @update:model-value="onUpdateOrder"
+    >
       <div
         v-for="effect in safeEffects"
         :key="effect.id"
@@ -85,6 +96,10 @@ function handleUpdateEffectValue(effectId: string, key: string, value: unknown) 
       >
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
+            <UIcon
+              name="i-heroicons-bars-2"
+              class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
+            />
             <USwitch
               :model-value="effect.enabled"
               size="sm"
@@ -103,7 +118,7 @@ function handleUpdateEffectValue(effectId: string, key: string, value: unknown) 
           />
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-3 pl-6">
           <ParamsRenderer
             v-if="getAudioEffectManifest(effect.type)?.controls"
             :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
@@ -112,7 +127,7 @@ function handleUpdateEffectValue(effectId: string, key: string, value: unknown) 
           />
         </div>
       </div>
-    </div>
+    </VueDraggable>
 
     <UModal
       v-model:open="isSelectModalOpen"

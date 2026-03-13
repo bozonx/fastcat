@@ -1,9 +1,33 @@
-import type { AudioEffectManifest } from '../../core/registry';
+import type { AudioEffectManifest, AudioEffectContext } from '../../core/registry';
 
 export interface ReverbParams {
   wet: number;
   decay: number;
   preDelay: number;
+}
+
+function generateImpulseResponse(
+  ctx: BaseAudioContext,
+  decaySeconds: number,
+  preDelaySeconds: number,
+): AudioBuffer {
+  const sampleRate = ctx.sampleRate;
+  const preDelaySamples = Math.round(preDelaySeconds * sampleRate);
+  const decaySamples = Math.round(decaySeconds * sampleRate);
+  const totalSamples = preDelaySamples + decaySamples;
+  const channels = 2;
+
+  const buffer = ctx.createBuffer(channels, totalSamples, sampleRate);
+
+  for (let c = 0; c < channels; c += 1) {
+    const data = buffer.getChannelData(c);
+    for (let i = preDelaySamples; i < totalSamples; i += 1) {
+      const t = (i - preDelaySamples) / decaySamples;
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-6 * t);
+    }
+  }
+
+  return buffer;
 }
 
 export const reverbManifest: AudioEffectManifest<ReverbParams> = {
@@ -46,4 +70,13 @@ export const reverbManifest: AudioEffectManifest<ReverbParams> = {
       format: (v) => `${Math.round(Number(v) * 1000)}ms`,
     },
   ],
+  createNode(context: AudioEffectContext) {
+    return context.audioContext.createConvolver();
+  },
+  updateNode(node: AudioNode, values: ReverbParams, context: AudioEffectContext) {
+    const convolver = node as ConvolverNode;
+    const decay = typeof values.decay === 'number' ? Math.max(0.01, values.decay) : 2.5;
+    const preDelay = typeof values.preDelay === 'number' ? Math.max(0, values.preDelay) : 0.01;
+    convolver.buffer = generateImpulseResponse(context.audioContext, decay, preDelay);
+  },
 };

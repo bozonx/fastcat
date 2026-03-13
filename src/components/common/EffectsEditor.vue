@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import { getVideoEffectManifest } from '~/effects';
@@ -109,6 +110,10 @@ function openSaveModal(effectId: string) {
 function handleUpdateEffectValue(effectId: string, key: string, value: any) {
   handleUpdateEffect(effectId, { [key]: value } as Partial<VideoClipEffect>);
 }
+
+function onUpdateOrder(newEffects: VideoClipEffect[]) {
+  setEffects(newEffects);
+}
 </script>
 
 <template>
@@ -134,7 +139,13 @@ function handleUpdateEffectValue(effectId: string, key: string, value: any) {
       {{ safeEmptyLabel }}
     </div>
 
-    <div class="space-y-2">
+    <VueDraggable
+      class="space-y-2"
+      :model-value="safeEffects"
+      handle=".drag-handle"
+      :animation="150"
+      @update:model-value="onUpdateOrder"
+    >
       <div
         v-for="effect in safeEffects"
         :key="effect.id"
@@ -142,6 +153,10 @@ function handleUpdateEffectValue(effectId: string, key: string, value: any) {
       >
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
+            <UIcon
+              name="i-heroicons-bars-2"
+              class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
+            />
             <USwitch
               :model-value="effect.enabled"
               size="sm"
@@ -170,7 +185,7 @@ function handleUpdateEffectValue(effectId: string, key: string, value: any) {
           </div>
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-3 pl-6">
           <ParamsRenderer
             v-if="getVideoEffectManifest(effect.type)?.controls"
             :controls="getVideoEffectManifest(effect.type)?.controls ?? []"
@@ -179,7 +194,7 @@ function handleUpdateEffectValue(effectId: string, key: string, value: any) {
           />
         </div>
       </div>
-    </div>
+    </VueDraggable>
 
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
 

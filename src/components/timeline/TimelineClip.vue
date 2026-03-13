@@ -9,7 +9,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
-import { getVideoEffectManifest } from '~/effects';
+import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -179,13 +179,35 @@ function handleDrop(e: DragEvent) {
   const transitionType = e.dataTransfer?.getData('gran-transition');
 
   if (effectType) {
-    const manifest = getVideoEffectManifest(effectType);
+    let manifest: any = undefined;
+    let target: 'audio' | 'video' | undefined = undefined;
+
+    const audioManifest = getAudioEffectManifest(effectType);
+    const videoManifest = getVideoEffectManifest(effectType);
+
+    if (audioManifest && videoManifest) {
+      if ((clipItem.value.clipType as string) === 'audio') {
+        manifest = getAudioEffectManifest(effectType);
+        target = 'audio';
+      } else {
+        manifest = videoManifest;
+        target = 'video';
+      }
+    } else if (audioManifest) {
+      manifest = audioManifest;
+      target = 'audio';
+    } else if (videoManifest) {
+      manifest = videoManifest;
+      target = 'video';
+    }
+
     if (!manifest) return;
+
     const newEffect = {
       id: `effect_${Date.now()}`,
       type: effectType,
       enabled: true,
-      target: 'video',
+      target,
       ...manifest.defaultValues,
     } as any;
     timelineStore.updateClipProperties(props.track.id, props.item.id, {
