@@ -39,8 +39,8 @@ const customAudioEffects = computed(() => {
 const basicAudioEffects = computed(() =>
   standardAudioEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'),
 );
-const artisticAudioEffects = computed(() =>
-  standardAudioEffects.value.filter((effect) => effect.category === 'artistic'),
+const nonBasicAudioEffects = computed(() =>
+  standardAudioEffects.value.filter((effect) => (effect.category ?? 'basic') !== 'basic'),
 );
 const transitions = computed(() => getAllTransitionManifests());
 
@@ -346,13 +346,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
 
-            <div v-if="hasAudioEffects(artisticAudioEffects)">
+            <div v-if="hasAudioEffects(nonBasicAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
                 {{ t('fastcat.effects.groups.artistic', 'Художественные') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
                 <EffectCard
-                  v-for="effect in artisticAudioEffects"
+                  v-for="effect in nonBasicAudioEffects"
                   :key="effect.type"
                   :manifest="effect"
                   :is-draggable="true"

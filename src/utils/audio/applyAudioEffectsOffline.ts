@@ -1,4 +1,4 @@
-import { getAudioEffectManifest, isAudioEffectNodeGraph } from '~/effects/core/registry';
+import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
 
 /**
  * Audio effects processing via native Web Audio API.
@@ -125,35 +125,11 @@ async function applyEffectsThroughOfflineContext({
   const source = offlineCtx.createBufferSource();
   source.buffer = buffer;
 
-  let currentNode: AudioNode = source;
-
-  for (const effect of effects) {
-    const manifest = getAudioEffectManifest(effect.type);
-    if (!manifest || !manifest.createNode) continue;
-
-    const effectNode = manifest.createNode({ audioContext: offlineCtx });
-    if (manifest.updateNode) {
-      manifest.updateNode(effectNode, effect as any, { audioContext: offlineCtx });
-    }
-
-    const wet = typeof effect.wet === 'number' ? Math.max(0, Math.min(1, effect.wet)) : 1;
-    const dryGain = offlineCtx.createGain();
-    dryGain.gain.value = 1 - wet;
-    const wetGain = offlineCtx.createGain();
-    wetGain.gain.value = wet;
-    const outputGain = offlineCtx.createGain();
-    const effectInput = isAudioEffectNodeGraph(effectNode) ? effectNode.input : effectNode;
-    const effectOutput = isAudioEffectNodeGraph(effectNode) ? effectNode.output : effectNode;
-
-    currentNode.connect(dryGain);
-    dryGain.connect(outputGain);
-
-    currentNode.connect(effectInput);
-    effectOutput.connect(wetGain);
-    wetGain.connect(outputGain);
-
-    currentNode = outputGain;
-  }
+  const currentNode = buildAudioEffectGraph({
+    audioContext: offlineCtx,
+    sourceNode: source,
+    effects,
+  });
 
   currentNode.connect(offlineCtx.destination);
   source.start(0);

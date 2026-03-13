@@ -50,8 +50,8 @@ const standardEffects = computed(() => allManifests.value.filter((e) => !e.isCus
 const basicEffects = computed(() =>
   standardEffects.value.filter((e: any) => (e.category ?? 'basic') === 'basic'),
 );
-const artisticEffects = computed(() =>
-  standardEffects.value.filter((e: any) => e.category === 'artistic'),
+const nonBasicEffects = computed(() =>
+  standardEffects.value.filter((e: any) => (e.category ?? 'basic') !== 'basic'),
 );
 
 const customEffects = computed(() => {
@@ -100,13 +100,13 @@ function handleSelect(type: string) {
 
         <!-- Artistic/Voice Effects (mostly for audio) -->
         <CollapsibleEffectGroup
-          v-if="artisticEffects.length > 0"
+          v-if="nonBasicEffects.length > 0"
           v-model:is-collapsed="presetsStore.audioStandardCollapsed"
           :title="t('fastcat.effects.groups.artistic')"
         >
           <div class="grid grid-cols-1 gap-2">
             <EffectCard
-              v-for="effect in artisticEffects"
+              v-for="effect in nonBasicEffects"
               :key="effect.type"
               :manifest="effect"
               @click="handleSelect(effect.type)"
