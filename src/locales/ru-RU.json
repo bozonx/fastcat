@@ -582,7 +582,12 @@
       "trackTitle": "Эффекты дорожки",
       "clipTitle": "Эффекты клипа",
       "dropHint": "Перетащите эффекты сюда",
-      "masterTitle": "Мастер-эффекты"
+      "masterTitle": "Мастер-эффекты",
+      "groups": {
+        "standard": "Стандартные",
+        "artistic": "Художественные",
+        "custom": "Свои"
+      }
     },
     "clip": {
       "actions": "Действия",

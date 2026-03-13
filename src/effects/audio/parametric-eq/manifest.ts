@@ -145,48 +145,55 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
   createNode(context: AudioEffectContext): EqNodeGraph {
     const input = context.audioContext.createGain();
     const output = context.audioContext.createGain();
-    input.connect(output);
+    const filters: BiquadFilterNode[] = [];
 
-    return { input, output, filters: [] };
+    // Pre-allocate 10 filters connected in series to avoid clicks/glitches during real-time updates
+    let current: AudioNode = input;
+    for (let i = 0; i < 10; i++) {
+      const filter = context.audioContext.createBiquadFilter();
+      // Peaking with 0 gain is completely transparent
+      filter.type = 'peaking';
+      filter.gain.value = 0;
+      current.connect(filter);
+      current = filter;
+      filters.push(filter);
+    }
+    current.connect(output);
+
+    return { input, output, filters };
   },
   updateNode(node, values, context) {
     const graph = node as EqNodeGraph;
-    const ctx = context.audioContext;
     const points = values.points || [];
 
-    // Disconnect old chain
-    graph.input.disconnect();
-    for (const filter of graph.filters) {
-      filter.disconnect();
-    }
+    let activeIndex = 0;
 
-    // Adjust number of filters
-    while (graph.filters.length < points.length) {
-      graph.filters.push(ctx.createBiquadFilter());
-    }
-    // We keep extra filters around to avoid re-creating them constantly, just don't connect them if not needed
-
-    // Re-build chain
-    let currentNode: AudioNode = graph.input;
-    let activeFiltersCount = 0;
-
+    // Update active filters
     for (let i = 0; i < points.length; i++) {
       const point = points[i];
       if (!point || !point.enabled) continue;
 
-      const filter = graph.filters[activeFiltersCount];
+      if (activeIndex >= graph.filters.length) break; // Max 10 points supported
+
+      const filter = graph.filters[activeIndex];
       if (!filter) continue;
-      activeFiltersCount++;
 
       filter.type = point.type || 'peaking';
+      // Set values with a tiny ramp to avoid zipper noise if possible, but direct assignment is usually okay for simple EQ
       filter.frequency.value = Math.max(20, Math.min(20000, point.frequency || 1000));
       filter.Q.value = Math.max(0.0001, Math.min(1000, point.q || 1));
       filter.gain.value = Math.max(-40, Math.min(40, point.gain || 0));
 
-      currentNode.connect(filter);
-      currentNode = filter;
+      activeIndex++;
     }
 
-    currentNode.connect(graph.output);
+    // Reset unused filters to transparent
+    for (let i = activeIndex; i < graph.filters.length; i++) {
+      const filter = graph.filters[i];
+      if (!filter) continue;
+
+      filter.type = 'peaking';
+      filter.gain.value = 0;
+    }
   },
 };

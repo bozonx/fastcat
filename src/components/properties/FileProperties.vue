@@ -29,11 +29,12 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import AppModal from '~/components/ui/AppModal.vue';
+import type { FsEntry } from '~/types/fs';
 import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 
 const props = defineProps<{
-  selectedFsEntry: any;
+  selectedFsEntry: FsEntry;
   previewMode: 'original' | 'proxy';
   hasProxy: boolean;
   isFilesPage?: boolean;
@@ -41,7 +42,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:previewMode': [val: 'original' | 'proxy'];
-  convert: [entry: any];
+  convert: [entry: FsEntry];
 }>();
 
 const { t } = useI18n();
@@ -150,7 +151,7 @@ const {
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
-const { ext, generalInfoTitle, isHidden, mediaMeta, selectedPath } = useFilePropertiesBasics({
+const { generalInfoTitle, isHidden, mediaMeta, selectedPath } = useFilePropertiesBasics({
   selectedFsEntry: selectedFsEntryRef,
   fileInfo,
   isOtio,

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
-import { getAllVideoEffectManifests, getAllAudioEffectManifests, getEffectManifest } from '~/effects';
+import {
+  getAllVideoEffectManifests,
+  getAllAudioEffectManifests,
+  getEffectManifest,
+} from '~/effects';
 import type { AudioEffectManifest } from '~/effects';
 import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -15,8 +19,26 @@ const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 
 const videoEffects = computed(() => getAllVideoEffectManifests());
 const audioEffects = computed(() => getAllAudioEffectManifests());
-const basicAudioEffects = computed(() => audioEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'));
-const voiceAudioEffects = computed(() => audioEffects.value.filter((effect) => effect.category === 'voice'));
+const standardAudioEffects = computed(() => audioEffects.value.filter((e) => !e.isCustom));
+const customAudioEffects = computed(() => {
+  const presetManifests = presetsStore.customPresets
+    .filter((preset) => preset.category === 'effect')
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((preset) => getEffectManifest(preset.id))
+    .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> =>
+      Boolean(manifest),
+    );
+
+  return presetManifests.filter((manifest) => manifest.target === 'audio');
+});
+
+const basicAudioEffects = computed(() =>
+  standardAudioEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'),
+);
+const voiceAudioEffects = computed(() =>
+  standardAudioEffects.value.filter((effect) => effect.category === 'voice'),
+);
 const transitions = computed(() => getAllTransitionManifests());
 
 function hasAudioEffects(effects: AudioEffectManifest<any>[]) {
@@ -385,70 +407,180 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
 
       <!-- Audio Effects -->
       <div v-show="activeTab === 'audio'" class="flex flex-col gap-4 pb-4">
+        <!-- Standard Audio Effects -->
         <div>
-          <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-            {{ t('granVideoEditor.effects.groups.standard', 'Основные') }}
-          </h4>
-          <div v-if="hasAudioEffects(basicAudioEffects)" class="grid grid-cols-1 gap-2">
-            <div
-              v-for="effect in basicAudioEffects"
-              :key="effect.type"
-              class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-              :class="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'effect' &&
-                selectionStore.selectedEntity.effectType === effect.type
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+          <button
+            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
+            @click="presetsStore.audioStandardCollapsed = !presetsStore.audioStandardCollapsed"
+          >
+            <UIcon
+              :name="
+                presetsStore.audioStandardCollapsed
+                  ? 'i-heroicons-chevron-right'
+                  : 'i-heroicons-chevron-down'
               "
-              draggable="true"
-              @dragstart="handleDragStart($event, effect.type, 'effect')"
-              @click="selectEffect(effect.type)"
-            >
-              <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
-                <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
-                  {{ effect.description }}
-                </p>
+              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
+            />
+            {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
+          </button>
+
+          <div v-show="!presetsStore.audioStandardCollapsed" class="flex flex-col gap-4 pl-6">
+            <div v-if="hasAudioEffects(basicAudioEffects)">
+              <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+                {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
+              </h4>
+              <div class="grid grid-cols-1 gap-2">
+                <div
+                  v-for="effect in basicAudioEffects"
+                  :key="effect.type"
+                  class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
+                  :class="
+                    selectionStore.selectedEntity?.source === 'project' &&
+                    selectionStore.selectedEntity.kind === 'effect' &&
+                    selectionStore.selectedEntity.effectType === effect.type
+                      ? 'border-primary bg-primary/10'
+                      : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+                  "
+                  draggable="true"
+                  @dragstart="handleDragStart($event, effect.type, 'effect')"
+                  @click="selectEffect(effect.type)"
+                >
+                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
+                    <p
+                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
+                      :title="effect.description"
+                    >
+                      {{ effect.description }}
+                    </p>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div v-if="hasAudioEffects(voiceAudioEffects)">
+              <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+                {{ t('granVideoEditor.effects.groups.voice', 'Голос') }}
+              </h4>
+              <div class="grid grid-cols-1 gap-2">
+                <div
+                  v-for="effect in voiceAudioEffects"
+                  :key="effect.type"
+                  class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
+                  :class="
+                    selectionStore.selectedEntity?.source === 'project' &&
+                    selectionStore.selectedEntity.kind === 'effect' &&
+                    selectionStore.selectedEntity.effectType === effect.type
+                      ? 'border-primary bg-primary/10'
+                      : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+                  "
+                  draggable="true"
+                  @dragstart="handleDragStart($event, effect.type, 'effect')"
+                  @click="selectEffect(effect.type)"
+                >
+                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
+                    <p
+                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
+                      :title="effect.description"
+                    >
+                      {{ effect.description }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="standardAudioEffects.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
+              {{ t('common.noData') }}
             </div>
           </div>
         </div>
 
+        <!-- Custom Audio Effects -->
         <div>
-          <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-            {{ t('granVideoEditor.effects.groups.voice', 'Голос') }}
-          </h4>
-          <div v-if="hasAudioEffects(voiceAudioEffects)" class="grid grid-cols-1 gap-2">
-            <div
-              v-for="effect in voiceAudioEffects"
-              :key="effect.type"
-              class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-              :class="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'effect' &&
-                selectionStore.selectedEntity.effectType === effect.type
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+          <button
+            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
+            @click="presetsStore.audioCustomCollapsed = !presetsStore.audioCustomCollapsed"
+          >
+            <UIcon
+              :name="
+                presetsStore.audioCustomCollapsed
+                  ? 'i-heroicons-chevron-right'
+                  : 'i-heroicons-chevron-down'
               "
-              draggable="true"
-              @dragstart="handleDragStart($event, effect.type, 'effect')"
-              @click="selectEffect(effect.type)"
+              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
+            />
+            {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
+          </button>
+
+          <div v-show="!presetsStore.audioCustomCollapsed" class="pl-6">
+            <VueDraggable
+              :model-value="customAudioEffects"
+              class="flex flex-col gap-2"
+              :animation="150"
+              ghost-class="opacity-50"
+              handle=".drag-handle"
+              filter=".external-drag"
+              :prevent-on-filter="false"
+              @update:model-value="updateCustomEffectsOrder"
             >
-              <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
-                <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
-                  {{ effect.description }}
-                </p>
+              <div
+                v-for="effect in customAudioEffects"
+                :key="effect.type"
+                class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group"
+                :class="
+                  selectionStore.selectedEntity?.source === 'project' &&
+                  selectionStore.selectedEntity.kind === 'effect' &&
+                  selectionStore.selectedEntity.effectType === effect.type
+                    ? 'border-primary bg-primary/10'
+                    : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+                "
+                @click="selectEffect(effect.type)"
+              >
+                <div class="cursor-grab hover:text-ui-text text-ui-text-muted mt-1 drag-handle">
+                  <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
+                </div>
+                <div
+                  class="external-drag flex items-start gap-3 flex-1 min-w-0"
+                  draggable="true"
+                  @dragstart="handleDragStart($event, effect.type, 'effect')"
+                >
+                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-sm font-medium text-ui-text truncate">{{ effect.name }}</h4>
+                      <UButton
+                        icon="i-heroicons-trash"
+                        color="red"
+                        variant="ghost"
+                        size="xs"
+                        class="opacity-0 group-hover:opacity-100"
+                        @click.stop="presetsStore.removePreset(effect.type)"
+                      />
+                    </div>
+                    <p
+                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
+                      :title="effect.description"
+                    >
+                      {{ effect.description }}
+                    </p>
+                  </div>
+                </div>
               </div>
+            </VueDraggable>
+            <div
+              v-if="customAudioEffects.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
+              {{ t('common.noData') }}
             </div>
           </div>
-        </div>
-
-        <div v-if="audioEffects.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
-          {{ t('common.noData') }}
         </div>
       </div>
     </div>

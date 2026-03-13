@@ -523,7 +523,12 @@
       "trackTitle": "Track effects",
       "clipTitle": "Clip effects",
       "dropHint": "Drop effects here",
-      "masterTitle": "Master effects"
+      "masterTitle": "Master effects",
+      "groups": {
+        "standard": "Standard",
+        "artistic": "Artistic",
+        "custom": "Custom"
+      }
     },
     "clip": {
       "actions": "Actions",

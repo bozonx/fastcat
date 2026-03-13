@@ -21,7 +21,7 @@ export const voiceRobotManifest: AudioEffectManifest<VoiceRobotParams> = {
   description: 'Metallic modulated delay for robotic and alien voices',
   icon: 'i-heroicons-cpu-chip',
   target: 'audio',
-  category: 'voice',
+  category: 'artistic',
   defaultValues: {
     wet: 0.75,
     rate: 1.2,
