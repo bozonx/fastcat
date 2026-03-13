@@ -402,8 +402,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           itemId: payload.itemId,
           edge: payload.edge,
           currentTransition: current,
-          desiredDurationUs: newDurationUs,
-          thresholdUs,
+          rawDurationUs: newDurationUs,
         });
         if (handleSnapUs !== null) {
           const snap = pickBestSnapCandidateUs({

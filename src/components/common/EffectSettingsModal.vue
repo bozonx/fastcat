@@ -126,21 +126,49 @@ function drawEqVisualization() {
   context.lineWidth = 1;
 
   const frequencyMarkers = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  
+  context.font = '10px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'top';
+
   for (const marker of frequencyMarkers) {
     const x = frequencyToX(marker);
+    
+    // Draw line
+    context.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+    context.lineWidth = 1;
     context.beginPath();
     context.moveTo(x, 0);
     context.lineTo(x, canvasHeight);
     context.stroke();
+
+    // Draw text label
+    context.fillStyle = 'rgba(148, 163, 184, 0.7)';
+    const label = marker >= 1000 ? `${marker / 1000}k` : `${marker}`;
+    context.fillText(label, x, canvasHeight - 16);
   }
 
   const gainMarkers = [-24, -12, 0, 12, 24];
+  
+  context.textAlign = 'right';
+  context.textBaseline = 'middle';
+
   for (const marker of gainMarkers) {
     const y = gainToY(marker);
+    
+    // Draw line
+    context.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+    context.lineWidth = 1;
     context.beginPath();
     context.moveTo(0, y);
     context.lineTo(canvasWidth, y);
     context.stroke();
+
+    // Draw text label
+    if (marker !== 0) {
+      context.fillStyle = 'rgba(148, 163, 184, 0.7)';
+      context.fillText(`${marker > 0 ? '+' : ''}${marker}dB`, canvasWidth - 4, y);
+    }
   }
 
   context.strokeStyle = 'rgba(45, 212, 191, 0.28)';

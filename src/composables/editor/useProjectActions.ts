@@ -51,8 +51,9 @@ export function useProjectActions() {
     try {
       await resetProjectState();
       await projectStore.openProject(name);
-      uiStore.restoreFileTreeStateOnce(name);
-
+      if (name) {
+        uiStore.restoreFileTreeStateOnce();
+      }
       if (projectStore.currentTimelinePath) {
         await loadTimeline(projectStore.currentTimelinePath);
       }
