@@ -1,8 +1,8 @@
 import type { Ref } from 'vue';
 
-import { VARDATA_DIR_NAME, VARDATA_PROJECTS_DIR_NAME } from '~/utils/vardata-paths';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import type { WorkspaceProvider } from './provider';
 
 export interface WorkspaceInitDeps {
@@ -46,14 +46,15 @@ function isAbortError(e: unknown): boolean {
 
 export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceInitApi {
   let isOpeningWorkspace = false;
+  const workspaceTopology = getWorkspaceStorageTopology();
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     deps.workspaceHandle.value = handle;
     deps.settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
 
-    const folders = ['projects', VARDATA_DIR_NAME];
+    const folders = [workspaceTopology.projectsDirName, workspaceTopology.tempRootDirName];
     for (const folder of folders) {
-      if (folder === 'projects') {
+      if (folder === workspaceTopology.projectsDirName) {
         deps.projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });
       } else {
         await handle.getDirectoryHandle(folder, { create: true });
@@ -61,8 +62,10 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     }
 
     try {
-      const vardataDir = await handle.getDirectoryHandle(VARDATA_DIR_NAME, { create: true });
-      await vardataDir.getDirectoryHandle(VARDATA_PROJECTS_DIR_NAME, { create: true });
+      const tempRootDir = await handle.getDirectoryHandle(workspaceTopology.tempRootDirName, {
+        create: true,
+      });
+      await tempRootDir.getDirectoryHandle(workspaceTopology.tempProjectsDirName, { create: true });
     } catch {
       // ignore
     }

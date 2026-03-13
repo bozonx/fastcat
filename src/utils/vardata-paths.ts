@@ -1,12 +1,18 @@
 import { isWorkspaceCommonPath, stripWorkspaceCommonPathPrefix } from '~/utils/workspace-common';
+import {
+  COMMON_ROOT_DIR_NAME,
+  PROXIES_ROOT_DIR_NAME,
+  WORKSPACE_TEMP_PROJECTS_DIR_NAME,
+  WORKSPACE_TEMP_ROOT_DIR_NAME,
+} from '~/utils/storage-roots';
 
-export const VARDATA_DIR_NAME = 'vardata' as const;
+export const VARDATA_DIR_NAME = WORKSPACE_TEMP_ROOT_DIR_NAME;
 
-export const VARDATA_COMMON_DIR_NAME = 'common' as const;
+export const VARDATA_COMMON_DIR_NAME = COMMON_ROOT_DIR_NAME;
 
-export const VARDATA_PROJECTS_DIR_NAME = 'projects' as const;
+export const VARDATA_PROJECTS_DIR_NAME = WORKSPACE_TEMP_PROJECTS_DIR_NAME;
 
-export const VARDATA_PROJECT_PROXIES_DIR_NAME = 'proxies' as const;
+export const VARDATA_PROJECT_PROXIES_DIR_NAME = PROXIES_ROOT_DIR_NAME;
 
 export const VARDATA_PROJECT_THUMBNAILS_DIR_NAME = 'thumbnails' as const;
 

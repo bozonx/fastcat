@@ -4,8 +4,8 @@ import {
   normalizeWorkspaceFilePath,
   stripWorkspaceCommonPathPrefix,
   toWorkspaceCommonPath,
-  WORKSPACE_COMMON_DIR_NAME,
 } from '~/utils/workspace-common';
+import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 
 export interface ProjectFsModule {
   toProjectRelativePath: (path: string) => string;
@@ -27,6 +27,8 @@ export function createProjectFsModule(params: {
   projectsHandle: Ref<FileSystemDirectoryHandle | null>;
   currentProjectName: Ref<string | null>;
 }) {
+  const workspaceTopology = getWorkspaceStorageTopology();
+
   function toProjectRelativePath(path: string): string {
     return normalizeWorkspaceFilePath(path);
   }
@@ -37,9 +39,12 @@ export function createProjectFsModule(params: {
     if (!params.workspaceHandle.value) return null;
 
     try {
-      return await params.workspaceHandle.value.getDirectoryHandle(WORKSPACE_COMMON_DIR_NAME, {
-        create,
-      });
+      return await params.workspaceHandle.value.getDirectoryHandle(
+        workspaceTopology.commonDirName,
+        {
+          create,
+        },
+      );
     } catch {
       return null;
     }
