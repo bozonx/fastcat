@@ -18,6 +18,10 @@ describe('audio effect manifests', () => {
     expect(types).toContain('audio-phaser');
     expect(types).toContain('audio-reverb');
     expect(types).toContain('audio-distortion');
+    expect(types).toContain('audio-voice-radio');
+    expect(types).toContain('audio-voice-underwater');
+    expect(types).toContain('audio-voice-robot');
+    expect(types).toContain('audio-voice-shaky');
   });
 
   it('exposes default values for native audio effects', () => {
@@ -67,6 +71,33 @@ describe('audio effect manifests', () => {
       baseFrequency: 700,
     });
 
+    expect(getAudioEffectManifest('audio-voice-radio')?.defaultValues).toEqual({
+      wet: 1,
+      lowCut: 500,
+      highCut: 2200,
+      distortion: 0.35,
+    });
+
+    expect(getAudioEffectManifest('audio-voice-underwater')?.defaultValues).toEqual({
+      wet: 1,
+      cutoff: 360,
+      resonance: 4,
+    });
+
+    expect(getAudioEffectManifest('audio-voice-robot')?.defaultValues).toEqual({
+      wet: 0.75,
+      rate: 1.2,
+      depth: 0.0018,
+      delayTime: 0.004,
+      feedback: 0.25,
+    });
+
+    expect(getAudioEffectManifest('audio-voice-shaky')?.defaultValues).toEqual({
+      wet: 1,
+      rate: 9,
+      depth: 0.75,
+    });
+
     expect(getAudioEffectManifest('audio-reverb')?.defaultValues).toEqual({
       wet: 0.5,
       decay: 2.5,
@@ -78,5 +109,13 @@ describe('audio effect manifests', () => {
       distortion: 0.4,
       oversample: '2x',
     });
+  });
+
+  it('marks voice effects with voice category', () => {
+    expect(getAudioEffectManifest('audio-voice-radio')?.category).toBe('voice');
+    expect(getAudioEffectManifest('audio-voice-underwater')?.category).toBe('voice');
+    expect(getAudioEffectManifest('audio-voice-robot')?.category).toBe('voice');
+    expect(getAudioEffectManifest('audio-voice-shaky')?.category).toBe('voice');
+    expect(getAudioEffectManifest('audio-compressor')?.category ?? 'basic').toBe('basic');
   });
 });

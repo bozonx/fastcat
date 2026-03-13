@@ -119,6 +119,7 @@ useHead({
 
       <!-- Modals -->
       <EditorSettingsModal v-model:open="isEditorSettingsOpen" />
+      <ProjectSettingsModal v-model:open="isProjectSettingsOpen" />
       <ProjectLockedModal />
       <FileConversionModal />
 

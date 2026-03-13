@@ -5,6 +5,8 @@ export type EffectType = string;
 
 export type EffectTarget = 'video' | 'audio';
 
+export type AudioEffectCategory = 'basic' | 'voice';
+
 export interface AudioEffectContext {
   audioContext: BaseAudioContext;
   sourceNode?: AudioNode;
@@ -37,6 +39,7 @@ export interface VideoEffectManifest<T = Record<string, any>> extends BaseEffect
 
 export interface AudioEffectManifest<T = Record<string, any>> extends BaseEffectManifest<T> {
   target: 'audio';
+  category?: AudioEffectCategory;
   createNode?: (context: AudioEffectContext) => AudioEffectNode;
   updateNode?: (node: AudioEffectNode, values: T, context: AudioEffectContext) => void;
 }
