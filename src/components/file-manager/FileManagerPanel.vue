@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -7,25 +7,15 @@ import type { FsEntry } from '~/types/fs';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerPanelModals from '~/components/file-manager/FileManagerPanelModals.vue';
 import { useFocusStore } from '~/stores/focus.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
-import type { FileAction as FileActionBase } from '~/composables/fileManager/useFileManagerActions';
-import { useProxyStore } from '~/stores/proxy.store';
-import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import {
-  getMediaTypeFromFilename,
-  getMimeTypeFromFilename,
-  isOpenableProjectFileName,
-} from '~/utils/media-types';
 import { useUiStore } from '~/stores/ui.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFileManagerPanelPendingActions } from '~/composables/fileManager/useFileManagerPanelPendingActions';
 import { useFileManagerPanelBootstrap } from '~/composables/fileManager/useFileManagerPanelBootstrap';
-import { transcribeProjectAudioFile } from '~/utils/stt';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { useFileManagerPanelStt } from '~/composables/fileManager/useFileManagerPanelStt';
+import { useFileManagerPanelActions } from '~/composables/fileManager/useFileManagerPanelActions';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -44,9 +34,6 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
-const workspaceStore = useWorkspaceStore();
-const selectionStore = useSelectionStore();
-const proxyStore = useProxyStore();
 const fileConversion = useFileConversion();
 const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabs();
@@ -75,22 +62,39 @@ const {
 } = fileManager;
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const sttTranscriptionModalOpen = ref(false);
-const sttTranscriptionLanguage = ref('');
-const sttTranscriptionError = ref('');
-const sttTranscribing = ref(false);
-const sttTranscriptionEntry = ref<FsEntry | null>(null);
 
-const sttConfig = computed(() =>
-  resolveExternalServiceConfig({
-    service: 'stt',
-    integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl:
-      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.fastcatPublicadorBaseUrl
-        : '',
-  }),
-);
+const fastcatPublicadorBaseUrl =
+  typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
+    ? runtimeConfig.public.fastcatPublicadorBaseUrl
+    : '';
+
+const stt = useFileManagerPanelStt({
+  vfs: { getFile: (path) => vfs.getFile(path) },
+  fastcatPublicadorBaseUrl,
+  onSuccess: ({ cached, mediaType }) => {
+    toast.add({
+      title: cached ? 'Transcription loaded from cache' : 'Transcription completed',
+      description: cached
+        ? 'Cached transcription was loaded from vardata.'
+        : mediaType === 'video'
+          ? 'Video audio track was transcribed and saved to vardata cache.'
+          : 'Transcription was saved to vardata cache.',
+      color: 'success',
+    });
+  },
+  onError: () => {},
+});
+const {
+  sttConfig,
+  modalOpen: sttTranscriptionModalOpen,
+  language: sttTranscriptionLanguage,
+  errorMessage: sttTranscriptionError,
+  isTranscribing: sttTranscribing,
+  pendingEntry: sttTranscriptionEntry,
+  isTranscribableMediaFile,
+  openModal: openTranscriptionModal,
+  submitTranscription,
+} = stt;
 
 const {
   isDeleteConfirmModalOpen,
@@ -117,250 +121,22 @@ const {
   readDirectory,
   reloadDirectory,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  setFileTreePathExpanded: (path, expanded) => {
-    const projectName = projectStore.currentProjectName;
-    if (projectName) uiStore.setFileTreePathExpanded(projectName, path, expanded);
-  },
+  setFileTreePathExpanded: (path, expanded) => uiStore.setFileTreePathExpanded(path, expanded),
   onFileSelect: (entry) => emit('select', entry),
 });
 
-type FileAction =
-  | FileActionBase
-  | 'refresh'
-  | 'createMarkdown'
-  | 'createTimeline'
-  | 'openAsPanelCut'
-  | 'openAsPanelSound'
-  | 'openAsProjectTab'
-  | 'uploadRemote'
-  | 'transcribe'
-  | 'extractAudio';
-
-function isTranscribableMediaFile(entry: FsEntry): boolean {
-  if (entry.kind !== 'file' || entry.source === 'remote') return false;
-
-  const mediaType = getMediaTypeFromFilename(entry.name);
-
-  return (
-    (mediaType === 'audio' || mediaType === 'video') &&
-    Boolean(sttConfig.value) &&
-    Boolean(workspaceStore.workspaceHandle) &&
-    Boolean(projectStore.currentProjectId) &&
-    Boolean(entry.path)
-  );
-}
-
-function openTranscriptionModal(entry: FsEntry) {
-  sttTranscriptionEntry.value = entry;
-  sttTranscriptionLanguage.value = '';
-  sttTranscriptionError.value = '';
-  sttTranscriptionModalOpen.value = true;
-}
-
-async function submitTranscription() {
-  const entry = sttTranscriptionEntry.value;
-
-  if (
-    !entry ||
-    entry.kind !== 'file' ||
-    !workspaceStore.workspaceHandle ||
-    !projectStore.currentProjectId
-  ) {
-    return;
-  }
-
-  sttTranscribing.value = true;
-  sttTranscriptionError.value = '';
-
-  try {
-    const mediaType = getMediaTypeFromFilename(entry.name);
-    const file = await vfs.getFile(entry.path);
-    if (!file) throw new Error('Failed to access file');
-    const request: SttTranscriptionRequest = {
-      file,
-      filePath: entry.path,
-      fileName: entry.name,
-      fileType: getMimeTypeFromFilename(entry.name),
-      language: sttTranscriptionLanguage.value,
-      fastcatPublicadorBaseUrl:
-        typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-          ? runtimeConfig.public.fastcatPublicadorBaseUrl
-          : '',
-      projectId: projectStore.currentProjectId!,
-      userSettings: workspaceStore.userSettings,
-      workspaceHandle: workspaceStore.workspaceHandle!,
-      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-    };
-
-    const result = await transcribeProjectAudioFile(request);
-
-    sttTranscriptionModalOpen.value = false;
-
-    toast.add({
-      title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
-      description: result.cached
-        ? 'Cached transcription was loaded from vardata.'
-        : mediaType === 'video'
-          ? 'Video audio track was transcribed and saved to vardata cache.'
-          : 'Transcription was saved to vardata cache.',
-      color: 'success',
-    });
-  } catch (error: unknown) {
-    sttTranscriptionError.value =
-      error instanceof Error ? error.message : 'Failed to transcribe media';
-  } finally {
-    sttTranscribing.value = false;
-  }
-}
-
-async function onFileAction(action: string, entry: FsEntry | FsEntry[]) {
-  if (Array.isArray(entry)) {
-    if (action === 'delete') {
-      onFileActionBase('delete', entry);
-      return;
-    }
-    if (['createProxy', 'cancelProxy', 'deleteProxy'].includes(action)) {
-      onFileActionBase(action as any, entry);
-      return;
-    }
-    if (action === 'extractAudio') {
-      for (const e of entry) {
-        if (e.kind === 'file') void extractAudio(e);
-      }
-      return;
-    }
-    return;
-  }
-
-  if (action === 'refresh') {
-    void loadProjectDirectory({ fullRefresh: true });
-  } else if (action === 'createFolder') {
-    const target: FsEntry = entry ?? {
-      kind: 'directory',
-      name: projectStore.currentProjectName ?? '',
-      path: '',
-    };
-    if (target.path) {
-      uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, target.path, true);
-    }
-    onFileActionBase('createFolder', target, () =>
-      (target.children ?? []).map((child) => child.name),
-    );
-  } else if (action === 'createTimeline') {
-    if (entry.kind === 'directory') {
-      if (entry.path) {
-        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
-      }
-      await createTimelineInDirectory(entry);
-    }
-  } else if (action === 'createMarkdown') {
-    if (entry.kind === 'directory') {
-      if (entry.path) {
-        uiStore.setFileTreePathExpanded(projectStore.currentProjectName!, entry.path, true);
-      }
-      onFileActionBase('createMarkdown', entry);
-    }
-  } else if (action === 'openAsPanelCut' || action === 'openAsPanelSound') {
-    if (entry.kind !== 'file' || !isOpenableProjectFileName(entry.name)) return;
-    const view = action === 'openAsPanelCut' ? 'cut' : 'sound';
-    if (view === 'cut') {
-      projectStore.goToCut();
-    } else {
-      projectStore.goToSound();
-    }
-    const mediaType = getMediaTypeFromFilename(entry.name);
-    if (mediaType === 'text') {
-      try {
-        const blob = await vfs.readFile(entry.path);
-        const content = await blob.text();
-        projectStore.addTextPanel(entry.path, content, entry.name, undefined, undefined, view);
-      } catch {
-        projectStore.addTextPanel(entry.path, '', entry.name, undefined, undefined, view);
-      }
-    } else if (['video', 'audio', 'image'].includes(mediaType)) {
-      projectStore.addMediaPanel(entry, mediaType as any, entry.name, undefined, undefined, view);
-    }
-  } else if (action === 'openAsProjectTab') {
-    if (entry.kind !== 'file' || !entry.path || !isOpenableProjectFileName(entry.name)) return;
-    const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
-    setActiveTab(tabId);
-  } else if (action === 'createOtioVersion') {
-    onFileActionBase('createOtioVersion', entry);
-  } else if (action === 'createProxyForFolder') {
-    if (entry.kind === 'directory' && entry.path !== undefined) {
-      const dirHandle = await projectStore.getDirectoryHandleByPath(entry.path);
-      if (!dirHandle) return;
-
-      void proxyStore.generateProxiesForFolder({
-        dirHandle,
-        dirPath: entry.path,
-      });
-    }
-  } else if (action === 'cancelProxyForFolder') {
-    if (entry.kind === 'directory' && entry.path !== undefined) {
-      const generatingProxies = proxyStore.generatingProxies;
-      for (const p of generatingProxies) {
-        if (p.startsWith(`${entry.path}/`)) {
-          const rel = p.slice(entry.path.length + 1);
-          if (!rel.includes('/')) {
-            void proxyStore.cancelProxyGeneration(p);
-          }
-        }
-      }
-    }
-  } else if (action === 'convertFile') {
-    if (entry.kind === 'file') {
-      void fileConversion.openConversionModal(entry);
-    }
-  } else if (action === 'uploadRemote') {
-    if (entry.kind === 'file' && entry.source !== 'remote') {
-      uiStore.remoteExchangeLocalEntry = entry;
-      uiStore.remoteExchangeModalOpen = true;
-    }
-  } else if (action === 'transcribe') {
-    openTranscriptionModal(entry);
-  } else if (action === 'extractAudio') {
-    if (entry.kind === 'file') void extractAudio(entry);
-  } else {
-    onFileActionBase(action as FileActionBase, entry);
-  }
-}
-
-async function createTimelineInDirectory(entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-  try {
-    const createdPath = await createTimelineCommand({
-      vfs,
-      timelinesDirName: entry.path || undefined,
-    });
-
-    await loadProjectDirectory();
-
-    const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
-    if (createdEntry) {
-      uiStore.selectedFsEntry = {
-        kind: createdEntry.kind,
-        name: createdEntry.name,
-        path: createdEntry.path,
-      };
-      selectionStore.selectFsEntry(createdEntry);
-      emit('select', createdEntry);
-    }
-
-    if (createdPath) {
-      await projectStore.openTimelineFile(createdPath);
-      await timelineStore.loadTimeline();
-      void timelineStore.loadTimelineMetadata();
-    }
-  } catch (e: unknown) {
-    console.error('[FileManagerPanel] Failed to create timeline', e);
-    toast.add({
-      color: 'red',
-      title: 'Timeline error',
-      description: e instanceof Error ? e.message : 'Failed to create timeline',
-    });
-  }
-}
+const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileManagerPanelActions({
+  vfs: { readFile: (path) => vfs.readFile(path) },
+  loadProjectDirectory,
+  findEntryByPath,
+  onFileActionBase: onFileActionBase as any,
+  openConversionModal: (entry) => fileConversion.openConversionModal(entry),
+  openTranscriptionModal,
+  extractAudio,
+  addFileTab,
+  setActiveTab,
+  onSelect: (entry) => emit('select', entry),
+});
 
 async function onCreateTimeline() {
   const selectedDir =
