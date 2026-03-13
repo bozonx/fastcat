@@ -93,11 +93,23 @@ export interface ArrayParamControl extends BaseParamControl {
   addLabelKey?: string;
   emptyLabel?: string;
   emptyLabelKey?: string;
+  layout?: 'vertical' | 'horizontal'; // Add layout option
+}
+
+export interface KnobParamControl extends BaseParamControl {
+  kind: 'knob';
+  key: string;
+  min: number;
+  max: number;
+  step: number;
+  format?: (value: number) => string;
+  defaultValue?: number;
 }
 
 export type ParamControl =
   | SliderParamControl
   | NumberParamControl
+  | KnobParamControl
   | ToggleParamControl
   | SelectParamControl
   | ButtonGroupParamControl

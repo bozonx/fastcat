@@ -82,6 +82,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
     {
       kind: 'array',
       key: 'points',
+      layout: 'horizontal',
       addLabel: 'Add EQ Band',
       emptyLabel: 'No EQ bands added',
       defaultItem: {
@@ -95,7 +96,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
       itemTemplate: [
         {
           kind: 'row',
-          columns: 2,
+          columns: 1,
           controls: [
             {
               kind: 'toggle',
@@ -111,18 +112,18 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           ],
         },
         {
-          kind: 'slider',
+          kind: 'knob',
           key: 'frequency',
-          label: 'Frequency (Hz)',
+          label: 'Freq',
           min: 20,
           max: 20000,
           step: 1,
           format: (v) => `${Math.round(v)} Hz`,
         },
         {
-          kind: 'slider',
+          kind: 'knob',
           key: 'gain',
-          label: 'Gain (dB)',
+          label: 'Gain',
           min: -24,
           max: 24,
           step: 0.1,
@@ -130,9 +131,9 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           showIf: (v) => ['lowshelf', 'highshelf', 'peaking'].includes(v.type),
         },
         {
-          kind: 'slider',
+          kind: 'knob',
           key: 'q',
-          label: 'Q Factor',
+          label: 'Q',
           min: 0.1,
           max: 20,
           step: 0.01,

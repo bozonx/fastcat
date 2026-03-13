@@ -1032,6 +1032,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         masterGain: fastcatMeta?.masterGain,
         masterMuted: fastcatMeta?.masterMuted,
         masterEffects: Array.isArray(fastcatMeta?.masterEffects) ? fastcatMeta.masterEffects : undefined,
+        zoom: fastcatMeta?.zoom,
+        trackHeights: fastcatMeta?.trackHeights && typeof fastcatMeta.trackHeights === 'object' ? { ...fastcatMeta.trackHeights } : undefined,
       },
     },
   };
@@ -1220,6 +1222,14 @@ export function parseTimelineFromOtio(
     typeof fastcatMeta?.snapThresholdPx === 'number' && Number.isFinite(fastcatMeta.snapThresholdPx)
       ? Math.max(1, Math.round(fastcatMeta.snapThresholdPx))
       : undefined;
+  const zoom =
+    typeof fastcatMeta?.zoom === 'number' && Number.isFinite(fastcatMeta.zoom)
+      ? fastcatMeta.zoom
+      : undefined;
+  const trackHeights =
+    fastcatMeta?.trackHeights && typeof fastcatMeta.trackHeights === 'object'
+      ? (fastcatMeta.trackHeights as Record<string, number>)
+      : undefined;
 
   if (tracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
@@ -1234,6 +1244,8 @@ export function parseTimelineFromOtio(
         selectionRange,
         playheadUs,
         snapThresholdPx,
+        zoom,
+        trackHeights,
       },
     };
     return base;
@@ -1251,8 +1263,11 @@ export function parseTimelineFromOtio(
         docId,
         timebase,
         markers,
+        selectionRange,
         playheadUs,
         snapThresholdPx,
+        zoom,
+        trackHeights,
       },
     },
   };
