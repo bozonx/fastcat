@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
+import { useFileBrowserInteraction } from '../../../../src/composables/fileManager/useFileBrowserInteraction';
+import type { FsEntry } from '../../../../src/types/fs';
+
 const filesPageStore = {
   sortOption: { field: 'name', order: 'asc' },
   columnWidths: {} as Record<string, number>,
@@ -29,9 +32,6 @@ vi.mock('~/composables/fileManager/useFileManagerSelection', () => ({
     handleEntryClick: (e: any, entry: any) => onSingleSelect(entry),
   }),
 }));
-
-import { useFileBrowserInteraction } from '../../../../src/composables/fileManager/useFileBrowserInteraction';
-import type { FsEntry } from '../../../../src/types/fs';
 
 describe('useFileBrowserInteraction', () => {
   beforeEach(() => {
@@ -69,7 +69,9 @@ describe('useFileBrowserInteraction', () => {
     });
 
     handleEntryDoubleClick({ kind: 'directory', name: 'dir', path: 'dir' } as FsEntry);
-    expect(filesPageStore.openFolder).toHaveBeenCalledWith(expect.objectContaining({ name: 'dir' }));
+    expect(filesPageStore.openFolder).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'dir' }),
+    );
   });
 
   it('handleEntryDoubleClick opens timeline if .otio', async () => {
@@ -103,6 +105,9 @@ describe('useFileBrowserInteraction', () => {
     });
 
     handleEntryDoubleClick({ kind: 'file', name: 'script.txt', path: 'script.txt' } as FsEntry);
-    expect(onFileAction).toHaveBeenCalledWith('openAsProjectTab', expect.objectContaining({ name: 'script.txt' }));
+    expect(onFileAction).toHaveBeenCalledWith(
+      'openAsProjectTab',
+      expect.objectContaining({ name: 'script.txt' }),
+    );
   });
 });

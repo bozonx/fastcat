@@ -83,11 +83,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     sortMode: deps.sortMode,
     showHiddenFiles: () => deps.showHiddenFiles.value,
     vfs: deps.vfs,
-    hasPersistedFileTreeState: () => {
+    hasPersistedFileTreeState: function hasPersistedFileTreeState(): boolean {
       const projectName = deps.getProjectName();
       if (!projectName) return false;
       const uiStore = useUiStore();
-      return uiStore.hasPersistedFileTreeState(projectName);
+      return uiStore.hasPersistedFileTreeState();
     },
     isPathExpanded: (path) => deps.isFileTreePathExpanded(path),
     setPathExpanded: (path, expanded) => deps.setFileTreePathExpanded(path, expanded),
@@ -567,10 +567,8 @@ export function useFileManager() {
     showHiddenFiles,
     mediaStore,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
-    setFileTreePathExpanded: (path, expanded) => {
-      const projectName = projectStore.currentProjectName;
-      if (!projectName) return;
-      uiStore.setFileTreePathExpanded(projectName, path, expanded);
+    setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {
+      uiStore.setFileTreePathExpanded(path, expanded);
     },
     getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
     getWorkspaceHandle: () => workspaceStore.workspaceHandle,

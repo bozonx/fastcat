@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import { useFileBrowserFileActions } from '../../../../src/composables/fileManager/useFileBrowserFileActions';
+import type { FsEntry } from '../../../../src/types/fs';
+
 const projectStore = {
   getDirectoryHandleByPath: vi.fn().mockResolvedValue({}),
   goToCut: vi.fn(),
@@ -35,14 +38,13 @@ vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => proxyStore }));
 vi.mock('~/composables/project/useProjectTabs', () => ({ useProjectTabs: () => projectTabs }));
-vi.mock('~/composables/fileManager/useAudioExtraction', () => ({ useAudioExtraction: () => audioExtraction }));
+vi.mock('~/composables/fileManager/useAudioExtraction', () => ({
+  useAudioExtraction: () => audioExtraction,
+}));
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: vi.fn((name: string) => (name.endsWith('.mp4') ? 'video' : 'unknown')),
   isOpenableProjectFileName: vi.fn((name: string) => !name.startsWith('.')),
 }));
-
-import { useFileBrowserFileActions } from '../../../../src/composables/fileManager/useFileBrowserFileActions';
-import type { FsEntry } from '../../../../src/types/fs';
 
 describe('useFileBrowserFileActions', () => {
   beforeEach(() => {

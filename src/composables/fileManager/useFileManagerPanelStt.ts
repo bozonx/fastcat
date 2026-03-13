@@ -61,7 +61,12 @@ export function useFileManagerPanelStt({
 
   async function submitTranscription() {
     const entry = pendingEntry.value;
-    if (!entry || entry.kind !== 'file' || !workspaceStore.workspaceHandle || !projectStore.currentProjectId) {
+    if (
+      !entry ||
+      entry.kind !== 'file' ||
+      !workspaceStore.workspaceHandle ||
+      !projectStore.currentProjectId
+    ) {
       return;
     }
 

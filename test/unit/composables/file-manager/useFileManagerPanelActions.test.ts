@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useFileManagerPanelActions } from '../../../../src/composables/fileManager/useFileManagerPanelActions';
+import type { FsEntry } from '../../../../src/types/fs';
+
 const { createTimelineCommand } = vi.hoisted(() => ({
   createTimelineCommand: vi.fn(),
 }));
@@ -49,9 +52,6 @@ vi.mock('~/utils/media-types', () => ({
 }));
 
 vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
-
-import { useFileManagerPanelActions } from '../../../../src/composables/fileManager/useFileManagerPanelActions';
-import type { FsEntry } from '../../../../src/types/fs';
 
 describe('useFileManagerPanelActions', () => {
   beforeEach(() => {

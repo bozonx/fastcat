@@ -51,10 +51,7 @@ const { t } = useI18n();
       <div v-if="props.deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
         {{ props.deleteTargets[0]?.name }}
       </div>
-      <div
-        v-else-if="props.deleteTargets.length > 1"
-        class="mt-2 text-sm font-medium text-ui-text"
-      >
+      <div v-else-if="props.deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
         {{ props.deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
       </div>
       <div
