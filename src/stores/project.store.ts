@@ -116,6 +116,8 @@ export const useProjectStore = defineStore('project', () => {
     getProjectDirHandle,
     getCurrentProjectName: () => currentProjectName.value,
     getIsReadOnly: () => isReadOnly.value,
+    getProjectMeta: () => metaModule.projectMeta.value,
+    saveProjectMeta: metaModule.saveProjectMeta,
   });
 
   async function loadProjectSettings() {

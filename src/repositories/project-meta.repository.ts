@@ -7,11 +7,18 @@ import {
 
 export interface ProjectMeta {
   id: string;
+  version: number;
+  title: string;
+  description: string;
+  author: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProjectMetaRepository {
   load(): Promise<ProjectMeta | null>;
-  save(data: ProjectMeta): Promise<void>;
+  save(data: Partial<ProjectMeta> & { id: string }): Promise<void>;
 }
 
 export function createProjectMetaRepository(input: {
@@ -25,9 +32,19 @@ export function createProjectMetaRepository(input: {
         create: false,
       });
       if (!handle) return null;
-      const raw = await readJsonFromFileHandle<ProjectMeta>(handle);
+      const raw = await readJsonFromFileHandle<any>(handle);
       if (!raw || typeof raw.id !== 'string' || !raw.id) return null;
-      return { id: raw.id };
+
+      return {
+        id: raw.id,
+        version: Number(raw.version) || 1,
+        title: String(raw.title || ''),
+        description: String(raw.description || ''),
+        author: String(raw.author || ''),
+        tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+        createdAt: String(raw.createdAt || new Date().toISOString()),
+        updatedAt: String(raw.updatedAt || new Date().toISOString()),
+      };
     },
 
     async save(data) {
@@ -37,6 +54,9 @@ export function createProjectMetaRepository(input: {
         create: true,
       });
       if (!handle) return;
+      
+      // If we are updating, we should probably load existing first or assume data is complete
+      // For now, let's just write what we have, but store/module should handle merging
       await writeJsonToFileHandle({ handle, data });
     },
   };
