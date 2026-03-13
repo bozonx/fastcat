@@ -181,10 +181,16 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
       if (!filter) continue;
 
       filter.type = point.type || 'peaking';
-      // Set values with a tiny ramp to avoid zipper noise if possible, but direct assignment is usually okay for simple EQ
-      filter.frequency.value = Math.max(20, Math.min(20000, point.frequency || 1000));
-      filter.Q.value = Math.max(0.0001, Math.min(1000, point.q || 1));
-      filter.gain.value = Math.max(-40, Math.min(40, point.gain || 0));
+
+      const freq = Math.max(20, Math.min(20000, point.frequency || 1000));
+      const q = Math.max(0.0001, Math.min(1000, point.q || 1));
+      const gain = Math.max(-40, Math.min(40, point.gain || 0));
+
+      const time = context.audioContext.currentTime;
+      // Use setTargetAtTime with a small time constant (0.02s) to prevent zipper noise when adjusting knobs
+      filter.frequency.setTargetAtTime(freq, time, 0.02);
+      filter.Q.setTargetAtTime(q, time, 0.02);
+      filter.gain.setTargetAtTime(gain, time, 0.02);
 
       activeIndex++;
     }
@@ -195,7 +201,8 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
       if (!filter) continue;
 
       filter.type = 'peaking';
-      filter.gain.value = 0;
+      const time = context.audioContext.currentTime;
+      filter.gain.setTargetAtTime(0, time, 0.02);
     }
   },
 };
