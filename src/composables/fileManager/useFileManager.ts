@@ -295,6 +295,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       projectId,
       projectRelativePath: path,
       workspaceHandle,
+      resolvedStorageTopology: useWorkspaceStore().resolvedStorageTopology,
     });
   }
 
@@ -552,6 +553,7 @@ export function useFileManager() {
       projectId,
       projectRelativePath: path,
       workspaceHandle,
+      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
     });
   }
 

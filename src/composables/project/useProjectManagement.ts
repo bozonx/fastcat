@@ -17,6 +17,7 @@ function createProjectCreationState(workspaceStore: ReturnType<typeof useWorkspa
     aspectRatio: preset.aspectRatio,
     isCustomResolution: preset.isCustomResolution,
     sampleRate: preset.sampleRate,
+    isAdvancedSettingsOpen: false,
   };
 }
 
@@ -75,20 +76,25 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     const name = projectCreationSettings.value.name.trim();
     if (!name) return;
 
-    await projectStore.createProject(name, {
-      presetId: projectCreationSettings.value.presetId,
-      width: projectCreationSettings.value.width,
-      height: projectCreationSettings.value.height,
-      fps: projectCreationSettings.value.fps,
-      resolutionFormat: projectCreationSettings.value.resolutionFormat,
-      orientation: projectCreationSettings.value.orientation,
-      aspectRatio: projectCreationSettings.value.aspectRatio,
-      isCustomResolution: projectCreationSettings.value.isCustomResolution,
-      sampleRate: projectCreationSettings.value.sampleRate,
-    });
+    const options = projectCreationSettings.value.isAdvancedSettingsOpen
+      ? {
+          presetId: projectCreationSettings.value.presetId,
+          width: projectCreationSettings.value.width,
+          height: projectCreationSettings.value.height,
+          fps: projectCreationSettings.value.fps,
+          resolutionFormat: projectCreationSettings.value.resolutionFormat,
+          orientation: projectCreationSettings.value.orientation,
+          aspectRatio: projectCreationSettings.value.aspectRatio,
+          isCustomResolution: projectCreationSettings.value.isCustomResolution,
+          sampleRate: projectCreationSettings.value.sampleRate,
+        }
+      : undefined;
 
-    workspaceStore.userSettings.projectPresets.lastUsedPresetId =
-      projectCreationSettings.value.presetId;
+    await projectStore.createProject(name, options);
+
+    if (options?.presetId) {
+      workspaceStore.userSettings.projectPresets.lastUsedPresetId = options.presetId;
+    }
 
     if (workspaceStore.userSettings.openLastProjectOnStart) {
       handleOpenProject(name);

@@ -189,8 +189,8 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
 
     <!-- Preset Mode -->
     <template v-if="!localIsCustom">
-      <div class="flex flex-wrap gap-4">
-        <div class="flex flex-col gap-2 w-[8.5rem] shrink-0">
+      <div class="flex flex-wrap gap-2">
+        <div class="flex flex-col gap-2 w-[5rem] shrink-0">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.orientation', 'Orientation') }}
           </label>
@@ -203,7 +203,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </div>
 
-        <div class="flex flex-col gap-2 w-[6rem] shrink-0">
+        <div class="flex flex-col gap-2 w-[5rem] shrink-0">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.aspectRatio', 'Aspect Ratio') }}
           </label>
@@ -218,7 +218,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </div>
 
-        <div class="flex flex-col gap-2 flex-1 min-w-[12rem]">
+        <div class="flex flex-col gap-2 w-[7rem]">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.format', 'Format') }}
           </label>
@@ -233,7 +233,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </div>
 
-        <div class="flex flex-col gap-2 w-[8rem] shrink-0">
+        <div class="flex flex-col gap-2 flex-1 shrink-0">
           <label class="text-xs text-ui-text-muted font-medium whitespace-nowrap">
             {{ t('videoEditor.resolution.finalResolution', 'Final Resolution:') }}
           </label>

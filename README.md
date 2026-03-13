@@ -71,10 +71,11 @@ pnpm tauri:build
 
 FastCat uses a split storage model:
 
-- `projects/` and `common/` are persistent user-owned content
-- temporary/generated workspace data remains inside `vardata/`
-- proxy media can be configured separately through **Application settings → Storage**
-- desktop path overrides for content/data/temp/proxies are stored in `app.settings.json`
+- `projectsRoot` and `commonRoot` are persistent user-owned content (inside `contentRootPath` if overridden)
+- temporary/generated workspace data is stored in `tempRoot` (defaults to `vardata/`)
+- proxy media is stored in `proxiesRoot` (defaults to `vardata/proxies`)
+- libraries and future global data are stored in `dataRoot` (defaults to `data/` under `dataRootPath` or `contentRootPath`)
+- logical paths can be configured through **Application settings → Storage**
 
 In OPFS and portable-style workspace modes, config files are stored in the workspace under `.fastcat-config/`.
 Legacy `.gran-workspace/*` files are still read for migration.
@@ -84,23 +85,24 @@ This ID is used as the folder key for project-scoped temporary data.
 
 Layout:
 
-- `common/` — shared workspace library available in every project
-- `vardata/projects/<projectId>/proxies` — generated proxy media for the project
-- `vardata/projects/<projectId>/thumbnails` — generated thumbnails for the project
-- `vardata/projects/<projectId>/cache` — cached metadata and other project-scoped data
-- `vardata/projects/<projectId>/cache/transcriptions` — cached STT responses for audio files
+- `<commonRoot>` — shared workspace library available in every project
+- `<dataRoot>` — future application global data and libraries
+- `<proxiesRoot>/<projectId>` — generated proxy media for the project
+- `<tempRoot>/<projectId>/thumbnails` — generated thumbnails for the project
+- `<tempRoot>/<projectId>/cache` — cached metadata and other project-scoped data
+- `<tempRoot>/<projectId>/cache/transcriptions` — cached STT responses for audio files
 
 Shared library behavior:
 
-- the file manager exposes `common` as a virtual top-level folder in browsers and trees
-- files from `common/` use the internal path prefix `@common/...`
-- media and documents from `common/` can be opened and reused from any project
-- OTIO files from `common/` can be opened for editing and inserted as nested timelines
+- the file manager exposes `<commonRoot>` as a virtual top-level folder in browsers and trees
+- files from `<commonRoot>` use the internal path prefix `@common/...`
+- media and documents from `<commonRoot>` can be opened and reused from any project
+- OTIO files from `<commonRoot>` can be opened for editing and inserted as nested timelines
 
 You can clear temporary files from the UI:
 
-- **Application settings → Storage → Clear temporary files** — deletes `vardata/`
-- **Project settings → Storage → Clear temporary files** — deletes `vardata/projects/<projectId>`
+- **Application settings → Storage → Clear temporary files** — deletes `<tempRoot>`
+- **Project settings → Storage → Clear temporary files** — deletes `<tempRoot>/<projectId>`
 
 ## External integrations
 

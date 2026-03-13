@@ -214,7 +214,7 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
   >
     <div class="space-y-6">
       <div class="space-y-2">
-        <label class="text-sm font-medium text-ui-text">
+        <label class="text-sm font-medium text-slate-200">
           {{ t('granVideoEditor.projects.projectNamePlaceholder') }}
         </label>
         <UInput
@@ -225,21 +225,25 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
         />
       </div>
 
-      <UCollapsible>
+      <div v-if="!projectCreationSettings.isAdvancedSettingsOpen" class="text-xs text-slate-400 bg-slate-900/50 p-3 rounded-lg flex gap-2">
+        <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
+        {{ t('granVideoEditor.projects.autoDetectHint', 'Project resolution and framerate will be automatically detected from the first video added to the timeline.') }}
+      </div>
+
+      <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
         <UButton
           color="neutral"
           variant="ghost"
           size="sm"
           class="p-0 hover:bg-transparent"
           :icon="
-            isAdvancedOpen ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
+            projectCreationSettings.isAdvancedSettingsOpen ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
           "
           :label="t('videoEditor.projectSettings.advanced', 'Advanced Settings')"
-          @click="isAdvancedOpen = !isAdvancedOpen"
         />
 
         <template #content>
-          <div class="pt-4 border-t border-ui-border mt-2">
+          <div class="pt-4 border-t border-slate-800 mt-2">
             <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')" class="mb-4">
               <USelectMenu
                 v-model="projectCreationSettings.presetId"

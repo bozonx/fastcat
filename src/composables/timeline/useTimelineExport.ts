@@ -1166,6 +1166,7 @@ export function useTimelineExport() {
       createVideoCoreHostApi({
         getCurrentProjectId: () => projectStore.currentProjectId,
         getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
         getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
         getFileByPath: async (path) => projectStore.getFileByPath(path),
         onExportProgress: (progress) => onProgress(progress / 100),

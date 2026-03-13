@@ -179,6 +179,7 @@ export function createProxyService(params: {
             createVideoCoreHostApi({
               getCurrentProjectId: () => null,
               getWorkspaceHandle: () => null,
+              getResolvedStorageTopology: () => null,
               getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
               getFileByPath: async (path) => await params.getFileByPath(path),
               onExportProgress: (progress) => {

@@ -496,6 +496,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         createVideoCoreHostApi({
           getCurrentProjectId: () => currentProjectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path) => {
             if (useProxyInMonitor.value) {
               const proxyHandle = await proxyStore.getProxyFileHandle(path);

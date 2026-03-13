@@ -219,17 +219,21 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
         />
       </div>
 
-      <UCollapsible>
+      <div v-if="!projectCreationSettings.isAdvancedSettingsOpen" class="text-xs text-ui-text-muted bg-ui-bg-accent p-3 rounded-lg flex gap-2">
+        <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
+        {{ t('granVideoEditor.projects.autoDetectHint', 'Project resolution and framerate will be automatically detected from the first video added to the timeline.') }}
+      </div>
+
+      <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
         <UButton
           color="neutral"
           variant="ghost"
           size="sm"
           class="p-0 hover:bg-transparent"
           :icon="
-            isAdvancedOpen ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
+            projectCreationSettings.isAdvancedSettingsOpen ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
           "
           :label="t('videoEditor.projectSettings.advanced', 'Advanced Settings')"
-          @click="isAdvancedOpen = !isAdvancedOpen"
         />
 
         <template #content>
