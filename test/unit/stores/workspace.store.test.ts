@@ -57,6 +57,9 @@ describe('WorkspaceStore', () => {
     expect(mockDirectoryHandle.getDirectoryHandle).toHaveBeenCalledWith('projects', {
       create: true,
     });
+    expect(mockDirectoryHandle.getDirectoryHandle).toHaveBeenCalledWith('common', {
+      create: true,
+    });
     expect(mockDirectoryHandle.getDirectoryHandle).toHaveBeenCalledWith('vardata', {
       create: true,
     });

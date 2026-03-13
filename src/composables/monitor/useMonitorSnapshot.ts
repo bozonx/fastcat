@@ -40,6 +40,7 @@ export function useMonitorSnapshot(input: {
         createVideoCoreHostApi({
           getCurrentProjectId: () => input.projectStore.currentProjectId,
           getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => input.workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
           getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
           onExportProgress: () => {},
@@ -126,6 +127,7 @@ export function useMonitorSnapshot(input: {
         createVideoCoreHostApi({
           getCurrentProjectId: () => input.projectStore.currentProjectId,
           getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => input.workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
           getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
           onExportProgress: () => {},

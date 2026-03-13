@@ -59,6 +59,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   const workspaceStore = useWorkspaceStore();
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
+  const uiStore = useUiStore();
+  const toast = useToast();
+  const { t } = useI18n();
 
   const historyDebounce = createTimelineHistoryDebounce({ historyStore });
 
@@ -387,9 +390,6 @@ export const useTimelineStore = defineStore('timeline', () => {
       await projectStore.saveProjectSettings();
     },
     showFpsWarning: (fileFps, projectFps) => {
-      const { t } = useI18n();
-      const uiStore = useUiStore();
-      const toast = useToast();
       toast.add({
         title: t('videoEditor.timeline.fpsMismatch', 'FPS mismatch'),
         description: t('videoEditor.timeline.fpsMismatchDesc', { fileFps, projectFps }),
@@ -497,7 +497,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     serializeTimelineToOtio,
     selectTimelineDurationUs,
     onSaveSuccess: () => {
-      const uiStore = useUiStore();
       uiStore.notifyTimelineSave();
     },
   });

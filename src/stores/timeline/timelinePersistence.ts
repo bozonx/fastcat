@@ -91,17 +91,7 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       }
     },
     onError: (e) => {
-      // In Nuxt, we can't easily access useToast outside of Vue context unless we pass it down
-      // However, we can use console.error or try to access the global nuxt app toast if injected
-      const nuxtApp = useNuxtApp();
-      const toast = (nuxtApp as any).$toast;
-      if (toast) {
-        toast.error('Failed to save timeline', {
-          description: e instanceof Error ? e.message : 'Unknown error occurred',
-        });
-      } else {
-        console.error('Failed to save timeline', e);
-      }
+      console.error('Failed to save timeline', e);
     },
   });
 

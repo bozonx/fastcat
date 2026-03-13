@@ -378,6 +378,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         createVideoCoreHostApi({
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
           getFileByPath: async (path: string) => projectStore.getFileByPath(path),
           onExportProgress: () => {},

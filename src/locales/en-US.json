@@ -607,6 +607,7 @@
       "openLast": "Open Project",
       "newProject": "New Project",
       "projectNamePlaceholder": "Project name",
+      "autoDetectHint": "Project resolution and framerate will be automatically detected from the first video added to the timeline.",
       "switchToMobile": "Switch to mobile view",
       "switchToDesktop": "Switch to desktop view",
       "mobileView": "Project management is not optimized for small screens. Please use a desktop browser.",

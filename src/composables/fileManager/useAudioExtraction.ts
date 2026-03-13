@@ -32,6 +32,7 @@ export function useAudioExtraction() {
         createVideoCoreHostApi({
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
           getFileByPath: async (path) => projectStore.getFileByPath(path),
           onExportProgress: () => {}, // Not used for extraction yet
