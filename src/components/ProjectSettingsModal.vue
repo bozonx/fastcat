@@ -194,6 +194,33 @@ const metaTagsString = computed({
     }
   },
 });
+
+const metaTitle = computed({
+  get: () => projectStore.projectMeta?.title || '',
+  set: (val: string) => {
+    if (projectStore.projectMeta) {
+      projectStore.projectMeta.title = val;
+    }
+  },
+});
+
+const metaAuthor = computed({
+  get: () => projectStore.projectMeta?.author || '',
+  set: (val: string) => {
+    if (projectStore.projectMeta) {
+      projectStore.projectMeta.author = val;
+    }
+  },
+});
+
+const metaDescription = computed({
+  get: () => projectStore.projectMeta?.description || '',
+  set: (val: string) => {
+    if (projectStore.projectMeta) {
+      projectStore.projectMeta.description = val;
+    }
+  },
+});
 </script>
 
 <template>
@@ -332,10 +359,10 @@ const metaTagsString = computed({
             projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
           "
           v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
-          v-model:metadata-title="projectStore.projectMeta ? projectStore.projectMeta.title : undefined"
-          v-model:metadata-author="projectStore.projectMeta ? projectStore.projectMeta.author : undefined"
+          v-model:metadata-title="metaTitle"
+          v-model:metadata-author="metaAuthor"
           v-model:metadata-tags="metaTagsString"
-          v-model:metadata-description="projectStore.projectMeta ? projectStore.projectMeta.description : undefined"
+          v-model:metadata-description="metaDescription"
           :show-audio-advanced="true"
           :show-builtin-presets="false"
           :hide-audio-sample-rate="true"

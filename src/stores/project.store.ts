@@ -259,6 +259,14 @@ export const useProjectStore = defineStore('project', () => {
       projectSettings.value = initialSettings;
       
       await metaModule.saveProjectMeta({ lastOpenedTimelinePath: initialTimeline });
+      
+      if (currentProjectId.value) {
+        workspaceStore.updateRecentProject({
+          projectName: name,
+          projectId: currentProjectId.value,
+          lastTimelinePath: initialTimeline,
+        });
+      }
 
       await workspaceStore.loadProjects();
       await saveProjectSettings();

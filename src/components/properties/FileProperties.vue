@@ -21,6 +21,7 @@ import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
+import { useFilePropertiesActions } from '~/composables/properties/useFilePropertiesActions';
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
@@ -374,6 +375,53 @@ function openTranscriptionModal() {
   isTranscriptionModalOpen.value = true;
 }
 
+const {
+  directoryPrimaryActions,
+  directorySecondaryActions,
+  filePrimaryActions,
+  fileSecondaryActions,
+} = useFilePropertiesActions({
+  t,
+  isProjectRootDir,
+  isFolderWithVideo,
+  isGeneratingProxyForFolder,
+  canConvertFile,
+  canUploadToRemote,
+  canTranscribeMedia,
+  canOpenAsPanel,
+  canOpenAsProjectTab,
+  showVideoProxyActions,
+  hasExistingProxyForFile,
+  isGeneratingProxyForFile,
+  isOtio,
+  isVideoFile,
+  triggerDirectoryUpload,
+  createSubfolder,
+  createTimelineInFolder,
+  createMarkdownInFolder,
+  generateProxiesForSelectedFolder,
+  stopProxyGenerationForSelectedFolder,
+  onRename,
+  onDelete,
+  onConvert: () => emit('convert', props.selectedFsEntry),
+  openRemoteUploadPicker,
+  openTranscriptionModal,
+  openAsPanelCut: () => openAsTextPanel('cut'),
+  openAsPanelSound: () => openAsTextPanel('sound'),
+  openAsProjectTab,
+  createProxy: async () => {
+    const file = await projectStore.getFileByPath(selectedPath.value!);
+    if (!file) return;
+    await proxyStore.generateProxy(file, selectedPath.value!);
+  },
+  cancelProxy: () => proxyStore.cancelProxyGeneration(selectedPath.value!),
+  deleteProxy: () => proxyStore.deleteProxy(selectedPath.value!),
+  createOtioVersion: () => {
+    uiStore.pendingOtioCreateVersion = props.selectedFsEntry;
+  },
+  extractAudio: () => extractAudio(props.selectedFsEntry),
+});
+
 async function submitAudioTranscription() {
   const selectedEntry = props.selectedFsEntry;
   if (
@@ -485,69 +533,8 @@ watch(
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
       <EntryActions
-        :primary-actions="[
-          {
-            id: 'rename',
-            title: t('common.rename', 'Rename'),
-            icon: 'i-heroicons-pencil',
-            hidden: isProjectRootDir,
-            onClick: onRename,
-          },
-          {
-            id: 'delete',
-            title: t('common.delete', 'Delete'),
-            icon: 'i-heroicons-trash',
-            hidden: isProjectRootDir,
-            onClick: onDelete,
-          },
-          {
-            id: 'upload',
-            title: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
-            icon: 'i-heroicons-arrow-up-tray',
-            onClick: triggerDirectoryUpload,
-          },
-          {
-            id: 'createSubfolder',
-            title: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-            icon: 'i-heroicons-folder-plus',
-            onClick: createSubfolder,
-          },
-        ]"
-        :secondary-actions="[
-          {
-            id: 'createTimeline',
-            label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
-            icon: 'i-heroicons-document-plus',
-            onClick: createTimelineInFolder,
-          },
-          {
-            id: 'createMarkdown',
-            label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
-            icon: 'i-heroicons-document-text',
-            onClick: createMarkdownInFolder,
-          },
-          {
-            id: 'createProxyForAll',
-            label: t(
-              'videoEditor.fileManager.actions.createProxyForAll',
-              'Create proxy for all videos',
-            ),
-            icon: 'i-heroicons-film',
-            hidden: !isFolderWithVideo || isGeneratingProxyForFolder,
-            onClick: () => generateProxiesForSelectedFolder(),
-          },
-          {
-            id: 'cancelProxyForAll',
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
-            icon: 'i-heroicons-x-circle',
-            color: 'error',
-            hidden: !isFolderWithVideo || !isGeneratingProxyForFolder,
-            onClick: () => stopProxyGenerationForSelectedFolder(),
-          },
-        ]"
+        :primary-actions="directoryPrimaryActions"
+        :secondary-actions="directorySecondaryActions"
       />
     </PropertySection>
 
@@ -556,110 +543,8 @@ watch(
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
       <EntryActions
-        :primary-actions="[
-          {
-            id: 'rename',
-            title: t('common.rename', 'Rename'),
-            icon: 'i-heroicons-pencil',
-            onClick: onRename,
-          },
-          {
-            id: 'delete',
-            title: t('common.delete', 'Delete'),
-            icon: 'i-heroicons-trash',
-            onClick: onDelete,
-          },
-          {
-            id: 'convertFile',
-            title: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
-            icon: 'i-heroicons-arrow-path',
-            hidden: !canConvertFile,
-            onClick: () => emit('convert', props.selectedFsEntry),
-          },
-          {
-            id: 'uploadRemote',
-            title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
-            icon: 'i-heroicons-cloud-arrow-up',
-            hidden: !canUploadToRemote,
-            onClick: openRemoteUploadPicker,
-          },
-          {
-            id: 'transcribe',
-            title: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
-            icon: 'i-heroicons-microphone',
-            hidden: !canTranscribeMedia,
-            onClick: openTranscriptionModal,
-          },
-        ]"
-        :secondary-actions="[
-          {
-            id: 'openAsPanelCut',
-            label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
-            icon: 'i-heroicons-window',
-            hidden: !canOpenAsPanel,
-            onClick: () => openAsTextPanel('cut'),
-          },
-          {
-            id: 'openAsPanelSound',
-            label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
-            icon: 'i-heroicons-window',
-            hidden: !canOpenAsPanel,
-            onClick: () => openAsTextPanel('sound'),
-          },
-          {
-            id: 'openAsProjectTab',
-            label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-            icon: 'i-heroicons-squares-plus',
-            hidden: !canOpenAsProjectTab,
-            onClick: openAsProjectTab,
-          },
-          {
-            id: 'createProxy',
-            label: hasExistingProxyForFile
-              ? t('videoEditor.fileManager.proxy.regenerate', 'Regenerate proxy')
-              : t('videoEditor.fileManager.proxy.create', 'Create proxy'),
-            icon: hasExistingProxyForFile ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
-            hidden: !showVideoProxyActions || isGeneratingProxyForFile,
-            onClick: async () => {
-              const file = await projectStore.getFileByPath(selectedPath!);
-              if (!file) return;
-              await proxyStore.generateProxy(file, selectedPath!);
-            },
-          },
-          {
-            id: 'cancelProxy',
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
-            icon: 'i-heroicons-x-circle',
-            color: 'error',
-            hidden: !showVideoProxyActions || !isGeneratingProxyForFile,
-            onClick: () => proxyStore.cancelProxyGeneration(selectedPath!),
-          },
-          {
-            id: 'deleteProxy',
-            label: t('videoEditor.fileManager.proxy.delete', 'Delete proxy'),
-            icon: 'i-heroicons-trash',
-            color: 'error',
-            hidden: !showVideoProxyActions || !hasExistingProxyForFile,
-            onClick: () => proxyStore.deleteProxy(selectedPath!),
-          },
-          {
-            id: 'createOtioVersion',
-            label: t('fastcat.timeline.createVersion', 'Create version'),
-            icon: 'i-heroicons-document-duplicate',
-            hidden: !isOtio,
-            onClick: () => (uiStore.pendingOtioCreateVersion = props.selectedFsEntry),
-          },
-          {
-            id: 'extractAudio',
-            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
-            icon: 'i-heroicons-musical-note',
-            hidden: !isVideoFile,
-            onClick: () => extractAudio(props.selectedFsEntry),
-          },
-        ]"
+        :primary-actions="filePrimaryActions"
+        :secondary-actions="fileSecondaryActions"
       />
     </PropertySection>
 

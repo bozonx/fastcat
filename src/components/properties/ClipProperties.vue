@@ -29,9 +29,9 @@ import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue'
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
+import { useClipTransitions } from '~/composables/properties/useClipTransitions';
 import { formatAudioChannels } from '~/utils/audio';
 import { sanitizeFps } from '~/timeline/commands/utils';
-import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { getHudManifest } from '~/hud/registry';
 
 const props = defineProps<{
@@ -195,12 +195,6 @@ function toggleShowThumbnails() {
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     showThumbnails: !current,
   });
-}
-
-function selectTransitionEdge(edge: 'in' | 'out') {
-  const clip = props.clip;
-  timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
-  selectionStore.selectTimelineTransition(clip.trackId, clip.id, edge);
 }
 
 function handleRenameClip(newName: string) {
@@ -540,6 +534,22 @@ const canEditAudioEffects = computed(() => {
   return true;
 });
 
+const { selectTransitionEdge, toggleTransition, updateTransitionDuration, updateTransitionType } =
+  useClipTransitions({
+    clip: clipRef,
+    defaultDurationUs: computed(() =>
+      Math.max(
+        0,
+        Math.round(
+          Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000),
+        ),
+      ),
+    ),
+    selectTransition: timelineStore.selectTransition,
+    selectTimelineTransition: selectionStore.selectTimelineTransition,
+    updateClipTransition: timelineStore.updateClipTransition,
+  });
+
 watch(
   () => uiStore.scrollToEffectsTrigger,
   () => {
@@ -555,87 +565,6 @@ watch(
     }
   },
 );
-
-function handleTransitionUpdate(payload: {
-  trackId: string;
-  itemId: string;
-  edge: 'in' | 'out';
-  transition: import('~/timeline/types').ClipTransition | null;
-}) {
-  if (payload.edge === 'in') {
-    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
-      transitionIn: payload.transition,
-    });
-  } else {
-    timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
-      transitionOut: payload.transition,
-    });
-  }
-}
-
-function toggleTransition(edge: 'in' | 'out') {
-  const clip = props.clip;
-  const current = edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut;
-
-  if (current) {
-    handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition: null });
-  } else {
-    const defaultDurationUs = Math.max(
-      0,
-      Math.round(Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000)),
-    );
-    const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
-    const suggestedDurationUs =
-      clipDurationUs > 0 && clipDurationUs < defaultDurationUs
-        ? Math.round(clipDurationUs * 0.3)
-        : defaultDurationUs;
-
-    const transition = {
-      type: 'dissolve',
-      durationUs: suggestedDurationUs,
-      mode: DEFAULT_TRANSITION_MODE,
-      curve: DEFAULT_TRANSITION_CURVE,
-    };
-    handleTransitionUpdate({ trackId: clip.trackId, itemId: clip.id, edge, transition });
-    timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
-  }
-}
-
-function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
-  const clip = props.clip;
-  const current = (
-    edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut
-  ) as import('~/timeline/types').ClipTransition;
-  if (!current) return;
-
-  handleTransitionUpdate({
-    trackId: clip.trackId,
-    itemId: clip.id,
-    edge,
-    transition: {
-      ...current,
-      durationUs: Math.round(durationSec * 1_000_000),
-    },
-  });
-}
-
-function updateTransitionType(edge: 'in' | 'out', type: string) {
-  const clip = props.clip;
-  const current = (edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut) as
-    | import('~/timeline/types').ClipTransition
-    | undefined;
-  if (!current || !type) return;
-
-  handleTransitionUpdate({
-    trackId: clip.trackId,
-    itemId: clip.id,
-    edge,
-    transition: {
-      ...current,
-      type,
-    },
-  });
-}
 
 defineExpose({
   isRenameModalOpen,
@@ -948,9 +877,7 @@ defineExpose({
         </div>
 
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.textClip.align', 'Align')
-          }}</span>
+          <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.align', 'Align') }}</span>
           <USelectMenu
             :model-value="String((clip as any).style?.align ?? 'center')"
             :items="[
@@ -1036,9 +963,7 @@ defineExpose({
     >
       <div class="flex flex-col gap-2">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.shapeClip.type', 'Type')
-          }}</span>
+          <span class="text-xs text-ui-text-muted">{{ t('fastcat.shapeClip.type', 'Type') }}</span>
           <USelectMenu
             :model-value="String((clip as any).shapeType ?? 'square')"
             :items="[
@@ -1306,10 +1231,7 @@ defineExpose({
       </div>
     </PropertySection>
 
-    <PropertySection
-      v-else-if="clip.clipType === 'hud'"
-      :title="t('fastcat.hudClip.hud', 'HUD')"
-    >
+    <PropertySection v-else-if="clip.clipType === 'hud'" :title="t('fastcat.hudClip.hud', 'HUD')">
       <ParamsRenderer
         v-if="hudManifest"
         :controls="hudManifest.controls"
