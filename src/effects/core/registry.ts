@@ -27,6 +27,7 @@ export interface BaseEffectManifest<T = Record<string, any>> {
   target?: EffectTarget;
   defaultValues: T;
   controls: ParamControl[];
+  settingsControls?: ParamControl[];
   isCustom?: boolean;
   baseType?: string;
 }

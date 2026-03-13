@@ -26,6 +26,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'update:value', key: string, value: any): void;
+  (e: 'action', action: string, key: string): void;
 }>();
 
 const { t } = useI18n();
@@ -112,6 +113,29 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
     }
   } catch {
     return;
+  }
+}
+function handleAction(action: string, key: string) {
+  emit('action', action, key);
+}
+
+function handleArrayAdd(control: any) {
+  const current = Array.isArray(getValue(control.key)) ? [...getValue(control.key)] : [];
+  current.push({ ...control.defaultItem });
+  updateValue(control.key, current);
+}
+
+function handleArrayRemove(control: any, index: number) {
+  const current = Array.isArray(getValue(control.key)) ? [...getValue(control.key)] : [];
+  current.splice(index, 1);
+  updateValue(control.key, current);
+}
+
+function handleArrayItemUpdate(control: any, index: number, itemKey: string, value: any) {
+  const current = Array.isArray(getValue(control.key)) ? [...getValue(control.key)] : [];
+  if (current[index]) {
+    current[index] = { ...current[index], [itemKey]: value };
+    updateValue(control.key, current);
   }
 }
 </script>
@@ -279,6 +303,68 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
             variant="ghost"
             @click="updateValue(control.key, undefined)"
           />
+        </div>
+      </div>
+
+      <div v-else-if="control.kind === 'action'" class="flex flex-col gap-1">
+        <UButton
+          :icon="control.icon"
+          :disabled="control.disabled"
+          :size="size"
+          color="white"
+          variant="solid"
+          class="justify-center w-full"
+          @click="handleAction(control.action, control.key)"
+        >
+          {{
+            control.buttonLabelKey ? t(control.buttonLabelKey) : (control.buttonLabel ?? getLabel(control))
+          }}
+        </UButton>
+      </div>
+
+      <div v-else-if="control.kind === 'array'" class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+          <UButton
+            icon="i-heroicons-plus"
+            size="2xs"
+            color="primary"
+            variant="soft"
+            :disabled="control.disabled"
+            @click="handleArrayAdd(control)"
+          >
+            {{ control.addLabelKey ? t(control.addLabelKey) : (control.addLabel ?? 'Add') }}
+          </UButton>
+        </div>
+
+        <div v-if="!Array.isArray(getValue(control.key)) || getValue(control.key).length === 0" class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded">
+          {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
+        </div>
+
+        <div v-else class="flex flex-col gap-2">
+          <div
+            v-for="(item, index) in getValue(control.key)"
+            :key="index"
+            class="flex flex-col gap-2 p-3 bg-ui-bg-elevated border border-ui-border rounded relative group"
+          >
+            <div class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              <UButton
+                icon="i-heroicons-trash"
+                size="2xs"
+                color="red"
+                variant="ghost"
+                :disabled="control.disabled"
+                @click="handleArrayRemove(control, Number(index))"
+              />
+            </div>
+            <ParamsRenderer
+              :controls="control.itemTemplate"
+              :values="item"
+              :size="size"
+              @update:value="(k, v) => handleArrayItemUpdate(control, Number(index), k, v)"
+              @action="(a, k) => handleAction(a, `${control.key}.${index}.${k}`)"
+            />
+          </div>
         </div>
       </div>
     </template>

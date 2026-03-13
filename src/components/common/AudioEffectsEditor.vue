@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
+import EffectSettingsModal from '~/components/common/EffectSettingsModal.vue';
 import { getAllAudioEffectManifests, getAudioEffectManifest } from '~/effects';
 import type { AudioEffectManifest } from '~/effects';
 import type { AudioClipEffect } from '~/timeline/types';
@@ -20,6 +21,7 @@ const presetsStore = usePresetsStore();
 
 const isSelectModalOpen = ref(false);
 const isSaveModalOpen = ref(false);
+const settingsEffectId = ref<string | null>(null);
 const newPresetName = ref('');
 const savingEffectId = ref<string | null>(null);
 
@@ -119,6 +121,12 @@ function handleUpdateEffectValue(effectId: string, key: string, value: unknown) 
   handleUpdateEffect(effectId, { [key]: value } as Partial<AudioClipEffect>);
 }
 
+function handleAction(effectId: string, action: string, key: string) {
+  if (action === 'open-settings') {
+    settingsEffectId.value = effectId;
+  }
+}
+
 function onUpdateOrder(newEffects: AudioClipEffect[]) {
   setEffects(newEffects);
 }
@@ -201,10 +209,20 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
             :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
             :values="effect as any"
             @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"
+            @action="(action, key) => handleAction(effect.id, action, key)"
           />
         </div>
       </div>
     </VueDraggable>
+
+    <EffectSettingsModal
+      v-if="settingsEffectId"
+      :model-value="true"
+      :effect="safeEffects.find(e => e.id === settingsEffectId)"
+      :manifest="getAudioEffectManifest(safeEffects.find(e => e.id === settingsEffectId)?.type ?? '')"
+      @update:model-value="(val) => { if (!val) settingsEffectId = null; }"
+      @update:effect="(updates) => handleUpdateEffect(settingsEffectId!, updates)"
+    />
 
     <SelectEffectModal v-model:open="isSelectModalOpen" @select="handleAddEffect" />
 
