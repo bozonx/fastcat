@@ -1,4 +1,4 @@
-import type { AudioEffectManifest, AudioEffectContext } from '../../core/registry';
+import type { AudioEffectManifest, AudioEffectContext, AudioEffectNode } from '../../core/registry';
 
 export interface ReverbParams {
   wet: number;
@@ -73,7 +73,7 @@ export const reverbManifest: AudioEffectManifest<ReverbParams> = {
   createNode(context: AudioEffectContext) {
     return context.audioContext.createConvolver();
   },
-  updateNode(node: AudioNode, values: ReverbParams, context: AudioEffectContext) {
+  updateNode(node: AudioEffectNode, values: ReverbParams, context: AudioEffectContext) {
     const convolver = node as ConvolverNode;
     const decay = typeof values.decay === 'number' ? Math.max(0.01, values.decay) : 2.5;
     const preDelay = typeof values.preDelay === 'number' ? Math.max(0, values.preDelay) : 0.01;

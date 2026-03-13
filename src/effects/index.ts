@@ -1,6 +1,12 @@
 import { registerEffect } from './core/registry';
+import { compressorManifest } from './audio/compressor/manifest';
+import { echoManifest } from './audio/echo/manifest';
+import { flangerManifest } from './audio/flanger/manifest';
+import { limiterManifest } from './audio/limiter/manifest';
+import { phaserManifest } from './audio/phaser/manifest';
 import { reverbManifest } from './audio/reverb/manifest';
 import { distortionManifest } from './audio/distortion/manifest';
+import { tremoloManifest } from './audio/tremolo/manifest';
 import { colorAdjustmentManifest } from './video/color-adjustment/manifest';
 import { blurManifest } from './video/blur/manifest';
 import { colorMatrixManifest } from './video/color-matrix/manifest';
@@ -23,6 +29,12 @@ import { dotManifest } from './video/dot/manifest';
 import { dropShadowManifest } from './video/drop-shadow/manifest';
 
 export function initEffects() {
+  registerEffect(compressorManifest);
+  registerEffect(echoManifest);
+  registerEffect(limiterManifest);
+  registerEffect(tremoloManifest);
+  registerEffect(flangerManifest);
+  registerEffect(phaserManifest);
   registerEffect(reverbManifest);
   registerEffect(distortionManifest);
   registerEffect(colorAdjustmentManifest);
@@ -69,5 +81,11 @@ export * from './video/cross-hatch/manifest';
 export * from './video/crt/manifest';
 export * from './video/dot/manifest';
 export * from './video/drop-shadow/manifest';
+export * from './audio/compressor/manifest';
+export * from './audio/echo/manifest';
+export * from './audio/flanger/manifest';
+export * from './audio/limiter/manifest';
+export * from './audio/phaser/manifest';
 export * from './audio/reverb/manifest';
 export * from './audio/distortion/manifest';
+export * from './audio/tremolo/manifest';

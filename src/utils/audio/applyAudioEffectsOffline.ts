@@ -1,4 +1,4 @@
-import { getAudioEffectManifest } from '~/effects/core/registry';
+import { getAudioEffectManifest, isAudioEffectNodeGraph } from '~/effects/core/registry';
 
 /**
  * Audio effects processing via native Web Audio API.
@@ -142,12 +142,14 @@ async function applyEffectsThroughOfflineContext({
     const wetGain = offlineCtx.createGain();
     wetGain.gain.value = wet;
     const outputGain = offlineCtx.createGain();
+    const effectInput = isAudioEffectNodeGraph(effectNode) ? effectNode.input : effectNode;
+    const effectOutput = isAudioEffectNodeGraph(effectNode) ? effectNode.output : effectNode;
 
     currentNode.connect(dryGain);
     dryGain.connect(outputGain);
 
-    currentNode.connect(effectNode);
-    effectNode.connect(wetGain);
+    currentNode.connect(effectInput);
+    effectOutput.connect(wetGain);
     wetGain.connect(outputGain);
 
     currentNode = outputGain;
