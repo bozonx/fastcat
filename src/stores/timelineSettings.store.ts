@@ -12,17 +12,17 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const timelineStore = useTimelineStore();
 
   const overlapMode = useLocalStorage<OverlapMode>(
-    'fastcat-editor-overlap-mode',
+    'fastcat:timeline:overlap-mode',
     DEFAULT_SNAP_SETTINGS.overlapMode,
   );
 
   const frameSnapMode = useLocalStorage<FrameSnapMode>(
-    'fastcat-editor-frame-snap-mode',
+    'fastcat:timeline:frame-snap-mode',
     DEFAULT_SNAP_SETTINGS.frameSnapMode,
   );
 
   const clipSnapMode = useLocalStorage<ClipSnapMode>(
-    'fastcat-editor-clip-snap-mode',
+    'fastcat:timeline:clip-snap-mode',
     DEFAULT_SNAP_SETTINGS.clipSnapMode,
   );
 

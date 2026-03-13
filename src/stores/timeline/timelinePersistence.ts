@@ -8,6 +8,8 @@ export interface TimelinePersistenceDeps {
   currentTime: Ref<number>;
   duration: Ref<number>;
   masterGain: Ref<number>;
+  timelineZoom: Ref<number>;
+  trackHeights: Ref<Record<string, number>>;
   audioMuted?: Ref<boolean>;
 
   isTimelineDirty: Ref<boolean>;
@@ -65,6 +67,8 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
             ...(doc.metadata?.fastcat ?? {}),
             playheadUs: deps.currentTime.value,
             masterGain: deps.masterGain.value,
+            zoom: deps.timelineZoom.value,
+            trackHeights: { ...deps.trackHeights.value },
             ...(deps.audioMuted ? { masterMuted: deps.audioMuted.value } : {}),
           },
         },
@@ -162,6 +166,18 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
 
       if (deps.audioMuted) {
         deps.audioMuted.value = Boolean(parsed.metadata?.fastcat?.masterMuted);
+      }
+      if (
+        typeof parsed.metadata?.fastcat?.zoom === 'number' &&
+        Number.isFinite(parsed.metadata.fastcat.zoom)
+      ) {
+        deps.timelineZoom.value = parsed.metadata.fastcat.zoom;
+      }
+      if (
+        parsed.metadata?.fastcat?.trackHeights &&
+        typeof parsed.metadata.fastcat.trackHeights === 'object'
+      ) {
+        deps.trackHeights.value = { ...parsed.metadata.fastcat.trackHeights };
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);

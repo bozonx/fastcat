@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
+import { useProjectStore } from './project.store';
+
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import { createUiFileTreePersistenceModule } from '~/stores/ui/uiFileTreePersistence';
 import type { FsEntry } from '~/types/fs';
@@ -26,23 +28,23 @@ export interface PendingRemoteDownloadRequest {
 
 export const useUiStore = defineStore('ui', () => {
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const showHiddenFiles = ref(readLocalStorageJson('fastcat:show-hidden-files', false));
-  const monitorVolume = ref(readLocalStorageJson('fastcat:monitor-volume', 1));
-  const monitorMuted = ref(readLocalStorageJson('fastcat:monitor-muted', false));
+  const showHiddenFiles = ref(readLocalStorageJson('fastcat:ui:show-hidden-files', false));
+  const monitorVolume = ref(readLocalStorageJson('fastcat:ui:monitor-volume', 1));
+  const monitorMuted = ref(readLocalStorageJson('fastcat:ui:monitor-muted', false));
 
   watch(
     () => showHiddenFiles.value,
-    (val) => writeLocalStorageJson('fastcat:show-hidden-files', val),
+    (val) => writeLocalStorageJson('fastcat:ui:show-hidden-files', val),
   );
 
   watch(
     () => monitorVolume.value,
-    (val) => writeLocalStorageJson('fastcat:monitor-volume', val),
+    (val) => writeLocalStorageJson('fastcat:ui:monitor-volume', val),
   );
 
   watch(
     () => monitorMuted.value,
-    (val) => writeLocalStorageJson('fastcat:monitor-muted', val),
+    (val) => writeLocalStorageJson('fastcat:ui:monitor-muted', val),
   );
 
   const isGlobalDragging = ref(false);
@@ -68,13 +70,30 @@ export const useUiStore = defineStore('ui', () => {
     fileManagerUpdateCounter.value++;
   }
 
+  const projectStore = useProjectStore();
   const fileTreeModule = createUiFileTreePersistenceModule({ fileTreeExpandedPaths });
   const {
-    restoreFileTreeStateOnce,
-    hasPersistedFileTreeState,
+    restoreFileTreeStateOnce: _restore,
+    hasPersistedFileTreeState: _hasState,
     isFileTreePathExpanded,
-    setFileTreePathExpanded,
+    setFileTreePathExpanded: _setExpanded,
   } = fileTreeModule;
+
+  function restoreFileTreeStateOnce() {
+    if (projectStore.currentProjectId) {
+      _restore(projectStore.currentProjectId);
+    }
+  }
+
+  function hasPersistedFileTreeState() {
+    return projectStore.currentProjectId ? _hasState(projectStore.currentProjectId) : false;
+  }
+
+  function setFileTreePathExpanded(path: string, expanded: boolean) {
+    if (projectStore.currentProjectId) {
+      _setExpanded(projectStore.currentProjectId, path, expanded);
+    }
+  }
 
   const fsSidebarWidth = ref(0);
   const previewZoomTrigger = ref({ dir: 0, timestamp: 0 });

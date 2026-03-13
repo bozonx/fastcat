@@ -1,11 +1,11 @@
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import { type Ref, isRef } from 'vue';
 
-const PANEL_SIZES_PREFIX = 'fastcat-panel-sizes';
+const PANEL_SIZES_PREFIX = 'fastcat:layout:split-sizes';
 
 export function getPanelSizesKey(pageKey: string, projectId: string | null): string {
   const id = projectId ?? 'no-project';
-  return `${PANEL_SIZES_PREFIX}-${pageKey}-${id}`;
+  return `${PANEL_SIZES_PREFIX}:${pageKey}:${id}`;
 }
 
 /**

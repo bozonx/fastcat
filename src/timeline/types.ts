@@ -335,6 +335,8 @@ export interface TimelineFastCatMetadata {
   masterMuted?: boolean;
   masterEffects?: ClipEffect[];
   snapThresholdPx?: number;
+  zoom?: number;
+  trackHeights?: Record<string, number>;
 }
 
 export interface TimelineMetadata {

@@ -294,7 +294,11 @@
       "mouseActionResizeTrack": "Изменить высоту дорожки",
       "mouseActionSeekFrame": "Перемотка (1 кадр)",
       "mouseActionSeekSecond": "Перемотка (1 секунда)",
-      "mouseTrackHeaders": "Заголовки дорожек"
+      "mouseTrackHeaders": "Заголовки дорожек",
+      "advancedSection": "Расширенные",
+      "clearUiCache": "Очистить кэш интерфейса",
+      "clearUiCacheDesc": "Сбрасывает лейаут, размеры панелей и другие настройки отображения.",
+      "clearCacheAction": "Очистить кэш"
     },
     "projectSettings": {
       "title": "Настройки проекта",

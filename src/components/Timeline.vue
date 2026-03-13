@@ -50,7 +50,7 @@ const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | nu
 const scrollLeftRef = ref(0);
 const scrollbarHeight = ref(0);
 
-const trackHeights = useLocalStorage<Record<string, number>>('fastcat-editor-track-heights-v1', {});
+const { trackHeights } = storeToRefs(timelineStore);
 const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
 const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersistedSplitpanes(
   timelineSplitKey.value,
@@ -277,6 +277,8 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
 function updateTrackHeight(trackId: string, height: number) {
   trackHeights.value[trackId] = height;
+  timelineStore.markTimelineAsDirty();
+  timelineStore.requestTimelineSave();
 }
 
 const onDrop = async (e: DragEvent, trackId: string) => {

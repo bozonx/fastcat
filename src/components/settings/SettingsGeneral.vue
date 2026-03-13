@@ -5,6 +5,7 @@ import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -20,6 +21,11 @@ function resetDefaults() {
   workspaceStore.userSettings.timeline.snapThresholdPx =
     DEFAULT_USER_SETTINGS.timeline.snapThresholdPx;
   isResetConfirmOpen.value = false;
+}
+
+function clearCache() {
+  clearUiCache();
+  window.location.reload();
 }
 </script>
 
@@ -100,5 +106,29 @@ function resetDefaults() {
         </div>
       </div>
     </UFormField>
+
+    <div class="flex flex-col gap-2 pt-4 border-t border-ui-border">
+      <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
+        {{ t('videoEditor.settings.advancedSection', 'Advanced') }}
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex flex-col gap-0.5">
+          <div class="text-sm font-medium text-ui-text">
+            {{ t('videoEditor.settings.clearUiCache', 'Clear UI cache') }}
+          </div>
+          <div class="text-xs text-ui-text-muted">
+            {{
+              t(
+                'videoEditor.settings.clearUiCacheDesc',
+                'Resets layout, panel sizes, and other UI preferences.',
+              )
+            }}
+          </div>
+        </div>
+        <UButton size="xs" color="error" variant="soft" @click="clearCache">
+          {{ t('videoEditor.settings.clearCacheAction', 'Clear cache') }}
+        </UButton>
+      </div>
+    </div>
   </div>
 </template>
