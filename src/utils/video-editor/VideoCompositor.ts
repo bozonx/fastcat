@@ -34,7 +34,6 @@ import type {
   TextClipStyle,
   ClipTransform,
   ClipTransition,
-  TimelineBlendMode,
   VideoClipEffect,
 } from '~/timeline/types';
 
@@ -48,22 +47,19 @@ import {
   areShapeConfigsEqual,
 } from './compositor/types';
 import { ResourceManager, getVideoSampleWithZeroFallback } from './compositor/ResourceManager';
+import {
+  VideoFrameCache,
+  buildVideoFrameCacheKey,
+  computeFrameIndex,
+  estimateVideoFrameSizeBytes,
+} from './compositor/VideoFrameCache';
 import { EffectManager } from './compositor/EffectManager';
 import { TransitionManager } from './compositor/TransitionManager';
 import { LayoutManager } from './compositor/LayoutManager';
 import { VideoRenderer } from './compositor/renderers/VideoRenderer';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
-
-interface CachedVideoFrameEntry {
-  key: string;
-  clipId: string;
-  frameIndex: number;
-  frame: VideoFrame;
-  sizeBytes: number;
-  width: number;
-  height: number;
-}
+import { buildPrevClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
 
 export class VideoCompositor {
   public app: Application | null = null;
@@ -91,10 +87,9 @@ export class VideoCompositor {
   private stageSortDirty = true;
   private activeSortDirty = true;
   private clipPreferBitmapFallback = new Map<string, boolean>();
-  private maxVideoFrameCacheBytes =
-    Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024;
-  private videoFrameCache = new Map<string, CachedVideoFrameEntry>();
-  private videoFrameCacheSizeBytes = 0;
+  private videoFrameCache = new VideoFrameCache(
+    Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024,
+  );
 
   // Managers
   private resourceManager = new ResourceManager();
@@ -116,46 +111,6 @@ export class VideoCompositor {
   // Resource Management Delegation
   private async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     return this.resourceManager.withVideoSampleSlot(task, signal);
-  }
-
-  private resolveClipFrameRate(clip: CompositorClip): number {
-    const clipFrameRate = Number(clip.frameRate);
-    if (Number.isFinite(clipFrameRate) && clipFrameRate > 0) {
-      return clipFrameRate;
-    }
-    return 30;
-  }
-
-  private computeFrameIndex(clip: CompositorClip, sampleTimeS: number): number {
-    const safeTimeS = Number.isFinite(sampleTimeS) ? Math.max(0, sampleTimeS) : 0;
-    const originS =
-      typeof clip.firstTimestampS === 'number' && Number.isFinite(clip.firstTimestampS)
-        ? Math.max(0, clip.firstTimestampS)
-        : 0;
-    const frameRate = this.resolveClipFrameRate(clip);
-    const relativeTimeS = Math.max(0, safeTimeS - originS);
-    return Math.max(0, Math.round(relativeTimeS * frameRate));
-  }
-
-  private buildVideoFrameCacheKey(clip: CompositorClip, frameIndex: number): string {
-    return `${clip.itemId}:${frameIndex}`;
-  }
-
-  private applyVideoFrameCacheLimit(cacheLimitMb?: number) {
-    if (typeof cacheLimitMb !== 'number' || !Number.isFinite(cacheLimitMb)) {
-      return;
-    }
-
-    const normalizedBytes = Math.max(0, Math.round(cacheLimitMb)) * 1024 * 1024;
-    if (normalizedBytes === this.maxVideoFrameCacheBytes) {
-      return;
-    }
-
-    this.maxVideoFrameCacheBytes = normalizedBytes;
-    this.evictVideoFrameCacheIfNeeded();
-    if (this.maxVideoFrameCacheBytes === 0) {
-      this.clearVideoFrameCache();
-    }
   }
 
   private ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
@@ -209,107 +164,15 @@ export class VideoCompositor {
     }
   }
 
-  private estimateVideoFrameSizeBytes(frame: VideoFrame, width: number, height: number): number {
-    const codedWidth = Math.max(1, Math.round(Number((frame as any).codedWidth) || width || 1));
-    const codedHeight = Math.max(1, Math.round(Number((frame as any).codedHeight) || height || 1));
-    return codedWidth * codedHeight * 4;
-  }
-
-  private getCachedVideoFrame(key: string): CachedVideoFrameEntry | null {
-    const entry = this.videoFrameCache.get(key);
-    if (!entry) return null;
-    this.videoFrameCache.delete(key);
-    this.videoFrameCache.set(key, entry);
-    return entry;
-  }
-
-  private setCachedVideoFrame(entry: CachedVideoFrameEntry) {
-    if (this.maxVideoFrameCacheBytes <= 0) {
-      try {
-        entry.frame.close();
-      } catch {
-        // ignore
-      }
-      return;
-    }
-
-    const existing = this.videoFrameCache.get(entry.key);
-    if (existing) {
-      this.videoFrameCache.delete(entry.key);
-      this.videoFrameCacheSizeBytes -= existing.sizeBytes;
-      try {
-        existing.frame.close();
-      } catch {
-        // ignore
-      }
-    }
-
-    this.videoFrameCache.set(entry.key, entry);
-    this.videoFrameCacheSizeBytes += entry.sizeBytes;
-    this.evictVideoFrameCacheIfNeeded();
-  }
-
-  private evictVideoFrameCacheIfNeeded() {
-    while (
-      this.videoFrameCacheSizeBytes > this.maxVideoFrameCacheBytes &&
-      this.videoFrameCache.size > 0
-    ) {
-      const oldestKey = this.videoFrameCache.keys().next().value;
-      if (typeof oldestKey !== 'string') break;
-      const oldest = this.videoFrameCache.get(oldestKey);
-      this.videoFrameCache.delete(oldestKey);
-      if (!oldest) continue;
-      this.videoFrameCacheSizeBytes -= oldest.sizeBytes;
-      try {
-        oldest.frame.close();
-      } catch {
-        // ignore
-      }
-    }
-
-    if (this.videoFrameCacheSizeBytes < 0) {
-      this.videoFrameCacheSizeBytes = 0;
-    }
-  }
-
-  private clearVideoFrameCacheForClip(clipId: string) {
-    for (const [key, entry] of this.videoFrameCache.entries()) {
-      if (entry.clipId !== clipId) continue;
-      this.videoFrameCache.delete(key);
-      this.videoFrameCacheSizeBytes -= entry.sizeBytes;
-      try {
-        entry.frame.close();
-      } catch {
-        // ignore
-      }
-    }
-
-    if (this.videoFrameCacheSizeBytes < 0) {
-      this.videoFrameCacheSizeBytes = 0;
-    }
-  }
-
-  private clearVideoFrameCache() {
-    for (const entry of this.videoFrameCache.values()) {
-      try {
-        entry.frame.close();
-      } catch {
-        // ignore
-      }
-    }
-    this.videoFrameCache.clear();
-    this.videoFrameCacheSizeBytes = 0;
-  }
-
   private async getVideoSampleForClip(params: {
     clip: CompositorClip;
     sampleTimeS: number;
     abortSignal?: AbortSignal;
   }): Promise<any | null> {
     const { clip, sampleTimeS, abortSignal } = params;
-    const frameIndex = this.computeFrameIndex(clip, sampleTimeS);
-    const cacheKey = this.buildVideoFrameCacheKey(clip, frameIndex);
-    const cached = this.getCachedVideoFrame(cacheKey);
+    const frameIndex = computeFrameIndex(clip, sampleTimeS);
+    const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
+    const cached = this.videoFrameCache.get(cacheKey);
     if (cached) {
       return {
         toVideoFrame: () => cached.frame.clone(),
@@ -336,9 +199,9 @@ export class VideoCompositor {
         1,
         Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight) || 1),
       );
-      const sizeBytes = this.estimateVideoFrameSizeBytes(frame, width, height);
+      const sizeBytes = estimateVideoFrameSizeBytes(frame, width, height);
 
-      this.setCachedVideoFrame({
+      this.videoFrameCache.set({
         key: cacheKey,
         clipId: clip.itemId,
         frameIndex,
@@ -362,11 +225,6 @@ export class VideoCompositor {
     }
   }
 
-  private normalizeTrackOpacity(value: unknown): number | undefined {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
-    return Math.max(0, Math.min(1, value));
-  }
-
   private toVideoEffects(value: unknown): VideoClipEffect[] | undefined {
     if (!Array.isArray(value)) return undefined;
 
@@ -380,50 +238,10 @@ export class VideoCompositor {
     });
   }
 
-  private buildTrackRuntimeList(timelineItems: any[]): Array<{
-    id: string;
-    layer: number;
-    opacity?: number;
-    blendMode?: TimelineBlendMode;
-    effects?: VideoClipEffect[];
-  }> {
-    const explicitTracks = timelineItems
-      .filter((item) => item && typeof item === 'object' && item.kind === 'track')
-      .map((track) => ({
-        id:
-          typeof track.id === 'string' && track.id.length > 0
-            ? track.id
-            : `track_${String(track.layer ?? 0)}`,
-        layer: Math.round(Number(track.layer ?? 0)),
-        opacity: this.normalizeTrackOpacity(track.opacity),
-        blendMode: resolveBlendMode(track.blendMode),
-        effects: this.toVideoEffects(track.effects),
-      }));
-
-    const inferredLayers = new Set<number>();
-    for (const item of timelineItems) {
-      if (!item || typeof item !== 'object' || item.kind !== 'clip') continue;
-      inferredLayers.add(Math.round(Number(item.layer ?? 0)));
-    }
-
-    const explicitLayers = new Set(explicitTracks.map((track) => track.layer));
-    const inferredTracks = [...inferredLayers]
-      .filter((layer) => !explicitLayers.has(layer))
-      .sort((a, b) => a - b)
-      .map((layer) => ({
-        id: `track_${layer}`,
-        layer,
-        opacity: 1,
-        blendMode: 'normal' as const,
-      }));
-
-    return [...explicitTracks, ...inferredTracks].sort((a, b) => a.layer - b.layer);
-  }
-
   private syncTrackRuntimes(timelineItems: any[]) {
     if (!this.app) return;
 
-    const nextDefs = this.buildTrackRuntimeList(timelineItems);
+    const nextDefs = buildTrackRuntimeList(timelineItems, (value) => this.toVideoEffects(value));
     const nextTrackById = new Map<string, CompositorTrack>();
     const nextTrackByLayer = new Map<number, CompositorTrack>();
     const nextTracks: CompositorTrack[] = [];
@@ -485,31 +303,7 @@ export class VideoCompositor {
   }
 
   private rebuildPrevClipIndex() {
-    this.prevClipById.clear();
-
-    const byLayer = new Map<number, CompositorClip[]>();
-    for (const clip of this.clips) {
-      const clips = byLayer.get(clip.layer);
-      if (clips) {
-        clips.push(clip);
-      } else {
-        byLayer.set(clip.layer, [clip]);
-      }
-    }
-
-    for (const layerClips of byLayer.values()) {
-      const sorted = [...layerClips].sort(
-        (a, b) => a.startUs - b.startUs || a.endUs - b.endUs || a.itemId.localeCompare(b.itemId),
-      );
-
-      for (let index = 0; index < sorted.length; index++) {
-        const clip = sorted[index];
-        if (!clip) continue;
-        // Previous clip is always at index-1 in sorted order (O(n) instead of O(n²))
-        const prev = index > 0 ? (sorted[index - 1] ?? null) : null;
-        this.prevClipById.set(clip.itemId, prev);
-      }
-    }
+    this.prevClipById = buildPrevClipByIdIndex(this.clips);
   }
 
   private sortTrackContainerChildren() {
@@ -605,7 +399,7 @@ export class VideoCompositor {
     console.warn('[VideoCompositor] WebGL/WebGPU context restored!');
     this.contextLost = false;
     this.stageSortDirty = true;
-    this.clearVideoFrameCache();
+    this.videoFrameCache.clear();
     for (const clip of this.clips) {
       clip.textDirty = true;
       clip.shapeDirty = true;
@@ -1667,7 +1461,7 @@ export class VideoCompositor {
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas || !this.app.renderer) return null;
 
-    this.applyVideoFrameCacheLimit(options?.videoFrameCacheMb);
+    this.videoFrameCache.applyLimitMb(options?.videoFrameCacheMb);
 
     if (timeUs !== this.lastRenderedTimeUs) {
       this.resourceManager.abortInFlight();
@@ -3098,7 +2892,7 @@ export class VideoCompositor {
   }
 
   clearClips() {
-    this.clearVideoFrameCache();
+    this.videoFrameCache.clear();
     for (const clip of this.clips) {
       this.destroyClip(clip);
     }
@@ -3144,7 +2938,7 @@ export class VideoCompositor {
 
   destroy() {
     this.clearClips();
-    this.clearVideoFrameCache();
+    this.videoFrameCache.clear();
     if (this.filterQuadSprite) {
       this.filterQuadSprite.destroy();
       this.filterQuadSprite = null;
@@ -3192,7 +2986,7 @@ export class VideoCompositor {
   }
 
   private destroyClip(clip: CompositorClip) {
-    this.clearVideoFrameCacheForClip(clip.itemId);
+    this.videoFrameCache.clearForClip(clip.itemId);
     safeDispose(clip.sink);
     safeDispose(clip.input);
     if (clip.lastVideoFrame) {
