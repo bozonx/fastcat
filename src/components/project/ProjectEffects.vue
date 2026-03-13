@@ -11,6 +11,9 @@ import { getAllTransitionManifests, getTransitionManifest } from '~/transitions'
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 
+import CollapsibleEffectGroup from '~/components/common/CollapsibleEffectGroup.vue';
+import EffectCard from '~/components/common/EffectCard.vue';
+
 const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
@@ -144,46 +147,20 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
       <!-- Video Effects -->
       <div v-show="activeTab === 'video'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Effects -->
-        <div>
-          <button
-            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="presetsStore.effectsStandardCollapsed = !presetsStore.effectsStandardCollapsed"
-          >
-            <UIcon
-              :name="
-                presetsStore.effectsStandardCollapsed
-                  ? 'i-heroicons-chevron-right'
-                  : 'i-heroicons-chevron-down'
-              "
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
-            {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
-          </button>
-
-          <div v-show="!presetsStore.effectsStandardCollapsed" class="grid grid-cols-1 gap-2 pl-6">
-            <div
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
+          :title="t('granVideoEditor.effects.groups.standard')"
+        >
+          <div class="grid grid-cols-1 gap-2">
+            <EffectCard
               v-for="effect in standardEffects"
               :key="effect.type"
-              class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-              :class="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'effect' &&
-                selectionStore.selectedEntity.effectType === effect.type
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-              "
-              draggable="true"
+              :manifest="effect"
+              :is-draggable="true"
+              :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
               @dragstart="handleDragStart($event, effect.type, 'effect')"
               @click="selectEffect(effect.type)"
-            >
-              <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
-                <p class="text-xs text-ui-text-muted mt-1 line-clamp-2" :title="effect.description">
-                  {{ effect.description }}
-                </p>
-              </div>
-            </div>
+            />
             <div
               v-if="standardEffects.length === 0"
               class="text-center text-ui-text-muted py-4 italic text-xs"
@@ -191,115 +168,62 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               {{ t('common.noData') }}
             </div>
           </div>
-        </div>
+        </CollapsibleEffectGroup>
 
         <!-- Custom Effects -->
-        <div>
-          <button
-            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="presetsStore.effectsCustomCollapsed = !presetsStore.effectsCustomCollapsed"
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
+          :title="t('granVideoEditor.effects.groups.custom')"
+        >
+          <VueDraggable
+            :model-value="customEffects"
+            class="flex flex-col gap-2"
+            :animation="150"
+            ghost-class="opacity-50"
+            handle=".drag-handle"
+            filter=".external-drag"
+            :prevent-on-filter="false"
+            @update:model-value="updateCustomEffectsOrder"
           >
-            <UIcon
-              :name="
-                presetsStore.effectsCustomCollapsed
-                  ? 'i-heroicons-chevron-right'
-                  : 'i-heroicons-chevron-down'
-              "
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
-            {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
-          </button>
-
-          <div v-show="!presetsStore.effectsCustomCollapsed" class="pl-6">
-            <VueDraggable
-              :model-value="customEffects"
-              class="flex flex-col gap-2"
-              :animation="150"
-              ghost-class="opacity-50"
-              handle=".drag-handle"
-              filter=".external-drag"
-              :prevent-on-filter="false"
-              @update:model-value="updateCustomEffectsOrder"
+            <div
+              v-for="effect in customEffects"
+              :key="effect.type"
+              class="relative group"
             >
               <div
-                v-for="effect in customEffects"
-                :key="effect.type"
-                class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-                :class="
-                  selectionStore.selectedEntity?.source === 'project' &&
-                  selectionStore.selectedEntity.kind === 'effect' &&
-                  selectionStore.selectedEntity.effectType === effect.type
-                    ? 'border-primary bg-primary/10'
-                    : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-                "
-                @click="selectEffect(effect.type)"
+                class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <div class="cursor-grab hover:text-ui-text text-ui-text-muted mt-1 drag-handle">
-                  <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-                </div>
-                <div
-                  class="external-drag flex items-start gap-3 flex-1 min-w-0"
-                  draggable="true"
-                  @dragstart="handleDragStart($event, effect.type, 'effect')"
-                >
-                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                      <h4 class="text-sm font-medium text-ui-text truncate">{{ effect.name }}</h4>
-                      <UButton
-                        icon="i-heroicons-trash"
-                        color="red"
-                        variant="ghost"
-                        size="xs"
-                        class="opacity-0 group-hover:opacity-100"
-                        @click.stop="presetsStore.removePreset(effect.type)"
-                      />
-                    </div>
-                    <p
-                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
-                      :title="effect.description"
-                    >
-                      {{ effect.description }}
-                    </p>
-                  </div>
-                </div>
+                <UIcon name="i-heroicons-bars-2" class="w-4 h-4" />
               </div>
-            </VueDraggable>
-            <div
-              v-if="customEffects.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
+              <EffectCard
+                :manifest="effect"
+                :is-draggable="true"
+                class="external-drag"
+                :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+                :show-action="true"
+                @dragstart="handleDragStart($event, effect.type, 'effect')"
+                @click="selectEffect(effect.type)"
+                @action="presetsStore.removePreset(effect.type)"
+              />
             </div>
+          </VueDraggable>
+          <div
+            v-if="customEffects.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
+            {{ t('common.noData') }}
           </div>
-        </div>
+        </CollapsibleEffectGroup>
       </div>
 
       <!-- Transitions -->
       <div v-show="activeTab === 'transitions'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Transitions -->
-        <div>
-          <button
-            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="
-              presetsStore.transitionsStandardCollapsed = !presetsStore.transitionsStandardCollapsed
-            "
-          >
-            <UIcon
-              :name="
-                presetsStore.transitionsStandardCollapsed
-                  ? 'i-heroicons-chevron-right'
-                  : 'i-heroicons-chevron-down'
-              "
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
-            {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
-          </button>
-
-          <div
-            v-show="!presetsStore.transitionsStandardCollapsed"
-            class="grid grid-cols-1 gap-2 pl-6"
-          >
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.transitionsStandardCollapsed"
+          :title="t('granVideoEditor.effects.groups.standard')"
+        >
+          <div class="grid grid-cols-1 gap-2">
             <div
               v-for="transition in standardTransitions"
               :key="transition.type"
@@ -327,135 +251,90 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               {{ t('common.noData') }}
             </div>
           </div>
-        </div>
+        </CollapsibleEffectGroup>
 
         <!-- Custom Transitions -->
-        <div>
-          <button
-            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="
-              presetsStore.transitionsCustomCollapsed = !presetsStore.transitionsCustomCollapsed
-            "
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.transitionsCustomCollapsed"
+          :title="t('granVideoEditor.effects.groups.custom')"
+        >
+          <VueDraggable
+            :model-value="customTransitions"
+            class="flex flex-col gap-2"
+            :animation="150"
+            ghost-class="opacity-50"
+            handle=".drag-handle"
+            filter=".external-drag"
+            :prevent-on-filter="false"
+            @update:model-value="updateCustomTransitionsOrder"
           >
-            <UIcon
-              :name="
-                presetsStore.transitionsCustomCollapsed
-                  ? 'i-heroicons-chevron-right'
-                  : 'i-heroicons-chevron-down'
+            <div
+              v-for="transition in customTransitions"
+              :key="transition.type"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group"
+              :class="
+                selectionStore.selectedEntity?.source === 'project' &&
+                selectionStore.selectedEntity.kind === 'transition' &&
+                selectionStore.selectedEntity.transitionType === transition.type
+                  ? 'border-primary bg-primary/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
-            {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
-          </button>
-
-          <div v-show="!presetsStore.transitionsCustomCollapsed" class="pl-6">
-            <VueDraggable
-              :model-value="customTransitions"
-              class="flex flex-col gap-2"
-              :animation="150"
-              ghost-class="opacity-50"
-              handle=".drag-handle"
-              filter=".external-drag"
-              :prevent-on-filter="false"
-              @update:model-value="updateCustomTransitionsOrder"
+              @click="selectTransition(transition.type)"
             >
+              <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
+                <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
+              </div>
               <div
-                v-for="transition in customTransitions"
-                :key="transition.type"
-                class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group"
-                :class="
-                  selectionStore.selectedEntity?.source === 'project' &&
-                  selectionStore.selectedEntity.kind === 'transition' &&
-                  selectionStore.selectedEntity.transitionType === transition.type
-                    ? 'border-primary bg-primary/10'
-                    : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-                "
-                @click="selectTransition(transition.type)"
+                class="external-drag flex items-center gap-3 flex-1 min-w-0"
+                draggable="true"
+                @dragstart="handleDragStart($event, transition.type, 'transition')"
               >
-                <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
-                  <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-                </div>
-                <div
-                  class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                  draggable="true"
-                  @dragstart="handleDragStart($event, transition.type, 'transition')"
-                >
-                  <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
-                  <div class="flex-1 min-w-0 flex items-center justify-between">
-                    <h4 class="text-sm font-medium text-ui-text truncate">{{ transition.name }}</h4>
-                    <UButton
-                      icon="i-heroicons-trash"
-                      color="red"
-                      variant="ghost"
-                      size="xs"
-                      class="opacity-0 group-hover:opacity-100"
-                      @click.stop="presetsStore.removePreset(transition.type)"
-                    />
-                  </div>
+                <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
+                <div class="flex-1 min-w-0 flex items-center justify-between">
+                  <h4 class="text-sm font-medium text-ui-text truncate">{{ transition.name }}</h4>
+                  <UButton
+                    icon="i-heroicons-trash"
+                    color="red"
+                    variant="ghost"
+                    size="xs"
+                    class="opacity-0 group-hover:opacity-100"
+                    @click.stop="presetsStore.removePreset(transition.type)"
+                  />
                 </div>
               </div>
-            </VueDraggable>
-            <div
-              v-if="customTransitions.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
             </div>
+          </VueDraggable>
+          <div
+            v-if="customTransitions.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
+            {{ t('common.noData') }}
           </div>
-        </div>
+        </CollapsibleEffectGroup>
       </div>
 
       <!-- Audio Effects -->
       <div v-show="activeTab === 'audio'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Audio Effects -->
-        <div>
-          <button
-            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="presetsStore.audioStandardCollapsed = !presetsStore.audioStandardCollapsed"
-          >
-            <UIcon
-              :name="
-                presetsStore.audioStandardCollapsed
-                  ? 'i-heroicons-chevron-right'
-                  : 'i-heroicons-chevron-down'
-              "
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
-            {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
-          </button>
-
-          <div v-show="!presetsStore.audioStandardCollapsed" class="flex flex-col gap-4 pl-6">
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.audioStandardCollapsed"
+          :title="t('granVideoEditor.effects.groups.standard')"
+        >
+          <div class="flex flex-col gap-4">
             <div v-if="hasAudioEffects(basicAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
                 {{ t('granVideoEditor.effects.groups.standard', 'Standard') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
-                <div
+                <EffectCard
                   v-for="effect in basicAudioEffects"
                   :key="effect.type"
-                  class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-                  :class="
-                    selectionStore.selectedEntity?.source === 'project' &&
-                    selectionStore.selectedEntity.kind === 'effect' &&
-                    selectionStore.selectedEntity.effectType === effect.type
-                      ? 'border-primary bg-primary/10'
-                      : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-                  "
-                  draggable="true"
+                  :manifest="effect"
+                  :is-draggable="true"
+                  :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
                   @dragstart="handleDragStart($event, effect.type, 'effect')"
                   @click="selectEffect(effect.type)"
-                >
-                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
-                    <p
-                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
-                      :title="effect.description"
-                    >
-                      {{ effect.description }}
-                    </p>
-                  </div>
-                </div>
+                />
               </div>
             </div>
 
@@ -464,32 +343,15 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 {{ t('granVideoEditor.effects.groups.artistic', 'Художественные') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
-                <div
+                <EffectCard
                   v-for="effect in artisticAudioEffects"
                   :key="effect.type"
-                  class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-                  :class="
-                    selectionStore.selectedEntity?.source === 'project' &&
-                    selectionStore.selectedEntity.kind === 'effect' &&
-                    selectionStore.selectedEntity.effectType === effect.type
-                      ? 'border-primary bg-primary/10'
-                      : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-                  "
-                  draggable="true"
+                  :manifest="effect"
+                  :is-draggable="true"
+                  :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
                   @dragstart="handleDragStart($event, effect.type, 'effect')"
                   @click="selectEffect(effect.type)"
-                >
-                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-medium text-ui-text">{{ effect.name }}</h4>
-                    <p
-                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
-                      :title="effect.description"
-                    >
-                      {{ effect.description }}
-                    </p>
-                  </div>
-                </div>
+                />
               </div>
             </div>
 
@@ -500,88 +362,52 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               {{ t('common.noData') }}
             </div>
           </div>
-        </div>
+        </CollapsibleEffectGroup>
 
         <!-- Custom Audio Effects -->
-        <div>
-          <button
-            class="flex items-center gap-2 w-full text-left font-medium text-ui-text mb-2 group"
-            @click="presetsStore.audioCustomCollapsed = !presetsStore.audioCustomCollapsed"
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.audioCustomCollapsed"
+          :title="t('granVideoEditor.effects.groups.custom')"
+        >
+          <VueDraggable
+            :model-value="customAudioEffects"
+            class="flex flex-col gap-2"
+            :animation="150"
+            ghost-class="opacity-50"
+            handle=".drag-handle"
+            filter=".external-drag"
+            :prevent-on-filter="false"
+            @update:model-value="updateCustomEffectsOrder"
           >
-            <UIcon
-              :name="
-                presetsStore.audioCustomCollapsed
-                  ? 'i-heroicons-chevron-right'
-                  : 'i-heroicons-chevron-down'
-              "
-              class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
-            {{ t('granVideoEditor.effects.groups.custom', 'Custom') }}
-          </button>
-
-          <div v-show="!presetsStore.audioCustomCollapsed" class="pl-6">
-            <VueDraggable
-              :model-value="customAudioEffects"
-              class="flex flex-col gap-2"
-              :animation="150"
-              ghost-class="opacity-50"
-              handle=".drag-handle"
-              filter=".external-drag"
-              :prevent-on-filter="false"
-              @update:model-value="updateCustomEffectsOrder"
+            <div
+              v-for="effect in customAudioEffects"
+              :key="effect.type"
+              class="relative group"
             >
               <div
-                v-for="effect in customAudioEffects"
-                :key="effect.type"
-                class="flex items-start gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group"
-                :class="
-                  selectionStore.selectedEntity?.source === 'project' &&
-                  selectionStore.selectedEntity.kind === 'effect' &&
-                  selectionStore.selectedEntity.effectType === effect.type
-                    ? 'border-primary bg-primary/10'
-                    : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-                "
-                @click="selectEffect(effect.type)"
+                class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <div class="cursor-grab hover:text-ui-text text-ui-text-muted mt-1 drag-handle">
-                  <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-                </div>
-                <div
-                  class="external-drag flex items-start gap-3 flex-1 min-w-0"
-                  draggable="true"
-                  @dragstart="handleDragStart($event, effect.type, 'effect')"
-                >
-                  <UIcon :name="effect.icon" class="w-8 h-8 text-primary shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                      <h4 class="text-sm font-medium text-ui-text truncate">{{ effect.name }}</h4>
-                      <UButton
-                        icon="i-heroicons-trash"
-                        color="red"
-                        variant="ghost"
-                        size="xs"
-                        class="opacity-0 group-hover:opacity-100"
-                        @click.stop="presetsStore.removePreset(effect.type)"
-                      />
-                    </div>
-                    <p
-                      class="text-xs text-ui-text-muted mt-1 line-clamp-2"
-                      :title="effect.description"
-                    >
-                      {{ effect.description }}
-                    </p>
-                  </div>
-                </div>
+                <UIcon name="i-heroicons-bars-2" class="w-4 h-4" />
               </div>
-            </VueDraggable>
-            <div
-              v-if="customAudioEffects.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
+              <EffectCard
+                :manifest="effect"
+                :is-draggable="true"
+                class="external-drag"
+                :is-selected="selectionStore.selectedEntity?.source === 'project' && selectionStore.selectedEntity.kind === 'effect' && selectionStore.selectedEntity.effectType === effect.type"
+                :show-action="true"
+                @dragstart="handleDragStart($event, effect.type, 'effect')"
+                @click="selectEffect(effect.type)"
+                @action="presetsStore.removePreset(effect.type)"
+              />
             </div>
+          </VueDraggable>
+          <div
+            v-if="customAudioEffects.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
+            {{ t('common.noData') }}
           </div>
-        </div>
+        </CollapsibleEffectGroup>
       </div>
     </div>
   </div>
