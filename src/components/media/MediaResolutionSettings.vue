@@ -284,21 +284,22 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     </template>
 
     <!-- FPS -->
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.fps', 'FPS') }}
-      </label>
-      <WheelNumberInput v-model="localFps" :min="1" :max="240" :step="0.001" :disabled="disabled" />
-    </div>
-
-    <div class="h-px bg-ui-border my-2"></div>
-
-    <template v-if="props.showAudioSettings">
-      <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
-        {{ t('videoEditor.audio.audioSettings', 'Audio settings') }}
+    <div :class="props.showAudioSettings ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-2'">
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.export.fps', 'FPS') }}
+        </label>
+        <WheelNumberInput
+          v-model="localFps"
+          :min="1"
+          :max="240"
+          :step="0.001"
+          :disabled="disabled"
+        />
       </div>
 
-        <div class="flex flex-col gap-2 flex-1">
+      <template v-if="props.showAudioSettings">
+        <div class="flex flex-col gap-2">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
           </label>
@@ -312,6 +313,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             label-key="label"
           />
         </div>
-    </template>
+      </template>
+    </div>
   </div>
 </template>

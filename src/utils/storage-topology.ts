@@ -16,6 +16,7 @@ export interface ResolvedStorageTopology {
 }
 
 export const RESOLVED_PROJECT_CACHE_DIR_NAME = 'cache';
+export const RESOLVED_PROJECT_THUMBNAILS_DIR_NAME = 'thumbnails';
 export const RESOLVED_PROJECT_WAVEFORMS_DIR_NAME = 'waveforms';
 
 function trimPath(path: string): string {
@@ -54,6 +55,16 @@ export function getResolvedProjectCacheSegments(
   projectId: string,
 ): string[] {
   return [...getResolvedProjectTempSegments(topology, projectId), RESOLVED_PROJECT_CACHE_DIR_NAME];
+}
+
+export function getResolvedProjectThumbnailsSegments(
+  topology: ResolvedStorageTopology,
+  projectId: string,
+): string[] {
+  return [
+    ...getResolvedProjectTempSegments(topology, projectId),
+    RESOLVED_PROJECT_THUMBNAILS_DIR_NAME,
+  ];
 }
 
 export function getResolvedProjectWaveformsSegments(

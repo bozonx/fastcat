@@ -21,6 +21,8 @@ interface Props {
   videoCodecOptions: readonly VideoCodecOptionResolved[];
   showMetadata?: boolean;
   hideAudioBitrate?: boolean;
+  hideAudioSampleRate?: boolean;
+  showBuiltinPresets?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -33,6 +35,8 @@ const props = withDefaults(defineProps<Props>(), {
   allowOriginalAudioSampleRate: false,
   showMetadata: false,
   hideAudioBitrate: false,
+  hideAudioSampleRate: false,
+  showBuiltinPresets: true,
 });
 
 const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { required: true });
@@ -197,7 +201,7 @@ watch(
       {{ t('videoEditor.export.encodingSettings', 'Encoding settings') }}
     </div>
 
-    <div class="flex flex-col gap-2">
+    <div v-if="props.showBuiltinPresets" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.presetLabel', 'Preset') }}
       </label>
@@ -326,9 +330,23 @@ watch(
       v-model:audio-channels="audioChannels"
       v-model:audio-sample-rate="audioSampleRate"
       :original-sample-rate="props.originalAudioSampleRate"
-      :allow-original-sample-rate="props.allowOriginalAudioSampleRate"
+      :allow-original-audio-sample-rate="props.allowOriginalAudioSampleRate"
+      :hide-sample-rate="props.hideAudioSampleRate"
       :disabled="props.disabled"
     />
+
+    <div v-else-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
+      </label>
+      <div class="w-full">
+        <UiAppButtonGroup
+          v-model="audioCodec"
+          :options="audioCodecOptions"
+          :disabled="props.disabled"
+        />
+      </div>
+    </div>
 
     <div v-else-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">

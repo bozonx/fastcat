@@ -865,6 +865,8 @@
         "parameters": "Параметры"
       },
       "deleteTrackConfirm": "Дорожка не пуста. Удалить?",
+      "fpsMismatch": "Несоответствие FPS",
+      "fpsMismatchDesc": "FPS файла {fileFps} отличается от настроек проекта {projectFps}.",
       "convertZoneToMarker": "Преобразовать в обычный маркер",
       "convertMarkerToZone": "Преобразовать в маркер зоны",
       "transitions": "Переходы",

@@ -14,18 +14,20 @@ describe('WorkspaceStore', () => {
     const store = useWorkspaceStore();
     expect(store.workspaceHandle).toBeNull();
     expect(store.projects).toEqual([]);
-    expect(store.userSettings.projectDefaults.width).toBe(1920);
-    expect(store.userSettings.exportDefaults.encoding.format).toBe('mp4');
+    expect(store.userSettings.projectPresets.items[0]?.width).toBe(1920);
+    expect(store.userSettings.exportPresets.items[0]?.format).toBe('mkv');
   });
 
   it('updates lastProjectName in localStorage', async () => {
     const store = useWorkspaceStore();
     store.lastProjectName = 'test-project';
     await nextTick();
-    expect(localStorage.getItem('gran-editor-last-opened-project')).toBe('test-project');
+    expect(localStorage.getItem('fastcat-last-opened-project')).toBe('test-project');
+    expect(localStorage.getItem('gran-editor-last-opened-project')).toBeNull();
 
     store.lastProjectName = null;
     await nextTick();
+    expect(localStorage.getItem('fastcat-last-opened-project')).toBeNull();
     expect(localStorage.getItem('gran-editor-last-opened-project')).toBeNull();
   });
 

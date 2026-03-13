@@ -26,12 +26,20 @@ const {
   filteredProjects,
   createNewProject,
   startCreateProject,
+  applyProjectCreationPreset,
   handleOpenProject,
   renameProject,
   startRename,
 } = useProjectManagement({ isMobile: true });
 
 const isAdvancedOpen = ref(false);
+
+const projectPresetOptions = computed(() =>
+  workspaceStore.userSettings.projectPresets.items.map((preset) => ({
+    value: preset.id,
+    label: preset.name,
+  })),
+);
 
 // Локальная копия последнего проекта для отображения предложения
 const suggestedProject = computed(() => workspaceStore.lastProjectName);
@@ -232,6 +240,17 @@ const suggestedProject = computed(() => workspaceStore.lastProjectName);
 
         <template #content>
           <div class="pt-4 border-t border-ui-border mt-2">
+            <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')" class="mb-4">
+              <USelectMenu
+                v-model="projectCreationSettings.presetId"
+                :items="projectPresetOptions"
+                value-key="value"
+                label-key="label"
+                class="w-full"
+                @update:model-value="(value: string) => applyProjectCreationPreset(value)"
+              />
+            </UFormField>
+
             <MediaResolutionSettings
               v-model:width="projectCreationSettings.width"
               v-model:height="projectCreationSettings.height"

@@ -1,11 +1,13 @@
 import type { VideoCoreHostAPI } from './worker-client';
 import { ensureVectorImageRaster } from '~/media-cache/application/vectorImageCache';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 
 export interface CreateVideoCoreHostApiParams {
   getCurrentProjectId: () => string | null;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath?: (path: string) => Promise<File | null>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
+  getResolvedStorageTopology?: () => ResolvedStorageTopology | null;
   onExportProgress: (progress: number) => void;
   onExportPhase?: (phase: 'encoding' | 'saving') => void;
   onExportWarning?: (message: string) => void;
@@ -38,6 +40,7 @@ export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): Vi
         height,
         sourceFileHandle,
         workspaceHandle,
+        resolvedStorageTopology: params.getResolvedStorageTopology?.() ?? undefined,
       });
     },
     onExportProgress: (progress) => params.onExportProgress(progress),

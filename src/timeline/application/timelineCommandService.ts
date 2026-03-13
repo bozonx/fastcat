@@ -7,9 +7,16 @@ import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 
 interface TimelineMediaMetadata {
   duration?: number;
-  video?: unknown;
-  audio?: unknown;
+  video?: {
+    width: number;
+    height: number;
+    fps: number;
+  };
+  audio?: {
+    sampleRate: number;
+  };
 }
+
 
 export interface TimelineCommandServiceDeps {
   getTimelineDoc: () => TimelineDocument | null;
@@ -31,12 +38,16 @@ export interface TimelineCommandServiceDeps {
   getMediaMetadataByPath: (path: string) => TimelineMediaMetadata | null;
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getUserSettings: () => { optimization: { autoCreateProxies: boolean } };
+  getProjectSettings: () => { project: { width: number; height: number; fps: number; isAutoSettings: boolean } };
+  updateProjectSettings: (settings: { width: number; height: number; fps: number; isAutoSettings: boolean }) => Promise<void>;
+  showFpsWarning: (fileFps: number, projectFps: number) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
   parseTimelineFromOtio: typeof import('~/timeline/otioSerializer').parseTimelineFromOtio;
   selectTimelineDurationUs: typeof import('~/timeline/selectors').selectTimelineDurationUs;
 }
+
 
 export interface AddClipToTimelineFromPathInput {
   trackId: string;
@@ -253,6 +264,21 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         file,
         projectRelativePath: input.path,
       });
+    }
+
+    // Auto-settings and FPS warning logic
+    if (metadata.video) {
+        const projectSettings = deps.getProjectSettings();
+        if (projectSettings.project.isAutoSettings) {
+            await deps.updateProjectSettings({
+              width: metadata.video.width,
+              height: metadata.video.height,
+              fps: metadata.video.fps,
+              isAutoSettings: false,
+            });
+        } else if (metadata.video.fps !== projectSettings.project.fps) {
+            deps.showFpsWarning(metadata.video.fps, projectSettings.project.fps);
+        }
     }
 
     deps.ensureTimelineDoc();

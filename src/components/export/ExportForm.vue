@@ -123,7 +123,7 @@ watch(
     excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
     audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
-    audioSampleRate.value = projectStore.projectSettings.exportDefaults.encoding.audioSampleRate;
+    audioSampleRate.value = projectStore.projectSettings.project.sampleRate;
     bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value =
       projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
@@ -242,8 +242,6 @@ async function handleConfirm() {
         projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
         projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
           audioBitrateKbps.value;
-        projectStore.projectSettings.exportDefaults.encoding.audioSampleRate =
-          audioSampleRate.value;
         projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
         projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
           keyframeIntervalSec.value;
@@ -263,7 +261,7 @@ async function handleConfirm() {
           audioBitrate: audioBitrateKbps.value * 1000,
           audio: !excludeAudio.value,
           audioCodec: resolvedCodecs.audioCodec,
-          audioSampleRate: audioSampleRate.value,
+          audioSampleRate: projectStore.projectSettings.project.sampleRate,
           width: normalizedExportWidth.value,
           height: normalizedExportHeight.value,
           fps: normalizedExportFps.value,
@@ -435,6 +433,7 @@ async function handleConfirm() {
         v-model:metadata-author="metadataAuthor"
         v-model:metadata-tags="metadataTags"
         :show-audio-advanced="true"
+        :hide-audio-sample-rate="true"
         :show-metadata="true"
         :disabled="isExporting"
         :has-audio="true"

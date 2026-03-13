@@ -129,6 +129,7 @@ export const useProjectStore = defineStore('project', () => {
   async function createProject(
     name: string,
     options?: {
+      presetId?: string;
       width?: number;
       height?: number;
       fps?: number;
@@ -199,8 +200,27 @@ export const useProjectStore = defineStore('project', () => {
       currentFileName.value = initialTimeline;
 
       const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
+      initialSettings.project.isAutoSettings = true;
+
+      if (options?.presetId) {
+        workspaceStore.userSettings.projectPresets.lastUsedPresetId = options.presetId;
+      }
 
       if (options) {
+        // If user provided specific options, it's not "Auto" anymore
+        const hasProjectOptions =
+          options.width !== undefined ||
+          options.height !== undefined ||
+          options.fps !== undefined ||
+          options.resolutionFormat !== undefined ||
+          options.orientation !== undefined ||
+          options.aspectRatio !== undefined ||
+          options.sampleRate !== undefined;
+
+        if (hasProjectOptions) {
+          initialSettings.project.isAutoSettings = false;
+        }
+
         if (options.width !== undefined) initialSettings.project.width = options.width;
         if (options.height !== undefined) initialSettings.project.height = options.height;
         if (options.fps !== undefined) initialSettings.project.fps = options.fps;

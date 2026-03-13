@@ -62,11 +62,11 @@ describe('settings normalization', () => {
     ).toBe(85);
   });
 
-  it('uses exportDefaults fallback when missing', () => {
+  it('uses preset fallbacks when missing', () => {
     const normalized = normalizeUserSettings({ openLastProjectOnStart: true });
     expect(normalized.locale).toBe('en-US');
-    expect(normalized.projectDefaults.width).toBe(1920);
-    expect(normalized.exportDefaults.encoding.format).toBe('mp4');
+    expect(normalized.projectPresets.items[0]?.width).toBe(1920);
+    expect(normalized.exportPresets.items[0]?.format).toBe('mp4');
     expect(normalized.hotkeys.bindings).toEqual({});
     expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Escape']);
   });

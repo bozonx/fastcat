@@ -52,6 +52,7 @@ export const useMediaStore = defineStore('media', () => {
   const fsModule = createMediaCacheFsModule({
     getWorkspaceHandle: () => workspaceStore.workspaceHandle,
     getProjectId: () => projectStore.currentProjectId,
+    getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
   });
 
   const workerModule = createMediaWorkerModule();

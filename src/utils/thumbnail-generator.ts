@@ -1,7 +1,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
-import { getProjectThumbnailsSegments } from '~/utils/vardata-paths';
+import { getResolvedProjectThumbnailsSegments } from '~/utils/storage-topology';
 
 export interface ThumbnailTask {
   id: string; // usually clip hash
@@ -27,6 +27,21 @@ export function getClipThumbnailsHash(input: {
   projectRelativePath: string;
 }): string {
   return hashString(`${input.projectId}:${input.projectRelativePath}`);
+}
+
+function getTimelineThumbnailDirSegments(input: {
+  projectId: string;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
+  hash?: string;
+}): string[] {
+  const baseSegments = getResolvedProjectThumbnailsSegments(
+    input.workspaceStore.resolvedStorageTopology,
+    input.projectId,
+  );
+
+  return input.hash
+    ? [...baseSegments, TIMELINE_CLIP_THUMBNAILS.DIR_NAME, input.hash]
+    : [...baseSegments, TIMELINE_CLIP_THUMBNAILS.DIR_NAME];
 }
 
 class ThumbnailGenerator {
@@ -116,11 +131,11 @@ class ThumbnailGenerator {
     if (!workspaceStore.workspaceHandle) return false;
 
     try {
-      const parts = [
-        ...getProjectThumbnailsSegments(task.projectId),
-        TIMELINE_CLIP_THUMBNAILS.DIR_NAME,
-        task.id,
-      ];
+      const parts = getTimelineThumbnailDirSegments({
+        projectId: task.projectId,
+        workspaceStore,
+        hash: task.id,
+      });
 
       let dir = workspaceStore.workspaceHandle;
       for (const segment of parts) {
@@ -275,11 +290,11 @@ class ThumbnailGenerator {
       };
 
       const ensureTargetDir = async () => {
-        const parts = [
-          ...getProjectThumbnailsSegments(task.projectId),
-          TIMELINE_CLIP_THUMBNAILS.DIR_NAME,
-          task.id,
-        ];
+        const parts = getTimelineThumbnailDirSegments({
+          projectId: task.projectId,
+          workspaceStore,
+          hash: task.id,
+        });
 
         let dir = workspaceStore.workspaceHandle!;
         for (const segment of parts) {
