@@ -195,6 +195,7 @@ export function useMonitorTimeline() {
     const effectiveItems = buildEffectiveAudioClipItems({
       audioTracks: audioTracks.value,
       videoTracks: videoTracks.value,
+      masterEffects: timelineStore.timelineDoc?.metadata?.gran?.masterEffects,
     });
 
     for (const item of effectiveItems) {

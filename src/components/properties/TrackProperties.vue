@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineBlendMode, TimelineTrack, VideoClipEffect } from '~/timeline/types';
+import type { TimelineBlendMode, TimelineTrack, VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
+import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
@@ -91,8 +92,22 @@ const trackVideoEffects = computed(() =>
   (props.track.effects ?? []).filter((effect): effect is VideoClipEffect => effect?.target !== 'audio'),
 );
 
+const trackAudioEffects = computed(() =>
+  (props.track.effects ?? []).filter((effect): effect is AudioClipEffect => effect?.target === 'audio'),
+);
+
 function handleUpdateTrackEffects(effects: VideoClipEffect[]) {
-  timelineStore.updateTrackProperties(props.track.id, { effects: [...effects] });
+  const audioEffects = (props.track.effects ?? []).filter(
+    (e): e is AudioClipEffect => e?.target === 'audio',
+  );
+  timelineStore.updateTrackProperties(props.track.id, { effects: [...effects, ...audioEffects] as any });
+}
+
+function handleUpdateTrackAudioEffects(effects: AudioClipEffect[]) {
+  const videoEffects = (props.track.effects ?? []).filter(
+    (e) => e?.target !== 'audio',
+  );
+  timelineStore.updateTrackProperties(props.track.id, { effects: [...videoEffects, ...effects] as any });
 }
 
 function handleRenameTrack(newName: string) {
@@ -246,11 +261,18 @@ function confirmDeleteTrack() {
     </div>
 
     <EffectsEditor
+      v-if="track.kind === 'video'"
       :effects="trackVideoEffects"
       :title="t('granVideoEditor.effects.trackTitle', 'Track effects')"
       :add-label="t('granVideoEditor.effects.add', 'Add')"
       :empty-label="t('granVideoEditor.effects.empty', 'No effects')"
       @update:effects="handleUpdateTrackEffects"
+    />
+
+    <AudioEffectsEditor
+      v-if="track.kind === 'audio' || track.kind === 'video'"
+      :effects="trackAudioEffects"
+      @update:effects="handleUpdateTrackAudioEffects"
     />
 
     <UiConfirmModal

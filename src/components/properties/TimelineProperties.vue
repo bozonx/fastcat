@@ -5,7 +5,8 @@ import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
-import type { VideoClipEffect } from '~/timeline/types';
+import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
+import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import {
   DEFAULT_TIMELINE_ZOOM_POSITION,
   formatZoomMultiplier,
@@ -43,6 +44,13 @@ const masterEffects = computed(
     ),
 );
 
+const masterAudioEffects = computed(
+  () =>
+    (timelineStore.timelineDoc?.metadata?.gran?.masterEffects ?? []).filter(
+      (effect): effect is AudioClipEffect => effect?.target === 'audio',
+    ),
+);
+
 const masterMuted = computed({
   get: () => Boolean(timelineStore.timelineDoc?.metadata?.gran?.masterMuted),
   set: (muted: boolean) => {
@@ -72,7 +80,14 @@ const timelineZoomMultiplierInput = computed({
 function handleUpdateMasterEffects(effects: VideoClipEffect[]) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: [...effects],
+    effects: [...effects, ...masterAudioEffects.value] as any,
+  });
+}
+
+function handleUpdateMasterAudioEffects(effects: AudioClipEffect[]) {
+  timelineStore.applyTimeline({
+    type: 'update_master_effects',
+    effects: [...masterEffects.value, ...effects] as any,
   });
 }
 
@@ -216,6 +231,11 @@ function handleAddAudioTrack() {
         </div>
       </div>
     </div>
+    
+    <AudioEffectsEditor
+      :effects="masterAudioEffects"
+      @update:effects="handleUpdateMasterAudioEffects"
+    />
 
     <!-- Master Volume -->
     <PropertySection

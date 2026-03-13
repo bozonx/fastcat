@@ -1136,6 +1136,7 @@ export function useTimelineExport() {
     const effectiveAudioItems = buildEffectiveAudioClipItems({
       audioTracks: allAudioTracks,
       videoTracks: allVideoTracks,
+      masterEffects: doc?.metadata?.gran?.masterEffects,
     });
 
     const masterGain = timelineStore.masterGain;
