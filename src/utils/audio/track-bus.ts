@@ -1,9 +1,10 @@
-import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
+import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 
 export interface BuildEffectiveAudioClipItemsParams {
   audioTracks: TimelineTrack[];
   videoTracks: TimelineTrack[];
+  masterEffects?: ClipEffect[];
 }
 
 export function buildEffectiveAudioClipItems(
@@ -11,6 +12,7 @@ export function buildEffectiveAudioClipItems(
 ): TimelineTrackItem[] {
   const allAudioTracks = params.audioTracks;
   const allVideoTracks = params.videoTracks;
+  const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target === 'audio');
 
   const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
 
@@ -25,6 +27,8 @@ export function buildEffectiveAudioClipItems(
   const result: TimelineTrackItem[] = [];
 
   for (const track of effectiveAudioTracks) {
+    const trackAudioEffects = (track.effects ?? []).filter((e) => e?.target === 'audio');
+
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
       if (item.disabled || item.audioMuted) continue;
@@ -33,12 +37,18 @@ export function buildEffectiveAudioClipItems(
       const path = item.source?.path;
       if (!path) continue;
 
+      const itemEffects = Array.isArray(item.effects) ? item.effects : [];
+      let combinedEffects = [...itemEffects];
+      if (trackAudioEffects.length > 0) combinedEffects.push(...trackAudioEffects);
+      if (masterAudioEffects.length > 0) combinedEffects.push(...masterAudioEffects);
+
       result.push({
         ...item,
         clipType,
         source: { path },
         audioGain: mergeGain(track.audioGain, item.audioGain),
         audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
+        effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       } as import('~/timeline/types').TimelineClipItem);
     }
   }
@@ -46,6 +56,8 @@ export function buildEffectiveAudioClipItems(
   const videoTrackIdsForAudio = new Set(effectiveVideoTracksForAudio.map((t) => t.id));
   for (const track of allVideoTracks) {
     if (!videoTrackIdsForAudio.has(track.id)) continue;
+
+    const trackAudioEffects = (track.effects ?? []).filter((e) => e?.target === 'audio');
 
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
@@ -56,6 +68,11 @@ export function buildEffectiveAudioClipItems(
       const path = item.source?.path;
       if (!path) continue;
 
+      const itemEffects = Array.isArray(item.effects) ? item.effects : [];
+      let combinedEffects = [...itemEffects];
+      if (trackAudioEffects.length > 0) combinedEffects.push(...trackAudioEffects);
+      if (masterAudioEffects.length > 0) combinedEffects.push(...masterAudioEffects);
+
       result.push({
         ...item,
         clipType,
@@ -63,6 +80,7 @@ export function buildEffectiveAudioClipItems(
         source: { path },
         audioGain: mergeGain(track.audioGain, item.audioGain),
         audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
+        effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       } as import('~/timeline/types').TimelineClipItem);
     }
   }

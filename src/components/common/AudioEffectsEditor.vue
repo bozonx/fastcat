@@ -21,6 +21,22 @@ const safeEffects = computed(() => props.effects ?? []);
 
 const availableEffects = computed(() => getAllAudioEffectManifests());
 
+function onDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('gran-effect')) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+}
+
+function onDrop(e: DragEvent) {
+  const effectType = e.dataTransfer?.getData('gran-effect');
+  if (!effectType) return;
+  e.preventDefault();
+  e.stopPropagation();
+  handleAddEffect(effectType);
+}
+
 function setEffects(next: AudioClipEffect[]) {
   emit('update:effects', next);
 }
@@ -62,7 +78,11 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 </script>
 
 <template>
-  <div class="space-y-3 mt-2 bg-ui-bg-elevated p-4 rounded border border-ui-border text-sm">
+  <div
+    class="space-y-3 mt-2 bg-ui-bg-elevated p-4 rounded border border-ui-border text-sm"
+    @dragover="onDragOver"
+    @drop="onDrop"
+  >
     <div class="flex items-center justify-between">
       <span class="font-medium text-ui-text">
         {{ t('granVideoEditor.effects.audioTitle', 'Audio effects') }}
