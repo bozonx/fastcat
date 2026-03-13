@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import { getAllAudioEffectManifests, getAudioEffectManifest } from '~/effects';
+import type { AudioEffectManifest } from '~/effects';
 import type { AudioClipEffect } from '~/timeline/types';
 
 const props = defineProps<{
@@ -20,6 +21,12 @@ const isSelectModalOpen = ref(false);
 const safeEffects = computed(() => props.effects ?? []);
 
 const availableEffects = computed(() => getAllAudioEffectManifests());
+const basicEffects = computed(() => availableEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'));
+const voiceEffects = computed(() => availableEffects.value.filter((effect) => effect.category === 'voice'));
+
+function hasEffects(effects: AudioEffectManifest<any>[]) {
+  return effects.length > 0;
+}
 
 function onDragOver(e: DragEvent) {
   if (e.dataTransfer?.types.includes('gran-effect')) {
@@ -154,19 +161,47 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
       :title="t('granVideoEditor.effects.addAudioEffect', 'Add audio effect')"
     >
       <template #body>
-        <div class="grid grid-cols-1 gap-2">
-          <div
-            v-for="manifest in availableEffects"
-            :key="manifest.type"
-            class="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated cursor-pointer transition-colors"
-            @click="handleAddEffect(manifest.type)"
-          >
-            <UIcon :name="manifest.icon" class="w-8 h-8 text-primary shrink-0" />
-            <div class="flex-1 min-w-0">
-              <h4 class="text-sm font-medium text-ui-text">{{ manifest.name }}</h4>
-              <p class="text-xs text-ui-text-muted mt-1">{{ manifest.description }}</p>
+        <div class="space-y-4">
+          <div>
+            <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+              {{ t('granVideoEditor.effects.groups.standard', 'Основные') }}
+            </h4>
+            <div v-if="hasEffects(basicEffects)" class="grid grid-cols-1 gap-2">
+              <div
+                v-for="manifest in basicEffects"
+                :key="manifest.type"
+                class="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated cursor-pointer transition-colors"
+                @click="handleAddEffect(manifest.type)"
+              >
+                <UIcon :name="manifest.icon" class="w-8 h-8 text-primary shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <h4 class="text-sm font-medium text-ui-text">{{ manifest.name }}</h4>
+                  <p class="text-xs text-ui-text-muted mt-1">{{ manifest.description }}</p>
+                </div>
+                <UIcon name="i-heroicons-plus-circle" class="w-5 h-5 text-ui-text-muted" />
+              </div>
             </div>
-            <UIcon name="i-heroicons-plus-circle" class="w-5 h-5 text-ui-text-muted" />
+          </div>
+
+          <div>
+            <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+              {{ t('granVideoEditor.effects.groups.voice', 'Голос') }}
+            </h4>
+            <div v-if="hasEffects(voiceEffects)" class="grid grid-cols-1 gap-2">
+              <div
+                v-for="manifest in voiceEffects"
+                :key="manifest.type"
+                class="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated cursor-pointer transition-colors"
+                @click="handleAddEffect(manifest.type)"
+              >
+                <UIcon :name="manifest.icon" class="w-8 h-8 text-primary shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <h4 class="text-sm font-medium text-ui-text">{{ manifest.name }}</h4>
+                  <p class="text-xs text-ui-text-muted mt-1">{{ manifest.description }}</p>
+                </div>
+                <UIcon name="i-heroicons-plus-circle" class="w-5 h-5 text-ui-text-muted" />
+              </div>
+            </div>
           </div>
         </div>
       </template>
