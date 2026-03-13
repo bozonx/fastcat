@@ -8,6 +8,11 @@ import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useResizeObserver } from '@vueuse/core';
 import { useSelectionStore } from '~/stores/selection.store';
 import { isSecondaryWheel } from '~/utils/mouse';
+import {
+  formatRulerTime,
+  truncateRulerTooltip,
+  useTimelineRulerPresentation,
+} from '~/composables/timeline/useTimelineRulerPresentation';
 
 const { t } = useI18n();
 
@@ -369,87 +374,16 @@ function startSelectionRangeCreate(e: PointerEvent) {
   window.addEventListener('pointerup', onSelectionCreatePointerUp);
 }
 
-function truncateForTooltip(text: string): string {
-  const t = String(text ?? '');
-  const singleLine = t.replace(/\s+/g, ' ').trim();
-  if (!singleLine) return '';
-  const max = 160;
-  return singleLine.length > max ? `${singleLine.slice(0, max)}…` : singleLine;
-}
-
-const markerPoints = computed(() => {
-  const currentZoom = zoom.value;
-  const startPx = scrollLeft.value;
-  const w = width.value;
-
-  return markers.value
-    .map((m) => {
-      const x = timeUsToPx(m.timeUs, currentZoom) - startPx;
-      const width = m.durationUs !== undefined ? timeUsToPx(m.durationUs, currentZoom) : 0;
-      return {
-        id: m.id,
-        x,
-        width,
-        isZone: m.durationUs !== undefined,
-        text: m.text ?? '',
-        color: m.color ?? '#eab308',
-      };
-    })
-    .filter(
-      (p) => (p.x >= -20 && p.x <= w + 20) || (p.isZone && p.x + p.width >= -20 && p.x <= w + 20),
-    );
-});
-
-const selectionRangePoint = computed(() => {
-  const range = selectionRange.value;
-  if (!range) return null;
-
-  const currentZoom = zoom.value;
-  const startPx = scrollLeft.value;
-  const x = timeUsToPx(range.startUs, currentZoom) - startPx;
-  const width = Math.max(1, timeUsToPx(range.endUs - range.startUs, currentZoom));
-
-  return {
-    x,
+const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadStyle } =
+  useTimelineRulerPresentation({
     width,
-  };
-});
-
-const currentFrameHighlightStyle = computed(() => {
-  const currentZoom = zoom.value;
-  const currentFps = fps.value;
-  const pxPerFrame = zoomToPxPerSecond(currentZoom) / currentFps;
-  if (pxPerFrame < 6) return null;
-
-  const frameDurationUs = 1_000_000 / currentFps;
-  const currentFrameStartUs = Math.floor(currentTime.value / frameDurationUs) * frameDurationUs;
-  const currentFrameStartX = timeUsToPx(currentFrameStartUs, currentZoom) - scrollLeft.value;
-
-  return {
-    transform: `translate3d(${currentFrameStartX}px, 0, 0)`,
-    width: `${pxPerFrame}px`,
-  };
-});
-
-const playheadStyle = computed(() => {
-  const playheadX = Math.round(timeUsToPx(currentTime.value, zoom.value) - scrollLeft.value);
-
-  return {
-    transform: `translate3d(${playheadX}px, 0, 0)`,
-  };
-});
-
-function formatTime(us: number, fpsValue: number): string {
-  const totalFrames = Math.round((us / 1_000_000) * fpsValue);
-  const ff = totalFrames % fpsValue;
-  const totalSeconds = Math.floor(us / 1_000_000);
-  const ss = totalSeconds % 60;
-  const mm = Math.floor(totalSeconds / 60) % 60;
-  const hh = Math.floor(totalSeconds / 3600);
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
-}
+    scrollLeft,
+    zoom,
+    fps,
+    currentTime,
+    markers,
+    selectionRange,
+  });
 
 function draw() {
   const canvas = canvasRef.value;
@@ -507,7 +441,7 @@ function draw() {
     if (x >= -50 && x <= w + 50) {
       ctx.moveTo(x, h - 12);
       ctx.lineTo(x, h);
-      ctx.fillText(formatTime(s * 1_000_000, currentFps), x, 4);
+      ctx.fillText(formatRulerTime(s * 1_000_000, currentFps), x, 4);
     }
   }
   ctx.stroke();
@@ -837,7 +771,7 @@ const selectionRangeMenuItems = computed(() => [
             <UContextMenu
               :items="p.isZone ? getZoneMarkerMenuItems(p.id) : getMarkerMenuItems(p.id)"
             >
-              <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+              <UTooltip :text="truncateRulerTooltip(p.text)" :disabled="!p.text">
                 <button
                   type="button"
                   class="-translate-x-1 relative z-10"
@@ -876,7 +810,7 @@ const selectionRangeMenuItems = computed(() => [
           <!-- Right Marker (for zones) -->
           <div v-if="p.isZone" class="absolute bottom-0 right-0">
             <UContextMenu :items="getZoneMarkerMenuItems(p.id)">
-              <UTooltip :text="truncateForTooltip(p.text)" :disabled="!p.text">
+              <UTooltip :text="truncateRulerTooltip(p.text)" :disabled="!p.text">
                 <button
                   type="button"
                   class="translate-x-1 relative z-10"
