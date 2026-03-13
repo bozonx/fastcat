@@ -80,7 +80,6 @@ describe('project-settings.repository', () => {
         orientation: 'landscape',
         aspectRatio: '16:9',
         isCustomResolution: false,
-        audioChannels: 'stereo',
         sampleRate: 48000,
       },
       exportDefaults: {

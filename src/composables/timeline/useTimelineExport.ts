@@ -1181,7 +1181,6 @@ export function useTimelineExport() {
     const finalOptions = {
       ...options,
       audioSampleRate: audioSampleRate.value,
-      audioChannels: projectStore.projectSettings?.project?.audioChannels,
     };
     await (client as any).exportTimeline(fileHandle, finalOptions, videoPayload, croppedAudioClips);
   }

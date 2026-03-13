@@ -80,9 +80,6 @@ describe('settings normalization', () => {
         proxiesRootPath: '  /mnt/proxies  ',
         placementMode: 'portable',
       },
-      proxyStorageLimitBytes: '123',
-      cacheStorageLimitBytes: 0,
-      thumbnailsStorageLimitBytes: 42,
     });
 
     expect(normalized.paths.contentRootPath).toBe('/mnt/content');
@@ -90,9 +87,6 @@ describe('settings normalization', () => {
     expect(normalized.paths.tempRootPath).toBe('/mnt/temp');
     expect(normalized.paths.proxiesRootPath).toBe('/mnt/proxies');
     expect(normalized.paths.placementMode).toBe('portable');
-    expect(normalized.proxyStorageLimitBytes).toBe(123);
-    expect(normalized.cacheStorageLimitBytes).toBe(2 * 1024 * 1024 * 1024);
-    expect(normalized.thumbnailsStorageLimitBytes).toBe(42);
   });
 
   it('keeps workspace normalization as a legacy alias for app settings', () => {

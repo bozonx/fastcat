@@ -1,4 +1,3 @@
-import { STORAGE_LIMITS } from '../constants';
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import type { StoragePathRegistry } from '../storage-roots';
 
@@ -205,9 +204,6 @@ export interface GranVideoEditorUserSettings {
 
 export interface FastCatAppSettings {
   paths: StoragePathRegistry;
-  proxyStorageLimitBytes: number;
-  cacheStorageLimitBytes: number;
-  thumbnailsStorageLimitBytes: number;
 }
 
 export type GranVideoEditorWorkspaceSettings = FastCatAppSettings;
@@ -329,9 +325,6 @@ export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
     proxiesRootPath: '',
     placementMode: 'system-default',
   },
-  proxyStorageLimitBytes: STORAGE_LIMITS.PROXY_BYTES,
-  cacheStorageLimitBytes: STORAGE_LIMITS.CACHE_BYTES,
-  thumbnailsStorageLimitBytes: STORAGE_LIMITS.THUMBNAILS_BYTES,
 };
 
 export const DEFAULT_WORKSPACE_SETTINGS: GranVideoEditorWorkspaceSettings = DEFAULT_APP_SETTINGS;

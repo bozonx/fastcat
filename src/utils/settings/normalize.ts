@@ -510,11 +510,6 @@ export function normalizeAppSettings(raw: unknown): FastCatAppSettings {
       ? (input.paths as Record<string, unknown>)
       : ({} as Record<string, unknown>);
 
-  const proxyStorageLimitBytes = Number(input.proxyStorageLimitBytes);
-  const cacheStorageLimitBytes = Number(input.cacheStorageLimitBytes);
-  const thumbnailsStorageLimitBytes = Number(input.thumbnailsStorageLimitBytes);
-
-  const MAX_LIMIT_BYTES = 1024 * 1024 * 1024 * 1024;
   const defaultSettings = createDefaultAppSettings();
   const placementMode =
     pathsInput.placementMode === 'portable' ? 'portable' : defaultSettings.paths.placementMode;
@@ -527,18 +522,6 @@ export function normalizeAppSettings(raw: unknown): FastCatAppSettings {
       proxiesRootPath: normalizeStoragePathValue(pathsInput.proxiesRootPath),
       placementMode,
     },
-    proxyStorageLimitBytes:
-      Number.isFinite(proxyStorageLimitBytes) && proxyStorageLimitBytes > 0
-        ? Math.round(Math.min(MAX_LIMIT_BYTES, proxyStorageLimitBytes))
-        : defaultSettings.proxyStorageLimitBytes,
-    cacheStorageLimitBytes:
-      Number.isFinite(cacheStorageLimitBytes) && cacheStorageLimitBytes > 0
-        ? Math.round(Math.min(MAX_LIMIT_BYTES, cacheStorageLimitBytes))
-        : defaultSettings.cacheStorageLimitBytes,
-    thumbnailsStorageLimitBytes:
-      Number.isFinite(thumbnailsStorageLimitBytes) && thumbnailsStorageLimitBytes > 0
-        ? Math.round(Math.min(MAX_LIMIT_BYTES, thumbnailsStorageLimitBytes))
-        : defaultSettings.thumbnailsStorageLimitBytes,
   };
 }
 
