@@ -339,6 +339,9 @@ export const useProjectStore = defineStore('project', () => {
     loadProjectSettings,
     saveProjectSettings,
     deleteCurrentProject,
+    projectMeta: metaModule.projectMeta,
+    saveProjectMeta: metaModule.saveProjectMeta,
+    loadProjectMeta: metaModule.loadProjectMeta,
     ...editorViewModule,
   };
 });

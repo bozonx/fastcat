@@ -100,6 +100,15 @@ async function applySettings() {
   isOpen.value = false;
 
   await projectStore.saveProjectSettings();
+  
+  // Sync metadata to projectMeta for consistency
+  const meta = projectStore.projectSettings.exportDefaults.encoding.metadata;
+  await projectStore.saveProjectMeta({
+    title: meta.title,
+    description: meta.description,
+    author: meta.author,
+    tags: String(meta.tags || '').split(',').map(t => t.trim()).filter(Boolean)
+  });
 
   // Show success message
   const toast = useToast();
@@ -135,7 +144,7 @@ async function resetToDefaults() {
   exportEncoding.bitrateMode = eDefaults.bitrateMode;
   exportEncoding.keyframeIntervalSec = eDefaults.keyframeIntervalSec;
   exportEncoding.exportAlpha = eDefaults.exportAlpha;
-  exportEncoding.metadata = { title: '', author: '', tags: '' };
+  exportEncoding.metadata = { title: '', description: '', author: '', tags: '' };
 
   await projectStore.saveProjectSettings();
   isResetConfirmOpen.value = false;
@@ -321,6 +330,9 @@ function applyExportPreset(presetId: string) {
             projectStore.projectSettings.exportDefaults.encoding.metadata.author
           "
           v-model:metadata-tags="projectStore.projectSettings.exportDefaults.encoding.metadata.tags"
+          v-model:metadata-description="
+            projectStore.projectSettings.exportDefaults.encoding.metadata.description
+          "
           :show-audio-advanced="true"
           :show-builtin-presets="false"
           :hide-audio-sample-rate="true"

@@ -56,6 +56,7 @@ const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
 const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
 const metadataTags = defineModel<string>('metadataTags', { default: '' });
+const metadataDescription = defineModel<string>('metadataDescription', { default: '' });
 
 const { t } = useI18n();
 
@@ -382,6 +383,19 @@ watch(
           {{ t('videoEditor.export.metadataAuthor', 'Author') }}
         </label>
         <UInput v-model="metadataAuthor" size="sm" :disabled="props.disabled" class="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.export.metadataDescription', 'Description') }}
+        </label>
+        <UTextarea
+          v-model="metadataDescription"
+          size="sm"
+          :disabled="props.disabled"
+          class="w-full"
+          :rows="3"
+        />
       </div>
 
       <div class="flex flex-col gap-2">

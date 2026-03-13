@@ -144,11 +144,12 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           const legacyMeta = (raw as any)?.exportDefaults?.encoding?.metadata;
           const currentMeta = getProjectMeta.value?.();
           if (legacyMeta && currentMeta) {
-            const hasLegacyContent = legacyMeta.title || legacyMeta.author || legacyMeta.tags;
+            const hasLegacyContent = legacyMeta.title || legacyMeta.author || legacyMeta.tags || legacyMeta.description;
             // Only migrate if destination is relatively empty (initial load after rename or old project)
-            if (hasLegacyContent && !currentMeta.title && !currentMeta.author) {
+            if (hasLegacyContent && !currentMeta.title && !currentMeta.author && !currentMeta.description) {
               await saveProjectMeta.value?.({
                 title: legacyMeta.title || currentMeta.title,
+                description: legacyMeta.description || currentMeta.description,
                 author: legacyMeta.author || currentMeta.author,
                 tags: typeof legacyMeta.tags === 'string' ? legacyMeta.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : currentMeta.tags,
               });
