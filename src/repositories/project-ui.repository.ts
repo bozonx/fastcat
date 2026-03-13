@@ -19,7 +19,6 @@ export interface ProjectUiSettings {
   };
   timelines: {
     openPaths: string[];
-    lastOpenedPath: string | null;
   };
 }
 

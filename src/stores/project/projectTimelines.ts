@@ -15,6 +15,7 @@ export function createProjectTimelinesModule(params: {
   currentFileName: Ref<string | null>;
   projectSettings: Ref<FastCatProjectSettings>;
   toProjectRelativePath: (path: string) => string;
+  saveProjectMeta: (updates: any) => Promise<void>;
   setWorkspaceError: (message: string | null) => void;
 }) {
   async function openTimelineFile(path: string) {
@@ -30,7 +31,7 @@ export function createProjectTimelinesModule(params: {
       params.projectSettings.value.timelines.openPaths.push(normalizedPath);
     }
 
-    params.projectSettings.value.timelines.lastOpenedPath = normalizedPath;
+    void params.saveProjectMeta({ lastOpenedTimelinePath: normalizedPath });
 
     params.currentTimelinePath.value = normalizedPath;
     params.currentFileName.value = normalizedPath.split('/').pop() ?? normalizedPath;
@@ -56,10 +57,7 @@ export function createProjectTimelinesModule(params: {
   function reorderTimelines(paths: string[]) {
     params.projectSettings.value.timelines.openPaths = paths;
 
-    const lastOpened = params.projectSettings.value.timelines.lastOpenedPath;
-    if (lastOpened && !paths.includes(lastOpened)) {
-      params.projectSettings.value.timelines.lastOpenedPath = paths[0] ?? null;
-    }
+    // Meta is updated via openTimelineFile if current path invalid
 
     if (params.currentTimelinePath.value && !paths.includes(params.currentTimelinePath.value)) {
       void openTimelineFile(paths[0] ?? `${TIMELINES_DIR_NAME}/unknown_001.otio`);

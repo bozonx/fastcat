@@ -105,12 +105,29 @@ export const useProjectStore = defineStore('project', () => {
     currentFileName,
     projectSettings,
     toProjectRelativePath,
+    saveProjectMeta: metaModule.saveProjectMeta,
     setWorkspaceError: (message) => {
       workspaceStore.error = message;
     },
   });
 
   const { openTimelineFile, closeTimelineFile, reorderTimelines } = timelinesModule;
+  
+  watch(currentTimelinePath, async (newPath) => {
+    if (newPath && metaModule.projectMeta.value) {
+      if (metaModule.projectMeta.value.lastOpenedTimelinePath !== newPath) {
+        await metaModule.saveProjectMeta({ lastOpenedTimelinePath: newPath });
+        
+        if (currentProjectName.value && currentProjectId.value) {
+          workspaceStore.updateRecentProject({
+            projectName: currentProjectName.value,
+            projectId: currentProjectId.value,
+            lastTimelinePath: newPath,
+          });
+        }
+      }
+    }
+  });
 
   projectSettingsStore.setContext({
     getProjectDirHandle,
@@ -239,8 +256,9 @@ export const useProjectStore = defineStore('project', () => {
       }
 
       initialSettings.timelines.openPaths = [initialTimeline];
-      initialSettings.timelines.lastOpenedPath = initialTimeline;
       projectSettings.value = initialSettings;
+      
+      await metaModule.saveProjectMeta({ lastOpenedTimelinePath: initialTimeline });
 
       await workspaceStore.loadProjects();
       await saveProjectSettings();
@@ -261,6 +279,13 @@ export const useProjectStore = defineStore('project', () => {
     workspaceStore.lastProjectName = name;
 
     await loadProjectMeta();
+    if (currentProjectId.value) {
+      workspaceStore.updateRecentProject({
+        projectName: name,
+        projectId: currentProjectId.value,
+        lastTimelinePath: metaModule.projectMeta.value?.lastOpenedTimelinePath,
+      });
+    }
 
     // Acquire lock after project ID is known (loaded from meta)
     if (currentProjectId.value) {
@@ -273,20 +298,20 @@ export const useProjectStore = defineStore('project', () => {
 
     await loadProjectSettings();
 
-    // If no timelines are open, open the default one
-    if (projectSettings.value.timelines.openPaths.length === 0) {
-      const defaultTimeline = `${TIMELINES_DIR_NAME}/${name}_001.otio`;
-      projectSettings.value.timelines.openPaths = [defaultTimeline];
-    }
-
-    // Set current timeline to the last opened one if it's in the list, otherwise use the first one
+    // If no timelines are open, open the last one from meta or default
     const openPaths = projectSettings.value.timelines.openPaths;
-    const lastOpened = projectSettings.value.timelines.lastOpenedPath;
-
-    if (lastOpened && openPaths.includes(lastOpened)) {
-      await openTimelineFile(lastOpened);
-    } else if (openPaths.length > 0) {
-      await openTimelineFile(openPaths[0]!);
+    if (openPaths.length === 0) {
+      const lastPath =
+        metaModule.projectMeta.value?.lastOpenedTimelinePath ||
+        `${TIMELINES_DIR_NAME}/${name}_001.otio`;
+      await openTimelineFile(lastPath);
+    } else {
+      const lastPath = metaModule.projectMeta.value?.lastOpenedTimelinePath;
+      if (lastPath && openPaths.includes(lastPath)) {
+        await openTimelineFile(lastPath);
+      } else {
+        await openTimelineFile(openPaths[0]!);
+      }
     }
 
     if (!isReadOnly.value) {

@@ -14,6 +14,7 @@ export interface ProjectMeta {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  lastOpenedTimelinePath?: string;
 }
 
 export interface ProjectMetaRepository {
@@ -44,6 +45,7 @@ export function createProjectMetaRepository(input: {
         tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
         createdAt: String(raw.createdAt || new Date().toISOString()),
         updatedAt: String(raw.updatedAt || new Date().toISOString()),
+        lastOpenedTimelinePath: raw.lastOpenedTimelinePath ? String(raw.lastOpenedTimelinePath) : undefined,
       };
     },
 

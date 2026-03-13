@@ -22,6 +22,13 @@ function readLocalStorageString(key: string): string | null {
   }
 }
 
+export interface RecentProject {
+  projectName: string;
+  projectId: string;
+  updatedAt: string;
+  lastTimelinePath?: string;
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceProvider = createWorkspaceProvider();
   const workspaceTopology = getWorkspaceStorageTopology();
@@ -37,6 +44,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const lastProjectName = ref<string | null>(
     readLocalStorageString('fastcat:workspace:last-opened-project'),
   );
+
+  const recentProjects = ref<RecentProject[]>([]);
+  try {
+    const raw = readLocalStorageString('fastcat:workspace:recent-projects');
+    if (raw) {
+      recentProjects.value = JSON.parse(raw);
+    }
+  } catch {
+    // ignore
+  }
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {
@@ -89,6 +106,42 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       // ignore
     }
   });
+
+  watch(
+    recentProjects,
+    (v) => {
+      if (typeof window === 'undefined') return;
+      try {
+        window.localStorage.setItem('fastcat:workspace:recent-projects', JSON.stringify(v));
+      } catch {
+        // ignore
+      }
+    },
+    { deep: true },
+  );
+
+  function updateRecentProject(project: Omit<RecentProject, 'updatedAt'>) {
+    const now = new Date().toISOString();
+    const existingIndex = recentProjects.value.findIndex((p) => p.projectName === project.projectName);
+
+    const updatedProject: RecentProject = {
+      ...project,
+      updatedAt: now,
+    };
+
+    if (existingIndex !== -1) {
+      recentProjects.value.splice(existingIndex, 1);
+    }
+
+    recentProjects.value.unshift(updatedProject);
+
+    // Limit to 20 projects
+    if (recentProjects.value.length > 20) {
+      recentProjects.value = recentProjects.value.slice(0, 20);
+    }
+
+    lastProjectName.value = project.projectName;
+  }
 
   const isApiSupported = workspaceProvider.isSupported;
   const workspaceProviderId = workspaceProvider.id;
@@ -206,5 +259,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     clearProjectVardata,
     deleteProject,
     renameProject,
+    recentProjects: skipHydrate(recentProjects),
+    updateRecentProject,
   };
 });
