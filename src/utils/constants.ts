@@ -20,7 +20,7 @@ export const VIDEO_CORE_LIMITS = {
 
 export const TIMELINE_CLIP_THUMBNAILS = {
   DIR_NAME: 'video_clips',
-  INTERVAL_SECONDS: 2,
+  INTERVAL_SECONDS: 4,
   WIDTH: 160,
   HEIGHT: 90,
   QUALITY: 0.4,

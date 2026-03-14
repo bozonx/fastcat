@@ -281,6 +281,8 @@ function selectTransition(
             :is-move-preview-current-item="movePreview?.itemId === item.id"
             :selected-transition="selectedTransition"
             :resize-volume="resizeVolume"
+            :scroll-left="scrollLeft"
+            :viewport-width="viewportWidth"
             @select-item="(ev, id) => emit('selectItem', ev, id)"
             @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
             @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"

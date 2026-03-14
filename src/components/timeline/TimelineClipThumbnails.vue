@@ -1,25 +1,46 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
 import type { TimelineClipItem } from '~/timeline/types';
 import { useTimelineClipThumbnails } from '~/composables/timeline/useTimelineClipThumbnails';
 
 const props = defineProps<{
   item: TimelineClipItem;
   width: number;
+  scrollLeft: number;
+  viewportWidth: number;
+  clipStartPx: number;
 }>();
 
+const containerRef = useTemplateRef<HTMLElement>('container');
+const clipHeightPx = ref(0);
+
+useResizeObserver(containerRef, (entries) => {
+  clipHeightPx.value = entries[0]?.contentRect.height ?? 0;
+});
+
 const itemRef = computed(() => props.item);
+const scrollLeftRef = computed(() => props.scrollLeft);
+const viewportWidthRef = computed(() => props.viewportWidth);
+const clipStartPxRef = computed(() => props.clipStartPx);
 
 const { imageUrl, isImage, thumbnailTiles, trimOffsetPx } = useTimelineClipThumbnails({
   item: itemRef,
+  scrollLeft: scrollLeftRef,
+  viewportWidth: viewportWidthRef,
+  clipStartPx: clipStartPxRef,
+  clipHeightPx,
 });
 
 const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
 </script>
 
 <template>
-  <div class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-0">
-    <!-- Video clips: img tiles -->
+  <div
+    ref="container"
+    class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-0"
+  >
+    <!-- Video clips: virtual img tiles -->
     <div
       v-if="!isImage"
       class="absolute inset-y-0 h-full"

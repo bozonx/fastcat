@@ -17,7 +17,22 @@ export interface ThumbnailTile {
   widthPx: number;
 }
 
-export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem> }) {
+/** Aspect ratio of stored thumbnail frames (width / height). */
+const THUMB_ASPECT = TIMELINE_CLIP_THUMBNAILS.WIDTH / TIMELINE_CLIP_THUMBNAILS.HEIGHT;
+
+export interface UseTimelineClipThumbnailsOptions {
+  item: Ref<TimelineClipItem>;
+  /** Absolute scroll position of the timeline viewport (px). */
+  scrollLeft: Ref<number>;
+  /** Visible width of the timeline viewport (px). */
+  viewportWidth: Ref<number>;
+  /** Left position of the clip element in the timeline coordinate space (px). */
+  clipStartPx: Ref<number>;
+  /** Rendered height of the clip element (px) — used for aspect-ratio tile width. */
+  clipHeightPx: Ref<number>;
+}
+
+export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOptions) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
@@ -106,23 +121,86 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
     return timeUsToPx(options.item.value.sourceRange.startUs, timelineStore.timelineZoom);
   });
 
-  /** Positioned img tiles built from thumbnailsBySecond. */
+  /**
+   * Display width of one thumbnail tile.
+   *
+   * The tile is rendered at its natural aspect ratio (height = clip row height,
+   * width = height × THUMB_ASPECT). When the zoom is large enough that one
+   * interval spans more pixels than the natural width the tile is stretched to
+   * fill the interval slot instead, so there are never gaps between tiles.
+   */
+  const tileDisplayWidthPx = computed(() => {
+    const h = options.clipHeightPx.value;
+    if (!h || h <= 0) return pxPerThumbnail.value;
+    const naturalWidth = h * THUMB_ASPECT;
+    return Math.max(naturalWidth, pxPerThumbnail.value);
+  });
+
+  /**
+   * Virtual thumbnail tiles: only tiles that intersect the visible viewport
+   * are returned, so we never render hundreds of off-screen <img> elements.
+   *
+   * Coordinate system of leftPx is relative to the strip container which
+   * starts at -trimOffsetPx (i.e. at source time = 0).
+   */
   const thumbnailTiles = computed<ThumbnailTile[]>(() => {
-    const px = pxPerThumbnail.value;
-    if (!Number.isFinite(px) || px <= 0) return [];
+    const pxPerThumb = pxPerThumbnail.value;
+    if (!Number.isFinite(pxPerThumb) || pxPerThumb <= 0) return [];
+
+    const tileW = tileDisplayWidthPx.value;
+    if (!Number.isFinite(tileW) || tileW <= 0) return [];
+
+    const map = thumbnailsBySecond.value;
+    if (map.size === 0) return [];
+
+    // Convert viewport bounds to strip-local coordinates.
+    // clipStartPx is the left edge of the clip in the timeline coordinate space.
+    // The strip starts at clipStartPx - trimOffsetPx.
+    const stripStartInTimeline = options.clipStartPx.value - trimOffsetPx.value;
+    const visibleLeft = options.scrollLeft.value - stripStartInTimeline;
+    const visibleRight = visibleLeft + Math.max(0, options.viewportWidth.value);
+
+    // First tile index whose right edge can reach the visible area:
+    //   tileRight = (index + 1) * tileW >= visibleLeft  →  index >= visibleLeft/tileW - 1
+    const firstIdx = Math.max(0, Math.floor(visibleLeft / tileW) - 1);
+    // Last tile index whose left edge is still within visible area:
+    //   tileLeft = index * tileW <= visibleRight
+    const lastIdx = Math.ceil(visibleRight / tileW);
 
     const tiles: ThumbnailTile[] = [];
-    for (const [second, url] of thumbnailsBySecond.value) {
-      const thumbIndex = second / intervalSeconds;
+
+    for (let idx = firstIdx; idx <= lastIdx; idx++) {
+      // Map tile index → source time key (nearest available at interval step)
+      const sourceSecond = idx * intervalSeconds;
+      // Find the closest available thumbnail key that is <= sourceSecond
+      let url: string | undefined;
+      let bestKey = -1;
+      for (const [key, u] of map) {
+        if (key <= sourceSecond && key > bestKey) {
+          bestKey = key;
+          url = u;
+        }
+      }
+      // Fall back to the very first thumbnail if nothing found before this index
+      if (!url) {
+        let minKey = Infinity;
+        for (const [key, u] of map) {
+          if (key < minKey) {
+            minKey = key;
+            url = u;
+          }
+        }
+      }
+      if (!url) continue;
+
       tiles.push({
-        key: second,
+        key: idx,
         url,
-        leftPx: thumbIndex * px,
-        widthPx: px,
+        leftPx: idx * pxPerThumb,
+        widthPx: tileW,
       });
     }
 
-    tiles.sort((a, b) => a.key - b.key);
     return tiles;
   });
 
