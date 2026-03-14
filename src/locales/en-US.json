@@ -1,6 +1,9 @@
 {
   "common": {
-    "actions": "Actions",
+    "actions": {
+      "title": "Actions",
+      "reset": "Reset"
+    },
     "active": "Active",
     "endOfList": "Nothing else",
     "all": "All",
@@ -518,6 +521,7 @@
       "metadataTitle": "Title",
       "metadataAuthor": "Author",
       "metadataTags": "Tags",
+      "metadataDescription": "Description",
       "onlySelectionRange": "Only selection range"
     },
     "hotkeys": {

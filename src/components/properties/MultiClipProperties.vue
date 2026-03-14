@@ -369,7 +369,7 @@ function handleQuantizeSelected() {
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('common.actions', 'Actions')">
+    <PropertySection :title="t('common.actions.title', 'Actions')">
       <div class="px-3 pb-3 flex flex-col gap-2">
         <UButton
           size="sm"
