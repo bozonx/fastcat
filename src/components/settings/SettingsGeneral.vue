@@ -147,6 +147,18 @@ function clearCache() {
           {{ t('videoEditor.settings.clearCacheAction', 'Clear cache') }}
         </UButton>
       </div>
+
+      <UFormField
+        :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
+        :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
+      >
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.optimization.mediaTaskConcurrency"
+          :min="1"
+          :max="20"
+          :step="1"
+        />
+      </UFormField>
     </div>
   </div>
 </template>

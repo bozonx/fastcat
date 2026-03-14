@@ -40,17 +40,13 @@ import {
   areTextClipStylesEqual,
   areShapeConfigsEqual,
 } from './compositor/types';
-import { ResourceManager, getVideoSampleWithZeroFallback } from './compositor/ResourceManager';
-import {
-  VideoFrameCache,
-  buildVideoFrameCacheKey,
-  computeFrameIndex,
-  estimateVideoFrameSizeBytes,
-} from './compositor/VideoFrameCache';
+import { ResourceManager } from './compositor/ResourceManager';
+import { VideoFrameCache } from './compositor/VideoFrameCache';
 import { EffectManager } from './compositor/EffectManager';
 import { TransitionManager } from './compositor/TransitionManager';
 import { LayoutApplier } from './compositor/LayoutApplier';
-import { VideoRenderer } from './compositor/renderers/VideoRenderer';
+import { ClipResourceManager } from './compositor/ClipResourceManager';
+import { StageTextureRenderer } from './compositor/StageTextureRenderer';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
@@ -77,7 +73,6 @@ export class VideoCompositor {
   private masterEffects: VideoClipEffect[] | null = null;
   private masterEffectFilters = new Map<string, Filter>();
   private filterQuadSprite: Sprite | null = null;
-  private transitionCombineSprite: Sprite | null = null;
   private stageSortDirty = true;
   private activeSortDirty = true;
   private clipPreferBitmapFallback = new Map<string, boolean>();
@@ -92,7 +87,6 @@ export class VideoCompositor {
   private layoutApplier = new LayoutApplier({ width: this.width, height: this.height });
 
   // Renderers
-  private videoRenderer = new VideoRenderer();
   private textRenderer = new TextRenderer();
   private shapeRenderer = new ShapeRenderer();
   private canvasFallbackRenderer = new CanvasFallbackRenderer({
@@ -101,6 +95,15 @@ export class VideoCompositor {
     layoutApplier: this.layoutApplier,
     clipPreferBitmapFallback: this.clipPreferBitmapFallback,
   });
+  private clipResourceManager = new ClipResourceManager({
+    width: this.width,
+    height: this.height,
+    resourceManager: this.resourceManager,
+    videoFrameCache: this.videoFrameCache,
+    canvasFallbackRenderer: this.canvasFallbackRenderer,
+    getLayoutApplier: () => this.layoutApplier,
+  });
+  private stageTextureRenderer: StageTextureRenderer | null = null;
 
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
@@ -108,35 +111,8 @@ export class VideoCompositor {
     getEndUs: (clip) => clip.endUs,
   });
 
-  // Resource Management Delegation
-  private async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-    return this.resourceManager.withVideoSampleSlot(task, signal);
-  }
-
   private ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
-    const valid =
-      texture &&
-      !(texture as any).destroyed &&
-      typeof (texture as any).uid === 'number' &&
-      texture.width === this.width &&
-      texture.height === this.height;
-
-    if (valid) {
-      return texture as RenderTexture;
-    }
-
-    if (texture) {
-      try {
-        safeDispose(texture);
-      } catch {
-        // ignore
-      }
-    }
-
-    return RenderTexture.create({
-      width: this.width,
-      height: this.height,
-    });
+    return this.clipResourceManager.ensureClipRenderTexture(texture);
   }
 
   private setClipSpriteVisible(clip: CompositorClip, visible: boolean) {
@@ -184,60 +160,7 @@ export class VideoCompositor {
     sampleTimeS: number;
     abortSignal?: AbortSignal;
   }): Promise<any | null> {
-    const { clip, sampleTimeS, abortSignal } = params;
-    const frameIndex = computeFrameIndex(clip, sampleTimeS);
-    const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
-    const cached = this.videoFrameCache.get(cacheKey);
-    if (cached) {
-      return {
-        toVideoFrame: () => cached.frame.clone(),
-      };
-    }
-
-    const sample = await this.withVideoSampleSlot(
-      () => getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
-      abortSignal,
-    );
-    const sampleValue = sample as any;
-
-    if (!sampleValue || typeof sampleValue.toVideoFrame !== 'function') {
-      return sample;
-    }
-
-    try {
-      const frame = sampleValue.toVideoFrame() as VideoFrame;
-      const width = Math.max(
-        1,
-        Math.round(Number((frame as any).displayWidth ?? (frame as any).codedWidth) || 1),
-      );
-      const height = Math.max(
-        1,
-        Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight) || 1),
-      );
-      const sizeBytes = estimateVideoFrameSizeBytes(frame, width, height);
-
-      this.videoFrameCache.set({
-        key: cacheKey,
-        clipId: clip.itemId,
-        frameIndex,
-        frame,
-        sizeBytes,
-        width,
-        height,
-      });
-
-      return {
-        toVideoFrame: () => frame.clone(),
-      };
-    } finally {
-      if (typeof sampleValue?.close === 'function') {
-        try {
-          sampleValue.close();
-        } catch {
-          // ignore
-        }
-      }
-    }
+    return this.clipResourceManager.getVideoSampleForClip(params);
   }
 
   private toVideoEffects(value: unknown): VideoClipEffect[] | undefined {
@@ -382,6 +305,14 @@ export class VideoCompositor {
       layoutApplier: this.layoutApplier,
       clipPreferBitmapFallback: this.clipPreferBitmapFallback,
     });
+    this.clipResourceManager = new ClipResourceManager({
+      width: this.width,
+      height: this.height,
+      resourceManager: this.resourceManager,
+      videoFrameCache: this.videoFrameCache,
+      canvasFallbackRenderer: this.canvasFallbackRenderer,
+      getLayoutApplier: () => this.layoutApplier,
+    });
 
     if (typeof window === 'undefined') {
       DOMAdapter.set(WebWorkerAdapter);
@@ -415,6 +346,12 @@ export class VideoCompositor {
 
     // Stop the automatic ticker, we will render manually
     this.app.ticker.stop();
+    this.stageTextureRenderer = new StageTextureRenderer({
+      app: this.app,
+      width: this.width,
+      height: this.height,
+      getTrackById: (trackId) => this.trackById.get(trackId),
+    });
   }
 
   private onContextLost = (event: Event) => {
@@ -1847,55 +1784,11 @@ export class VideoCompositor {
   }
 
   private ensureTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
-    const valid =
-      texture &&
-      !(texture as any).destroyed &&
-      typeof (texture as any).uid === 'number' &&
-      texture.width === this.width &&
-      texture.height === this.height;
-
-    if (valid) {
-      return texture as RenderTexture;
-    }
-
-    if (texture) {
-      try {
-        safeDispose(texture);
-      } catch {
-        // ignore
-      }
-    }
-
-    return RenderTexture.create({
-      width: this.width,
-      height: this.height,
-    });
+    return this.clipResourceManager.ensureTransitionRenderTexture(texture);
   }
 
   private ensureCombinedTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
-    const valid =
-      texture &&
-      !(texture as any).destroyed &&
-      typeof (texture as any).uid === 'number' &&
-      texture.width === this.width * 2 &&
-      texture.height === this.height;
-
-    if (valid) {
-      return texture as RenderTexture;
-    }
-
-    if (texture) {
-      try {
-        safeDispose(texture);
-      } catch {
-        // ignore
-      }
-    }
-
-    return RenderTexture.create({
-      width: this.width * 2,
-      height: this.height,
-    });
+    return this.clipResourceManager.ensureCombinedTransitionTexture(texture);
   }
 
   private renderCombinedTransitionTexture(
@@ -1903,77 +1796,22 @@ export class VideoCompositor {
     toTexture: RenderTexture,
     combined: RenderTexture,
   ): void {
-    if (!this.app?.renderer) return;
-
-    if (!this.transitionCombineSprite) {
-      this.transitionCombineSprite = new Sprite(Texture.EMPTY);
-      this.transitionCombineSprite.anchor.set(0, 0);
-    }
-
-    const renderer = this.app.renderer;
-
-    this.transitionCombineSprite.texture = fromTexture;
-    this.transitionCombineSprite.x = 0;
-    this.transitionCombineSprite.y = 0;
-    this.transitionCombineSprite.scale.set(1, 1);
-    this.transitionCombineSprite.width = this.width;
-    this.transitionCombineSprite.height = this.height;
-    renderer.render({ container: this.transitionCombineSprite, target: combined, clear: true });
-
-    this.transitionCombineSprite.texture = toTexture;
-    this.transitionCombineSprite.x = this.width;
-    this.transitionCombineSprite.y = 0;
-    this.transitionCombineSprite.scale.set(1, 1);
-    this.transitionCombineSprite.width = this.width;
-    this.transitionCombineSprite.height = this.height;
-    renderer.render({ container: this.transitionCombineSprite, target: combined, clear: false });
+    this.stageTextureRenderer?.renderCombinedTransitionTexture(fromTexture, toTexture, combined);
   }
 
   private ensureTransitionSprite(clip: CompositorClip): Sprite {
-    let sprite = clip.transitionSprite ?? null;
-    if (!sprite) {
-      sprite = new Sprite(Texture.EMPTY);
-      (sprite as any).__clipId = clip.itemId;
-      (sprite as any).__clipOrder = 1;
-      sprite.visible = false;
-      clip.transitionSprite = sprite;
-    }
-
-    const parent = clip.sprite.parent;
-    if (parent && sprite.parent !== parent) {
-      parent.addChild(sprite);
-    }
-
-    sprite.x = 0;
-    sprite.y = 0;
-    sprite.anchor.set(0, 0);
-    sprite.scale.set(1, 1);
-    sprite.width = this.width;
-    sprite.height = this.height;
-
-    return sprite;
+    return this.stageTextureRenderer?.ensureTransitionSprite(clip) ?? clip.sprite;
   }
 
   private renderDisplayObjectToTexture(displayObject: Container, texture: RenderTexture) {
-    if (!this.app?.renderer) return;
-    this.app.renderer.render({
-      container: displayObject,
-      target: texture,
-      clear: true,
-    });
+    this.stageTextureRenderer?.renderDisplayObjectToTexture(displayObject, texture);
   }
 
   private renderDisplayObjectToTextureForcedVisible(
     displayObject: Container,
     texture: RenderTexture,
   ) {
-    const previousVisible = displayObject.visible;
-    displayObject.visible = true;
-    try {
-      this.renderDisplayObjectToTexture(displayObject, texture);
-    } finally {
-      displayObject.visible = previousVisible;
-    }
+    this.stageTextureRenderer?.renderDisplayObjectToTextureForcedVisible(displayObject, texture);
   }
 
   private renderSingleClipToTexture(
@@ -1981,75 +1819,11 @@ export class VideoCompositor {
     texture: RenderTexture,
     forceVisible = false,
   ) {
-    if (!this.app?.renderer) return;
-
-    const stageChildren = this.app.stage.children;
-    const stagePrev = stageChildren.map((child) => child.visible);
-
-    // Hide all track containers except the one owning this clip.
-    for (let i = 0; i < stageChildren.length; i++) {
-      const child = stageChildren[i] as any;
-      if (!child) continue;
-      const track = this.trackById.get(child?.__trackId ?? '');
-      child.visible = track?.id === clip.trackId;
-    }
-
-    // Within the clip's track container, hide all sibling sprites except this clip's sprite.
-    const trackContainer = this.trackById.get(clip.trackId ?? '')?.container ?? null;
-    const containerChildren = trackContainer ? [...trackContainer.children] : [];
-    const containerPrev = containerChildren.map((c) => c.visible);
-    for (const c of containerChildren) {
-      (c as any).visible = c === clip.sprite;
-    }
-
-    const previousClipVisible = clip.sprite.visible;
-    if (forceVisible) {
-      clip.sprite.visible = true;
-    }
-
-    this.app.renderer.render({
-      container: this.app.stage,
-      target: texture,
-      clear: true,
-    });
-
-    clip.sprite.visible = previousClipVisible;
-
-    for (let i = 0; i < containerChildren.length; i++) {
-      (containerChildren[i] as any).visible = containerPrev[i] ?? true;
-    }
-    for (let i = 0; i < stageChildren.length; i++) {
-      const child = stageChildren[i];
-      if (!child) continue;
-      child.visible = stagePrev[i] ?? true;
-    }
+    this.stageTextureRenderer?.renderSingleClipToTexture(clip, texture, forceVisible);
   }
 
   private renderLowerLayersToTexture(layer: number, texture: RenderTexture) {
-    if (!this.app?.renderer) return;
-
-    const children = this.app.stage.children;
-    const previous = children.map((child) => child.visible);
-
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i] as any;
-      if (!child) continue;
-      const track = this.trackById.get(child?.__trackId ?? '');
-      const childLayer = typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
-      child.visible = childLayer < layer;
-    }
-
-    this.app.renderer.render({
-      container: this.app.stage,
-      target: texture,
-      clear: true,
-    });
-
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      if (!child) continue;
-      child.visible = previous[i] ?? true;
-    }
+    this.stageTextureRenderer?.renderLowerLayersToTexture(layer, texture);
   }
 
   private async renderTransitionClipToTexture(
@@ -2286,17 +2060,7 @@ export class VideoCompositor {
   }
 
   private ensureCanvasFallback(clip: CompositorClip) {
-    if (clip.canvas && clip.ctx) return;
-    const clipCanvas = new OffscreenCanvas(2, 2);
-    const clipCtx = clipCanvas.getContext('2d');
-    if (!clipCtx) {
-      throw new Error('Failed to create 2D rendering context for clip canvas');
-    }
-    clip.canvas = clipCanvas;
-    clip.ctx = clipCtx;
-    const canvasSource = new CanvasSource({ resource: clipCanvas as any });
-    clip.sprite.texture.source = canvasSource as any;
-    clip.sourceKind = 'canvas';
+    this.canvasFallbackRenderer.ensureCanvasFallback(clip);
   }
 
   private computeTransitionOpacity(clip: CompositorClip, timeUs: number): number {
@@ -2342,56 +2106,7 @@ export class VideoCompositor {
   }
 
   private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
-    try {
-      // Prefer WebCodecs VideoFrame path (GPU-friendly upload).
-      if (typeof sample?.toVideoFrame === 'function') {
-        if (clip.lastVideoFrame) {
-          safeDispose(clip.lastVideoFrame);
-          clip.lastVideoFrame = null;
-        }
-
-        const frame = sample.toVideoFrame() as VideoFrame;
-
-        try {
-          const frameW = Math.max(
-            1,
-            Math.round((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1),
-          );
-          const frameH = Math.max(
-            1,
-            Math.round((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1),
-          );
-
-          if (clip.sourceKind !== 'videoFrame') {
-            // Restore ImageSource-based texture
-            clip.sprite.texture.source = clip.imageSource as any;
-            clip.sourceKind = 'videoFrame';
-          }
-
-          if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {
-            clip.imageSource.resize(frameW, frameH);
-          }
-
-          // Assign the new frame as the resource and mark for upload.
-          (clip.imageSource as any).resource = frame as any;
-          clip.imageSource.update();
-          clip.lastVideoFrame = frame;
-
-          // Layout on stage
-          this.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-
-          return;
-        } catch (error) {
-          safeDispose(frame);
-          throw error;
-        }
-      }
-    } catch (err) {
-      console.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
-    }
-
-    // Fallback: draw into 2D canvas and upload.
-    await this.canvasFallbackRenderer.drawSampleToCanvas(sample, clip);
+    await this.clipResourceManager.updateClipTextureFromSample(sample, clip);
   }
 
   clearClips() {
@@ -2439,6 +2154,10 @@ export class VideoCompositor {
       this.filterQuadSprite.destroy();
       this.filterQuadSprite = null;
     }
+    if (this.stageTextureRenderer) {
+      this.stageTextureRenderer.destroy();
+      this.stageTextureRenderer = null;
+    }
     if (this.app) {
       const pixiApp = this.app as any;
 
@@ -2482,60 +2201,6 @@ export class VideoCompositor {
   }
 
   private destroyClip(clip: CompositorClip) {
-    this.videoFrameCache.clearForClip(clip.itemId);
-    safeDispose(clip.sink);
-    safeDispose(clip.input);
-    if (clip.lastVideoFrame) {
-      safeDispose(clip.lastVideoFrame);
-      clip.lastVideoFrame = null;
-    }
-
-    if (clip.bitmap) {
-      safeDispose(clip.bitmap);
-      clip.bitmap = null;
-    }
-
-    if (clip.sprite && clip.sprite.parent) {
-      clip.sprite.parent.removeChild(clip.sprite);
-    }
-    if (clip.transitionSprite && clip.transitionSprite.parent) {
-      clip.transitionSprite.parent.removeChild(clip.transitionSprite);
-    }
-
-    if (clip.effectFilters) {
-      for (const filter of clip.effectFilters.values()) {
-        try {
-          (filter as any)?.destroy?.();
-        } catch {
-          // ignore
-        }
-      }
-      clip.effectFilters.clear();
-    }
-    this.transitionManager.clearClipFilter(clip);
-    if (clip.transitionFromTexture) {
-      safeDispose(clip.transitionFromTexture);
-      clip.transitionFromTexture = null;
-    }
-    if (clip.transitionToTexture) {
-      safeDispose(clip.transitionToTexture);
-      clip.transitionToTexture = null;
-    }
-    if (clip.transitionOutputTexture) {
-      safeDispose(clip.transitionOutputTexture);
-      clip.transitionOutputTexture = null;
-    }
-    if (clip.transitionCombinedTexture) {
-      safeDispose(clip.transitionCombinedTexture);
-      clip.transitionCombinedTexture = null;
-    }
-    if (clip.transitionSprite) {
-      clip.transitionSprite.destroy(true);
-      clip.transitionSprite = null;
-    }
-    if (clip.sprite) {
-      clip.sprite.destroy(true);
-      clip.sprite = null;
-    }
+    this.clipResourceManager.destroyClip(clip, { transitionManager: this.transitionManager });
   }
 }
