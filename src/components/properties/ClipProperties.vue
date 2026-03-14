@@ -12,6 +12,7 @@ import type {
   AudioClipEffect,
   TimelineBlendMode,
   TimelineClipItem,
+  TimelineTextClipItem,
   TimelineTrack,
   TrackKind,
   VideoClipEffect,
@@ -526,7 +527,7 @@ defineExpose({
     >
       <div class="flex flex-col gap-2">
         <UTextarea
-          :model-value="(clip as any).text"
+          :model-value="(clip as TimelineTextClipItem).text"
           size="sm"
           :rows="4"
           @update:model-value="handleUpdateText"
@@ -537,7 +538,7 @@ defineExpose({
             t('fastcat.textClip.fontFamily', 'Font family')
           }}</span>
           <USelectMenu
-            :model-value="String((clip as any).style?.fontFamily ?? 'sans-serif')"
+            :model-value="String((clip as TimelineTextClipItem).style?.fontFamily ?? 'sans-serif')"
             :items="[
               { value: 'sans-serif', label: 'Sans Serif' },
               { value: 'serif', label: 'Serif' },
@@ -565,7 +566,7 @@ defineExpose({
               t('fastcat.textClip.fontSize', 'Font size')
             }}</span>
             <WheelNumberInput
-              :model-value="Number((clip as any).style?.fontSize ?? 64)"
+              :model-value="Number((clip as TimelineTextClipItem).style?.fontSize ?? 64)"
               size="sm"
               :step="1"
               :min="1"
@@ -577,7 +578,7 @@ defineExpose({
               t('fastcat.textClip.fontWeight', 'Font weight')
             }}</span>
             <USelectMenu
-              :model-value="String((clip as any).style?.fontWeight ?? '700')"
+              :model-value="String((clip as TimelineTextClipItem).style?.fontWeight ?? '700')"
               :items="[
                 { value: '100', label: '100' },
                 { value: '200', label: '200' },
@@ -601,7 +602,7 @@ defineExpose({
           <div class="flex flex-col gap-0.5">
             <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
             <UColorPicker
-              :model-value="String((clip as any).style?.color ?? '#ffffff')"
+              :model-value="String((clip as TimelineTextClipItem).style?.color ?? '#ffffff')"
               format="hex"
               size="sm"
               @update:model-value="(v: any) => handleUpdateTextStyle({ color: String(v) })"
@@ -612,7 +613,7 @@ defineExpose({
               t('fastcat.textClip.backgroundColor', 'Background')
             }}</span>
             <UColorPicker
-              :model-value="String((clip as any).style?.backgroundColor ?? '')"
+              :model-value="String((clip as TimelineTextClipItem).style?.backgroundColor ?? '')"
               format="hex"
               size="sm"
               @update:model-value="
@@ -627,7 +628,7 @@ defineExpose({
             t('fastcat.textClip.width', 'Text width (0 - auto)')
           }}</span>
           <WheelNumberInput
-            :model-value="Number((clip as any).style?.width ?? 0)"
+            :model-value="Number((clip as TimelineTextClipItem).style?.width ?? 0)"
             size="sm"
             :step="10"
             :min="0"
@@ -640,7 +641,7 @@ defineExpose({
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.align', 'Align') }}</span>
           <USelectMenu
-            :model-value="String((clip as any).style?.align ?? 'center')"
+            :model-value="String((clip as TimelineTextClipItem).style?.align ?? 'center')"
             :items="[
               { value: 'left', label: 'Left' },
               { value: 'center', label: 'Center' },
@@ -658,7 +659,7 @@ defineExpose({
             t('fastcat.textClip.verticalAlign', 'Vertical align')
           }}</span>
           <USelectMenu
-            :model-value="String((clip as any).style?.verticalAlign ?? 'middle')"
+            :model-value="String((clip as TimelineTextClipItem).style?.verticalAlign ?? 'middle')"
             :items="[
               { value: 'top', label: 'Top' },
               { value: 'middle', label: 'Middle' },
@@ -677,7 +678,7 @@ defineExpose({
               t('fastcat.textClip.lineHeight', 'Line height')
             }}</span>
             <WheelNumberInput
-              :model-value="Number((clip as any).style?.lineHeight ?? 1.2)"
+              :model-value="Number((clip as TimelineTextClipItem).style?.lineHeight ?? 1.2)"
               size="sm"
               :step="0.1"
               @update:model-value="(v: any) => handleUpdateTextStyle({ lineHeight: Number(v) })"
@@ -688,7 +689,7 @@ defineExpose({
               t('fastcat.textClip.letterSpacing', 'Letter spacing')
             }}</span>
             <WheelNumberInput
-              :model-value="Number((clip as any).style?.letterSpacing ?? 0)"
+              :model-value="Number((clip as TimelineTextClipItem).style?.letterSpacing ?? 0)"
               size="sm"
               :step="1"
               @update:model-value="(v: any) => handleUpdateTextStyle({ letterSpacing: Number(v) })"
@@ -703,9 +704,12 @@ defineExpose({
           <WheelNumberInput
             :model-value="
               (() => {
-                const p = (clip as any).style?.padding;
+                const p = (clip as TimelineTextClipItem).style?.padding;
                 if (typeof p === 'number' && Number.isFinite(p)) return p;
-                if (p && typeof p === 'object') return p.top ?? p.x ?? p.y ?? 60;
+                if (p && typeof p === 'object') {
+                  if ('top' in p) return p.top ?? 60;
+                  if ('x' in p || 'y' in p) return ('y' in p ? p.y : p.x) ?? 60;
+                }
                 return 60;
               })()
             "
