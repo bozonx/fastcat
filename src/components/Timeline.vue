@@ -68,20 +68,20 @@ const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
-const playheadTransform = computed(() => `translate3d(${Math.round(playheadPx.value)}px, 0, 0)`);
+const playheadTransform = computed(() => `translate3d(${Math.round(playheadPx.value) - 0.5}px, 0, 0)`);
 
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
 
-  const frameDurationUs = 1_000_000 / fps.value;
-  const currentFrameStartUs =
-    Math.floor(timelineStore.currentTime / frameDurationUs) * frameDurationUs;
+  const currentFrameIndex = Math.floor((timelineStore.currentTime * fps.value) / 1_000_000);
+  const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
+  const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
   const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
 
   return {
     transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,
-    width: `${pxPerFrame}px`,
+    width: `${Math.max(1, timeUsToPx(nextFrameStartUs - currentFrameStartUs, timelineStore.timelineZoom))}px`,
   };
 });
 

@@ -205,7 +205,7 @@ function onDragVirtualEnd() {
 
     <div
       ref="labelsScrollContainer"
-      class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container pb-16"
+      class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
       @scroll="emit('scroll', $event)"
       @click="timelineStore.selectTimelineProperties()"
     >
@@ -229,6 +229,8 @@ function onDragVirtualEnd() {
             @mouseleave="timelineStore.hoveredTrackId = null"
           />
         </UContextMenu>
+        <div class="w-full flex-1 min-h-7 shrink-0" />
+        <div class="h-16 shrink-0" />
       </div>
     </div>
 
