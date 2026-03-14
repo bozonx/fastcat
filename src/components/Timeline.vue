@@ -50,6 +50,7 @@ const scrollEl = ref<HTMLElement | null>(null);
 const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
 const scrollLeftRef = ref(0);
 const scrollbarHeight = ref(0);
+const trackAreaRef = ref<HTMLElement | null>(null);
 
 const { trackHeights } = storeToRefs(timelineStore);
 const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
@@ -133,12 +134,26 @@ const {
   movePreview,
   onTimeRulerPointerDown: onBaseTimeRulerPointerDown,
   startPlayheadDrag,
-  onGlobalPointerMove,
-  onGlobalPointerUp,
+  onGlobalPointerMove: onBaseGlobalPointerMove,
+  onGlobalPointerUp: onBaseGlobalPointerUp,
   selectItem,
   startMoveItem,
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
+
+const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
+const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
+const trackHeadersMouseSettings = computed(() => workspaceStore.userSettings.mouse.trackHeaders);
+
+function onTimelinePointerMove(e: PointerEvent) {
+  onBaseGlobalPointerMove(e);
+  onPanMove(e);
+}
+
+function onTimelinePointerUp(e: PointerEvent) {
+  onBaseGlobalPointerUp(e);
+  stopPan(e);
+}
 
 function onTimeRulerPointerDown(e: PointerEvent) {
   focusStore.setMainFocus('timeline');
@@ -195,7 +210,17 @@ function onTimelineWheel(
 ) {
   if (!scrollEl.value) return;
 
-  const settings = workspaceStore.userSettings.mouse[category] as any;
+  let settings;
+  if (category === 'timeline') {
+    settings = timelineMouseSettings.value;
+  } else if (category === 'ruler') {
+    settings = rulerMouseSettings.value;
+  } else if (category === 'trackHeaders') {
+    settings = trackHeadersMouseSettings.value;
+  } else {
+    settings = timelineMouseSettings.value; // Fallback
+  }
+
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const secondary = isSecondaryWheel(e);
   const action = secondary
@@ -233,11 +258,13 @@ function onTimelineWheel(
 
   if (action === 'zoom_vertical') {
     e.preventDefault();
-    // Assuming we want to resize all tracks or something similar,
-    // but typically this zooms in on the tracks themselves if implemented.
-    // For now, let's just emit or handle if we have a scale.
-    // However, if we don't have vertical zoom scale yet, we ignore it or scroll vertical.
-    scrollEl.value.scrollTop += delta;
+    const factor = delta > 0 ? 0.9 : 1.1;
+    tracks.value.forEach((track: TimelineTrack) => {
+      const currentHeight = trackHeights.value[track.id] ?? 40;
+      trackHeights.value[track.id] = Math.max(32, Math.min(300, currentHeight * factor));
+    });
+    timelineStore.markTimelineAsDirty();
+    timelineStore.requestTimelineSave();
     return;
   }
 
@@ -256,6 +283,19 @@ function onTimelineWheel(
       Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * 1_000_000)),
     );
     return;
+  }
+
+  if (action === 'resize_track') {
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const trackEl = target.closest('[data-track-id]');
+    const trackId = trackEl?.getAttribute('data-track-id');
+    if (trackId) {
+      const currentHeight = trackHeights.value[trackId] ?? 40;
+      // Change height by 8px steps
+      const nextHeight = Math.max(32, Math.min(300, currentHeight + (delta > 0 ? -8 : 8)));
+      updateTrackHeight(trackId, nextHeight);
+    }
   }
 }
 
@@ -362,7 +402,7 @@ const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent)
 
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
   if (e.button === 1) {
-    const settings = workspaceStore.userSettings.mouse.timeline;
+    const settings = timelineMouseSettings.value;
 
     if (settings.middleDrag === 'pan') {
       startPan(e);
@@ -382,12 +422,39 @@ const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
 
 const onTrackAreaAuxClick = (e: MouseEvent) => {
   if (e.button === 1) {
-    const settings = workspaceStore.userSettings.mouse.timeline;
-    handleTimelineClickAction(settings.middleClick, e);
+    const isRuler = (e.target as HTMLElement).closest('.timeline-ruler-container');
+    if (isRuler) {
+      const action = rulerMouseSettings.value.middleClick;
+      executeTimelineRulerAction(action, e);
+    } else {
+      const settings = timelineMouseSettings.value;
+      handleTimelineClickAction(settings.middleClick, e);
+    }
   }
 };
-const onTimelinePointerMove = onGlobalPointerMove;
-const onTimelinePointerUp = onGlobalPointerUp;
+
+function executeTimelineRulerAction(action: string, e: MouseEvent) {
+  if (action === 'none') return;
+
+  const rect = trackAreaRef.value?.getBoundingClientRect();
+  if (!rect) return;
+  const x = e.clientX - rect.left + (scrollEl.value?.scrollLeft ?? 0);
+  const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+
+  if (action === 'seek') {
+    timelineStore.setCurrentTimeUs(timeUs);
+  } else if (action === 'add_marker') {
+    const id = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    timelineStore.applyTimeline({
+      type: 'add_marker',
+      id,
+      timeUs,
+      text: '',
+    });
+  } else if (action === 'reset_zoom') {
+    timelineStore.resetTimelineZoom();
+  }
+}
 </script>
 
 <template>
@@ -420,13 +487,13 @@ const onTimelinePointerUp = onGlobalPointerUp;
           <div
             ref="trackAreaRef"
             class="flex flex-col h-full w-full relative min-h-0"
-            @pointermove="onGlobalPointerMove"
-            @pointerup="onGlobalPointerUp"
+            @pointermove="onTimelinePointerMove"
+            @pointerup="onTimelinePointerUp"
             @pointercancel="onTimelinePointerUp"
             @pointerdown.capture="onTrackAreaPointerDownCapture"
             @auxclick="onTrackAreaAuxClick"
           >
-            <div class="relative shrink-0 z-10">
+            <div class="relative shrink-0 z-10 timeline-ruler-container">
               <TimelineRuler
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"

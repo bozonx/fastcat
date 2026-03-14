@@ -65,6 +65,7 @@ function toggleAudioSolo(e: MouseEvent) {
 <template>
   <div
     class="flex items-center px-1 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border"
+    :data-track-id="track.id"
     :class="[
       isSelected ? 'text-ui-text bg-ui-bg-accent/20' : '',
       isHovered && !isSelected ? 'text-ui-text bg-ui-bg-elevated/80' : 'text-ui-text-muted',

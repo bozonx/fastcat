@@ -1,18 +1,72 @@
 import { computed, type Ref } from 'vue';
-import type { TimelineClipItem, TrackKind, TimelineTrack } from '~/timeline/types';
+import type {
+  TimelineClipItem,
+  TrackKind,
+  TimelineTrack,
+  TimelineDocument,
+} from '~/timeline/types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import type { FsEntry } from '~/types/fs';
+
+interface TimelineStoreActions {
+  timelineDoc: TimelineDocument | null;
+  selectedItemIds: string[];
+  applyTimeline: (...args: unknown[]) => void | Promise<void>;
+  batchApplyTimeline: (...args: unknown[]) => void | Promise<void>;
+  updateClipProperties: (
+    trackId: string,
+    itemId: string,
+    patch: Record<string, unknown>,
+  ) => void | Promise<void>;
+  renameItem: (trackId: string, itemId: string, name: string) => void;
+}
+
+interface ProjectStoreActions {
+  currentView: string;
+  projectSettings?: {
+    transitions?: {
+      defaultDurationUs?: number;
+    };
+  };
+}
+
+interface UiStoreActions {
+  selectedFsEntry: Partial<FsEntry> | null;
+}
+
+interface EditorViewStoreActions {
+  goToFiles: () => void;
+}
+
+interface FilesPageStoreActions {
+  selectFolder: (entry: FsEntry) => void;
+}
+
+interface SelectionStoreActions {
+  selectFsEntry: (entry: FsEntry) => void;
+}
+
+interface FocusStoreActions {
+  setTempFocus: (panel: 'left' | 'right') => void;
+}
+
+interface FileManagerActions {
+  loadProjectDirectory: () => Promise<void>;
+  findEntryByPath: (path: string) => FsEntry | null | undefined;
+  toggleDirectory: (entry: FsEntry) => Promise<void>;
+}
 
 interface UseClipPropertiesActionsOptions {
   clip: Ref<TimelineClipItem>;
   trackKind: Ref<TrackKind>;
-  timelineStore: any;
-  projectStore: any;
-  uiStore: any;
-  editorViewStore: any;
-  filesPageStore: any;
-  selectionStore: any;
-  focusStore: any;
-  fileManager: any;
+  timelineStore: TimelineStoreActions;
+  projectStore: ProjectStoreActions;
+  uiStore: UiStoreActions;
+  editorViewStore: EditorViewStoreActions;
+  filesPageStore: FilesPageStoreActions;
+  selectionStore: SelectionStoreActions;
+  focusStore: FocusStoreActions;
+  fileManager: FileManagerActions;
   setActiveTab: (tabId: string) => void;
 }
 
@@ -52,21 +106,19 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       .filter((t: TimelineTrack) => t.kind === 'audio')
       .some((t: TimelineTrack) =>
         t.items.some(
-          (it: any) =>
+          (it) =>
             it.kind === 'clip' &&
-            Boolean((it as any).linkedVideoClipId) &&
-            Boolean((it as any).lockToLinkedVideo) &&
-            String((it as any).linkedVideoClipId) === options.clip.value.id,
+            Boolean((it as TimelineClipItem).linkedVideoClipId) &&
+            Boolean((it as TimelineClipItem).lockToLinkedVideo) &&
+            String((it as TimelineClipItem).linkedVideoClipId) === options.clip.value.id,
         ),
       );
   });
 
   const isLockedLinkedAudioClip = computed(() => {
     if (options.trackKind.value !== 'audio') return false;
-    return (
-      Boolean((options.clip.value as any).linkedVideoClipId) &&
-      Boolean((options.clip.value as any).lockToLinkedVideo)
-    );
+    const clip = options.clip.value as TimelineClipItem;
+    return Boolean(clip.linkedVideoClipId) && Boolean(clip.lockToLinkedVideo);
   });
 
   const isInLinkedGroup = computed(
@@ -97,7 +149,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
         linkedVideoClipId: undefined,
         lockToLinkedVideo: false,
-      } as any);
+      });
       return;
     }
 
@@ -106,23 +158,23 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         .filter((t: TimelineTrack) => t.kind === 'audio')
         .flatMap((t: TimelineTrack) => t.items)
         .filter(
-          (it: any): it is import('~/timeline/types').TimelineClipItem =>
+          (it): it is TimelineClipItem =>
             it.kind === 'clip' &&
-            Boolean((it as any).linkedVideoClipId) &&
-            Boolean((it as any).lockToLinkedVideo) &&
-            String((it as any).linkedVideoClipId) === options.clip.value.id,
+            Boolean((it as TimelineClipItem).linkedVideoClipId) &&
+            Boolean((it as TimelineClipItem).lockToLinkedVideo) &&
+            String((it as TimelineClipItem).linkedVideoClipId) === options.clip.value.id,
         )
         .map((a: TimelineClipItem) => ({
-          type: 'update_clip_properties' as const,
+          type: 'update_clip_properties',
           trackId: a.trackId,
           itemId: a.id,
           properties: {
             linkedVideoClipId: undefined,
             lockToLinkedVideo: false,
-          } as any,
+          },
         }));
       if (cmds.length === 0) return;
-      timelineStore.batchApplyTimeline(cmds as any);
+      timelineStore.batchApplyTimeline(cmds);
     }
   }
 
@@ -163,29 +215,25 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
 
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
       linkedGroupId: undefined,
-    } as any);
+    });
   }
 
   function toggleAudioWaveformMode() {
-    const current =
-      (options.clip.value as import('~/timeline/types').TimelineClipItem).audioWaveformMode ||
-      'half';
+    const current = options.clip.value.audioWaveformMode || 'half';
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
       audioWaveformMode: current === 'half' ? 'full' : 'half',
     });
   }
 
   function toggleShowWaveform() {
-    const current =
-      (options.clip.value as import('~/timeline/types').TimelineClipItem).showWaveform !== false;
+    const current = options.clip.value.showWaveform !== false;
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
       showWaveform: !current,
     });
   }
 
   function toggleShowThumbnails() {
-    const current =
-      (options.clip.value as import('~/timeline/types').TimelineClipItem).showThumbnails !== false;
+    const current = options.clip.value.showThumbnails !== false;
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
       showThumbnails: !current,
     });

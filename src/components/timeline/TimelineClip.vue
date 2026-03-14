@@ -20,15 +20,9 @@ import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
-import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import {
-  getTransitionManifest,
-  DEFAULT_TRANSITION_MODE,
-  DEFAULT_TRANSITION_CURVE,
-  normalizeTransitionParams,
-} from '~/transitions';
+import { useClipDrop } from '~/composables/timeline/useClipDrop';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -77,7 +71,6 @@ const uiStore = useUiStore();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 
-const isDraggingOver = ref(false);
 let didStartClipDrag = false;
 
 const clipItem = computed<TimelineClipItem | null>(() =>
@@ -136,96 +129,21 @@ function onClipClick(e: MouseEvent) {
   if (e.button === 0) emit('selectItem', e as PointerEvent, props.item.id);
 }
 
-// Drag & Drop Handling for Effects/Transitions
-function hasSupportedClipDrop(e: DragEvent) {
-  return (
-    e.dataTransfer?.types.includes('fastcat-effect') ||
-    e.dataTransfer?.types.includes('fastcat-transition')
-  );
-}
-
-function handleDragEnter(e: DragEvent) {
-  if (props.canEditClipContent && hasSupportedClipDrop(e)) isDraggingOver.value = true;
-}
-
-function handleDragOver(e: DragEvent) {
-  if (props.canEditClipContent && hasSupportedClipDrop(e)) {
-    e.preventDefault();
-  }
-}
-
-function handleDragLeave() {
-  isDraggingOver.value = false;
-}
-
-function handleDrop(e: DragEvent) {
-  isDraggingOver.value = false;
-  if (!props.canEditClipContent || !clipItem.value) return;
-
-  const effectType = e.dataTransfer?.getData('fastcat-effect');
-  const transitionType = e.dataTransfer?.getData('fastcat-transition');
-
-  if (effectType) {
-    let manifest: any = undefined;
-    let target: 'audio' | 'video' | undefined = undefined;
-
-    const audioManifest = getAudioEffectManifest(effectType);
-    const videoManifest = getVideoEffectManifest(effectType);
-
-    if (audioManifest && videoManifest) {
-      if (props.track.kind === 'audio') {
-        manifest = audioManifest;
-        target = 'audio';
-      } else {
-        manifest = videoManifest;
-        target = 'video';
-      }
-    } else if (audioManifest) {
-      manifest = audioManifest;
-      target = 'audio';
-    } else if (videoManifest) {
-      manifest = videoManifest;
-      target = 'video';
-    }
-
-    if (!manifest) return;
-
-    const newEffect = {
-      id: `effect_${Date.now()}`,
-      type: effectType,
-      enabled: true,
-      target,
-      ...manifest.defaultValues,
-    } as any;
-    timelineStore.updateClipProperties(props.track.id, props.item.id, {
-      effects: [newEffect, ...(clipItem.value.effects || [])],
-    });
-    selectionStore.selectTimelineItem(props.track.id, props.item.id, 'clip');
-    setTimeout(() => uiStore.triggerScrollToEffects(), 50);
-  } else if (transitionType) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const edge = e.clientX - rect.left <= rect.width / 2 ? 'in' : 'out';
-    const manifest = getTransitionManifest(transitionType);
-    if (!manifest) return;
-    const durationUs = Math.min(
-      manifest.defaultDurationUs ?? 1000000,
-      Math.round(clipItem.value.timelineRange.durationUs * 0.3),
-    );
-    const transition = {
-      type: transitionType,
-      durationUs,
-      mode: DEFAULT_TRANSITION_MODE,
-      curve: DEFAULT_TRANSITION_CURVE,
-      params: normalizeTransitionParams(transitionType),
-    };
-    timelineStore.updateClipTransition(
-      props.track.id,
-      props.item.id,
-      edge === 'in' ? { transitionIn: transition } : { transitionOut: transition },
-    );
-    selectionStore.selectTimelineTransition(props.track.id, props.item.id, edge);
-  }
-}
+const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } =
+  useClipDrop({
+    track: computed(() => props.track),
+    clipItem,
+    canEditClipContent: computed(() => props.canEditClipContent),
+    updateClipProperties: (trackId, itemId, patch) =>
+      timelineStore.updateClipProperties(trackId, itemId, patch),
+    updateClipTransition: (trackId, itemId, patch) =>
+      timelineStore.updateClipTransition(trackId, itemId, patch),
+    selectTimelineItem: (trackId, itemId, kind) =>
+      selectionStore.selectTimelineItem(trackId, itemId, kind),
+    selectTimelineTransition: (trackId, itemId, edge) =>
+      selectionStore.selectTimelineTransition(trackId, itemId, edge),
+    triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
+  });
 
 function isVideo(it: TimelineTrackItem): it is TimelineClipItem {
   return (
