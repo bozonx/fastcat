@@ -306,6 +306,12 @@ export class VideoCompositor {
     this.prevClipById = buildPrevClipByIdIndex(this.clips);
   }
 
+  private hideAllClipSprites() {
+    for (const clip of this.clips) {
+      clip.sprite.visible = false;
+    }
+  }
+
   private sortTrackContainerChildren() {
     for (const track of this.tracks) {
       track.container.children.sort((a: any, b: any) => {
@@ -1289,6 +1295,7 @@ export class VideoCompositor {
 
     this.lastRenderedTimeUs = 0;
     this.activeTracker.reset();
+    this.hideAllClipSprites();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
 
@@ -1444,6 +1451,7 @@ export class VideoCompositor {
 
     this.lastRenderedTimeUs = Number.NaN;
     this.activeTracker.reset();
+    this.hideAllClipSprites();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
     return this.maxDurationUs;
