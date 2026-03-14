@@ -23,7 +23,7 @@ export const TRACK_HEADERS_WHEEL_ACTIONS = ['resize_track', ...COMMON_WHEEL_ACTI
 
 export const RULER_WHEEL_ACTIONS = COMMON_WHEEL_ACTIONS;
 
-export const RULER_CLICK_ACTIONS = ['add_marker', 'reset_zoom', 'none'] as const;
+export const RULER_CLICK_ACTIONS = ['add_marker', 'reset_zoom', 'select_area', 'none'] as const;
 
 export const RULER_DOUBLE_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 

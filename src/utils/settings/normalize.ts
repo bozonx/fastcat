@@ -365,10 +365,11 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       }
 
       const rulerMiddleClick = rawRuler.middleClick;
-      if ((RULER_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
+      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).middleClick = rulerMiddleClick as
           | 'add_marker'
           | 'reset_zoom'
+          | 'select_area'
           | 'none';
       }
 
@@ -377,6 +378,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         (normalizedMouse.ruler as Record<string, unknown>).doubleClick = rulerDoubleClick as
           | 'add_marker'
           | 'reset_zoom'
+          | 'select_area'
           | 'none';
       }
 
@@ -385,6 +387,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         (normalizedMouse.ruler as Record<string, unknown>).drag = rulerDrag as
           | 'pan'
           | 'move_playhead'
+          | 'select_area'
           | 'none';
       }
 
@@ -393,6 +396,16 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         (normalizedMouse.ruler as Record<string, unknown>).middleDrag = rulerMiddleDrag as
           | 'pan'
           | 'move_playhead'
+          | 'select_area'
+          | 'none';
+      }
+
+      const rulerDragShift = rawRuler.dragShift;
+      if ((DRAG_ACTIONS as readonly string[]).includes(rulerDragShift as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).dragShift = rulerDragShift as
+          | 'pan'
+          | 'move_playhead'
+          | 'select_area'
           | 'none';
       }
 
@@ -401,6 +414,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         (normalizedMouse.ruler as Record<string, unknown>).shiftClick = rulerShiftClick as
           | 'add_marker'
           | 'reset_zoom'
+          | 'select_area'
           | 'none';
       }
     }
@@ -426,6 +440,8 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         (normalizedMouse.timeline as Record<string, unknown>).middleClick = timelineMiddleClick as
           | 'pan'
           | 'move_playhead'
+          | 'reset_zoom'
+          | 'select_area'
           | 'none';
       }
 
@@ -434,6 +450,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         (normalizedMouse.timeline as Record<string, unknown>).middleDrag = timelineMiddleDrag as
           | 'pan'
           | 'move_playhead'
+          | 'select_area'
           | 'none';
       }
     }

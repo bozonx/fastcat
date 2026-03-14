@@ -185,11 +185,16 @@ function onRulerAuxClick(e: MouseEvent) {
   }
 }
 
-function executeRulerClickAction(action: string, e: MouseEvent) {
+function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
   if (action === 'none') return;
 
   if (action === 'reset_zoom') {
     timelineStore.resetTimelineZoom();
+    return;
+  }
+
+  if (action === 'select_area') {
+    startSelectionRangeCreate(e as PointerEvent);
     return;
   }
 
@@ -213,34 +218,31 @@ function onRulerPointerDown(e: PointerEvent) {
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
 
   if (e.button === 1) {
-    if (settings.middleClick === 'reset_zoom') {
-      timelineStore.resetTimelineZoom();
-    }
     // Middle drag behavior
-    if (settings.middleDrag === 'pan') {
-      emit('start-pan', e);
-    } else if (settings.middleDrag === 'move_playhead') {
-      timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
-      emit('start-playhead-drag', e);
-    }
+    handleDragAction(settings.middleDrag, e);
     return;
   }
 
   if (e.button === 0) {
     // Left drag/click behavior
     if (isLayer1Active(e, useWorkspaceStore().userSettings)) {
-      startSelectionRangeCreate(e);
-      return;
-    }
-
-    if (settings.drag === 'pan') {
-      emit('start-pan', e);
-    } else if (settings.drag === 'move_playhead') {
-      timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
-      emit('start-playhead-drag', e);
+      handleDragAction(settings.dragShift, e);
     } else {
-      emit('pointerdown', e);
+      handleDragAction(settings.drag, e);
     }
+  }
+}
+
+function handleDragAction(action: string, e: PointerEvent) {
+  if (action === 'pan') {
+    emit('start-pan', e);
+  } else if (action === 'move_playhead') {
+    timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
+    emit('start-playhead-drag', e);
+  } else if (action === 'select_area') {
+    startSelectionRangeCreate(e);
+  } else if (action === 'none') {
+    emit('pointerdown', e);
   }
 }
 

@@ -102,7 +102,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   }
 
   function startSelectionRangeDrag(event: PointerEvent, part: TimelineRulerSelectionDragPart) {
-    if (event.button !== 0 || !options.selectionRange.value) return;
+    if (!options.selectionRange.value) return;
 
     event.stopPropagation();
     event.preventDefault();
@@ -143,7 +143,6 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   }
 
   function startSelectionRangeCreate(event: PointerEvent) {
-    if (event.button !== 0) return;
 
     event.preventDefault();
     event.stopPropagation();

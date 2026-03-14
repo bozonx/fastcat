@@ -45,6 +45,7 @@ const rulerClickActionOptions = computed(() => {
   const labels: Record<string, string> = {
     add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
     reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
+    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return RULER_CLICK_ACTIONS.map((action) => ({
@@ -87,6 +88,7 @@ const dragOptions = computed(() => {
   const labels: Record<string, string> = {
     pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
     move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return DRAG_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
@@ -430,6 +432,42 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                         {{ item.label }}
                         <span
                           v-if="isDefault('ruler', 'drag', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'dragShift') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseRulerDragShift', 'Left button drag + Shift') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.dragShift"
+                    :items="dragOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.dragShift = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'dragShift', item.value)"
                           class="text-[10px] opacity-50 font-normal italic"
                         >
                           ({{ t('common.default', 'Default') }})
