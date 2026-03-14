@@ -69,6 +69,9 @@ describe('settings normalization', () => {
     expect(normalized.exportPresets.items[0]?.format).toBe('mp4');
     expect(normalized.hotkeys.bindings).toEqual({});
     expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Escape']);
+    expect(DEFAULT_HOTKEYS.bindings['general.copy']).toHaveLength(1);
+    expect(DEFAULT_HOTKEYS.bindings['general.cut']).toHaveLength(1);
+    expect(DEFAULT_HOTKEYS.bindings['general.paste']).toHaveLength(1);
   });
 
   it('normalizes app settings paths and limits', () => {

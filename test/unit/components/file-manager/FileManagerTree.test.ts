@@ -29,6 +29,7 @@ vi.mock('~/stores/selection.store', () => ({
 vi.mock('~/composables/useDraggedFile', () => ({
   INTERNAL_DRAG_TYPE: 'application/fastcat-fs-entry',
   REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
+  FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-copy',
   FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-move',
   useDraggedFile: () => ({
     draggedFile: null,
@@ -129,6 +130,50 @@ describe('FileManagerTree', () => {
     });
   });
 
+  it('emits requestCopy on internal copy drop', async () => {
+    const dir: FsEntry = {
+      name: '_video',
+      kind: 'directory',
+      path: '_video',
+      expanded: false,
+    };
+    const wrapper = mount(FileManagerTree, {
+      props: {
+        entries: [dir],
+        depth: 0,
+      },
+    });
+
+    const dropzones = wrapper.findAll('div').filter((w) => w.attributes('role') === 'treeitem');
+    const dropzone = dropzones.at(0);
+    expect(dropzone?.exists()).toBe(true);
+
+    const mockEvent = {
+      dataTransfer: {
+        types: ['application/fastcat-copy'],
+        getData: vi.fn((type) => {
+          if (type === 'application/fastcat-copy') {
+            return JSON.stringify({
+              path: '_video/a.mp4',
+            });
+          }
+          return '';
+        }),
+      },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as DragEvent;
+
+    await dropzone?.trigger('drop', mockEvent);
+
+    const emitted = wrapper.emitted('requestCopy');
+    expect(emitted?.length).toBe(1);
+    expect(emitted?.[0]?.[0]).toEqual({
+      sourcePath: '_video/a.mp4',
+      targetDirPath: '_video',
+    });
+  });
+
   it('emits requestDownload on remote file drop', async () => {
     const dir: FsEntry = {
       name: '_video',
@@ -147,19 +192,25 @@ describe('FileManagerTree', () => {
     const dropzone = dropzones.at(0);
     expect(dropzone?.exists()).toBe(true);
 
-    const remoteEntry: RemoteFsEntry = {
+    const remoteEntry = {
       source: 'remote',
       remoteId: 'file1',
       remoteType: 'file',
-      name: 'remote.mp4',
-      kind: 'file',
       path: '/collections/remote.mp4',
       remotePath: '/collections/remote.mp4',
       size: 1024,
       lastModified: 1000,
       mimeType: 'video/mp4',
-      remoteUrl: 'https://example.com/remote.mp4',
-    };
+      name: 'remote.mp4',
+      kind: 'file',
+      remoteData: {
+        id: 'file1',
+        type: 'file',
+        path: '/collections/remote.mp4',
+        name: 'remote.mp4',
+        title: 'remote.mp4',
+      } as any,
+    } as unknown as RemoteFsEntry;
 
     const mockEvent = {
       dataTransfer: {
