@@ -2,7 +2,7 @@ import type PQueue from 'p-queue';
 import type { Ref } from 'vue';
 
 import { VIDEO_DIR_NAME } from '~/utils/constants';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 
 export interface ProxyService {
@@ -18,6 +18,7 @@ export interface ProxyService {
   }) => Promise<void>;
   cancelProxyGeneration: (projectRelativePath: string) => Promise<void>;
   deleteProxy: (projectRelativePath: string) => Promise<void>;
+  renameProxy: (params: { oldPath: string; newPath: string }) => Promise<void>;
   getProxyFileHandle: (projectRelativePath: string) => Promise<FileSystemFileHandle | null>;
   getProxyFile: (projectRelativePath: string) => Promise<File | null>;
 }
@@ -34,7 +35,7 @@ export function createProxyService(params: {
   proxyQueue: Ref<PQueue>;
 
   ensureProjectProxiesDir: () => Promise<FileSystemDirectoryHandle | null>;
-  getProxyFileName: (projectRelativePath: string) => string;
+  getProxyFileName: (projectRelativePath: string) => Promise<string>;
 
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
@@ -52,13 +53,7 @@ export function createProxyService(params: {
   }): Promise<void> {
     params.generatingProxies.value.add(input.dirPath);
     try {
-      const iterator = (input.dirHandle as any).values?.() ?? (input.dirHandle as any).entries?.();
-      if (!iterator) return;
-
-      for await (const value of iterator) {
-        const handle = (Array.isArray(value) ? value[1] : value) as
-          | FileSystemFileHandle
-          | FileSystemDirectoryHandle;
+      for await (const handle of (input.dirHandle as any).values()) {
         const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
 
         if (handle.kind === 'file') {
@@ -86,8 +81,8 @@ export function createProxyService(params: {
     for (const path of paths) {
       if (!path.startsWith(`${VIDEO_DIR_NAME}/`)) continue;
       try {
-        const handle = await dir.getFileHandle(params.getProxyFileName(path));
-        // Check that the proxy file is not empty (e.g. left by a cancelled generation)
+        const proxyFilename = await params.getProxyFileName(path);
+        const handle = await dir.getFileHandle(proxyFilename);
         const file = await handle.getFile();
         if (file.size > 0) {
           next.add(path);
@@ -148,24 +143,30 @@ export function createProxyService(params: {
 
           params.activeWorkerPaths.value.add(projectRelativePath);
 
-          const proxyFilename = params.getProxyFileName(projectRelativePath);
+          const proxyFilename = await params.getProxyFileName(projectRelativePath);
           proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
           const optimization = params.getOptimizationSettings();
 
-          const meta = await (getExportWorkerClient().client as any).extractMetadata(file);
+          const { client } = getProxyWorkerClient();
+
+          const meta = await (client as any).extractMetadata(file);
           const sourceWidth = meta.video?.width || 1920;
           const sourceHeight = meta.video?.height || 1080;
 
-          const scales = [1, 1 / 2, 1 / 4, 1 / 8, 1 / 16];
-          let scale = 1 / 16;
+          const sourcePixels = sourceWidth * sourceHeight;
+          const targetPixels = optimization.proxyMaxPixels;
 
-          for (const s of scales) {
-            const w = Math.round(sourceWidth * s);
-            const h = Math.round(sourceHeight * s);
-            if (w * h <= optimization.proxyMaxPixels) {
-              scale = s;
-              break;
+          let scale = 1.0;
+          if (sourcePixels > targetPixels) {
+            scale = Math.sqrt(targetPixels / sourcePixels);
+            // Snap to common scales for efficiency
+            const commonScales = [0.5, 0.25, 0.125, 0.0625];
+            for (const s of commonScales) {
+              if (s >= scale * 0.8 && s <= scale * 1.2) {
+                scale = s;
+                break;
+              }
             }
           }
 
@@ -173,9 +174,7 @@ export function createProxyService(params: {
           const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
           const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
-          const { client } = getExportWorkerClient();
-
-          setExportHostApi(
+          setProxyHostApi(
             createVideoCoreHostApi({
               getCurrentProjectId: () => null,
               getWorkspaceHandle: () => null,
@@ -188,8 +187,6 @@ export function createProxyService(params: {
             }),
           );
 
-          // We already extracted metadata above to calculate resolution
-          // const meta = await client.extractMetadata(file);
           const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
           if (!durationUs) throw new Error('Invalid video duration');
@@ -250,7 +247,8 @@ export function createProxyService(params: {
           // Remove the incomplete proxy file on abort or error
           if (proxyFileHandle) {
             try {
-              await dir.removeEntry(params.getProxyFileName(projectRelativePath));
+              const proxyFilename = await params.getProxyFileName(projectRelativePath);
+              await dir.removeEntry(proxyFilename);
             } catch {
               // Best-effort cleanup
             }
@@ -297,7 +295,7 @@ export function createProxyService(params: {
 
     if (params.activeWorkerPaths.value.has(projectRelativePath)) {
       try {
-        const { client } = getExportWorkerClient();
+        const { client } = getProxyWorkerClient();
         await client.cancelExport();
       } catch {
         // ignore
@@ -311,19 +309,54 @@ export function createProxyService(params: {
     if (!dir) return;
 
     try {
-      await dir.removeEntry(params.getProxyFileName(projectRelativePath));
+      const proxyFilename = await params.getProxyFileName(projectRelativePath);
+      await dir.removeEntry(proxyFilename);
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to delete proxy', e);
         return;
       }
-      // NotFoundError: file already gone, still clean up state
     }
 
-    // Replace with a new Set to guarantee Vue reactivity
     const next = new Set(params.existingProxies.value);
     next.delete(projectRelativePath);
     params.existingProxies.value = next;
+  }
+
+  async function renameProxy(input: { oldPath: string; newPath: string }) {
+    if (!input.oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
+    const dir = await params.ensureProjectProxiesDir();
+    if (!dir) return;
+
+    try {
+      const oldFilename = await params.getProxyFileName(input.oldPath);
+      const newFilename = await params.getProxyFileName(input.newPath);
+
+      const handle = await dir.getFileHandle(oldFilename);
+      if ((handle as any).move) {
+        await (handle as any).move(newFilename);
+      } else {
+        // Fallback: copy and delete if move is not supported (unlikely in modern Chrome)
+        const newHandle = await dir.getFileHandle(newFilename, { create: true });
+        const writable = await (newHandle as any).createWritable();
+        await writable.write(await handle.getFile());
+        await writable.close();
+        await dir.removeEntry(oldFilename);
+      }
+
+      const next = new Set(params.existingProxies.value);
+      next.delete(input.oldPath);
+      if (input.newPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
+        next.add(input.newPath);
+      }
+      params.existingProxies.value = next;
+    } catch (e) {
+      console.warn('Failed to rename proxy', e);
+      // Clean up if rename failed
+      const next = new Set(params.existingProxies.value);
+      next.delete(input.oldPath);
+      params.existingProxies.value = next;
+    }
   }
 
   async function getProxyFileHandle(
@@ -334,7 +367,8 @@ export function createProxyService(params: {
     if (!dir) return null;
 
     try {
-      return await dir.getFileHandle(params.getProxyFileName(projectRelativePath));
+      const proxyFilename = await params.getProxyFileName(projectRelativePath);
+      return await dir.getFileHandle(proxyFilename);
     } catch {
       return null;
     }
@@ -346,7 +380,8 @@ export function createProxyService(params: {
     if (!dir) return null;
 
     try {
-      const handle = await dir.getFileHandle(params.getProxyFileName(projectRelativePath));
+      const proxyFilename = await params.getProxyFileName(projectRelativePath);
+      const handle = await dir.getFileHandle(proxyFilename);
       return await handle.getFile();
     } catch {
       return null;
@@ -359,6 +394,7 @@ export function createProxyService(params: {
     generateProxiesForFolder,
     cancelProxyGeneration,
     deleteProxy,
+    renameProxy,
     getProxyFileHandle,
     getProxyFile,
   };

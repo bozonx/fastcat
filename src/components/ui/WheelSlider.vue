@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 
 interface WheelSliderProps {
   modelValue: number;
@@ -98,13 +98,14 @@ function getStepPrecision(step: number): number {
   return stepAsString.length - dotIndex - 1;
 }
 
-function onWheel(event: Event) {
-  if (props.disabled) return;
-  const e = event as WheelEvent;
-  (e as any).preventDefault?.();
+const wrapperRef = ref<HTMLElement | null>(null);
 
-  const deltaY = Number((e as any).deltaY ?? 0);
-  const deltaX = Number((e as any).deltaX ?? 0);
+function onWheel(e: WheelEvent) {
+  if (props.disabled) return;
+  e.preventDefault();
+
+  const deltaY = Number(e.deltaY ?? 0);
+  const deltaX = Number(e.deltaX ?? 0);
   const delta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
   if (!Number.isFinite(delta) || delta === 0) return;
 
@@ -126,6 +127,14 @@ function onWheel(event: Event) {
   const clamped = clampValue(rounded);
   emit('update:modelValue', clamped);
 }
+
+onMounted(() => {
+  wrapperRef.value?.addEventListener('wheel', onWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  wrapperRef.value?.removeEventListener('wheel', onWheel);
+});
 
 function resetToDefault() {
   if (props.disabled) return;
@@ -159,8 +168,8 @@ function onPointerDownCapture(event: PointerEvent) {
     need to aim at the slim slider track.
   -->
   <div
+    ref="wrapperRef"
     class="relative py-3 -my-3"
-    @wheel="onWheel"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >

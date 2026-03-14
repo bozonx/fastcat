@@ -66,7 +66,7 @@ export async function cleanupVideoCachesCommand(params: {
 export async function onVideoPathMovedCommand(params: {
   service: Pick<
     ProxyThumbnailService,
-    | 'removeProxy'
+    | 'renameProxy'
     | 'clearExistingProxies'
     | 'clearVideoThumbnails'
     | 'clearWaveforms'
@@ -76,7 +76,10 @@ export async function onVideoPathMovedCommand(params: {
   oldPath: string;
   newPath: string;
 }): Promise<void> {
-  await params.service.removeProxy(params.oldPath);
+  await params.service.renameProxy({
+    oldPath: params.oldPath,
+    newPath: params.newPath,
+  });
   params.service.clearExistingProxies();
   await params.service.clearVideoThumbnails({
     projectId: params.projectId,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 interface KnobProps {
   modelValue: number;
@@ -43,6 +43,7 @@ const angle = computed(() => {
   return percentage.value * 270 - 135;
 });
 
+const knobRef = ref<HTMLElement | null>(null);
 const isDragging = ref(false);
 let startY = 0;
 let startValue = 0;
@@ -97,13 +98,21 @@ function onWheel(event: WheelEvent) {
 
   const deltaY = event.deltaY;
   const direction = deltaY < 0 ? 1 : -1;
-  
+
   let nextValue = value.value + direction * props.step;
   const precision = getStepPrecision(props.step);
   nextValue = Number(nextValue.toFixed(precision));
-  
+
   value.value = nextValue;
 }
+
+onMounted(() => {
+  knobRef.value?.addEventListener('wheel', onWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  knobRef.value?.removeEventListener('wheel', onWheel);
+});
 
 function onDoubleClick() {
   if (props.disabled || props.defaultValue === undefined) return;
@@ -122,6 +131,7 @@ const sizeClasses = computed(() => {
 
 <template>
   <div
+    ref="knobRef"
     class="relative rounded-full bg-ui-bg-muted border border-ui-border-muted shadow-inner cursor-ns-resize select-none flex items-center justify-center transition-colors"
     :class="[
       sizeClasses,
@@ -132,7 +142,6 @@ const sizeClasses = computed(() => {
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
-    @wheel="onWheel"
     @dblclick="onDoubleClick"
   >
     <!-- Indicator dot/line -->

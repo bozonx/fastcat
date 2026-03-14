@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
@@ -18,6 +18,7 @@ const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 
 const isFocused = ref(false);
 const localValue = ref('');
+const wrapperRef = ref<HTMLElement | null>(null);
 
 // Format microseconds to HH:MM:SS:FF
 function formatTimecode(us: number, fpsValue: number): string {
@@ -98,6 +99,14 @@ function handleWheel(e: WheelEvent) {
   stepValue(direction, isShift);
 }
 
+onMounted(() => {
+  wrapperRef.value?.addEventListener('wheel', handleWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  wrapperRef.value?.removeEventListener('wheel', handleWheel);
+});
+
 function stepValue(direction: number, isFrame: boolean) {
   const currentUs = isFocused.value ? parseTimecode(localValue.value, fps.value) : props.modelValue;
   const validUs = isNaN(currentUs) ? props.modelValue : currentUs;
@@ -117,7 +126,7 @@ function stepValue(direction: number, isFrame: boolean) {
 </script>
 
 <template>
-  <div class="relative flex items-center w-full">
+  <div ref="wrapperRef" class="relative flex items-center w-full">
     <UInput
       v-model="localValue"
       size="sm"
@@ -125,7 +134,6 @@ function stepValue(direction: number, isFrame: boolean) {
       @focus="handleFocus"
       @blur="handleBlur"
       @keydown="handleKeydown"
-      @wheel.prevent="handleWheel"
     >
       <template #trailing>
         <div class="flex flex-col border-l border-ui-border-muted h-full">

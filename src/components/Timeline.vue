@@ -47,6 +47,7 @@ const fileManager = useFileManager();
 const { currentProjectId, currentView } = storeToRefs(projectStore);
 
 const scrollEl = ref<HTMLElement | null>(null);
+const rulerContainerRef = ref<HTMLElement | null>(null);
 const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
 const scrollLeftRef = ref(0);
 const scrollbarHeight = ref(0);
@@ -203,6 +204,7 @@ function onGlobalTimelineClick(e: MouseEvent) {
 }
 
 useEventListener(window, 'click', onGlobalTimelineClick, { capture: true });
+useEventListener(scrollEl, 'wheel', onTimelineWheel, { passive: false });
 
 function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mouse'] = 'timeline') {
   if (!scrollEl.value) return;
@@ -360,8 +362,9 @@ const onDrop = async (e: DragEvent, trackId: string) => {
 
   clearDragPreview();
 };
-const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e, 'ruler');
-const onTrackHeaderWheel = (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders');
+const trackHeadersContainerRef = ref<HTMLElement | null>(null);
+useEventListener(trackHeadersContainerRef, 'wheel', (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders'), { passive: false });
+useEventListener(rulerContainerRef, 'wheel', (e: WheelEvent) => onTimelineWheel(e, 'ruler'), { passive: false });
 const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent) => {
   if (action === 'none') return;
   if (action === 'reset_zoom') {
@@ -470,16 +473,17 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
         @resized="onTimelineSplitResize"
       >
         <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
-          <TimelineTrackLabels
-            ref="timelineTrackLabelsRef"
-            :tracks="tracks"
-            :track-heights="trackHeights"
-            :scrollbar-compensation="scrollbarHeight"
-            class="h-full border-r border-ui-border"
-            @update:track-height="updateTrackHeight"
-            @scroll="onLabelsScroll"
-            @wheel="onTrackHeaderWheel"
-          />
+          <div ref="trackHeadersContainerRef" class="h-full">
+            <TimelineTrackLabels
+              ref="timelineTrackLabelsRef"
+              :tracks="tracks"
+              :track-heights="trackHeights"
+              :scrollbar-compensation="scrollbarHeight"
+              class="h-full border-r border-ui-border"
+              @update:track-height="updateTrackHeight"
+              @scroll="onLabelsScroll"
+            />
+          </div>
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">
           <div
@@ -491,21 +495,19 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
             @pointerdown.capture="onTrackAreaPointerDownCapture"
             @auxclick="onTrackAreaAuxClick"
           >
-            <div class="relative shrink-0 z-10 timeline-ruler-container">
+            <div ref="rulerContainerRef" class="relative shrink-0 z-10 timeline-ruler-container">
               <TimelineRuler
                 class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"
                 @pointerdown="onTimeRulerPointerDown"
                 @start-playhead-drag="startPlayheadDrag"
                 @start-pan="startPan"
-                @wheel="onTimelineRulerWheel"
               />
             </div>
             <div
               ref="scrollEl"
               class="w-full flex-1 overflow-auto relative timeline-scroll-el"
               @click="onTimelineClick"
-              @wheel="onTimelineWheel"
               @scroll="onScroll"
             >
               <!-- Tracks -->

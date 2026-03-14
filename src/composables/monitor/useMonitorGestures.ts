@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
-import { isSecondaryWheel, getWheelDelta } from '~/utils/mouse';
+import { isSecondaryWheel, getWheelDelta, DRAG_DEADZONE_PX } from '~/utils/mouse';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import {
@@ -145,7 +145,7 @@ export function useMonitorGestures(input: {
     if (middlePointerDown.value) {
       const dx = event.clientX - middlePointerDown.value.x;
       const dy = event.clientY - middlePointerDown.value.y;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      if (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX) {
         middlePointerDown.value.moved = true;
       }
     }
@@ -167,10 +167,6 @@ export function useMonitorGestures(input: {
         // ignore
       }
     }
-  }
-
-  function onWindowPointerUp() {
-    isPanning.value = false;
   }
 
   function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {
@@ -264,11 +260,12 @@ export function useMonitorGestures(input: {
   );
 
   onMounted(() => {
-    window.addEventListener('pointerup', onWindowPointerUp);
+    input.viewportEl.value?.addEventListener('wheel', onViewportWheel, { passive: false });
   });
 
   onBeforeUnmount(() => {
-    window.removeEventListener('pointerup', onWindowPointerUp);
+    input.viewportEl.value?.removeEventListener('wheel', onViewportWheel);
+    isPanning.value = false;
   });
 
   return {

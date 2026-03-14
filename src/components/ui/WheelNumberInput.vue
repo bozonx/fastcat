@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 interface WheelNumberInputProps {
   modelValue: number;
@@ -46,9 +46,10 @@ function getStepPrecision(step: number): number {
   return stepAsString.length - dotIndex - 1;
 }
 
-function onWheel(event: Event) {
+const wrapperRef = ref<HTMLElement | null>(null);
+
+function onWheel(e: WheelEvent) {
   if (props.disabled) return;
-  const e = event as WheelEvent;
   e.preventDefault();
 
   const deltaY = Number(e.deltaY ?? 0);
@@ -69,10 +70,18 @@ function onWheel(event: Event) {
 
   emit('update:modelValue', clamped);
 }
+
+onMounted(() => {
+  wrapperRef.value?.addEventListener('wheel', onWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  wrapperRef.value?.removeEventListener('wheel', onWheel);
+});
 </script>
 
 <template>
-  <div class="relative w-full" @wheel="onWheel">
+  <div ref="wrapperRef" class="relative w-full">
     <UInput
       v-model.number="value"
       type="number"

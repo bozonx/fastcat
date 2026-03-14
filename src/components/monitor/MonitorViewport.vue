@@ -46,7 +46,6 @@ defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor,
     @pointerup="stopPan"
     @pointercancel="stopPan"
     @auxclick="onViewportAuxClick"
-    @wheel="onViewportWheel"
     @dblclick="resetView"
   >
     <div class="absolute inset-0">

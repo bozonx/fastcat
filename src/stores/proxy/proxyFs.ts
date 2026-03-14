@@ -4,7 +4,7 @@ import { ensureResolvedProjectProxiesDir } from '~/utils/storage-handles';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 
 export interface ProxyFsModule {
-  getProxyFileName: (projectRelativePath: string) => string;
+  getProxyFileName: (projectRelativePath: string) => Promise<string>;
   ensureProjectProxiesDir: () => Promise<FileSystemDirectoryHandle | null>;
 }
 
@@ -13,8 +13,16 @@ export function createProxyFsModule(params: {
   currentProjectId: Ref<string | null>;
   resolvedStorageTopology: Ref<ResolvedStorageTopology>;
 }): ProxyFsModule {
-  function getProxyFileName(projectRelativePath: string): string {
-    return `${encodeURIComponent(projectRelativePath)}.webm`;
+  async function hashString(str: string): Promise<string> {
+    const msgUint8 = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function getProxyFileName(projectRelativePath: string): Promise<string> {
+    const hash = await hashString(projectRelativePath);
+    return `${hash}.webm`;
   }
 
   async function ensureProjectProxiesDir(): Promise<FileSystemDirectoryHandle | null> {

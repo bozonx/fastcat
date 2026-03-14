@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, markRaw, ref, computed, watch, nextTick } from 'vue';
+import { onBeforeUnmount, onMounted, markRaw, ref, computed, watch, nextTick } from 'vue';
 import {
   useProjectTabs,
   registerProjectTab,
@@ -116,6 +116,8 @@ function onTabBarDragOver(e: DragEvent) {
   }
 }
 
+const tabBarRef = ref<HTMLElement | null>(null);
+
 function onTabsWheel(e: WheelEvent) {
   const container = tabContainerRef.value;
   if (!container) return;
@@ -126,6 +128,14 @@ function onTabsWheel(e: WheelEvent) {
   e.preventDefault();
   container.scrollLeft += horizontalDelta;
 }
+
+onMounted(() => {
+  tabBarRef.value?.addEventListener('wheel', onTabsWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  tabBarRef.value?.removeEventListener('wheel', onTabsWheel);
+});
 
 function onTabBarDragLeave(e: DragEvent) {
   const currentTarget = e.currentTarget as HTMLElement | null;
@@ -260,9 +270,9 @@ onMounted(() => {
   >
     <!-- Tab bar -->
     <div
+      ref="tabBarRef"
       class="flex items-center border-b border-ui-border shrink-0 select-none transition-colors duration-150 min-h-[36px]"
       :class="isDropTarget ? 'bg-primary-500/10 border-primary-500/50' : ''"
-      @wheel="onTabsWheel"
       @dragover="onTabBarDragOver"
       @dragleave="onTabBarDragLeave"
       @drop="onTabBarDrop"
