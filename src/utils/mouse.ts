@@ -23,11 +23,21 @@ export const TRACK_HEADERS_WHEEL_ACTIONS = ['resize_track', ...COMMON_WHEEL_ACTI
 
 export const RULER_WHEEL_ACTIONS = COMMON_WHEEL_ACTIONS;
 
-export const RULER_CLICK_ACTIONS = ['add_marker', 'reset_zoom', 'select_area', 'none'] as const;
+export const CLICK_ACTIONS = [
+  'seek',
+  'add_marker',
+  'reset_zoom',
+  'select_area',
+  'none',
+] as const;
+
+export type ClickAction = (typeof CLICK_ACTIONS)[number];
+
+export const RULER_CLICK_ACTIONS = CLICK_ACTIONS;
 
 export const RULER_DOUBLE_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
-export const MIDDLE_CLICK_ACTIONS = ['pan', 'move_playhead', 'reset_zoom', 'select_area', 'none'] as const;
+export const MIDDLE_CLICK_ACTIONS = CLICK_ACTIONS;
 
 export const DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as const;
 

@@ -104,9 +104,10 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
-      doubleClick: 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
-      shiftClick: 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      click: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
       drag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       dragShift: 'pan' | 'move_playhead' | 'select_area' | 'none';
@@ -116,8 +117,8 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'pan' | 'move_playhead' | 'reset_zoom' | 'none';
-      middleDrag: 'pan' | 'move_playhead' | 'none';
+      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
     };
     trackHeaders: {
       wheel: string;
@@ -210,6 +211,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'seek_second',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_horizontal',
+      click: 'seek',
       middleClick: 'reset_zoom',
       doubleClick: 'add_marker',
       shiftClick: 'none',

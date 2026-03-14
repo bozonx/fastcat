@@ -167,7 +167,7 @@ function onRulerClick(e: MouseEvent) {
     return;
   }
 
-  timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
+  executeRulerClickAction(workspaceSettings.mouse.ruler.click, e);
 }
 
 // Double click: custom action
@@ -187,6 +187,11 @@ function onRulerAuxClick(e: MouseEvent) {
 
 function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
   if (action === 'none') return;
+
+  if (action === 'seek') {
+    timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e as MouseEvent));
+    return;
+  }
 
   if (action === 'reset_zoom') {
     timelineStore.resetTimelineZoom();

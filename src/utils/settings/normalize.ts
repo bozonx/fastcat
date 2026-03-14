@@ -364,9 +364,20 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         }
       }
 
+      const rulerClick = rawRuler.click;
+      if ((CLICK_ACTIONS as readonly string[]).includes(rulerClick as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).click = rulerClick as
+          | 'seek'
+          | 'add_marker'
+          | 'reset_zoom'
+          | 'select_area'
+          | 'none';
+      }
+
       const rulerMiddleClick = rawRuler.middleClick;
-      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
+      if ((CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).middleClick = rulerMiddleClick as
+          | 'seek'
           | 'add_marker'
           | 'reset_zoom'
           | 'select_area'
@@ -374,8 +385,9 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       }
 
       const rulerDoubleClick = rawRuler.doubleClick;
-      if ((RULER_DOUBLE_CLICK_ACTIONS as readonly string[]).includes(rulerDoubleClick as string)) {
+      if ((CLICK_ACTIONS as readonly string[]).includes(rulerDoubleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).doubleClick = rulerDoubleClick as
+          | 'seek'
           | 'add_marker'
           | 'reset_zoom'
           | 'select_area'
@@ -410,8 +422,9 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       }
 
       const rulerShiftClick = rawRuler.shiftClick;
-      if ((SHIFT_CLICK_ACTIONS as readonly string[]).includes(rulerShiftClick as string)) {
+      if ((CLICK_ACTIONS as readonly string[]).includes(rulerShiftClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).shiftClick = rulerShiftClick as
+          | 'seek'
           | 'add_marker'
           | 'reset_zoom'
           | 'select_area'
@@ -436,10 +449,10 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       }
 
       const timelineMiddleClick = (rawTimeline as Record<string, unknown>).middleClick;
-      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(timelineMiddleClick as string)) {
+      if ((CLICK_ACTIONS as readonly string[]).includes(timelineMiddleClick as string)) {
         (normalizedMouse.timeline as Record<string, unknown>).middleClick = timelineMiddleClick as
-          | 'pan'
-          | 'move_playhead'
+          | 'seek'
+          | 'add_marker'
           | 'reset_zoom'
           | 'select_area'
           | 'none';
