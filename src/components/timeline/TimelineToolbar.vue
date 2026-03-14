@@ -30,6 +30,28 @@ const trimMenuItems = [
 function toggleClipSnapMode() {
   settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
 }
+
+function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'copy';
+    
+    // Create a payload compatible with handleLibraryDrop
+    const payload = {
+      kind: type,
+      name: t(`fastcat.timeline.${type}ClipDefaultName`, type.charAt(0).toUpperCase() + type.slice(1)),
+      path: '',
+    };
+    
+    const json = JSON.stringify(payload);
+    event.dataTransfer.setData('application/json', json);
+    event.dataTransfer.setData('application/fastcat-virtual-clip', type);
+  }
+  emit('dragVirtualStart', event, type);
+}
+
+function onDragEnd() {
+  emit('dragVirtualEnd');
+}
 </script>
 
 <template>
@@ -83,8 +105,8 @@ function toggleClipSnapMode() {
         variant="ghost"
         color="neutral"
         icon="i-heroicons-adjustments-horizontal"
-        @dragstart="emit('dragVirtualStart', $event, 'adjustment')"
-        @dragend="emit('dragVirtualEnd')"
+        @dragstart="onDragStart($event, 'adjustment')"
+        @dragend="onDragEnd"
         @click="timelineStore.addAdjustmentClipAtPlayhead()"
       />
       <UButton
@@ -93,8 +115,8 @@ function toggleClipSnapMode() {
         variant="ghost"
         color="neutral"
         icon="i-heroicons-swatch"
-        @dragstart="emit('dragVirtualStart', $event, 'background')"
-        @dragend="emit('dragVirtualEnd')"
+        @dragstart="onDragStart($event, 'background')"
+        @dragend="onDragEnd"
         @click="timelineStore.addBackgroundClipAtPlayhead()"
       />
       <UButton
@@ -103,8 +125,8 @@ function toggleClipSnapMode() {
         variant="ghost"
         color="neutral"
         icon="i-heroicons-chat-bubble-bottom-center-text"
-        @dragstart="emit('dragVirtualStart', $event, 'text')"
-        @dragend="emit('dragVirtualEnd')"
+        @dragstart="onDragStart($event, 'text')"
+        @dragend="onDragEnd"
         @click="timelineStore.addTextClipAtPlayhead()"
       />
     </div>
