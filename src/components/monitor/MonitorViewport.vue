@@ -29,6 +29,7 @@ const {
   onPreviewPointerDown,
   onViewportPointerDown,
   onViewportPointerMove,
+  onViewportAuxClick,
   stopPan,
   onViewportWheel,
 } = useMonitorGestures({ projectStore, viewportEl });
@@ -44,6 +45,7 @@ defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor,
     @pointermove="onViewportPointerMove"
     @pointerup="stopPan"
     @pointercancel="stopPan"
+    @auxclick="onViewportAuxClick"
     @wheel="onViewportWheel"
     @dblclick="resetView"
   >

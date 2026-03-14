@@ -107,7 +107,7 @@ export function useMonitorGestures(input: {
     const settings = workspaceStore.userSettings.mouse.monitor;
 
     if (event.button === 1) {
-      if (settings.middleClick === 'pan') {
+      if (settings.middleDrag === 'pan') {
         isPanning.value = true;
         panStart.value = { x: event.clientX, y: event.clientY };
         panOrigin.value = { x: panX.value, y: panY.value };
@@ -115,6 +115,18 @@ export function useMonitorGestures(input: {
         event.preventDefault();
       }
       return;
+    }
+  }
+
+  function onViewportAuxClick(event: MouseEvent) {
+    if (event.button !== 1) return;
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    const action = settings.middleClick;
+
+    if (action === 'reset_zoom') {
+      resetZoom();
+    } else if (action === 'reset_zoom_center') {
+      resetView();
     }
   }
 
@@ -171,9 +183,16 @@ export function useMonitorGestures(input: {
     if (e.defaultPrevented) return;
 
     const isShift = isLayer1Active(e, workspaceStore.userSettings);
+    const isSecondary = isSecondaryWheel(e);
     const settings = workspaceStore.userSettings.mouse.monitor;
 
-    const action = isShift ? settings.wheelShift : settings.wheel;
+    const action = isSecondary
+      ? isShift
+        ? (settings.wheelSecondaryShift as any)
+        : (settings.wheelSecondary as any)
+      : isShift
+        ? settings.wheelShift
+        : settings.wheel;
 
     if (action === 'none') {
       e.preventDefault();
@@ -245,6 +264,7 @@ export function useMonitorGestures(input: {
     onPreviewPointerDown,
     onViewportPointerDown,
     onViewportPointerMove,
+    onViewportAuxClick,
     stopPan,
     onViewportWheel,
   };

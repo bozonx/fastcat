@@ -104,10 +104,10 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      click: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
-      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
-      doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
-      shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      click: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
+      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
+      doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
+      shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
       drag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       dragShift: 'pan' | 'move_playhead' | 'select_area' | 'none';
@@ -117,7 +117,7 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
     };
     trackHeaders: {
@@ -127,9 +127,12 @@ export interface FastCatUserSettings {
       wheelSecondaryShift: string;
     };
     monitor: {
-      wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
-      wheelShift: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
-      middleClick: 'pan' | 'move_playhead' | 'reset_zoom' | 'none';
+      wheel: string;
+      wheelShift: string;
+      wheelSecondary: string;
+      wheelSecondaryShift: string;
+      middleClick: 'reset_zoom' | 'reset_zoom_center' | 'none';
+      middleDrag: 'pan' | 'none';
     };
   };
 }
@@ -212,9 +215,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_horizontal',
       click: 'seek',
-      middleClick: 'seek',
+      middleClick: 'reset_zoom',
       doubleClick: 'add_marker',
-      shiftClick: 'none',
+      shiftClick: 'clear_selection',
       drag: 'move_playhead',
       middleDrag: 'pan',
       dragShift: 'select_area',
@@ -236,7 +239,10 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     monitor: {
       wheel: 'zoom',
       wheelShift: 'scroll_horizontal',
-      middleClick: 'pan',
+      wheelSecondary: 'scroll_horizontal',
+      wheelSecondaryShift: 'none',
+      middleClick: 'reset_zoom',
+      middleDrag: 'pan',
     },
   },
 };

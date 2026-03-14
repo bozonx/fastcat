@@ -34,6 +34,9 @@ const containerRef = ref<HTMLElement | null>(null);
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
+const workspaceStore = useWorkspaceStore();
+
+const rulerSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
 
 const width = ref(0);
 const height = ref(0);
@@ -161,7 +164,7 @@ function onRulerClick(e: MouseEvent) {
     return;
   }
 
-  const workspaceSettings = useWorkspaceStore().userSettings;
+  const workspaceSettings = workspaceStore.userSettings;
   if (isLayer1Active(e, workspaceSettings)) {
     executeRulerClickAction(workspaceSettings.mouse.ruler.shiftClick, e);
     return;
@@ -173,14 +176,14 @@ function onRulerClick(e: MouseEvent) {
 // Double click: custom action
 function onRulerDblClick(e: MouseEvent) {
   if (e.button !== 0) return;
-  const settings = useWorkspaceStore().userSettings.mouse.ruler;
+  const settings = rulerSettings.value;
   executeRulerClickAction(settings.doubleClick, e);
 }
 
 // Middle click
 function onRulerAuxClick(e: MouseEvent) {
   if (e.button === 1) {
-    const settings = useWorkspaceStore().userSettings.mouse.ruler;
+    const settings = rulerSettings.value;
     executeRulerClickAction(settings.middleClick, e);
   }
 }
@@ -194,7 +197,7 @@ function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
   }
 
   if (action === 'reset_zoom') {
-    timelineStore.resetTimelineZoom();
+    timelineStore.setTimelineZoom(50);
     return;
   }
 
@@ -220,7 +223,7 @@ function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
 
 function onRulerPointerDown(e: PointerEvent) {
   if (isDraggingSelectionRange.value) return;
-  const settings = useWorkspaceStore().userSettings.mouse.ruler;
+  const settings = rulerSettings.value;
 
   if (e.button === 1) {
     // Middle drag behavior
@@ -230,7 +233,7 @@ function onRulerPointerDown(e: PointerEvent) {
 
   if (e.button === 0) {
     // Left drag/click behavior
-    if (isLayer1Active(e, useWorkspaceStore().userSettings)) {
+    if (isLayer1Active(e, workspaceStore.userSettings)) {
       handleDragAction(settings.dragShift, e);
     } else {
       handleDragAction(settings.drag, e);
@@ -252,7 +255,7 @@ function handleDragAction(action: string, e: PointerEvent) {
 }
 
 function onRulerWheel(e: WheelEvent) {
-  const settings = useWorkspaceStore().userSettings.mouse.ruler;
+  const settings = rulerSettings.value;
   const isSecondary = isSecondaryWheel(e);
 
   const action = isSecondary ? settings.wheelSecondary : settings.wheel;
