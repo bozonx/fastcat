@@ -407,13 +407,13 @@ onBeforeUnmount(() => {
             <button
               type="button"
               class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-violet-300/70"
-              aria-label="Selection start handle"
+              :aria-label="t('fastcat.timeline.selectionStartHandle')"
               @pointerdown.stop="startSelectionRangeDrag($event, 'left')"
             />
             <button
               type="button"
               class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-violet-300/70"
-              aria-label="Selection end handle"
+              :aria-label="t('fastcat.timeline.selectionEndHandle')"
               @pointerdown.stop="startSelectionRangeDrag($event, 'right')"
             />
           </div>
@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
                         : 'bg-primary-500',
                   ]"
                   :style="p.color ? { color: p.color } : {}"
-                  :aria-label="p.isZone ? 'Zone Marker Start' : 'Marker'"
+                  :aria-label="p.isZone ? t('fastcat.timeline.zoneMarkerStart') : t('fastcat.timeline.marker')"
                   @dblclick.stop.prevent="selectMarker(p.id)"
                   @pointerdown.stop="onMarkerPointerDown($event, p.id)"
                   @contextmenu.stop
@@ -491,7 +491,7 @@ onBeforeUnmount(() => {
                         : 'bg-primary-500',
                   ]"
                   :style="p.color ? { color: p.color } : {}"
-                  aria-label="Zone Marker End"
+                  :aria-label="t('fastcat.timeline.zoneMarkerEnd')"
                   @dblclick.stop.prevent="selectMarker(p.id)"
                   @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
                   @contextmenu.stop

@@ -307,10 +307,9 @@ const { t } = useI18n();
         />
       </div>
 
-      <!-- Shape-specific config -->
       <template v-if="(props.clip as any).shapeType === 'circle'">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Squash X (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.squashX') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.squashX ?? 0)"
             size="sm"
@@ -319,7 +318,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Squash Y (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.squashY') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.squashY ?? 0)"
             size="sm"
@@ -331,7 +330,7 @@ const { t } = useI18n();
 
       <template v-else-if="(props.clip as any).shapeType === 'square'">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Width (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.width') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.width ?? 100)"
             size="sm"
@@ -340,7 +339,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Height (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.height') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.height ?? 100)"
             size="sm"
@@ -349,7 +348,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Corner Radius (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.cornerRadius') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.cornerRadius ?? 0)"
             size="sm"
@@ -363,7 +362,7 @@ const { t } = useI18n();
 
       <template v-else-if="(props.clip as any).shapeType === 'triangle'">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Base Length (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.baseLength') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.baseLength ?? 100)"
             size="sm"
@@ -372,7 +371,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Vertex Offset (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.vertexOffset') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.vertexOffset ?? 50)"
             size="sm"
@@ -388,7 +387,7 @@ const { t } = useI18n();
         "
       >
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Rays</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.clip.rays') }}</span>
           <WheelNumberInput
             :model-value="
               Number(
@@ -403,7 +402,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Inner Radius (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.innerRadius') }}</span>
           <WheelNumberInput
             :model-value="
               Number(
@@ -420,12 +419,12 @@ const { t } = useI18n();
 
       <template v-else-if="(props.clip as any).shapeType === 'cloud'">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Cloud Type</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.clip.cloudType') }}</span>
           <USelectMenu
             :model-value="String((props.clip as any).shapeConfig?.cloudType ?? '1')"
             :items="[
-              { value: '1', label: 'Type 1' },
-              { value: '2', label: 'Type 2' },
+              { value: '1', label: `${t('fastcat.projects.projectNamePlaceholder').replace('Name', 'Type')} 1` },
+              { value: '2', label: `${t('fastcat.projects.projectNamePlaceholder').replace('Name', 'Type')} 2` },
             ]"
             value-key="value"
             label-key="label"
@@ -439,7 +438,7 @@ const { t } = useI18n();
 
       <template v-else-if="(props.clip as any).shapeType === 'speech_bubble'">
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Width (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.width') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.width ?? 100)"
             size="sm"
@@ -448,7 +447,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Height (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.height') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.height ?? 70)"
             size="sm"
@@ -457,7 +456,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Corner Radius (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.cornerRadius') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.cornerRadius ?? 20)"
             size="sm"
@@ -468,7 +467,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Pointer Sharpness (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.pointerSharpness') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.pointerSharpness ?? 40)"
             size="sm"
@@ -479,7 +478,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Pointer Angle (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.pointerAngle') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.pointerAngle ?? 20)"
             size="sm"
@@ -488,7 +487,7 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Pointer Position X (%)</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.pointerX') }}</span>
           <WheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.pointerX ?? 30)"
             size="sm"
@@ -497,12 +496,12 @@ const { t } = useI18n();
           />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">Pointer Direction</span>
+          <span class="text-xs text-ui-text-muted">{{ $t('fastcat.clip.pointerDirection') }}</span>
           <USelectMenu
             :model-value="String((props.clip as any).shapeConfig?.pointerDirection ?? 'left')"
             :items="[
-              { value: 'left', label: 'Left' },
-              { value: 'right', label: 'Right' },
+              { value: 'left', label: $t('fastcat.timeline.transition.directionLeft') },
+              { value: 'right', label: $t('fastcat.timeline.transition.directionRight') },
             ]"
             value-key="value"
             label-key="label"
@@ -513,6 +512,7 @@ const { t } = useI18n();
           />
         </div>
       </template>
+
     </div>
   </PropertySection>
 

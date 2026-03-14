@@ -60,14 +60,14 @@ const clipTrack = computed<TimelineTrack | undefined>(() =>
 
 const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video');
 
-const blendModeOptions: Array<{ value: TimelineBlendMode; label: string }> = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'add', label: 'Add' },
-  { value: 'multiply', label: 'Multiply' },
-  { value: 'screen', label: 'Screen' },
-  { value: 'darken', label: 'Darken' },
-  { value: 'lighten', label: 'Lighten' },
-];
+const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() => [
+  { value: 'normal', label: t('fastcat.clip.blendMode.normal') },
+  { value: 'add', label: t('fastcat.clip.blendMode.add') },
+  { value: 'multiply', label: t('fastcat.clip.blendMode.multiply') },
+  { value: 'screen', label: t('fastcat.clip.blendMode.screen') },
+  { value: 'darken', label: t('fastcat.clip.blendMode.darken') },
+  { value: 'lighten', label: t('fastcat.clip.blendMode.lighten') },
+]);
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
 

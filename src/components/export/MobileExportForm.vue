@@ -33,6 +33,7 @@ const {
   keyframeIntervalSec,
   exportAlpha,
   metadataTitle,
+  metadataDescription,
   metadataAuthor,
   metadataTags,
   ensureExportDir,
@@ -61,23 +62,23 @@ const exportSummary = computed(() => {
   return `${outputFormat.value.toUpperCase()} • ${normalizedExportWidth.value}x${normalizedExportHeight.value} • ${normalizedExportFps.value} fps • ${audioPart}`;
 });
 
-const formatOptions = [
+const formatOptions = computed(() => [
   { value: 'mp4', label: 'MP4 (H.264)' },
   { value: 'webm', label: 'WebM (VP9)' },
   { value: 'mkv', label: 'MKV (AV1)' },
-];
+]);
 
-const qualityOptions = [
-  { value: 2, label: 'Low (2 Mbps)' },
-  { value: 5, label: 'Medium (5 Mbps)' },
-  { value: 10, label: 'High (10 Mbps)' },
-  { value: 20, label: 'Ultra (20 Mbps)' },
-];
+const qualityOptions = computed(() => [
+  { value: 2, label: `${t('videoEditor.settings.blurQualityLow')} (2 Mbps)` },
+  { value: 5, label: `${t('videoEditor.settings.brightnessModeNormal')} (5 Mbps)` },
+  { value: 10, label: `${t('videoEditor.settings.blurQualityHigh')} (10 Mbps)` },
+  { value: 20, label: `${t('videoEditor.settings.blurQualityUltra')} (20 Mbps)` },
+]);
 
 onMounted(async () => {
   await loadCodecSupport();
 
-  // Инициализируем настройки из проекта
+  // Initialize settings from project
   outputFormat.value = projectStore.projectSettings.exportDefaults.encoding.format;
   videoCodec.value = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
   bitrateMbps.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
@@ -130,6 +131,7 @@ async function handleStartExport() {
         exportAlpha: exportAlpha.value,
         metadata: {
           title: metadataTitle.value,
+          description: metadataDescription.value,
           author: metadataAuthor.value,
           tags: metadataTags.value,
         },
@@ -141,44 +143,44 @@ async function handleStartExport() {
     );
 
     toast.add({
-      title: t('videoEditor.export.successTitle', 'Export successful'),
+      title: t('videoEditor.export.successTitle'),
       description: outputFilename.value,
       color: 'success',
     });
   } catch (err: any) {
     console.error('Export failed:', err);
-    exportError.value = err.message || 'Export failed';
+    exportError.value = err.message || t('videoEditor.export.error');
   }
 }
 
 function getPhaseLabel() {
-  if (exportPhase.value === 'encoding') return 'Encoding...';
-  if (exportPhase.value === 'saving') return 'Saving...';
-  return 'Processing...';
+  if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding');
+  if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving');
+  return t('videoEditor.export.processing');
 }
 </script>
 
 <template>
   <div class="flex min-h-full flex-col gap-6 bg-slate-950 p-4">
     <div class="flex flex-col gap-1">
-      <h2 class="text-xl font-bold text-white">Export Project</h2>
-      <p class="text-xs text-slate-400">Save your work as a video file</p>
+      <h2 class="text-xl font-bold text-white">{{ $t('videoEditor.export.exportProject') }}</h2>
+      <p class="text-xs text-slate-400">{{ $t('videoEditor.export.saveWorkDescription') }}</p>
     </div>
 
     <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Summary</p>
+      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">{{ $t('videoEditor.export.summary') }}</p>
       <p class="mt-2 text-sm font-medium text-white">{{ exportSummary }}</p>
-      <p class="mt-1 text-xs text-slate-500">Saved to {{ exportLocation }}</p>
+      <p class="mt-1 text-xs text-slate-500">{{ $t('videoEditor.export.savedTo', { location: exportLocation }) }}</p>
     </div>
 
-    <!-- Основные настройки -->
+    <!-- Main Settings -->
     <div class="space-y-4">
-      <UFormField label="Filename" :error="filenameError ?? undefined">
+      <UFormField :label="$t('videoEditor.export.filename')" :error="filenameError ?? undefined">
         <UInput v-model="outputFilename" placeholder="video_name" :disabled="isExporting" />
       </UFormField>
 
       <div class="grid grid-cols-2 gap-4">
-        <UFormField label="Format">
+        <UFormField :label="$t('videoEditor.export.outputFormat')">
           <USelect
             v-model="outputFormat"
             :options="formatOptions"
@@ -186,7 +188,7 @@ function getPhaseLabel() {
             :disabled="isExporting"
           />
         </UFormField>
-        <UFormField label="Bitrate">
+        <UFormField :label="$t('videoEditor.export.videoBitrate')">
           <USelect
             :model-value="bitrateMbps"
             :options="qualityOptions"
@@ -199,33 +201,33 @@ function getPhaseLabel() {
 
       <div class="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-3">
         <div class="flex items-center justify-between text-xs">
-          <span class="text-slate-400">Resolution</span>
+          <span class="text-slate-400">{{ $t('videoEditor.export.resolution') }}</span>
           <span class="text-slate-200 font-medium"
             >{{ exportWidth }}x{{ exportHeight }} @ {{ exportFps }}fps</span
           >
         </div>
         <div class="flex items-center justify-between text-xs">
-          <span class="text-slate-400">Audio</span>
+          <span class="text-slate-400">{{ $t('common.audio') }}</span>
           <div class="flex items-center gap-2">
-            <span class="text-slate-200">{{ excludeAudio ? 'Off' : 'On' }}</span>
+            <span class="text-slate-200">{{ excludeAudio ? $t('common.disabled') : $t('common.enabled') }}</span>
             <USwitch v-model="excludeAudio" size="xs" :disabled="isExporting" />
           </div>
         </div>
         <div class="flex items-center justify-between text-xs">
-          <span class="text-slate-400">Estimated quality</span>
+          <span class="text-slate-400">{{ $t('videoEditor.export.estimatedQuality') }}</span>
           <span class="font-medium text-slate-200">{{ bitrateMbps }} Mbps</span>
         </div>
       </div>
     </div>
 
-    <!-- Продвинутые настройки (скрыты по дефолту) -->
+    <!-- Advanced Settings (hidden by default) -->
     <div class="border-t border-slate-800 pt-2">
       <button
         class="flex items-center gap-2 text-xs text-slate-500 py-2"
         @click="showAdvanced = !showAdvanced"
       >
         <Icon :name="showAdvanced ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="w-4 h-4" />
-        {{ showAdvanced ? 'Hide advanced settings' : 'Show advanced settings' }}
+        {{ showAdvanced ? $t('videoEditor.export.hideAdvanced') : $t('videoEditor.export.showAdvanced') }}
       </button>
 
       <div v-if="showAdvanced" class="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
@@ -233,20 +235,20 @@ function getPhaseLabel() {
           v-if="!excludeAudio"
           class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3"
         >
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Audio</p>
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ $t('common.audio') }}</p>
           <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Audio Codec">
+            <UFormField :label="$t('videoEditor.export.audioCodec')">
               <USelect
                 v-model="audioCodec"
                 :options="[
-                  { value: 'aac', label: 'AAC' },
-                  { value: 'opus', label: 'Opus' },
+                  { value: 'aac', label: $t('videoEditor.export.codec.aac') },
+                  { value: 'opus', label: $t('videoEditor.export.codec.opus') },
                 ]"
                 class="w-full"
                 :disabled="isExporting"
               />
             </UFormField>
-            <UFormField label="Sample Rate">
+            <UFormField :label="$t('videoEditor.audio.sampleRate')">
               <USelect
                 :model-value="audioSampleRate"
                 :options="[
@@ -259,7 +261,7 @@ function getPhaseLabel() {
               />
             </UFormField>
           </div>
-          <UFormField label="Audio Bitrate">
+          <UFormField :label="$t('videoEditor.export.audioBitrate')">
             <UInput
               :model-value="String(audioBitrateKbps)"
               type="number"
@@ -277,16 +279,19 @@ function getPhaseLabel() {
         </div>
 
         <div class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Metadata</p>
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ $t('videoEditor.export.metadata') }}</p>
           <div class="grid grid-cols-1 gap-4">
-            <UFormField label="Title">
-              <UInput v-model="metadataTitle" placeholder="Project title" :disabled="isExporting" />
+            <UFormField :label="$t('videoEditor.export.metadataTitle')">
+              <UInput v-model="metadataTitle" :placeholder="$t('videoEditor.export.metadataTitle')" :disabled="isExporting" />
             </UFormField>
-            <UFormField label="Author">
-              <UInput v-model="metadataAuthor" placeholder="Author" :disabled="isExporting" />
+            <UFormField :label="$t('videoEditor.export.metadataDescription')">
+              <UInput v-model="metadataDescription" :placeholder="$t('videoEditor.export.metadataDescription')" :disabled="isExporting" />
+            </UFormField>
+            <UFormField :label="$t('videoEditor.export.metadataAuthor')">
+              <UInput v-model="metadataAuthor" :placeholder="$t('videoEditor.export.metadataAuthor')" :disabled="isExporting" />
             </UFormField>
           </div>
-          <UFormField label="Tags">
+          <UFormField :label="$t('videoEditor.export.metadataTags')">
             <UTextarea
               v-model="metadataTags"
               placeholder="tag1, tag2"
@@ -298,7 +303,7 @@ function getPhaseLabel() {
       </div>
     </div>
 
-    <!-- Прогресс экспорта -->
+    <!-- Export Progress -->
     <div
       v-if="isExporting"
       class="bg-slate-900 p-4 rounded-xl border border-blue-500/30 shadow-lg shadow-blue-500/5"
@@ -315,14 +320,14 @@ function getPhaseLabel() {
           size="sm"
           class="flex-1"
           icon="lucide:x"
-          label="Cancel"
+          :label="$t('common.cancel')"
           :loading="cancelRequested"
           @click="cancelExport"
         />
       </div>
     </div>
 
-    <!-- Ошибки -->
+    <!-- Errors -->
     <div
       v-if="exportError"
       class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs"
@@ -330,21 +335,22 @@ function getPhaseLabel() {
       {{ exportError }}
     </div>
 
-    <!-- Кнопка запуска -->
+    <!-- Start Button -->
     <div class="mt-auto pt-6 pb-4">
       <UButton
         block
         size="lg"
         color="primary"
         icon="lucide:download"
-        :label="isExporting ? 'Exporting...' : 'Start Export'"
+        :label="isExporting ? $t('videoEditor.export.exporting') : $t('videoEditor.export.startExport')"
         :loading="isExporting"
         :disabled="!!filenameError || !outputFilename.trim()"
         @click="handleStartExport"
       />
       <p class="text-[10px] text-slate-500 text-center mt-3">
-        Keep the app open and the screen awake until export finishes
+        {{ $t('videoEditor.export.keepAppOpenHint') }}
       </p>
     </div>
   </div>
 </template>
+

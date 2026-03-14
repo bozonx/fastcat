@@ -123,20 +123,20 @@ function handleTrackPanInput(trackId: string, event: Event) {
             <p class="text-xs uppercase tracking-[0.18em] text-slate-500">
               {{ t('fastcat.audioMixer.title', 'Mixer') }}
             </p>
-            <h2 class="mt-1 text-base font-semibold text-white">Master output</h2>
+            <h2 class="mt-1 text-base font-semibold text-white">{{ $t('fastcat.audioMixer.master') }} output</h2>
           </div>
           <UButton
             size="sm"
             :variant="isMasterMuted ? 'solid' : 'soft'"
             :color="isMasterMuted ? 'error' : 'neutral'"
-            :label="isMasterMuted ? 'Muted' : 'Mute'"
+            :label="isMasterMuted ? $t('common.disabled') : $t('common.enabled')"
             @click="toggleMasterMute"
           />
         </div>
 
         <div class="mt-4 space-y-3">
           <div class="flex items-center justify-between text-xs text-slate-400">
-            <span>Level</span>
+            <span>{{ $t('common.level') }}</span>
             <span class="font-medium text-slate-200">{{ masterVolume }}%</span>
           </div>
           <input
@@ -149,7 +149,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
             @input="updateMasterVolume"
           />
           <div class="flex items-center justify-between text-[11px] text-slate-500">
-            <span>Peak</span>
+            <span>{{ $t('common.peak') }}</span>
             <span>{{ formatDb(masterPeakDb) }}</span>
           </div>
         </div>
@@ -158,7 +158,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
       <section class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold text-white">Tracks</h3>
+            <h3 class="text-sm font-semibold text-white">{{ $t('common.tracks') }}</h3>
             <p class="text-xs text-slate-500">Adjust level, pan, mute, and solo for each track</p>
           </div>
           <div class="rounded-full border border-slate-800 px-2 py-1 text-[10px] text-slate-400">
@@ -183,7 +183,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
               <div class="min-w-0">
                 <h4 class="truncate text-sm font-medium text-white">{{ track.name }}</h4>
                 <p class="text-[11px] text-slate-500">
-                  {{ track.kind === 'video' ? 'Video track audio' : 'Audio track' }}
+                  {{ track.kind === 'video' ? $t('fastcat.track.video.title') : $t('fastcat.track.audio.title') }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
@@ -207,7 +207,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
               <div class="space-y-2">
                 <div class="flex items-center justify-between text-xs text-slate-400">
-                  <span>Volume</span>
+                  <span>{{ $t('fastcat.clip.audio.volume') }}</span>
                   <span class="font-medium text-slate-200"
                     >{{ Math.round(track.gain * 100) }}%</span
                   >
@@ -225,7 +225,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
 
               <div class="space-y-2">
                 <div class="flex items-center justify-between text-xs text-slate-400">
-                  <span>Pan</span>
+                  <span>{{ $t('common.pan') }}</span>
                   <span class="font-medium text-slate-200">{{ formatPan(track.balance) }}</span>
                 </div>
                 <input
@@ -241,12 +241,13 @@ function handleTrackPanInput(trackId: string, event: Event) {
             </div>
 
             <div class="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-              <span>Peak</span>
+              <span>{{ $t('common.peak') }}</span>
               <span>{{ formatDb(track.peakDb) }}</span>
             </div>
           </article>
         </div>
       </section>
+
     </div>
   </div>
 </template>
