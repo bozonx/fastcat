@@ -8,6 +8,7 @@ const props = defineProps<{
   projectName?: string;
 }>();
 
+const { t } = useI18n();
 const url = ref<string | null>(null);
 
 const load = () => {
@@ -46,7 +47,7 @@ watch(() => [props.projectId, props.projectRelativePath], load);
       v-if="url"
       :src="url"
       class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-      alt="Project Thumbnail"
+      :alt="t('fastcat.startup.projectThumbnail')"
     />
     <div
       v-else

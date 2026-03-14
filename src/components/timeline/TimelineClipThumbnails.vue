@@ -3,7 +3,7 @@ import { computed, ref, useTemplateRef } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import type { TimelineClipItem } from '~/timeline/types';
 import { useTimelineClipThumbnails } from '~/composables/timeline/useTimelineClipThumbnails';
-
+const { t } = useI18n();
 const props = defineProps<{
   item: TimelineClipItem;
   width: number;
@@ -53,7 +53,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
         v-for="tile in thumbnailTiles"
         :key="tile.key"
         :src="tile.url"
-        alt=""
+        :alt="t('fastcat.timeline.clipThumbnail')"
         class="absolute top-0 h-full object-cover object-center"
         :style="{
           left: `${tile.leftPx}px`,
@@ -67,7 +67,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
       <img
         v-if="imageUrl"
         :src="imageUrl"
-        alt="clip thumbnail"
+        :alt="t('fastcat.timeline.clipThumbnail')"
         class="h-full w-full object-cover object-center"
       />
     </div>

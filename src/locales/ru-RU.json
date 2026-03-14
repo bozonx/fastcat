@@ -53,6 +53,7 @@
     "hidden": "Скрыт",
     "hide": "Скрыть",
     "hideArchived": "Скрыть архивные",
+    "imagePreview": "Предпросмотр изображения",
     "inlineMarkdownHelp": "Разрешена только inline-разметка (жирный, курсив, ссылки). Блочные элементы (заголовки, списки, цитаты) не поддерживаются.",
     "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
@@ -145,7 +146,9 @@
     },
     "warning": "Предупреждение",
     "yes": "Да",
-    "imagePreview": "Предпросмотр изображения"
+    "panCenter": "Центр",
+    "panLeft": "Слева {value}%",
+    "panRight": "Справа {value}%"
   },
   "errors": {
     "notFound": "Не найдено"
@@ -158,7 +161,10 @@
       "mute": "M",
       "solo": "S",
       "title": "Микшер",
-      "video": "Видео"
+      "video": "Видео",
+      "output": "выход",
+      "tracksHint": "Настройте уровень, панораму, беззвучный и соло режим для каждой дорожки",
+      "noTracks": "Звуковых дорожек пока нет."
     },
     "captions": {
       "generate": "Создать субтитры",
@@ -181,12 +187,12 @@
         "title": "Фейды звука"
       },
       "blendMode": {
-        "normal": "Обычный",
         "add": "Добавление",
-        "multiply": "Умножение",
-        "screen": "Экран",
         "darken": "Затемнение",
-        "lighten": "Осветление"
+        "lighten": "Осветление",
+        "multiply": "Умножение",
+        "normal": "Обычный",
+        "screen": "Экран"
       },
       "cloudType": "Тип облаков",
       "fullWaveform": "Полная вейвформа",
@@ -323,6 +329,9 @@
       "vertexOffset": "Смещение вершины (%)",
       "width": "Ширина (%)"
     },
+    "startup": {
+      "projectThumbnail": "Предпросмотр проекта"
+    },
     "textClip": {
       "align": "Выравнивание",
       "backgroundColor": "Фон",
@@ -335,12 +344,15 @@
       "width": "Ширина блока"
     },
     "timeline": {
+      "addAdjustment": "Добавить корректирующий слой",
       "addAdjustmentClip": "Добавить клип корректировки",
       "addAudioTrack": "Добавить аудиодорожку",
       "addAudioTrackAbove": "Добавить аудиодорожку сверху",
       "addAudioTrackBelow": "Добавить аудиодорожку снизу",
+      "addBackground": "Добавить фоновый слой",
       "addBackgroundClip": "Добавить фон",
       "addMarkerAtPlayhead": "Добавить маркер на курсор",
+      "addText": "Добавить текст",
       "addTextClip": "Добавить текстовый клип",
       "addTransitionIn": "Добавить переход в начале",
       "addTransitionOut": "Добавить переход в конце",
@@ -352,6 +364,7 @@
       "backgroundClipDefaultName": "Фоновый цвет",
       "clipSnapOff": "Без привязки к клипам",
       "clipSnapOn": "Привязка к клипам",
+      "clipThumbnail": "Миниатюра клипа",
       "convertMarkerToZone": "Преобразовать в маркер зоны",
       "convertSelectionToZoneMarker": "Преобразовать в маркер зоны",
       "convertZoneToMarker": "Преобразовать в обычный маркер",
@@ -379,6 +392,7 @@
       "hideThumbnails": "Скрыть миниатюры",
       "hideWaveform": "Скрыть вейвформу",
       "lockClip": "Заблокировать клип",
+      "marker": "Маркер",
       "multipleSelection": "Множественное выделение",
       "muteClip": "Выключить звук",
       "muteClips": "Выключить звук клипов",
@@ -404,6 +418,8 @@
       "rippleTrimLeft": "Обрезать слева со сдвигом",
       "rippleTrimRight": "Обрезать справа со сдвигом",
       "rippleTrimSelection": "Удалить выделение со сдвигом",
+      "selectionEndHandle": "Конец области выделения",
+      "selectionStartHandle": "Начало области выделения",
       "showThumbnails": "Показать миниатюры",
       "showWaveform": "Показать вейвформу",
       "speed": "Скорость...",
@@ -542,15 +558,8 @@
       "version": "Версия",
       "waveformFull": "Полная вейвформа",
       "waveformHalf": "Половина вейвформы",
-      "addAdjustment": "Добавить корректирующий слой",
-      "addBackground": "Добавить фоновый слой",
-      "addText": "Добавить текст",
-      "selectionStartHandle": "Начало области выделения",
-      "selectionEndHandle": "Конец области выделения",
-      "marker": "Маркер",
-      "zoneMarkerStart": "Начало зоны",
       "zoneMarkerEnd": "Конец зоны",
-      "clipThumbnail": "Миниатюра клипа"
+      "zoneMarkerStart": "Начало зоны"
     },
     "track": {
       "actions": "Действия",
@@ -568,9 +577,6 @@
     "welcome": {
       "openWorkspace": "Выбрать папку рабочей области",
       "selectFolder": "Выберите папку рабочей области на вашем компьютере. В этой папке будут храниться все ваши файлы проектов, медиа-прокси и кэш."
-    },
-    "startup": {
-      "projectThumbnail": "Предпросмотр проекта"
     }
   },
   "form": {
@@ -599,10 +605,13 @@
       "audioBitrateHelp": "Целевой битрейт аудио.",
       "audioCodec": "Аудио кодек",
       "bitrateMode": "Режим битрейта",
+      "bitrateModeCbr": "Постоянный (CBR)",
+      "bitrateModeVbr": "Переменный (VBR)",
       "codec": {
         "aac": "AAC",
         "opus": "Opus"
       },
+      "codecHint": "Видео: {video} · Аудио: {audio}",
       "convert": "Конвертировать",
       "convertFile": "Конвертация файла: {file}",
       "doNotClose": "Пожалуйста, не закрывайте это окно и не переходите на другие страницы во время экспорта.",
@@ -654,10 +663,7 @@
       "videoBitrateHelp": "Примерный целевой битрейт. Чем выше, тем лучше качество и больше размер файла.",
       "videoCodec": "Видео кодек",
       "warningTitle": "Предупреждения при экспорте",
-      "width": "Ширина",
-      "codecHint": "Видео: {video} · Аудио: {audio}",
-      "bitrateModeVbr": "Переменный (VBR)",
-      "bitrateModeCbr": "Постоянный (CBR)"
+      "width": "Ширина"
     },
     "fileManager": {
       "actions": {

@@ -53,6 +53,7 @@
     "hidden": "Hidden",
     "hide": "Hide",
     "hideArchived": "Hide Archived",
+    "imagePreview": "Image preview",
     "inlineMarkdownHelp": "Only inline markdown is allowed (bold, italic, links). Block elements like headings or lists are not supported here.",
     "items": "Items",
     "itemsSelected": "Selected: {count}",
@@ -145,7 +146,9 @@
     },
     "warning": "Warning",
     "yes": "Yes",
-    "imagePreview": "Image preview"
+    "panCenter": "Center",
+    "panLeft": "Left {value}%",
+    "panRight": "Right {value}%"
   },
   "errors": {
     "notFound": "Not found"
@@ -158,7 +161,10 @@
       "mute": "M",
       "solo": "S",
       "title": "Mixer",
-      "video": "Video"
+      "video": "Video",
+      "output": "output",
+      "tracksHint": "Adjust level, pan, mute, and solo for each track",
+      "noTracks": "No tracks with audio yet."
     },
     "captions": {
       "generate": "Generate captions",
@@ -181,12 +187,12 @@
         "title": "Audio fades"
       },
       "blendMode": {
-        "normal": "Normal",
         "add": "Add",
-        "multiply": "Multiply",
-        "screen": "Screen",
         "darken": "Darken",
-        "lighten": "Lighten"
+        "lighten": "Lighten",
+        "multiply": "Multiply",
+        "normal": "Normal",
+        "screen": "Screen"
       },
       "cloudType": "Cloud Type",
       "fullWaveform": "Full waveform",
@@ -323,6 +329,9 @@
       "vertexOffset": "Vertex Offset (%)",
       "width": "Width (%)"
     },
+    "startup": {
+      "projectThumbnail": "Project preview"
+    },
     "textClip": {
       "align": "Align",
       "backgroundColor": "Background",
@@ -335,12 +344,15 @@
       "width": "Width"
     },
     "timeline": {
+      "addAdjustment": "Add adjustment clip",
       "addAdjustmentClip": "Add adjustment clip",
       "addAudioTrack": "Add audio track",
       "addAudioTrackAbove": "Add audio track above",
       "addAudioTrackBelow": "Add audio track below",
+      "addBackground": "Add background color",
       "addBackgroundClip": "Add background clip",
       "addMarkerAtPlayhead": "Add marker at playhead",
+      "addText": "Add text clip",
       "addTextClip": "Add text clip",
       "addTransitionIn": "Add transition in",
       "addTransitionOut": "Add transition out",
@@ -352,6 +364,7 @@
       "backgroundClipDefaultName": "Background Color",
       "clipSnapOff": "No clip snapping",
       "clipSnapOn": "Snap to clips",
+      "clipThumbnail": "Clip thumbnail",
       "convertMarkerToZone": "Convert to zone marker",
       "convertSelectionToZoneMarker": "Convert to zone marker",
       "convertZoneToMarker": "Convert to normal marker",
@@ -379,6 +392,7 @@
       "hideThumbnails": "Hide thumbnails",
       "hideWaveform": "Hide waveform",
       "lockClip": "Lock clip in place",
+      "marker": "Marker",
       "multipleSelection": "Multiple selection",
       "muteClip": "Mute",
       "muteClips": "Mute clips",
@@ -404,6 +418,8 @@
       "rippleTrimLeft": "Ripple trim left",
       "rippleTrimRight": "Ripple trim right",
       "rippleTrimSelection": "Ripple trim selection",
+      "selectionEndHandle": "Selection end handle",
+      "selectionStartHandle": "Selection start handle",
       "showThumbnails": "Show thumbnails",
       "showWaveform": "Show waveform",
       "speed": "Speed...",
@@ -542,15 +558,8 @@
       "version": "Version",
       "waveformFull": "Full waveform",
       "waveformHalf": "Half waveform",
-      "addAdjustment": "Add adjustment clip",
-      "addBackground": "Add background color",
-      "addText": "Add text clip",
-      "selectionStartHandle": "Selection start handle",
-      "selectionEndHandle": "Selection end handle",
-      "marker": "Marker",
-      "zoneMarkerStart": "Zone marker start",
       "zoneMarkerEnd": "Zone marker end",
-      "clipThumbnail": "Clip thumbnail"
+      "zoneMarkerStart": "Zone marker start"
     },
     "track": {
       "actions": "Actions",
@@ -568,9 +577,6 @@
     "welcome": {
       "openWorkspace": "Select Workspace Folder",
       "selectFolder": "Select a workspace folder on your computer. This folder will store all your project files, media proxies, and cache."
-    },
-    "startup": {
-      "projectThumbnail": "Project preview"
     }
   },
   "form": {
@@ -599,10 +605,13 @@
       "audioBitrateHelp": "Target audio bitrate.",
       "audioCodec": "Audio codec",
       "bitrateMode": "Bitrate Mode",
+      "bitrateModeCbr": "CBR",
+      "bitrateModeVbr": "VBR",
       "codec": {
         "aac": "AAC",
         "opus": "Opus"
       },
+      "codecHint": "Video: {video} · Audio: {audio}",
       "convert": "Convert",
       "convertFile": "Convert file: {file}",
       "doNotClose": "Please do not close this window or navigate away during export.",
@@ -654,10 +663,7 @@
       "videoBitrateHelp": "Approximate target bitrate. Higher values produce better quality and larger files.",
       "videoCodec": "Video codec",
       "warningTitle": "Export warnings",
-      "width": "Width",
-      "codecHint": "Video: {video} · Audio: {audio}",
-      "bitrateModeVbr": "VBR",
-      "bitrateModeCbr": "CBR"
+      "width": "Width"
     },
     "fileManager": {
       "actions": {

@@ -134,10 +134,10 @@ function onClipClick(e: MouseEvent) {
       timelineStore.selectTimelineItems([props.item.id]);
 
       if (isShift && !isCtrl) {
-        // Удалится левая часть
+        // Left part will be deleted
         timelineStore.trimToPlayheadLeftNoRipple();
       } else if (!isShift && isCtrl) {
-        // Удалится правая часть
+        // Right part will be deleted
         timelineStore.trimToPlayheadRightNoRipple();
       } else {
         timelineStore.splitClipAtPlayhead();

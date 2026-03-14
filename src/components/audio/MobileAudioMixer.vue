@@ -64,9 +64,9 @@ function formatDb(value: number | undefined): string {
 }
 
 function formatPan(value: number): string {
-  if (Math.abs(value) < 0.01) return 'Center';
-  if (value < 0) return `Left ${Math.round(Math.abs(value) * 100)}%`;
-  return `Right ${Math.round(Math.abs(value) * 100)}%`;
+  if (Math.abs(value) < 0.01) return t('common.panCenter');
+  if (value < 0) return t('common.panLeft', { value: Math.round(Math.abs(value) * 100) });
+  return t('common.panRight', { value: Math.round(Math.abs(value) * 100) });
 }
 
 function updateTrackGain(trackId: string, rawValue: number | string) {
@@ -123,7 +123,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
             <p class="text-xs uppercase tracking-[0.18em] text-slate-500">
               {{ t('fastcat.audioMixer.title', 'Mixer') }}
             </p>
-            <h2 class="mt-1 text-base font-semibold text-white">{{ $t('fastcat.audioMixer.master') }} output</h2>
+            <h2 class="mt-1 text-base font-semibold text-white">{{ t('fastcat.audioMixer.master') }} {{ t('fastcat.audioMixer.output') }}</h2>
           </div>
           <UButton
             size="sm"
@@ -159,7 +159,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
         <div class="flex items-center justify-between gap-3">
           <div>
             <h3 class="text-sm font-semibold text-white">{{ $t('common.tracks') }}</h3>
-            <p class="text-xs text-slate-500">Adjust level, pan, mute, and solo for each track</p>
+            <p class="text-xs text-slate-500">{{ t('fastcat.audioMixer.tracksHint') }}</p>
           </div>
           <div class="rounded-full border border-slate-800 px-2 py-1 text-[10px] text-slate-400">
             {{ trackCards.length }}
@@ -170,7 +170,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
           v-if="trackCards.length === 0"
           class="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-4 py-8 text-center text-sm text-slate-500"
         >
-          No tracks with audio yet.
+          {{ t('fastcat.audioMixer.noTracks') }}
         </div>
 
         <div v-else class="space-y-3">

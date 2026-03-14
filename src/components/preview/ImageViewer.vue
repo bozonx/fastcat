@@ -114,7 +114,7 @@ onUnmounted(() => {});
     >
       <img
         :src="props.src"
-        :alt="props.alt || 'Image preview'"
+        :alt="props.alt || t('common.imagePreview')"
         class="max-w-full max-h-full block checkerboard-bg transition-transform duration-75"
         :style="imageStyle"
         draggable="false"
