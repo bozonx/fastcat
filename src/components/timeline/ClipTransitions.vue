@@ -36,7 +36,11 @@ const emit = defineEmits<{
     payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
   ): void;
   (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
-  (e: 'createTransition', event: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }): void;
+  (
+    e: 'createTransition',
+    event: PointerEvent,
+    payload: { edge: 'in' | 'out'; drag: boolean },
+  ): void;
 }>();
 
 function transitionUsToPx(us: number) {
@@ -111,10 +115,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
   if (mode === 'adjacent') {
     const next = getNextClipForItem(track, item);
     if (!next)
-      return t(
-        'fastcat.timeline.transition.errorNoNextClip',
-        'No next clip found for transition',
-      );
+      return t('fastcat.timeline.transition.errorNoNextClip', 'No next clip found for transition');
     const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
     if (gapUs > 1_000)
@@ -215,193 +216,197 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
 </script>
 
 <template>
-  <div class="absolute inset-0 pointer-events-none overflow-hidden rounded" style="z-index: 25">
-    <!-- Transition In -->
-    <div
-      v-if="clip.transitionIn"
-      class="absolute left-0 top-0 bottom-0 z-10"
-      :style="{ width: `${transitionUsToPx(clip.transitionIn.durationUs)}px` }"
-    >
-      <button
-        type="button"
-        class="w-full h-full overflow-hidden group/trans pointer-events-auto"
-        :class="
-          getTransitionButtonClass(
-            selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
-            hasTransitionProblem('in'),
-            Boolean(clip.transitionIn.isOverridden),
-          )
-        "
-        :title="getTransitionButtonTitle('in')"
-        @pointerdown.stop
-        @click.stop="
-          canEdit &&
-          emit('select', $event as PointerEvent, {
-            trackId: clip.trackId,
-            itemId: clip.id,
-            edge: 'in',
-          })
-        "
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute inset-0 pointer-events-none overflow-hidden rounded" style="z-index: 25">
+      <!-- Transition In -->
+      <div
+        v-if="clip.transitionIn"
+        class="absolute left-0 top-0 bottom-0 z-10"
+        :style="{ width: `${transitionUsToPx(clip.transitionIn.durationUs)}px` }"
       >
-        <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transparent'">
+        <button
+          type="button"
+          class="w-full h-full overflow-hidden group/trans pointer-events-auto"
+          :class="
+            getTransitionButtonClass(
+              selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
+              hasTransitionProblem('in'),
+              Boolean(clip.transitionIn.isOverridden),
+            )
+          "
+          :title="getTransitionButtonTitle('in')"
+          @pointerdown.stop
+          @click.stop="
+            canEdit &&
+            emit('select', $event as PointerEvent, {
+              trackId: clip.trackId,
+              itemId: clip.id,
+              edge: 'in',
+            })
+          "
+        >
+          <template v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'transparent'">
+            <svg
+              class="w-full h-full block absolute inset-0"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+            >
+              <rect x="0" y="0" width="100" height="100" fill="transparent" />
+              <rect
+                v-for="line in getTransitionFadeLines('in')"
+                :key="`fade-in-${line.x}`"
+                :x="line.x"
+                y="0"
+                :width="line.width"
+                height="100"
+                :fill="getFadeLineColor(hasTransitionProblem('in'))"
+              />
+            </svg>
+          </template>
           <svg
+            v-else
             class="w-full h-full block absolute inset-0"
             preserveAspectRatio="none"
             viewBox="0 0 100 100"
           >
-            <rect x="0" y="0" width="100" height="100" fill="transparent" />
-            <rect
-              v-for="line in getTransitionFadeLines('in')"
-              :key="`fade-in-${line.x}`"
-              :x="line.x"
-              y="0"
-              :width="line.width"
-              height="100"
-              :fill="getFadeLineColor(hasTransitionProblem('in'))"
+            <path
+              :d="getTransitionCurvePath('in')"
+              :fill="getTransitionSvgFill('in', hasTransitionProblem('in'))"
             />
           </svg>
-        </template>
-        <svg
-          v-else
-          class="w-full h-full block absolute inset-0"
-          preserveAspectRatio="none"
-          viewBox="0 0 100 100"
-        >
-          <path
-            :d="getTransitionCurvePath('in')"
-            :fill="getTransitionSvgFill('in', hasTransitionProblem('in'))"
+          <span
+            v-if="hasTransitionProblem('in')"
+            class="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 z-50"
+            :title="getTransitionButtonTitle('in')"
           />
-        </svg>
-        <span
-          v-if="hasTransitionProblem('in')"
-          class="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 z-50"
-          :title="getTransitionButtonTitle('in')"
-        />
-        <span
-          v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
-          class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
-        />
-        <span
-          v-else-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'background'"
-          class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
-        />
-        <div
-          v-if="canEdit && !clip.locked"
-          class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-          @pointerdown.stop.prevent="
-            emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
+          <span
+            v-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
+            class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+          />
+          <span
+            v-else-if="(clip.transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'background'"
+            class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
+          />
+          <div
+            v-if="canEdit && !clip.locked"
+            class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
+            @pointerdown.stop.prevent="
+              emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
+            "
+          />
+        </button>
+      </div>
+
+      <!-- Transition Out -->
+      <div
+        v-if="clip.transitionOut"
+        class="absolute right-0 top-0 bottom-0 z-10"
+        :style="{ width: `${transitionUsToPx(clip.transitionOut.durationUs)}px` }"
+      >
+        <button
+          type="button"
+          class="w-full h-full overflow-hidden group/trans pointer-events-auto"
+          :class="
+            getTransitionButtonClass(
+              selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
+              hasTransitionProblem('out'),
+              Boolean(clip.transitionOut.isOverridden),
+            )
           "
-        />
-      </button>
+          :title="getTransitionButtonTitle('out')"
+          @pointerdown.stop
+          @click.stop="
+            canEdit &&
+            emit('select', $event as PointerEvent, {
+              trackId: clip.trackId,
+              itemId: clip.id,
+              edge: 'out',
+            })
+          "
+        >
+          <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transparent'">
+            <svg
+              class="w-full h-full block absolute inset-0"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+            >
+              <rect x="0" y="0" width="100" height="100" fill="transparent" />
+              <rect
+                v-for="line in getTransitionFadeLines('out')"
+                :key="`fade-out-${line.x}`"
+                :x="line.x"
+                y="0"
+                :width="line.width"
+                height="100"
+                :fill="getFadeLineColor(hasTransitionProblem('out'))"
+              />
+            </svg>
+          </template>
+          <svg
+            v-else
+            class="w-full h-full block absolute inset-0"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+          >
+            <path
+              :d="getTransitionCurvePath('out')"
+              :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))"
+            />
+          </svg>
+          <span
+            v-if="hasTransitionProblem('out')"
+            class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 z-50"
+            :title="getTransitionButtonTitle('out')"
+          />
+          <span
+            v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
+            class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+          />
+          <span
+            v-else-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'background'"
+            class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
+          />
+          <div
+            v-if="canEdit && !clip.locked"
+            class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
+            @pointerdown.stop.prevent="
+              emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
+            "
+          />
+        </button>
+      </div>
     </div>
+
     <!-- Create Transition In Handle -->
     <div
-      v-else-if="canEdit && !clip.locked"
-      class="absolute top-1/2 w-6 h-6 -ml-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+      v-if="!clip.transitionIn && canEdit && !clip.locked"
+      class="absolute top-1/2 w-8 h-10 -ml-4 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
+      style="left: 0; z-index: calc(var(--z-clip-trim) + 10)"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
-      style="left: 0"
     >
       <div
-        class="w-3 h-3 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
-        style="clip-path: polygon(0 0, 100% 50%, 0 100%);"
+        class="w-5 h-8 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
         @pointerdown="handleTransitionCreatePointerDown($event, 'in')"
       ></div>
     </div>
 
-    <!-- Transition Out -->
-    <div
-      v-if="clip.transitionOut"
-      class="absolute right-0 top-0 bottom-0 z-10"
-      :style="{ width: `${transitionUsToPx(clip.transitionOut.durationUs)}px` }"
-    >
-      <button
-        type="button"
-        class="w-full h-full overflow-hidden group/trans pointer-events-auto"
-        :class="
-          getTransitionButtonClass(
-            selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
-            hasTransitionProblem('out'),
-            Boolean(clip.transitionOut.isOverridden),
-          )
-        "
-        :title="getTransitionButtonTitle('out')"
-        @pointerdown.stop
-        @click.stop="
-          canEdit &&
-          emit('select', $event as PointerEvent, {
-            trackId: clip.trackId,
-            itemId: clip.id,
-            edge: 'out',
-          })
-        "
-      >
-        <template v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'transparent'">
-          <svg
-            class="w-full h-full block absolute inset-0"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-          >
-            <rect x="0" y="0" width="100" height="100" fill="transparent" />
-            <rect
-              v-for="line in getTransitionFadeLines('out')"
-              :key="`fade-out-${line.x}`"
-              :x="line.x"
-              y="0"
-              :width="line.width"
-              height="100"
-              :fill="getFadeLineColor(hasTransitionProblem('out'))"
-            />
-          </svg>
-        </template>
-        <svg
-          v-else
-          class="w-full h-full block absolute inset-0"
-          preserveAspectRatio="none"
-          viewBox="0 0 100 100"
-        >
-          <path
-            :d="getTransitionCurvePath('out')"
-            :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))"
-          />
-        </svg>
-        <span
-          v-if="hasTransitionProblem('out')"
-          class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 z-50"
-          :title="getTransitionButtonTitle('out')"
-        />
-        <span
-          v-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent'"
-          class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
-        />
-        <span
-          v-else-if="(clip.transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'background'"
-          class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
-        />
-        <div
-          v-if="canEdit && !clip.locked"
-          class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
-          @pointerdown.stop.prevent="
-            emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
-          "
-        />
-      </button>
-    </div>
     <!-- Create Transition Out Handle -->
     <div
-      v-else-if="canEdit && !clip.locked"
-      class="absolute top-1/2 w-6 h-6 -mr-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+      v-if="!clip.transitionOut && canEdit && !clip.locked"
+      class="absolute top-1/2 w-8 h-10 -mr-4 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
+      style="right: 0; z-index: calc(var(--z-clip-trim) + 10)"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
-      style="right: 0"
     >
       <div
-        class="w-3 h-3 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
-        style="clip-path: polygon(0 50%, 100% 0, 100% 100%);"
+        class="w-5 h-8 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
         @pointerdown="handleTransitionCreatePointerDown($event, 'out')"
       ></div>
     </div>

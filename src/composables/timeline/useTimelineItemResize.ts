@@ -441,6 +441,20 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
       if (maxUsRaw <= 0 && newDurationUs <= 0) return;
 
+      const timelineDoc = timelineStore.timelineDoc;
+      const fps = timelineDoc ? timelineDoc.timebase.fps : 30;
+      const frameDurationUs = 1_000_000 / fps;
+
+      // Remove transition if duration is less than a frame
+      if (newDurationUs < frameDurationUs) {
+        timelineStore.updateClipTransition(
+          payload.trackId,
+          payload.itemId,
+          payload.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+        );
+        return;
+      }
+
       const transitionPatch =
         payload.edge === 'in'
           ? {
