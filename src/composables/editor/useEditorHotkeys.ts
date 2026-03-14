@@ -37,11 +37,24 @@ export function useEditorHotkeys() {
   const timelineHandlers = useTimelineHotkeys();
   const playbackHandlers = usePlaybackHotkeys();
 
+  // Combine handlers that overlap (copy, cut, paste)
   const registry: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     ...generalHandlers,
     ...timelineHandlers,
     ...playbackHandlers,
   };
+
+  // Explicitly resolve overlapping handlers
+  const overlappingKeys: HotkeyCommandId[] = ['general.copy', 'general.cut', 'general.paste'];
+  for (const key of overlappingKeys) {
+    if (generalHandlers[key] && timelineHandlers[key]) {
+      registry[key] = (e: KeyboardEvent) => {
+        // Timeline has priority if focus allows timeline hotkeys
+        if (focusStore.canUseTimelineHotkeys && timelineHandlers[key]!(e)) return true;
+        return generalHandlers[key]!(e);
+      };
+    }
+  }
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
   const effectiveHotkeys = computed(() =>
@@ -87,6 +100,9 @@ export function useEditorHotkeys() {
     if (hasBlockingModalState() && e.key !== 'Escape' && !allowsFullscreenExit) return;
 
     if (matched.includes('general.focus') && canHandleFocusTab()) {
+      // Allow native tab navigation if we're in an editable target
+      if (isEditableTarget(e.target)) return;
+
       e.preventDefault();
       focusStore.handleFocusHotkey();
       return;
