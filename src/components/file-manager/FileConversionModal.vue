@@ -289,6 +289,7 @@ const modalTitle = computed(() => {
             v-model:audio-channels="audioChannels"
             v-model:audio-sample-rate="audioSampleRate"
             v-model:audio-reverse="audioReverse"
+            :show-reverse="true"
             :original-sample-rate="originalAudioSampleRate"
             :allow-original-sample-rate="true"
             :disabled="isConverting"

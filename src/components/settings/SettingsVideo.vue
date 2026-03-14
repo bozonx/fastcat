@@ -8,6 +8,7 @@ import {
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -96,9 +97,6 @@ function resetDefaults() {
         {{ t('videoEditor.settings.video.performance', 'Performance') }}
       </div>
       <div class="flex items-center gap-2">
-        <UButton size="xs" color="neutral" variant="ghost" @click="loadDiagnostics">
-          {{ t('videoEditor.settings.video.refreshDiagnostics', 'Refresh diagnostics') }}
-        </UButton>
         <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
           {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
         </UButton>
@@ -108,6 +106,25 @@ function resetDefaults() {
     <div class="flex flex-col gap-3">
       <div class="text-sm font-medium text-ui-text-muted">
         {{ t('videoEditor.settings.video.accelerationDiagnostics', 'Acceleration diagnostics') }}
+      </div>
+
+      <div class="grid grid-cols-4 gap-4">
+        <UFormField
+          :label="t('videoEditor.settings.videoFrameCacheMb', 'Video frame cache (MB)')"
+          :help="
+            t(
+              'videoEditor.settings.videoFrameCacheMbHelp',
+              'Maximum RAM budget for decoded preview video frames. Set 0 to disable the cache.',
+            )
+          "
+        >
+          <WheelNumberInput
+            v-model="workspaceStore.userSettings.optimization.videoFrameCacheMb"
+            :min="0"
+            :max="4096"
+            :step="16"
+          />
+        </UFormField>
       </div>
 
       <div
@@ -190,28 +207,5 @@ function resetDefaults() {
       </div>
     </div>
 
-    <!-- Settings -->
-    <div class="flex flex-col gap-4">
-      <label class="flex items-start gap-3 cursor-pointer group">
-        <UCheckbox v-model="workspaceStore.userSettings.video.enableFfmpeg" class="mt-0.5" />
-        <div class="flex flex-col gap-0.5">
-          <span class="text-sm text-ui-text group-hover:text-ui-text-highlight transition-colors">
-            {{ t('videoEditor.settings.video.enableFfmpeg', 'Use FFmpeg') }}
-          </span>
-          <span class="text-xs text-ui-text-muted">
-            {{
-              t(
-                'videoEditor.settings.video.enableFfmpegHelp',
-                'Enables FFmpeg for certain video processing operations',
-              )
-            }}
-          </span>
-        </div>
-      </label>
-    </div>
-
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
-    </div>
   </div>
 </template>

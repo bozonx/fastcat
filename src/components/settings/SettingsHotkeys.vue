@@ -439,8 +439,5 @@ defineExpose({
       {{ hardcodedHotkeysHint }}
     </div>
 
-    <div class="text-[10px] text-ui-text-muted italic px-1">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
-    </div>
   </div>
 </template>

@@ -7,12 +7,14 @@ const props = withDefaults(
     originalSampleRate?: number | null;
     allowOriginalSampleRate?: boolean;
     hideSampleRate?: boolean;
+    showReverse?: boolean;
   }>(),
   {
     disabled: false,
     originalSampleRate: null,
     allowOriginalSampleRate: false,
     hideSampleRate: false,
+    showReverse: false,
   },
 );
 
@@ -85,7 +87,7 @@ const sampleRateOptions = computed(() => {
         />
       </div>
     </div>
-    <div class="flex items-center justify-between">
+    <div v-if="props.showReverse" class="flex items-center justify-between">
       <label
         class="text-xs text-ui-text-muted font-medium cursor-pointer"
         @click="!props.disabled && (audioReverse = !audioReverse)"

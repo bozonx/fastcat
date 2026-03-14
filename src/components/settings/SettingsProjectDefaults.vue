@@ -108,8 +108,5 @@ function removePreset() {
       :disabled="false"
     />
 
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
-    </div>
   </div>
 </template>
