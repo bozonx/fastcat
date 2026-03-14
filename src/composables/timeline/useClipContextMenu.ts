@@ -21,6 +21,7 @@ interface UseClipContextMenuOptions {
   canEditClipContent: Ref<boolean>;
   timelineDoc: Ref<TimelineDocument | null>;
   projectSettings: Ref<FastCatProjectSettings>;
+  defaultTransitionDurationUs: Ref<number>;
   selectedItemIds: Ref<string[]>;
   applyTimelineCommand: (cmd: TimelineCommand) => void;
   batchApplyTimeline: (cmds: TimelineCommand[]) => void;
@@ -670,9 +671,7 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
 
       const defaultTransitionDurationUs = Math.max(
         0,
-        Math.round(
-          Number(options.projectSettings.value?.transitions?.defaultDurationUs ?? 2_000_000),
-        ),
+        Math.round(Number(options.defaultTransitionDurationUs.value ?? 1_000_000)),
       );
       const clipDurationUs = Math.max(
         0,

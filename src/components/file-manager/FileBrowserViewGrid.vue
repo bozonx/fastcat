@@ -125,7 +125,7 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
             class="relative flex items-center justify-center text-amber-400"
           >
             <ProgressSpinner
-              :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
+              :progress="proxyStore.proxyProgress.get(entry.path || '') ?? 0"
               size="md"
             />
           </div>

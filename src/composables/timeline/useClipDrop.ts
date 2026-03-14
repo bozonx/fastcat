@@ -12,11 +12,7 @@ interface UseClipDropOptions {
   track: Ref<TimelineTrack>;
   clipItem: Ref<TimelineClipItem | null>;
   canEditClipContent: Ref<boolean>;
-  updateClipProperties: (
-    trackId: string,
-    itemId: string,
-    patch: Record<string, unknown>,
-  ) => void;
+  updateClipProperties: (trackId: string, itemId: string, patch: Record<string, unknown>) => void;
   updateClipTransition: (
     trackId: string,
     itemId: string,
@@ -28,6 +24,7 @@ interface UseClipDropOptions {
   selectTimelineItem: (trackId: string, itemId: string, kind: 'clip') => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   triggerScrollToEffects: () => void;
+  defaultTransitionDurationUs: Ref<number>;
 }
 
 export function useClipDrop(options: UseClipDropOptions) {
@@ -119,10 +116,11 @@ export function useClipDrop(options: UseClipDropOptions) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const edge: 'in' | 'out' = e.clientX - rect.left <= rect.width / 2 ? 'in' : 'out';
 
-    const durationUs = Math.min(
-      manifest.defaultDurationUs ?? 1_000_000,
-      Math.round(clip.timelineRange.durationUs * 0.3),
+    const defaultUs = Math.max(
+      0,
+      Math.round(Number(options.defaultTransitionDurationUs.value ?? 1_000_000)),
     );
+    const durationUs = Math.min(defaultUs, Math.round(clip.timelineRange.durationUs * 0.3));
 
     const transition = {
       type: transitionType,

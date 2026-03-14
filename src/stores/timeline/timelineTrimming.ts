@@ -84,14 +84,14 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
     if (!updatedTrack) return;
 
-    const right =
-      updatedTrack.items
-        .filter((it) => it.kind === 'clip')
-        .find((it) => it.timelineRange.startUs === cutUs) ?? null;
-    if (!right || right.kind !== 'clip') return;
+    // After split, 'item.id' is the LEFT part
+    const left =
+      updatedTrack.items.filter((it) => it.kind === 'clip').find((it) => it.id === target.itemId) ??
+      null;
+    if (!left || left.kind !== 'clip') return;
 
     deps.applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
+      { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
       { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 
@@ -128,13 +128,15 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
     if (!updatedTrack) return;
 
-    const left =
-      updatedTrack.items.filter((it) => it.kind === 'clip').find((it) => it.id === target.itemId) ??
-      null;
-    if (!left || left.kind !== 'clip') return;
+    // After split, the new item with startUs === cutUs is the RIGHT part
+    const right =
+      updatedTrack.items
+        .filter((it) => it.kind === 'clip')
+        .find((it) => it.timelineRange.startUs === cutUs) ?? null;
+    if (!right || right.kind !== 'clip') return;
 
     deps.applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
+      { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
       { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
     );
 

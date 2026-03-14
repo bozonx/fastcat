@@ -590,7 +590,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   watch(
     () => proxyStore.existingProxies.value,
-    (newVal, oldVal) => {
+    (newVal) => {
       if (isUnmounted) return;
       if (!useProxyInMonitor.value) return;
 
@@ -601,8 +601,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const hasNewProxyForClips = [...clips, ...audio].some((c) => {
         const path = c.source?.path;
         if (!path) return false;
-        // If it was not in oldVal but in newVal, we need a rebuild
-        return !oldVal?.has(path) && newVal.has(path);
+        // Since Set mutations don't provide deep old/new comparison easily,
+        // we just check if it currently has a proxy. We should ideally check
+        // if we weren't already using it, but this serves as a fallback.
+        // The previous logic checked oldVal?.has(path), but in Vue oldVal === newVal
+        // for mutated objects. We will just check if the new proxy is in our timeline.
+        return newVal.has(path);
       });
 
       if (hasNewProxyForClips) {
@@ -610,7 +614,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         scheduleBuild();
       }
     },
-    { deep: false },
+    { deep: true }, // We need deep to watch Set mutations
   );
 
   watch(audioClipSourceSignature, () => {

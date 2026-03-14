@@ -49,15 +49,6 @@ export function useEditorHotkeys() {
     if (e.defaultPrevented) return;
     if (e.repeat) return;
 
-    if (e.key === 'Escape') {
-      if (timelineStore.isTrimModeActive) {
-        timelineStore.isTrimModeActive = false;
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-    }
-
     const combo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
     if (!combo) return;
 
@@ -71,13 +62,23 @@ export function useEditorHotkeys() {
         matched.push(cmdId);
       }
     }
+
+    if (matched.includes('general.deselect')) {
+      if (timelineStore.isTrimModeActive) {
+        timelineStore.isTrimModeActive = false;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
     if (matched.length === 0) return;
 
     const allowsFullscreenExit = matched.includes('general.fullscreen');
 
     if (hasBlockingModalState() && e.key !== 'Escape' && !allowsFullscreenExit) return;
 
-    if (e.key === 'Tab' && canHandleFocusTab()) {
+    if (matched.includes('general.focus') && canHandleFocusTab()) {
       e.preventDefault();
       focusStore.handleFocusHotkey();
       return;

@@ -107,6 +107,18 @@ function clearCache() {
       </div>
     </UFormField>
 
+    <UFormField
+      :label="t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (ms)')"
+    >
+      <WheelNumberInput
+        :model-value="Math.round(workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000)"
+        :min="100"
+        :max="10000"
+        :step="100"
+        @update:model-value="v => workspaceStore.userSettings.timeline.defaultTransitionDurationUs = v * 1000"
+      />
+    </UFormField>
+
     <div class="flex flex-col gap-2 pt-4 border-t border-ui-border">
       <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
         {{ t('videoEditor.settings.advancedSection', 'Advanced') }}

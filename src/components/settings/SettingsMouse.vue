@@ -595,6 +595,15 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
             </tbody>
           </table>
         </div>
+
+        <div class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30 text-ui-text-muted">
+          <ul class="space-y-1 px-1">
+            <li class="flex items-start gap-2 text-[11px] leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedLeftClick') }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="flex flex-col gap-3">
@@ -876,7 +885,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
             <UIcon name="i-heroicons-information-circle" class="w-3 h-3" />
             {{ t('videoEditor.settings.mouseHardcodedTitle', 'Fixed Functions') }}
           </div>
-          <ul class="space-y-1 px-1">
+          <ul class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 px-1">
             <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
               <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
               {{ t('videoEditor.settings.mouseHardcodedLeftDrag') }}
@@ -892,6 +901,18 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
             <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
               <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
               {{ t('videoEditor.settings.mouseHardcodedShiftClick') }}
+            </li>
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedRazorClick') }}
+            </li>
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedRazorShiftClick') }}
+            </li>
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedRazorCtrlClick') }}
             </li>
           </ul>
         </div>
@@ -1057,6 +1078,15 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30">
+          <ul class="space-y-1 px-1">
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedDblClickTrackHeader') }}
+            </li>
+          </ul>
         </div>
       </div>
 
@@ -1291,9 +1321,16 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
 
+        <div class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30 text-ui-text-muted">
+          <ul class="space-y-1 px-1">
+            <li class="flex items-start gap-2 text-[11px] leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedDblClickMonitor') }}
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
