@@ -307,7 +307,19 @@ const onDrop = async (e: DragEvent, trackId: string) => {
 };
 const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e);
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
-  if (e.button === 1) startPan(e);
+  if (e.button === 1) {
+    const settings = workspaceStore.userSettings.mouse.timeline;
+    if (settings.middleDrag === 'pan') {
+      startPan(e);
+    } else if (settings.middleDrag === 'move_playhead') {
+      const el = scrollEl.value;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left + el.scrollLeft;
+      timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+      startPlayheadDrag(e);
+    }
+  }
 };
 const onTimelinePointerMove = onGlobalPointerMove;
 const onTimelinePointerUp = onGlobalPointerUp;

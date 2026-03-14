@@ -104,17 +104,19 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'pan' | 'move_playhead' | 'none';
-      doubleClick: 'add_marker' | 'none';
+      middleClick: 'add_marker' | 'reset_zoom' | 'none';
+      doubleClick: 'add_marker' | 'reset_zoom' | 'none';
+      shiftClick: 'add_marker' | 'reset_zoom' | 'none';
       drag: 'pan' | 'move_playhead' | 'none';
-      shiftClick: 'add_marker_and_edit' | 'none';
+      middleDrag: 'pan' | 'move_playhead' | 'none';
     };
     timeline: {
       wheel: string;
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'pan' | 'none';
+      middleClick: 'pan' | 'move_playhead' | 'none';
+      middleDrag: 'pan' | 'move_playhead' | 'none';
     };
     trackHeaders: {
       wheel: string;
@@ -207,17 +209,19 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'seek_second',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_horizontal',
-      middleClick: 'pan',
+      middleClick: 'none',
       doubleClick: 'add_marker',
+      shiftClick: 'none',
       drag: 'move_playhead',
-      shiftClick: 'add_marker_and_edit',
+      middleDrag: 'pan',
     },
     timeline: {
       wheel: 'zoom_horizontal',
       wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
-      middleClick: 'pan',
+      middleClick: 'none',
+      middleDrag: 'pan',
     },
     trackHeaders: {
       wheel: 'scroll_vertical',

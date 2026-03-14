@@ -23,13 +23,15 @@ export const TRACK_HEADERS_WHEEL_ACTIONS = ['resize_track', ...COMMON_WHEEL_ACTI
 
 export const RULER_WHEEL_ACTIONS = COMMON_WHEEL_ACTIONS;
 
-export const RULER_DOUBLE_CLICK_ACTIONS = ['add_marker', 'none'] as const;
+export const RULER_CLICK_ACTIONS = ['add_marker', 'reset_zoom', 'none'] as const;
+
+export const RULER_DOUBLE_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
 export const MIDDLE_CLICK_ACTIONS = ['pan', 'move_playhead', 'none'] as const;
 
 export const DRAG_ACTIONS = ['pan', 'move_playhead', 'none'] as const;
 
-export const SHIFT_CLICK_ACTIONS = ['add_marker_and_edit', 'none'] as const;
+export const SHIFT_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
 /**
  * Helper to determine if a wheel event is primarily a horizontal scroll

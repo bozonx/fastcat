@@ -168,6 +168,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     playbackGestureHandler,
   });
 
+  function resetTimelineZoom() {
+    timelineZoom.value = 50;
+  }
+
   function setMasterMuted(nextMuted: boolean) {
     const muted = Boolean(nextMuted);
     audioMuted.value = muted;
@@ -614,6 +618,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     goToEnd: playback.goToEnd,
     setAudioVolume: playback.setAudioVolume,
     setTimelineZoom: playback.setTimelineZoom,
+    resetTimelineZoom,
     toggleAudioMuted: playback.toggleAudioMuted,
     setMasterMuted,
     setPlaybackGestureHandler: playback.setPlaybackGestureHandler,
