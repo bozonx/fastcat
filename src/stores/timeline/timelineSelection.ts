@@ -22,6 +22,7 @@ export interface TimelineSelectionApi {
   selectTrack: (trackId: string | null) => void;
   toggleSelection: (itemId: string, options?: { multi?: boolean }) => void;
   selectTimelineItems: (itemIds: string[]) => void;
+  selectAllClipsOnTrack: (trackId: string) => void;
 
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
@@ -83,6 +84,13 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     deps.selectedItemIds.value = [...itemIds];
   }
 
+  function selectAllClipsOnTrack(trackId: string) {
+    const track = deps.timelineDoc.value?.tracks.find((t) => t.id === trackId);
+    if (!track) return;
+    const ids = track.items.filter((it) => it.kind === 'clip').map((it) => it.id);
+    selectTimelineItems(ids);
+  }
+
   function getHotkeyTargetClip(): { trackId: string; itemId: string } | null {
     const doc = deps.timelineDoc.value;
     if (!doc) return null;
@@ -133,6 +141,7 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     selectTrack,
     toggleSelection,
     selectTimelineItems,
+    selectAllClipsOnTrack,
     getHotkeyTargetClip,
     getSelectedOrActiveTrackId,
   };
