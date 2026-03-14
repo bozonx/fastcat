@@ -45,7 +45,9 @@ export function createProjectMetaRepository(input: {
         tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
         createdAt: String(raw.createdAt || new Date().toISOString()),
         updatedAt: String(raw.updatedAt || new Date().toISOString()),
-        lastOpenedTimelinePath: raw.lastOpenedTimelinePath ? String(raw.lastOpenedTimelinePath) : undefined,
+        lastOpenedTimelinePath: raw.lastOpenedTimelinePath
+          ? String(raw.lastOpenedTimelinePath)
+          : undefined,
       };
     },
 
@@ -56,7 +58,7 @@ export function createProjectMetaRepository(input: {
         create: true,
       });
       if (!handle) return;
-      
+
       // If we are updating, we should probably load existing first or assume data is complete
       // For now, let's just write what we have, but store/module should handle merging
       await writeJsonToFileHandle({ handle, data });

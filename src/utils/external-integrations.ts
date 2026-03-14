@@ -118,7 +118,10 @@ export function resolveFastCatConnectScopes(params: {
     }
   }
 
-  if (!params.integrations.manualSttApi.enabled || !params.integrations.manualSttApi.overrideFastCat) {
+  if (
+    !params.integrations.manualSttApi.enabled ||
+    !params.integrations.manualSttApi.overrideFastCat
+  ) {
     for (const scope of STT_SCOPES) {
       scopes.add(scope);
     }
@@ -157,7 +160,8 @@ export function resolveExternalServiceConfig(params: {
 
   if (!canUseFastCat) return null;
 
-  const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(fastcatPublicadorBaseUrl);
+  const fastcatExternalApiBaseUrl =
+    getFastCatPublicadorExternalApiBaseUrl(fastcatPublicadorBaseUrl);
   const serviceBaseUrl =
     service === 'files'
       ? joinUrl(fastcatExternalApiBaseUrl, 'vfs')

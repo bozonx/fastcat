@@ -3,14 +3,28 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { EXPORT_DIR_NAME } from '~/utils/constants';
-import { getExportWorkerClient, setExportHostApi, terminateExportWorker, restartExportWorker } from '~/utils/video-editor/worker-client';
+import {
+  getExportWorkerClient,
+  setExportHostApi,
+  terminateExportWorker,
+  restartExportWorker,
+} from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import { BASE_VIDEO_CODEC_OPTIONS, checkAudioCodecSupport, checkVideoCodecSupport } from '~/utils/webcodecs';
+import {
+  BASE_VIDEO_CODEC_OPTIONS,
+  checkAudioCodecSupport,
+  checkVideoCodecSupport,
+} from '~/utils/webcodecs';
 
 import type { ExportOptions, WorkerTimelineClip } from './types';
 import { getExt, resolveNextAvailableFilename } from './filenameUtils';
-import { buildVideoWorkerPayload, buildVideoWorkerPayloadFromTracks, toWorkerTimelineClips, trimWorkerClipToRange } from './payloadBuilder';
+import {
+  buildVideoWorkerPayload,
+  buildVideoWorkerPayloadFromTracks,
+  toWorkerTimelineClips,
+  trimWorkerClipToRange,
+} from './payloadBuilder';
 
 export function useTimelineExport() {
   const workspaceStore = useWorkspaceStore();

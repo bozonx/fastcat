@@ -185,7 +185,10 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
         />
       </div>
 
-      <div v-else-if="control.kind === 'knob'" class="flex flex-col items-center justify-center gap-1.5 py-1">
+      <div
+        v-else-if="control.kind === 'knob'"
+        class="flex flex-col items-center justify-center gap-1.5 py-1"
+      >
         <Knob
           :model-value="Number(getValue(control.key) ?? control.defaultValue ?? control.min)"
           :min="control.min"
@@ -372,7 +375,15 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
           {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
         </div>
 
-        <div v-else :class="['flex gap-2', control.layout === 'horizontal' ? 'flex-row overflow-x-auto pb-2 snap-x snap-mandatory' : 'flex-col']">
+        <div
+          v-else
+          :class="[
+            'flex gap-2',
+            control.layout === 'horizontal'
+              ? 'flex-row overflow-x-auto pb-2 snap-x snap-mandatory'
+              : 'flex-col',
+          ]"
+        >
           <div
             v-for="(item, index) in getValue(control.key)"
             :key="index"

@@ -35,7 +35,10 @@ const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 const selectedItemIds = computed(() => timelineStore.selectedItemIds);
 
 const isMainBusSelected = computed(
-  () => focusStore.isPanelFocused('audioMixer') && !selectedTrackId.value && selectedItemIds.value.length === 0,
+  () =>
+    focusStore.isPanelFocused('audioMixer') &&
+    !selectedTrackId.value &&
+    selectedItemIds.value.length === 0,
 );
 
 function isTrackSelected(track: TimelineTrack): boolean {

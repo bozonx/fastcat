@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { readJsonFromFileHandle, writeJsonToFileHandle } from '../../../src/repositories/fastcat-fs';
+import {
+  readJsonFromFileHandle,
+  writeJsonToFileHandle,
+} from '../../../src/repositories/fastcat-fs';
 
 function createFileHandleMock(initialText: string) {
   let text = initialText;

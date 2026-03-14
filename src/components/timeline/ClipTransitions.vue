@@ -380,7 +380,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     <!-- Create Transition In Handle -->
     <div
       v-if="!clip.transitionIn && canEdit && !clip.locked"
-      class="absolute top-1/2 w-8 h-10 -ml-4 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
+      class="absolute top-1/2 w-6 h-8 -ml-3 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
       style="left: 0; z-index: calc(var(--z-clip-trim) + 10)"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
@@ -388,7 +388,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
       ]"
     >
       <div
-        class="w-5 h-8 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        class="w-4 h-6 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
         style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
         @pointerdown="handleTransitionCreatePointerDown($event, 'in')"
       ></div>
@@ -397,7 +397,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     <!-- Create Transition Out Handle -->
     <div
       v-if="!clip.transitionOut && canEdit && !clip.locked"
-      class="absolute top-1/2 w-8 h-10 -mr-4 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
+      class="absolute top-1/2 w-6 h-8 -mr-3 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
       style="right: 0; z-index: calc(var(--z-clip-trim) + 10)"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
@@ -405,7 +405,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
       ]"
     >
       <div
-        class="w-5 h-8 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        class="w-4 h-6 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
         style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
         @pointerdown="handleTransitionCreatePointerDown($event, 'out')"
       ></div>

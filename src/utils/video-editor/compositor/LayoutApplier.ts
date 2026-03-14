@@ -1,4 +1,8 @@
-import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE, resolveNormalizedAnchor } from '../clip-layout';
+import {
+  computeClipBoxLayout,
+  TRANSFORM_DESIGN_BASE,
+  resolveNormalizedAnchor,
+} from '../clip-layout';
 import { computeTextLayoutMetrics } from '../text-layout';
 import type { CompositorClip } from './types';
 

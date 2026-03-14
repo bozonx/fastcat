@@ -663,7 +663,6 @@ const {
       <PropertyRow v-if="isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
     </PropertySection>
 
-
     <PropertySection
       v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"
       :title="t('common.meta', 'Meta')"

@@ -5,11 +5,11 @@ import type {
   TimelineClipActionPayload,
   TimelineMoveItemPayload,
   TimelineTrimItemPayload,
+  TimelineTrack,
 } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore } from '~/stores/focus.store';
-import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import {
   computeAnchoredScrollLeft,
@@ -85,7 +85,7 @@ const {
 } = useTimelineInteraction(scrollEl, tracks);
 
 function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) {
-  startMoveItem(event, payload.trackId, payload.itemId, payload.startUs);
+  startMoveItem(event, { trackId: payload.trackId, itemId: payload.itemId, startUs: payload.startUs });
 }
 
 function onStartTrimItem(event: PointerEvent, payload: TimelineTrimItemPayload) {

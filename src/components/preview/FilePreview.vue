@@ -37,15 +37,27 @@ watch(
 function handleEsc(e: KeyboardEvent) {
   if (e.key === 'Escape' && isFullscreenOpen.value) {
     isFullscreenOpen.value = false;
+    e.stopPropagation();
   }
 }
 
+watch(isFullscreenOpen, (val, oldVal) => {
+  if (val && !oldVal) {
+    uiStore.activeModalsCount++;
+  } else if (!val && oldVal) {
+    uiStore.activeModalsCount--;
+  }
+});
+
 onMounted(() => {
-  window.addEventListener('keydown', handleEsc);
+  window.addEventListener('keydown', handleEsc, { capture: true });
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleEsc);
+  if (isFullscreenOpen.value) {
+    uiStore.activeModalsCount--;
+  }
+  window.removeEventListener('keydown', handleEsc, { capture: true });
 });
 </script>
 
@@ -130,9 +142,7 @@ onUnmounted(() => {
       >
         <UIcon name="i-heroicons-document" class="w-16 h-16" />
         <p class="text-sm text-center">
-          {{
-            t('fastcat.preview.unsupported', 'Unsupported file format for visual preview')
-          }}
+          {{ t('fastcat.preview.unsupported', 'Unsupported file format for visual preview') }}
         </p>
       </div>
     </Teleport>

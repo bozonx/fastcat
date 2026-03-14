@@ -9,7 +9,11 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
-import { createDefaultExportPresets, createExportPresetId, resolveExportPreset } from '~/utils/settings';
+import {
+  createDefaultExportPresets,
+  createExportPresetId,
+  resolveExportPreset,
+} from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const props = defineProps<{
@@ -29,7 +33,6 @@ const formatOptions: readonly FormatOption[] = [
 const videoCodecSupport = ref<Record<string, boolean>>({});
 const isLoadingCodecSupport = ref(false);
 
-
 const presetOptions = computed(() =>
   workspaceStore.userSettings.exportPresets.items.map((preset) => ({
     value: preset.id,
@@ -37,7 +40,9 @@ const presetOptions = computed(() =>
   })),
 );
 
-const selectedPreset = computed(() => resolveExportPreset(workspaceStore.userSettings.exportPresets));
+const selectedPreset = computed(() =>
+  resolveExportPreset(workspaceStore.userSettings.exportPresets),
+);
 
 const videoCodecOptions = computed(() =>
   resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value),
@@ -77,8 +82,6 @@ watch(
   { immediate: true },
 );
 
-
-
 function addPreset() {
   const basePreset = selectedPreset.value;
   const preset = {
@@ -108,8 +111,6 @@ function removePreset() {
 
 <template>
   <div class="flex flex-col gap-6">
-
-
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userExport', 'Export presets') }}

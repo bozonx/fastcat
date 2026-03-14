@@ -15,7 +15,8 @@ interface CreateTimelineSelectionRangeParams {
 }
 
 export function createTimelineSelectionRange(params: CreateTimelineSelectionRangeParams) {
-  const { timelineDoc, currentTime, applyTimeline, selectionStore, markerService, trimming } = params;
+  const { timelineDoc, currentTime, applyTimeline, selectionStore, markerService, trimming } =
+    params;
 
   function getSelectionRange(): TimelineSelectionRange | null {
     const range = timelineDoc.value?.metadata?.fastcat?.selectionRange;

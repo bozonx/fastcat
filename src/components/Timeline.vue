@@ -69,7 +69,9 @@ const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
 // Честное центрирование 1px линии через CSS translateX(-50%), без подгонки пикселей
-const playheadTransform = computed(() => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`);
+const playheadTransform = computed(
+  () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
+);
 
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
@@ -80,7 +82,7 @@ const currentFrameHighlightStyle = computed(() => {
   const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000);
   const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
   const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
-  
+
   const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
   const nextFrameStartPx = timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom);
 
@@ -408,8 +410,15 @@ const onDrop = async (e: DragEvent, trackId: string) => {
   clearDragPreview();
 };
 const trackHeadersContainerRef = ref<HTMLElement | null>(null);
-useEventListener(trackHeadersContainerRef, 'wheel', (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders'), { passive: false });
-useEventListener(rulerContainerRef, 'wheel', (e: WheelEvent) => onTimelineWheel(e, 'ruler'), { passive: false });
+useEventListener(
+  trackHeadersContainerRef,
+  'wheel',
+  (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders'),
+  { passive: false },
+);
+useEventListener(rulerContainerRef, 'wheel', (e: WheelEvent) => onTimelineWheel(e, 'ruler'), {
+  passive: false,
+});
 const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent) => {
   if (action === 'none') return;
   if (action === 'reset_zoom') {

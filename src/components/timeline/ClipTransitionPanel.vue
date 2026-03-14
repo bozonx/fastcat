@@ -207,10 +207,7 @@ function handleSavePreset() {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2 font-semibold uppercase tracking-wide">
         <UIcon :name="edgeIcon" class="w-4 h-4 shrink-0 text-primary-400" />
-        <span
-          >{{ edge === 'in' ? 'IN' : 'OUT' }}
-          {{ t('fastcat.timeline.transition.title') }}</span
-        >
+        <span>{{ edge === 'in' ? 'IN' : 'OUT' }} {{ t('fastcat.timeline.transition.title') }}</span>
       </div>
       <div class="flex items-center gap-1">
         <UButton

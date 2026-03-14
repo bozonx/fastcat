@@ -116,6 +116,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     ) {
       return;
     }
+    if (
+      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+    ) {
+      setCurrentDragOperation(resolveDragOperation(e));
+    }
     dragOverEntryPath.value = entry.path ?? null;
     e.dataTransfer!.dropEffect =
       types.includes('Files') || types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey
@@ -145,6 +151,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
+      const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation.value === 'copy';
       let parsed: any = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -161,7 +168,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
-        if (copyRaw) {
+        if (shouldCopy) {
           await options.copyEntry({
             source,
             targetDirPath: targetPath,
@@ -195,6 +202,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       isDragOverPanel.value = true;
+      if (
+        types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+        types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+      ) {
+        setCurrentDragOperation(resolveDragOperation(e));
+      }
       e.dataTransfer!.dropEffect =
         types.includes('Files') || types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey
           ? 'copy'
@@ -219,6 +232,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
+      const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation.value === 'copy';
       let parsed: any = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -235,7 +249,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
-        if (copyRaw) {
+        if (shouldCopy) {
           await options.copyEntry({
             source,
             targetDirPath: targetPath,

@@ -62,14 +62,28 @@ function formatOption(action: string, labels: Record<string, string>) {
   };
 }
 
-const rulerWheelOptions = computed(() => RULER_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
-const timelineWheelOptions = computed(() => TIMELINE_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
-const trackHeadersWheelOptions = computed(() => TRACK_HEADERS_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
-const monitorWheelOptions = computed(() => MONITOR_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
+const rulerWheelOptions = computed(() =>
+  RULER_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)),
+);
+const timelineWheelOptions = computed(() =>
+  TIMELINE_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)),
+);
+const trackHeadersWheelOptions = computed(() =>
+  TRACK_HEADERS_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)),
+);
+const monitorWheelOptions = computed(() =>
+  MONITOR_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)),
+);
 
-const clickActionOptions = computed(() => RULER_CLICK_ACTIONS.map((action) => formatOption(action, commonClickLabels.value)));
-const shiftClickActionOptions = computed(() => SHIFT_CLICK_ACTIONS.map((action) => formatOption(action, commonClickLabels.value)));
-const dragOptions = computed(() => DRAG_ACTIONS.map((action) => formatOption(action, commonDragLabels.value)));
+const clickActionOptions = computed(() =>
+  RULER_CLICK_ACTIONS.map((action) => formatOption(action, commonClickLabels.value)),
+);
+const shiftClickActionOptions = computed(() =>
+  SHIFT_CLICK_ACTIONS.map((action) => formatOption(action, commonClickLabels.value)),
+);
+const dragOptions = computed(() =>
+  DRAG_ACTIONS.map((action) => formatOption(action, commonDragLabels.value)),
+);
 const mouseHorizontalMovementOptions = computed(() =>
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS.map((action) =>
     formatOption(action, commonHorizontalMovementLabels.value),
@@ -563,7 +577,9 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                   :class="{ 'bg-yellow-400/10': isModified('ruler', 'horizontalMovement') }"
                 >
                   <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement') }}
+                    {{
+                      t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement')
+                    }}
                   </span>
                 </td>
                 <td class="p-2 py-2.5 align-middle">
@@ -596,7 +612,9 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
           </table>
         </div>
 
-        <div class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30 text-ui-text-muted">
+        <div
+          class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30 text-ui-text-muted"
+        >
           <ul class="space-y-1 px-1">
             <li class="flex items-start gap-2 text-[11px] leading-tight">
               <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
@@ -844,7 +862,9 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                   :class="{ 'bg-yellow-400/10': isModified('timeline', 'horizontalMovement') }"
                 >
                   <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement') }}
+                    {{
+                      t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement')
+                    }}
                   </span>
                 </td>
                 <td class="p-2 py-2.5 align-middle">
@@ -1322,7 +1342,9 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
           </table>
         </div>
 
-        <div class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30 text-ui-text-muted">
+        <div
+          class="mt-2 px-1 py-1.5 bg-ui-bg-accent/5 rounded border border-ui-border/30 text-ui-text-muted"
+        >
           <ul class="space-y-1 px-1">
             <li class="flex items-start gap-2 text-[11px] leading-tight">
               <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />

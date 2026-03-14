@@ -52,7 +52,9 @@ export function buildTrackRuntimeList(
   return [...explicitTracks, ...inferredTracks].sort((a, b) => a.layer - b.layer);
 }
 
-export function buildPrevClipByIdIndex(clips: CompositorClip[]): Map<string, CompositorClip | null> {
+export function buildPrevClipByIdIndex(
+  clips: CompositorClip[],
+): Map<string, CompositorClip | null> {
   const prevClipById = new Map<string, CompositorClip | null>();
   const byLayer = new Map<number, CompositorClip[]>();
 

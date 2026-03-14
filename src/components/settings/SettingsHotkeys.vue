@@ -39,9 +39,7 @@ const searchQuery = ref('');
 
 const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
 
-const hardcodedHotkeysHint = computed(() =>
-  t('videoEditor.settings.hotkeysHardcodedHint')
-);
+const hardcodedHotkeysHint = computed(() => t('videoEditor.settings.hotkeysHardcodedHint'));
 
 function getCommandTitle(cmdId: HotkeyCommandId): string {
   const fallback = DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
@@ -435,6 +433,5 @@ defineExpose({
     <div class="text-[10px] text-ui-text-muted italic px-1">
       {{ hardcodedHotkeysHint }}
     </div>
-
   </div>
 </template>

@@ -33,7 +33,8 @@ export function useFileDrop(options: UseFileDropOptions) {
     isRootDropOver.value = true;
     e.dataTransfer!.dropEffect =
       e.dataTransfer?.types.includes('Files') ||
-      e.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+      e.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
+      e.shiftKey
         ? 'copy'
         : 'move';
   }
@@ -64,6 +65,8 @@ export function useFileDrop(options: UseFileDropOptions) {
     const internalRaw = copyRaw || moveRaw;
     if (!internalRaw) return;
 
+    const shouldCopy = !!copyRaw || e.shiftKey;
+
     let parsed: any = null;
     try {
       parsed = JSON.parse(internalRaw);
@@ -80,7 +83,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       const source = await options.resolveEntryByPath(sourcePath);
       if (!source) continue;
 
-      if (copyRaw) {
+      if (shouldCopy) {
         await options.copyEntry({
           source,
           targetDirPath: '',

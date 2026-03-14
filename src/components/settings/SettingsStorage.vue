@@ -13,7 +13,9 @@ const isClearWorkspaceVardataConfirmOpen = ref(false);
 
 const isDesktopTauri = computed(() => workspaceStore.workspaceProviderId === 'tauri');
 const isBrowserWorkspaceMode = computed(() => workspaceStore.workspaceProviderId === 'web');
-const isPortableMode = computed(() => workspaceStore.appSettings.paths.placementMode === 'portable');
+const isPortableMode = computed(
+  () => workspaceStore.appSettings.paths.placementMode === 'portable',
+);
 const isDesktopSystemMode = computed(() => isDesktopTauri.value && !isPortableMode.value);
 const isDesktopPortableMode = computed(() => isDesktopTauri.value && isPortableMode.value);
 
@@ -36,7 +38,9 @@ const placementMode = computed({
 });
 
 const workspaceFolderLabel = computed(() => {
-  const handle = workspaceStore.workspaceHandle as (FileSystemDirectoryHandle & { path?: string }) | null;
+  const handle = workspaceStore.workspaceHandle as
+    | (FileSystemDirectoryHandle & { path?: string })
+    | null;
   if (!handle) {
     return t('videoEditor.settings.workspaceFolderNotSelected', 'Workspace folder is not selected');
   }
@@ -195,7 +199,12 @@ function resetPathDefaults() {
       >
         <div class="flex gap-2">
           <UInput v-model="contentRootPath" class="w-full" />
-          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('content')" />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('content')"
+          />
         </div>
       </UFormField>
 
@@ -210,7 +219,12 @@ function resetPathDefaults() {
       >
         <div class="flex gap-2">
           <UInput v-model="dataRootPath" class="w-full" />
-          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('data')" />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('data')"
+          />
         </div>
       </UFormField>
 
@@ -225,7 +239,12 @@ function resetPathDefaults() {
       >
         <div class="flex gap-2">
           <UInput v-model="tempRootPath" class="w-full" />
-          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('temp')" />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('temp')"
+          />
         </div>
       </UFormField>
 
@@ -240,7 +259,12 @@ function resetPathDefaults() {
       >
         <div class="flex gap-2">
           <UInput v-model="proxiesRootPath" class="w-full" />
-          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('proxies')" />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('proxies')"
+          />
         </div>
       </UFormField>
 
@@ -255,7 +279,12 @@ function resetPathDefaults() {
       >
         <div class="flex gap-2">
           <UInput v-model="ephemeralTmpRootPath" class="w-full" />
-          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('ephemeralTmp')" />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('ephemeralTmp')"
+          />
         </div>
       </UFormField>
     </div>
@@ -272,7 +301,12 @@ function resetPathDefaults() {
       >
         <div class="flex gap-2">
           <UInput v-model="ephemeralTmpRootPath" class="w-full" />
-          <UButton color="neutral" variant="soft" icon="i-heroicons-folder-open" @click="pickDesktopPath('ephemeralTmp')" />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('ephemeralTmp')"
+          />
         </div>
       </UFormField>
     </div>
@@ -291,7 +325,10 @@ function resetPathDefaults() {
       </UFormField>
     </div>
 
-    <div v-if="isBrowserWorkspaceMode" class="text-xs text-ui-text-muted rounded border border-ui-border p-3">
+    <div
+      v-if="isBrowserWorkspaceMode"
+      class="text-xs text-ui-text-muted rounded border border-ui-border p-3"
+    >
       {{
         t(
           'videoEditor.settings.storagePathEnvironmentHint',

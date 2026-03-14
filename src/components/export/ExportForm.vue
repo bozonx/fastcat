@@ -249,14 +249,17 @@ async function handleConfirm() {
         projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
           keyframeIntervalSec.value;
         projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
-        
+
         await projectStore.saveProjectSettings();
 
         await projectStore.saveProjectMeta({
           title: metadataTitle.value,
           description: metadataDescription.value,
           author: metadataAuthor.value,
-          tags: metadataTags.value.split(',').map(t => t.trim()).filter(Boolean)
+          tags: metadataTags.value
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
         });
       }
 

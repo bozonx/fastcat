@@ -8,7 +8,10 @@ import {
   type FastCatProjectSettings,
 } from '~/utils/project-settings';
 import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
-import { createProjectUiRepository, type ProjectUiRepository } from '~/repositories/project-ui.repository';
+import {
+  createProjectUiRepository,
+  type ProjectUiRepository,
+} from '~/repositories/project-ui.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
 
@@ -45,7 +48,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       isSavingProjectSettings.value = true;
       try {
         await ensureRepo();
-        
+
         // Save technical settings
         if (projectSettingsRepo.value) {
           await projectSettingsRepo.value.save(projectSettings.value);
@@ -131,7 +134,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
     try {
       const settings = createDefaultProjectSettings(workspaceStore.userSettings);
-      
+
       // Load technical settings
       if (projectSettingsRepo.value) {
         const repo = projectSettingsRepo.value as ProjectSettingsRepo;

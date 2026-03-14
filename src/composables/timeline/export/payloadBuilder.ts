@@ -1,7 +1,13 @@
-import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
+import type { useProjectStore } from '~/stores/project.store';
+import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
-import type { TimelineTrack, TimelineTrackItem, TimelineSelectionRange, TimelineBlendMode, ClipEffect } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineTrackItem,
+  TimelineSelectionRange,
+  TimelineBlendMode,
+  ClipEffect,
+} from '~/timeline/types';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
@@ -12,7 +18,13 @@ import {
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-import type { WorkerTimelineClip, WorkerTrackPayloadSource, WorkerVideoPayloadItem, WorkerTimelineTrack, WorkerTimelineMeta } from './types';
+import type {
+  WorkerTimelineClip,
+  WorkerTrackPayloadSource,
+  WorkerVideoPayloadItem,
+  WorkerTimelineTrack,
+  WorkerTimelineMeta,
+} from './types';
 
 export function buildWorkerVideoTracks(tracks: TimelineTrack[]): WorkerTrackPayloadSource[] {
   const visibleVideoTracks = tracks.filter((track) => track.kind === 'video' && !track.videoHidden);

@@ -160,9 +160,7 @@ function handleCreateSelectionRange() {
 
     <PropertySection :title="t('fastcat.marker.info', 'Marker Info')">
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.marker.text', 'Text')
-        }}</span>
+        <span class="text-xs text-ui-text-muted">{{ t('fastcat.marker.text', 'Text') }}</span>
         <UTextarea
           :model-value="marker.text"
           size="sm"

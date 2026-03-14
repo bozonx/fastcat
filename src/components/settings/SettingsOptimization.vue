@@ -91,11 +91,13 @@ function resetDefaults() {
         </USelectMenu>
       </UFormField>
 
-      <UFormField :label="t('videoEditor.settings.proxyConcurrency', 'Concurrency')">
+      <UFormField
+        :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
+      >
         <WheelNumberInput
-          v-model="workspaceStore.userSettings.optimization.proxyConcurrency"
+          v-model="workspaceStore.userSettings.optimization.mediaTaskConcurrency"
           :min="1"
-          :max="16"
+          :max="20"
           :step="1"
         />
       </UFormField>

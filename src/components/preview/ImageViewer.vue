@@ -78,7 +78,9 @@ watch(
   (trigger) => {
     if (!trigger.timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
 
-    onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: trigger.dir, target: 'preview' } }));
+    onCustomZoom(
+      new CustomEvent('fastcat-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
+    );
   },
   { deep: true },
 );

@@ -34,14 +34,17 @@ function toggleClipSnapMode() {
 function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy';
-    
+
     // Create a payload compatible with handleLibraryDrop
     const payload = {
       kind: type,
-      name: t(`fastcat.timeline.${type}ClipDefaultName`, type.charAt(0).toUpperCase() + type.slice(1)),
+      name: t(
+        `fastcat.timeline.${type}ClipDefaultName`,
+        type.charAt(0).toUpperCase() + type.slice(1),
+      ),
       path: '',
     };
-    
+
     const json = JSON.stringify(payload);
     event.dataTransfer.setData('application/json', json);
     event.dataTransfer.setData('application/fastcat-virtual-clip', type);
@@ -91,7 +94,6 @@ function onDragEnd() {
           :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
           :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
           icon="i-heroicons-scissors"
-          :aria-label="undefined"
           :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
           :items="trimMenuItems"
           @click="timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive"

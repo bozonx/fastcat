@@ -28,9 +28,7 @@ const savingEffectId = ref<string | null>(null);
 
 const safeTitle = computed(() => props.title ?? t('fastcat.effects.title', 'Effects'));
 const safeAddLabel = computed(() => props.addLabel ?? t('fastcat.effects.add', 'Add'));
-const safeEmptyLabel = computed(
-  () => props.emptyLabel ?? t('fastcat.effects.empty', 'No effects'),
-);
+const safeEmptyLabel = computed(() => props.emptyLabel ?? t('fastcat.effects.empty', 'No effects'));
 
 const safeEffects = computed(() => props.effects ?? []);
 

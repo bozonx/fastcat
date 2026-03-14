@@ -236,9 +236,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
 
   const showChevron =
     entry.kind === 'directory' &&
-    (props.foldersOnly
-      ? entry.hasDirectories !== false
-      : entry.hasChildren !== false) &&
+    (props.foldersOnly ? entry.hasDirectories !== false : entry.hasChildren !== false) &&
     (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
 
   return { selected, isDot, isCommonRoot, iconClass, nameClass, meta, showChevron };
@@ -346,7 +344,8 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
 
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
-    dragOperation.value = types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey ? 'copy' : 'move';
+    dragOperation.value =
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey ? 'copy' : 'move';
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     return;
   }

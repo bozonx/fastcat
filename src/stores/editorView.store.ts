@@ -100,7 +100,9 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     { id: 'col-3', panels: [{ id: 'properties', type: 'properties' }] },
   ];
 
-  const cutPanelsKey = computed(() => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:cut`);
+  const cutPanelsKey = computed(
+    () => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:cut`,
+  );
   const cutPanels = ref<PanelColumn[]>([
     ...defaultCutPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
   ]);
@@ -110,7 +112,9 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     { id: 'col-1', panels: [{ id: 'monitor', type: 'monitor' }] },
   ];
 
-  const soundPanelsKey = computed(() => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:sound`);
+  const soundPanelsKey = computed(
+    () => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:sound`,
+  );
   const soundPanels = ref<PanelColumn[]>([
     ...defaultSoundPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
   ]);

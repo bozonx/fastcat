@@ -301,7 +301,9 @@ const metaDescription = computed({
               variant="soft"
               size="sm"
               :label="t('common.apply', 'Apply')"
-              @click="applyProjectPreset(workspaceStore.userSettings.projectPresets.selectedPresetId)"
+              @click="
+                applyProjectPreset(workspaceStore.userSettings.projectPresets.selectedPresetId)
+              "
             />
           </div>
         </UFormField>

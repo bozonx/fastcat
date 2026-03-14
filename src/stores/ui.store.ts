@@ -65,6 +65,7 @@ export const useUiStore = defineStore('ui', () => {
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
   const isEditorSettingsOpen = ref(false);
+  const activeModalsCount = ref(0);
 
   function notifyFileManagerUpdate() {
     fileManagerUpdateCounter.value++;
@@ -205,5 +206,6 @@ export const useUiStore = defineStore('ui', () => {
     monitorMuted,
     isProjectSettingsOpen,
     isEditorSettingsOpen,
+    activeModalsCount,
   };
 });

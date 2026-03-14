@@ -130,6 +130,5 @@ function resetDefaults() {
         </div>
       </div>
     </div>
-
   </div>
 </template>

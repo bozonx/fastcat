@@ -176,13 +176,13 @@ function toggleClipSnapMode() {
   settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
 }
 
-function onDragVirtualStart(
-  event: DragEvent,
-  type: 'adjustment' | 'background' | 'text',
-) {
+function onDragVirtualStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
   setDraggedFile({
     kind: type,
-    name: t(`fastcat.timeline.${type}ClipDefaultName`, type.charAt(0).toUpperCase() + type.slice(1)),
+    name: t(
+      `fastcat.timeline.${type}ClipDefaultName`,
+      type.charAt(0).toUpperCase() + type.slice(1),
+    ),
     path: '',
   });
 }

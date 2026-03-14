@@ -39,19 +39,28 @@ watch(() => [props.projectId, props.projectRelativePath], load);
 </script>
 
 <template>
-  <div class="relative w-full h-full bg-ui-bg-accent flex items-center justify-center overflow-hidden rounded-lg group">
+  <div
+    class="relative w-full h-full bg-ui-bg-accent flex items-center justify-center overflow-hidden rounded-lg group"
+  >
     <img
       v-if="url"
       :src="url"
       class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       alt="Project Thumbnail"
     />
-    <div v-else class="flex flex-col items-center justify-center text-ui-text-muted gap-2 opacity-40">
+    <div
+      v-else
+      class="flex flex-col items-center justify-center text-ui-text-muted gap-2 opacity-40"
+    >
       <UIcon name="i-heroicons-film" class="w-10 h-10" />
-      <span v-if="projectName" class="text-[10px] font-medium uppercase tracking-tighter">{{ projectName[0] }}</span>
+      <span v-if="projectName" class="text-[10px] font-medium uppercase tracking-tighter">{{
+        projectName[0]
+      }}</span>
     </div>
-    
+
     <!-- Overlay Gradient -->
-    <div class="absolute inset-0 bg-linear-to-t from-ui-bg/60 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div
+      class="absolute inset-0 bg-linear-to-t from-ui-bg/60 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+    />
   </div>
 </template>

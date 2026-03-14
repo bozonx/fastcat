@@ -7,7 +7,10 @@ import { formatAudioChannels } from '~/utils/audio';
 
 const props = defineProps<{
   clip: TimelineClipItem;
-  mediaMeta: { video?: { displayWidth?: number; displayHeight?: number; fps?: number } | null; audio?: { channels?: number; sampleRate?: number } | null } | null;
+  mediaMeta: {
+    video?: { displayWidth?: number; displayHeight?: number; fps?: number } | null;
+    audio?: { channels?: number; sampleRate?: number } | null;
+  } | null;
 }>();
 
 const emit = defineEmits<{
@@ -20,7 +23,10 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection v-if="props.clip.clipType === 'media'" :title="t('common.source', 'Source File')">
+  <PropertySection
+    v-if="props.clip.clipType === 'media'"
+    :title="t('common.source', 'Source File')"
+  >
     <PropertyRow :label="t('common.path', 'Path')" :value="props.clip.source.path" />
     <template v-if="props.mediaMeta?.video">
       <PropertyRow

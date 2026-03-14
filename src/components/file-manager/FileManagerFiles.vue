@@ -366,7 +366,10 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           >
             {{
               currentDragOperation === 'copy'
-                ? t('videoEditor.fileManager.actions.dropToRootCopyHint', 'Release to copy into the project root')
+                ? t(
+                    'videoEditor.fileManager.actions.dropToRootCopyHint',
+                    'Release to copy into the project root',
+                  )
                 : t(
                     'videoEditor.fileManager.actions.dropToRootHint',
                     'Release to upload into the project root',

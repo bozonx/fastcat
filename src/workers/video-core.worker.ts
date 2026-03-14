@@ -123,7 +123,7 @@ const api: any = {
     } else {
       cancelExportRequested = false;
     }
-    
+
     await runExport(
       targetHandle,
       options,
@@ -137,7 +137,7 @@ const api: any = {
       },
       taskId,
     );
-    
+
     if (taskId) {
       activeCancels.delete(taskId);
     }
@@ -276,11 +276,15 @@ hostClient = new Proxy(
               p.reject(new Error(`Host RPC timeout for method: ${method}`));
             }
           }, 30000);
-          
+
           // If the last argument is a taskId (string and doesn't look like path), we move it to the envelope
           // Actually, we should check if the called method is one of the progress/phase/warning ones
           let taskId: string | undefined;
-          if (method === 'onExportProgress' || method === 'onExportPhase' || method === 'onExportWarning') {
+          if (
+            method === 'onExportProgress' ||
+            method === 'onExportPhase' ||
+            method === 'onExportWarning'
+          ) {
             // These methods are now called with (value, taskId) from runExport
             if (args.length >= 2 && typeof args[args.length - 1] === 'string') {
               taskId = args.pop();

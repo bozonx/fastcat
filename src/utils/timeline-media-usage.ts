@@ -41,10 +41,9 @@ export function computeMediaUsageByTimelineDocs(timelines: TimelineUsageTimeline
       for (const item of track.items) {
         if (item.kind !== 'clip' || item.clipType !== 'hud') continue;
 
-        const hudPaths = [
-          item.background?.source?.path,
-          item.content?.source?.path,
-        ].filter(Boolean) as string[];
+        const hudPaths = [item.background?.source?.path, item.content?.source?.path].filter(
+          Boolean,
+        ) as string[];
 
         for (const mediaPath of hudPaths) {
           if (seenInTimeline.has(mediaPath)) continue;

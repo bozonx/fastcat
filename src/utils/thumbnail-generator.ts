@@ -1,25 +1,18 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
-import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import {
+  BaseThumbnailGenerator,
+  type BaseThumbnailTask,
+  ensureBaseThumbnailDir,
+  hashString,
+} from './base-thumbnail-generator';
 
-export interface ThumbnailTask {
-  id: string; // usually clip hash
-  projectId: string;
-  projectRelativePath: string;
+export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
   onProgress?: (progress: number, url: string, time: number) => void;
   onComplete?: () => void;
   onError?: (err: Error) => void;
-}
-
-function hashString(input: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `h${(hash >>> 0).toString(16)}`;
 }
 
 export function getClipThumbnailsHash(input: {
@@ -35,97 +28,38 @@ async function ensureTimelineThumbnailDir(input: {
   hash?: string;
   create?: boolean;
 }): Promise<FileSystemDirectoryHandle> {
-  return (await ensureResolvedProjectTempDir({
-    workspaceHandle: input.workspaceStore.workspaceHandle!,
-    topology: input.workspaceStore.resolvedStorageTopology,
+  const leafSegments = input.hash
+    ? ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME, input.hash]
+    : ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME];
+
+  return await ensureBaseThumbnailDir({
     projectId: input.projectId,
-    leafSegments: input.hash
-      ? ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME, input.hash]
-      : ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME],
+    workspaceStore: input.workspaceStore,
+    leafSegments,
     create: input.create,
-  })) as FileSystemDirectoryHandle;
+  });
 }
 
-class ThumbnailGenerator {
-  private queue: ThumbnailTask[] = [];
-  private activeTasks = new Set<string>();
-  private cache = new Map<string, string[]>(); // hash -> array of blob urls
-  private readonly maxCacheEntries = 50;
-  private cancelledTasks = new Set<string>();
+class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, string[]> {
+  protected maxCacheEntries = 50;
 
-  private touchCacheEntry(id: string) {
-    const urls = this.cache.get(id);
-    if (!urls) return;
-    this.cache.delete(id);
-    this.cache.set(id, urls);
+  protected get concurrencyLimit(): number {
+    const workspaceStore = useWorkspaceStore();
+    return workspaceStore.userSettings.optimization.mediaTaskConcurrency;
   }
 
-  private evictCacheIfNeeded() {
-    while (this.cache.size > this.maxCacheEntries) {
-      const oldestKey = this.cache.keys().next().value as string | undefined;
-      if (!oldestKey) return;
-      const urls = this.cache.get(oldestKey);
-      if (urls) {
-        for (const url of urls) {
-          try {
-            URL.revokeObjectURL(url);
-          } catch {
-            // ignore
-          }
-        }
-      }
-      this.cache.delete(oldestKey);
-    }
+  protected revokeCacheValue(urls: string[]): void {
+    // Note: URL revocation is now handled by the consumers (components)
+    // to avoid UI breaking when cache evicts an actively displayed thumbnail.
+    // For now, we do nothing here.
   }
 
-  cancelTask(id: string) {
-    if (!id) return;
-    this.cancelledTasks.add(id);
-    this.queue = this.queue.filter((t) => t.id !== id);
-  }
-
-  private isCancelled(id: string) {
-    return this.cancelledTasks.has(id);
-  }
-
-  addTask(task: ThumbnailTask) {
-    if (this.isCancelled(task.id)) {
-      this.cancelledTasks.delete(task.id);
-    }
-    if (this.queue.some((t) => t.id === task.id) || this.activeTasks.has(task.id)) {
-      return; // Already in queue or processing
-    }
-
-    // Check if we already generated it
-    if (this.cache.has(task.id)) {
-      this.touchCacheEntry(task.id);
-      const urls = this.cache.get(task.id)!;
-      urls.forEach((url, index) => {
-        const time = index * TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
-        task.onProgress?.((index + 1) / urls.length, url, time);
-      });
-      task.onComplete?.();
-      return;
-    }
-
-    this.queue.push(task);
-    this.processQueue();
-  }
-
-  private processQueue() {
-    while (
-      this.activeTasks.size < TIMELINE_CLIP_THUMBNAILS.MAX_CONCURRENT_TASKS &&
-      this.queue.length > 0
-    ) {
-      const task = this.queue.shift();
-      if (task) {
-        this.activeTasks.add(task.id);
-        this.generateThumbnails(task).finally(() => {
-          this.activeTasks.delete(task.id);
-          this.processQueue();
-        });
-      }
-    }
+  protected onCacheHit(task: ThumbnailTask, urls: string[]): void {
+    urls.forEach((url, index) => {
+      const time = index * TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
+      task.onProgress?.((index + 1) / urls.length, url, time);
+    });
+    task.onComplete?.();
   }
 
   private async loadThumbnailsFromOPFS(task: ThumbnailTask): Promise<boolean> {
@@ -146,14 +80,7 @@ class ThumbnailGenerator {
       // We expect filenames to be "0.webp", "5.webp", "10.webp", etc.
       for (let i = 0; i <= task.duration; i += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS) {
         if (this.isCancelled(task.id)) {
-          for (const url of urls) {
-            try {
-              URL.revokeObjectURL(url);
-            } catch {
-              // ignore
-            }
-          }
-          return true;
+          return true; // Cancelled
         }
         const fileName = `${Math.round(i)}.webp`;
         try {
@@ -175,13 +102,6 @@ class ThumbnailGenerator {
       }
 
       if (this.isCancelled(task.id)) {
-        for (const url of urls) {
-          try {
-            URL.revokeObjectURL(url);
-          } catch {
-            // ignore
-          }
-        }
         return true;
       }
 
@@ -198,7 +118,7 @@ class ThumbnailGenerator {
     }
   }
 
-  private async generateThumbnails(task: ThumbnailTask): Promise<void> {
+  protected async executeTask(task: ThumbnailTask): Promise<void> {
     const isLoaded = await this.loadThumbnailsFromOPFS(task);
     if (isLoaded) {
       return Promise.resolve();
@@ -401,12 +321,6 @@ class ThumbnailGenerator {
   }
 
   async clearThumbnails(input: { projectId: string; hash: string }) {
-    const urls = this.cache.get(input.hash);
-    if (urls) {
-      for (const url of urls) {
-        URL.revokeObjectURL(url);
-      }
-    }
     this.cache.delete(input.hash);
 
     const workspaceStore = useWorkspaceStore();
