@@ -4,6 +4,7 @@ import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
+  FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
   REMOTE_FILE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
@@ -91,6 +92,13 @@ const emit = defineEmits<{
     },
   ): void;
   (
+    e: 'requestCopy',
+    params: {
+      sourcePath: string;
+      targetDirPath: string;
+    },
+  ): void;
+  (
     e: 'requestUpload',
     params: {
       files: File[];
@@ -112,6 +120,7 @@ const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
 
 const isDragOver = ref<string | null>(null);
+const dragOperation = ref<'copy' | 'move' | null>(null);
 
 watch(
   () => uiStore.fileTreeSelectAllTrigger,
@@ -297,8 +306,13 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     e.dataTransfer.effectAllowed = 'copyMove';
   }
 
+  const operation = e.shiftKey ? 'copy' : 'move';
+  dragOperation.value = operation;
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
-  e.dataTransfer?.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
+  e.dataTransfer?.setData(
+    operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
+    JSON.stringify(movePayload),
+  );
 
   // Mark this as an internal drag so the global drop overlay is not shown
   e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
@@ -311,6 +325,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     name: entry.name,
     kind,
     path: entry.path,
+    operation,
     count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
     items: movePayload,
   };
@@ -320,6 +335,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
 function onDragEnd() {
   clearDraggedFile();
+  dragOperation.value = null;
 }
 
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
@@ -328,9 +344,10 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   const types = e.dataTransfer?.types;
   if (!types) return;
 
-  if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) {
+  if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
-    e.dataTransfer.dropEffect = 'move';
+    dragOperation.value = types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey ? 'copy' : 'move';
+    e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     return;
   }
 
@@ -355,6 +372,7 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
   const relatedTarget = e.relatedTarget as Node | null;
   if (!currentTarget?.contains(relatedTarget)) {
     isDragOver.value = null;
+    dragOperation.value = null;
   }
 }
 
@@ -364,12 +382,15 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   e.stopPropagation();
 
   isDragOver.value = null;
+  dragOperation.value = null;
 
+  const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  if (moveRaw) {
+  const internalRaw = copyRaw || moveRaw;
+  if (internalRaw) {
     let parsed: any;
     try {
-      parsed = JSON.parse(moveRaw);
+      parsed = JSON.parse(internalRaw);
     } catch {
       return;
     }
@@ -379,10 +400,17 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
       const sourcePath = typeof item?.path === 'string' ? item.path : '';
       if (!sourcePath || sourcePath === entry.path) continue;
 
-      emit('requestMove', {
-        sourcePath,
-        targetDirPath: entry.path,
-      });
+      if (copyRaw) {
+        emit('requestCopy', {
+          sourcePath,
+          targetDirPath: entry.path,
+        });
+      } else {
+        emit('requestMove', {
+          sourcePath,
+          targetDirPath: entry.path,
+        });
+      }
     }
     return;
   }
@@ -458,6 +486,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :entry="entry"
             :depth="depth"
             :is-drag-over="isDragOver === entry.path"
+            :drag-operation="dragOperation"
             :editing-entry-path="editingEntryPath"
             :existing-names="(entries || []).map((e) => e.name)"
             :file-icon="ctx.getFileIcon(entry)"
@@ -491,6 +520,7 @@ const { getContextMenuItems } = useFileContextMenu(
             @select="(entry, event) => emit('select', entry, event)"
             @action="(action, childEntry) => emit('action', action, childEntry)"
             @request-move="emit('requestMove', $event)"
+            @request-copy="emit('requestCopy', $event)"
             @request-upload="emit('requestUpload', $event)"
             @request-download="emit('requestDownload', $event)"
           />

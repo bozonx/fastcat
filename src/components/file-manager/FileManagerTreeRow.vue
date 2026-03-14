@@ -14,6 +14,7 @@ const props = defineProps<{
   entry: FsEntry;
   depth: number;
   isDragOver: boolean;
+  dragOperation?: 'copy' | 'move' | null;
   editingEntryPath?: string | null;
   existingNames: string[];
   fileIcon: string;
@@ -46,7 +47,12 @@ const emit = defineEmits<{
     :data-entry-path="entry.path ?? undefined"
     :style="{ paddingLeft: `${8 + depth * 14}px` }"
     :class="[
-      isDragOver ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1' : '',
+      isDragOver && props.dragOperation === 'copy'
+        ? 'bg-emerald-500/15 outline outline-emerald-500 -outline-offset-1'
+        : '',
+      isDragOver && props.dragOperation !== 'copy'
+        ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
+        : '',
       selected ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1' : '',
     ]"
     :draggable="true"

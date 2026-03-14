@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, provide, watch, nextTick } from 'vue';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -22,6 +23,7 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
+const { currentDragOperation } = useAppClipboard();
 const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -194,6 +196,13 @@ const emit = defineEmits<{
       | 'extractAudio',
     entry: FsEntry,
   ): void;
+  (
+    e: 'requestCopy',
+    params: {
+      sourcePath: string;
+      targetDirPath: string;
+    },
+  ): void;
   (e: 'commitRename', entry: FsEntry, newName: string): void;
   (e: 'stopRename'): void;
 }>();
@@ -340,19 +349,28 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
         <div
           class="flex-1 w-full min-w-full flex items-center justify-center min-h-12"
           :class="{
-            'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver,
+            'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
+              isRootDropOver && currentDragOperation !== 'copy',
+            'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
+              isRootDropOver && currentDragOperation === 'copy',
           }"
           @dragover.prevent="onRootDragOver"
           @dragleave.prevent="onRootDragLeave"
           @drop.prevent="onRootDrop"
           @pointerdown="selectProjectRoot"
         >
-          <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400 text-center">
+          <p
+            v-if="isRootDropOver"
+            class="text-xs font-medium text-center"
+            :class="currentDragOperation === 'copy' ? 'text-emerald-400' : 'text-primary-400'"
+          >
             {{
-              t(
-                'videoEditor.fileManager.actions.dropToRootHint',
-                'Release to upload into the project root',
-              )
+              currentDragOperation === 'copy'
+                ? t('videoEditor.fileManager.actions.dropToRootCopyHint', 'Release to copy into the project root')
+                : t(
+                    'videoEditor.fileManager.actions.dropToRootHint',
+                    'Release to upload into the project root',
+                  )
             }}
           </p>
         </div>

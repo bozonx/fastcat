@@ -54,6 +54,7 @@ const {
   readDirectory,
   reloadDirectory,
   moveEntry,
+  copyEntry,
   createTimeline,
   getFileIcon,
   sortMode,
@@ -361,6 +362,7 @@ useFileManagerPanelBootstrap({
         :find-entry-by-path="findEntryByPath"
         :media-cache="fileManager.mediaCache"
         :move-entry="moveEntry"
+        :copy-entry="copyEntry"
         :handle-files="handleFiles"
         @commit-rename="commitRename"
         @stop-rename="stopRename"

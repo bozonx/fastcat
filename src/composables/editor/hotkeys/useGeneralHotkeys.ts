@@ -4,6 +4,9 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
@@ -17,7 +20,71 @@ export function useGeneralHotkeys(
   const focusStore = useFocusStore();
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
+  const filesPageStore = useFilesPageStore();
+  const fileManager = useFileManager();
+  const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
+
+  function isFileManagerFocus() {
+    return focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left';
+  }
+
+  function getSelectedFsEntries() {
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source !== 'fileManager') return [];
+    if (selected.kind === 'multiple') return selected.entries;
+    return [selected.entry];
+  }
+
+  function getFileManagerPasteTargetDirPath() {
+    if (focusStore.effectiveFocus === 'filesBrowser') {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager' && selected.kind === 'directory') {
+        return selected.entry.path ?? '';
+      }
+      return filesPageStore.selectedFolder?.path ?? '';
+    }
+
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source === 'fileManager' && selected.kind === 'directory') {
+      return selected.entry.path ?? '';
+    }
+
+    return '';
+  }
+
+  async function handleFileManagerPaste() {
+    const payload = clipboardPayload.value;
+    if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) {
+      return false;
+    }
+
+    const targetDirPath = getFileManagerPasteTargetDirPath();
+
+    for (const item of payload.items) {
+      const source = fileManager.findEntryByPath(item.path);
+      if (!source) continue;
+
+      if (payload.operation === 'copy') {
+        await fileManager.copyEntry({
+          source,
+          targetDirPath,
+        });
+      } else {
+        await fileManager.moveEntry({
+          source,
+          targetDirPath,
+        });
+      }
+    }
+
+    if (payload.operation === 'cut') {
+      setClipboardPayload(null);
+    }
+
+    uiStore.notifyFileManagerUpdate();
+    return true;
+  }
 
   function createMarkerAtPlayhead() {
     const existing = timelineStore.getMarkers();
@@ -128,6 +195,54 @@ export function useGeneralHotkeys(
         }
       }
       return false;
+    },
+
+    'general.copy': () => {
+      if (!isFileManagerFocus()) return false;
+
+      const entries = getSelectedFsEntries();
+      if (entries.length === 0) return false;
+
+      setClipboardPayload({
+        source: 'fileManager',
+        operation: 'copy',
+        items: entries
+          .filter((entry) => Boolean(entry.path))
+          .map((entry) => ({
+            path: entry.path!,
+            kind: entry.kind,
+            name: entry.name,
+          })),
+      });
+
+      return true;
+    },
+
+    'general.cut': () => {
+      if (!isFileManagerFocus()) return false;
+
+      const entries = getSelectedFsEntries();
+      if (entries.length === 0) return false;
+
+      setClipboardPayload({
+        source: 'fileManager',
+        operation: 'cut',
+        items: entries
+          .filter((entry) => Boolean(entry.path))
+          .map((entry) => ({
+            path: entry.path!,
+            kind: entry.kind,
+            name: entry.name,
+          })),
+      });
+
+      return true;
+    },
+
+    'general.paste': () => {
+      if (!isFileManagerFocus()) return false;
+      void handleFileManagerPaste();
+      return true;
     },
 
     'general.delete': () => {

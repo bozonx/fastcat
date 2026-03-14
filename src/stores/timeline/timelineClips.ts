@@ -11,6 +11,11 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { getDocFps, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 
+export interface TimelineClipClipboardItem {
+  sourceTrackId: string;
+  clip: TimelineClipItem;
+}
+
 export interface TimelineClipsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   selectedItemIds: Ref<string[]>;
@@ -140,9 +145,45 @@ export interface TimelineClipsApi {
   toggleMuteTargetClip: () => Promise<void>;
   moveSelectedClips: (deltaFrames: number) => void;
   adjustSelectedClipsVolume: (deltaDb: number) => void;
+  copySelectedClips: () => TimelineClipClipboardItem[];
+  cutSelectedClips: () => TimelineClipClipboardItem[];
+  pasteClips: (
+    items: TimelineClipClipboardItem[],
+    options?: { targetTrackId?: string | null },
+  ) => string[];
 }
 
 export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
+  function cloneClip<T>(value: T): T {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return value;
+    }
+  }
+
+  function getSelectedClipItems(): TimelineClipClipboardItem[] {
+    const doc = deps.timelineDoc.value;
+    if (!doc || deps.selectedItemIds.value.length === 0) return [];
+
+    const selectedIds = new Set(deps.selectedItemIds.value);
+    const items: TimelineClipClipboardItem[] = [];
+
+    for (const track of doc.tracks) {
+      for (const item of track.items) {
+        if (item.kind !== 'clip') continue;
+        if (!selectedIds.has(item.id)) continue;
+        items.push({
+          sourceTrackId: track.id,
+          clip: cloneClip(item),
+        });
+      }
+    }
+
+    items.sort((a, b) => a.clip.timelineRange.startUs - b.clip.timelineRange.startUs);
+    return items;
+  }
+
   function renameItem(trackId: string, itemId: string, name: string) {
     deps.applyTimeline({
       type: 'rename_item',
@@ -494,19 +535,6 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     if (!doc) return;
     const target = deps.getHotkeyTargetClip();
     if (!target) return;
-
-    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
-    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-
-    updateClipProperties(target.trackId, target.itemId, { audioMuted: !item.audioMuted });
-    await deps.requestTimelineSave({ immediate: true });
-  }
-
-  function moveSelectedClips(deltaFrames: number) {
-    const doc = deps.timelineDoc.value;
-    if (!doc || deps.selectedItemIds.value.length === 0) return;
-
     const fps = getDocFps(doc);
     const frameUs = 1_000_000 / fps;
     const deltaUs = deltaFrames * frameUs;
@@ -575,5 +603,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     toggleMuteTargetClip,
     moveSelectedClips,
     adjustSelectedClipsVolume,
+    copySelectedClips,
+    cutSelectedClips,
+    pasteClips,
   };
 }

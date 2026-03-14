@@ -55,6 +55,43 @@ function clampHandlePx(px: number, width: number) {
   return Math.min(Math.max(0, px), width);
 }
 
+function onFadeHandlePointerDown(event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }) {
+  event.stopPropagation();
+  event.preventDefault();
+
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let didStartDrag = false;
+
+  const cleanup = () => {
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+  };
+
+  const onPointerMove = (moveEvent: PointerEvent) => {
+    if (didStartDrag) return;
+
+    if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
+      didStartDrag = true;
+      cleanup();
+      emit('startResizeFade', moveEvent, payload);
+    }
+  };
+
+  const onPointerUp = () => {
+    cleanup();
+
+    if (!didStartDrag) {
+      emit('toggleFadeCurve', { edge: payload.edge });
+    }
+  };
+
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+}
+
 const volumeY = computed(() => {
   const g = Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, props.clip.audioGain ?? 1));
   return (1 - g / CLIP_AUDIO_GAIN_MAX) * 100;
@@ -120,13 +157,10 @@ const volumeY = computed(() => {
         :style="{
           left: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeInUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
         }"
-        @pointerdown.stop.prevent="
-          emit('startResizeFade', $event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
-        "
       >
         <div
           class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
-          @click.stop.prevent="emit('toggleFadeCurve', { edge: 'in' })"
+          @pointerdown="onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })"
         ></div>
       </div>
 
@@ -139,13 +173,10 @@ const volumeY = computed(() => {
         :style="{
           right: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeOutUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
         }"
-        @pointerdown.stop.prevent="
-          emit('startResizeFade', $event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
-        "
       >
         <div
           class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
-          @click.stop.prevent="emit('toggleFadeCurve', { edge: 'out' })"
+          @pointerdown="onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })"
         ></div>
       </div>
     </template>

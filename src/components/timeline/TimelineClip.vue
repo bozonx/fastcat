@@ -80,6 +80,19 @@ const clipWidthPx = computed(() =>
   Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
 );
 
+function toggleFadeCurve(edge: 'in' | 'out') {
+  if (!clipItem.value || !props.canEditClipContent || clipItem.value.locked) return;
+
+  const curveProp = edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
+  const currentCurve = clipItem.value[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
+  const nextCurve = currentCurve === 'logarithmic' ? 'linear' : 'logarithmic';
+
+  timelineStore.updateClipProperties(props.track.id, props.item.id, {
+    [curveProp]: nextCurve,
+  });
+  void timelineStore.requestTimelineSave({ immediate: true });
+}
+
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
   if (e.button !== 0 || !props.canEditClipContent || !clipItem.value || clipItem.value.locked)
@@ -351,6 +364,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
               trackHeight,
             })
         "
+        @toggle-fade-curve="({ edge }) => toggleFadeCurve(edge)"
         @reset-volume="emit('resetVolume', { trackId: track.id, itemId: item.id })"
       />
 
