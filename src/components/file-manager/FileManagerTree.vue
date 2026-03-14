@@ -387,6 +387,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   const internalRaw = copyRaw || moveRaw;
   if (internalRaw) {
+    const shouldCopy = !!copyRaw || e.shiftKey || dragOperation.value === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);
@@ -399,7 +400,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
       const sourcePath = typeof item?.path === 'string' ? item.path : '';
       if (!sourcePath || sourcePath === entry.path) continue;
 
-      if (copyRaw) {
+      if (shouldCopy) {
         emit('requestCopy', {
           sourcePath,
           targetDirPath: entry.path,

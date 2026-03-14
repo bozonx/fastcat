@@ -337,68 +337,12 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
           if (isUnmounted) return;
           applySingleThumbnail(url);
         },
+        onError: () => {
+          if (isUnmounted) return;
+          isGenerating.value = false;
+        },
       });
-    }
-
-    try {
-      const file = await fileManager.vfs.getFile(fileUrl.value);
-      if (!file) return;
-      const text = await file.text();
-      const nestedDoc = parseTimelineFromOtio(text, {
-        id: 'nested-preview',
-        name: options.item.value.name,
-        fps: 25,
-      });
-
-      const { buildVideoWorkerPayloadFromTracks } = await import('./export');
-
-      const builtVideo = await buildVideoWorkerPayloadFromTracks({
-        tracks: nestedDoc.tracks,
-        projectStore: projectStore as any,
-        workspaceStore: workspaceStore as any,
-      });
-      const rawClips = builtVideo.payload;
-
-      if (rawClips.length === 0) {
-        isGenerating.value = false;
-        return;
-      }
-
-      const width = Math.max(160, Math.round(TIMELINE_CLIP_THUMBNAILS.WIDTH));
-      const height = Math.max(90, Math.round(TIMELINE_CLIP_THUMBNAILS.HEIGHT));
-      const previewTimeUs = Math.max(
-        0,
-        Math.min(
-          Math.round(
-            (options.item.value.sourceRange.startUs ?? 0) +
-              options.item.value.sourceRange.durationUs / 2,
-          ),
-          Math.max(0, Math.round(duration.value * 1_000_000) - 1),
-        ),
-      );
-
-      const { client } = getExportWorkerClient();
-      setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path: string) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path: string) => projectStore.getFileByPath(path),
-          onExportProgress: () => {},
-        }),
-      );
-
-      const blob = await client.extractFrameToBlob(previewTimeUs, width, height, rawClips, 0.8);
-      if (!blob || isUnmounted) {
-        isGenerating.value = false;
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      applySingleThumbnail(url);
-    } catch (error) {
-      console.error('Failed to generate nested timeline preview thumbnails:', error);
+    } else {
       isGenerating.value = false;
     }
   }
