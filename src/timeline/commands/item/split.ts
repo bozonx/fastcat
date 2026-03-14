@@ -49,6 +49,20 @@ function assertClipNotLocked(item: TimelineTrackItem, action: string) {
   throw new Error(`Locked clip: ${action}`);
 }
 
+function cloneEffects<T>(value: T): T {
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value);
+    }
+  } catch {}
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {}
+
+  return value;
+}
+
 export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
   const item = track.items.find((x) => x.id === cmd.itemId);
@@ -118,7 +132,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     timelineRange: { startUs, durationUs: leftDurationUs },
     sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
     transitionOut: undefined,
-    effects: item.effects ? structuredClone(item.effects) : undefined,
+    effects: item.effects ? cloneEffects(item.effects) : undefined,
   };
 
   // TODO(keyframes): shift keyframes relative time in rightItem's effects by localCutUs
@@ -130,7 +144,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
     linkedGroupId: undefined,
     transitionIn: undefined,
-    effects: item.effects ? structuredClone(item.effects) : undefined,
+    effects: item.effects ? cloneEffects(item.effects) : undefined,
   };
 
   const nextItemsRaw: TimelineTrackItem[] = [];
@@ -188,7 +202,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
               durationUs: Math.max(0, audioLocalCutUs),
             },
             transitionOut: undefined,
-            effects: it.effects ? structuredClone(it.effects) : undefined,
+            effects: it.effects ? cloneEffects(it.effects) : undefined,
           };
 
           // TODO(keyframes): shift keyframes relative time in rightAudio's effects by audioLocalCutUs
@@ -204,7 +218,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
             linkedGroupId: undefined,
             linkedVideoClipId: rightItemId,
             transitionIn: undefined,
-            effects: it.effects ? structuredClone(it.effects) : undefined,
+            effects: it.effects ? cloneEffects(it.effects) : undefined,
           };
 
           patched.push(leftAudio);

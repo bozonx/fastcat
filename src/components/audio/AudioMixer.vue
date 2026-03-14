@@ -34,6 +34,10 @@ const audioTracks = computed(() => {
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);
 const selectedItemIds = computed(() => timelineStore.selectedItemIds);
 
+const isMainBusSelected = computed(
+  () => focusStore.isPanelFocused('audioMixer') && !selectedTrackId.value && selectedItemIds.value.length === 0,
+);
+
 function isTrackSelected(track: TimelineTrack): boolean {
   if (selectedTrackId.value === track.id) return true;
   // Check if any clip in this track is selected
@@ -47,6 +51,12 @@ function focusAudioMixer() {
 function focusTrack(trackId: string) {
   focusAudioMixer();
   timelineStore.selectTrack(trackId);
+}
+
+function focusMainBus() {
+  focusAudioMixer();
+  timelineStore.clearSelection();
+  timelineStore.selectTrack(null);
 }
 </script>
 
@@ -67,7 +77,7 @@ function focusTrack(trackId: string) {
 
     <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 flex gap-4 min-h-0">
       <!-- Main Bus -->
-      <AudioMixerMain />
+      <AudioMixerMain :is-selected="isMainBusSelected" @pointerdown.capture="focusMainBus" />
 
       <!-- Divider -->
       <div v-if="audioTracks.length > 0" class="w-px bg-ui-border shrink-0 my-2" />

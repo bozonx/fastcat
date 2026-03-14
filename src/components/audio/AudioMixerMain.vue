@@ -8,6 +8,10 @@ import { getAudioEffectManifest } from '~/effects';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
 import MasterAudioEffectsModal from './MasterAudioEffectsModal.vue';
 
+defineProps<{
+  isSelected?: boolean;
+}>();
+
 const timelineStore = useTimelineStore();
 const { t } = useI18n();
 
@@ -65,7 +69,8 @@ function handleSelectEffect(type: string) {
 
 <template>
   <div
-    class="flex flex-col items-center w-24 bg-ui-bg-accent border border-primary/30 rounded-lg py-2 shrink-0 h-full"
+    class="flex flex-col items-center w-24 bg-ui-bg-accent border rounded-lg py-2 shrink-0 h-full transition-colors cursor-pointer"
+    :class="[isSelected ? 'border-primary-500 bg-ui-bg-elevated' : 'border-primary/30']"
   >
     <div class="text-xs font-bold text-primary-400 mb-4 mt-2">
       {{ t('fastcat.audioMixer.main') }}
