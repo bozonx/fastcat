@@ -229,6 +229,9 @@ const api: any = {
 
       const sink = new VideoSampleSink(track);
 
+      let sharedCanvas: OffscreenCanvas | null = null;
+      let sharedCtx: OffscreenCanvasRenderingContext2D | null = null;
+
       try {
         const results: (Blob | null)[] = [];
 
@@ -291,16 +294,21 @@ const api: any = {
               targetH = Math.round(targetH * scale);
             }
 
-            const canvas = new OffscreenCanvas(targetW, targetH);
-            const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null;
+            if (!sharedCanvas) {
+              sharedCanvas = new OffscreenCanvas(targetW, targetH);
+              sharedCtx = sharedCanvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null;
+            } else {
+              sharedCanvas.width = targetW;
+              sharedCanvas.height = targetH;
+            }
 
-            if (!ctx) {
+            if (!sharedCtx) {
               results.push(null);
               continue;
             }
 
-            ctx.drawImage(imageSource, 0, 0, targetW, targetH);
-            blob = await canvas.convertToBlob({
+            sharedCtx.drawImage(imageSource, 0, 0, targetW, targetH);
+            blob = await sharedCanvas.convertToBlob({
               type: options.mimeType,
               quality: options.quality,
             });
