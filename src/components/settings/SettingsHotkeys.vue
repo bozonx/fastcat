@@ -42,7 +42,7 @@ const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
 const hardcodedHotkeysHint = computed(() =>
   t(
     'videoEditor.settings.hotkeysHardcodedHint',
-    'Some keys remain hardcoded in specific contexts: Tab for panel focus switching, and Escape for trim/modal cancel.',
+    'Some keys remain hardcoded in specific contexts: Tab for panel focus switching, Escape for trim/modal cancel, and standard file manager shortcuts (Arrows, Enter, Delete) in file explorer panels.',
   ),
 );
 

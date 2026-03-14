@@ -143,6 +143,7 @@ export function useTimelineInteraction(
   }
 
   function onTimeRulerPointerDown(e: PointerEvent) {
+    if (e.button !== 0) return;
     seekByMouseEvent(e);
     startPlayheadDrag(e);
   }

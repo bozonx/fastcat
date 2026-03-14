@@ -51,12 +51,6 @@ function assertClipNotLocked(item: TimelineTrackItem, action: string) {
 
 function cloneEffects<T>(value: T): T {
   try {
-    if (typeof structuredClone === 'function') {
-      return structuredClone(value);
-    }
-  } catch {}
-
-  try {
     return JSON.parse(JSON.stringify(value));
   } catch {}
 
