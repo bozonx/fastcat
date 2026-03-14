@@ -58,17 +58,6 @@ export function useEditorHotkeys() {
       }
     }
 
-    if (hasBlockingModalState() && e.key !== 'Escape') return;
-
-    if (e.key === 'Tab' && canHandleFocusTab()) {
-      e.preventDefault();
-      focusStore.handleFocusHotkey();
-      return;
-    }
-
-    if (isEditableTarget(e.target) && e.key !== 'Escape') return;
-    if (isEditableTarget(document.activeElement) && e.key !== 'Escape') return;
-
     const combo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
     if (!combo) return;
 
@@ -83,6 +72,19 @@ export function useEditorHotkeys() {
       }
     }
     if (matched.length === 0) return;
+
+    const allowsFullscreenExit = matched.includes('general.fullscreen');
+
+    if (hasBlockingModalState() && e.key !== 'Escape' && !allowsFullscreenExit) return;
+
+    if (e.key === 'Tab' && canHandleFocusTab()) {
+      e.preventDefault();
+      focusStore.handleFocusHotkey();
+      return;
+    }
+
+    if (isEditableTarget(e.target) && e.key !== 'Escape') return;
+    if (isEditableTarget(document.activeElement) && e.key !== 'Escape') return;
 
     const focusAwareOrder = (() => {
       const order: HotkeyCommandId[] = [];

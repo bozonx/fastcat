@@ -39,6 +39,13 @@ const searchQuery = ref('');
 
 const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
 
+const hardcodedHotkeysHint = computed(() =>
+  t(
+    'videoEditor.settings.hotkeysHardcodedHint',
+    'Some keys remain hardcoded in specific contexts: Tab for panel focus switching, and Escape for trim/modal cancel.',
+  ),
+);
+
 function getCommandTitle(cmdId: HotkeyCommandId): string {
   const fallback = DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
   return t(`videoEditor.hotkeys.${cmdId}`, fallback);
@@ -426,6 +433,10 @@ defineExpose({
         @capture="startCapture"
         @reset="resetCommandBindings"
       />
+    </div>
+
+    <div class="text-[10px] text-ui-text-muted italic px-1">
+      {{ hardcodedHotkeysHint }}
     </div>
 
     <div class="text-[10px] text-ui-text-muted italic px-1">

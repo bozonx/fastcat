@@ -4,6 +4,8 @@ import { useFocusStore } from '~/stores/focus.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 
+const AUDIO_MIXER_GAIN_STEP = 0.05;
+
 export function useTimelineHotkeys() {
   const timelineStore = useTimelineStore();
   const settingsStore = useTimelineSettingsStore();
@@ -11,6 +13,23 @@ export function useTimelineHotkeys() {
 
   function getTargetTrackId() {
     return timelineStore.getSelectedOrActiveTrackId();
+  }
+
+  function adjustAudioMixerGain(delta: number) {
+    if (focusStore.effectiveFocus !== 'audioMixer') return false;
+
+    const trackId = timelineStore.selectedTrackId;
+    if (trackId) {
+      const track = timelineStore.timelineDoc?.tracks.find((item) => item.id === trackId);
+      if (!track) return false;
+      const nextGain = Math.max(0, Number(track.audioGain ?? 1) + delta);
+      timelineStore.updateTrackProperties(trackId, { audioGain: nextGain });
+      return true;
+    }
+
+    const nextMasterGain = Math.max(0, Number(timelineStore.masterGain ?? 1) + delta);
+    timelineStore.setMasterGain(nextMasterGain);
+    return true;
   }
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
@@ -187,12 +206,14 @@ export function useTimelineHotkeys() {
 
     'timeline.increaseSelectedClipsVolume': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
+      if (adjustAudioMixerGain(AUDIO_MIXER_GAIN_STEP)) return true;
       timelineStore.adjustSelectedClipsVolume(1);
       return true;
     },
 
     'timeline.decreaseSelectedClipsVolume': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
+      if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP)) return true;
       timelineStore.adjustSelectedClipsVolume(-1);
       return true;
     },
