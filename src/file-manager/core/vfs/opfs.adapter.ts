@@ -100,11 +100,28 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     const entries: VfsEntry[] = [];
     for await (const [name, entryHandle] of (handle as DirectoryHandleWithIteration).entries?.() ??
       []) {
+      let hasChildren: boolean | undefined;
+
+      if (entryHandle.kind === 'directory') {
+        hasChildren = false;
+        try {
+          for await (const _ of (
+            entryHandle as unknown as DirectoryHandleWithIteration
+          ).entries?.() ?? []) {
+            hasChildren = true;
+            break;
+          }
+        } catch {
+          hasChildren = false;
+        }
+      }
+
       entries.push({
         name,
         kind: entryHandle.kind === 'file' ? 'file' : 'directory',
         path: path && path !== '/' ? `${path}/${name}` : name,
         parentPath: path || undefined,
+        hasChildren,
       });
     }
     return entries;

@@ -122,17 +122,32 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const entries = await readDir(tauriPath, options);
 
     const normalizedPath = this.normalizePath(path);
-    return entries.map((entry) => {
-      const name = entry.name ?? '';
-      const entryPath = normalizedPath ? `${normalizedPath}/${name}` : name;
+    return await Promise.all(
+      entries.map(async (entry) => {
+        const name = entry.name ?? '';
+        const entryPath = normalizedPath ? `${normalizedPath}/${name}` : name;
 
-      return {
-        name,
-        kind: entry.isDirectory ? 'directory' : 'file',
-        path: entryPath,
-        parentPath: normalizedPath || undefined,
-      } satisfies VfsEntry;
-    });
+        let hasChildren: boolean | undefined;
+        if (entry.isDirectory) {
+          try {
+            const { tauriPath: childTauriPath, options: childOptions } =
+              await this.getTauriFsArgs(entryPath);
+            const childEntries = await readDir(childTauriPath, childOptions);
+            hasChildren = childEntries.length > 0;
+          } catch {
+            hasChildren = false;
+          }
+        }
+
+        return {
+          name,
+          kind: entry.isDirectory ? 'directory' : 'file',
+          path: entryPath,
+          parentPath: normalizedPath || undefined,
+          hasChildren,
+        } satisfies VfsEntry;
+      }),
+    );
   }
 
   async createDirectory(path: string): Promise<void> {

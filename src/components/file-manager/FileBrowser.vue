@@ -398,8 +398,6 @@ const resizeStartWidth = ref(0);
 
 onUnmounted(() => {
   cleanupObjectUrls();
-  document.removeEventListener('mousemove', onResizeMove);
-  document.removeEventListener('mouseup', onResizeEnd);
 });
 
 useFileBrowserPendingActions({
