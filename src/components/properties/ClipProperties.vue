@@ -256,9 +256,7 @@ const clipAudioEffects = computed(() =>
   ),
 );
 
-const canEditAudioEffects = computed(
-  () => canEditAudioFades.value && canEditAudioGain.value,
-);
+const canEditAudioEffects = computed(() => canEditAudioFades.value && canEditAudioGain.value);
 
 const { selectTransitionEdge, toggleTransition, updateTransitionDuration, updateTransitionType } =
   useClipTransitions({
@@ -388,7 +386,9 @@ defineExpose({
       :track-kind="clipTrackKind"
       :can-edit-reversed="canEditReversed"
       :is-reversed="isReversed"
-      @update-transform="(next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })"
+      @update-transform="
+        (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
+      "
       @toggle-reversed="toggleReversed"
     />
 
@@ -397,7 +397,12 @@ defineExpose({
       :current-name="clip.name"
       :title="t('fastcat.clip.rename', 'Rename clip')"
       @update:open="isRenameModalOpen = $event"
-      @rename="(name) => { timelineStore.renameItem(clip.trackId, clip.id, name); isRenameModalOpen = false; }"
+      @rename="
+        (name) => {
+          timelineStore.renameItem(clip.trackId, clip.id, name);
+          isRenameModalOpen = false;
+        }
+      "
     />
   </div>
 </template>

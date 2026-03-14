@@ -100,8 +100,8 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
         @drop.prevent="emit('entryDrop', $event, entry)"
         @click="emit('entryClick', $event, entry)"
         @dblclick="emit('entryDoubleClick', entry)"
-        @keydown.enter.prevent="emit('entryEnter', entry)"
-        @keydown.space.prevent="emit('entryEnter', entry)"
+        @keydown.enter.prevent.stop="emit('entryEnter', entry)"
+        @keydown.space.prevent.stop="emit('entryEnter', entry)"
       >
         <div
           class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
@@ -214,7 +214,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
       <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
         {{
           props.currentDragOperation === 'copy'
-            ? t('videoEditor.fileManager.actions.dropToRootCopyHint', 'Release to copy into the current folder')
+            ? t(
+                'videoEditor.fileManager.actions.dropToRootCopyHint',
+                'Release to copy into the current folder',
+              )
             : t(
                 'videoEditor.fileManager.actions.dropToRootHint',
                 'Release to upload into the project root',

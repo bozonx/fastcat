@@ -218,9 +218,11 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                   proxyStore.generatingProxies.has(entry.path || '') ||
                   isGeneratingProxyInDirectory(entry),
                 'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
-                  dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation !== 'copy',
+                  dragOverEntryPath === (entry.path ?? null) &&
+                  props.currentDragOperation !== 'copy',
                 'outline-2 outline-emerald-500 -outline-offset-2 bg-emerald-500/10!':
-                  dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
+                  dragOverEntryPath === (entry.path ?? null) &&
+                  props.currentDragOperation === 'copy',
               }"
               :draggable="true"
               tabindex="0"
@@ -231,8 +233,8 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
               @drop.prevent="emit('entryDrop', $event, entry)"
               @click="emit('entryClick', $event, entry)"
               @dblclick="emit('entryDoubleClick', entry)"
-              @keydown.enter.prevent="emit('entryEnter', entry)"
-              @keydown.space.prevent="emit('entryEnter', entry)"
+              @keydown.enter.prevent.stop="emit('entryEnter', entry)"
+              @keydown.space.prevent.stop="emit('entryEnter', entry)"
             >
               <td class="py-2 px-3 flex items-center gap-2">
                 <div
@@ -356,7 +358,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
             <span v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
               {{
                 props.currentDragOperation === 'copy'
-                  ? t('videoEditor.fileManager.actions.dropToRootCopyHint', 'Release to copy into the current folder')
+                  ? t(
+                      'videoEditor.fileManager.actions.dropToRootCopyHint',
+                      'Release to copy into the current folder',
+                    )
                   : t(
                       'videoEditor.fileManager.actions.dropToRootHint',
                       'Release to upload into the project root',

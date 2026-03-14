@@ -54,9 +54,7 @@ const {
     </div>
 
     <div v-if="props.canEditReversed" class="flex items-center justify-between">
-      <span class="text-sm text-ui-text">{{
-        t('fastcat.clip.reversed', 'Reverse Playback')
-      }}</span>
+      <span class="text-sm text-ui-text">{{ t('fastcat.clip.reversed', 'Reverse Playback') }}</span>
       <USwitch :model-value="props.isReversed" @update:model-value="emit('toggleReversed')" />
     </div>
 

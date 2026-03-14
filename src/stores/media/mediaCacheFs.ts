@@ -1,4 +1,4 @@
-import { type ResolvedStorageTopology } from '~/utils/storage-topology';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 
 export interface MediaCacheFsModule {

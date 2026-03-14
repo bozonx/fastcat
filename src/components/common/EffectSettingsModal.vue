@@ -61,7 +61,9 @@ function frequencyToX(frequency: number) {
   const minFrequency = 20;
   const maxFrequency = 20000;
   const safeFrequency = clamp(frequency, minFrequency, maxFrequency);
-  const ratio = (Math.log10(safeFrequency) - Math.log10(minFrequency)) / (Math.log10(maxFrequency) - Math.log10(minFrequency));
+  const ratio =
+    (Math.log10(safeFrequency) - Math.log10(minFrequency)) /
+    (Math.log10(maxFrequency) - Math.log10(minFrequency));
 
   return ratio * canvasWidth;
 }
@@ -90,9 +92,15 @@ function getPointContribution(point: ParametricEqPoint, frequency: number) {
     case 'peaking':
       return gain * gaussian;
     case 'lowshelf':
-      return gain / (1 + Math.exp((distance * 4 * Math.sign(frequency - pointFrequency)) / gaussianWidth));
+      return (
+        gain /
+        (1 + Math.exp((distance * 4 * Math.sign(frequency - pointFrequency)) / gaussianWidth))
+      );
     case 'highshelf':
-      return gain / (1 + Math.exp((distance * -4 * Math.sign(frequency - pointFrequency)) / gaussianWidth));
+      return (
+        gain /
+        (1 + Math.exp((distance * -4 * Math.sign(frequency - pointFrequency)) / gaussianWidth))
+      );
     case 'lowpass':
       return frequency > pointFrequency ? -24 * (1 - Math.exp(-distance * normalizedQ)) : 0;
     case 'highpass':
@@ -126,14 +134,14 @@ function drawEqVisualization() {
   context.lineWidth = 1;
 
   const frequencyMarkers = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-  
+
   context.font = '10px monospace';
   context.textAlign = 'center';
   context.textBaseline = 'top';
 
   for (const marker of frequencyMarkers) {
     const x = frequencyToX(marker);
-    
+
     // Draw line
     context.strokeStyle = 'rgba(148, 163, 184, 0.18)';
     context.lineWidth = 1;
@@ -149,13 +157,13 @@ function drawEqVisualization() {
   }
 
   const gainMarkers = [-24, -12, 0, 12, 24];
-  
+
   context.textAlign = 'right';
   context.textBaseline = 'middle';
 
   for (const marker of gainMarkers) {
     const y = gainToY(marker);
-    
+
     // Draw line
     context.strokeStyle = 'rgba(148, 163, 184, 0.18)';
     context.lineWidth = 1;

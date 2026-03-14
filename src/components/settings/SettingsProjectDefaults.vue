@@ -12,8 +12,6 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-
-
 const presetOptions = computed(() =>
   workspaceStore.userSettings.projectPresets.items.map((preset) => ({
     value: preset.id,
@@ -24,8 +22,6 @@ const presetOptions = computed(() =>
 const selectedPreset = computed(() =>
   resolveProjectPreset(workspaceStore.userSettings.projectPresets),
 );
-
-
 
 function addPreset() {
   const basePreset = selectedPreset.value;
@@ -60,8 +56,6 @@ function removePreset() {
 
 <template>
   <div class="flex flex-col gap-6">
-
-
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userProject', 'Project presets') }}
@@ -107,6 +101,5 @@ function removePreset() {
       v-model:sample-rate="selectedPreset.sampleRate"
       :disabled="false"
     />
-
   </div>
 </template>

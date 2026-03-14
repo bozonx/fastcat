@@ -100,9 +100,7 @@ const smartSortedProjects = computed(() => {
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between">
           <h3 class="font-medium text-ui-text-muted uppercase text-xs tracking-wider">
-            {{ t('fastcat.projects.title') }} ({{
-              workspaceStore.projects.length
-            }})
+            {{ t('fastcat.projects.title') }} ({{ workspaceStore.projects.length }})
           </h3>
           <div class="w-64">
             <SearchInput
@@ -133,7 +131,9 @@ const smartSortedProjects = computed(() => {
             v-for="project in smartSortedProjects"
             :key="project.projectName"
             class="bg-ui-bg-elevated border border-ui-border rounded-xl flex flex-col hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer group shadow-lg overflow-hidden"
-            @click="isRenaming === project.projectName ? null : handleOpenProject(project.projectName)"
+            @click="
+              isRenaming === project.projectName ? null : handleOpenProject(project.projectName)
+            "
           >
             <div class="aspect-video relative shrink-0">
               <ProjectThumbnail
@@ -233,9 +233,17 @@ const smartSortedProjects = computed(() => {
         />
       </div>
 
-      <div v-if="!projectCreationSettings.isAdvancedSettingsOpen" class="text-xs text-ui-text-muted bg-ui-bg-accent p-3 rounded-lg flex gap-2">
+      <div
+        v-if="!projectCreationSettings.isAdvancedSettingsOpen"
+        class="text-xs text-ui-text-muted bg-ui-bg-accent p-3 rounded-lg flex gap-2"
+      >
         <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
-        {{ t('fastcat.projects.autoDetectHint', 'Project resolution and framerate will be automatically detected from the first video added to the timeline.') }}
+        {{
+          t(
+            'fastcat.projects.autoDetectHint',
+            'Project resolution and framerate will be automatically detected from the first video added to the timeline.',
+          )
+        }}
       </div>
 
       <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
@@ -245,7 +253,9 @@ const smartSortedProjects = computed(() => {
           size="sm"
           class="p-0 hover:bg-transparent"
           :icon="
-            projectCreationSettings.isAdvancedSettingsOpen ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
+            projectCreationSettings.isAdvancedSettingsOpen
+              ? 'i-heroicons-chevron-down-20-solid'
+              : 'i-heroicons-chevron-right-20-solid'
           "
           :label="t('videoEditor.projectSettings.advanced', 'Advanced Settings')"
         />

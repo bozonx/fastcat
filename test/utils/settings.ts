@@ -1,7 +1,4 @@
-import {
-  createDefaultUserSettings,
-  type FastCatUserSettings,
-} from '../../src/utils/settings';
+import { createDefaultUserSettings, type FastCatUserSettings } from '../../src/utils/settings';
 
 import { deepMerge } from './merge';
 

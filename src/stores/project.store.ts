@@ -112,12 +112,12 @@ export const useProjectStore = defineStore('project', () => {
   });
 
   const { openTimelineFile, closeTimelineFile, reorderTimelines } = timelinesModule;
-  
+
   watch(currentTimelinePath, async (newPath) => {
     if (newPath && metaModule.projectMeta.value) {
       if (metaModule.projectMeta.value.lastOpenedTimelinePath !== newPath) {
         await metaModule.saveProjectMeta({ lastOpenedTimelinePath: newPath });
-        
+
         if (currentProjectName.value && currentProjectId.value) {
           workspaceStore.updateRecentProject({
             projectName: currentProjectName.value,
@@ -257,9 +257,9 @@ export const useProjectStore = defineStore('project', () => {
 
       initialSettings.timelines.openPaths = [initialTimeline];
       projectSettings.value = initialSettings;
-      
+
       await metaModule.saveProjectMeta({ lastOpenedTimelinePath: initialTimeline });
-      
+
       if (currentProjectId.value) {
         workspaceStore.updateRecentProject({
           projectName: name,

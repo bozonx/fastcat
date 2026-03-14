@@ -236,9 +236,7 @@ function handleAddAudioTrack() {
     />
 
     <!-- Master Volume -->
-    <PropertySection
-      :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')"
-    >
+    <PropertySection :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')">
       <div class="space-y-1.5 mt-1">
         <div class="flex items-center justify-between">
           <span class="text-[10px] font-mono text-ui-text-muted">{{ masterGain.toFixed(3) }}x</span>

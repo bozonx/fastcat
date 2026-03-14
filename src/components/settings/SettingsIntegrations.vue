@@ -349,7 +349,9 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </label>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <UCheckbox v-model="workspaceStore.userSettings.integrations.manualFilesApi.overrideFastCat" />
+        <UCheckbox
+          v-model="workspaceStore.userSettings.integrations.manualFilesApi.overrideFastCat"
+        />
         <span class="text-sm text-ui-text">
           {{
             t(
@@ -424,7 +426,9 @@ async function runServiceHealth(kind: 'files' | 'stt') {
       </label>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <UCheckbox v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat" />
+        <UCheckbox
+          v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat"
+        />
         <span class="text-sm text-ui-text">
           {{
             t(
@@ -504,6 +508,5 @@ async function runServiceHealth(kind: 'files' | 'stt') {
         }}
       </div>
     </div>
-
   </div>
 </template>

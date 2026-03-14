@@ -55,7 +55,10 @@ function clampHandlePx(px: number, width: number) {
   return Math.min(Math.max(0, px), width);
 }
 
-function onFadeHandlePointerDown(event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }) {
+function onFadeHandlePointerDown(
+  event: PointerEvent,
+  payload: { edge: 'in' | 'out'; durationUs: number },
+) {
   event.stopPropagation();
   event.preventDefault();
 
@@ -160,7 +163,9 @@ const volumeY = computed(() => {
       >
         <div
           class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
-          @pointerdown="onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })"
+          @pointerdown="
+            onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
+          "
         ></div>
       </div>
 
@@ -176,7 +181,9 @@ const volumeY = computed(() => {
       >
         <div
           class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
-          @pointerdown="onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })"
+          @pointerdown="
+            onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
+          "
         ></div>
       </div>
     </template>

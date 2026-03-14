@@ -381,7 +381,6 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
-      const minUs = 100_000;
 
       const tracks = tracksRef();
       const track = tracks.find((t) => t.id === payload.trackId);
@@ -410,11 +409,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
             : ((item as TimelineClipItem).transitionIn?.durationUs ?? 0),
         ),
       );
-      const hardMaxUs = Math.max(minUs, Math.max(0, clipDurationUs - oppositeTransitionUs));
+      const hardMaxUs = Math.max(0, clipDurationUs - oppositeTransitionUs);
 
       let newDurationUs = Math.min(
+        Math.max(0, resizeTransition.value.startDurationUs + deltaUs),
         hardMaxUs,
-        Math.max(minUs, resizeTransition.value.startDurationUs + deltaUs),
       );
 
       if (timelineSettingsStore.clipSnapMode === 'clips') {

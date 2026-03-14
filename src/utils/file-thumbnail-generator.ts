@@ -2,22 +2,16 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { FILE_MANAGER_THUMBNAILS, TIMELINE_MANAGER_THUMBNAILS } from '~/utils/constants';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import {
+  BaseThumbnailGenerator,
+  type BaseThumbnailTask,
+  ensureBaseThumbnailDir,
+  hashString,
+} from './base-thumbnail-generator';
 
-export interface FileThumbnailTask {
-  id: string; // usually clip hash
-  projectId: string;
-  projectRelativePath: string;
+export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
   onError?: (err: Error) => void;
-}
-
-function hashString(input: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `h${(hash >>> 0).toString(16)}`;
 }
 
 export function getFileThumbnailHash(input: {
@@ -33,87 +27,28 @@ async function ensureThumbnailDir(input: {
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   create?: boolean;
 }): Promise<FileSystemDirectoryHandle> {
-  return (await ensureResolvedProjectTempDir({
-    workspaceHandle: input.workspaceStore.workspaceHandle!,
-    topology: input.workspaceStore.resolvedStorageTopology,
+  return await ensureBaseThumbnailDir({
     projectId: input.projectId,
+    workspaceStore: input.workspaceStore,
     leafSegments: ['thumbnails', input.dirName],
     create: input.create,
-  })) as FileSystemDirectoryHandle;
+  });
 }
 
-class FileThumbnailGenerator {
-  private queue: FileThumbnailTask[] = [];
-  private activeTasks = new Set<string>();
-  private cache = new Map<string, string>(); // hash -> blob url
-  private readonly maxCacheEntries = 200;
-  private cancelledTasks = new Set<string>();
+class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, string> {
+  protected maxCacheEntries = 200;
 
-  private touchCacheEntry(id: string) {
-    const url = this.cache.get(id);
-    if (!url) return;
-    this.cache.delete(id);
-    this.cache.set(id, url);
+  protected get concurrencyLimit(): number {
+    const workspaceStore = useWorkspaceStore();
+    return workspaceStore.userSettings.optimization.mediaTaskConcurrency;
   }
 
-  private evictCacheIfNeeded() {
-    while (this.cache.size > this.maxCacheEntries) {
-      const oldestKey = this.cache.keys().next().value as string | undefined;
-      if (!oldestKey) return;
-      const url = this.cache.get(oldestKey);
-      if (url) {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {
-          // ignore
-        }
-      }
-      this.cache.delete(oldestKey);
-    }
+  protected revokeCacheValue(url: string): void {
+    // Note: URL revocation is now handled by the consumers (components)
   }
 
-  cancelTask(id: string) {
-    if (!id) return;
-    this.cancelledTasks.add(id);
-    this.queue = this.queue.filter((t) => t.id !== id);
-  }
-
-  private isCancelled(id: string) {
-    return this.cancelledTasks.has(id);
-  }
-
-  addTask(task: FileThumbnailTask) {
-    if (this.isCancelled(task.id)) {
-      this.cancelledTasks.delete(task.id);
-    }
-    if (this.queue.some((t) => t.id === task.id) || this.activeTasks.has(task.id)) {
-      return;
-    }
-
-    if (this.cache.has(task.id)) {
-      this.touchCacheEntry(task.id);
-      task.onComplete?.(this.cache.get(task.id)!);
-      return;
-    }
-
-    this.queue.push(task);
-    this.processQueue();
-  }
-
-  private processQueue() {
-    while (
-      this.activeTasks.size < FILE_MANAGER_THUMBNAILS.MAX_CONCURRENT_TASKS &&
-      this.queue.length > 0
-    ) {
-      const task = this.queue.shift();
-      if (task) {
-        this.activeTasks.add(task.id);
-        this.generateThumbnail(task).finally(() => {
-          this.activeTasks.delete(task.id);
-          this.processQueue();
-        });
-      }
-    }
+  protected onCacheHit(task: FileThumbnailTask, url: string): void {
+    task.onComplete?.(url);
   }
 
   private async loadThumbnailFromOPFS(task: FileThumbnailTask): Promise<string | null> {
@@ -149,7 +84,7 @@ class FileThumbnailGenerator {
     }
   }
 
-  private async generateThumbnail(task: FileThumbnailTask): Promise<void> {
+  protected async executeTask(task: FileThumbnailTask): Promise<void> {
     const existingUrl = await this.loadThumbnailFromOPFS(task);
     if (existingUrl) {
       if (!this.isCancelled(task.id)) {
@@ -374,16 +309,6 @@ class FileThumbnailGenerator {
     await writable.write(input.blob);
     await writable.close();
 
-    // Revoke old URL if exists in cache
-    const oldUrl = this.cache.get(hash);
-    if (oldUrl) {
-      try {
-        URL.revokeObjectURL(oldUrl);
-      } catch {
-        /* ignore */
-      }
-    }
-
     const savedFile = await fileHandle.getFile();
     const thumbUrl = URL.createObjectURL(savedFile);
 
@@ -394,15 +319,7 @@ class FileThumbnailGenerator {
 
   async clearThumbnail(input: { projectId: string; projectRelativePath: string }) {
     const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
-    const url = this.cache.get(hash);
-    if (url) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        // ignore
-      }
-      this.cache.delete(hash);
-    }
+    this.cache.delete(hash);
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;

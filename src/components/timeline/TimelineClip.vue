@@ -57,7 +57,11 @@ const emit = defineEmits<{
   (e: 'startResizeVolume', event: PointerEvent, payload: TimelineResizeVolumePayload): void;
   (e: 'startResizeFade', event: PointerEvent, payload: TimelineResizeFadePayload): void;
   (e: 'startResizeTransition', event: PointerEvent, payload: TimelineResizeFadePayload): void;
-  (e: 'selectTransition', event: MouseEvent | PointerEvent, payload: TimelineTransitionSelection): void;
+  (
+    e: 'selectTransition',
+    event: MouseEvent | PointerEvent,
+    payload: TimelineTransitionSelection,
+  ): void;
   (e: 'clipAction', payload: TimelineClipActionPayload): void;
   (e: 'openSpeedModal', payload: TimelineOpenSpeedModalPayload): void;
   (e: 'resetVolume', payload: { trackId: string; itemId: string }): void;
@@ -156,7 +160,9 @@ const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handle
     selectTimelineTransition: (trackId, itemId, edge) =>
       selectionStore.selectTimelineTransition(trackId, itemId, edge),
     triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
-    defaultTransitionDurationUs: computed(() => workspaceStore.userSettings.timeline.defaultTransitionDurationUs),
+    defaultTransitionDurationUs: computed(
+      () => workspaceStore.userSettings.timeline.defaultTransitionDurationUs,
+    ),
   });
 
 function isVideo(it: TimelineTrackItem): it is TimelineClipItem {
@@ -200,7 +206,9 @@ const { contextMenuItems } = useClipContextMenu({
   canEditClipContent: computed(() => props.canEditClipContent),
   timelineDoc: computed(() => timelineStore.timelineDoc),
   projectSettings: computed(() => projectStore.projectSettings),
-  defaultTransitionDurationUs: computed(() => workspaceStore.userSettings.timeline.defaultTransitionDurationUs),
+  defaultTransitionDurationUs: computed(
+    () => workspaceStore.userSettings.timeline.defaultTransitionDurationUs,
+  ),
   selectedItemIds: computed(() => timelineStore.selectedItemIds),
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
   batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
@@ -263,24 +271,23 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
 
   const defaultUs = Math.max(
     0,
-    Math.round(Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000))
+    Math.round(
+      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
+    ),
   );
-  const durationUs = Math.min(
-    defaultUs,
-    Math.round(clipItem.value.timelineRange.durationUs * 0.3)
-  );
+  const durationUs = Math.min(defaultUs, Math.round(clipItem.value.timelineRange.durationUs * 0.3));
 
   const transitionPatch = {
     type: 'dissolve',
     durationUs,
     mode: 'adjacent' as const,
-    curve: 'linear' as const
+    curve: 'linear' as const,
   };
 
   timelineStore.updateClipTransition(
     props.track.id,
     props.item.id,
-    payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch }
+    payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
   );
 
   if (payload.drag) {
@@ -290,7 +297,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         trackId: props.track.id,
         itemId: props.item.id,
         edge: payload.edge,
-        durationUs
+        durationUs,
       });
     }, 0);
   }
@@ -306,7 +313,11 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       :style="{
         left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
-        zIndex: timelineStore.selectedItemIds.includes(item.id) ? 'var(--z-clip-selected)' : (isDraggingOver ? 'var(--z-clip-dragging)' : 'var(--z-clip-base)'),
+        zIndex: timelineStore.selectedItemIds.includes(item.id)
+          ? 'var(--z-clip-selected)'
+          : isDraggingOver
+            ? 'var(--z-clip-dragging)'
+            : 'var(--z-clip-base)',
       }"
       :class="[
         timelineStore.isTrimModeActive ? 'cursor-crosshair' : 'cursor-pointer',
@@ -413,7 +424,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       <div class="flex-1 flex w-full min-h-0 relative" :style="{ zIndex: 'var(--z-clip-content)' }">
         <TimelineClipThumbnails
           v-if="isVideo(item) && clipItem?.showThumbnails !== false"
-          :item="(item as TimelineClipItem)"
+          :item="item as TimelineClipItem"
           :width="clipWidthPx"
         />
         <TimelineAudioWaveform
@@ -421,7 +432,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
             isAudio(item) ||
             (isVideo(item) && clipHasAudio(item, track) && clipItem?.showWaveform !== false)
           "
-          :item="(item as TimelineClipItem)"
+          :item="item as TimelineClipItem"
         />
 
         <div

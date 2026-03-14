@@ -69,10 +69,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="timeline-tabs flex items-center h-full min-w-0 flex-1 select-none">
-    <div
-      ref="scrollContainer"
-      class="flex h-full w-full overflow-x-auto no-scrollbar items-center"
-    >
+    <div ref="scrollContainer" class="flex h-full w-full overflow-x-auto no-scrollbar items-center">
       <VueDraggable
         v-model="openPaths"
         class="flex h-full items-center"

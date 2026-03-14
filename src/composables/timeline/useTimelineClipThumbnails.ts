@@ -73,6 +73,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
 
   const thumbnailsBySecond = ref(new Map<number, string>());
   const imagePromisesByUrl = new Map<string, Promise<HTMLImageElement>>();
+  const imageUrlsToRevoke = new Set<string>();
   const thumbAspectRatio = ref(16 / 9);
 
   const chunkEls = ref<(HTMLElement | null)[]>([]);
@@ -198,7 +199,10 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
       img.decoding = 'async';
       img.loading = 'eager';
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Failed to load thumbnail image'));
+      img.onerror = () => {
+        imagePromisesByUrl.delete(url);
+        reject(new Error('Failed to load thumbnail image'));
+      };
       img.src = url;
     });
 
@@ -423,6 +427,7 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
         if (!newMap.has(secondKey)) {
           newMap.set(secondKey, path);
           thumbnailsBySecond.value = newMap;
+          imageUrlsToRevoke.add(path);
         }
 
         const idx = Math.floor(secondKey / intervalSeconds);
@@ -471,6 +476,16 @@ export function useTimelineClipThumbnails(options: { item: Ref<TimelineClipItem>
       URL.revokeObjectURL(imageUrl.value);
       imageUrl.value = '';
     }
+
+    for (const url of imageUrlsToRevoke) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // ignore
+      }
+    }
+    imageUrlsToRevoke.clear();
+    imagePromisesByUrl.clear();
   });
 
   watch(fileUrl, () => {

@@ -115,7 +115,9 @@ const speedModalTargetHasAudio = computed(() => {
 });
 
 const movePreviewItem = computed(() =>
-  props.tracks.flatMap((track) => track.items).find((item) => item.id === props.movePreview?.itemId),
+  props.tracks
+    .flatMap((track) => track.items)
+    .find((item) => item.id === props.movePreview?.itemId),
 );
 
 function selectTransition(
@@ -215,7 +217,9 @@ function selectTransition(
           width: `${Math.max(2, timeUsToPx(movePreviewItem?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
         }"
       >
-        <span class="truncate">{{ movePreviewItem && 'name' in movePreviewItem ? movePreviewItem.name : '' }}</span>
+        <span class="truncate">{{
+          movePreviewItem && 'name' in movePreviewItem ? movePreviewItem.name : ''
+        }}</span>
       </div>
 
       <template v-for="item in track.items" :key="item.id">
@@ -244,8 +248,13 @@ function selectTransition(
           @start-resize-transition="startResizeTransition"
           @select-transition="selectTransition"
           @clip-action="(p) => emit('clipAction', p)"
-          @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)"
-          @reset-volume="(payload) => timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })"
+          @open-speed-modal="
+            (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
+          "
+          @reset-volume="
+            (payload) =>
+              timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })
+          "
         />
       </template>
     </div>

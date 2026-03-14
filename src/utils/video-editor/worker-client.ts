@@ -115,9 +115,14 @@ function createWorker(channel: WorkerChannel): Worker {
           }
           throw new Error(`Method ${data.method} not found on Host API`);
         }
-        
+
         const args = data.args || [];
-        if (data.taskId && (method === 'onExportProgress' || method === 'onExportPhase' || method === 'onExportWarning')) {
+        if (
+          data.taskId &&
+          (method === 'onExportProgress' ||
+            method === 'onExportPhase' ||
+            method === 'onExportWarning')
+        ) {
           // Detect if we need to append taskId as last argument or if it's already there
           // For now we assume taskId is passed in the message envelope
           const result = await (fn as any)(...args, data.taskId);

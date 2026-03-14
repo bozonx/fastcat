@@ -69,10 +69,10 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       if (!combined[mediaPath]) {
         combined[mediaPath] = [];
       }
-      
+
       const existingRefs = combined[mediaPath] || [];
       combined[mediaPath] = [...existingRefs, ...liveRefs];
-      
+
       // Keep sorted
       combined[mediaPath].sort((a, b) => a.timelineName.localeCompare(b.timelineName));
     }

@@ -146,11 +146,18 @@ export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: nu
   return Math.max(0, Math.round(relativeTimeS * frameRate));
 }
 
-export function buildVideoFrameCacheKey(clip: Pick<VideoFrameCacheClipLike, 'itemId'>, frameIndex: number): string {
+export function buildVideoFrameCacheKey(
+  clip: Pick<VideoFrameCacheClipLike, 'itemId'>,
+  frameIndex: number,
+): string {
   return `${clip.itemId}:${frameIndex}`;
 }
 
-export function estimateVideoFrameSizeBytes(frame: VideoFrame, width: number, height: number): number {
+export function estimateVideoFrameSizeBytes(
+  frame: VideoFrame,
+  width: number,
+  height: number,
+): number {
   const codedWidth = Math.max(1, Math.round(Number((frame as any).codedWidth) || width || 1));
   const codedHeight = Math.max(1, Math.round(Number((frame as any).codedHeight) || height || 1));
   return codedWidth * codedHeight * 4;

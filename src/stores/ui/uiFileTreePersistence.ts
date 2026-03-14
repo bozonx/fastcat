@@ -54,12 +54,9 @@ export function createUiFileTreePersistenceModule(deps: {
 
     currentFileTreeProjectId.value = projectId;
 
-    const parsed = readLocalStorageJson<PersistedFileTreeState>(
-      getFileTreeStorageKey(projectId),
-      {
-        expandedPaths: [],
-      },
-    );
+    const parsed = readLocalStorageJson<PersistedFileTreeState>(getFileTreeStorageKey(projectId), {
+      expandedPaths: [],
+    });
 
     const next: Record<string, true> = {};
     for (const p of parsed.expandedPaths) {

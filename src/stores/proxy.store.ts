@@ -28,7 +28,7 @@ export const useProxyStore = defineStore('proxy', () => {
   });
 
   const queueModule = createProxyQueueModule({
-    concurrency: computed(() => workspaceStore.userSettings.optimization.proxyConcurrency),
+    concurrency: computed(() => workspaceStore.userSettings.optimization.mediaTaskConcurrency),
   });
 
   const service = createProxyService({

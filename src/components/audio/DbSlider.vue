@@ -57,11 +57,14 @@ watch(
 
     // Update color based on level
     if (db > 6) {
-      levelBarRef.value.className = 'absolute bottom-0 left-0 right-0 bg-red-500 transition-all duration-75';
+      levelBarRef.value.className =
+        'absolute bottom-0 left-0 right-0 bg-red-500 transition-all duration-75';
     } else if (db > 0) {
-      levelBarRef.value.className = 'absolute bottom-0 left-0 right-0 bg-yellow-500 transition-all duration-75';
+      levelBarRef.value.className =
+        'absolute bottom-0 left-0 right-0 bg-yellow-500 transition-all duration-75';
     } else {
-      levelBarRef.value.className = 'absolute bottom-0 left-0 right-0 bg-green-500 transition-all duration-75';
+      levelBarRef.value.className =
+        'absolute bottom-0 left-0 right-0 bg-green-500 transition-all duration-75';
     }
   },
   { immediate: true },

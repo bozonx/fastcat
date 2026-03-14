@@ -221,10 +221,7 @@ export function createWorkspaceSettingsModule(params: {
     updater: (draft: FastCatWorkspaceSettings) => void,
     options?: { immediate?: boolean },
   ) {
-    await batchUpdateAppSettings(
-      (draft) => updater(draft as FastCatWorkspaceSettings),
-      options,
-    );
+    await batchUpdateAppSettings((draft) => updater(draft as FastCatWorkspaceSettings), options);
   }
 
   async function loadAppSettingsFromDisk() {

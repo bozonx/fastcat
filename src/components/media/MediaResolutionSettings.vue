@@ -44,8 +44,6 @@ const formatOptions = [
   { value: '4k', label: t('videoEditor.resolution.preset.4k', '4K (UHD)') },
 ];
 
-
-
 const sampleRateOptions = [
   { value: 44100, label: '44.1 kHz' },
   { value: 48000, label: '48 kHz' },
@@ -120,8 +118,6 @@ const localFps = computed({
   get: () => props.fps,
   set: (val) => emit('update:fps', val),
 });
-
-
 
 const localSampleRate = computed({
   get: () => props.sampleRate ?? 48000,
@@ -284,7 +280,11 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     </template>
 
     <!-- FPS -->
-    <div :class="props.showAudioSettings ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-2'">
+    <div
+      :class="
+        props.showAudioSettings ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-2'
+      "
+    >
       <div class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.fps', 'FPS') }}

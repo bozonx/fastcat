@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
-import { ref } from 'vue';
 import { getAudioEffectManifest } from '~/effects';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
 import MasterAudioEffectsModal from './MasterAudioEffectsModal.vue';
@@ -142,8 +141,6 @@ function handleSelectEffect(type: string) {
       @select="handleSelectEffect"
     />
 
-    <MasterAudioEffectsModal
-      v-model:open="isEffectsModalOpen"
-    />
+    <MasterAudioEffectsModal v-model:open="isEffectsModalOpen" />
   </div>
 </template>

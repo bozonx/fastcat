@@ -21,9 +21,7 @@ const isOpen = computed({
   set: (val) => emit('update:open', val),
 });
 
-const track = computed(() =>
-  timelineStore.timelineDoc?.tracks.find((t) => t.id === props.trackId),
-);
+const track = computed(() => timelineStore.timelineDoc?.tracks.find((t) => t.id === props.trackId));
 
 const trackName = computed(() => track.value?.name || '');
 
@@ -46,10 +44,7 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
   <UModal v-model:open="isOpen" :title="t('fastcat.effects.trackAudioTitle', { name: trackName })">
     <template #body>
       <div class="max-h-[70vh] overflow-y-auto pr-1">
-        <AudioEffectsEditor
-          :effects="trackAudioEffects"
-          @update:effects="handleUpdateEffects"
-        />
+        <AudioEffectsEditor :effects="trackAudioEffects" @update:effects="handleUpdateEffects" />
       </div>
     </template>
     <template #footer>

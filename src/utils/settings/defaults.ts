@@ -81,7 +81,7 @@ export interface FastCatUserSettings {
     proxyAudioBitrateKbps: number;
     proxyCopyOpusAudio: boolean;
     autoCreateProxies: boolean;
-    proxyConcurrency: number;
+    mediaTaskConcurrency: number;
     videoFrameCacheMb: number;
   };
   projectPresets: UserProjectPresetsSettings;
@@ -168,7 +168,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     proxyAudioBitrateKbps: 128,
     proxyCopyOpusAudio: true,
     autoCreateProxies: false,
-    proxyConcurrency: 2,
+    mediaTaskConcurrency: 2,
     videoFrameCacheMb: 256,
   },
   projectPresets: createDefaultProjectPresets(),

@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -17,6 +18,7 @@ export function useEditorHotkeys() {
   const focusStore = useFocusStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
+  const uiStore = useUiStore();
 
   const volumeHoldRunner = createHotkeyHoldRunner();
   const zoomHoldRunner = createHotkeyHoldRunner();
@@ -35,8 +37,7 @@ export function useEditorHotkeys() {
 
   function hasBlockingModalState() {
     if (projectStore.currentView === 'fullscreen') return true;
-    if (document.querySelector('[role="dialog"]')) return true;
-    if (document.getElementsByClassName('fixed inset-0 bg-black/95').length > 0) return true;
+    if (uiStore.activeModalsCount > 0) return true;
     return false;
   }
 
@@ -144,14 +145,14 @@ export function useEditorHotkeys() {
   }
 
   onMounted(() => {
-    window.addEventListener('keydown', onGlobalKeydown, { capture: true });
-    window.addEventListener('keyup', onGlobalKeyup, { capture: true });
+    window.addEventListener('keydown', onGlobalKeydown);
+    window.addEventListener('keyup', onGlobalKeyup);
     window.addEventListener('blur', onGlobalBlur);
   });
 
   onUnmounted(() => {
-    window.removeEventListener('keydown', onGlobalKeydown, { capture: true });
-    window.removeEventListener('keyup', onGlobalKeyup, { capture: true });
+    window.removeEventListener('keydown', onGlobalKeydown);
+    window.removeEventListener('keyup', onGlobalKeyup);
     window.removeEventListener('blur', onGlobalBlur);
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();

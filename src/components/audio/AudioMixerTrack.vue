@@ -159,7 +159,10 @@ function handleSelectEffect(type: string) {
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative my-2 min-h-25">
-      <DbSlider v-model="volumeDb" :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb" />
+      <DbSlider
+        v-model="volumeDb"
+        :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb"
+      />
     </div>
 
     <!-- DB Value -->
@@ -214,7 +217,11 @@ function handleSelectEffect(type: string) {
             @blur="confirmRename"
           />
         </div>
-        <div v-else class="max-w-full text-[10px] font-medium text-ui-text truncate px-0.5" :title="trackName">
+        <div
+          v-else
+          class="max-w-full text-[10px] font-medium text-ui-text truncate px-0.5"
+          :title="trackName"
+        >
           {{ trackName }}
         </div>
       </div>
@@ -230,9 +237,6 @@ function handleSelectEffect(type: string) {
       @select="handleSelectEffect"
     />
 
-    <TrackAudioEffectsModal
-      v-model:open="isEffectsModalOpen"
-      :track-id="track.id"
-    />
+    <TrackAudioEffectsModal v-model:open="isEffectsModalOpen" :track-id="track.id" />
   </div>
 </template>

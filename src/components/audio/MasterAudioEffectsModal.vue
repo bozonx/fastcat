@@ -20,8 +20,8 @@ const isOpen = computed({
   set: (val) => emit('update:open', val),
 });
 
-const masterEffects = computed(() =>
-  (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []) as AudioClipEffect[],
+const masterEffects = computed(
+  () => (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []) as AudioClipEffect[],
 );
 
 function handleUpdateEffects(effects: AudioClipEffect[]) {
@@ -36,10 +36,7 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
   <UModal v-model:open="isOpen" :title="t('fastcat.effects.masterTitle')">
     <template #body>
       <div class="max-h-[70vh] overflow-y-auto pr-1">
-        <AudioEffectsEditor
-          :effects="masterEffects"
-          @update:effects="handleUpdateEffects"
-        />
+        <AudioEffectsEditor :effects="masterEffects" @update:effects="handleUpdateEffects" />
       </div>
     </template>
     <template #footer>

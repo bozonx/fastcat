@@ -58,7 +58,9 @@ const { t } = useI18n();
           t('fastcat.textClip.fontFamily', 'Font family')
         }}</span>
         <USelectMenu
-          :model-value="String((props.clip as TimelineTextClipItem).style?.fontFamily ?? 'sans-serif')"
+          :model-value="
+            String((props.clip as TimelineTextClipItem).style?.fontFamily ?? 'sans-serif')
+          "
           :items="[
             { value: 'sans-serif', label: 'Sans Serif' },
             { value: 'serif', label: 'Serif' },
@@ -99,7 +101,12 @@ const { t } = useI18n();
           }}</span>
           <USelectMenu
             :model-value="String((props.clip as TimelineTextClipItem).style?.fontWeight ?? '700')"
-            :items="['100','200','300','400','500','600','700','800','900'].map((w) => ({ value: w, label: w }))"
+            :items="
+              ['100', '200', '300', '400', '500', '600', '700', '800', '900'].map((w) => ({
+                value: w,
+                label: w,
+              }))
+            "
             value-key="value"
             label-key="label"
             size="sm"
@@ -126,7 +133,9 @@ const { t } = useI18n();
             :model-value="String((props.clip as TimelineTextClipItem).style?.backgroundColor ?? '')"
             format="hex"
             size="sm"
-            @update:model-value="(v: any) => emit('updateTextStyle', { backgroundColor: String(v) })"
+            @update:model-value="
+              (v: any) => emit('updateTextStyle', { backgroundColor: String(v) })
+            "
           />
         </div>
       </div>
@@ -140,7 +149,9 @@ const { t } = useI18n();
           size="sm"
           :step="10"
           :min="0"
-          @update:model-value="(v: any) => emit('updateTextStyle', { width: v > 0 ? Number(v) : undefined })"
+          @update:model-value="
+            (v: any) => emit('updateTextStyle', { width: v > 0 ? Number(v) : undefined })
+          "
         />
       </div>
 
@@ -165,7 +176,9 @@ const { t } = useI18n();
           t('fastcat.textClip.verticalAlign', 'Vertical align')
         }}</span>
         <USelectMenu
-          :model-value="String((props.clip as TimelineTextClipItem).style?.verticalAlign ?? 'middle')"
+          :model-value="
+            String((props.clip as TimelineTextClipItem).style?.verticalAlign ?? 'middle')
+          "
           :items="[
             { value: 'top', label: 'Top' },
             { value: 'middle', label: 'Middle' },
@@ -245,7 +258,10 @@ const { t } = useI18n();
             { value: 'star', label: t('fastcat.shapeClip.types.star', 'Star') },
             { value: 'bang', label: t('fastcat.shapeClip.types.bang', 'Bang') },
             { value: 'cloud', label: t('fastcat.shapeClip.types.cloud', 'Cloud') },
-            { value: 'speech_bubble', label: t('fastcat.shapeClip.types.speechBubble', 'Speech Bubble') },
+            {
+              value: 'speech_bubble',
+              label: t('fastcat.shapeClip.types.speechBubble', 'Speech Bubble'),
+            },
           ]"
           value-key="value"
           label-key="label"
@@ -367,12 +383,19 @@ const { t } = useI18n();
       </template>
 
       <template
-        v-else-if="(props.clip as any).shapeType === 'star' || (props.clip as any).shapeType === 'bang'"
+        v-else-if="
+          (props.clip as any).shapeType === 'star' || (props.clip as any).shapeType === 'bang'
+        "
       >
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">Rays</span>
           <WheelNumberInput
-            :model-value="Number((props.clip as any).shapeConfig?.rays ?? ((props.clip as any).shapeType === 'star' ? 5 : 12))"
+            :model-value="
+              Number(
+                (props.clip as any).shapeConfig?.rays ??
+                  ((props.clip as any).shapeType === 'star' ? 5 : 12),
+              )
+            "
             size="sm"
             :step="1"
             :min="3"
@@ -382,7 +405,12 @@ const { t } = useI18n();
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">Inner Radius (%)</span>
           <WheelNumberInput
-            :model-value="Number((props.clip as any).shapeConfig?.innerRadius ?? ((props.clip as any).shapeType === 'star' ? 40 : 70))"
+            :model-value="
+              Number(
+                (props.clip as any).shapeConfig?.innerRadius ??
+                  ((props.clip as any).shapeType === 'star' ? 40 : 70),
+              )
+            "
             size="sm"
             :step="1"
             @update:model-value="(v: any) => emit('updateShapeConfig', { innerRadius: Number(v) })"
@@ -395,11 +423,16 @@ const { t } = useI18n();
           <span class="text-xs text-ui-text-muted">Cloud Type</span>
           <USelectMenu
             :model-value="String((props.clip as any).shapeConfig?.cloudType ?? '1')"
-            :items="[{ value: '1', label: 'Type 1' }, { value: '2', label: 'Type 2' }]"
+            :items="[
+              { value: '1', label: 'Type 1' },
+              { value: '2', label: 'Type 2' },
+            ]"
             value-key="value"
             label-key="label"
             size="sm"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { cloudType: Number(v?.value ?? v) as 1 | 2 })"
+            @update:model-value="
+              (v: any) => emit('updateShapeConfig', { cloudType: Number(v?.value ?? v) as 1 | 2 })
+            "
           />
         </div>
       </template>
@@ -440,7 +473,9 @@ const { t } = useI18n();
             :model-value="Number((props.clip as any).shapeConfig?.pointerSharpness ?? 40)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { pointerSharpness: Number(v) })"
+            @update:model-value="
+              (v: any) => emit('updateShapeConfig', { pointerSharpness: Number(v) })
+            "
           />
         </div>
         <div class="flex flex-col gap-0.5">
@@ -465,11 +500,16 @@ const { t } = useI18n();
           <span class="text-xs text-ui-text-muted">Pointer Direction</span>
           <USelectMenu
             :model-value="String((props.clip as any).shapeConfig?.pointerDirection ?? 'left')"
-            :items="[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]"
+            :items="[
+              { value: 'left', label: 'Left' },
+              { value: 'right', label: 'Right' },
+            ]"
             value-key="value"
             label-key="label"
             size="sm"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { pointerDirection: v?.value ?? v })"
+            @update:model-value="
+              (v: any) => emit('updateShapeConfig', { pointerDirection: v?.value ?? v })
+            "
           />
         </div>
       </template>
@@ -477,7 +517,10 @@ const { t } = useI18n();
   </PropertySection>
 
   <!-- HUD content -->
-  <PropertySection v-else-if="props.clip.clipType === 'hud'" :title="t('fastcat.hudClip.hud', 'HUD')">
+  <PropertySection
+    v-else-if="props.clip.clipType === 'hud'"
+    :title="t('fastcat.hudClip.hud', 'HUD')"
+  >
     <ParamsRenderer
       v-if="props.hudManifest"
       :controls="props.hudManifest.controls"
