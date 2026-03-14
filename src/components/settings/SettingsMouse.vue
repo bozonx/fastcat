@@ -77,6 +77,7 @@ const middleClickOptions = computed(() => {
   const labels: Record<string, string> = {
     pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
     move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return MIDDLE_CLICK_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));

@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import { useDebounceFn, useEventListener, useLocalStorage, useResizeObserver } from '@vueuse/core';
+import type { FastCatUserSettings } from '~/utils/settings/defaults';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -130,7 +131,7 @@ const {
   draggingMode,
   draggingItemId,
   movePreview,
-  onTimeRulerPointerDown,
+  onTimeRulerPointerDown: onBaseTimeRulerPointerDown,
   startPlayheadDrag,
   onGlobalPointerMove,
   onGlobalPointerUp,
@@ -138,6 +139,11 @@ const {
   startMoveItem,
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
+
+function onTimeRulerPointerDown(e: PointerEvent) {
+  focusStore.setMainFocus('timeline');
+  onBaseTimeRulerPointerDown(e);
+}
 
 function onTimelineClick(e: MouseEvent) {
   if (e.button !== 0) return;
@@ -183,10 +189,13 @@ function onGlobalTimelineClick(e: MouseEvent) {
 
 useEventListener(window, 'click', onGlobalTimelineClick, { capture: true });
 
-function onTimelineWheel(e: WheelEvent) {
+function onTimelineWheel(
+  e: WheelEvent,
+  category: keyof FastCatUserSettings['mouse'] = 'timeline',
+) {
   if (!scrollEl.value) return;
 
-  const settings = workspaceStore.userSettings.mouse.timeline;
+  const settings = workspaceStore.userSettings.mouse[category] as any;
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
   const secondary = isSecondaryWheel(e);
   const action = secondary
@@ -205,14 +214,12 @@ function onTimelineWheel(e: WheelEvent) {
   const delta = getWheelDelta(e);
 
   if (action === 'scroll_vertical') {
-    if (!isShift && !secondary) return;
     e.preventDefault();
     scrollEl.value.scrollTop += delta;
     return;
   }
 
   if (action === 'scroll_horizontal') {
-    if (secondary && !isShift) return;
     e.preventDefault();
     scrollEl.value.scrollLeft += delta;
     return;
@@ -221,6 +228,16 @@ function onTimelineWheel(e: WheelEvent) {
   if (action === 'zoom_horizontal') {
     e.preventDefault();
     handleZoomWheel(delta > 0 ? -5 : 5);
+    return;
+  }
+
+  if (action === 'zoom_vertical') {
+    e.preventDefault();
+    // Assuming we want to resize all tracks or something similar,
+    // but typically this zooms in on the tracks themselves if implemented.
+    // For now, let's just emit or handle if we have a scale.
+    // However, if we don't have vertical zoom scale yet, we ignore it or scroll vertical.
+    scrollEl.value.scrollTop += delta;
     return;
   }
 
@@ -305,7 +322,8 @@ const onDrop = async (e: DragEvent, trackId: string) => {
 
   clearDragPreview();
 };
-const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e);
+const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e, 'ruler');
+const onTrackHeaderWheel = (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders');
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
   if (e.button === 1) {
     const settings = workspaceStore.userSettings.mouse.timeline;
@@ -318,6 +336,9 @@ const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
       const x = e.clientX - rect.left + el.scrollLeft;
       timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
       startPlayheadDrag(e);
+    } else if (settings.middleClick === 'reset_zoom') {
+      // This ensures it works even if pan capture interferes with clicks
+      timelineStore.resetTimelineZoom();
     }
   }
 };
@@ -348,6 +369,7 @@ const onTimelinePointerUp = onGlobalPointerUp;
             class="h-full border-r border-ui-border"
             @update:track-height="updateTrackHeight"
             @scroll="onLabelsScroll"
+            @wheel="onTrackHeaderWheel"
           />
         </Pane>
         <Pane :size="timelineSplitSizes[1]" min-size="50">

@@ -95,10 +95,11 @@ function onClipPointerdown(e: PointerEvent) {
   const startX = e.clientX;
   const startY = e.clientY;
 
+  const cleanup = () => window.removeEventListener('pointermove', onMove);
   const onMove = (ev: PointerEvent) => {
     if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
       didStartClipDrag = true;
-      window.removeEventListener('pointermove', onMove);
+      cleanup();
       emit('startMoveItem', e, {
         trackId: props.track.id,
         itemId: props.item.id,
@@ -106,9 +107,9 @@ function onClipPointerdown(e: PointerEvent) {
       });
     }
   };
-  const onUp = () => window.removeEventListener('pointermove', onMove);
   window.addEventListener('pointermove', onMove);
-  window.addEventListener('pointerup', onUp, { once: true });
+  window.addEventListener('pointerup', cleanup, { once: true });
+  window.addEventListener('pointercancel', cleanup, { once: true });
 }
 
 function onClipClick(e: MouseEvent) {
