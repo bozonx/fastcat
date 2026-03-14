@@ -60,10 +60,21 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
       try {
         if (isLast) {
-          if (options?.isFile) {
-            return await currentDir.getFileHandle(part, { create: options?.create });
+          if (options?.isFile !== undefined) {
+            if (options.isFile) {
+              return await currentDir.getFileHandle(part, { create: options?.create });
+            } else {
+              return await currentDir.getDirectoryHandle(part, { create: options?.create });
+            }
           } else {
-            return await currentDir.getDirectoryHandle(part, { create: options?.create });
+            try {
+              return await currentDir.getFileHandle(part);
+            } catch (innerE: unknown) {
+              if ((innerE as Error).name === 'TypeMismatchError') {
+                return await currentDir.getDirectoryHandle(part);
+              }
+              throw innerE;
+            }
           }
         } else {
           currentDir = await currentDir.getDirectoryHandle(part, { create: options?.create });
