@@ -632,6 +632,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleSelection: selection.toggleSelection,
     clearSelection: selection.clearSelection,
     selectAllClipsOnTrack: selection.selectAllClipsOnTrack,
+    getSelectedOrActiveTrackId: selection.getSelectedOrActiveTrackId,
     setTimelineZoomExact,
     seekFrames: (deltaFrames: number) => {
       const fps = getDocFps(timelineDoc.value || ({} as any));

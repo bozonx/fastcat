@@ -1,13 +1,22 @@
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 
 export function useTimelineHotkeys() {
   const timelineStore = useTimelineStore();
+  const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
+    'timeline.toggleSnap': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const next = settingsStore.clipSnapMode === 'none' ? 'clips' : 'none';
+      settingsStore.setClipSnapMode(next);
+      return true;
+    },
+
     'timeline.trimToPlayheadLeft': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.trimToPlayheadLeftNoRipple();

@@ -28,6 +28,8 @@ export type HotkeyCommandId =
   | 'general.switchViewCut'
   | 'general.switchViewSound'
   | 'general.switchViewExport'
+  | 'general.selectAll'
+  | 'timeline.toggleSnap'
   | 'timeline.trimToPlayheadLeft'
   | 'timeline.trimToPlayheadRight'
   | 'timeline.rippleTrimLeft'
@@ -125,7 +127,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.switchViewCut', groupId: 'general', title: 'Switch to Cut' },
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
+    { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
 
+    { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     {
       id: 'timeline.trimToPlayheadLeft',
       groupId: 'timeline',
@@ -274,7 +278,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.switchViewCut': ['Shift+2'],
     'general.switchViewSound': ['Shift+3'],
     'general.switchViewExport': ['Shift+4'],
+    'general.selectAll': [`${Mod}+A`],
 
+    'timeline.toggleSnap': [`${Mod}+T`],
     'timeline.trimToPlayheadLeft': ['V'],
     'timeline.trimToPlayheadRight': ['C'],
     'timeline.rippleTrimLeft': ['E'],
