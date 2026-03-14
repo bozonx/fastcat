@@ -212,7 +212,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_horizontal',
       click: 'seek',
-      middleClick: 'reset_zoom',
+      middleClick: 'seek',
       doubleClick: 'add_marker',
       shiftClick: 'none',
       drag: 'move_playhead',
@@ -224,7 +224,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
-      middleClick: 'none',
+      middleClick: 'seek',
       middleDrag: 'pan',
     },
     trackHeaders: {

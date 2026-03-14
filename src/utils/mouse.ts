@@ -27,9 +27,13 @@ export const CLICK_ACTIONS = [
   'seek',
   'add_marker',
   'reset_zoom',
-  'select_area',
+  'clear_selection',
   'none',
 ] as const;
+
+export const MONITOR_CLICK_ACTIONS = ['reset_zoom', 'reset_zoom_center', 'none'] as const;
+
+export const MONITOR_DRAG_ACTIONS = ['pan', 'none'] as const;
 
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 
