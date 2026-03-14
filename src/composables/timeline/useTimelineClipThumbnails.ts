@@ -45,7 +45,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
   const isGenerating = ref(false);
   const thumbnailsBySecond = ref(new Map<number, string>());
-  const imageUrlsToRevoke = new Set<string>();
 
   const fileUrl = computed(() => {
     const item = options.item.value;
@@ -276,7 +275,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
         if (!newMap.has(secondKey)) {
           newMap.set(secondKey, path);
           thumbnailsBySecond.value = newMap;
-          imageUrlsToRevoke.add(path);
         }
       },
       onComplete: () => {
@@ -311,15 +309,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       URL.revokeObjectURL(imageUrl.value);
       imageUrl.value = '';
     }
-
-    for (const url of imageUrlsToRevoke) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        // ignore
-      }
-    }
-    imageUrlsToRevoke.clear();
   });
 
   watch(fileUrl, () => {
