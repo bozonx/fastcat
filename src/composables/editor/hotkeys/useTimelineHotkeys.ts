@@ -32,6 +32,19 @@ export function useTimelineHotkeys() {
     return true;
   }
 
+  function toggleAudioMixerMute() {
+    if (focusStore.effectiveFocus !== 'audioMixer') return false;
+
+    const trackId = timelineStore.selectedTrackId;
+    if (trackId) {
+      timelineStore.toggleTrackAudioMuted(trackId);
+      return true;
+    }
+
+    timelineStore.setMasterMuted(!timelineStore.audioMuted);
+    return true;
+  }
+
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'timeline.toggleSnap': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
@@ -150,6 +163,7 @@ export function useTimelineHotkeys() {
 
     'timeline.toggleMuteClip': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
+      if (toggleAudioMixerMute()) return true;
       void timelineStore.toggleMuteTargetClip();
       return true;
     },

@@ -146,8 +146,6 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     event.preventDefault();
     event.stopPropagation();
 
-    suppressNextRulerClick.value = true;
-
     const timeUs = options.getTimeUsFromPointerEvent(event);
     selectionCreateStartUs.value = timeUs;
     isCreatingSelectionRange.value = true;

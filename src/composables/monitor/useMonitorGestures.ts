@@ -167,16 +167,10 @@ export function useMonitorGestures(input: {
         // ignore
       }
     }
-
-    if (!middlePointerDown.value?.moved) return;
-    middlePointerDown.value = null;
   }
 
   function onWindowPointerUp() {
     isPanning.value = false;
-    if (middlePointerDown.value?.moved) {
-      middlePointerDown.value = null;
-    }
   }
 
   function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {

@@ -37,6 +37,7 @@ const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 
 const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
+const pendingSelectAreaEvent = ref<PointerEvent | null>(null);
 
 const rulerSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
 
@@ -215,6 +216,7 @@ function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
   }
 
   if (action === 'clear_selection') {
+    timelineStore.removeSelectionRange();
     timelineStore.clearSelection();
     selectionStore.clearSelection();
     return;
@@ -264,13 +266,23 @@ function handleDragAction(action: string, e: PointerEvent) {
     timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
     emit('start-playhead-drag', e);
   } else if (action === 'select_area') {
-    startSelectionRangeCreate(e);
+    pendingSelectAreaEvent.value = e;
   } else if (action === 'none') {
     emit('pointerdown', e);
   }
 }
 
 function onRulerPointerMove(e: PointerEvent) {
+  if (pendingSelectAreaEvent.value) {
+    const origin = pendingSelectAreaEvent.value;
+    const dx = e.clientX - origin.clientX;
+    const dy = e.clientY - origin.clientY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      pendingSelectAreaEvent.value = null;
+      startSelectionRangeCreate(origin);
+    }
+  }
+
   if (!middlePointerDown.value) return;
 
   const dx = e.clientX - middlePointerDown.value.x;
@@ -281,11 +293,13 @@ function onRulerPointerMove(e: PointerEvent) {
 }
 
 function onRulerPointerUp() {
+  pendingSelectAreaEvent.value = null;
   if (!middlePointerDown.value?.moved) return;
   middlePointerDown.value = null;
 }
 
 function onRulerPointerCancel() {
+  pendingSelectAreaEvent.value = null;
   middlePointerDown.value = null;
 }
 
