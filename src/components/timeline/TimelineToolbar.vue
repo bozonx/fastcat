@@ -101,36 +101,42 @@ function onDragEnd() {
       </UTooltip>
 
       <!-- Virtual Clips Drag Handles -->
-      <UButton
-        draggable="true"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-adjustments-horizontal"
-        @dragstart="onDragStart($event, 'adjustment')"
-        @dragend="onDragEnd"
-        @click="timelineStore.addAdjustmentClipAtPlayhead()"
-      />
-      <UButton
-        draggable="true"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-swatch"
-        @dragstart="onDragStart($event, 'background')"
-        @dragend="onDragEnd"
-        @click="timelineStore.addBackgroundClipAtPlayhead()"
-      />
-      <UButton
-        draggable="true"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-chat-bubble-bottom-center-text"
-        @dragstart="onDragStart($event, 'text')"
-        @dragend="onDragEnd"
-        @click="timelineStore.addTextClipAtPlayhead()"
-      />
+      <UTooltip :text="t('fastcat.timeline.addAdjustment')">
+        <UButton
+          draggable="true"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-adjustments-horizontal"
+          @dragstart="onDragStart($event, 'adjustment')"
+          @dragend="onDragEnd"
+          @click="timelineStore.addAdjustmentClipAtPlayhead()"
+        />
+      </UTooltip>
+      <UTooltip :text="t('fastcat.timeline.addBackground')">
+        <UButton
+          draggable="true"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-swatch"
+          @dragstart="onDragStart($event, 'background')"
+          @dragend="onDragEnd"
+          @click="timelineStore.addBackgroundClipAtPlayhead()"
+        />
+      </UTooltip>
+      <UTooltip :text="t('fastcat.timeline.addText')">
+        <UButton
+          draggable="true"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-chat-bubble-bottom-center-text"
+          @dragstart="onDragStart($event, 'text')"
+          @dragend="onDragEnd"
+          @click="timelineStore.addTextClipAtPlayhead()"
+        />
+      </UTooltip>
     </div>
   </div>
 </template>

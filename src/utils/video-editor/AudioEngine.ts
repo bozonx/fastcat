@@ -5,57 +5,20 @@ import {
   normalizeBalance,
   normalizeGain,
   resolveEffectiveFadeDurationsSeconds,
-  type AudioFadeCurve,
-  type AudioTransitionEnvelope,
 } from '~/utils/audio/envelope';
-import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
+import { AudioGraphBuilder } from '~/utils/video-editor/AudioGraphBuilder';
+import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
-import type { AudioClipEffect } from '~/timeline/types';
+import type {
+  AudioEngineClip,
+  AudioNodeCollection,
+  ClipPlaybackWindow,
+} from '~/utils/video-editor/audio-engine.types';
 
-interface ClipPlaybackWindow {
-  currentTimeS: number;
-  startAtS: number;
-  currentClipLocalS: number;
-  remainingInClipS: number;
-  effectiveStartS: number;
-  effectiveSourceStartS: number;
-  clipDurationS: number;
-  clipSpeed: number;
-  fadeInS: number;
-  fadeOutS: number;
-  fadeInCurve: AudioFadeCurve;
-  fadeOutCurve: AudioFadeCurve;
-  audioGain: number;
-  audioBalance: number;
-  effectiveSpeed: number;
-}
+export type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 
 const logger = createDevLogger('AudioEngine');
-
-export interface AudioEngineClip {
-  id: string;
-  trackId?: string;
-  sourcePath: string;
-  fileHandle: FileSystemFileHandle;
-  startUs: number;
-  durationUs: number;
-  sourceStartUs: number;
-  sourceRangeDurationUs: number;
-  sourceDurationUs: number;
-  speed?: number;
-
-  audioGain?: number;
-  audioBalance?: number;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
-  audioFadeInCurve?: AudioFadeCurve;
-  audioFadeOutCurve?: AudioFadeCurve;
-  audioDeclickDurationUs?: number;
-  transitionIn?: AudioTransitionEnvelope | null;
-  transitionOut?: AudioTransitionEnvelope | null;
-  audioEffects?: AudioClipEffect[];
-}
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -67,10 +30,21 @@ export class AudioEngine {
   private activeScrubCleanups = new Map<AudioBufferSourceNode, () => void>();
   private masterGain: GainNode | null = null;
   private monitorGain: GainNode | null = null;
-  private isPlaying = false;
-  private baseTimeS = 0;
-  private playbackContextTimeS = 0;
   private currentClips: AudioEngineClip[] = [];
+  private readonly activePlaybackCollection: AudioNodeCollection = {
+    nodes: this.activeNodes,
+    cleanups: this.activeCleanups,
+  };
+  private readonly activeScrubCollection: AudioNodeCollection = {
+    nodes: this.activeScrubNodes,
+    cleanups: this.activeScrubCleanups,
+  };
+  private readonly graphBuilder = new AudioGraphBuilder();
+  private readonly scheduler = new AudioScheduler({
+    getContext: () => this.ctx,
+    onScheduleLookahead: () => this.scheduleLookahead(),
+    onStopNodes: () => this.stopAllNodes(),
+  });
 
   private decodeWorker: Worker | null = null;
   private decodeCallId = 0;
@@ -83,9 +57,6 @@ export class AudioEngine {
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
-
-  private scheduledClipIds = new Set<string>();
-  private scheduleTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {}
 
@@ -265,12 +236,12 @@ export class AudioEngine {
   updateTimelineLayout(clips: AudioEngineClip[]) {
     this.currentClips = clips;
     this.cleanupCache();
-    if (this.isPlaying) {
+    if (this.scheduler.isPlayingActive()) {
       // Re-evaluate playing nodes
       const currentTimeUs = this.getCurrentTimeUs();
       this.stopAllNodes();
-      this.scheduledClipIds.clear();
-      void this.play(currentTimeUs, this.globalSpeed);
+      this.scheduler.resetScheduledClips();
+      void this.play(currentTimeUs, this.scheduler.getGlobalSpeed());
     }
   }
 
@@ -284,7 +255,7 @@ export class AudioEngine {
   }
 
   getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
-    if (!this.ctx || !this.isPlaying) return { rmsDb: -60, peakDb: -60 };
+    if (!this.ctx || !this.scheduler.isPlayingActive()) return { rmsDb: -60, peakDb: -60 };
 
     const id = trackId || 'master';
     const analyser = this.analyserNodes.get(id);
@@ -383,8 +354,6 @@ export class AudioEngine {
     this.decodeInFlight.set(sourceKey, task);
     return task;
   }
-
-  private globalSpeed = 1;
 
   private async getDecodedBuffer(clip: AudioEngineClip) {
     const sourceKey = clip.sourcePath;
@@ -536,36 +505,16 @@ export class AudioEngine {
 
     const clipGain = this.ctx.createGain();
 
-    const anyCtx = this.ctx as any;
-    const canPan = typeof anyCtx.createStereoPanner === 'function';
-    let sourceOutput: AudioNode = sourceNode;
-    if (canPan) {
-      const panner: StereoPannerNode = anyCtx.createStereoPanner();
-      panner.pan.value = window.audioBalance;
-      sourceNode.connect(panner);
-      sourceOutput = panner;
-    }
-
-    const { outputNode: effectTailNode, destroy: destroyEffects } = buildAudioEffectGraph({
+    const { destroy: destroyEffects } = this.graphBuilder.buildClipGraph({
       audioContext: this.ctx,
-      sourceNode: sourceOutput,
+      sourceNode,
+      audioBalance: window.audioBalance,
       effects: clip.audioEffects ?? [],
+      clipGain,
+      masterGain: this.masterGain,
+      trackId: clip.trackId,
+      analyserNodes: this.analyserNodes,
     });
-
-    effectTailNode.connect(clipGain);
-
-    if (clip.trackId) {
-      let trackAnalyser = this.analyserNodes.get(clip.trackId);
-      if (!trackAnalyser) {
-        trackAnalyser = this.ctx.createAnalyser();
-        trackAnalyser.fftSize = 2048;
-        this.analyserNodes.set(clip.trackId, trackAnalyser);
-      }
-      clipGain.connect(trackAnalyser);
-      trackAnalyser.connect(this.masterGain);
-    } else {
-      clipGain.connect(this.masterGain);
-    }
 
     const startAtS = window.startAtS;
     const playedClipDurationS = safeDurationToPlayS / window.effectiveSpeed;
@@ -606,8 +555,8 @@ export class AudioEngine {
 
     sourceNode.start(startAtS, safeBufferOffsetS, safeDurationToPlayS);
 
-    const targetNodeSet = options?.nodeSet ?? this.activeNodes;
-    const targetCleanupMap = options?.cleanupMap ?? this.activeCleanups;
+    const targetNodeSet = options?.nodeSet ?? this.activePlaybackCollection.nodes;
+    const targetCleanupMap = options?.cleanupMap ?? this.activePlaybackCollection.cleanups;
     targetNodeSet.add(sourceNode);
     targetCleanupMap.set(sourceNode, destroyEffects);
 
@@ -621,33 +570,20 @@ export class AudioEngine {
     };
   }
 
-  private startLookahead() {
-    this.stopLookahead();
-    this.scheduleLookahead();
-    this.scheduleTimer = setInterval(() => this.scheduleLookahead(), 50);
-  }
-
-  private stopLookahead() {
-    if (this.scheduleTimer) {
-      clearInterval(this.scheduleTimer);
-      this.scheduleTimer = null;
-    }
-  }
-
   private scheduleLookahead() {
-    if (!this.isPlaying || this.globalSpeed <= 0) return;
+    if (!this.scheduler.isPlayingActive() || this.scheduler.getGlobalSpeed() <= 0) return;
     const LOOKAHEAD_S = 0.5;
     const currentS = this.getCurrentTimeS();
     const endS = currentS + LOOKAHEAD_S;
 
     for (const clip of this.currentClips) {
-      if (this.scheduledClipIds.has(clip.id)) continue;
+      if (this.scheduler.hasScheduledClip(clip.id)) continue;
 
       const clipStartS = clip.startUs / 1_000_000;
       const clipEndS = clipStartS + clip.durationUs / 1_000_000;
 
       if (clipStartS <= endS && clipEndS >= currentS) {
-        this.scheduledClipIds.add(clip.id);
+        this.scheduler.markClipScheduled(clip.id);
         void this.scheduleClip(clip, currentS);
       }
     }
@@ -655,37 +591,16 @@ export class AudioEngine {
 
   async play(timeUs: number, speed = 1) {
     this.stopScrubPreview();
-    this.isPlaying = true;
-    this.globalSpeed = speed;
-    const timeS = timeUs / 1_000_000;
-    this.baseTimeS = timeS;
-    this.scheduledClipIds.clear();
-
-    if (!this.ctx) return;
-
-    if (this.ctx.state === 'suspended') {
-      await this.ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
-      });
-    }
-    // Update context time after resume since it might have been delayed
-    this.playbackContextTimeS = this.ctx.currentTime;
-
-    if (this.globalSpeed > 0) {
-      this.startLookahead();
-    }
+    await this.scheduler.play(timeUs, speed);
   }
 
   stop() {
-    this.isPlaying = false;
     this.stopScrubPreview();
-    this.stopLookahead();
-    this.scheduledClipIds.clear();
-    this.stopAllNodes();
+    this.scheduler.stop();
   }
 
   async previewScrubForward(fromUs: number, toUs: number, maxPreviewDurationUs = 90_000) {
-    if (this.isPlaying || !this.ctx || !this.masterGain) {
+    if (this.scheduler.isPlayingActive() || !this.ctx || !this.masterGain) {
       return;
     }
 
@@ -739,8 +654,8 @@ export class AudioEngine {
         { ...window, remainingInClipS: clippedDurationS },
         {
           maxPlaybackDurationS,
-          nodeSet: this.activeScrubNodes,
-          cleanupMap: this.activeScrubCleanups,
+          nodeSet: this.activeScrubCollection.nodes,
+          cleanupMap: this.activeScrubCollection.cleanups,
         },
       );
     }
@@ -751,48 +666,11 @@ export class AudioEngine {
   }
 
   setGlobalSpeed(speed: number) {
-    const parsed = Number(speed);
-    if (!Number.isFinite(parsed)) return;
-
-    const currentTimeS = this.getCurrentTimeS();
-    this.globalSpeed = parsed;
-
-    if (!this.isPlaying) {
-      return;
-    }
-
-    if (!this.ctx) {
-      return;
-    }
-
-    this.stopAllNodes();
-    this.stopLookahead();
-    this.scheduledClipIds.clear();
-
-    this.baseTimeS = currentTimeS;
-    this.playbackContextTimeS = this.ctx.currentTime;
-
-    if (this.globalSpeed > 0) {
-      this.startLookahead();
-    }
+    this.scheduler.setGlobalSpeed(speed);
   }
 
   seek(timeUs: number) {
-    if (this.isPlaying) {
-      this.stopAllNodes();
-      this.scheduledClipIds.clear();
-
-      const timeS = timeUs / 1_000_000;
-      this.baseTimeS = timeS;
-
-      if (!this.ctx) return;
-
-      this.playbackContextTimeS = this.ctx.currentTime;
-
-      if (this.globalSpeed > 0) {
-        this.scheduleLookahead();
-      }
-    }
+    this.scheduler.seek(timeUs);
   }
 
   setVolume(volume: number) {
@@ -814,8 +692,7 @@ export class AudioEngine {
   }
 
   getCurrentTimeS(): number {
-    if (!this.isPlaying || !this.ctx) return this.baseTimeS;
-    return this.baseTimeS + (this.ctx.currentTime - this.playbackContextTimeS) * this.globalSpeed;
+    return this.scheduler.getCurrentTimeS();
   }
 
   getCurrentTimeUs(): number {
@@ -839,7 +716,7 @@ export class AudioEngine {
 
   private async scheduleClip(clip: AudioEngineClip, _triggerTimeS: number) {
     if (!this.ctx || !this.masterGain) return;
-    if (this.globalSpeed <= 0) return; // No backward playback
+    if (this.scheduler.getGlobalSpeed() <= 0) return; // No backward playback
 
     const buffer = await this.getDecodedBuffer(clip);
     if (!buffer) return;
@@ -851,12 +728,17 @@ export class AudioEngine {
 
     if (clipEndS <= currentTimeS) return;
 
-    const window = this.buildClipPlaybackWindow(clip, currentTimeS, this.globalSpeed);
+    const window = this.buildClipPlaybackWindow(
+      clip,
+      currentTimeS,
+      this.scheduler.getGlobalSpeed(),
+    );
     if (!window) return;
 
     const playStartS =
       currentTimeS < window.effectiveStartS
-        ? this.ctx.currentTime + (window.effectiveStartS - currentTimeS) / this.globalSpeed
+        ? this.ctx.currentTime +
+          (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
         : this.ctx.currentTime;
 
     await this.playClipSegment(clip, buffer, { ...window, startAtS: playStartS });
@@ -889,9 +771,9 @@ export class AudioEngine {
   }
 
   destroy() {
+    this.scheduler.destroy();
     this.stopAllNodes();
     this.stopScrubPreview();
-    this.stopLookahead();
     if (this.ctx) {
       this.ctx.close();
       this.ctx = null;

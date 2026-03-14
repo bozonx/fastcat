@@ -33,7 +33,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
         <span class="text-ui-text font-bold text-sm truncate max-w-[200px]">
           {{ projectStore.currentProjectName }}
         </span>
-        <UIcon name="i-heroicons-pencil-square-20-solid" class="w-4 h-4 text-ui-text-muted" />
+        <UIcon name="ix:project-configuration" class="w-4 h-4 text-ui-text-muted" />
       </div>
 
       <!-- Timeline Tabs -->

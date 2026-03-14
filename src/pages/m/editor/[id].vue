@@ -3,12 +3,14 @@ import { computed, ref, watch, onMounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useUiStore } from '~/stores/ui.store';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import MobileExportForm from '~/components/export/MobileExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileAudioMixer from '~/components/audio/MobileAudioMixer.vue';
+import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
 
 definePageMeta({
   layout: 'mobile',
@@ -16,6 +18,7 @@ definePageMeta({
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const uiStore = useUiStore();
 const route = useRoute();
 const router = useRouter();
 const { openProject } = useProjectActions();
@@ -127,14 +130,20 @@ async function handleBack() {
           aria-label="Back to projects"
           @click="handleBack"
         />
-        <div class="min-w-0">
-          <p class="truncate text-sm font-medium text-white">
-            {{ projectStore.currentProjectName || 'Opening project' }}
-          </p>
-          <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-            {{ currentViewLabel }}
-          </p>
-        </div>
+        <button
+          class="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 transition-colors active:bg-slate-900"
+          @click="uiStore.isProjectSettingsOpen = true"
+        >
+          <div class="min-w-0 text-left">
+            <p class="truncate text-sm font-medium text-white">
+              {{ projectStore.currentProjectName || 'Opening project' }}
+            </p>
+            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+              {{ currentViewLabel }}
+            </p>
+          </div>
+          <Icon name="ix:project-configuration" class="h-4 w-4 shrink-0 text-slate-400" />
+        </button>
       </div>
 
       <div
@@ -223,6 +232,9 @@ async function handleBack() {
         </button>
       </div>
     </nav>
+
+    <!-- Modals -->
+    <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
   </div>
 </template>
 

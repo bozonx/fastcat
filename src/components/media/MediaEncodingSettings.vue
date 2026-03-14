@@ -90,10 +90,10 @@ function getEffectiveVideoCodec(): string {
 
 const codecHint = computed(() => {
   if (outputFormat.value === 'webm') {
-    return 'Video: VP9 · Audio: Opus';
+    return t('videoEditor.export.codecHint', { video: 'VP9', audio: 'Opus' });
   }
   if (outputFormat.value === 'mkv') {
-    return 'Video: AV1 · Audio: Opus';
+    return t('videoEditor.export.codecHint', { video: 'AV1', audio: 'Opus' });
   }
   return null;
 });
@@ -131,8 +131,8 @@ const presetOptions = [
 ];
 
 const bitrateModeOptions = [
-  { value: 'variable', label: 'VBR' },
-  { value: 'constant', label: 'CBR' },
+  { value: 'variable', label: t('videoEditor.export.bitrateModeVbr') },
+  { value: 'constant', label: t('videoEditor.export.bitrateModeCbr') },
 ];
 
 let isPresetApplying = false;
