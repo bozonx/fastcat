@@ -206,6 +206,24 @@ function onGlobalTimelineClick(e: MouseEvent) {
 useEventListener(window, 'click', onGlobalTimelineClick, { capture: true });
 useEventListener(scrollEl, 'wheel', onTimelineWheel, { passive: false });
 
+function shouldUseNativeTimelineScroll(
+  e: WheelEvent,
+  action: string,
+  category: keyof FastCatUserSettings['mouse'],
+) {
+  if (category !== 'timeline') return false;
+
+  if (action === 'scroll_vertical') {
+    return !isSecondaryWheel(e);
+  }
+
+  if (action === 'scroll_horizontal') {
+    return isSecondaryWheel(e);
+  }
+
+  return false;
+}
+
 function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mouse'] = 'timeline') {
   if (!scrollEl.value) return;
 
@@ -229,6 +247,10 @@ function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mou
     : isShift
       ? settings.wheelShift
       : settings.wheel;
+
+  if (shouldUseNativeTimelineScroll(e, action, category)) {
+    return;
+  }
 
   if (action === 'none') {
     e.preventDefault();
