@@ -124,11 +124,12 @@ export class TextRenderer {
     let totalWidth = 0;
     const charWidths: number[] = [];
     ctx.textAlign = 'left';
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i] ?? '';
+    const chars = Array.from(line);
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i] ?? '';
       const w = ctx.measureText(ch).width;
       charWidths.push(w);
-      totalWidth += w + (i < line.length - 1 ? letterSpacingPx : 0);
+      totalWidth += w + (i < chars.length - 1 ? letterSpacingPx : 0);
     }
 
     let x: number;
@@ -140,8 +141,8 @@ export class TextRenderer {
       x = startX;
     }
 
-    for (let i = 0; i < line.length; i++) {
-      ctx.fillText(line[i] ?? '', x, y);
+    for (let i = 0; i < chars.length; i++) {
+      ctx.fillText(chars[i] ?? '', x, y);
       x += (charWidths[i] ?? 0) + letterSpacingPx;
     }
   }

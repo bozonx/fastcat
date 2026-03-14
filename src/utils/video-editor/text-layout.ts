@@ -159,13 +159,39 @@ export function computeTextLayoutMetrics(input: {
       : undefined;
   const font = `${normalizedStyle.fontWeight} ${fontSizePx}px ${normalizedStyle.fontFamily}`;
   const measureLine = (text: string) =>
-    input.measureText(text, font) + Math.max(0, text.length - 1) * Math.max(0, letterSpacingPx);
+    input.measureText(text, font) +
+    Math.max(0, Array.from(text).length - 1) * Math.max(0, letterSpacingPx);
+
+  // Initialize a segmenter for word/grapheme boundaries, falling back to simple split if unsupported
+  const segmenter =
+    typeof Intl !== 'undefined' && Intl.Segmenter
+      ? new Intl.Segmenter(undefined, { granularity: 'word' })
+      : null;
+
   const wrapLine = (line: string): string[] => {
     if (contentWidthPx === undefined) return [line];
     const normalizedLine = String(line);
     if (normalizedLine.length === 0) return [''];
 
-    const words = normalizedLine.split(/\s+/g);
+    const words: string[] = [];
+    if (segmenter) {
+      const segments = segmenter.segment(normalizedLine);
+      let currentWord = '';
+      for (const segment of segments) {
+        if (segment.isWordLike) {
+          currentWord += segment.segment;
+        } else if (segment.segment.trim().length === 0) {
+          if (currentWord.length > 0) words.push(currentWord);
+          currentWord = '';
+        } else {
+          currentWord += segment.segment;
+        }
+      }
+      if (currentWord.length > 0) words.push(currentWord);
+    } else {
+      words.push(...normalizedLine.split(/\s+/g));
+    }
+
     const lines: string[] = [];
     let currentLine = '';
 
