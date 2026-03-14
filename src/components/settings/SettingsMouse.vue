@@ -4,9 +4,6 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import {
   TIMELINE_WHEEL_ACTIONS,
   MONITOR_WHEEL_ACTIONS,
-  MONITOR_CLICK_ACTIONS,
-  MONITOR_DRAG_ACTIONS,
-  CLICK_ACTIONS,
   MIDDLE_CLICK_ACTIONS,
   RULER_WHEEL_ACTIONS,
   RULER_CLICK_ACTIONS,
@@ -32,11 +29,6 @@ const commonWheelLabels = computed(() => ({
   none: t('videoEditor.settings.mouseActionNone', 'None'),
   resize_track: t('videoEditor.settings.mouseActionResizeTrack', 'Resize track height'),
   zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
-  reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
-  reset_zoom_center: t('videoEditor.settings.mouseActionResetZoomCenter', 'Reset zoom and center'),
-  clear_selection: t('videoEditor.settings.mouseActionClearSelection', 'Clear selection'),
-  seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
-  add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
 }));
 
 function getWheelOptions(actions: readonly string[]) {
@@ -48,7 +40,13 @@ function getWheelOptions(actions: readonly string[]) {
 }
 
 const clickActionOptions = computed(() => {
-  const labels = commonWheelLabels.value as Record<string, string>;
+  const labels: Record<string, string> = {
+    seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
+    add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
+    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
+    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
   return CLICK_ACTIONS.map((action) => ({
     label: labels[action] || action,
     value: action,
@@ -71,22 +69,13 @@ const trackHeadersWheelOptions = computed(() => getWheelOptions(TRACK_HEADERS_WH
 const monitorWheelOptions = computed(() => getWheelOptions(MONITOR_WHEEL_ACTIONS));
 
 const monitorMiddleClickOptions = computed(() => {
-  const labels = commonWheelLabels.value as Record<string, string>;
-  return MONITOR_CLICK_ACTIONS.map((action) => ({
-    label: labels[action] || (action === 'none' ? t('videoEditor.settings.mouseActionNone', 'None') : action),
-    value: action,
-  }));
-});
-
-const monitorMiddleDragOptions = computed(() => {
-  const labels = dragOptions.value.reduce(
-    (acc, curr) => {
-      acc[curr.value] = curr.label;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
-  return MONITOR_DRAG_ACTIONS.map((action) => ({
+  const labels: Record<string, string> = {
+    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
+    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return ['pan', 'move_playhead', 'reset_zoom', 'none'].map((action) => ({
     label: labels[action] || action,
     value: action,
   }));
@@ -952,6 +941,30 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
           </table>
         </div>
 
+        <div class="mt-2 px-1 py-2 bg-ui-bg-accent/5 rounded border border-ui-border/30">
+          <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest mb-1.5 flex items-center gap-1.5 px-1">
+            <UIcon name="i-heroicons-information-circle" class="w-3 h-3" />
+            {{ t('videoEditor.settings.mouseHardcodedTitle', 'Fixed Functions') }}
+          </div>
+          <ul class="space-y-1 px-1">
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedLeftDrag') }}
+            </li>
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedShiftDrag') }}
+            </li>
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedLeftClick') }}
+            </li>
+            <li class="flex items-start gap-2 text-[11px] text-ui-text-muted leading-tight">
+              <span class="w-1 h-1 rounded-full bg-ui-border/50 shrink-0 mt-1.5" />
+              {{ t('videoEditor.settings.mouseHardcodedShiftClick') }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="flex flex-col gap-3">
@@ -1003,7 +1016,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                   :class="{ 'bg-yellow-400/10': isModified('monitor', 'wheelShift') }"
                 >
                   <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift') }}
+                    {{ t('videoEditor.settings.mouseMonitorWheelShift', 'Wheel + Shift') }}
                   </span>
                 </td>
                 <td class="p-2 py-2.5 align-middle">
@@ -1036,124 +1049,10 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td
                   class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('monitor', 'wheelSecondary') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.monitor.wheelSecondary"
-                    :items="monitorWheelOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.monitor.wheelSecondary = v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('monitor', 'wheelSecondary', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('monitor', 'wheelSecondaryShift') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{
-                      t(
-                        'videoEditor.settings.mouseTimelineWheelSecondaryShift',
-                        'Secondary wheel + Shift',
-                      )
-                    }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.monitor.wheelSecondaryShift"
-                    :items="monitorWheelOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.monitor.wheelSecondaryShift =
-                          v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('monitor', 'wheelSecondaryShift', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('monitor', 'middleDrag') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineMiddleDrag', 'Middle button drag') }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.monitor.middleDrag"
-                    :items="monitorMiddleDragOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.monitor.middleDrag = v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('monitor', 'middleDrag', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
                   :class="{ 'bg-yellow-400/10': isModified('monitor', 'middleClick') }"
                 >
                   <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle button click') }}
+                    {{ t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle click') }}
                   </span>
                 </td>
                 <td class="p-2 py-2.5 align-middle">
