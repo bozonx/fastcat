@@ -18,6 +18,7 @@ import {
   RULER_WHEEL_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
+  MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
 } from '~/utils/mouse';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import { normalizeHotkeyCombo } from '../hotkeys/hotkeyUtils';
@@ -439,6 +440,16 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'clear_selection'
           | 'none';
       }
+
+      const rulerHorizontalMovement = rawRuler.horizontalMovement;
+      if (
+        (MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as readonly string[]).includes(
+          rulerHorizontalMovement as string,
+        )
+      ) {
+        (normalizedMouse.ruler as Record<string, unknown>).horizontalMovement =
+          rulerHorizontalMovement as 'move_playhead' | 'none';
+      }
     }
 
     const rawTimeline = (rawMouse as Record<string, unknown>).timeline as
@@ -474,6 +485,17 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'move_playhead'
           | 'select_area'
           | 'none';
+      }
+
+      const timelineHorizontalMovement = (rawTimeline as Record<string, unknown>)
+        .horizontalMovement;
+      if (
+        (MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as readonly string[]).includes(
+          timelineHorizontalMovement as string,
+        )
+      ) {
+        (normalizedMouse.timeline as Record<string, unknown>).horizontalMovement =
+          timelineHorizontalMovement as 'move_playhead' | 'none';
       }
     }
 

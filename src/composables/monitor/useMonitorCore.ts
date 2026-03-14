@@ -58,6 +58,7 @@ interface MonitorStoreState {
   proxyStore: {
     getProxyFileHandle: (path: string) => Promise<FileSystemFileHandle | null>;
     getProxyFile: (path: string) => Promise<File | null>;
+    existingProxies: Ref<Set<string>>;
   };
 }
 
@@ -586,6 +587,31 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   watch(clipSourceSignature, () => {
     scheduleBuild();
   });
+
+  watch(
+    () => proxyStore.existingProxies.value,
+    (newVal, oldVal) => {
+      if (isUnmounted) return;
+      if (!useProxyInMonitor.value) return;
+
+      // Check if any of the new proxies belong to clips in our timeline
+      const clips = workerTimelineClips.value;
+      const audio = workerAudioClips.value;
+
+      const hasNewProxyForClips = [...clips, ...audio].some((c) => {
+        const path = c.source?.path;
+        if (!path) return false;
+        // If it was not in oldVal but in newVal, we need a rebuild
+        return !oldVal?.has(path) && newVal.has(path);
+      });
+
+      if (hasNewProxyForClips) {
+        console.log('[Monitor] New proxies detected, rebuilding...');
+        scheduleBuild();
+      }
+    },
+    { deep: false },
+  );
 
   watch(audioClipSourceSignature, () => {
     scheduleBuild();

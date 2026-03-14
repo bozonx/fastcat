@@ -346,6 +346,15 @@ export function createProxyService(params: {
     if (!dir) return;
 
     const oldPrefix = `${input.oldPath}/`;
+
+    // 1. Cancel active/pending tasks
+    for (const path of Object.keys(params.proxyAbortControllers.value)) {
+      if (path.startsWith(oldPrefix)) {
+        await cancelProxyGeneration(path);
+      }
+    }
+
+    // 2. Rename existing proxy files
     const affectedPaths = Array.from(params.existingProxies.value).filter((p) =>
       p.startsWith(oldPrefix),
     );

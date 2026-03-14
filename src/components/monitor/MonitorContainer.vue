@@ -95,7 +95,11 @@ const {
 } = useMonitorCore({
   projectStore,
   timelineStore,
-  proxyStore,
+  proxyStore: {
+    getProxyFileHandle: proxyStore.getProxyFileHandle,
+    getProxyFile: proxyStore.getProxyFile,
+    existingProxies: computed(() => proxyStore.existingProxies),
+  },
   monitorTimeline: {
     videoItems,
     workerTimelineClips,
@@ -456,7 +460,7 @@ const emit = defineEmits<{
         class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
         :class="[
           isFullscreen
-            ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none opacity-0 group-hover/monitor:opacity-100 hover:!opacity-100 translate-y-4 group-hover/monitor:translate-y-0'
+            ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none opacity-0 group-hover/monitor:opacity-100 hover:opacity-100! translate-y-4 group-hover/monitor:translate-y-0'
             : 'px-4 py-3.5 bg-ui-bg-elevated cursor-grab active:cursor-grabbing',
           !isFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
           !isFullscreen && toolbarPosition === 'top' ? 'border-b' : '',

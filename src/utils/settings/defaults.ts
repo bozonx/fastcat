@@ -111,6 +111,7 @@ export interface FastCatUserSettings {
       drag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       dragShift: 'pan' | 'move_playhead' | 'select_area' | 'none';
+      horizontalMovement: 'move_playhead' | 'none';
     };
     timeline: {
       wheel: string;
@@ -119,6 +120,7 @@ export interface FastCatUserSettings {
       wheelSecondaryShift: string;
       middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
+      horizontalMovement: 'move_playhead' | 'none';
     };
     trackHeaders: {
       wheel: string;
@@ -221,6 +223,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       drag: 'move_playhead',
       middleDrag: 'pan',
       dragShift: 'select_area',
+      horizontalMovement: 'none',
     },
     timeline: {
       wheel: 'zoom_horizontal',
@@ -229,6 +232,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondaryShift: 'zoom_vertical',
       middleClick: 'seek',
       middleDrag: 'pan',
+      horizontalMovement: 'none',
     },
     trackHeaders: {
       wheel: 'scroll_vertical',

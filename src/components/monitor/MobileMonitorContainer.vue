@@ -75,7 +75,11 @@ const {
 } = useMonitorCore({
   projectStore,
   timelineStore,
-  proxyStore,
+  proxyStore: {
+    getProxyFileHandle: proxyStore.getProxyFileHandle,
+    getProxyFile: proxyStore.getProxyFile,
+    existingProxies: computed(() => proxyStore.existingProxies),
+  },
   monitorTimeline: {
     videoItems,
     workerTimelineClips,

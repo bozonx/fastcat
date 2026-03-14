@@ -239,6 +239,7 @@
       "mouseRuler": "Линейка",
       "mouseTimeline": "Таймлайн",
       "mouseMonitor": "Монитор",
+      "mouseHorizontalMovement": "Горизонтальное движение мышкой",
       "mouseTimelineWheel": "Основное колесо",
       "mouseTimelineWheelShift": "Основное колесо + Shift",
       "mouseTimelineWheelSecondary": "Вспомогательное колесо",
