@@ -209,18 +209,18 @@ function selectTransition(
         <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
       </div>
 
-      <div
-        v-if="movePreview && movePreview.trackId === track.id"
-        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-40 pointer-events-none opacity-60 bg-ui-bg-accent border border-ui-border"
-        :style="{
-          left: `${timeUsToPx(movePreview.startUs, timelineStore.timelineZoom)}px`,
-          width: `${Math.max(2, timeUsToPx(movePreviewItem?.timelineRange.durationUs ?? 0, timelineStore.timelineZoom))}px`,
-        }"
-      >
-        <span class="truncate">{{
-          movePreviewItem && 'name' in movePreviewItem ? movePreviewItem.name : ''
-        }}</span>
-      </div>
+      <TimelineClip
+        v-if="movePreview && movePreview.trackId === track.id && movePreviewItem"
+        class="opacity-60 pointer-events-none z-40!"
+        :track="track"
+        :item="{ ...movePreviewItem, id: 'preview-' + movePreviewItem.id, timelineRange: { ...movePreviewItem.timelineRange, startUs: movePreview.startUs } } as any"
+        :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+        :can-edit-clip-content="false"
+        :is-dragging-current-item="false"
+        :is-move-preview-current-item="true"
+        :selected-transition="null"
+        :resize-volume="null"
+      />
 
       <template v-for="item in track.items" :key="item.id">
         <TimelineGap
