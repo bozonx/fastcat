@@ -2,6 +2,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { getDocFps } from '~/timeline/commands/utils';
 
 function isPreviewPanelFocus(focusId: string) {
   return (
@@ -71,6 +72,36 @@ export function usePlaybackHotkeys() {
       }
 
       timelineStore.goToEnd();
+      return true;
+    },
+
+    'playback.stepForward': () => {
+      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+      if (!canUse) return false;
+      timelineStore.seekFrames(1);
+      return true;
+    },
+
+    'playback.stepBackward': () => {
+      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+      if (!canUse) return false;
+      timelineStore.seekFrames(-1);
+      return true;
+    },
+
+    'playback.stepForwardLarge': () => {
+      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+      if (!canUse) return false;
+      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+      timelineStore.seekFrames(fps);
+      return true;
+    },
+
+    'playback.stepBackwardLarge': () => {
+      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+      if (!canUse) return false;
+      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+      timelineStore.seekFrames(-fps);
       return true;
     },
   };

@@ -48,12 +48,18 @@ export type HotkeyCommandId =
   | 'timeline.toggleSoloTrack'
   | 'timeline.moveSelectedClipsLeft'
   | 'timeline.moveSelectedClipsRight'
+  | 'timeline.moveSelectedClipsLeftLarge'
+  | 'timeline.moveSelectedClipsRightLarge'
   | 'timeline.increaseSelectedClipsVolume'
   | 'timeline.decreaseSelectedClipsVolume'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
   | 'playback.toEnd'
+  | 'playback.stepForward'
+  | 'playback.stepBackward'
+  | 'playback.stepForwardLarge'
+  | 'playback.stepBackwardLarge'
   | 'playback.forward1_25'
   | 'playback.backward1_25'
   | 'playback.forward1_5'
@@ -193,6 +199,16 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
       title: 'Move selected clip(s) right (1 frame)',
     },
     {
+      id: 'timeline.moveSelectedClipsLeftLarge',
+      groupId: 'timeline',
+      title: 'Move selected clip(s) left (1 second)',
+    },
+    {
+      id: 'timeline.moveSelectedClipsRightLarge',
+      groupId: 'timeline',
+      title: 'Move selected clip(s) right (1 second)',
+    },
+    {
       id: 'timeline.increaseSelectedClipsVolume',
       groupId: 'timeline',
       title: 'Increase selected clip(s) volume',
@@ -207,6 +223,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'playback.toggle1', groupId: 'playback', title: 'Play / pause (1x)' },
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
+    { id: 'playback.stepForward', groupId: 'playback', title: 'Step forward (1 frame)' },
+    { id: 'playback.stepBackward', groupId: 'playback', title: 'Step backward (1 frame)' },
+    { id: 'playback.stepForwardLarge', groupId: 'playback', title: 'Step forward (1 second)' },
+    { id: 'playback.stepBackwardLarge', groupId: 'playback', title: 'Step backward (1 second)' },
     { id: 'playback.forward1_25', groupId: 'playback', title: 'Forward x1.25' },
     { id: 'playback.backward1_25', groupId: 'playback', title: 'Backward x1.25 (Monitor only)' },
     { id: 'playback.forward1_5', groupId: 'playback', title: 'Forward x1.5' },
@@ -275,6 +295,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.toggleSoloTrack': ['B'],
     'timeline.moveSelectedClipsLeft': ['ArrowLeft'],
     'timeline.moveSelectedClipsRight': ['ArrowRight'],
+    'timeline.moveSelectedClipsLeftLarge': ['Shift+ArrowLeft'],
+    'timeline.moveSelectedClipsRightLarge': ['Shift+ArrowRight'],
     'timeline.increaseSelectedClipsVolume': ['ArrowUp'],
     'timeline.decreaseSelectedClipsVolume': ['ArrowDown'],
 
@@ -282,6 +304,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'playback.toggle1': ['Shift+Space'],
     'playback.toStart': ['W', 'Home'],
     'playback.toEnd': ['T', 'End'],
+    'playback.stepForward': ['ArrowRight'],
+    'playback.stepBackward': ['ArrowLeft'],
+    'playback.stepForwardLarge': ['Shift+ArrowRight'],
+    'playback.stepBackwardLarge': ['Shift+ArrowLeft'],
     'playback.forward1_25': ['F'],
     'playback.backward1_25': ['D'],
     'playback.forward1_5': ['Shift+F'],

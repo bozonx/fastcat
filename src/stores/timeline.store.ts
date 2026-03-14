@@ -30,7 +30,7 @@ import { createTimelineSelectionRange } from '~/stores/timeline/timelineSelectio
 import { createTimelineCaptions } from '~/stores/timeline/timelineCaptions';
 import { createTimelineCommands } from '~/stores/timeline/timelineCommands';
 
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { quantizeTimeUsToFrames, sanitizeFps, getDocFps } from '~/timeline/commands/utils';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -624,5 +624,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleSelection: selection.toggleSelection,
     clearSelection: selection.clearSelection,
     setTimelineZoomExact,
+    seekFrames: (deltaFrames: number) => {
+      const fps = getDocFps(timelineDoc.value || ({} as any));
+      const frameUs = 1_000_000 / fps;
+      setCurrentTimeUs(currentTime.value + deltaFrames * frameUs);
+    },
   };
 });

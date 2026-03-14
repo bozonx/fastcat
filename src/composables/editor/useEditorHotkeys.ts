@@ -84,7 +84,7 @@ export function useEditorHotkeys() {
     }
     if (matched.length === 0) return;
 
-    const focusAware = (() => {
+    const focusAwareOrder = (() => {
       const order: HotkeyCommandId[] = [];
 
       const timeline = matched.filter((c) => c.startsWith('timeline.'));
@@ -99,24 +99,25 @@ export function useEditorHotkeys() {
         order.push(...general, ...timeline, ...playback);
       }
 
-      return order[0] ?? matched[0]!;
+      return order;
     })();
 
-    const cmd: HotkeyCommandId = focusAware as HotkeyCommandId;
-    const handler = registry[cmd];
-
-    if (handler) {
-      const executed = handler(e);
-      if (executed) {
-        if (document.activeElement instanceof HTMLElement) {
-          if (!isEditableTarget(document.activeElement)) {
-            document.activeElement.blur();
+    for (const cmdId of focusAwareOrder) {
+      const handler = registry[cmdId];
+      if (handler) {
+        const executed = handler(e);
+        if (executed) {
+          if (document.activeElement instanceof HTMLElement) {
+            if (!isEditableTarget(document.activeElement)) {
+              document.activeElement.blur();
+            }
           }
+          e.preventDefault();
+          e.stopPropagation();
+          (e as any).stopImmediatePropagation?.();
+          suppressedKeyupCodes.add(e.code);
+          return;
         }
-        e.preventDefault();
-        e.stopPropagation();
-        (e as any).stopImmediatePropagation?.();
-        suppressedKeyupCodes.add(e.code);
       }
     }
   }
