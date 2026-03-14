@@ -68,7 +68,8 @@ export interface FileManagerCreateDeps {
   onMediaImported: (params: { projectRelativePath: string }) => void;
   mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
-  onDirectoryMoved?: () => void | Promise<void>;
+  onDirectoryMoved?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
+  onDirectoryCopied?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryLoaded?: () => void;
   mediaStore: ReturnType<typeof useMediaStore>;
 }
@@ -99,6 +100,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       const uiStore = useUiStore();
       uiStore.notifyFileManagerUpdate();
     },
+    onDirectoryMoved: (params) => deps.onDirectoryMoved?.(params),
+    onDirectoryCopied: (params) => deps.onDirectoryCopied?.(params),
     onError: (params: { title?: string; message: string; error?: unknown }) => {
       const description = params.error
         ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
@@ -401,14 +404,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
               if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
                 const projectId = deps.getProjectId();
-                if (projectId) {
-                  await onVideoPathMovedCommand({
-                    service: deps.mediaCache,
-                    projectId,
-                    oldPath,
-                    newPath,
-                  });
-                } else {
+                if (!projectId) {
                   await removeProxyCommand({
                     service: deps.mediaCache,
                     projectRelativePath: oldPath,
@@ -418,9 +414,13 @@ export function createFileManager(deps: FileManagerCreateDeps) {
                 }
               }
             },
-            onDirectoryMoved: async () => {
-              await deps.onDirectoryMoved?.();
-              deps.mediaCache.clearExistingProxies();
+            onDirectoryMoved: async ({ oldPath, newPath }) => {
+              await deps.onDirectoryMoved?.({ oldPath, newPath });
+              if (oldPath && newPath) {
+                await deps.mediaCache.renameProxyDir({ oldPath, newPath });
+              } else {
+                deps.mediaCache.clearExistingProxies();
+              }
             },
           },
         );
@@ -461,8 +461,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
             onFileCopied: async ({ newPath }) => {
               await deps.mediaStore.removeMediaCache(newPath);
             },
-            onDirectoryCopied: async () => {
-              deps.mediaCache.clearExistingProxies();
+            onDirectoryCopied: async ({ oldPath, newPath }) => {
+              await deps.onDirectoryCopied?.({ oldPath, newPath });
             },
           },
         );
@@ -639,6 +639,7 @@ export function useFileManager() {
         await proxyStore.cancelProxyGeneration(projectRelativePath),
       removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
       renameProxy: async (params) => await proxyStore.renameProxy(params),
+      renameProxyDir: async (params) => await proxyStore.renameProxyDir(params),
       clearExistingProxies: () => proxyStore.existingProxies.clear(),
       clearVideoThumbnails: async ({ projectId, projectRelativePath }) => {
         await thumbnailGenerator.clearThumbnails({
@@ -660,8 +661,37 @@ export function useFileManager() {
       await clearVectorCacheForPath(oldPath);
       await clearVectorCacheForPath(newPath);
       updateSelectionPath({ oldPath, newPath });
+
+      if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
+        const projectId = projectStore.currentProjectId;
+        if (projectId) {
+          await onVideoPathMovedCommand({
+            service: api.mediaCache,
+            projectId,
+            oldPath,
+            newPath,
+          });
+        }
+      } else if (oldPath.startsWith(`${AUDIO_DIR_NAME}/`)) {
+        // For audio, we don't have proxies yet, but we might have waveforms
+        const projectId = projectStore.currentProjectId;
+        if (projectId) {
+          await api.mediaCache.clearWaveforms({
+            projectId,
+            projectRelativePath: oldPath,
+          });
+        }
+      }
     },
-    onDirectoryMoved: async () => {
+    onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
+      mediaStore.resetMediaState();
+      if (oldPath && newPath) {
+        await api.mediaCache.renameProxyDir({ oldPath, newPath });
+      } else {
+        api.mediaCache.clearExistingProxies();
+      }
+    },
+    onDirectoryCopied: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
       mediaStore.resetMediaState();
     },
     onDirectoryLoaded: () => {

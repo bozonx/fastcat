@@ -20,6 +20,8 @@ export interface FileManagerServiceDeps {
   checkExistingProxies: (videoPaths: string[]) => Promise<void>;
   onError?: (params: { title?: string; message: string; error?: unknown }) => void;
   onDirectoryLoaded?: () => void;
+  onDirectoryMoved?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
+  onDirectoryCopied?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
 }
 
 export interface FileManagerService {

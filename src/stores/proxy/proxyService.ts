@@ -19,6 +19,7 @@ export interface ProxyService {
   cancelProxyGeneration: (projectRelativePath: string) => Promise<void>;
   deleteProxy: (projectRelativePath: string) => Promise<void>;
   renameProxy: (params: { oldPath: string; newPath: string }) => Promise<void>;
+  renameProxyDir: (params: { oldPath: string; newPath: string }) => Promise<void>;
   getProxyFileHandle: (projectRelativePath: string) => Promise<FileSystemFileHandle | null>;
   getProxyFile: (projectRelativePath: string) => Promise<File | null>;
 }
@@ -31,6 +32,7 @@ export function createProxyService(params: {
   proxyProgress: Ref<Record<string, number>>;
   proxyAbortControllers: Ref<Record<string, AbortController>>;
   activeWorkerPaths: Ref<Set<string>>;
+  proxyTaskIds: Ref<Record<string, string>>;
 
   proxyQueue: Ref<PQueue>;
 
@@ -47,6 +49,31 @@ export function createProxyService(params: {
     proxyCopyOpusAudio: boolean;
   };
 }): ProxyService {
+  params.proxyTaskIds.value = {}; // Clear old task mappings on service creation
+
+  setProxyHostApi(
+    createVideoCoreHostApi({
+      getCurrentProjectId: () => '',
+      getWorkspaceHandle: () => null,
+      getFileHandleByPath: params.getFileHandleByPath,
+      getFileByPath: params.getFileByPath,
+      onExportProgress: (progress: number, taskId?: string) => {
+        const path = Object.keys(params.proxyTaskIds.value).find(
+          (k) => params.proxyTaskIds.value[k] === taskId,
+        );
+        if (path) {
+          params.proxyProgress.value[path] = progress;
+        }
+      },
+      onExportPhase: (phase: 'encoding' | 'saving', taskId?: string) => {
+        console.log(`[Proxy Worker] Phase: ${phase} for task ${taskId}`);
+      },
+      onExportWarning: (msg: string, taskId?: string) => {
+        console.warn(`[Proxy Worker] Warning: ${msg} for task ${taskId}`);
+      },
+    }),
+  );
+
   async function generateProxiesForFolder(input: {
     dirHandle: FileSystemDirectoryHandle;
     dirPath: string;
@@ -141,8 +168,9 @@ export function createProxyService(params: {
             throw abortErr;
           }
 
+          const taskId = `proxy-${projectRelativePath}-${Date.now()}`;
+          params.proxyTaskIds.value[projectRelativePath] = taskId;
           params.activeWorkerPaths.value.add(projectRelativePath);
-
           const proxyFilename = await params.getProxyFileName(projectRelativePath);
           proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
@@ -174,18 +202,6 @@ export function createProxyService(params: {
           const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
           const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
-          setProxyHostApi(
-            createVideoCoreHostApi({
-              getCurrentProjectId: () => null,
-              getWorkspaceHandle: () => null,
-              getResolvedStorageTopology: () => null,
-              getFileHandleByPath: async (path) => await params.getFileHandleByPath(path),
-              getFileByPath: async (path) => await params.getFileByPath(path),
-              onExportProgress: (progress) => {
-                params.proxyProgress.value[projectRelativePath] = progress;
-              },
-            }),
-          );
 
           const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
@@ -259,6 +275,7 @@ export function createProxyService(params: {
           params.activeWorkerPaths.value.delete(projectRelativePath);
           params.generatingProxies.value.delete(projectRelativePath);
           delete params.proxyProgress.value[projectRelativePath];
+          delete params.proxyTaskIds.value[projectRelativePath];
 
           if (signal) {
             try {
@@ -293,10 +310,11 @@ export function createProxyService(params: {
       controller.abort();
     }
 
+    const taskId = params.proxyTaskIds.value[projectRelativePath];
     if (params.activeWorkerPaths.value.has(projectRelativePath)) {
       try {
         const { client } = getProxyWorkerClient();
-        await client.cancelExport();
+        await (client as any).cancelExport(taskId);
       } catch {
         // ignore
       }
@@ -321,6 +339,22 @@ export function createProxyService(params: {
     const next = new Set(params.existingProxies.value);
     next.delete(projectRelativePath);
     params.existingProxies.value = next;
+  }
+
+  async function renameProxyDir(input: { oldPath: string; newPath: string }) {
+    const dir = await params.ensureProjectProxiesDir();
+    if (!dir) return;
+
+    const oldPrefix = `${input.oldPath}/`;
+    const affectedPaths = Array.from(params.existingProxies.value).filter((p) =>
+      p.startsWith(oldPrefix),
+    );
+
+    for (const oldPath of affectedPaths) {
+      const relative = oldPath.substring(oldPrefix.length);
+      const newPath = `${input.newPath}/${relative}`;
+      await renameProxy({ oldPath, newPath });
+    }
   }
 
   async function renameProxy(input: { oldPath: string; newPath: string }) {
@@ -395,6 +429,7 @@ export function createProxyService(params: {
     cancelProxyGeneration,
     deleteProxy,
     renameProxy,
+    renameProxyDir,
     getProxyFileHandle,
     getProxyFile,
   };

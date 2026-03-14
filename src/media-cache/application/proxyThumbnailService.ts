@@ -8,6 +8,7 @@ export interface ProxyThumbnailServiceDeps {
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
   renameProxy: (params: { oldPath: string; newPath: string }) => Promise<void>;
+  renameProxyDir: (params: { oldPath: string; newPath: string }) => Promise<void>;
   clearExistingProxies: () => void;
   clearVideoThumbnails: (params: {
     projectId: string;
@@ -26,6 +27,7 @@ export interface ProxyThumbnailService {
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
   renameProxy: (params: { oldPath: string; newPath: string }) => Promise<void>;
+  renameProxyDir: (params: { oldPath: string; newPath: string }) => Promise<void>;
   clearExistingProxies: () => void;
   clearVideoThumbnails: (params: {
     projectId: string;
@@ -48,6 +50,7 @@ export function createProxyThumbnailService(
     cancelProxy: (projectRelativePath) => deps.cancelProxy(projectRelativePath),
     removeProxy: (projectRelativePath) => deps.removeProxy(projectRelativePath),
     renameProxy: (params) => deps.renameProxy(params),
+    renameProxyDir: (params) => deps.renameProxyDir(params),
     clearExistingProxies: () => deps.clearExistingProxies(),
     clearVideoThumbnails: (params) =>
       deps.clearVideoThumbnails({

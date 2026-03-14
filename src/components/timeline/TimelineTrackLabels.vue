@@ -230,7 +230,7 @@ function onDragVirtualEnd() {
           />
         </UContextMenu>
         <div class="w-full flex-1 min-h-7 shrink-0" />
-        <div class="h-16 shrink-0" />
+        <div class="shrink-0" :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }" />
       </div>
     </div>
 

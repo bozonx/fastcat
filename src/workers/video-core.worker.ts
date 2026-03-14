@@ -22,11 +22,11 @@ let renderInFlight = false;
 let latestRenderTimeUs: number | null = null;
 let latestPreviewOptions: PreviewRenderOptions | undefined;
 
-async function reportExportWarning(message: string) {
-  console.warn(message);
+async function reportExportWarning(message: string, taskId?: string) {
+  console.warn(message, taskId ? `[task:${taskId}]` : '');
   if (!hostClient) return;
   try {
-    await (hostClient as any).onExportWarning?.(message);
+    await (hostClient as any).onExportWarning?.(message, taskId);
   } catch {
     // ignore
   }
@@ -116,21 +116,39 @@ const api: any = {
     options: any,
     timelineClips: any[],
     audioClips: any[] = [],
+    taskId?: string,
   ) {
-    cancelExportRequested = false;
+    if (taskId) {
+      activeCancels.set(taskId, false);
+    } else {
+      cancelExportRequested = false;
+    }
+    
     await runExport(
       targetHandle,
       options,
       timelineClips,
       audioClips,
       hostClient,
-      reportExportWarning,
-      () => cancelExportRequested,
+      (msg) => reportExportWarning(msg, taskId),
+      () => {
+        if (taskId) return activeCancels.get(taskId) === true;
+        return cancelExportRequested;
+      },
+      taskId,
     );
+    
+    if (taskId) {
+      activeCancels.delete(taskId);
+    }
   },
 
-  async cancelExport() {
-    cancelExportRequested = true;
+  async cancelExport(taskId?: string) {
+    if (taskId) {
+      activeCancels.set(taskId, true);
+    } else {
+      cancelExportRequested = true;
+    }
   },
 
   async extractFrameToBlob(
@@ -194,6 +212,8 @@ const api: any = {
   },
 };
 
+const activeCancels = new Map<string, boolean>();
+
 let callIdCounter = 0;
 const pendingCalls = new Map<number, { resolve: Function; reject: Function; timeoutId?: number }>();
 
@@ -256,8 +276,19 @@ hostClient = new Proxy(
               p.reject(new Error(`Host RPC timeout for method: ${method}`));
             }
           }, 30000);
+          
+          // If the last argument is a taskId (string and doesn't look like path), we move it to the envelope
+          // Actually, we should check if the called method is one of the progress/phase/warning ones
+          let taskId: string | undefined;
+          if (method === 'onExportProgress' || method === 'onExportPhase' || method === 'onExportWarning') {
+            // These methods are now called with (value, taskId) from runExport
+            if (args.length >= 2 && typeof args[args.length - 1] === 'string') {
+              taskId = args.pop();
+            }
+          }
+
           pendingCalls.set(id, { resolve, reject, timeoutId });
-          self.postMessage({ type: 'rpc-call', id, method, args });
+          self.postMessage({ type: 'rpc-call', id, method, args, taskId });
         });
       };
     },
