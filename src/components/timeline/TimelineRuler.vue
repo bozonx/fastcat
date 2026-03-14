@@ -197,12 +197,17 @@ function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
   }
 
   if (action === 'reset_zoom') {
-    timelineStore.setTimelineZoom(50);
+    timelineStore.resetTimelineZoom();
     return;
   }
 
   if (action === 'select_area') {
     startSelectionRangeCreate(e as PointerEvent);
+    return;
+  }
+
+  if (action === 'clear_selection') {
+    timelineStore.clearSelection();
     return;
   }
 

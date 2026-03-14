@@ -205,7 +205,7 @@ const { contextMenuItems } = useClipContextMenu({
 
 const isFreePosition = computed(() => {
   if (!clipItem.value || !timelineStore.timelineDoc) return false;
-  const fps = sanitizeFps(timelineStore.timelineDoc.timebase.fps);
+  const fps = timelineStore.fps || 30;
   const startFrame = (clipItem.value.timelineRange.startUs * fps) / 1_000_000;
   const durFrame = (clipItem.value.timelineRange.durationUs * fps) / 1_000_000;
   return (
@@ -250,13 +250,18 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
-      class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) z-10 select-none transition-shadow group/clip"
+      class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"
+      :style="{
+        left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
+        width: `${clipWidthPx}px`,
+        zIndex: timelineStore.selectedItemIds.includes(item.id) ? 'var(--z-clip-selected)' : (isDraggingOver ? 'var(--z-clip-dragging)' : 'var(--z-clip-base)'),
+      }"
       :class="[
         timelineStore.isTrimModeActive ? 'cursor-crosshair' : 'cursor-pointer',
         timelineStore.selectedItemIds.includes(item.id)
-          ? 'outline-2 outline-(--selection-ring) z-20 shadow-lg'
+          ? 'outline-2 outline-(--selection-ring) shadow-lg'
           : '',
-        isDraggingOver ? 'ring-2 ring-primary-500 z-30' : '',
+        isDraggingOver ? 'ring-2 ring-primary-500' : '',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
@@ -266,10 +271,6 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         isMobile ? 'touch-manipulation' : '',
         ...getClipClass(item, track),
       ]"
-      :style="{
-        left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
-        width: `${clipWidthPx}px`,
-      }"
       @pointerdown="onClipPointerdown"
       @click="onClipClick"
       @dragover="handleDragOver"
@@ -282,12 +283,14 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         v-if="
           clipItem && typeof clipItem.speed === 'number' && clipItem.speed !== 1 && !isMediaMissing
         "
-        class="absolute inset-0 rounded border-2 pointer-events-none z-40"
+        class="absolute inset-0 rounded border-2 pointer-events-none"
+        :style="{ zIndex: 'var(--z-clip-speed)' }"
         :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
       />
       <div
         v-if="isFreePosition"
-        class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none z-35"
+        class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none"
+        :style="{ zIndex: 'var(--z-clip-free-pos)' }"
       />
 
       <!-- Overlays (Missing Media, Disabled, Muted) -->
@@ -352,10 +355,10 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
       />
 
       <!-- Content Area (Thumbnails / Waveform) -->
-      <div class="flex-1 flex w-full min-h-0 relative z-20">
+      <div class="flex-1 flex w-full min-h-0 relative" :style="{ zIndex: 'var(--z-clip-content)' }">
         <TimelineClipThumbnails
           v-if="isVideo(item) && clipItem?.showThumbnails !== false"
-          :item="item as any"
+          :item="(item as TimelineClipItem)"
           :width="clipWidthPx"
         />
         <TimelineAudioWaveform
@@ -363,12 +366,13 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
             isAudio(item) ||
             (isVideo(item) && clipHasAudio(item, track) && clipItem?.showWaveform !== false)
           "
-          :item="item as any"
+          :item="(item as TimelineClipItem)"
         />
 
         <div
           v-if="clipItem"
-          class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 z-15 pointer-events-none"
+          class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 pointer-events-none"
+          :style="{ zIndex: 'var(--z-clip-name)' }"
         >
           <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">{{
             clipItem.name
@@ -377,21 +381,22 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
 
         <div
           v-if="transitionInOverlayGuideStyle"
-          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none z-25"
-          :style="transitionInOverlayGuideStyle"
+          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none"
+          :style="{ ...transitionInOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
         />
 
         <div
           v-if="transitionOutOverlayGuideStyle"
-          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none z-25"
-          :style="transitionOutOverlayGuideStyle"
+          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none"
+          :style="{ ...transitionOutOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
         />
       </div>
 
       <!-- Trim Handles -->
       <template v-if="clipItem && canEditClipContent && !clipItem.locked">
         <div
-          class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
+          class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
+          :style="{ zIndex: 'var(--z-clip-trim)' }"
           :class="isMobile ? 'w-4' : 'w-1.5'"
           @pointerdown.stop="
             emit('startTrimItem', $event, {
@@ -403,7 +408,8 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
           "
         />
         <div
-          class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors z-50 group/trim"
+          class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
+          :style="{ zIndex: 'var(--z-clip-trim)' }"
           :class="isMobile ? 'w-4' : 'w-1.5'"
           @pointerdown.stop="
             emit('startTrimItem', $event, {

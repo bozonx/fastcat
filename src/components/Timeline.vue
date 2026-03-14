@@ -287,13 +287,14 @@ function onTimelineWheel(
 
   if (action === 'resize_track') {
     e.preventDefault();
-    const target = e.target as HTMLElement;
-    const trackEl = target.closest('[data-track-id]');
+    const target = e.target as Node;
+    const el = target.nodeType === 3 ? target.parentElement : target as Element;
+    const trackEl = el?.closest?.('[data-track-id]');
     const trackId = trackEl?.getAttribute('data-track-id');
     if (trackId) {
       const currentHeight = trackHeights.value[trackId] ?? 40;
-      // Change height by 8px steps
-      const nextHeight = Math.max(32, Math.min(300, currentHeight + (delta > 0 ? -8 : 8)));
+      const step = Math.abs(delta) < 10 ? delta * -1 : (delta > 0 ? -8 : 8);
+      const nextHeight = Math.max(32, Math.min(300, currentHeight + step));
       updateTrackHeight(trackId, nextHeight);
     }
   }

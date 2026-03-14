@@ -86,6 +86,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineZoom = ref(50);
   const trackHeights = ref<Record<string, number>>({});
 
+  const fps = computed(() => getDocFps(timelineDoc.value || ({} as any)));
+
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
   const hoveredTrackId = ref<string | null>(null);
@@ -551,6 +553,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineDoc,
     getMarkers: markerService.getMarkers,
     getSelectionRange: selectionRange.getSelectionRange,
+    fps,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,
