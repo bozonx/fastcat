@@ -23,6 +23,7 @@ const emit = defineEmits<{
     event: PointerEvent,
     payload: { edge: 'in' | 'out'; durationUs: number },
   ): void;
+  (e: 'toggleFadeCurve', payload: { edge: 'in' | 'out' }): void;
   (e: 'startResizeVolume', event: PointerEvent, gain: number): void;
   (e: 'resetVolume'): void;
 }>();
@@ -123,7 +124,10 @@ const volumeY = computed(() => {
           emit('startResizeFade', $event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
         "
       >
-        <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
+        <div
+          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
+          @click.stop.prevent="emit('toggleFadeCurve', { edge: 'in' })"
+        ></div>
       </div>
 
       <div
@@ -139,7 +143,10 @@ const volumeY = computed(() => {
           emit('startResizeFade', $event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
         "
       >
-        <div class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"></div>
+        <div
+          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
+          @click.stop.prevent="emit('toggleFadeCurve', { edge: 'out' })"
+        ></div>
       </div>
     </template>
 

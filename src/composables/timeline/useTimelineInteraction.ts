@@ -126,6 +126,7 @@ export function useTimelineInteraction(
   const lastDragAppliedCmd = ref<import('~/timeline/commands').TimelineCommand | null>(null);
   const dragCancelRequested = ref(false);
   const dragIsFreeOverride = ref(false);
+  const dragUsePseudoOverlapOverride = ref(false);
 
   let dragRafId: number | null = null;
 
@@ -226,7 +227,9 @@ export function useTimelineInteraction(
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
-    dragIsFreeOverride.value = isLayer1Active(e, workspaceStore.userSettings);
+    const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    dragIsFreeOverride.value = isLayer1Pressed;
+    dragUsePseudoOverlapOverride.value = isLayer1Pressed;
     dragAnchorStartUs.value = startUs;
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
@@ -284,7 +287,9 @@ export function useTimelineInteraction(
     draggingItemId.value = input.itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
-    dragIsFreeOverride.value = isLayer1Active(e, workspaceStore.userSettings);
+    const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    dragIsFreeOverride.value = false;
+    dragUsePseudoOverlapOverride.value = isLayer1Pressed;
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
@@ -307,6 +312,8 @@ export function useTimelineInteraction(
       markers: timelineStore.getMarkers(),
     });
 
+    dragStartSnapshot.value = timelineStore.timelineDoc;
+    lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
@@ -348,7 +355,7 @@ export function useTimelineInteraction(
     const enableFrameSnap = settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
     const enableClipSnap = settingsStore.clipSnapMode === 'clips';
     const snapThresholdPx = settingsStore.snapThresholdPx;
-    const isShiftPressed = dragIsFreeOverride.value;
+    const isShiftPressed = dragUsePseudoOverlapOverride.value;
     const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
 
     if (mode === 'move') {
@@ -646,7 +653,9 @@ export function useTimelineInteraction(
 
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
-    dragIsFreeOverride.value = isLayer1Active(e, workspaceStore.userSettings);
+    const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    dragUsePseudoOverlapOverride.value = isLayer1Pressed;
+    dragIsFreeOverride.value = draggingMode.value === 'move' ? isLayer1Pressed : false;
     scheduleDragApply();
   }
 
@@ -814,6 +823,7 @@ export function useTimelineInteraction(
     dragStartSnapshot.value = null;
     lastDragAppliedCmd.value = null;
     dragIsFreeOverride.value = false;
+    dragUsePseudoOverlapOverride.value = false;
 
     window.removeEventListener('keydown', onGlobalKeyDown);
   }

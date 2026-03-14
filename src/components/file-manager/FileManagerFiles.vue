@@ -90,6 +90,7 @@ const props = defineProps<{
   findEntryByPath: (path: string) => FsEntry | null;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
+  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
 }>();
 
@@ -136,6 +137,16 @@ async function onRequestMove(params: { sourcePath: string; targetDirPath: string
   uiStore.notifyFileManagerUpdate();
 }
 
+async function onRequestCopy(params: { sourcePath: string; targetDirPath: string }) {
+  const source = props.findEntryByPath(params.sourcePath);
+  if (!source) return;
+  await props.copyEntry({
+    source,
+    targetDirPath: params.targetDirPath,
+  });
+  uiStore.notifyFileManagerUpdate();
+}
+
 async function onRequestUpload(params: { files: File[]; targetDirPath: string }) {
   await props.handleFiles(params.files, params.targetDirPath);
   uiStore.notifyFileManagerUpdate();
@@ -150,6 +161,7 @@ const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootD
     resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
     handleFiles: props.handleFiles,
     moveEntry: props.moveEntry,
+    copyEntry: props.copyEntry,
   },
 );
 
@@ -319,6 +331,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
             @select="onEntrySelect"
             @action="(action, entry) => emit('action', action as any, entry)"
             @request-move="onRequestMove"
+            @request-copy="onRequestCopy"
             @request-upload="onRequestUpload"
             @request-download="onRequestDownload"
           />

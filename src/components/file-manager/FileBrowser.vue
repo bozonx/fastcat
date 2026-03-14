@@ -59,6 +59,7 @@ const {
   deleteEntry,
   handleFiles,
   moveEntry,
+  copyEntry,
   findEntryByPath,
   resolveEntryByPath,
   reloadDirectory,
@@ -144,6 +145,7 @@ let _loadFolderContent: () => Promise<void> = async () => {};
 const {
   isDragOverPanel,
   dragOverEntryPath,
+  currentDragOperation,
   isRootDropOver,
   onRootDragOver,
   onRootDragLeave,
@@ -161,6 +163,7 @@ const {
   resolveEntryByPath,
   handleFiles,
   moveEntry,
+  copyEntry,
   loadFolderContent: () => _loadFolderContent(),
   notifyFileManagerUpdate: () => {
     skipNextUpdateReload.value = true;
@@ -589,6 +592,7 @@ async function onDirectoryUploadChange(e: Event) {
             :entries="sortedEntries as ExtendedFsEntry[]"
             :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"
+            :current-drag-operation="currentDragOperation"
             :current-grid-size-name="currentGridSizeName"
             :editing-entry-path="editingEntryPath"
             :folder-entries-names="folderEntries.map((e) => e.name)"
@@ -617,6 +621,7 @@ async function onDirectoryUploadChange(e: Event) {
             :entries="sortedEntries as ExtendedFsEntry[]"
             :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"
+            :current-drag-operation="currentDragOperation"
             :folder-sizes-loading="folderSizesLoading"
             :folder-sizes="folderSizes"
             :editing-entry-path="editingEntryPath"

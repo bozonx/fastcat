@@ -32,6 +32,7 @@ import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
+  copyEntryCommand,
   createFolderCommand,
   createTimelineCommand,
   deleteEntryCommand,
@@ -440,6 +441,53 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
+  async function copyEntry(params: { source: FsEntry; targetDirPath: string }) {
+    const projectName = deps.getProjectName();
+    if (!projectName) return null;
+
+    const sourcePath = params.source.path;
+    const targetDirPath = params.targetDirPath ?? '';
+    if (!sourcePath) return null;
+
+    await runWithUiFeedback({
+      action: async () => {
+        const { newPath } = await copyEntryCommand(
+          {
+            source: params.source,
+            targetDirPath,
+          },
+          {
+            vfs: deps.vfs,
+            onFileCopied: async ({ newPath }) => {
+              await deps.mediaStore.removeMediaCache(newPath);
+            },
+            onDirectoryCopied: async () => {
+              deps.mediaCache.clearExistingProxies();
+            },
+          },
+        );
+
+        if (targetDirPath) {
+          deps.setFileTreePathExpanded(targetDirPath, true);
+        }
+
+        await reloadDirectory(targetDirPath);
+        const sourceParentPath = getParentPath(sourcePath);
+        if (sourceParentPath && sourceParentPath !== targetDirPath) {
+          await reloadDirectory(sourceParentPath);
+        }
+        await triggerMediaIntegrityCheck();
+
+        return newPath;
+      },
+      defaultErrorMessage: 'Failed to copy',
+      toastTitle: 'Copy error',
+      toastDescription: () => error.value || 'Failed to copy',
+    });
+
+    return true;
+  }
+
   async function createTimeline(): Promise<string | null> {
     return await runWithUiFeedback({
       action: async () => {
@@ -495,6 +543,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     resolveEntryByPath,
     mergeEntries,
     moveEntry,
+    copyEntry,
     createTimeline,
     getFileIcon,
     readDirectory: service.readDirectory,
