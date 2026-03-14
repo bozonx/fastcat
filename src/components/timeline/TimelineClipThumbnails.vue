@@ -10,46 +10,38 @@ const props = defineProps<{
 
 const itemRef = computed(() => props.item);
 
-const { chunks, imageUrl, isImage, rootEl, setChunkCanvas, setChunkEl, trimOffsetPx } =
-  useTimelineClipThumbnails({ item: itemRef });
-
-const chunksWidthPx = computed(() => {
-  return chunks.value.reduce((sum, c) => sum + c.widthPx, 0);
+const { imageUrl, isImage, thumbnailTiles, trimOffsetPx } = useTimelineClipThumbnails({
+  item: itemRef,
 });
+
+const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
 </script>
 
 <template>
-  <div
-    ref="rootEl"
-    class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-0"
-  >
-    <!-- Video clips: Chunked canvases -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-0">
+    <!-- Video clips: img tiles -->
     <div
-      class="absolute inset-y-0 h-full flex"
-      :class="{ hidden: isImage }"
+      v-if="!isImage"
+      class="absolute inset-y-0 h-full"
       :style="{
         left: `${-trimOffsetPx}px`,
-        width: `${chunksWidthPx}px`,
+        width: `${thumbnailsStripWidthPx}px`,
       }"
     >
-      <div
-        v-for="chunk in chunks"
-        :key="chunk.chunkIndex"
-        :ref="(el) => setChunkEl(el, chunk.chunkIndex)"
-        class="relative h-full flex-none overflow-hidden"
-        :data-chunk-index="chunk.chunkIndex"
+      <img
+        v-for="tile in thumbnailTiles"
+        :key="tile.key"
+        :src="tile.url"
+        alt=""
+        class="absolute top-0 h-full object-cover object-center"
         :style="{
-          width: `${chunk.widthPx}px`,
+          left: `${tile.leftPx}px`,
+          width: `${tile.widthPx}px`,
         }"
-      >
-        <canvas
-          :ref="(el) => setChunkCanvas(el, chunk.chunkIndex)"
-          class="absolute top-0 left-0 h-full max-w-none"
-        ></canvas>
-      </div>
+      />
     </div>
 
-    <!-- Image clips: Centered image taking full height -->
+    <!-- Image clips -->
     <div v-if="isImage" class="absolute inset-0 flex items-center justify-center overflow-hidden">
       <img
         v-if="imageUrl"

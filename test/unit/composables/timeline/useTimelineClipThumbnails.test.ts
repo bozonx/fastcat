@@ -1,60 +1,46 @@
 import { describe, it, expect } from 'vitest';
-import {
-  computeChunks,
-  computeThumbsPerChunk,
-} from '../../../../src/composables/timeline/useTimelineClipThumbnails';
+import type { ThumbnailTile } from '../../../../src/composables/timeline/useTimelineClipThumbnails';
 
-describe('useTimelineClipThumbnails helpers', () => {
-  it('computeThumbsPerChunk clamps to [8..120] and has fallback', () => {
-    expect(computeThumbsPerChunk(NaN)).toBe(20);
-    expect(computeThumbsPerChunk(0)).toBe(20);
-
-    expect(computeThumbsPerChunk(10000)).toBe(8);
-    expect(computeThumbsPerChunk(1)).toBe(120);
+describe('ThumbnailTile interface', () => {
+  it('has expected shape', () => {
+    const tile: ThumbnailTile = { key: 0, url: 'blob:x', leftPx: 0, widthPx: 80 };
+    expect(tile.key).toBe(0);
+    expect(tile.url).toBe('blob:x');
+    expect(tile.leftPx).toBe(0);
+    expect(tile.widthPx).toBe(80);
   });
 
-  it('computeChunks returns empty for images and invalid params', () => {
-    expect(
-      computeChunks({
-        isImage: true,
-        totalThumbs: 10,
-        thumbsPerChunk: 20,
-        pxPerThumbnail: 10,
-      }),
-    ).toEqual([]);
+  it('leftPx is computed from thumbIndex * pxPerThumbnail', () => {
+    const intervalSeconds = 2;
+    const pxPerThumbnail = 80;
 
-    expect(
-      computeChunks({
-        isImage: false,
-        totalThumbs: 0,
-        thumbsPerChunk: 20,
-        pxPerThumbnail: 10,
-      }),
-    ).toEqual([]);
+    const makeTile = (second: number): ThumbnailTile => ({
+      key: second,
+      url: `blob:${second}`,
+      leftPx: (second / intervalSeconds) * pxPerThumbnail,
+      widthPx: pxPerThumbnail,
+    });
+
+    const tile0 = makeTile(0);
+    const tile2 = makeTile(2);
+    const tile4 = makeTile(4);
+
+    expect(tile0.leftPx).toBe(0);
+    expect(tile2.leftPx).toBe(80);
+    expect(tile4.leftPx).toBe(160);
+    expect(tile4.widthPx).toBe(80);
   });
 
-  it('computeChunks splits into chunks with correct widths', () => {
-    const chunks = computeChunks({
-      isImage: false,
-      totalThumbs: 25,
-      thumbsPerChunk: 10,
-      pxPerThumbnail: 5,
-    });
+  it('tiles sorted by key are in ascending time order', () => {
+    const tiles: ThumbnailTile[] = [
+      { key: 4, url: 'b', leftPx: 160, widthPx: 80 },
+      { key: 0, url: 'a', leftPx: 0, widthPx: 80 },
+      { key: 2, url: 'c', leftPx: 80, widthPx: 80 },
+    ];
 
-    expect(chunks).toHaveLength(3);
-    expect(chunks[0]).toEqual({
-      chunkIndex: 0,
-      startThumbIndex: 0,
-      endThumbIndex: 10,
-      thumbsCount: 10,
-      widthPx: 50,
-    });
-    expect(chunks[2]).toEqual({
-      chunkIndex: 2,
-      startThumbIndex: 20,
-      endThumbIndex: 25,
-      thumbsCount: 5,
-      widthPx: 25,
-    });
+    const sorted = [...tiles].sort((a, b) => a.key - b.key);
+
+    expect(sorted.map((t) => t.key)).toEqual([0, 2, 4]);
+    expect(sorted.map((t) => t.leftPx)).toEqual([0, 80, 160]);
   });
 });

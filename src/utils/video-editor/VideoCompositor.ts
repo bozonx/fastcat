@@ -2340,35 +2340,40 @@ export class VideoCompositor {
         }
 
         const frame = sample.toVideoFrame() as VideoFrame;
-        clip.lastVideoFrame = frame;
 
-        const frameW = Math.max(
-          1,
-          Math.round((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1),
-        );
-        const frameH = Math.max(
-          1,
-          Math.round((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1),
-        );
+        try {
+          const frameW = Math.max(
+            1,
+            Math.round((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1),
+          );
+          const frameH = Math.max(
+            1,
+            Math.round((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1),
+          );
 
-        if (clip.sourceKind !== 'videoFrame') {
-          // Restore ImageSource-based texture
-          clip.sprite.texture.source = clip.imageSource as any;
-          clip.sourceKind = 'videoFrame';
+          if (clip.sourceKind !== 'videoFrame') {
+            // Restore ImageSource-based texture
+            clip.sprite.texture.source = clip.imageSource as any;
+            clip.sourceKind = 'videoFrame';
+          }
+
+          if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {
+            clip.imageSource.resize(frameW, frameH);
+          }
+
+          // Assign the new frame as the resource and mark for upload.
+          (clip.imageSource as any).resource = frame as any;
+          clip.imageSource.update();
+          clip.lastVideoFrame = frame;
+
+          // Layout on stage
+          this.layoutApplier.applySpriteLayout(frameW, frameH, clip);
+
+          return;
+        } catch (error) {
+          safeDispose(frame);
+          throw error;
         }
-
-        if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {
-          clip.imageSource.resize(frameW, frameH);
-        }
-
-        // Assign the new frame as the resource and mark for upload.
-        (clip.imageSource as any).resource = frame as any;
-        clip.imageSource.update();
-
-        // Layout on stage
-        this.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-
-        return;
       }
     } catch (err) {
       console.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
