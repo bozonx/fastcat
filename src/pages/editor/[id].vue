@@ -195,6 +195,8 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 
 useEventListener(window, 'keydown', onGlobalKeyDown, { capture: true });
 
+const { openProject } = useProjectActions();
+
 onMounted(async () => {
   const projectId = route.params.id as string;
   if (!projectId) {
@@ -211,7 +213,6 @@ onMounted(async () => {
     return;
   }
 
-  const { openProject } = useProjectActions();
   await openProject(decodeURIComponent(projectId));
 });
 

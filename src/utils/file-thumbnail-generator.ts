@@ -70,7 +70,9 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const fileName = `${task.id}.webp`;
       const fileHandle = await dir.getFileHandle(fileName);
       const file = await fileHandle.getFile();
-      const url = URL.createObjectURL(file);
+      const buffer = await file.arrayBuffer();
+      const blob = new Blob([buffer], { type: file.type });
+      const url = URL.createObjectURL(blob);
 
       this.cache.set(task.id, url);
       this.touchCacheEntry(task.id);
@@ -221,8 +223,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
             await writable.write(blob);
             await writable.close();
 
-            const savedFile = await fileHandle.getFile();
-            const thumbUrl = URL.createObjectURL(savedFile);
+            const thumbUrl = URL.createObjectURL(blob);
 
             this.cache.set(task.id, thumbUrl);
             this.touchCacheEntry(task.id);
@@ -309,8 +310,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     await writable.write(input.blob);
     await writable.close();
 
-    const savedFile = await fileHandle.getFile();
-    const thumbUrl = URL.createObjectURL(savedFile);
+    const thumbUrl = URL.createObjectURL(input.blob);
 
     this.cache.set(hash, thumbUrl);
     this.touchCacheEntry(hash);

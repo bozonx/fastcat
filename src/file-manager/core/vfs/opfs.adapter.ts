@@ -274,7 +274,13 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       isFile: true,
     })) as FileSystemFileHandle | null;
     if (!handle) return null;
-    return await handle.getFile();
+    const file = await handle.getFile();
+    // Copy into memory blob to prevent ERR_UPLOAD_FILE_CHANGED when the source OPFS file is overwritten
+    const buffer = await file.arrayBuffer();
+    return new File([buffer], file.name, {
+      type: file.type,
+      lastModified: file.lastModified,
+    });
   }
 
   async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
