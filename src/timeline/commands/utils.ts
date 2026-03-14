@@ -516,3 +516,78 @@ export function clampInt(value: number, min: number, max: number): number {
   if (max < min) return min;
   return Math.min(max, Math.max(min, Math.round(value)));
 }
+
+/**
+ * Minimum clip duration in microseconds below which transitions are removed entirely.
+ * Used consistently across move/trim/split commands.
+ */
+export const TRANSITION_MIN_CLIP_DURATION_US = 100_000;
+
+/**
+ * Maximum gap in microseconds between two clips to still be considered "adjacent"
+ * for transition mode purposes.
+ */
+export const TRANSITION_ADJACENCY_THRESHOLD_US = 1_000;
+
+/**
+ * After a geometry change (move/trim) auto-adjusts clip transitions in a track:
+ * - Shrinks transition duration if it exceeds the clip duration.
+ * - Removes transition entirely if clip is shorter than TRANSITION_MIN_CLIP_DURATION_US.
+ * - Downgrades 'adjacent' mode to 'transparent' if the neighbor clip is no longer adjacent.
+ *
+ * Returns a new items array (immutable). Does not modify the input.
+ */
+export function autoAdaptClipTransitions(items: TimelineTrackItem[]): TimelineTrackItem[] {
+  return items.map((it, idx, arr) => {
+    if (it.kind !== 'clip') return it;
+
+    const clipDurationUs = it.timelineRange.durationUs;
+    let transitionIn = it.transitionIn;
+    let transitionOut = it.transitionOut;
+
+    // Shrink or remove transition-in if clip shrank
+    if (transitionIn) {
+      if (clipDurationUs < TRANSITION_MIN_CLIP_DURATION_US) {
+        transitionIn = undefined;
+      } else if (transitionIn.durationUs > clipDurationUs) {
+        transitionIn = { ...transitionIn, durationUs: clipDurationUs };
+      }
+    }
+
+    // Shrink or remove transition-out if clip shrank
+    if (transitionOut) {
+      if (clipDurationUs < TRANSITION_MIN_CLIP_DURATION_US) {
+        transitionOut = undefined;
+      } else if (transitionOut.durationUs > clipDurationUs) {
+        transitionOut = { ...transitionOut, durationUs: clipDurationUs };
+      }
+    }
+
+    // Downgrade adjacent transition-in if previous clip is no longer adjacent
+    if (transitionIn?.mode === 'adjacent') {
+      const prev = idx > 0 ? arr[idx - 1] : null;
+      const gap = prev
+        ? it.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs)
+        : Infinity;
+      if (!prev || prev.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
+        transitionIn = { ...transitionIn, mode: 'transparent' };
+      }
+    }
+
+    // Downgrade adjacent transition-out if next clip is no longer adjacent
+    if (transitionOut?.mode === 'adjacent') {
+      const next = idx < arr.length - 1 ? arr[idx + 1] : null;
+      const gap = next
+        ? next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs)
+        : Infinity;
+      if (!next || next.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
+        transitionOut = { ...transitionOut, mode: 'transparent' };
+      }
+    }
+
+    if (transitionIn !== it.transitionIn || transitionOut !== it.transitionOut) {
+      return { ...it, transitionIn, transitionOut };
+    }
+    return it;
+  });
+}

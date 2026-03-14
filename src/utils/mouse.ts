@@ -27,9 +27,9 @@ export const RULER_CLICK_ACTIONS = ['add_marker', 'reset_zoom', 'none'] as const
 
 export const RULER_DOUBLE_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
-export const MIDDLE_CLICK_ACTIONS = ['pan', 'move_playhead', 'reset_zoom', 'none'] as const;
+export const MIDDLE_CLICK_ACTIONS = ['pan', 'move_playhead', 'reset_zoom', 'select_area', 'none'] as const;
 
-export const DRAG_ACTIONS = ['pan', 'move_playhead', 'none'] as const;
+export const DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as const;
 
 export const SHIFT_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 

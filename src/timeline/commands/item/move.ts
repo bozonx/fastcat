@@ -33,6 +33,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
+  autoAdaptClipTransitions,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 import {
@@ -319,48 +320,8 @@ export function moveItemToTrack(
     }
   }
 
-  // Auto-adapt transitions after move: if the clip is no longer adjacent, fallback to 'transparent'
-  nextTracks = nextTracks.map((t) => {
-    return {
-      ...t,
-      items: t.items.map((it, idx, arr) => {
-        if (it.kind !== 'clip') return it;
-
-        let transitionIn = it.transitionIn;
-        let transitionOut = it.transitionOut;
-
-        if (transitionIn?.mode === 'adjacent') {
-          const prev = idx > 0 ? arr[idx - 1] : null;
-          if (
-            !prev ||
-            prev.kind !== 'clip' ||
-            it.timelineRange.startUs -
-              (prev.timelineRange.startUs + prev.timelineRange.durationUs) >
-              1000
-          ) {
-            transitionIn = { ...transitionIn, mode: 'transparent' };
-          }
-        }
-
-        if (transitionOut?.mode === 'adjacent') {
-          const next = idx < arr.length - 1 ? arr[idx + 1] : null;
-          if (
-            !next ||
-            next.kind !== 'clip' ||
-            next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs) >
-              1000
-          ) {
-            transitionOut = { ...transitionOut, mode: 'transparent' };
-          }
-        }
-
-        if (transitionIn !== it.transitionIn || transitionOut !== it.transitionOut) {
-          return { ...it, transitionIn, transitionOut };
-        }
-        return it;
-      }),
-    };
-  });
+  // Auto-adapt transitions after move: shrink, remove or downgrade to 'transparent' as needed
+  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
 
   return { next: { ...doc, tracks: nextTracks } };
 }

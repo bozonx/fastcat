@@ -9,6 +9,7 @@ import type {
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { getDocFps, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 
 export interface TimelineClipsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -517,7 +518,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
           const nextGain = Math.pow(10, nextDb / 20);
 
           updateClipProperties(track.id, item.id, {
-            audioGain: Math.max(0, Math.min(4, nextGain)),
+            audioGain: Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, nextGain)),
           });
         }
       }

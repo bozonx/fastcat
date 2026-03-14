@@ -33,6 +33,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
+  autoAdaptClipTransitions,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 import {
@@ -181,39 +182,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   }
 
   // Auto-adapt transitions if the new clip duration is smaller than the transition duration
-  nextTracks = nextTracks.map((t) => {
-    return {
-      ...t,
-      items: t.items.map((it) => {
-        if (it.kind !== 'clip' || it.id !== item.id) return it;
-
-        const clipDurationUs = nextTimelineDurationUs;
-        let transitionIn = it.transitionIn;
-        let transitionOut = it.transitionOut;
-
-        if (transitionIn && transitionIn.durationUs > clipDurationUs) {
-          if (clipDurationUs < 100_000) {
-            transitionIn = undefined;
-          } else {
-            transitionIn = { ...transitionIn, durationUs: clipDurationUs };
-          }
-        }
-
-        if (transitionOut && transitionOut.durationUs > clipDurationUs) {
-          if (clipDurationUs < 100_000) {
-            transitionOut = undefined;
-          } else {
-            transitionOut = { ...transitionOut, durationUs: clipDurationUs };
-          }
-        }
-
-        if (transitionIn !== it.transitionIn || transitionOut !== it.transitionOut) {
-          return { ...it, transitionIn, transitionOut };
-        }
-        return it;
-      }),
-    };
-  });
+  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
 
   return { next: { ...doc, tracks: nextTracks } };
 }
