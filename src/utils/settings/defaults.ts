@@ -115,7 +115,7 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'pan' | 'move_playhead' | 'none';
+      middleClick: 'pan' | 'move_playhead' | 'reset_zoom' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'none';
     };
     trackHeaders: {
@@ -127,7 +127,7 @@ export interface FastCatUserSettings {
     monitor: {
       wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
       wheelShift: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
-      middleClick: 'pan' | 'none';
+      middleClick: 'pan' | 'move_playhead' | 'reset_zoom' | 'none';
     };
   };
 }
@@ -209,7 +209,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'seek_second',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_horizontal',
-      middleClick: 'none',
+      middleClick: 'reset_zoom',
       doubleClick: 'add_marker',
       shiftClick: 'none',
       drag: 'move_playhead',

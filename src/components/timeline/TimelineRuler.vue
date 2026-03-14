@@ -213,6 +213,9 @@ function onRulerPointerDown(e: PointerEvent) {
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
 
   if (e.button === 1) {
+    if (settings.middleClick === 'reset_zoom') {
+      timelineStore.resetTimelineZoom();
+    }
     // Middle drag behavior
     if (settings.middleDrag === 'pan') {
       emit('start-pan', e);
