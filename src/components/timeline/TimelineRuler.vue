@@ -153,24 +153,47 @@ function onRulerContextMenu(e: MouseEvent) {
   contextClickTimeUs.value = getTimeUsFromMouseEvent(e);
 }
 
-// Single click: move playhead
+// Single click: move playhead or custom action
 function onRulerClick(e: MouseEvent) {
   if (e.button !== 0) return;
   if (suppressNextRulerClick.value) {
     suppressNextRulerClick.value = false;
     return;
   }
+
+  const workspaceSettings = useWorkspaceStore().userSettings;
+  if (isLayer1Active(e, workspaceSettings)) {
+    executeRulerClickAction(workspaceSettings.mouse.ruler.shiftClick, e);
+    return;
+  }
+
   timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
 }
 
-// Double click: add marker at clicked position
+// Double click: custom action
 function onRulerDblClick(e: MouseEvent) {
   if (e.button !== 0) return;
-
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
-  if (settings.doubleClick === 'none') return;
+  executeRulerClickAction(settings.doubleClick, e);
+}
 
-  if (settings.doubleClick === 'add_marker') {
+// Middle click
+function onRulerAuxClick(e: MouseEvent) {
+  if (e.button === 1) {
+    const settings = useWorkspaceStore().userSettings.mouse.ruler;
+    executeRulerClickAction(settings.middleClick, e);
+  }
+}
+
+function executeRulerClickAction(action: string, e: MouseEvent) {
+  if (action === 'none') return;
+
+  if (action === 'reset_zoom') {
+    timelineStore.resetTimelineZoom();
+    return;
+  }
+
+  if (action === 'add_marker') {
     const timeUs = getTimeUsFromMouseEvent(e);
     const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -190,30 +213,30 @@ function onRulerPointerDown(e: PointerEvent) {
   const settings = useWorkspaceStore().userSettings.mouse.ruler;
 
   if (e.button === 1) {
-    // Middle click
-    if (settings.middleClick === 'pan') {
+    // Middle drag behavior
+    if (settings.middleDrag === 'pan') {
       emit('start-pan', e);
-      return;
-    }
-    if (settings.middleClick === 'move_playhead') {
+    } else if (settings.middleDrag === 'move_playhead') {
       timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
-      emit('start-playhead-drag', e); // Pass to Timeline to trigger drag playhead
-      return;
+      emit('start-playhead-drag', e);
     }
-  } else if (e.button === 0) {
-    // Left click
+    return;
+  }
+
+  if (e.button === 0) {
+    // Left drag/click behavior
     if (isLayer1Active(e, useWorkspaceStore().userSettings)) {
       startSelectionRangeCreate(e);
       return;
     }
 
     if (settings.drag === 'pan') {
-      emit('start-pan', e); // This will trigger pan in Timeline
+      emit('start-pan', e);
     } else if (settings.drag === 'move_playhead') {
       timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(e));
-      emit('start-playhead-drag', e); // This will trigger startPlayheadDrag
+      emit('start-playhead-drag', e);
     } else {
-      emit('pointerdown', e); // default behavior
+      emit('pointerdown', e);
     }
   }
 }
@@ -245,6 +268,7 @@ function onRulerWheel(e: WheelEvent) {
       @contextmenu="onRulerContextMenu"
       @click="onRulerClick"
       @dblclick="onRulerDblClick"
+      @auxclick="onRulerAuxClick"
       @pointerdown="onRulerPointerDown"
       @wheel.prevent="onRulerWheel"
     >
@@ -266,7 +290,7 @@ function onRulerWheel(e: WheelEvent) {
         :style="{ ...playheadStyle, willChange: 'transform' }"
       >
         <div
-          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-0 border-t-[10px] border-l-transparent border-r-transparent"
+          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-0 border-t-10 border-l-transparent border-r-transparent"
           :style="{ borderTopColor: 'var(--color-primary-500, #3b82f6)' }"
         />
         <div

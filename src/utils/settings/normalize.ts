@@ -365,10 +365,10 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       }
 
       const rulerMiddleClick = rawRuler.middleClick;
-      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
+      if ((RULER_CLICK_ACTIONS as readonly string[]).includes(rulerMiddleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).middleClick = rulerMiddleClick as
-          | 'pan'
-          | 'move_playhead'
+          | 'add_marker'
+          | 'reset_zoom'
           | 'none';
       }
 
@@ -376,6 +376,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       if ((RULER_DOUBLE_CLICK_ACTIONS as readonly string[]).includes(rulerDoubleClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).doubleClick = rulerDoubleClick as
           | 'add_marker'
+          | 'reset_zoom'
           | 'none';
       }
 
@@ -387,10 +388,19 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'none';
       }
 
+      const rulerMiddleDrag = rawRuler.middleDrag;
+      if ((DRAG_ACTIONS as readonly string[]).includes(rulerMiddleDrag as string)) {
+        (normalizedMouse.ruler as Record<string, unknown>).middleDrag = rulerMiddleDrag as
+          | 'pan'
+          | 'move_playhead'
+          | 'none';
+      }
+
       const rulerShiftClick = rawRuler.shiftClick;
       if ((SHIFT_CLICK_ACTIONS as readonly string[]).includes(rulerShiftClick as string)) {
         (normalizedMouse.ruler as Record<string, unknown>).shiftClick = rulerShiftClick as
-          | 'add_marker_and_edit'
+          | 'add_marker'
+          | 'reset_zoom'
           | 'none';
       }
     }
@@ -415,6 +425,15 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(timelineMiddleClick as string)) {
         (normalizedMouse.timeline as Record<string, unknown>).middleClick = timelineMiddleClick as
           | 'pan'
+          | 'move_playhead'
+          | 'none';
+      }
+
+      const timelineMiddleDrag = (rawTimeline as Record<string, unknown>).middleDrag;
+      if ((DRAG_ACTIONS as readonly string[]).includes(timelineMiddleDrag as string)) {
+        (normalizedMouse.timeline as Record<string, unknown>).middleDrag = timelineMiddleDrag as
+          | 'pan'
+          | 'move_playhead'
           | 'none';
       }
     }
