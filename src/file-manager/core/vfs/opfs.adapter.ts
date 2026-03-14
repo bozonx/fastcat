@@ -101,18 +101,24 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     for await (const [name, entryHandle] of (handle as DirectoryHandleWithIteration).entries?.() ??
       []) {
       let hasChildren: boolean | undefined;
+      let hasDirectories: boolean | undefined;
 
       if (entryHandle.kind === 'directory') {
         hasChildren = false;
+        hasDirectories = false;
         try {
-          for await (const _ of (
+          for await (const [, childHandle] of (
             entryHandle as unknown as DirectoryHandleWithIteration
           ).entries?.() ?? []) {
             hasChildren = true;
-            break;
+            if (childHandle.kind === 'directory') {
+              hasDirectories = true;
+              break;
+            }
           }
         } catch {
           hasChildren = false;
+          hasDirectories = false;
         }
       }
 
@@ -122,6 +128,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         path: path && path !== '/' ? `${path}/${name}` : name,
         parentPath: path || undefined,
         hasChildren,
+        hasDirectories,
       });
     }
     return entries;

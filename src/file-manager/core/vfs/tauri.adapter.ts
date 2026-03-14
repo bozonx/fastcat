@@ -128,14 +128,17 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
         const entryPath = normalizedPath ? `${normalizedPath}/${name}` : name;
 
         let hasChildren: boolean | undefined;
+        let hasDirectories: boolean | undefined;
         if (entry.isDirectory) {
           try {
             const { tauriPath: childTauriPath, options: childOptions } =
               await this.getTauriFsArgs(entryPath);
             const childEntries = await readDir(childTauriPath, childOptions);
             hasChildren = childEntries.length > 0;
+            hasDirectories = childEntries.some((childEntry) => childEntry.isDirectory);
           } catch {
             hasChildren = false;
+            hasDirectories = false;
           }
         }
 
@@ -145,6 +148,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
           path: entryPath,
           parentPath: normalizedPath || undefined,
           hasChildren,
+          hasDirectories,
         } satisfies VfsEntry;
       }),
     );

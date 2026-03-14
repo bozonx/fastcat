@@ -8,6 +8,7 @@ export interface VfsEntry {
   children?: VfsEntry[];
   expanded?: boolean;
   hasChildren?: boolean;
+  hasDirectories?: boolean;
 }
 
 export interface IFileSystemAdapter {

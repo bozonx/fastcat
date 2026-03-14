@@ -82,6 +82,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
               lastModified: entry.lastModified,
               size: entry.size,
               hasChildren: entry.hasChildren,
+              hasDirectories: entry.hasDirectories,
             }) satisfies FsEntry,
         );
 

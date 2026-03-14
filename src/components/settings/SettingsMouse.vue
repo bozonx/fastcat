@@ -119,6 +119,18 @@ function resetDefaults() {
   workspaceStore.userSettings.mouse.monitor = { ...DEFAULT_USER_SETTINGS.mouse.monitor };
   isResetConfirmOpen.value = false;
 }
+
+function isDefault(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: string, value: string) {
+  return (DEFAULT_USER_SETTINGS.mouse[category] as any)[key] === value;
+}
+
+function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: string) {
+  return (
+    (workspaceStore.userSettings.mouse[category] as any)[key] !==
+    (DEFAULT_USER_SETTINGS.mouse[category] as any)[key]
+  );
+}
+
 </script>
 
 <template>
@@ -158,7 +170,10 @@ function resetDefaults() {
           <table class="w-full border-collapse">
             <tbody class="divide-y divide-ui-border">
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'wheel') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel') }}
                   </span>
@@ -173,12 +188,27 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) => (workspaceStore.userSettings.mouse.ruler.wheel = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'wheel', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'wheelShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift') }}
                   </span>
@@ -194,12 +224,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.wheelShift = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'wheelShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'wheelSecondary') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
                   </span>
@@ -215,12 +260,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.wheelSecondary = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'wheelSecondary', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'wheelSecondaryShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{
                       t(
@@ -242,12 +302,27 @@ function resetDefaults() {
                         (workspaceStore.userSettings.mouse.ruler.wheelSecondaryShift =
                           v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'wheelSecondaryShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'middleClick') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle click') }}
                   </span>
@@ -263,12 +338,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.middleClick = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'middleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'doubleClick') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseRulerDoubleClick', 'Double click') }}
                   </span>
@@ -284,12 +374,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.doubleClick = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'doubleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'drag') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineDrag', 'Drag') }}
                   </span>
@@ -304,12 +409,27 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) => (workspaceStore.userSettings.mouse.ruler.drag = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'drag', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'shiftClick') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineShiftClick', 'Shift + Click') }}
                   </span>
@@ -325,7 +445,19 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.ruler.shiftClick = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'shiftClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
             </tbody>
@@ -342,7 +474,10 @@ function resetDefaults() {
           <table class="w-full border-collapse">
             <tbody class="divide-y divide-ui-border">
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'wheel') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel') }}
                   </span>
@@ -357,12 +492,27 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) => (workspaceStore.userSettings.mouse.timeline.wheel = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'wheel', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'wheelShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift') }}
                   </span>
@@ -378,12 +528,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.timeline.wheelShift = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'wheelShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'wheelSecondary') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
                   </span>
@@ -399,12 +564,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.timeline.wheelSecondary = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'wheelSecondary', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'wheelSecondaryShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{
                       t(
@@ -426,12 +606,27 @@ function resetDefaults() {
                         (workspaceStore.userSettings.mouse.timeline.wheelSecondaryShift =
                           v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'wheelSecondaryShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'middleClick') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle click') }}
                   </span>
@@ -447,7 +642,19 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'middleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
             </tbody>
@@ -464,7 +671,10 @@ function resetDefaults() {
           <table class="w-full border-collapse">
             <tbody class="divide-y divide-ui-border">
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('trackHeaders', 'wheel') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel') }}
                   </span>
@@ -480,12 +690,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.trackHeaders.wheel = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('trackHeaders', 'wheel', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('trackHeaders', 'wheelShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift') }}
                   </span>
@@ -501,12 +726,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.trackHeaders.wheelShift = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('trackHeaders', 'wheelShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('trackHeaders', 'wheelSecondary') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel') }}
                   </span>
@@ -523,12 +763,27 @@ function resetDefaults() {
                         (workspaceStore.userSettings.mouse.trackHeaders.wheelSecondary =
                           v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('trackHeaders', 'wheelSecondary', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('trackHeaders', 'wheelSecondaryShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{
                       t(
@@ -550,7 +805,19 @@ function resetDefaults() {
                         (workspaceStore.userSettings.mouse.trackHeaders.wheelSecondaryShift =
                           v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('trackHeaders', 'wheelSecondaryShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
             </tbody>
@@ -567,7 +834,10 @@ function resetDefaults() {
           <table class="w-full border-collapse">
             <tbody class="divide-y divide-ui-border">
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('monitor', 'wheel') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseMonitorWheel', 'Wheel') }}
                   </span>
@@ -582,12 +852,27 @@ function resetDefaults() {
                     @update:model-value="
                       (v: any) => (workspaceStore.userSettings.mouse.monitor.wheel = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('monitor', 'wheel', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('monitor', 'wheelShift') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseMonitorWheelShift', 'Wheel + Shift') }}
                   </span>
@@ -603,12 +888,27 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.monitor.wheelShift = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('monitor', 'wheelShift', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
 
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('monitor', 'middleClick') }"
+                >
                   <span class="text-sm text-ui-text font-medium leading-tight">
                     {{ t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle click') }}
                   </span>
@@ -624,7 +924,19 @@ function resetDefaults() {
                       (v: any) =>
                         (workspaceStore.userSettings.mouse.monitor.middleClick = v?.value ?? v)
                     "
-                  />
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('monitor', 'middleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
                 </td>
               </tr>
             </tbody>
