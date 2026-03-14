@@ -1,6 +1,9 @@
 {
   "common": {
-    "actions": "Действия",
+    "actions": {
+      "title": "Действия",
+      "reset": "Сбросить"
+    },
     "active": "Активные",
     "endOfList": "Больше ничего нет",
     "all": "Все",
@@ -549,6 +552,7 @@
       "metadataTitle": "Заголовок",
       "metadataAuthor": "Автор",
       "metadataTags": "Теги",
+      "metadataDescription": "Описание",
       "onlySelectionRange": "Только выделенную область"
     },
     "hotkeys": {
