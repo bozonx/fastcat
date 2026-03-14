@@ -63,6 +63,20 @@ const containerRef = ref<HTMLElement | null>(null);
 
 const { tracks, trackHeights } = toRefs(props);
 
+/** Pre-calculate pixel geometries for items to avoid recalculating on every scroll/render frame */
+const itemGeometries = computed(() => {
+  const zoom = timelineStore.timelineZoom;
+  const map = new Map<string, { startPx: number; widthPx: number; endPx: number }>();
+  for (const track of props.tracks) {
+    for (const item of track.items) {
+      const startPx = timeUsToPx(item.timelineRange.startUs, zoom);
+      const width = Math.max(2, timeUsToPx(item.timelineRange.durationUs, zoom));
+      map.set(item.id, { startPx, widthPx: width, endPx: startPx + width });
+    }
+  }
+  return map;
+});
+
 /** Visible range in px with overscan. Falls back to rendering everything if viewport unknown. */
 const visibleStartPx = computed(() => Math.max(0, (props.scrollLeft ?? 0) - OVERSCAN_PX));
 const visibleEndPx = computed(() => {
@@ -73,15 +87,15 @@ const visibleEndPx = computed(() => {
 
 function isItemVisible(item: TimelineTrackItem): boolean {
   if (visibleEndPx.value === Infinity) return true;
-  const itemStartPx = timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom);
-  const itemEndPx = itemStartPx + Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom));
-  return itemEndPx >= visibleStartPx.value && itemStartPx <= visibleEndPx.value;
+  const geo = itemGeometries.value.get(item.id);
+  if (!geo) return true;
+  return geo.endPx >= visibleStartPx.value && geo.startPx <= visibleEndPx.value;
 }
 
 function placeholderStyle(item: TimelineTrackItem): CSSProperties {
-  const startPx = timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom);
-  const width = Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom));
-  return { position: 'absolute', left: `${startPx}px`, width: `${width}px`, top: 0, bottom: 0 };
+  const geo = itemGeometries.value.get(item.id);
+  if (!geo) return { display: 'none' };
+  return { position: 'absolute', left: `${geo.startPx}px`, width: `${geo.widthPx}px`, top: 0, bottom: 0 };
 }
 const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   containerRef,
@@ -249,15 +263,16 @@ function selectTransition(
       />
 
       <template v-for="item in track.items" :key="item.id">
-        <TimelineGap
-          v-if="item.kind === 'gap'"
-          :item="item"
-          :track-id="track.id"
-          @select="(e) => emit('selectItem', e, item.id)"
-          @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
-        />
-        <template v-else-if="isItemVisible(item)">
+        <template v-if="isItemVisible(item)">
+          <TimelineGap
+            v-if="item.kind === 'gap'"
+            :item="item"
+            :track-id="track.id"
+            @select="(e) => emit('selectItem', e, item.id)"
+            @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
+          />
           <TimelineClip
+            v-else
             :track="track"
             :item="item"
             :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
