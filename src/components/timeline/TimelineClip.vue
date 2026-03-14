@@ -129,10 +129,10 @@ function onClipClick(e: MouseEvent) {
 
       if (isShift && !isCtrl) {
         // Удалится левая часть
-        timelineStore.trimToPlayheadRightNoRipple();
+        timelineStore.trimToPlayheadLeftNoRipple();
       } else if (!isShift && isCtrl) {
         // Удалится правая часть
-        timelineStore.trimToPlayheadLeftNoRipple();
+        timelineStore.trimToPlayheadRightNoRipple();
       } else {
         timelineStore.splitClipAtPlayhead();
       }
@@ -156,6 +156,7 @@ const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handle
     selectTimelineTransition: (trackId, itemId, edge) =>
       selectionStore.selectTimelineTransition(trackId, itemId, edge),
     triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
+    defaultTransitionDurationUs: computed(() => workspaceStore.userSettings.timeline.defaultTransitionDurationUs),
   });
 
 function isVideo(it: TimelineTrackItem): it is TimelineClipItem {
@@ -199,6 +200,7 @@ const { contextMenuItems } = useClipContextMenu({
   canEditClipContent: computed(() => props.canEditClipContent),
   timelineDoc: computed(() => timelineStore.timelineDoc),
   projectSettings: computed(() => projectStore.projectSettings),
+  defaultTransitionDurationUs: computed(() => workspaceStore.userSettings.timeline.defaultTransitionDurationUs),
   selectedItemIds: computed(() => timelineStore.selectedItemIds),
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
   batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
@@ -256,6 +258,43 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
   };
 });
+function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
+  if (!clipItem.value || !props.canEditClipContent) return;
+
+  const defaultUs = Math.max(
+    0,
+    Math.round(Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000))
+  );
+  const durationUs = Math.min(
+    defaultUs,
+    Math.round(clipItem.value.timelineRange.durationUs * 0.3)
+  );
+
+  const transitionPatch = {
+    type: 'dissolve',
+    durationUs,
+    mode: 'adjacent' as const,
+    curve: 'linear' as const
+  };
+
+  timelineStore.updateClipTransition(
+    props.track.id,
+    props.item.id,
+    payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch }
+  );
+
+  if (payload.drag) {
+    // Defer starting drag to give vue time to render transition
+    window.setTimeout(() => {
+      emit('startResizeTransition', e, {
+        trackId: props.track.id,
+        itemId: props.item.id,
+        edge: payload.edge,
+        durationUs
+      });
+    }, 0);
+  }
+}
 </script>
 
 <template>
@@ -320,6 +359,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
         :clip="clipItem"
         :track="track"
         :zoom="timelineStore.timelineZoom"
+        :clip-width-px="clipWidthPx"
         :selected-transition="selectedTransition"
         :can-edit="canEditClipContent"
         @select="(e, payload) => emit('selectTransition', e, payload)"
@@ -332,6 +372,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
               durationUs: payload.durationUs,
             })
         "
+        @create-transition="handleTransitionCreate"
       />
 
       <ClipAudioFades

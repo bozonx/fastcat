@@ -29,10 +29,11 @@ export function createProxyService(params: {
 
   generatingProxies: Ref<Set<string>>;
   existingProxies: Ref<Set<string>>;
-  proxyProgress: Ref<Record<string, number>>;
-  proxyAbortControllers: Ref<Record<string, AbortController>>;
+  proxyProgress: Ref<Map<string, number>>;
+  proxyAbortControllers: Ref<Map<string, AbortController>>;
   activeWorkerPaths: Ref<Set<string>>;
-  proxyTaskIds: Ref<Record<string, string>>;
+  proxyTaskIds: Ref<Map<string, string>>;
+  taskIdToPath: Ref<Map<string, string>>;
 
   proxyQueue: Ref<PQueue>;
 
@@ -49,7 +50,8 @@ export function createProxyService(params: {
     proxyCopyOpusAudio: boolean;
   };
 }): ProxyService {
-  params.proxyTaskIds.value = {}; // Clear old task mappings on service creation
+  params.proxyTaskIds.value.clear(); // Clear old task mappings on service creation
+  params.taskIdToPath.value.clear();
 
   setProxyHostApi(
     createVideoCoreHostApi({
@@ -58,11 +60,10 @@ export function createProxyService(params: {
       getFileHandleByPath: params.getFileHandleByPath,
       getFileByPath: params.getFileByPath,
       onExportProgress: (progress: number, taskId?: string) => {
-        const path = Object.keys(params.proxyTaskIds.value).find(
-          (k) => params.proxyTaskIds.value[k] === taskId,
-        );
+        if (!taskId) return;
+        const path = params.taskIdToPath.value.get(taskId);
         if (path) {
-          params.proxyProgress.value[path] = progress;
+          params.proxyProgress.value.set(path, progress);
         }
       },
       onExportPhase: (phase: 'encoding' | 'saving', taskId?: string) => {
@@ -137,13 +138,10 @@ export function createProxyService(params: {
     if (!dir) throw new Error('Could not access proxies directory');
 
     params.generatingProxies.value.add(projectRelativePath);
-    params.proxyProgress.value[projectRelativePath] = 0;
+    params.proxyProgress.value.set(projectRelativePath, 0);
 
     const controller = new AbortController();
-    params.proxyAbortControllers.value = {
-      ...params.proxyAbortControllers.value,
-      [projectRelativePath]: controller,
-    };
+    params.proxyAbortControllers.value.set(projectRelativePath, controller);
 
     const signal = options?.signal;
     const onAbort = () => {
@@ -169,7 +167,8 @@ export function createProxyService(params: {
           }
 
           const taskId = `proxy-${projectRelativePath}-${Date.now()}`;
-          params.proxyTaskIds.value[projectRelativePath] = taskId;
+          params.proxyTaskIds.value.set(projectRelativePath, taskId);
+          params.taskIdToPath.value.set(taskId, projectRelativePath);
           params.activeWorkerPaths.value.add(projectRelativePath);
           const proxyFilename = await params.getProxyFileName(projectRelativePath);
           proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
@@ -178,7 +177,7 @@ export function createProxyService(params: {
 
           const { client } = getProxyWorkerClient();
 
-          const meta = await (client as any).extractMetadata(file);
+          const meta = await client.extractMetadata(file);
           const sourceWidth = meta.video?.width || 1920;
           const sourceHeight = meta.video?.height || 1080;
 
@@ -202,33 +201,32 @@ export function createProxyService(params: {
           const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
           const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
-
           const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
           if (!durationUs) throw new Error('Invalid video duration');
 
           const videoClips = [
             {
-              kind: 'clip',
+              kind: 'clip' as const,
               id: 'proxy_video',
               layer: 0,
               source: { path: projectRelativePath },
               timelineRange: { startUs: 0, durationUs },
               sourceRange: { startUs: 0, durationUs },
             },
-          ];
+          ] as any;
 
           const audioClips = meta.audio
-            ? [
+            ? ([
                 {
-                  kind: 'clip',
+                  kind: 'clip' as const,
                   id: 'proxy_audio',
                   layer: 0,
                   source: { path: projectRelativePath },
                   timelineRange: { startUs: 0, durationUs },
                   sourceRange: { startUs: 0, durationUs },
                 },
-              ]
+              ] as any)
             : [];
 
           const isOpusAudio =
@@ -248,12 +246,7 @@ export function createProxyService(params: {
             fps: meta.video?.fps || 30,
           };
 
-          await (client as any).exportTimeline(
-            proxyFileHandle,
-            exportOptions,
-            videoClips,
-            audioClips,
-          );
+          await client.exportTimeline(proxyFileHandle, exportOptions, videoClips, audioClips);
 
           params.existingProxies.value = new Set([
             ...params.existingProxies.value,
@@ -274,8 +267,12 @@ export function createProxyService(params: {
         } finally {
           params.activeWorkerPaths.value.delete(projectRelativePath);
           params.generatingProxies.value.delete(projectRelativePath);
-          delete params.proxyProgress.value[projectRelativePath];
-          delete params.proxyTaskIds.value[projectRelativePath];
+          params.proxyProgress.value.delete(projectRelativePath);
+          const taskId = params.proxyTaskIds.value.get(projectRelativePath);
+          if (taskId) {
+            params.taskIdToPath.value.delete(taskId);
+            params.proxyTaskIds.value.delete(projectRelativePath);
+          }
 
           if (signal) {
             try {
@@ -285,9 +282,7 @@ export function createProxyService(params: {
             }
           }
 
-          const nextControllers = { ...params.proxyAbortControllers.value };
-          delete nextControllers[projectRelativePath];
-          params.proxyAbortControllers.value = nextControllers;
+          params.proxyAbortControllers.value.delete(projectRelativePath);
         }
       });
     } catch (e) {
@@ -295,26 +290,23 @@ export function createProxyService(params: {
         return;
       }
       params.generatingProxies.value.delete(projectRelativePath);
-      delete params.proxyProgress.value[projectRelativePath];
-
-      const nextControllers = { ...params.proxyAbortControllers.value };
-      delete nextControllers[projectRelativePath];
-      params.proxyAbortControllers.value = nextControllers;
+      params.proxyProgress.value.delete(projectRelativePath);
+      params.proxyAbortControllers.value.delete(projectRelativePath);
       throw e;
     }
   }
 
   async function cancelProxyGeneration(projectRelativePath: string) {
-    const controller = params.proxyAbortControllers.value[projectRelativePath];
+    const controller = params.proxyAbortControllers.value.get(projectRelativePath);
     if (controller && !controller.signal.aborted) {
       controller.abort();
     }
 
-    const taskId = params.proxyTaskIds.value[projectRelativePath];
-    if (params.activeWorkerPaths.value.has(projectRelativePath)) {
+    const taskId = params.proxyTaskIds.value.get(projectRelativePath);
+    if (taskId && params.activeWorkerPaths.value.has(projectRelativePath)) {
       try {
         const { client } = getProxyWorkerClient();
-        await (client as any).cancelExport(taskId);
+        await client.cancelExport(taskId);
       } catch {
         // ignore
       }
@@ -348,7 +340,7 @@ export function createProxyService(params: {
     const oldPrefix = `${input.oldPath}/`;
 
     // 1. Cancel active/pending tasks
-    for (const path of Object.keys(params.proxyAbortControllers.value)) {
+    for (const path of params.proxyAbortControllers.value.keys()) {
       if (path.startsWith(oldPrefix)) {
         await cancelProxyGeneration(path);
       }

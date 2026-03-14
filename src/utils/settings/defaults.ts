@@ -40,6 +40,8 @@ export interface FastCatUserSettings {
   timeline: {
     /** Snap threshold in pixels. Used as snapping area size for clips/playhead/markers. */
     snapThresholdPx: number;
+    /** Default transition duration in microseconds */
+    defaultTransitionDurationUs: number;
   };
   stopFrames: {
     qualityPercent: number;
@@ -150,6 +152,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   openLastProjectOnStart: true,
   timeline: {
     snapThresholdPx: 8,
+    defaultTransitionDurationUs: 1_000_000,
   },
   stopFrames: {
     qualityPercent: 85,

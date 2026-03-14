@@ -245,7 +245,7 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                 >
                   <ProgressSpinner
                     v-if="proxyStore.generatingProxies.has(entry.path || '')"
-                    :progress="proxyStore.proxyProgress[entry.path || ''] ?? 0"
+                    :progress="proxyStore.proxyProgress.get(entry.path || '') ?? 0"
                     size="sm"
                   />
                   <img

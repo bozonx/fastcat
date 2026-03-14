@@ -124,7 +124,7 @@ function getEntryMeta(entry: FsEntry): {
 
   const hasProxy = props.mediaCache.hasProxy(entry.path);
   const generatingProxy = proxyStore.generatingProxies.has(entry.path);
-  const proxyProgress = proxyStore.proxyProgress[entry.path];
+  const proxyProgress = proxyStore.proxyProgress.get(entry.path) ?? 0;
   const isUsedInTimeline = Boolean(mediaUsageMap.value[entry.path]?.length);
   return { hasProxy, generatingProxy, proxyProgress, isUsedInTimeline };
 }

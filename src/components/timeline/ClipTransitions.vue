@@ -23,8 +23,10 @@ const props = defineProps<{
   clip: TimelineClipItem;
   track: TimelineTrack;
   zoom: number;
+  clipWidthPx: number;
   selectedTransition?: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
   canEdit: boolean;
+  isMobile?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,6 +36,7 @@ const emit = defineEmits<{
     payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
   ): void;
   (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
+  (e: 'createTransition', event: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }): void;
 }>();
 
 function transitionUsToPx(us: number) {
@@ -173,6 +176,42 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   if (edge === 'in') return 'var(--clip-lower-tri)';
   return 'rgba(255, 255, 255, 0.2)';
 }
+
+function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
+  if (!props.canEdit || props.clip.locked) return;
+  e.stopPropagation();
+  e.preventDefault();
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+  let isDragging = false;
+
+  const onPointerMove = (moveEvent: PointerEvent) => {
+    if (isDragging) return;
+    if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
+      isDragging = true;
+      cleanup();
+      emit('createTransition', moveEvent, { edge, drag: true });
+    }
+  };
+
+  const onPointerUp = (upEvent: PointerEvent) => {
+    cleanup();
+    if (!isDragging) {
+      emit('createTransition', upEvent, { edge, drag: false });
+    }
+  };
+
+  const cleanup = () => {
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+  };
+
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+}
 </script>
 
 <template>
@@ -255,6 +294,22 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
         />
       </button>
     </div>
+    <!-- Create Transition In Handle -->
+    <div
+      v-else-if="canEdit && !clip.locked"
+      class="absolute top-1/2 w-6 h-6 -ml-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+      :class="[
+        clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+        isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
+      ]"
+      style="left: 0"
+    >
+      <div
+        class="w-3 h-3 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        style="clip-path: polygon(0 0, 100% 50%, 0 100%);"
+        @pointerdown="handleTransitionCreatePointerDown($event, 'in')"
+      ></div>
+    </div>
 
     <!-- Transition Out -->
     <div
@@ -333,6 +388,22 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
           "
         />
       </button>
+    </div>
+    <!-- Create Transition Out Handle -->
+    <div
+      v-else-if="canEdit && !clip.locked"
+      class="absolute top-1/2 w-6 h-6 -mr-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+      :class="[
+        clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+        isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
+      ]"
+      style="right: 0"
+    >
+      <div
+        class="w-3 h-3 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        style="clip-path: polygon(0 50%, 100% 0, 100% 100%);"
+        @pointerdown="handleTransitionCreatePointerDown($event, 'out')"
+      ></div>
     </div>
   </div>
 </template>

@@ -122,7 +122,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function updateRecentProject(project: Omit<RecentProject, 'updatedAt'>) {
     const now = new Date().toISOString();
-    const existingIndex = recentProjects.value.findIndex((p) => p.projectName === project.projectName);
+    const existingIndex = recentProjects.value.findIndex(
+      (p) => p.projectName === project.projectName,
+    );
 
     const updatedProject: RecentProject = {
       ...project,
@@ -218,11 +220,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const proxyStore = useProxyStore();
     proxyStore.generatingProxies.clear();
     proxyStore.existingProxies.clear();
-    proxyStore.proxyProgress = {};
-    for (const [key, controller] of Object.entries(proxyStore.proxyAbortControllers)) {
+    proxyStore.proxyProgress.clear();
+    for (const [key, controller] of proxyStore.proxyAbortControllers.entries()) {
       controller.abort();
     }
-    proxyStore.proxyAbortControllers = {};
+    proxyStore.proxyAbortControllers.clear();
     proxyStore.activeWorkerPaths.clear();
   }
 

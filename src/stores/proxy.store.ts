@@ -14,11 +14,12 @@ export const useProxyStore = defineStore('proxy', () => {
 
   const generatingProxies = ref<Set<string>>(new Set());
   const existingProxies = ref<Set<string>>(new Set());
-  const proxyProgress = ref<Record<string, number>>({});
-  const proxyAbortControllers = ref<Record<string, AbortController>>({});
+  const proxyProgress = ref<Map<string, number>>(new Map());
+  const proxyAbortControllers = ref<Map<string, AbortController>>(new Map());
   // Tracks paths currently executing in worker (not just queued)
   const activeWorkerPaths = ref<Set<string>>(new Set());
-  const proxyTaskIds = ref<Record<string, string>>({});
+  const proxyTaskIds = ref<Map<string, string>>(new Map());
+  const taskIdToPath = ref<Map<string, string>>(new Map());
 
   const fsModule = createProxyFsModule({
     workspaceHandle: computed(() => workspaceStore.workspaceHandle),
@@ -38,6 +39,7 @@ export const useProxyStore = defineStore('proxy', () => {
     proxyAbortControllers,
     activeWorkerPaths,
     proxyTaskIds,
+    taskIdToPath,
     proxyQueue: queueModule.proxyQueue,
     ensureProjectProxiesDir: fsModule.ensureProjectProxiesDir,
     getProxyFileName: fsModule.getProxyFileName,

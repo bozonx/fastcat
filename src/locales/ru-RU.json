@@ -277,6 +277,11 @@
       "mouseHardcodedShiftDrag": "Перетаскивание клипов + Shift: дублирование (в разработке)",
       "mouseHardcodedLeftClick": "Одинарный клик левой кнопкой мыши: выбор объекта",
       "mouseHardcodedShiftClick": "Одинарный клик + Shift: выбор нескольких объектов",
+      "mouseHardcodedDblClickTrackHeader": "Двойной клик по заголовку дорожки: выбрать все клипы на дорожке",
+      "mouseHardcodedDblClickMonitor": "Двойной клик в мониторе: сбросить зум и центрировать",
+      "mouseHardcodedRazorClick": "Режим лезвия — Клик: разрезать клип по курсору",
+      "mouseHardcodedRazorShiftClick": "Режим лезвия — Shift + Клик: обрезать левую часть клипа",
+      "mouseHardcodedRazorCtrlClick": "Режим лезвия — Ctrl + Клик: обрезать правую часть клипа",
       "clearTempWorkspace": "Очистить временные файлы рабочей области",
       "clearTempWorkspaceTitle": "Очистка временных файлов",
       "clearTempWorkspaceDescription": "Это удалит все прокси-файлы, миниатюры и кэш во всей рабочей области. Это освободит место на диске, но медиафайлы будут загружаться дольше при следующем открытии.",
@@ -314,8 +319,9 @@
       "mouseTrackHeaders": "Заголовки дорожек",
       "advancedSection": "Расширенные",
       "clearUiCache": "Очистить кэш интерфейса",
-      "clearUiCacheDesc": "Сбрасывает лейаут, размеры панелей и другие настройки отображения.",
-      "clearCacheAction": "Очистить кэш"
+      "clearUiCacheDesc": "Сбрасывает разметку, размеры панелей и другие предпочтения интерфейса.",
+      "clearCacheAction": "Очистить кэш",
+      "hotkeysHardcodedHint": "Некоторые клавиши остаются захардкоженными в специфичных контекстах: Escape для закрытия окон и стандартные клавиши проводника (Alt, Arrows, Enter) в панелях выбора файлов."
     },
     "projectSettings": {
       "title": "Настройки проекта",

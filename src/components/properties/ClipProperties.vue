@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useMediaStore } from '~/stores/media.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEditorViewStore } from '~/stores/editorView.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFilesPageStore } from '~/stores/filesPage.store';
@@ -44,6 +46,7 @@ const selectionStore = useSelectionStore();
 const editorViewStore = useEditorViewStore();
 const fileManager = useFileManager();
 const uiStore = useUiStore();
+const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const filesPageStore = useFilesPageStore();
 
@@ -264,7 +267,7 @@ const { selectTransitionEdge, toggleTransition, updateTransitionDuration, update
       Math.max(
         0,
         Math.round(
-          Number(projectStore.projectSettings?.transitions?.defaultDurationUs ?? 2_000_000),
+          Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
         ),
       ),
     ),

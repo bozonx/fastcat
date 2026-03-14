@@ -277,6 +277,11 @@
       "mouseHardcodedShiftDrag": "Drag clips + Shift: duplication (not implemented yet)",
       "mouseHardcodedLeftClick": "Single left mouse click: select object",
       "mouseHardcodedShiftClick": "Single click + Shift: multi-select objects",
+      "mouseHardcodedDblClickTrackHeader": "Double-click track header: select all clips on track",
+      "mouseHardcodedDblClickMonitor": "Double-click in monitor: reset zoom & center",
+      "mouseHardcodedRazorClick": "Razor Tool - Click: split clip at playhead",
+      "mouseHardcodedRazorShiftClick": "Razor Tool - Shift + Click: trim left part of clip",
+      "mouseHardcodedRazorCtrlClick": "Razor Tool - Ctrl + Click: trim right part of clip",
       "mouseActionResizeTrack": "Resize Track Height",
       "mouseActionSeekFrame": "Seek (1 frame)",
       "mouseActionSeekSecond": "Seek (1 second)",
@@ -284,7 +289,8 @@
       "advancedSection": "Advanced",
       "clearUiCache": "Clear UI cache",
       "clearUiCacheDesc": "Resets layout, panel sizes, and other UI preferences.",
-      "clearCacheAction": "Clear cache"
+      "clearCacheAction": "Clear cache",
+      "hotkeysHardcodedHint": "Some keys remain hardcoded in specific contexts: Escape for closing some windows, and standard file manager shortcuts (Alt, Arrows, Enter) in file explorer panels."
     },
     "projectSettings": {
       "title": "Project Settings",
